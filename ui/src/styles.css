@@ -137,22 +137,6 @@ body {
   background: var(--color-surface);
 }
 
-/* Theme switcher (topbar select) */
-.theme-switcher {
-  font: inherit;
-  font-size: 13px;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-
-.theme-switcher:hover {
-  border-color: var(--color-border-strong);
-}
-
 .error {
   margin-top: var(--space-3);
   color: var(--color-error);
@@ -163,10 +147,14 @@ body {
   color: var(--color-muted);
 }
 
-/* Tab bar */
+/* Tab bar — its own row beneath the topbar */
 .tabbar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
 }
 
 .tab {
@@ -233,4 +221,71 @@ body {
 .game-players {
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* Shared view heading (placeholder + settings tabs) */
+.view-title {
+  margin: 0 0 var(--space-2);
+  font-size: 20px;
+}
+
+.placeholder {
+  padding: var(--space-4) 0;
+}
+
+/* Settings */
+.settings-view {
+  max-width: 640px;
+}
+
+.settings-section {
+  margin-top: var(--space-4);
+}
+
+.settings-section-title {
+  margin: 0 0 var(--space-1);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+/* Theme picker (Settings → Design) */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+  font: inherit;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.theme-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.theme-card-active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent), 0 0 18px -6px var(--color-accent-glow);
+}
+
+.theme-card-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.theme-card-hint {
+  font-size: 12px;
 }
