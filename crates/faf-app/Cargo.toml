@@ -1,0 +1,30 @@
+[package]
+name = "faf-app"
+description = "Orchestration: command dispatcher, event bus, the reduce loop, services, ports, infra."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+faf-domain = { workspace = true }
+tokio = { workspace = true, features = ["net", "io-util", "process"] }
+tokio-util = "0.7"
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+futures-util = "0.3"
+
+# Real OAuth2 infra (see infra/oauth.rs). reqwest and tokio-tungstenite both use
+# the platform-native TLS stack (SChannel on Windows, Secure Transport on macOS,
+# OpenSSL on Linux) so no extra crypto build tooling is needed beyond libssl-dev.
+reqwest = { version = "0.12", features = ["json"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+open = "5"
+url = "2"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }

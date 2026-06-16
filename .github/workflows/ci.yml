@@ -1,0 +1,100 @@
+name: CI
+
+# Guards the project's core invariant: no type drift across the Tauri boundary
+# and no silent breakage. Runs on every push to the long-lived branches and on
+# every PR. See ARCHITECTURE.md §3.6 (single IPC contract) and docs/PROJECT_GUIDE.md.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+# A newer push to the same ref cancels the in-flight run for that ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  rust:
+    name: Rust — test + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # src-tauri (forge-client) links against the system webview stack, so the
+      # workspace build needs these even though the logic crates are pure.
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            libsoup-3.0-dev \
+            libxdo-dev \
+            libssl-dev \
+            pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo test
+        run: cargo test --workspace --all-targets
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets
+
+  frontend:
+    name: Frontend — typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: tsc --noEmit
+        run: npm run typecheck
+
+      - name: vite build
+        run: npm run build
+
+  bindings-drift:
+    name: Bindings drift check
+    runs-on: ubuntu-latest
+    # faf-ipc depends only on faf-domain + specta (no Tauri), so this job needs
+    # no system libraries — it just regenerates the bindings and diffs them.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Regenerate TypeScript bindings
+        run: cargo run -q -p faf-ipc --bin export-bindings
+
+      - name: Fail if bindings are out of date
+        run: |
+          if ! git diff --exit-code ui/src/ipc/bindings.ts; then
+            echo "::error file=ui/src/ipc/bindings.ts::Bindings are out of date. Run 'npm run bindings' and commit the result."
+            exit 1
+          fi

@@ -1,0 +1,23 @@
+/*
+ * Placeholder design tokens — the integration seam for the ForgeMapToolkit
+ * design system. In Phase 3 this file is replaced by the toolkit's token set;
+ * components reference these CSS variables only, so the swap touches nothing else.
+ */
+:root {
+  --color-bg: #0f1115;
+  --color-surface: #171a21;
+  --color-border: #232733;
+  --color-text: #e6e8ec;
+  --color-muted: #8b93a1;
+  --color-accent: #4ea1ff;
+  --color-ok: #3ad29f;
+  --color-warn: #f5b14c;
+
+  --radius-md: 10px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}

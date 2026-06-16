@@ -1,0 +1,25 @@
+[package]
+name = "forge-client"
+description = "FAF client — Tauri shell. Thin: wires faf-app to Tauri commands/events. No logic."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "forge_client_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+faf-domain = { workspace = true }
+faf-app = { workspace = true }
+
+[[bin]]
+name = "forge-client"
+path = "src/main.rs"
