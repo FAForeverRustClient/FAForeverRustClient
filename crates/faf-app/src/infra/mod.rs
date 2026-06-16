@@ -12,12 +12,16 @@ pub mod lobby;
 pub mod lobby_ws;
 pub mod oauth;
 pub mod session;
+pub mod settings_fake;
+pub mod settings_file;
 
 pub use auth::FakeAuth;
 pub use lobby::FakeLobby;
 pub use lobby_ws::{LobbyClient, LobbyConfig};
 pub use oauth::{OAuthAuth, OAuthConfig};
 pub use session::TokenStore;
+pub use settings_fake::FakeSettings;
+pub use settings_file::FileSettings;
 
 use std::sync::Arc;
 
@@ -28,6 +32,7 @@ pub fn fake_ports() -> Ports {
     Ports {
         auth: Arc::new(FakeAuth::default()),
         lobby: Arc::new(FakeLobby::default()),
+        settings: Arc::new(FakeSettings::default()),
     }
 }
 
@@ -49,6 +54,7 @@ pub fn real_ports() -> Ports {
     Ports {
         auth: Arc::new(OAuthAuth::new(OAuthConfig::from_env(), tokens)),
         lobby,
+        settings: Arc::new(FileSettings::faf()),
     }
 }
 

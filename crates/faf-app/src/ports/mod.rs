@@ -6,9 +6,11 @@
 
 pub mod auth;
 pub mod lobby;
+pub mod settings;
 
 pub use auth::{AuthError, AuthPort, AuthResult};
 pub use lobby::LobbyPort;
+pub use settings::SettingsPort;
 
 use std::sync::Arc;
 
@@ -19,4 +21,5 @@ use std::sync::Arc;
 pub struct Ports {
     pub auth: Arc<dyn AuthPort>,
     pub lobby: Arc<dyn LobbyPort>,
+    pub settings: Arc<dyn SettingsPort>,
 }

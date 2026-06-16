@@ -101,17 +101,21 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/ports/mod.rs` | **`Ports`** bundle (one field per external system), injected into `ServiceCtx`. |
 | `src/ports/auth.rs` | Trait **`AuthPort`** — request/response (login/logout). |
 | `src/ports/lobby.rs` | Trait **`LobbyPort`** — *streaming* (`connect()` → receiver of game snapshots; `disconnect()` cancels). |
+| `src/ports/settings.rs` | Trait **`SettingsPort`** — `load()` / `save()` persisted preferences (best-effort). |
 | `src/infra/mod.rs` | **`real_ports()` / `fake_ports()` / `ports_from_env()`** — builds the `Ports` bundle. Only IO-permitted zone. The shell uses `ports_from_env()` (real auth by default, `FAF_FAKE_AUTH=1` for offline; `FAF_REAL_LOBBY=1` for the real lobby). |
 | `src/infra/oauth.rs` | **`OAuthAuth`** — real login: FAF Ory Hydra, Authorization Code + PKCE, loopback redirect listener, token exchange, `/me` lookup, keyring storage. |
 | `src/infra/auth.rs` | **`FakeAuth`** — simulates login (offline); used by tests and `FAF_FAKE_AUTH=1`. |
 | `src/infra/session.rs` | **`TokenStore`** — in-memory access-token holder shared from auth to network ports (never in `AppState`). |
 | `src/infra/lobby_ws.rs` | **`LobbyClient`** — real FAF lobby WebSocket protocol (`ask_session`→`auth`→`game_info`), game-list aggregation, graceful disconnect. Opt-in (`FAF_REAL_LOBBY=1`); runs the `faf-uid` binary (`FAF_UID_PATH`) for the anti-smurf `unique_id`. |
 | `src/infra/lobby.rs` | **`FakeLobby`** — sends a changing game list every 2s; cancellable like the real client. |
+| `src/infra/settings_file.rs` | **`FileSettings`** — persists settings as JSON in the OS config dir. |
+| `src/infra/settings_fake.rs` | **`FakeSettings`** — in-memory settings for tests/offline. |
 | `src/services/mod.rs` | Collection module for services. |
 | `src/services/session.rs` | Service **session**: handshake → reports backend version. |
 | `src/services/auth.rs` | Service **auth**: command → `AuthPort` → events. |
 | `src/services/nav.rs` | Service **nav**: pure UI state transition (command → event). |
 | `src/services/lobby.rs` | Service **lobby**: subscribes to the stream, forwards each snapshot as an event. |
+| `src/services/settings.rs` | Service **settings**: `Load` → emit `Loaded`; `SetTheme` → emit + persist post-reduce slice. |
 | `tests/loop.rs` | End-to-end test of the loop (session). |
 | `tests/auth.rs` | Auth service with a swapped port (success + failure). |
 | `tests/lobby.rs` | Lobby streaming end-to-end, plus connect→disconnect teardown. |
@@ -150,14 +154,16 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/ipc/bindings.ts` | **GENERATED** from Rust. Do not edit manually. |
 | `src/store/store.ts` | Zustand store; mirrors `AppState`. Write access only via `apply` (events) + `hydrate` (snapshot). |
 | `src/store/reducer.ts` | **Mirror reducer** — structurally identical to `faf-domain/src/reducer.rs`. If you change the Rust reducer, change this twin too. |
-| `src/design-system/tokens.css` | CSS variables (colors, spacing). Placeholder — will be replaced by the ForgeMapToolkit design system later. |
-| `src/styles.css` | Global styles + component classes. |
+| `src/design-system/tokens.css` | **Theming contract.** Semantic CSS variables under `:root` (= `forgeDark`) + one `[data-theme="…"]` block per theme (`forgeLight`/`javaClient`/`pythonClient`). Components reference these only. |
+| `src/design-system/Button.tsx` | **`Button` primitive** — encapsulates control structure/classes so theme-specific shape changes touch one file. |
+| `src/styles.css` | Global styles + component classes (token-driven; no hardcoded hex — enforced in CI). |
 | `src/features/status/StatusBar.tsx` | View: connection status. |
 | `src/features/auth/LoginView.tsx` | View: login screen. |
-| `src/features/shell/AppShell.tsx` | The logged-in shell: topbar + `TabBar` + active tab content. |
+| `src/features/shell/AppShell.tsx` | The logged-in shell: topbar + `TabBar` + `ThemeSwitcher` + active tab content. |
 | `src/features/nav/TabBar.tsx` | View: tab bar (dispatches nav commands). |
 | `src/features/home/HomeScreen.tsx` | View: home tab content. |
 | `src/features/lobby/LobbyView.tsx` | View: play tab — live game list. |
+| `src/features/settings/ThemeSwitcher.tsx` | View: theme dropdown (dispatches `SetTheme`). |
 
 > **Feature structure:** A folder `features/<name>/`. Components **select state +
 > dispatch commands**, nothing else. No business logic, no direct IPC calls.
@@ -189,6 +195,7 @@ Backend and frontend can never diverge because both **reduce the same event stre
 | **Add new backend capability** | Command + event(s) in the slice; service in `faf-app/src/services/<name>.rs`; dispatch arm in `runtime/mod.rs`. |
 | **Add new external system** | `Port` trait in `faf-app/src/ports/`; impl in `infra/`; mock/fake for tests; field in `Ports`. |
 | **Add new screen/tab** | Folder `ui/src/features/<name>/`; wire into `AppShell`; add `Tab` variant in `nav.rs` if needed. |
+| **Add/change a theme** | Add a `[data-theme="…"]` block in `tokens.css` + a `Theme` variant in `faf-domain/state/settings.rs`. No component changes; never hardcode a color in a component (CI rejects hex outside `tokens.css`). |
 | **Changed a cross-boundary type** | Run `npm run bindings` (otherwise the TS build breaks). |
 
 **Never:** mutate state outside a reducer · do IO outside `infra/` · put logic in a component · write a cross-boundary type by hand.

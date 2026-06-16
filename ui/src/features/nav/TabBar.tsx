@@ -1,15 +1,11 @@
-// Tab navigation. Selecting a tab dispatches a Nav command; the active tab is
-// read from state. No local routing state — the backend is the source of truth,
-// which also lets backend events switch tabs (ARCHITECTURE.md, nav slice).
+// Tab navigation. Renders the registry in TAB_ORDER; selecting a tab dispatches a
+// Nav command and the active tab is read from state. No local routing state — the
+// backend is the source of truth, so backend events can switch tabs too.
 
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { TAB_ORDER, TABS } from "./tabs";
 import type { Tab } from "../../ipc/bindings";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "home", label: "Home" },
-  { id: "play", label: "Play" },
-];
 
 export function TabBar() {
   const active = useAppStore((s) => s.state.nav.activeTab);
@@ -19,13 +15,13 @@ export function TabBar() {
 
   return (
     <nav className="tabbar">
-      {TABS.map((t) => (
+      {TAB_ORDER.map((id) => (
         <button
-          key={t.id}
-          className={t.id === active ? "tab tab-active" : "tab"}
-          onClick={() => select(t.id)}
+          key={id}
+          className={id === active ? "tab tab-active" : "tab"}
+          onClick={() => select(id)}
         >
-          {t.label}
+          {TABS[id].label}
         </button>
       ))}
     </nav>

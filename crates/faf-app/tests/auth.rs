@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use faf_app::infra::{FakeAuth, FakeLobby};
+use faf_app::infra::{FakeAuth, FakeLobby, FakeSettings};
 use faf_app::{App, Ports};
 use faf_domain::state::{AuthCommand, AuthEvent, AuthStatus, Player};
 use faf_domain::AppEvent;
@@ -15,6 +15,7 @@ fn app_with(auth: FakeAuth) -> App {
     let ports = Ports {
         auth: Arc::new(auth),
         lobby: Arc::new(FakeLobby::default()),
+        settings: Arc::new(FakeSettings::default()),
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());

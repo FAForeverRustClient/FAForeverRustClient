@@ -44,6 +44,13 @@ impl EventSink {
         // Err only means "no subscribers yet" — fine to ignore.
         let _ = self.tx.send(event);
     }
+
+    /// A snapshot of the authoritative state. Lets a service read back the result
+    /// of its own `emit` (e.g. to persist the post-reduce slice). Read-only —
+    /// state still only changes through [`Self::emit`].
+    pub fn snapshot(&self) -> AppState {
+        self.state.read().expect("app state lock poisoned").clone()
+    }
 }
 
 /// Handle to the application core. Created once, shared (behind `Arc`) by the shell.
@@ -132,5 +139,6 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Auth(c) => services::auth::handle(c, ctx, sink).await,
         AppCommand::Nav(c) => services::nav::handle(c, ctx, sink).await,
         AppCommand::Lobby(c) => services::lobby::handle(c, ctx, sink).await,
+        AppCommand::Settings(c) => services::settings::handle(c, ctx, sink).await,
     }
 }

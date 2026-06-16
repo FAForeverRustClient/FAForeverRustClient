@@ -4,6 +4,7 @@
 
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { Button } from "../../design-system/Button";
 
 export function LoginView() {
   const auth = useAppStore((s) => s.state.auth);
@@ -17,9 +18,9 @@ export function LoginView() {
         <h1 className="app-title">Forge Client</h1>
         <p className="app-subtitle">Sign in to continue</p>
 
-        <button className="btn-primary" onClick={login} disabled={busy}>
+        <Button variant="primary" onClick={login} disabled={busy}>
           {busy ? "Signing in…" : "Log in"}
-        </button>
+        </Button>
 
         {auth.status === "failed" && auth.error && (
           <p className="error" role="alert">

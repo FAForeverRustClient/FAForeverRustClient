@@ -6,6 +6,7 @@
 import { useEffect } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { Button } from "../../design-system/Button";
 import type { LobbyStatus } from "../../ipc/bindings";
 
 const STATUS_LABEL: Record<LobbyStatus, string> = {
@@ -36,9 +37,9 @@ export function LobbyView() {
         <h2>Open games</h2>
         <span className="muted">{STATUS_LABEL[lobby.status]}</span>
         <span className="spacer" />
-        <button className="btn-ghost" onClick={isLive ? disconnect : connect}>
+        <Button onClick={isLive ? disconnect : connect}>
           {isLive ? "Disconnect" : "Connect"}
-        </button>
+        </Button>
       </div>
 
       {lobby.games.length === 0 ? (

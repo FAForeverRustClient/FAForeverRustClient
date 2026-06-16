@@ -8,13 +8,22 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-/// A top-level destination. Extended as features land (Chat, Replays, Vault…).
+/// A top-level destination. Most are placeholders today; each gets its feature
+/// slice as it lands. The frontend tab registry maps these 1:1 to views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum Tab {
     #[default]
     Home,
+    News,
+    Chat,
     Play,
+    Replays,
+    Maps,
+    Mods,
+    Leaderboard,
+    Units,
+    Settings,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]

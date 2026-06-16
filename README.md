@@ -22,6 +22,11 @@ Features so far:
   login ↔ app routing.
 - **nav** — multi-tab shell; the active tab lives in `AppState` so the backend can drive
   navigation too.
+- **settings** — persisted preferences (first: UI `theme`), loaded from disk on startup
+  and saved on change via `SettingsPort` → `FileSettings`. The theme is type-safe across
+  the boundary (a `Theme` enum) and applied as `<html data-theme>`. Four themes ship:
+  `forgeDark` (default), `forgeLight`, `javaClient`, `pythonClient` — each a token set in
+  `tokens.css`, so adding a theme touches no component.
 - **lobby** — a live open-games list driven by a **streaming port** (`LobbyPort::connect`
   → snapshot stream → `GamesUpdated` events), with explicit `connect`/`disconnect`.
   Real provider `LobbyClient` (FAF lobby WebSocket protocol) behind `FAF_REAL_LOBBY=1`,
@@ -30,8 +35,9 @@ Features so far:
   `ask_session` → `auth` (token + `faf-uid` fingerprint) → `game_info`. The OAuth access
   token reaches the lobby via an in-memory `TokenStore`, never through `AppState`.
 
-**CI** (`.github/workflows/ci.yml`) runs tests, clippy, typecheck, build, and a
-bindings-drift check that fails if `ui/src/ipc/bindings.ts` is stale.
+**CI** (`.github/workflows/ci.yml`) runs tests, clippy, typecheck, build, a
+bindings-drift check (fails if `ui/src/ipc/bindings.ts` is stale), and a tokens-only
+guardrail (fails if any component CSS hardcodes a hex color instead of a token).
 
 Env toggles for local dev:
 - `FAF_FAKE_AUTH=1` — skip the browser login (offline fake auth)

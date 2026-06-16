@@ -3,7 +3,7 @@
 //! Pure, total, no IO, no async. Dispatches each [`AppEvent`] to the owning
 //! slice reducer. To add a slice, add one match arm here (ARCHITECTURE.md §3.3).
 
-use crate::state::{auth, lobby, nav, session};
+use crate::state::{auth, lobby, nav, session, settings};
 use crate::{AppEvent, AppState};
 
 pub fn reduce(state: &mut AppState, event: &AppEvent) {
@@ -12,6 +12,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) {
         AppEvent::Auth(e) => auth::reduce(&mut state.auth, e),
         AppEvent::Nav(e) => nav::reduce(&mut state.nav, e),
         AppEvent::Lobby(e) => lobby::reduce(&mut state.lobby, e),
+        AppEvent::Settings(e) => settings::reduce(&mut state.settings, e),
     }
 }
 

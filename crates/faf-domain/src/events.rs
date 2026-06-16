@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::state::{AuthEvent, LobbyEvent, NavEvent, SessionEvent};
+use crate::state::{AuthEvent, LobbyEvent, NavEvent, SessionEvent, SettingsEvent};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", content = "event")]
@@ -16,6 +16,7 @@ pub enum AppEvent {
     Auth(AuthEvent),
     Nav(NavEvent),
     Lobby(LobbyEvent),
+    Settings(SettingsEvent),
 }
 
 impl From<SessionEvent> for AppEvent {
@@ -39,5 +40,11 @@ impl From<NavEvent> for AppEvent {
 impl From<LobbyEvent> for AppEvent {
     fn from(e: LobbyEvent) -> Self {
         AppEvent::Lobby(e)
+    }
+}
+
+impl From<SettingsEvent> for AppEvent {
+    fn from(e: SettingsEvent) -> Self {
+        AppEvent::Settings(e)
     }
 }

@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::state::{AuthCommand, LobbyCommand, NavCommand, SessionCommand};
+use crate::state::{AuthCommand, LobbyCommand, NavCommand, SessionCommand, SettingsCommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", content = "command")]
@@ -16,6 +16,7 @@ pub enum AppCommand {
     Auth(AuthCommand),
     Nav(NavCommand),
     Lobby(LobbyCommand),
+    Settings(SettingsCommand),
 }
 
 impl From<SessionCommand> for AppCommand {
@@ -39,5 +40,11 @@ impl From<NavCommand> for AppCommand {
 impl From<LobbyCommand> for AppCommand {
     fn from(c: LobbyCommand) -> Self {
         AppCommand::Lobby(c)
+    }
+}
+
+impl From<SettingsCommand> for AppCommand {
+    fn from(c: SettingsCommand) -> Self {
+        AppCommand::Settings(c)
     }
 }

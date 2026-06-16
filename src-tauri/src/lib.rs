@@ -9,6 +9,7 @@
 use std::sync::Arc;
 
 use faf_app::App;
+use faf_domain::state::SettingsCommand;
 use faf_domain::{AppCommand, AppState};
 use tauri::{Emitter, Manager};
 use tokio::sync::broadcast::error::RecvError;
@@ -43,6 +44,9 @@ pub fn run() {
 
             // Drive the command-processing loop on Tauri's async runtime.
             tauri::async_runtime::spawn(app_loop.run());
+
+            // Load persisted settings (theme, …) into state at startup.
+            core.try_dispatch(AppCommand::Settings(SettingsCommand::Load));
 
             // Forward backend events to the frontend.
             let handle = app.handle().clone();

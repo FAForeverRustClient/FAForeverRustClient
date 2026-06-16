@@ -11,6 +11,13 @@ import { AppShell } from "./features/shell/AppShell";
 
 export function App() {
   const authStatus = useAppStore((s) => s.state.auth.status);
+  const theme = useAppStore((s) => s.state.settings.theme);
+
+  // Project the backend's theme preference onto the document. The only place the
+  // UI reacts to theme — every component just reads tokens (ARCHITECTURE.md §4).
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   useEffect(() => {
     let active = true;

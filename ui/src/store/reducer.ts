@@ -13,6 +13,8 @@ import type {
   NavState,
   SessionEvent,
   SessionState,
+  SettingsEvent,
+  SettingsState,
 } from "../ipc/bindings";
 
 export function applyEvent(state: AppState, event: AppEvent): AppState {
@@ -25,6 +27,17 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, nav: reduceNav(state.nav, event.event) };
     case "Lobby":
       return { ...state, lobby: reduceLobby(state.lobby, event.event) };
+    case "Settings":
+      return { ...state, settings: reduceSettings(state.settings, event.event) };
+  }
+}
+
+function reduceSettings(state: SettingsState, event: SettingsEvent): SettingsState {
+  switch (event.type) {
+    case "loaded":
+      return event.payload.settings;
+    case "themeChanged":
+      return { ...state, theme: event.payload.theme };
   }
 }
 

@@ -11,6 +11,7 @@ const INITIAL: AppState = {
   auth: { status: "loggedOut", player: null, error: null },
   nav: { activeTab: "home" },
   lobby: { status: "disconnected", games: [] },
+  settings: { theme: "forgeDark" },
 };
 
 interface AppStore {

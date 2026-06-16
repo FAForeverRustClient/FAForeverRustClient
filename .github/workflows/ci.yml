@@ -75,6 +75,18 @@ jobs:
       - name: vite build
         run: npm run build
 
+      # Tokens-only guardrail: components reference semantic tokens, never raw
+      # hex. Theming lives in tokens.css alone, so a new theme never revisits a
+      # component. Dependency-free analogue of the bindings-drift gate.
+      - name: No hardcoded colors outside tokens.css
+        run: |
+          hits=$(grep -rnE '#[0-9a-fA-F]{3,8}\b' ui/src --include='*.css' | grep -v 'design-system/tokens.css' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Hardcoded hex colors found outside tokens.css — use a CSS variable:"
+            echo "$hits"
+            exit 1
+          fi
+
   bindings-drift:
     name: Bindings drift check
     runs-on: ubuntu-latest

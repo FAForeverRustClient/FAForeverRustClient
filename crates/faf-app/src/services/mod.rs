@@ -8,3 +8,4 @@ pub mod auth;
 pub mod lobby;
 pub mod nav;
 pub mod session;
+pub mod settings;
