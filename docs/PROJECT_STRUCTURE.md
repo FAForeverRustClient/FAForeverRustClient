@@ -64,5 +64,5 @@ The following directories are produced by the build toolchain and are excluded f
 | Directory | Produced by |
 |---|---|
 | `target/` | `cargo build` |
-| `node_modules/` | `npm install` / `yarn` |
+| `node_modules/` | `pnpm install` |
 | `ui/dist/` | frontend bundler |

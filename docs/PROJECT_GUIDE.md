@@ -64,7 +64,7 @@ ui/          ← depends only on the generated TS types
 | Path | Meaning |
 |---|---|
 | `Cargo.toml` | Workspace definition: member crates + shared dependency versions. |
-| `package.json` | Frontend deps + npm scripts (`dev`, `build`, `tauri`, `bindings`, `typecheck`). |
+| `package.json` | Frontend deps + pnpm scripts (`dev`, `build`, `tauri`, `bindings`, `typecheck`). |
 | `vite.config.ts` | Vite config; `root: "ui"`, build output to `ui/dist`. |
 | `tsconfig.json` | TypeScript config for the frontend (strict). |
 | `README.md` | Quick start + status + commands. |
@@ -128,9 +128,9 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | Path | Meaning |
 |---|---|
 | `src/lib.rs` | `typescript_bindings()` — renders TS for `AppState`/`AppCommand`/`AppEvent` + all referenced types from the Rust code. |
-| `src/bin/export_bindings.rs` | Binary that writes the result to `ui/src/ipc/bindings.ts`. Run with: `npm run bindings`. |
+| `src/bin/export_bindings.rs` | Binary that writes the result to `ui/src/ipc/bindings.ts`. Run with: `pnpm run bindings`. |
 
-> **Important:** Run `npm run bindings` after every change to domain types.
+> **Important:** Run `pnpm run bindings` after every change to domain types.
 > Otherwise the frontend won't compile — that's by design to prevent type drift.
 
 ### `src-tauri/` — the Tauri shell (thin glue, no logic)
@@ -196,7 +196,7 @@ Backend and frontend can never diverge because both **reduce the same event stre
 | **Add new external system** | `Port` trait in `faf-app/src/ports/`; impl in `infra/`; mock/fake for tests; field in `Ports`. |
 | **Add new screen/tab** | Folder `ui/src/features/<name>/`; wire into `AppShell`; add `Tab` variant in `nav.rs` if needed. |
 | **Add/change a theme** | Add a `[data-theme="…"]` block in `tokens.css` + a `Theme` variant in `faf-domain/state/settings.rs`. No component changes; never hardcode a color in a component (CI rejects hex outside `tokens.css`). |
-| **Changed a cross-boundary type** | Run `npm run bindings` (otherwise the TS build breaks). |
+| **Changed a cross-boundary type** | Run `pnpm run bindings` (otherwise the TS build breaks). |
 
 **Never:** mutate state outside a reducer · do IO outside `infra/` · put logic in a component · write a cross-boundary type by hand.
 
@@ -204,16 +204,16 @@ Backend and frontend can never diverge because both **reduce the same event stre
 
 ## 7. Developing & Running
 
-Prerequisites: Rust (stable), Node 20+, Tauri prereqs (Windows: WebView2 is already present).
+Prerequisites: Rust (stable), Node 20+, pnpm (`corepack enable pnpm`), Tauri prereqs (Windows: WebView2 is already present).
 
 ```bash
-npm install            # Frontend deps (once)
-npm run bindings       # Regenerate ui/src/ipc/bindings.ts from Rust
-npm run tauri dev      # Start the app (Vite + Tauri)
+pnpm install           # Frontend deps (once)
+pnpm run bindings      # Regenerate ui/src/ipc/bindings.ts from Rust
+pnpm run tauri dev     # Start the app (Vite + Tauri)
 
 cargo test             # Rust tests (reducer + loop + services)
-npm run typecheck      # tsc over the frontend
-npm run build          # Build frontend to ui/dist
+pnpm run typecheck     # tsc over the frontend
+pnpm run build         # Build frontend to ui/dist
 ```
 
 ---

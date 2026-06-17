@@ -60,20 +60,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: tsc --noEmit
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: vite build
-        run: npm run build
+        run: pnpm run build
 
       # Tokens-only guardrail: components reference semantic tokens, never raw
       # hex. Theming lives in tokens.css alone, so a new theme never revisits a
@@ -107,6 +110,6 @@ jobs:
       - name: Fail if bindings are out of date
         run: |
           if ! git diff --exit-code ui/src/ipc/bindings.ts; then
-            echo "::error file=ui/src/ipc/bindings.ts::Bindings are out of date. Run 'npm run bindings' and commit the result."
+            echo "::error file=ui/src/ipc/bindings.ts::Bindings are out of date. Run 'pnpm run bindings' and commit the result."
             exit 1
           fi

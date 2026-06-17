@@ -68,21 +68,21 @@ docs/           ARCHITECTURE.md
 
 ## Develop
 
-Prerequisites: Rust (stable), Node 20+, and the Tauri prerequisites for your OS
-(on Windows: WebView2, already present on Win 10/11).
+Prerequisites: Rust (stable), Node 20+, pnpm (via `corepack enable pnpm`), and the
+Tauri prerequisites for your OS (on Windows: WebView2, already present on Win 10/11).
 
 ```bash
-npm install                 # frontend deps
-npm run bindings            # regenerate ui/src/ipc/bindings.ts from Rust
-npm run tauri dev           # run the app (Vite + Tauri)
+pnpm install                # frontend deps
+pnpm run bindings           # regenerate ui/src/ipc/bindings.ts from Rust
+pnpm run tauri dev          # run the app (Vite + Tauri)
 ```
 
 Other commands:
 
 ```bash
 cargo test                  # run Rust tests (reducer + loop)
-npm run typecheck           # tsc over the frontend
-npm run build               # build the frontend to ui/dist
+pnpm run typecheck          # tsc over the frontend
+pnpm run build              # build the frontend to ui/dist
 ```
 
 ## Conventions
@@ -93,7 +93,7 @@ When you add anything, follow [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §8
 - New capability → a **command + event(s)** + a **service** in `faf-app/services/`.
 - New external system → a **`Port` trait** + an **`infra` impl** + a mock.
 - New screen → a **`features/<tab>/`** folder; container selects + dispatches, view uses primitives.
-- After changing cross-boundary types, run `npm run bindings`.
+- After changing cross-boundary types, run `pnpm run bindings`.
 
 Never: mutate state outside a reducer; do IO outside `infra`; put logic in a component;
 hand-write a cross-boundary type.
