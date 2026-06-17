@@ -5,6 +5,7 @@
 //! touches `AppState` directly (ARCHITECTURE.md §3.4).
 
 pub mod auth;
+pub mod launcher;
 pub mod lobby;
 pub mod nav;
 pub mod session;

@@ -42,7 +42,15 @@ guardrail (fails if any component CSS hardcodes a hex color instead of a token).
 Env toggles for local dev:
 - `FAF_FAKE_AUTH=1` — skip the browser login (offline fake auth)
 - `FAF_REAL_LOBBY=1` — use the real lobby WebSocket client instead of the fake
+- `FAF_REAL_LAUNCH=1` — actually start the ICE adapter + game on join (else the join
+  stops at the modeled launch order). Requires `FAF_GAME_PATH` + the adapter binaries.
+- `FAF_ICE_ADAPTER_KIND` — `java` (default) selects the Java `faf-ice-adapter`; `go`
+  selects `faf-pioneer`.
 - `FAF_UID_PATH` — path to the `faf-uid` executable (<https://github.com/FAForever/uid/releases>)
+- `FAF_ICE_ADAPTER_JAR` — path to `faf-ice-adapter.jar` (Java adapter)
+- `FAF_JAVA_PATH` — path to the `java` executable (default `java`, i.e. on `PATH`)
+- `FAF_ICE_ADAPTER_PATH` — path to the `faf-pioneer` executable (Go adapter)
+- `FAF_GAME_PATH` — path to `ForgedAlliance.exe` (its folder must hold `init_<mod>.lua`)
 - `FAF_CLIENT_VERSION` — client version reported to the lobby (defaults to the crate version)
 - `FAF_USER_API_BASE` / `FAF_API_BASE` / `FAF_HYDRA_BASE` / `FAF_LOBBY_URL` — endpoint overrides (e.g. staging)
 

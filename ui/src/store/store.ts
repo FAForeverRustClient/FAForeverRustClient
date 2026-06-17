@@ -10,7 +10,7 @@ const INITIAL: AppState = {
   session: { backendVersion: "", status: "disconnected" },
   auth: { status: "loggedOut", player: null, error: null },
   nav: { activeTab: "home" },
-  lobby: { status: "disconnected", games: [] },
+  lobby: { status: "disconnected", games: [], join: { type: "idle" } },
   settings: { theme: "forgeDark" },
 };
 

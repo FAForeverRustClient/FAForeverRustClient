@@ -8,24 +8,44 @@
 //! Either way the services, slices and UI are unchanged (ARCHITECTURE.md §2).
 
 pub mod auth;
+pub mod game;
+pub mod ice_java;
+pub mod ice_pioneer;
+pub mod jsonrpc;
 pub mod lobby;
 pub mod lobby_ws;
 pub mod oauth;
+pub mod relay;
 pub mod session;
 pub mod settings_fake;
 pub mod settings_file;
 
 pub use auth::FakeAuth;
+pub use game::{FakeGame, GameConfig, GameProcess};
+pub use ice_java::{JavaAdapter, JavaConfig};
+pub use ice_pioneer::{FakeIce, IceConfig, PioneerAdapter};
 pub use lobby::FakeLobby;
 pub use lobby_ws::{LobbyClient, LobbyConfig};
 pub use oauth::{OAuthAuth, OAuthConfig};
+pub use relay::{FakeRelay, GpgRelayServer};
 pub use session::TokenStore;
 pub use settings_fake::FakeSettings;
 pub use settings_file::FileSettings;
 
 use std::sync::Arc;
 
-use crate::ports::{LobbyPort, Ports};
+use crate::ports::{IcePort, LobbyPort, Ports, ProcessPort};
+
+/// Reserve a free loopback TCP port by binding then dropping. Used by the adapter
+/// backends to pick GPGNet/RPC ports for subprocesses. Mirrors the Python client's
+/// `tcp_server()` helper; the brief gap before the subprocess binds is the same
+/// small race it accepts.
+pub(crate) fn free_port() -> Option<u16> {
+    std::net::TcpListener::bind(("127.0.0.1", 0))
+        .ok()
+        .and_then(|l| l.local_addr().ok())
+        .map(|addr| addr.port())
+}
 
 /// Build a [`Ports`] bundle backed entirely by fakes. Fully offline; used by tests.
 pub fn fake_ports() -> Ports {
@@ -33,6 +53,8 @@ pub fn fake_ports() -> Ports {
         auth: Arc::new(FakeAuth::default()),
         lobby: Arc::new(FakeLobby::default()),
         settings: Arc::new(FakeSettings::default()),
+        ice: Arc::new(FakeIce),
+        process: Arc::new(FakeGame),
     }
 }
 
@@ -51,10 +73,34 @@ pub fn real_ports() -> Ports {
         } else {
             Arc::new(FakeLobby::default())
         };
+
+    // The connectivity + launch chain spawns real subprocesses, so it is opt-in
+    // via `FAF_REAL_LAUNCH=1`. Without it (the default), inert fakes keep the app
+    // usable without an adapter or the game installed. The adapter backend is
+    // chosen by `FAF_ICE_ADAPTER_KIND` (`java` default, or `go`).
+    let (ice, process): (Arc<dyn IcePort>, Arc<dyn ProcessPort>) =
+        if std::env::var("FAF_REAL_LAUNCH").is_ok_and(|v| !v.is_empty()) {
+            (select_ice_adapter(&tokens), Arc::new(GameProcess::faf()))
+        } else {
+            (Arc::new(FakeIce), Arc::new(FakeGame))
+        };
+
     Ports {
         auth: Arc::new(OAuthAuth::new(OAuthConfig::from_env(), tokens)),
         lobby,
         settings: Arc::new(FileSettings::faf()),
+        ice,
+        process,
+    }
+}
+
+/// Pick the ICE adapter backend. `FAF_ICE_ADAPTER_KIND=go` selects faf-pioneer;
+/// anything else (default) selects the Java `faf-ice-adapter`, which is the path
+/// proven to connect in current environments.
+fn select_ice_adapter(tokens: &TokenStore) -> Arc<dyn IcePort> {
+    match std::env::var("FAF_ICE_ADAPTER_KIND").as_deref() {
+        Ok("go") => Arc::new(PioneerAdapter::faf(tokens.clone())),
+        _ => Arc::new(JavaAdapter::faf(tokens.clone())),
     }
 }
 

@@ -11,7 +11,9 @@ pub mod session;
 pub mod settings;
 
 pub use auth::{AuthCommand, AuthEvent, AuthState, AuthStatus, Player};
-pub use lobby::{Game, LobbyCommand, LobbyEvent, LobbyState, LobbyStatus};
+pub use lobby::{
+    Game, GameLaunch, JoinState, LobbyCommand, LobbyEvent, LobbyState, LobbyStatus,
+};
 pub use nav::{NavCommand, NavEvent, NavState, Tab};
 pub use session::{ConnectionStatus, SessionCommand, SessionEvent, SessionState};
 pub use settings::{SettingsCommand, SettingsEvent, SettingsState, Theme};

@@ -56,8 +56,21 @@ function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
       return { ...state, status: "connected" };
     case "gamesUpdated":
       return { ...state, games: event.payload.games };
+    case "joining":
+      return { ...state, join: { type: "joining", payload: { id: event.payload.id } } };
+    case "launching":
+      return { ...state, join: { type: "launched", payload: { launch: event.payload.launch } } };
+    case "joinFailed":
+      return {
+        ...state,
+        join: { type: "failed", payload: { id: event.payload.id, reason: event.payload.reason } },
+      };
+    case "inGame":
+      return { ...state, join: { type: "inGame" } };
+    case "launchFailed":
+      return { ...state, join: { type: "launchFailed", payload: { reason: event.payload.reason } } };
     case "disconnected":
-      return { ...state, status: "disconnected", games: [] };
+      return { ...state, status: "disconnected", games: [], join: { type: "idle" } };
   }
 }
 

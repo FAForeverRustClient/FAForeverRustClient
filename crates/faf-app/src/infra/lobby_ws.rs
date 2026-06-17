@@ -28,7 +28,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use faf_domain::state::Game;
+use faf_domain::state::{Game, GameLaunch};
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -37,7 +37,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_util::sync::CancellationToken;
 
 use crate::infra::session::TokenStore;
-use crate::ports::LobbyPort;
+use crate::ports::{LobbyPort, LobbyUpdate};
 
 /// Configuration for the real lobby client.
 #[derive(Debug, Clone)]
@@ -90,6 +90,9 @@ pub struct LobbyClient {
     tokens: TokenStore,
     http: reqwest::Client,
     cancel: Arc<Mutex<Option<CancellationToken>>>,
+    /// Outgoing frames for the live connection. `join` pushes a `game_join` here;
+    /// `run_session` drains it and writes to the socket. `None` when not connected.
+    outgoing: Arc<Mutex<Option<mpsc::Sender<Value>>>>,
 }
 
 impl LobbyClient {
@@ -99,38 +102,71 @@ impl LobbyClient {
             tokens,
             http: reqwest::Client::new(),
             cancel: Arc::new(Mutex::new(None)),
+            outgoing: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn faf(tokens: TokenStore) -> Self {
         Self::new(LobbyConfig::faf(), tokens)
     }
+
+    /// Push a JSON frame onto the live connection's outgoing channel. Returns
+    /// `false` if there is no active connection (so callers can log).
+    fn send_frame(&self, frame: Value) -> bool {
+        self.outgoing
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|tx| tx.try_send(frame).is_ok())
+            .unwrap_or(false)
+    }
 }
 
 #[async_trait]
 impl LobbyPort for LobbyClient {
-    async fn connect(&self) -> mpsc::Receiver<Vec<Game>> {
+    async fn connect(&self) -> mpsc::Receiver<LobbyUpdate> {
         let token = CancellationToken::new();
         if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
             prev.cancel();
         }
 
         let (tx, rx) = mpsc::channel(8);
+        // Channel for client→server frames (game_join, …). The receiver is drained
+        // inside `run_session`; the sender is stored so `join` can reach the socket.
+        let (out_tx, out_rx) = mpsc::channel::<Value>(8);
+        *self.outgoing.lock().unwrap() = Some(out_tx);
+
         let config = self.config.clone();
         let http = self.http.clone();
         let access_token = self.tokens.get();
         tokio::spawn(async move {
             // On any failure we simply drop `tx`; the receiver closes and the
             // lobby service emits `Disconnected`.
-            run_session(config, http, access_token, tx, token).await;
+            run_session(config, http, access_token, tx, out_rx, token).await;
         });
         rx
+    }
+
+    fn join(&self, id: i32) {
+        let frame = json!({ "command": "game_join", "uid": id, "gameport": 0 });
+        if !self.send_frame(frame) {
+            eprintln!("[lobby] join({id}) ignored: no active connection");
+        }
+    }
+
+    fn send_game_relay(&self, command: String, args: Vec<Value>) {
+        let frame = json!({ "command": command, "target": "game", "args": args });
+        if !self.send_frame(frame) {
+            eprintln!("[lobby] relay '{command}' dropped: no active connection");
+        }
     }
 
     fn disconnect(&self) {
         if let Some(token) = self.cancel.lock().unwrap().take() {
             token.cancel();
         }
+        // Drop the outgoing sender so a `join` before reconnect is a no-op.
+        *self.outgoing.lock().unwrap() = None;
     }
 }
 
@@ -140,7 +176,8 @@ async fn run_session(
     config: LobbyConfig,
     http: reqwest::Client,
     access_token: Option<String>,
-    tx: mpsc::Sender<Vec<Game>>,
+    tx: mpsc::Sender<LobbyUpdate>,
+    mut outgoing: mpsc::Receiver<Value>,
     cancel: CancellationToken,
 ) {
     let Some(access_token) = access_token else {
@@ -194,6 +231,17 @@ async fn run_session(
                 let _ = write.send(Message::Close(None)).await;
                 break;
             }
+            // Client→server frames (e.g. game_join from `join`). `None` means the
+            // sender was dropped by `disconnect` — tear down gracefully.
+            frame = outgoing.recv() => {
+                let Some(frame) = frame else {
+                    let _ = write.send(Message::Close(None)).await;
+                    break;
+                };
+                if write.send(Message::text(frame.to_string())).await.is_err() {
+                    break;
+                }
+            }
             incoming = read.next() => {
                 let Some(Ok(message)) = incoming else { break };
                 let text = match message {
@@ -202,6 +250,25 @@ async fn run_session(
                     _ => continue, // ping/pong/binary — ignore
                 };
                 let Ok(value) = serde_json::from_str::<Value>(text.as_str()) else { continue };
+
+                // Connectivity messages addressed to the game are relayed to the
+                // local ICE adapter, regardless of their command name.
+                if value.get("target").and_then(Value::as_str) == Some("game") {
+                    let command = command_of(&value).to_string();
+                    let args = value
+                        .get("args")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default();
+                    if tx
+                        .send(LobbyUpdate::GameRelay { command, args })
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                    continue;
+                }
 
                 match command_of(&value) {
                     "session" => {
@@ -252,11 +319,38 @@ async fn run_session(
                         for raw in extract_raw_games(&value) {
                             games.apply(raw);
                         }
-                        if tx.send(games.snapshot()).await.is_err() {
+                        if tx.send(LobbyUpdate::Games(games.snapshot())).await.is_err() {
                             break; // consumer gone
                         }
                     }
-                    _ => {} // social, player_info, … — not needed for the list yet
+                    "game_launch" => {
+                        match parse_game_launch(&value) {
+                            Some(launch) => {
+                                eprintln!("[lobby] game_launch for uid {}", launch.uid);
+                                if tx.send(LobbyUpdate::Launch(launch)).await.is_err() {
+                                    break;
+                                }
+                            }
+                            None => eprintln!("[lobby] game_launch missing required fields"),
+                        }
+                    }
+                    "game_join_failed" => {
+                        let id = value.get("uid").and_then(Value::as_i64).unwrap_or(0) as i32;
+                        let reason = value
+                            .get("reason")
+                            .and_then(Value::as_str)
+                            .unwrap_or("unknown")
+                            .to_string();
+                        eprintln!("[lobby] game_join_failed (uid {id}): {reason}");
+                        if tx
+                            .send(LobbyUpdate::JoinFailed { id, reason })
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                    _ => {} // social, player_info, … — not needed yet
                 }
             }
         }
@@ -402,6 +496,56 @@ fn extract_raw_games(message: &Value) -> Vec<RawGame> {
     }
 }
 
+/// A `game_launch` message — the server's order to start a game. `args` arrives as
+/// a mixed list of strings and numbers (`list[str | int]`), so we take it as raw
+/// `Value`s and stringify. `uid` is required; everything else defaults.
+#[derive(Debug, Clone, Deserialize)]
+struct RawGameLaunch {
+    uid: i32,
+    #[serde(rename = "mod", default)]
+    mod_name: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    mapname: String,
+    #[serde(default)]
+    game_type: String,
+    #[serde(default)]
+    rating_type: String,
+    #[serde(default)]
+    args: Vec<Value>,
+}
+
+impl RawGameLaunch {
+    fn into_launch(self) -> GameLaunch {
+        GameLaunch {
+            uid: self.uid,
+            mod_name: self.mod_name,
+            name: self.name,
+            mapname: self.mapname,
+            game_type: self.game_type,
+            rating_type: self.rating_type,
+            args: self.args.iter().map(value_to_arg).collect(),
+        }
+    }
+}
+
+/// Render a launch arg as a string: bare for strings, JSON form for numbers/bools.
+fn value_to_arg(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// Parse a `game_launch` message into a [`GameLaunch`], or `None` if it lacks the
+/// required `uid`.
+fn parse_game_launch(message: &Value) -> Option<GameLaunch> {
+    serde_json::from_value::<RawGameLaunch>(message.clone())
+        .ok()
+        .map(RawGameLaunch::into_launch)
+}
+
 /// The aggregated open-games list. Keyed by id so updates replace in place and
 /// closed games are removed; snapshots are ordered by id for stable rendering.
 #[derive(Debug, Default)]
@@ -502,6 +646,39 @@ mod tests {
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
         assert_eq!(snap[0].players, 4);
+    }
+
+    #[test]
+    fn parses_game_launch_with_mixed_args() {
+        let msg = json!({
+            "command": "game_launch",
+            "uid": 12345,
+            "mod": "faf",
+            "name": "Big Team Game",
+            "mapname": "scmp_009",
+            "game_type": "custom",
+            "rating_type": "global",
+            "args": ["/numgames", 137, "/init", true],
+        });
+        let launch = parse_game_launch(&msg).expect("should parse");
+        assert_eq!(launch.uid, 12345);
+        assert_eq!(launch.mod_name, "faf"); // `mod` renamed
+        assert_eq!(launch.name, "Big Team Game");
+        assert_eq!(launch.mapname, "scmp_009");
+        // Mixed string/number/bool args all stringified.
+        assert_eq!(launch.args, vec!["/numgames", "137", "/init", "true"]);
+    }
+
+    #[test]
+    fn game_launch_requires_uid_but_tolerates_missing_optionals() {
+        // No uid → cannot parse.
+        assert!(parse_game_launch(&json!({ "command": "game_launch" })).is_none());
+
+        // uid only → everything else defaults gracefully.
+        let launch = parse_game_launch(&json!({ "uid": 7 })).expect("uid is enough");
+        assert_eq!(launch.uid, 7);
+        assert_eq!(launch.mod_name, "");
+        assert!(launch.args.is_empty());
     }
 
     #[test]

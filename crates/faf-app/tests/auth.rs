@@ -6,16 +6,17 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use faf_app::infra::{FakeAuth, FakeLobby, FakeSettings};
+use faf_app::infra::{fake_ports, FakeAuth};
 use faf_app::{App, Ports};
 use faf_domain::state::{AuthCommand, AuthEvent, AuthStatus, Player};
 use faf_domain::AppEvent;
 
 fn app_with(auth: FakeAuth) -> App {
+    // Start from the all-fake bundle and swap in the configured auth port, so new
+    // ports don't ripple into this test.
     let ports = Ports {
         auth: Arc::new(auth),
-        lobby: Arc::new(FakeLobby::default()),
-        settings: Arc::new(FakeSettings::default()),
+        ..fake_ports()
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());

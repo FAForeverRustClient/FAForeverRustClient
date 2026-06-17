@@ -46,15 +46,75 @@ export type Game = {
 	map: string,
 };
 
-export type LobbyCommand = { type: "connect" } | { type: "disconnect" };
+/**
+ *  The server's `game_launch` order — everything the connectivity + launch chain
+ *  (a later phase) needs to actually start the game. For now we only model and
+ *  surface it; nothing acts on it yet. Mirrors the relevant fields of the Python
+ *  client's `GameLaunchCommand` (`src/protocol/lobbyprotocol.py`).
+ */
+export type GameLaunch = {
+	uid: number,
+	/**  The featured mod (e.g. `faf`). Wire key is `mod`, a Rust keyword. */
+	mod: string,
+	name: string,
+	mapname: string,
+	gameType: string,
+	ratingType: string,
+	/**
+	 *  Raw launch args from the server (the FA command line is built from these
+	 *  plus client-side player info in the launch phase).
+	 */
+	args: string[],
+};
+
+/**
+ *  Where a join attempt stands. Distinct from [`LobbyStatus`] (the connection):
+ *  you can be `Connected` and `Idle`, or `Connected` and `Joining`.
+ */
+export type JoinState = { type: "idle" } | { type: "joining"; payload: {
+	id: number,
+} } | 
+/**
+ *  The server sent `game_launch`; the launch order is modeled. If real launch
+ *  is enabled, the connectivity chain (ICE adapter + relay + game process)
+ *  starts next, moving to [`Self::InGame`].
+ */
+{ type: "launched"; payload: {
+	launch: GameLaunch,
+} } | 
+/**  The ICE adapter and game process were started; relay traffic is flowing. */
+{ type: "inGame" } | 
+/**  The server rejected the join (game not ready, host left, bad password). */
+{ type: "failed"; payload: {
+	id: number,
+	reason: string,
+} } | 
+/**  The local launch chain failed (adapter/relay/game couldn't start). */
+{ type: "launchFailed"; payload: {
+	reason: string,
+} };
+
+export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
+	id: number,
+} } | { type: "disconnect" };
 
 export type LobbyEvent = { type: "connecting" } | { type: "connected" } | { type: "gamesUpdated"; payload: {
 	games: Game[],
+} } | { type: "joining"; payload: {
+	id: number,
+} } | { type: "launching"; payload: {
+	launch: GameLaunch,
+} } | { type: "joinFailed"; payload: {
+	id: number,
+	reason: string,
+} } | { type: "inGame" } | { type: "launchFailed"; payload: {
+	reason: string,
 } } | { type: "disconnected" };
 
 export type LobbyState = {
 	status: LobbyStatus,
 	games: Game[],
+	join: JoinState,
 };
 
 export type LobbyStatus = "disconnected" | "connecting" | "connected";
