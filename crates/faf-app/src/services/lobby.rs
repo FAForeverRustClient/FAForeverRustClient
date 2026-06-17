@@ -12,6 +12,8 @@
 //! session in this loop means no cross-task plumbing — the loop already sees both
 //! the launch order and the relay traffic.
 
+use std::sync::atomic::Ordering;
+
 use faf_domain::state::{LobbyCommand, LobbyEvent};
 
 use crate::ports::LobbyUpdate;
@@ -21,6 +23,19 @@ use crate::services::launcher::{self, LaunchSession};
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         LobbyCommand::Connect => {
+            // Single-flight: only one connection may be active at a time. A
+            // redundant `Connect` (StrictMode double-invoke, rapid clicks) loses
+            // this compare-and-swap and is dropped, so overlapping connections
+            // can't race and clobber each other's state. Decided before any await,
+            // so there is no reorder window.
+            if ctx
+                .lobby_active
+                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                .is_err()
+            {
+                return; // a connection is already active/connecting
+            }
+
             out.emit(LobbyEvent::Connecting);
             let mut updates = ctx.ports.lobby.connect().await;
             out.emit(LobbyEvent::Connected);
@@ -57,6 +72,9 @@ LobbyUpdate::GameRelay { command, args } => {
                 }
             }
 
+            // Release the single-flight guard before announcing the disconnect, so
+            // a fresh `Connect` right after can immediately take over.
+            ctx.lobby_active.store(false, Ordering::SeqCst);
             out.emit(LobbyEvent::Disconnected);
         }
         LobbyCommand::Join { id } => {

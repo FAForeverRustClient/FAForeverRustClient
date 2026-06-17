@@ -77,16 +77,11 @@ pub fn encode(message: &GpgMessage) -> Vec<u8> {
 pub fn decode(buffer: &mut Vec<u8>) -> Vec<GpgMessage> {
     let mut messages = Vec::new();
     let mut pos = 0usize;
-    loop {
-        match parse_message(&buffer[pos..]) {
-            ParseResult::Done(message, consumed) => {
-                messages.push(message);
-                pos += consumed;
-            }
-            // Not enough bytes yet, or a frame we can't parse — stop here and keep
-            // the unconsumed tail.
-            ParseResult::Incomplete | ParseResult::Invalid => break,
-        }
+    // Not enough bytes yet, or a frame we can't parse — stop here and keep
+    // the unconsumed tail.
+    while let ParseResult::Done(message, consumed) = parse_message(&buffer[pos..]) {
+        messages.push(message);
+        pos += consumed;
     }
     if pos > 0 {
         buffer.drain(..pos);

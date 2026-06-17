@@ -7,6 +7,7 @@
 //! it ([`tokio::spawn`] in tests, `tauri::async_runtime::spawn` in the shell). This
 //! keeps the runtime free of any hard dependency on a particular executor.
 
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
 
 use faf_domain::{AppCommand, AppEvent, AppState};
@@ -21,6 +22,11 @@ use crate::services;
 pub struct ServiceCtx {
     pub backend_version: String,
     pub ports: Ports,
+    /// Single-flight guard for the lobby connection: `true` while a `Connect` owns
+    /// an active/connecting socket. A redundant `Connect` (React StrictMode, rapid
+    /// clicks) loses the compare-and-swap and is dropped, so overlapping
+    /// connections can't race and clobber each other's state.
+    pub lobby_active: AtomicBool,
 }
 
 /// The sink a service emits events into.
@@ -81,6 +87,7 @@ impl App {
         let ctx = ServiceCtx {
             backend_version: backend_version.into(),
             ports,
+            lobby_active: AtomicBool::new(false),
         };
 
         let app = Self {

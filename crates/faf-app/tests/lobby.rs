@@ -70,6 +70,37 @@ async fn disconnect_ends_the_stream() {
 }
 
 #[tokio::test]
+async fn duplicate_connect_is_dropped_single_flight() {
+    // Two near-simultaneous Connects (e.g. React StrictMode double-invoke) must
+    // not both open a connection — the second loses the single-flight guard. So we
+    // see exactly one Connecting → Connected → GamesUpdated, never a stray second
+    // Connecting or a teardown that clobbers state.
+    let (app, app_loop) = App::new("test", fake_ports());
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+
+    app.dispatch(LobbyCommand::Connect.into()).await;
+    app.dispatch(LobbyCommand::Connect.into()).await;
+
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        AppEvent::Lobby(faf_domain::state::LobbyEvent::Connecting)
+    ));
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        AppEvent::Lobby(faf_domain::state::LobbyEvent::Connected)
+    ));
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        AppEvent::Lobby(faf_domain::state::LobbyEvent::GamesUpdated { .. })
+    ));
+
+    let snap = app.snapshot();
+    assert_eq!(snap.lobby.status, LobbyStatus::Connected);
+    assert!(!snap.lobby.games.is_empty());
+}
+
+#[tokio::test]
 async fn join_emits_joining_then_launching() {
     let (app, app_loop) = App::new("test", fake_ports());
     tokio::spawn(app_loop.run());
