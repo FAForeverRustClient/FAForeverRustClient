@@ -1,0 +1,1148 @@
+.modal-panel.player-card-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, calc(100vw - 48px));
+  height: min(820px, calc(100vh - 48px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.player-card-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(260px, 420px);
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4) 52px var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-card-identity,
+.player-card-actions,
+.player-card-lookup,
+.player-card-section-heading,
+.player-history-toolbar,
+.player-history-paging,
+.player-achievement-body header,
+.player-clan-overview header,
+.player-stats-chart header,
+.player-chart-legend {
+  display: flex;
+  align-items: center;
+}
+
+.player-card-identity {
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.player-card-identity img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.player-card-identity h2,
+.player-card-section-heading h3,
+.player-achievements-view h3,
+.player-clan-overview h3,
+.player-stats-chart h3 {
+  margin: 0;
+}
+
+.player-card-identity h2 {
+  overflow: hidden;
+  font-size: 22px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-card-eyebrow {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.player-card-lookup {
+  gap: var(--space-2);
+}
+
+.player-card-lookup input,
+.player-card-search input,
+.player-history-toolbar select {
+  min-height: 34px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.player-card-lookup input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-3);
+}
+
+.player-card-lookup input:focus-visible,
+.player-card-search input:focus-visible,
+.player-history-toolbar select:focus-visible {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent-glow);
+}
+
+.player-card-actions {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* `SectionTabs` brings the strip's own layout, gap, overflow and underline.
+   Only the modal's horizontal inset is added here: vertical padding would lift
+   the active marker off the rule it is supposed to sit on. */
+.player-card-tabs {
+  flex: 0 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.player-card-content {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.player-card-loading,
+.player-card-empty,
+.player-card-error {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  min-height: 180px;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.player-card-error {
+  color: var(--color-error);
+}
+
+.player-card-warnings {
+  padding: var(--space-3);
+  color: var(--color-warn);
+}
+
+.player-card-warnings summary {
+  cursor: pointer;
+}
+
+.player-card-warnings ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 20px;
+}
+
+.player-overview,
+.player-history-view,
+.player-achievements-view,
+.player-clan-view {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.player-account-card {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.player-note-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 14px 16px;
+  background: var(--color-surface-raised);
+}
+
+.player-note-card > div {
+  min-width: 0;
+}
+
+.player-note-card p {
+  margin: var(--space-1) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.player-note-modal {
+  width: min(520px, calc(100vw - 32px));
+  padding: 22px;
+}
+
+.player-note-modal-head h2 {
+  margin: 3px 0 0;
+}
+
+.player-note-modal-head p {
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.player-note-inline-editor {
+  margin: 0 20px 16px;
+  padding: 16px;
+  background: var(--color-surface-raised);
+}
+
+.own-avatar-picker {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 20px 16px;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+}
+
+.own-avatar-picker > header,
+.own-avatar-picker-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.own-avatar-picker h3,
+.own-avatar-picker p {
+  margin: 0;
+}
+
+.own-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: var(--space-2);
+  max-height: 250px;
+  padding: 2px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.own-avatar-choice {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 104px;
+  padding: var(--space-2);
+  color: var(--color-muted);
+  background: var(--color-bg);
+  font-size: 11px;
+  text-align: center;
+}
+
+.own-avatar-choice:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.own-avatar-choice.is-selected {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent-glow);
+}
+
+.own-avatar-choice:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.own-avatar-choice img {
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.own-avatar-none {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-content: center;
+  font-size: 32px;
+}
+
+.own-avatar-picker-status.is-error {
+  color: var(--color-error);
+}
+
+.own-avatar-picker-status.is-success {
+  justify-content: flex-start;
+  color: var(--color-success);
+}
+
+.player-note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.player-note-editor > label {
+  font-weight: 600;
+}
+
+.player-note-editor textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+
+.player-note-editor textarea:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.player-note-editor-footer,
+.player-note-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.player-note-editor-footer {
+  justify-content: space-between;
+}
+
+.player-note-editor-footer .is-limit,
+.player-note-error {
+  color: var(--color-error);
+}
+
+.player-note-error {
+  margin: var(--space-1) 0 0;
+}
+
+.player-account-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: var(--space-2) 0 0;
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.player-account-details > div {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg);
+}
+
+.player-account-details dt,
+.player-rating-summary dt {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-account-details dd,
+.player-rating-summary dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.player-avatar-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.player-avatar {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: 72px;
+  padding: 6px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  font-size: 11px;
+  text-align: center;
+}
+
+.player-avatar.is-selected {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.player-avatar img {
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.player-avatar small {
+  color: var(--color-subtle);
+}
+
+.player-card-section-heading {
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.player-card-section-heading h3,
+.player-achievements-view h3,
+.player-stats-chart h3,
+.player-clan-overview h3 {
+  font-size: 15px;
+}
+
+.player-rating-grid,
+.player-placement-grid,
+.player-achievement-grid,
+.player-statistics-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.player-rating-grid {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+
+.player-rating-summary {
+  display: flex;
+  min-height: 176px;
+  flex-direction: column;
+  padding: var(--space-3);
+  color: var(--color-text);
+  text-align: left;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.player-rating-summary:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+.player-rating-summary:focus-visible,
+.player-clan-members button:focus-visible,
+.player-rating-selection button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-rating-value {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-1) 0;
+}
+
+.player-rating-value > strong {
+  font-size: 27px;
+  font-weight: 600;
+}
+
+.player-rating-value > span {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-rating-value small {
+  color: var(--color-subtle);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.player-rating-summary dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.player-rating-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: auto;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.player-rating-summary dl div {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.player-placement-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.player-placement-grid article {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.player-placement-grid img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+}
+
+.player-placement-grid article div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.player-placement-grid span,
+.player-placement-grid small {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-history-toolbar {
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.player-history-toolbar label:not(.player-card-toggle),
+.player-card-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-history-toolbar select {
+  min-width: 150px;
+  padding: 0 30px 0 var(--space-2);
+}
+
+.player-card-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-history-summary,
+.player-achievement-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  background: var(--color-border);
+  gap: 1px;
+}
+
+.player-history-summary > div,
+.player-achievement-summary > div {
+  display: flex;
+  min-height: 70px;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-surface);
+}
+
+.player-history-summary span,
+.player-achievement-summary span {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-history-summary strong,
+.player-achievement-summary strong {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Each tile carries the number plus the one line of context that stops it
+   being a bare figure: which queue, how far off the peak is. */
+.player-history-summary > div {
+  gap: 2px;
+}
+
+.player-history-summary strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.player-history-summary small {
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-history-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Chart options belong with the chart, not in the data-filter row above it. */
+.player-history-chart-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 24px;
+}
+
+.player-history-chart-head > .muted {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The SVG sizes itself to this box in real pixels (see the chart component),
+   so the padding here is the plot's only inset and nothing gets stretched. */
+.player-rating-chart-wrap {
+  position: relative;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  background: var(--color-bg);
+  user-select: none;
+}
+
+/* No `width: 100%`. The component sets the `width` attribute to the measured
+   pixel width, and a CSS width would override it and scale the viewBox again,
+   which is the distortion this replaced. `max-width` only ever shrinks it. */
+.player-rating-chart {
+  display: block;
+  max-width: 100%;
+  cursor: crosshair;
+}
+
+.chart-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-label,
+.chart-max-label {
+  fill: var(--color-muted);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.chart-label {
+  text-anchor: end;
+}
+
+.chart-date-start {
+  text-anchor: start;
+}
+
+.chart-date-end {
+  text-anchor: end;
+}
+
+.chart-date-middle {
+  text-anchor: middle;
+}
+
+/* The series reads as the subject of the plot without being the brightest
+   thing on screen: the old 2px full-`--color-accent` stroke was literally the
+   same value as `--color-text`, so the line outshouted the player's own name.
+   Weight comes from the fill underneath instead. */
+.chart-rating-line {
+  fill: none;
+  stroke: var(--color-text);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  opacity: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-rating-area {
+  fill: var(--color-text);
+  opacity: 0.07;
+  stroke: none;
+}
+
+.chart-axis {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The personal best is a landmark, not a status: amber read as a warning. */
+.chart-max-line {
+  stroke: var(--color-muted);
+  stroke-dasharray: 4 5;
+  stroke-width: 1;
+  opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-max-label {
+  fill: var(--color-muted);
+  font-weight: 550;
+}
+
+.chart-peak-dot {
+  fill: var(--color-bg);
+  stroke: var(--color-muted);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-crosshair {
+  stroke: var(--color-muted);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-point {
+  fill: var(--color-accent);
+  stroke: var(--color-bg);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-selection {
+  fill: var(--color-accent-glow);
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Follows the cursor instead of parking in a fixed corner, so the value is
+   read next to the point it belongs to. Flips side past the halfway mark. */
+.player-rating-tooltip {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
+  transform: translate(14px, -50%);
+  box-shadow: var(--shadow-popover);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.player-rating-tooltip.is-left {
+  transform: translate(calc(-100% - 14px), -50%);
+}
+
+.player-rating-tooltip strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-rating-tooltip span {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-rating-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+
+.player-rating-selection strong {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.player-rating-selection-range {
+  font-weight: 550;
+  color: var(--color-text);
+}
+
+/* Net change over the dragged stretch is the one number here that has a
+   direction, so it is the one that earns a status colour. */
+.player-rating-selection .is-gain {
+  color: var(--color-ok);
+  font-variant-numeric: tabular-nums;
+}
+
+.player-rating-selection .is-loss {
+  color: var(--color-error);
+  font-variant-numeric: tabular-nums;
+}
+
+.player-rating-selection-clear {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.player-rating-selection-clear:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.player-history-paging {
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.player-history-paging > span {
+  margin-right: auto;
+}
+
+.player-card-chart-empty {
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  background: var(--color-bg);
+}
+
+.player-statistics-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.player-stats-chart {
+  padding: var(--space-4);
+}
+
+.player-stats-chart:last-child {
+  grid-column: 1 / -1;
+}
+
+.player-stats-chart header {
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.player-chart-legend {
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-chart-legend span {
+  width: 9px;
+  height: 9px;
+  margin-left: var(--space-2);
+  border-radius: 2px;
+}
+
+.player-chart-legend .is-first,
+.player-metric-bars .is-first {
+  background: var(--color-ok);
+}
+
+.player-chart-legend .is-second,
+.player-metric-bars .is-second {
+  background: var(--color-error);
+}
+
+.player-metric-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.player-metric {
+  display: grid;
+  grid-template-columns: minmax(84px, 0.35fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-metric-bars {
+  display: grid;
+  gap: 3px;
+}
+
+.player-metric-bars > div {
+  min-width: 2px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.player-metric-bars i {
+  display: block;
+  padding-left: var(--space-1);
+  color: var(--color-accent-contrast);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.player-achievement-summary .player-recent-achievement {
+  align-items: flex-start;
+}
+
+.player-achievement-summary .player-recent-achievement strong {
+  font-size: 13px;
+}
+
+.player-card-search {
+  width: min(360px, 100%);
+}
+
+.player-card-search input {
+  padding: 0 var(--space-3);
+}
+
+.player-achievements-view > h3 {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-achievement-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.player-achievement {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+  opacity: 0.68;
+}
+
+.player-achievement.is-unlocked {
+  opacity: 1;
+  border-color: var(--color-border-strong);
+}
+
+.player-achievement > img,
+.player-achievement-placeholder {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  object-fit: contain;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+
+.player-achievement-body {
+  min-width: 0;
+}
+
+.player-achievement-body header {
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.player-achievement-body h4,
+.player-achievement-body p {
+  margin: 0;
+}
+
+.player-achievement-body h4 {
+  font-size: 12px;
+}
+
+.player-achievement-body header span {
+  color: var(--color-warn);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.player-achievement-body p {
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.player-achievement-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.player-achievement-progress > div {
+  height: 5px;
+  overflow: hidden;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.player-achievement-progress > div span {
+  display: block;
+  height: 100%;
+  background: var(--color-ok);
+}
+
+.player-achievement-progress small,
+.player-achievement-body > small {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-clan-overview {
+  padding: var(--space-4);
+}
+
+.player-clan-overview header,
+.player-card-section-heading {
+  justify-content: space-between;
+}
+
+.player-clan-overview > p {
+  max-width: 780px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.player-clan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.player-clan-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-2);
+}
+
+.player-clan-members button {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-clan-members button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.player-clan-members strong {
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.player-names-view table {
+  width: 100%;
+  overflow: hidden;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+.player-names-view th,
+.player-names-view td {
+  padding: 10px var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.player-names-view th {
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.player-names-view tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .player-card-modal {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+  }
+
+  .player-card-header {
+    grid-template-columns: 1fr;
+  }
+
+  .player-card-actions {
+    grid-column: auto;
+  }
+
+  .player-account-card,
+  .player-statistics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .player-stats-chart:last-child {
+    grid-column: auto;
+  }
+
+  .player-history-summary,
+  .player-achievement-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .player-card-content,
+  .player-card-header {
+    padding: var(--space-3);
+  }
+
+  .player-card-header {
+    padding-right: 46px;
+  }
+
+  .player-account-details,
+  .player-history-summary,
+  .player-achievement-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .player-history-paging {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .player-history-paging > span {
+    margin: 0;
+  }
+}

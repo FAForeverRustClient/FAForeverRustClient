@@ -1,0 +1,66 @@
+//! Vault publishing orchestration.
+
+use faf_domain::state::{is_safe_folder_name, UploadStatus, UploadsCommand, UploadsEvent};
+
+use crate::runtime::{EventSink, ServiceCtx};
+
+pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
+    match cmd {
+        UploadsCommand::Open { request } => out.emit(UploadsEvent::Opened { request }),
+        UploadsCommand::Close => out.emit(UploadsEvent::Closed),
+        UploadsCommand::SetRanked { ranked } => out.emit(UploadsEvent::RankedChanged { ranked }),
+        UploadsCommand::Start => start(ctx, out).await,
+    }
+}
+
+async fn start(ctx: &ServiceCtx, out: &EventSink) {
+    let Some(_guard) = ctx.uploads_active.try_acquire() else {
+        return;
+    };
+    let state = out.with_state(|state| state.uploads.clone());
+
+    // Both reference clients hold a global upload lock. A second publish would
+    // fight the first for the same temporary archive path.
+    if state.status.is_busy() {
+        return;
+    }
+    let Some(request) = state.request.clone() else {
+        return; // The dialog closed before this landed.
+    };
+
+    // Checked here as well as in the adapter. The adapter's check is the one
+    // that protects the filesystem; this one keeps a bad name from ever
+    // reaching a port, and produces the error the user actually sees.
+    if !is_safe_folder_name(&request.folder_name) {
+        out.emit(UploadsEvent::Progressed {
+            status: UploadStatus::Failed {
+                reason: format!(
+                    "“{}” is not a folder name that can be published",
+                    request.folder_name
+                ),
+            },
+        });
+        return;
+    }
+
+    let mut updates = ctx.ports.uploads.publish(request).await;
+
+    // The port always ends with a terminal status; treating a stream that
+    // closes without one as a failure keeps a panicked task from looking like
+    // a successful publish.
+    let mut settled = false;
+    while let Some(status) = updates.recv().await {
+        settled = matches!(
+            status,
+            UploadStatus::Succeeded | UploadStatus::Failed { .. }
+        );
+        out.emit(UploadsEvent::Progressed { status });
+    }
+    if !settled {
+        out.emit(UploadsEvent::Progressed {
+            status: UploadStatus::Failed {
+                reason: "the upload stopped without finishing".into(),
+            },
+        });
+    }
+}

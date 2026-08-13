@@ -3,7 +3,7 @@
 //! This crate has **no IO and no async**. It defines:
 //! - [`AppState`] and its slices ([`state`])
 //! - the [`AppCommand`] and [`AppEvent`] enums
-//! - the pure [`reduce`] function — the *only* place state ever changes.
+//! - the pure [`reduce`] function: the *only* place state ever changes.
 //!
 //! See `docs/ARCHITECTURE.md` §3 for the full contract.
 

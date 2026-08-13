@@ -2,7 +2,7 @@
 //!
 //! Phase 2 has no real networking yet: the handshake simply reports the backend
 //! version. Later this becomes the auth/connection flow, driving an `AuthPort`
-//! and a `LobbyPort`. The shape stays identical — command in, events out.
+//! and a `LobbyPort`. The shape stays identical: command in, events out.
 
 use faf_domain::state::{SessionCommand, SessionEvent};
 
@@ -14,6 +14,7 @@ pub async fn handle(cmd: SessionCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(SessionEvent::Connecting);
             out.emit(SessionEvent::BackendReady {
                 version: ctx.backend_version.clone(),
+                offline_auth: ctx.ports.offline_auth,
             });
         }
     }

@@ -1,0 +1,61 @@
+/* Icon-led persistent navigation, retaining the Python client's durable tabs. */
+.tabbar {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 6px;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-spacer {
+  flex: 1;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 450;
+  text-align: left;
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.tab:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.tab-active {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.tab svg {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+  .tab span {
+    display: none;
+  }
+
+  .tab {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}

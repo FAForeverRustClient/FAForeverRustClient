@@ -1,0 +1,422 @@
+/* Co-op: mission catalog plus currently open co-op games. */
+.coop-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 12px;
+}
+
+.coop-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.coop-intro-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-md);
+}
+
+.coop-intro h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.coop-intro p {
+  max-width: 720px;
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.coop-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coop-toolbar .search-field {
+  flex: 1 1 260px;
+}
+
+.coop-layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) 300px;
+  gap: 12px;
+  min-height: 0;
+}
+
+.coop-mission-panel,
+.coop-detail,
+.coop-games-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.coop-mission-panel .section-heading,
+.coop-games-panel .section-heading {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+.coop-mission-list,
+.coop-games-list {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+}
+
+.coop-mission-empty {
+  margin: 12px;
+}
+
+.coop-mission-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 70px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.coop-mission-card:last-child {
+  border-bottom: 0;
+}
+
+.coop-mission-art {
+  display: grid;
+  width: 58px;
+  height: 52px;
+  place-items: center;
+  overflow: hidden;
+  color: var(--color-subtle);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.coop-mission-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coop-mission-copy {
+  min-width: 0;
+}
+
+.coop-mission-copy h4 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coop-mission-copy p {
+  margin: 3px 0 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.coop-mission-card .btn-primary,
+.coop-mission-card .btn-ghost {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.coop-games-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 160px;
+  color: var(--color-subtle);
+  text-align: center;
+}
+
+.coop-games-empty p,
+.coop-games-empty small {
+  margin: 0;
+}
+
+.coop-games-empty p {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.coop-games-empty small {
+  font-size: 11px;
+}
+
+.coop-game-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 0;
+  color: var(--color-muted);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.coop-game-row:hover {
+  color: var(--color-text);
+}
+
+.coop-game-row span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.coop-game-row strong,
+.coop-game-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coop-game-row strong {
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.coop-game-row small {
+  margin-top: 2px;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.coop-game-row b {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .coop-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .coop-mission-panel,
+  .coop-games-panel {
+    min-height: 360px;
+  }
+}
+
+/* ── Campaign list ───────────────────────────────────────────────────────── */
+
+.coop-detail {
+  overflow-y: auto;
+}
+
+.coop-campaign + .coop-campaign {
+  margin-top: 14px;
+}
+
+.coop-campaign-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+/* Faction is identity, not status: tinted with the faction tokens the rest
+   of the client already uses, never with the ok/warn/error colours. */
+.coop-faction {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.coop-faction.is-uef { color: var(--color-faction-uef); }
+.coop-faction.is-aeon { color: var(--color-faction-aeon); }
+.coop-faction.is-cybran { color: var(--color-faction-cybran); }
+.coop-faction.is-seraphim { color: var(--color-faction-seraphim); }
+
+/* Surface, border, hover and focus ring come from `.surface`
+   `.surface-interactive` in design-system/patterns.css. */
+.coop-mission-row {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.coop-mission-row + .coop-mission-row {
+  margin-top: 4px;
+}
+
+.coop-mission-row.is-active {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
+}
+
+/* ── Mission detail ──────────────────────────────────────────────────────── */
+
+.coop-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.coop-detail-head h3 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.coop-detail-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 180px;
+  object-fit: contain;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.coop-detail-art-placeholder {
+  display: grid;
+  width: 100%;
+  height: 140px;
+  place-items: center;
+  color: var(--color-subtle);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.coop-detail-brief {
+  margin: 10px 0;
+  white-space: pre-line;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+/* ── Record board ────────────────────────────────────────────────────────── */
+
+.coop-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0 8px;
+}
+
+.coop-board-head h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.coop-board-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.coop-load-error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px 12px;
+}
+
+.coop-load-error strong,
+.coop-load-error p {
+  margin: 0;
+}
+
+.coop-load-error p {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+/* The table is the one place co-op content can genuinely overflow: long
+   team lists: so it scrolls inside itself rather than the page. */
+.coop-board-scroll {
+  overflow-x: auto;
+}
+
+.coop-board {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.coop-board th,
+.coop-board td {
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.coop-board th {
+  color: var(--color-muted);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.coop-board-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.coop-board-replay {
+  padding: 0;
+  color: var(--color-accent);
+  background: none;
+  border: 0;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.coop-board-replay:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

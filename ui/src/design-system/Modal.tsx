@@ -1,19 +1,85 @@
-// Modal primitive — overlay + centered panel, no animation library (matches
+// Modal primitive: overlay + centered panel, no animation library (matches
 // the plain-CSS approach the rest of this design system uses). Closes on
 // backdrop click or the close button; callers own open/closed state.
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import "./modal.css";
 
 interface ModalProps {
   onClose: () => void;
   children: ReactNode;
+  className?: string;
+  ariaLabel?: string;
 }
 
-export function Modal({ onClose, children }: ModalProps) {
+const FOCUSABLE = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
+export function Modal({ onClose, children, className, ariaLabel = "Dialog" }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const panel = panelRef.current;
+    const firstControl = panel?.querySelector<HTMLElement>(FOCUSABLE);
+    (firstControl ?? panel)?.focus();
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeRef.current();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, []);
+
+  const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
+      .filter((element) => element.offsetParent !== null);
+    if (controls.length === 0) {
+      event.preventDefault();
+      panelRef.current?.focus();
+      return;
+    }
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">
+    <div className="modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div
+        ref={panelRef}
+        className={className ? `modal-panel ${className}` : "modal-panel"}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        tabIndex={-1}
+        onKeyDown={trapFocus}
+      >
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
           ×
         </button>
         {children}

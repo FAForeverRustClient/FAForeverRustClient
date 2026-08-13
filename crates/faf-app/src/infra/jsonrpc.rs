@@ -1,4 +1,4 @@
-//! Minimal JSON-RPC 2.0 client over TCP — drives the Java `faf-ice-adapter`.
+//! Minimal JSON-RPC 2.0 client over TCP: drives the Java `faf-ice-adapter`.
 //!
 //! Mirrors the Python client's `JsonRpcTcpClient.py`. The wire is a stream of JSON
 //! objects (newline-terminated when we send; concatenated/whitespace-separated when
@@ -28,7 +28,7 @@ pub struct RpcNotification {
 /// clones share the same connection.
 #[derive(Clone)]
 pub struct JsonRpcClient {
-    out: mpsc::Sender<String>,
+    out: mpsc::UnboundedSender<String>,
 }
 
 impl JsonRpcClient {
@@ -46,7 +46,9 @@ impl JsonRpcClient {
                 Ok(s) => break s,
                 Err(e) => {
                     if std::time::Instant::now() >= deadline {
-                        return Err(format!("could not connect to adapter rpc {host}:{port}: {e}"));
+                        return Err(format!(
+                            "could not connect to adapter rpc {host}:{port}: {e}"
+                        ));
                     }
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }
@@ -54,7 +56,11 @@ impl JsonRpcClient {
         };
         let (mut read_half, mut write_half) = stream.into_split();
 
-        let (out_tx, mut out_rx) = mpsc::channel::<String>(64);
+        // Signaling bursts scale with peer count and candidate count. This is
+        // intentionally unbounded because dropping a JSON-RPC `iceMsg` frame
+        // after an arbitrary queue limit makes only some peers fail to connect.
+        // The producer is the authenticated FAF lobby, not arbitrary local UI.
+        let (out_tx, mut out_rx) = mpsc::unbounded_channel::<String>();
         let (note_tx, note_rx) = mpsc::channel::<RpcNotification>(64);
 
         // Writer pump.
@@ -92,18 +98,18 @@ impl JsonRpcClient {
     /// Call an adapter method, fire-and-forget (no response awaited).
     pub fn call(&self, method: &str, params: Vec<Value>) {
         let frame = json!({ "jsonrpc": "2.0", "method": method, "params": params });
-        let _ = self.out.try_send(format!("{frame}\n"));
+        let _ = self.out.send(format!("{frame}\n"));
     }
 }
 
 /// Classify one inbound object: a `method` object is a notification/request (and,
 /// if it has an `id`, gets a null-result reply queued); anything else is a response
 /// we ignore. Returns the notification to surface, if any.
-fn route(value: &Value, reply_tx: &mpsc::Sender<String>) -> Option<RpcNotification> {
+fn route(value: &Value, reply_tx: &mpsc::UnboundedSender<String>) -> Option<RpcNotification> {
     let method = value.get("method").and_then(Value::as_str)?;
     if let Some(id) = value.get("id") {
         let reply = json!({ "jsonrpc": "2.0", "id": id, "result": Value::Null });
-        let _ = reply_tx.try_send(format!("{reply}\n"));
+        let _ = reply_tx.send(format!("{reply}\n"));
     }
     let params = value
         .get("params")
@@ -124,9 +130,9 @@ fn parse_objects(buffer: &mut Vec<u8>) -> Vec<Value> {
     loop {
         match stream.next() {
             Some(Ok(v)) => values.push(v),
-            // Incomplete trailing object — wait for more bytes.
+            // Incomplete trailing object: wait for more bytes.
             Some(Err(e)) if e.is_eof() => break,
-            // Malformed — stop; drain what we consumed so we don't loop forever.
+            // Malformed: stop; drain what we consumed so we don't loop forever.
             Some(Err(_)) => break,
             None => break,
         }
@@ -181,7 +187,7 @@ mod tests {
 
     #[test]
     fn route_returns_notification_and_ignores_responses() {
-        let (tx, _rx) = mpsc::channel::<String>(4);
+        let (tx, _rx) = mpsc::unbounded_channel::<String>();
         let note = route(&json!({"method":"onIceMsg","params":[1,2,"x"]}), &tx);
         assert_eq!(
             note,
@@ -196,12 +202,24 @@ mod tests {
 
     #[tokio::test]
     async fn id_carrying_request_gets_a_reply_queued() {
-        let (tx, mut rx) = mpsc::channel::<String>(4);
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
         let note = route(&json!({"method":"ping","id":7,"params":[]}), &tx);
         assert!(note.is_some());
         let reply = rx.recv().await.unwrap();
         let v: Value = serde_json::from_str(reply.trim()).unwrap();
         assert_eq!(v["id"], 7);
         assert!(v.get("result").is_some());
+    }
+
+    #[test]
+    fn outbound_candidate_bursts_are_not_dropped_at_an_arbitrary_queue_limit() {
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let client = JsonRpcClient { out: tx };
+        for candidate in 0..256 {
+            client.call("iceMsg", vec![json!(candidate)]);
+        }
+
+        let frames = std::iter::from_fn(|| rx.try_recv().ok()).count();
+        assert_eq!(frames, 256);
     }
 }

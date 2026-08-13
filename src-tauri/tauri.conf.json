@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Forge Client",
-  "version": "0.1.0",
-  "identifier": "com.forgeclient.dev",
+  "productName": "FAForever Client",
+  "version": "0.2.0",
+  "identifier": "com.faforever.rustclient",
   "build": {
     "frontendDist": "../ui/dist",
     "devUrl": "http://localhost:5173",
@@ -13,19 +13,48 @@
     "windows": [
       {
         "label": "main",
-        "title": "Forge Client",
+        "title": "FAForever Client",
         "width": 1100,
         "height": 720,
         "resizable": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "connect-src": "ipc: http://ipc.localhost",
+        "img-src": "'self' asset: http://asset.localhost data: blob: https:",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "frame-src": "https://faforever.com https://www.faforever.com https://faforever.github.io",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      },
+      "devCsp": {
+        "default-src": "'self'",
+        "connect-src": "ipc: http://ipc.localhost http://localhost:5173 ws://localhost:5173",
+        "img-src": "'self' asset: http://asset.localhost data: blob: https:",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "frame-src": "https://faforever.com https://www.faforever.com https://faforever.github.io",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      }
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+      "resources": {
+        "../natives/faf-uid*": "natives/",
+        "../natives/jre/": "natives/jre/",
+        "../natives/java-ice-adapter/faf-ice-adapter.jar": "natives/java-ice-adapter/faf-ice-adapter.jar",
+        "../faf-pioneer.exe": "faf-pioneer.exe"
+      },
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"]
   }
 }

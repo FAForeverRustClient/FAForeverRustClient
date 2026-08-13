@@ -13,16 +13,21 @@ async fn hello_drives_session_to_ready() {
     tokio::spawn(app_loop.run());
     let mut events = app.subscribe();
 
-    app.dispatch(SessionCommand::Hello.into()).await;
+    app.dispatch(SessionCommand::Hello.into()).await.unwrap();
 
-    // The service emits Connecting, then BackendReady — in that order.
+    // The service emits Connecting, then BackendReady: in that order.
     let first = events.recv().await.expect("expected Connecting event");
     assert!(matches!(first, AppEvent::Session(SessionEvent::Connecting)));
 
     let second = events.recv().await.expect("expected BackendReady event");
     match second {
-        AppEvent::Session(SessionEvent::BackendReady { version }) => {
+        AppEvent::Session(SessionEvent::BackendReady {
+            version,
+            offline_auth,
+        }) => {
             assert_eq!(version, "9.9.9");
+            // This harness runs on `fake_ports`, which is the offline bundle.
+            assert!(offline_auth);
         }
         other => panic!("expected BackendReady, got {other:?}"),
     }

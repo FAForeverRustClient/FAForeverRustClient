@@ -1,5 +1,5 @@
 // A feature view: pure, driven entirely by state. It selects its slice and
-// renders — no business logic, no IPC calls (ARCHITECTURE.md §4).
+// renders: no business logic, no IPC calls (ARCHITECTURE.md §4).
 
 import { useAppStore } from "../../store/store";
 import type { ConnectionStatus } from "../../ipc/bindings";

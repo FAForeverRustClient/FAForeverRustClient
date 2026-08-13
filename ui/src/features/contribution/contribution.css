@@ -1,0 +1,100 @@
+/* Contribution */
+.contribution-view {
+  width: min(100%, 720px);
+}
+
+.contribution-intro {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.contribution-intro-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.contribution-intro h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.contribution-intro p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.contribution-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.contribution-section {
+  padding-top: var(--space-4);
+}
+
+.contribution-section-title {
+  margin: 0 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.contribution-links {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.contribution-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 54px;
+  padding: 10px 14px;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.contribution-link > svg {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+}
+
+.contribution-link-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.contribution-link-copy strong {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--color-text);
+}
+
+.contribution-link-copy small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

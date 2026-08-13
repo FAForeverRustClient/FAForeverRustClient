@@ -1,0 +1,43 @@
+.upload-dialog {
+  width: min(460px, 92vw);
+}
+
+.upload-dialog h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.upload-dialog p {
+  margin: 0 0 var(--space-3);
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+/* The folder is the thing actually being read off disk, so it is shown
+   verbatim rather than prettified: it is what the user should recognise. */
+.upload-folder {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.upload-status {
+  margin: var(--space-3) 0 0;
+  font-size: 13px;
+}
+
+.upload-status.is-ok {
+  color: var(--color-ok);
+}
+
+.upload-status.is-error {
+  color: var(--color-error);
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

@@ -1,8 +1,8 @@
-//! ICE adapter port — the connectivity backend, abstracted over Go and Java.
+//! ICE adapter port: the connectivity backend, abstracted over Go and Java.
 //!
 //! Both FAF adapters (`faf-pioneer` Go, `faf-ice-adapter` Java) are modeled the
 //! same way: [`IcePort::start`] brings the adapter up for one game and returns a
-//! [`ConnectivitySession`] — the GPGNet port the game must connect to, plus two
+//! [`ConnectivitySession`]: the GPGNet port the game must connect to, plus two
 //! channels of [`RelayMsg`] bridging the adapter and the lobby. Everything
 //! adapter-specific (Go's GPGNet relay server + `CreateLobby`; Java's JSON-RPC +
 //! ICE-server poll) lives behind this seam, so the launcher is backend-neutral.
@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::mpsc;
 
-/// A connectivity message in the lobby relay format — identical to what crosses
+/// A connectivity message in the lobby relay format: identical to what crosses
 /// the lobby (`{ command, target: "game", args }`). The shared currency between
 /// the adapter backend and the lobby, regardless of Go vs Java internals.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,4 +48,13 @@ pub trait IcePort: Send + Sync {
 
     /// Stop the adapter, if running. Idempotent.
     fn stop(&self);
+
+    /// Choose which connectivity backend future launches use.
+    ///
+    /// Defaulted to a no-op, because only the selectable wrapper cares: a
+    /// concrete adapter used directly, and the fake, are already the backend
+    /// they are. Called by the settings service whenever the preference
+    /// changes, so switching takes effect on the next game rather than after
+    /// a restart.
+    fn set_backend(&self, _adapter: faf_domain::state::IceAdapter) {}
 }

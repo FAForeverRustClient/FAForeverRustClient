@@ -1,4 +1,4 @@
-//! Real OAuth2 auth provider — FAF's Ory Hydra, Authorization Code + PKCE flow.
+//! Real OAuth2 auth provider: FAF's Ory Hydra, Authorization Code + PKCE flow.
 //!
 //! This is the production implementation of [`AuthPort`]. It performs the whole
 //! interactive login behind the trait's `login()` call, so the auth service, the
@@ -17,8 +17,8 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine as _;
 use faf_domain::state::Player;
 use rand::RngCore;
 use serde::Deserialize;
@@ -64,7 +64,7 @@ impl OAuthConfig {
 
     /// Like [`Self::faf`] but lets each value be overridden via environment
     /// variables (`FAF_HYDRA_BASE`, `FAF_API_BASE`, `FAF_OAUTH_CLIENT_ID`,
-    /// `FAF_OAUTH_SCOPES`) — handy for pointing at staging.
+    /// `FAF_OAUTH_SCOPES`): handy for pointing at staging.
     pub fn from_env() -> Self {
         let base = Self::faf();
         Self {
@@ -78,7 +78,10 @@ impl OAuthConfig {
 }
 
 fn env_or(key: &str, fallback: String) -> String {
-    std::env::var(key).ok().filter(|v| !v.is_empty()).unwrap_or(fallback)
+    std::env::var(key)
+        .ok()
+        .filter(|v| !v.is_empty())
+        .unwrap_or(fallback)
 }
 
 /// Production [`AuthPort`]: OAuth2 Authorization Code + PKCE against FAF Hydra.
@@ -93,7 +96,7 @@ impl OAuthAuth {
     pub fn new(config: OAuthConfig, tokens: TokenStore) -> Self {
         Self {
             config,
-            http: reqwest::Client::new(),
+            http: super::http::shared_http_client(),
             tokens,
         }
     }
@@ -107,7 +110,12 @@ impl OAuthAuth {
 
 #[async_trait]
 impl AuthPort for OAuthAuth {
-    async fn login(&self) -> AuthResult<Player> {
+    async fn login(&self, remember: bool) -> AuthResult<Player> {
+        // Remove the old token up front so an account switch cannot retain the
+        // previous account, and so an unchecked "Remember me" choice takes
+        // effect even if the user had remembered a different account.
+        self.clear_refresh_token();
+
         // 1. Loopback redirect listener on an ephemeral port. Hydra allows any
         //    127.0.0.1 port for native apps (RFC 8252), so no fixed port needed.
         let listener = TcpListener::bind("127.0.0.1:0")
@@ -139,7 +147,9 @@ impl AuthPort for OAuthAuth {
             .map_err(|_| AuthError::new("Login timed out waiting for the browser."))??;
 
         if redirect.state.as_deref() != Some(state.as_str()) {
-            return Err(AuthError::new("Login failed: state mismatch (possible CSRF)."));
+            return Err(AuthError::new(
+                "Login failed: state mismatch (possible CSRF).",
+            ));
         }
         if let Some(error) = redirect.error {
             return Err(AuthError::new(format!("Login was denied: {error}")));
@@ -154,23 +164,53 @@ impl AuthPort for OAuthAuth {
         // 6. Make the access token available to network ports (e.g. lobby).
         self.tokens.set(&tokens.access_token);
 
-        // 7. Persist the refresh token (best-effort — a keyring failure must not
-        //    block an otherwise successful login).
-        if let Some(refresh) = &tokens.refresh_token {
-            self.store_refresh_token(refresh);
+        // 7. Persist the refresh token only when the user asked to be
+        //    remembered. Keyring failures must not block an otherwise
+        //    successful login.
+        if remember {
+            if let Some(refresh) = &tokens.refresh_token {
+                self.store_refresh_token(refresh);
+            }
         }
 
         // 8. Resolve the player.
         self.fetch_me(&tokens.access_token).await
     }
 
+    async fn restore(&self) -> AuthResult<Option<Player>> {
+        let Some(refresh_token) = self.load_refresh_token() else {
+            return Ok(None);
+        };
+
+        let tokens = match self.exchange_refresh_token(&refresh_token).await {
+            Ok(tokens) => tokens,
+            Err(_) => {
+                // Keep the stored credential for a later retry. A transient
+                // network failure should not force the user through the browser
+                // login again.
+                return Ok(None);
+            }
+        };
+
+        self.tokens.set(&tokens.access_token);
+        if let Some(refresh) = &tokens.refresh_token {
+            self.store_refresh_token(refresh);
+        }
+
+        match self.fetch_me(&tokens.access_token).await {
+            Ok(player) => Ok(Some(player)),
+            Err(error) => {
+                self.tokens.clear();
+                Err(error)
+            }
+        }
+    }
+
     async fn logout(&self) -> AuthResult<()> {
         // Best-effort: drop both the in-memory access token and the stored refresh
         // token. The session itself is torn down by the auth slice regardless.
         self.tokens.clear();
-        if let Ok(entry) = keyring::Entry::new(&self.config.keyring_service, "refresh_token") {
-            let _ = entry.delete_credential();
-        }
+        self.clear_refresh_token();
         Ok(())
     }
 }
@@ -210,6 +250,32 @@ impl OAuthAuth {
             .map_err(|e| AuthError::new(format!("Could not parse token response: {e}")))
     }
 
+    async fn exchange_refresh_token(&self, refresh_token: &str) -> AuthResult<TokenResponse> {
+        let params = [
+            ("grant_type", "refresh_token"),
+            ("refresh_token", refresh_token),
+            ("client_id", self.config.client_id.as_str()),
+        ];
+        let resp = self
+            .http
+            .post(format!("{}/oauth2/token", self.config.hydra_base))
+            .form(&params)
+            .send()
+            .await
+            .map_err(|e| AuthError::new(format!("Refresh request failed: {e}")))?;
+
+        if !resp.status().is_success() {
+            return Err(AuthError::new(format!(
+                "Refresh token rejected ({})",
+                resp.status()
+            )));
+        }
+
+        resp.json::<TokenResponse>()
+            .await
+            .map_err(|e| AuthError::new(format!("Could not parse refresh response: {e}")))
+    }
+
     async fn fetch_me(&self, access_token: &str) -> AuthResult<Player> {
         let resp = self
             .http
@@ -233,15 +299,30 @@ impl OAuthAuth {
             .text()
             .await
             .map_err(|e| AuthError::new(format!("Could not read /me response: {e}")))?;
-        let value: Value = serde_json::from_str(&body)
-            .map_err(|e| AuthError::new(format!("/me was not JSON: {e}; body: {}", snippet(&body))))?;
-        player_from_me(&value)
-            .ok_or_else(|| AuthError::new(format!("Unexpected /me shape; body: {}", snippet(&body))))
+        let value: Value = serde_json::from_str(&body).map_err(|e| {
+            AuthError::new(format!("/me was not JSON: {e}; body: {}", snippet(&body)))
+        })?;
+        player_from_me(&value).ok_or_else(|| {
+            AuthError::new(format!("Unexpected /me shape; body: {}", snippet(&body)))
+        })
     }
 
     fn store_refresh_token(&self, refresh_token: &str) {
         if let Ok(entry) = keyring::Entry::new(&self.config.keyring_service, "refresh_token") {
             let _ = entry.set_password(refresh_token);
+        }
+    }
+
+    fn load_refresh_token(&self) -> Option<String> {
+        keyring::Entry::new(&self.config.keyring_service, "refresh_token")
+            .ok()
+            .and_then(|entry| entry.get_password().ok())
+            .filter(|token| !token.is_empty())
+    }
+
+    fn clear_refresh_token(&self) {
+        if let Ok(entry) = keyring::Entry::new(&self.config.keyring_service, "refresh_token") {
+            let _ = entry.delete_credential();
         }
     }
 }
@@ -261,7 +342,7 @@ async fn accept_redirect(listener: &TcpListener) -> AuthResult<Redirect> {
         .await
         .map_err(|e| AuthError::new(format!("Redirect connection failed: {e}")))?;
 
-    // Read only the request line — that carries `?code=...&state=...`.
+    // Read only the request line: that carries `?code=...&state=...`.
     let request_line = {
         let mut reader = BufReader::new(&mut stream);
         let mut line = String::new();
@@ -351,9 +432,15 @@ fn parse_redirect_request(request_line: &str) -> AuthResult<Redirect> {
 
 fn response_html(success: bool) -> String {
     let (title, message) = if success {
-        ("Signed in", "You can close this tab and return to Forge Client.")
+        (
+            "Signed in",
+            "You can close this tab and return to FAForever Client.",
+        )
     } else {
-        ("Sign-in failed", "Something went wrong. Return to Forge Client and try again.")
+        (
+            "Sign-in failed",
+            "Something went wrong. Return to FAForever Client and try again.",
+        )
     };
     format!(
         "<!doctype html><html><head><meta charset=\"utf-8\"><title>{title}</title></head>\
@@ -386,8 +473,8 @@ fn player_from_me(value: &Value) -> Option<Player> {
         .and_then(Value::as_str)?
         .to_string();
 
-    let id = json_id(attributes.and_then(|a| a.get("userId")))
-        .or_else(|| json_id(data.get("id")))?;
+    let id =
+        json_id(attributes.and_then(|a| a.get("userId"))).or_else(|| json_id(data.get("id")))?;
 
     Some(Player { id, name })
 }
@@ -425,7 +512,9 @@ mod tests {
         let token = random_token(32);
         // 32 bytes → 43 base64url chars (no padding), URL-safe alphabet only.
         assert_eq!(token.len(), 43);
-        assert!(token.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
+        assert!(token
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
     }
 
     #[test]
@@ -484,9 +573,10 @@ mod tests {
     #[test]
     fn me_maps_to_player_with_numeric_user_id() {
         // userId may arrive as a JSON number rather than a string.
-        let player =
-            me(r#"{"data":{"id":"me","type":"me","attributes":{"userName":"Sheikah","userId":3408}}}"#)
-                .unwrap();
+        let player = me(
+            r#"{"data":{"id":"me","type":"me","attributes":{"userName":"Sheikah","userId":3408}}}"#,
+        )
+        .unwrap();
         assert_eq!(player.id, 3408);
         assert_eq!(player.name, "Sheikah");
     }
@@ -495,7 +585,8 @@ mod tests {
     fn me_falls_back_to_data_id() {
         // If attributes.userId is absent, fall back to a numeric data.id.
         let player =
-            me(r#"{"data":{"id":"3408","type":"me","attributes":{"userName":"Sheikah"}}}"#).unwrap();
+            me(r#"{"data":{"id":"3408","type":"me","attributes":{"userName":"Sheikah"}}}"#)
+                .unwrap();
         assert_eq!(player.id, 3408);
     }
 

@@ -1,9 +1,11 @@
-// Units tab — embeds the community ETFreeman unit database directly
+// Units tab: embeds the community ETFreeman unit database directly
 // (https://faforever.github.io/etfreeman-db/#/) rather than reimplementing
 // its UI: it already has every feature (search, filters, comparisons,
 // weapon/projectile detail) and matching its visual polish exactly is only
-// achievable by using the real thing. No custom parsing/state on our side —
+// achievable by using the real thing. No custom parsing/state on our side,
 // this tab is presentation-only, an `<iframe>` and nothing else.
+
+import { TRUSTED_EMBED_SANDBOX } from "../../shared/embedSecurity";
 
 const ETFREEMAN_URL = "https://faforever.github.io/etfreeman-db/#/";
 
@@ -15,6 +17,7 @@ export function UnitsView() {
         src={ETFREEMAN_URL}
         title="ETFreeman Unit Database"
         referrerPolicy="no-referrer"
+        sandbox={TRUSTED_EMBED_SANDBOX}
       />
     </div>
   );

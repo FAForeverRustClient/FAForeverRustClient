@@ -1,15 +1,16 @@
-//! Real ICE adapter provider — runs FAF's Java adapter `faf-ice-adapter`.
+//! Real ICE adapter provider: runs FAF's Java adapter `faf-ice-adapter`.
 //!
 //! Unlike the Go adapter (a GPGNet relay), the Java adapter is driven over
 //! **JSON-RPC** ([`jsonrpc`](crate::infra::jsonrpc)) and **hosts the GPGNet port
-//! for the game itself** (so there is no relay server, and the adapter — not us —
+//! for the game itself** (so there is no relay server, and the adapter: not us,
 //! answers `CreateLobby`). It also does not fetch ICE servers itself, so we poll
 //! `GET {api}/ice/session/game/{id}` and push them via `setIceServers`. Mirrors the
 //! Python client's `IceAdapterClient.py` / `IceAdapterProcess.py` / `IceServersPoller.py`.
 //!
-//! Located via `FAF_ICE_ADAPTER_JAR` (the `.jar`) + `FAF_JAVA_PATH` (default `java`).
-//! Opt-in via `FAF_REAL_LAUNCH=1` with `FAF_ICE_ADAPTER_KIND=java` (the default kind).
+//! Located via `FAF_ICE_ADAPTER_JAR` (the `.jar`) + `FAF_JAVA_PATH` (default
+//! `java`). Select with `FAF_ICE_ADAPTER_KIND=java` or the connectivity setting.
 
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -34,16 +35,74 @@ pub struct JavaConfig {
     pub jar_path: String,
     /// FAF API base (`api.faforever.com`); ICE servers come from `{base}/ice/session/game/{id}`.
     pub api_base: String,
+    /// Private adapter diagnostics directory, outside the source/install tree.
+    pub log_dir: String,
 }
 
 impl JavaConfig {
     pub fn faf() -> Self {
         Self {
-            java_path: env_or("FAF_JAVA_PATH", "java"),
-            jar_path: std::env::var("FAF_ICE_ADAPTER_JAR").unwrap_or_default(),
+            java_path: super::java_runtime::preferred_java_path(),
+            jar_path: default_jar_path(),
             api_base: env_or("FAF_API_BASE", "https://api.faforever.com"),
+            log_dir: env_or("FAF_ICE_LOG_DIR", default_log_dir()),
         }
     }
+}
+
+fn default_jar_path() -> String {
+    if let Ok(path) = std::env::var("FAF_ICE_ADAPTER_JAR") {
+        if !path.trim().is_empty() {
+            return path;
+        }
+    }
+
+    let executable = std::env::current_exe().ok();
+    let working_directory = std::env::current_dir().ok();
+    let roots = executable
+        .as_deref()
+        .and_then(Path::parent)
+        .into_iter()
+        .flat_map(|directory| directory.ancestors().take(4))
+        .chain(
+            working_directory
+                .as_deref()
+                .into_iter()
+                .flat_map(|directory| directory.ancestors().take(3)),
+        )
+        .map(Path::to_path_buf)
+        .collect::<Vec<_>>();
+
+    resolve_jar_from_roots(&roots)
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+fn resolve_jar_from_roots(roots: &[PathBuf]) -> Option<PathBuf> {
+    roots
+        .iter()
+        .flat_map(|root| {
+            [
+                root.join("natives")
+                    .join("java-ice-adapter")
+                    .join("faf-ice-adapter.jar"),
+                root.join("resources")
+                    .join("natives")
+                    .join("java-ice-adapter")
+                    .join("faf-ice-adapter.jar"),
+                root.join("java-ice-adapter").join("faf-ice-adapter.jar"),
+                root.join("faf-ice-adapter.jar"),
+            ]
+        })
+        .find(|candidate| candidate.is_file())
+}
+
+fn default_log_dir() -> String {
+    std::env::temp_dir()
+        .join("forge-client")
+        .join("iceAdapterLogs")
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn env_or(key: &str, fallback: impl Into<String>) -> String {
@@ -66,7 +125,7 @@ impl JavaAdapter {
         Self {
             config,
             tokens,
-            http: reqwest::Client::new(),
+            http: super::http::shared_http_client(),
             child: Arc::new(Mutex::new(None)),
             rpc: Arc::new(Mutex::new(None)),
         }
@@ -84,12 +143,12 @@ impl IcePort for JavaAdapter {
             return Err("no access token (not logged in?)".into());
         };
         if self.config.jar_path.is_empty() {
-            return Err("FAF_ICE_ADAPTER_JAR is not set".into());
+            return Err("the optional Java ICE adapter is not installed".into());
         }
 
         // ICE servers (the Java adapter doesn't fetch these itself).
-        let ice = fetch_ice_servers(&self.http, &self.config.api_base, &token, params.game_id)
-            .await?;
+        let ice =
+            fetch_ice_servers(&self.http, &self.config.api_base, &token, params.game_id).await?;
 
         let rpc_port = free_port().ok_or("could not reserve an rpc port")?;
         let gpg_port = free_port().ok_or("could not reserve a game port")?;
@@ -112,22 +171,38 @@ impl IcePort for JavaAdapter {
             args.push("--force-relay".into());
         }
 
-        eprintln!(
-            "[ice] starting java adapter (game {} rpc:{} gpgnet:{})",
-            params.game_id, rpc_port, gpg_port
+        tracing::info!(
+            game_id = params.game_id,
+            rpc_port,
+            gpgnet_port = gpg_port,
+            "starting Java ICE adapter"
         );
 
+        std::fs::create_dir_all(&self.config.log_dir)
+            .map_err(|error| format!("could not create ICE log directory: {error}"))?;
+        // Captured rather than discarded, but only surfaced at TRACE, which is
+        // off under the default `faf_app=info` filter. ICE diagnostics can
+        // include private network candidates and machine paths, so they stay
+        // out of an ordinary log; when a join fails they are the only thing
+        // that says why, and `FAF_LOG=faf_app=trace` turns them on. The Python
+        // client logs the same stream at its own lowest level.
         let mut child = Command::new(&self.config.java_path)
             .args(&args)
+            .env("LOG_DIR", &self.config.log_dir)
+            .current_dir(
+                Path::new(&self.config.jar_path)
+                    .parent()
+                    .unwrap_or_else(|| Path::new(".")),
+            )
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| format!("could not start '{}': {e}", self.config.java_path))?;
+            .map_err(|e| format!("could not start Java ICE adapter: {e}"))?;
         if let Some(stderr) = child.stderr.take() {
             tokio::spawn(async move {
                 use tokio::io::{AsyncBufReadExt, BufReader};
                 let mut lines = BufReader::new(stderr).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
-                    eprintln!("[ice] {line}");
+                    tracing::trace!(target: "faf_app::ice_adapter", "{line}");
                 }
             });
         }
@@ -150,12 +225,14 @@ impl IcePort for JavaAdapter {
         // adapter notifications → lobby.
         tokio::spawn(async move {
             while let Some(note) = notifications.recv().await {
+                log_connectivity(&note);
                 if let Some(relay) = relay_from_notification(&note) {
                     if to_lobby_tx.send(relay).await.is_err() {
                         break;
                     }
                 }
             }
+            tracing::warn!("Java ICE adapter notification stream ended");
         });
 
         // lobby game-relay → adapter RPC calls.
@@ -236,6 +313,40 @@ fn lobby_init_mode_name(init_mode: i32) -> String {
     if init_mode == 1 { "auto" } else { "normal" }.to_string()
 }
 
+/// Record the adapter's own view of connectivity.
+///
+/// These notifications carry no payload the lobby needs, so they are not
+/// relayed; but they are the only thing that says whether ICE ever reached a
+/// peer. Without them a failed join is indistinguishable from a working one
+/// that the game ignored, which is exactly the position this client was in.
+/// The Python client polls `status` on each of these for the same reason.
+///
+/// Peer ids only: candidate addresses are private network information and stay
+/// in the adapter's own `LOG_DIR`.
+fn log_connectivity(note: &RpcNotification) {
+    match note.method.as_str() {
+        "onConnectionStateChanged" => {
+            let state = note.params.first().and_then(Value::as_str).unwrap_or("?");
+            tracing::info!(state, "ICE adapter connection state");
+        }
+        "onConnected" => {
+            let remote = note.params.get(1).and_then(Value::as_i64).unwrap_or(0);
+            let connected = note.params.get(2).and_then(Value::as_bool).unwrap_or(false);
+            tracing::info!(remote_player = remote, connected, "ICE peer state");
+        }
+        "onIceConnectionStateChanged" => {
+            let remote = note.params.get(1).and_then(Value::as_i64).unwrap_or(0);
+            let state = note.params.get(2).and_then(Value::as_str).unwrap_or("?");
+            tracing::info!(remote_player = remote, state, "ICE negotiation state");
+        }
+        "onGpgNetMessageReceived" => {
+            let header = note.params.first().and_then(Value::as_str).unwrap_or("?");
+            tracing::debug!(header, "GPGNet message from the game");
+        }
+        _ => {}
+    }
+}
+
 /// Map an adapter notification to a lobby relay message (or `None` to ignore).
 /// Mirrors `IceAdapterClient.onGpgNetMessageReceived` / `onIceMsg`.
 fn relay_from_notification(note: &RpcNotification) -> Option<RelayMsg> {
@@ -273,14 +384,20 @@ fn rpc_call_for(msg: &RelayMsg) -> Option<(String, Vec<Value>)> {
         "JoinGame" => Some(("joinGame".into(), msg.args.clone())),
         "ConnectToPeer" => Some(("connectToPeer".into(), msg.args.clone())),
         "IceMsg" => Some(("iceMsg".into(), msg.args.clone())),
-        "HostGame" => Some(("hostGame".into(), msg.args.iter().take(1).cloned().collect())),
+        "HostGame" => Some((
+            "hostGame".into(),
+            msg.args.iter().take(1).cloned().collect(),
+        )),
         "DisconnectFromPeer" => Some((
             "disconnectFromPeer".into(),
             msg.args.iter().take(1).cloned().collect(),
         )),
         other => Some((
             "sendToGpgNet".into(),
-            vec![Value::String(other.to_string()), Value::Array(msg.args.clone())],
+            vec![
+                Value::String(other.to_string()),
+                Value::Array(msg.args.clone()),
+            ],
         )),
     }
 }
@@ -310,7 +427,7 @@ mod tests {
     fn maps_ice_notification_dropping_local_id() {
         let note = RpcNotification {
             method: "onIceMsg".into(),
-            params: vec![json!(42707), json!(436001), json!({"type": "candidate"})],
+            params: vec![json!(7), json!(436001), json!({"type": "candidate"})],
         };
         assert_eq!(
             relay_from_notification(&note),
@@ -348,10 +465,7 @@ mod tests {
         };
         assert_eq!(
             rpc_call_for(&other),
-            Some((
-                "sendToGpgNet".into(),
-                vec![json!("Bottleneck"), json!([1])]
-            ))
+            Some(("sendToGpgNet".into(), vec![json!("Bottleneck"), json!([1])]))
         );
 
         // Ignored commands.
@@ -368,5 +482,22 @@ mod tests {
     fn init_mode_names() {
         assert_eq!(lobby_init_mode_name(0), "normal");
         assert_eq!(lobby_init_mode_name(1), "auto");
+    }
+
+    #[test]
+    fn finds_the_verified_adapter_in_the_development_native_directory() {
+        let directory = tempfile::tempdir().unwrap();
+        let jar = directory
+            .path()
+            .join("natives")
+            .join("java-ice-adapter")
+            .join("faf-ice-adapter.jar");
+        std::fs::create_dir_all(jar.parent().unwrap()).unwrap();
+        std::fs::write(&jar, b"test adapter").unwrap();
+
+        assert_eq!(
+            resolve_jar_from_roots(&[directory.path().to_path_buf()]),
+            Some(jar)
+        );
     }
 }

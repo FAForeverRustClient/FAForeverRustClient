@@ -2,7 +2,7 @@
 //!
 //! Pure UI-state transition with no IO: a `Select` command becomes a `TabSelected`
 //! event. It still goes through the loop so navigation obeys the same single
-//! mutation path as everything else — and so backend logic can drive the view too.
+//! mutation path as everything else: and so backend logic can drive the view too.
 
 use faf_domain::state::{NavCommand, NavEvent};
 

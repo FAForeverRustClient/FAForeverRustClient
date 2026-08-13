@@ -3,7 +3,7 @@
 //! Thin handler (like `services/maps.rs`): asks the [`crate::ports::
 //! ModsPort`] to do the work, then emits the corresponding events. The
 //! actual API calls, folder scan, zip extraction, and `game.prefs`
-//! read/write live entirely behind the port — see `infra/mods.rs`.
+//! read/write live entirely behind the port: see `infra/mods.rs`.
 
 use faf_domain::state::{ModsCommand, ModsEvent};
 
@@ -26,19 +26,23 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         ModsCommand::InstallMod { uid, download_url } => {
+            let _guard = ctx.mods_mutation.acquire().await;
             out.emit(ModsEvent::Installing { uid: uid.clone() });
             match ctx.ports.mods.install_mod(uid, download_url).await {
                 Ok(installed) => out.emit(ModsEvent::Installed { installed }),
                 Err(reason) => out.emit(ModsEvent::InstallFailed { reason }),
             }
         }
-        ModsCommand::UninstallMod { folder_name } => {
+        ModsCommand::UninstallMod { folder_name, uid } => {
+            let _guard = ctx.mods_mutation.acquire().await;
+            out.emit(ModsEvent::Installing { uid });
             match ctx.ports.mods.uninstall_mod(folder_name).await {
                 Ok(installed) => out.emit(ModsEvent::Uninstalled { installed }),
                 Err(reason) => out.emit(ModsEvent::UninstallFailed { reason }),
             }
         }
         ModsCommand::ToggleMod { uid, enabled } => {
+            let _guard = ctx.mods_mutation.acquire().await;
             out.emit(ModsEvent::Toggling { uid: uid.clone() });
             match ctx.ports.mods.toggle_mod(uid, enabled).await {
                 Ok(installed) => out.emit(ModsEvent::Toggled { installed }),

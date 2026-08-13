@@ -1,4 +1,4 @@
-//! [`AppCommand`] — intents flowing from the UI to the backend.
+//! [`AppCommand`]: intents flowing from the UI to the backend.
 //!
 //! Namespaced enum-of-enums, mirroring [`crate::AppEvent`]. A command is a
 //! *request*; it never mutates state directly. A service handles it and emits
@@ -8,22 +8,37 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::state::{
-    AuthCommand, ChatCommand, LeaderboardCommand, LobbyCommand, MapsCommand, ModsCommand,
-    NavCommand, ReplayCommand, SessionCommand, SettingsCommand,
+    AuthCommand, ChatCommand, ClientUpdateCommand, CoopCommand, LeaderboardCommand, LobbyCommand,
+    MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand, NotificationCommand,
+    PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand, SessionCommand,
+    SettingsCommand, SocialCommand, TournamentsCommand, TutorialsCommand, UploadsCommand,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+// No `Eq`: `ReplayCommand` carries a `ReplayQuery`, which has an `f32`
+// (minimum review score): the same reason `AppEvent` has no `Eq`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", content = "command")]
 pub enum AppCommand {
     Session(SessionCommand),
     Auth(AuthCommand),
     Nav(NavCommand),
+    Notifications(NotificationCommand),
     Chat(ChatCommand),
+    Coop(CoopCommand),
     Lobby(LobbyCommand),
     Replays(ReplayCommand),
     Maps(MapsCommand),
+    MapGenerator(MapGeneratorCommand),
     Mods(ModsCommand),
     Leaderboard(LeaderboardCommand),
+    PlayerCard(PlayerCardCommand),
+    Reporting(ReportingCommand),
+    Reviews(ReviewsCommand),
+    Social(SocialCommand),
+    Tournaments(TournamentsCommand),
+    Tutorials(TutorialsCommand),
+    Uploads(UploadsCommand),
+    ClientUpdate(ClientUpdateCommand),
     Settings(SettingsCommand),
 }
 
@@ -42,6 +57,12 @@ impl From<AuthCommand> for AppCommand {
 impl From<NavCommand> for AppCommand {
     fn from(c: NavCommand) -> Self {
         AppCommand::Nav(c)
+    }
+}
+
+impl From<NotificationCommand> for AppCommand {
+    fn from(c: NotificationCommand) -> Self {
+        AppCommand::Notifications(c)
     }
 }
 
@@ -81,8 +102,68 @@ impl From<LeaderboardCommand> for AppCommand {
     }
 }
 
+impl From<PlayerCardCommand> for AppCommand {
+    fn from(c: PlayerCardCommand) -> Self {
+        AppCommand::PlayerCard(c)
+    }
+}
+
+impl From<ReportingCommand> for AppCommand {
+    fn from(c: ReportingCommand) -> Self {
+        AppCommand::Reporting(c)
+    }
+}
+
 impl From<ModsCommand> for AppCommand {
     fn from(c: ModsCommand) -> Self {
         AppCommand::Mods(c)
+    }
+}
+
+impl From<SocialCommand> for AppCommand {
+    fn from(c: SocialCommand) -> Self {
+        AppCommand::Social(c)
+    }
+}
+
+impl From<TournamentsCommand> for AppCommand {
+    fn from(c: TournamentsCommand) -> Self {
+        AppCommand::Tournaments(c)
+    }
+}
+
+impl From<MapGeneratorCommand> for AppCommand {
+    fn from(c: MapGeneratorCommand) -> Self {
+        AppCommand::MapGenerator(c)
+    }
+}
+
+impl From<CoopCommand> for AppCommand {
+    fn from(c: CoopCommand) -> Self {
+        AppCommand::Coop(c)
+    }
+}
+
+impl From<TutorialsCommand> for AppCommand {
+    fn from(c: TutorialsCommand) -> Self {
+        AppCommand::Tutorials(c)
+    }
+}
+
+impl From<ReviewsCommand> for AppCommand {
+    fn from(c: ReviewsCommand) -> Self {
+        AppCommand::Reviews(c)
+    }
+}
+
+impl From<UploadsCommand> for AppCommand {
+    fn from(c: UploadsCommand) -> Self {
+        AppCommand::Uploads(c)
+    }
+}
+
+impl From<ClientUpdateCommand> for AppCommand {
+    fn from(c: ClientUpdateCommand) -> Self {
+        AppCommand::ClientUpdate(c)
     }
 }

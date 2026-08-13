@@ -1,4 +1,4 @@
-//! In-memory settings store for tests and offline runs — no disk IO.
+//! In-memory settings store for tests and offline runs: no disk IO.
 
 use async_trait::async_trait;
 use faf_domain::state::SettingsState;

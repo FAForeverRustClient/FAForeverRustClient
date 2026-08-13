@@ -1,14 +1,14 @@
-# FAF Rust Client — Architecture
+# FAF Rust Client: Architecture
 
-> **Status:** Phase 1 (design). No feature implementation yet.
+> **Status:** Active implementation. The core loop and primary client features are operational.
 > **Stack:** Rust backend + Tauri shell, React frontend reusing the ForgeMapToolkit design system.
 > **Prime directive:** one source of truth, fully state-driven UI, no per-tab logic drift, no refactoring storms.
 
-This document is the contract for how the client is built. If a change violates a rule here, change the rule on purpose (with a PR to this file) — don't quietly break it.
+This document is the contract for how the client is built. If a change violates a rule here, change the rule on purpose (with a PR to this file): don't quietly break it.
 
 ---
 
-## 1. Core principle — one unidirectional loop across the Tauri boundary
+## 1. Core principle: one unidirectional loop across the Tauri boundary
 
 The entire client is a single, unidirectional data-flow loop. State lives in Rust. The frontend holds a **reactive projection** of it. There is exactly one way state changes.
 
@@ -30,7 +30,7 @@ The entire client is a single, unidirectional data-flow loop. State lives in Rus
 
 1. **State changes only inside a pure reducer**, by applying an `Event`. Nothing else mutates `AppState`.
 2. **Services never mutate state.** They perform side effects (IO) and *emit events*.
-3. **The same `Event` that updates Rust state is serialized to the frontend.** The frontend reducer is a mirror. The UI cannot disagree with the backend — they consume the identical delta stream.
+3. **The same `Event` that updates Rust state is serialized to the frontend.** The frontend reducer is a mirror. The UI cannot disagree with the backend: they consume the identical delta stream.
 4. **The UI holds no business logic.** A tab = *select a slice of state* + *dispatch a command*. Nothing more.
 5. **Command results return as events, not as `invoke` return values.** Direct `invoke` returns are reserved for pure, stateless queries (e.g. "is this path valid?").
 
@@ -50,12 +50,11 @@ rust-client/
 │  │   ├─ state/              #   one file per slice: session, chat, lobby, vault, social, settings
 │  │   ├─ events.rs           #   AppEvent = enum of per-domain event enums
 │  │   ├─ commands.rs         #   AppCommand = enum of per-domain command enums
-│  │   ├─ reducer.rs          #   reduce(&mut AppState, &AppEvent) — pure, total, tested
+│  │   ├─ reducer.rs          #   reduce(&mut AppState, &AppEvent): pure, total, tested
 │  │   └─ protocol/           #   wire DTOs + encode/decode (lobby, irc, api, ice, replay). Pure.
 │  │
 │  ├─ faf-app/                # ALL async + IO lives here.
-│  │   ├─ ports/              #   trait defs: LobbyPort, IrcPort, ApiPort, IcePort,
-│  │   │                      #     ProcessPort, FsPort, AuthPort, ClockPort
+│  │   ├─ ports/              #   external-boundary traits; `ports/mod.rs` is canonical
 │  │   ├─ infra/              #   concrete Port impls (the ONLY place with real IO)
 │  │   ├─ services/           #   business logic, one module per feature:
 │  │   │                      #     auth/ chat/ lobby/ vault/ launcher/ replay/ social/
@@ -83,14 +82,14 @@ src-tauri    ← depends on faf-app + faf-ipc
 ui/          ← depends on generated faf-ipc TS bindings only
 ```
 
-A service can **never** reach a socket or the filesystem directly — only through a `Port` trait. `infra` is the only module allowed to do real IO. This is what makes everything testable and stops coupling rot.
+A service can **never** reach a socket or the filesystem directly: only through a `Port` trait. `infra` is the only module allowed to do real IO. This is what makes everything testable and stops coupling rot.
 
 ### Why these 4 crates
 
-- **`faf-domain`** is pure and dependency-free, so the reducer and protocol codecs — the bulk of the logic — are trivially unit-testable with zero setup.
+- **`faf-domain`** is pure and dependency-free, so the reducer and protocol codecs: the bulk of the logic: are trivially unit-testable with zero setup.
 - **`faf-app`** quarantines all async/IO. `ports`/`infra`/`services`/`runtime` are separate *modules* now; any can be promoted to its own crate later without moving logic.
 - **`faf-ipc`** isolates the type-generation boundary so backend and frontend types can never drift (see §5.7).
-- **`src-tauri`** stays thin — it's glue, not logic.
+- **`src-tauri`** stays thin: it's glue, not logic.
 
 ---
 
@@ -102,34 +101,33 @@ A service can **never** reach a socket or the filesystem directly — only throu
 // faf-domain/state/mod.rs
 #[derive(Clone, Default, Serialize, specta::Type)]
 pub struct AppState {
-    pub session:  SessionState,   // connection + auth status
+    pub session:  SessionState,
+    pub auth:     AuthState,
     pub chat:     ChatState,
     pub lobby:    LobbyState,
-    pub vault:    VaultState,
-    pub social:   SocialState,
-    pub settings: SettingsState,
+    // …one field per module in `faf-domain/src/state/`
 }
 ```
 
-Each slice lives in its own file with its own reducer and tests. `AppState` is pure aggregation — it has no methods beyond dispatching `reduce` to slice reducers. **No god struct.**
+Each slice lives in its own file with its own reducer and tests. `AppState` is pure aggregation: it has no methods beyond dispatching `reduce` to slice reducers. **No god struct.**
 
-### 3.2 Events — the only mutation, shared with the frontend
+### 3.2 Events: the only mutation, shared with the frontend
 
 ```rust
 // faf-domain/events.rs
 #[derive(Clone, Serialize, Deserialize, specta::Type)]
 pub enum AppEvent {
     Session(SessionEvent),
+    Auth(AuthEvent),
     Chat(ChatEvent),
     Lobby(LobbyEvent),
-    Vault(VaultEvent),
-    Social(SocialEvent),
+    // …one variant per state slice
 }
 ```
 
-Namespaced **enum-of-enums**, never one flat enum — this keeps the event surface from exploding as features land.
+Namespaced **enum-of-enums**, never one flat enum: this keeps the event surface from exploding as features land.
 
-### 3.3 The reducer — pure and total
+### 3.3 The reducer: pure and total
 
 ```rust
 // faf-domain/reducer.rs
@@ -162,7 +160,7 @@ pub async fn handle(cmd: LobbyCommand, ports: &Ports, out: &EventSink) -> anyhow
 }
 ```
 
-Testable with a **mock `Ports`** and an event-capturing `EventSink` — no network, no Tauri.
+Testable with a **mock `Ports`** and an event-capturing `EventSink`: no network, no Tauri.
 
 ### 3.5 The runtime loop (faf-app/runtime)
 
@@ -175,10 +173,22 @@ commands in (mpsc) ──▶ Dispatcher routes to Service
 
 The reduce step and the frontend-emit step consume the **same event value**, so backend state and frontend store are guaranteed identical.
 
+Runtime concurrency is expressed as policy, not as raw synchronization fields:
+
+- `SingleFlight` rejects overlapping ownership of one long-running operation;
+- `LatestRequest` gives replaceable reads a generation token so stale results cannot land;
+- `SerialMutation` orders short writes that must not overtake one another.
+
+These types live in `faf-app/runtime/policies.rs`. Services choose the policy that
+matches the operation; they do not select atomic memory orderings or share bare
+mutation mutexes. Long-lived lobby/chat connections deliberately remain
+single-flight rather than serial mutations, so `Disconnect` is never queued
+behind the connection task.
+
 ### 3.6 Frontend mirror
 
 ```ts
-// ui/store/reducer.ts  — mirrors faf-domain/reducer.rs
+// ui/store/reducer.ts : mirrors faf-domain/reducer.rs
 function applyEvent(state, event: AppEvent) {
   switch (event.kind) {
     case "Session": sessionReducer(state.session, event); break;
@@ -187,13 +197,27 @@ function applyEvent(state, event: AppEvent) {
   }
 }
 
-// ui/ipc/events.ts — single subscription for the whole app
+// ui/ipc/events.ts: single delta subscription for the whole app
 listen<AppEvent>("app://event", e => store.getState().apply(e.payload));
 ```
 
-One subscription, one reducer, slices mirror the backend. Tabs only `useStore(s => s.lobby.games)` and `dispatch(LobbyCommand.Host(...))`.
+One ordinary delta subscription and one reducer keep the slices mirrored. A separate,
+normally idle snapshot channel repairs the mirror if the bounded backend broadcast
+receiver ever lags; it is a recovery path, not a second source of mutations. Tabs
+only select state and dispatch typed commands. `RevisionedMirror` also verifies that
+ordinary event revisions are contiguous. It buffers an event that crosses a gap,
+coalesces concurrent recovery requests, replaces the mirror from a fresh snapshot,
+and only then drains contiguous buffered events. An out-of-order delta is never
+applied to a state that may have missed an earlier mutation.
 
-### 3.7 Type safety across the boundary — kills the #1 refactor source
+This is an explicit tradeoff, not a permanent assumption. Run
+`pnpm measure:state-sync [snapshot.json]` to measure serialized snapshot size and
+frontend JSON cost. The checked-in conformance fixture is useful for a repeatable
+lower-bound measurement, but it is not representative of a populated chat, vault,
+or replay session. Do not replace delta reduction with snapshot-per-event delivery
+until a captured live snapshot has been measured at realistic event rates.
+
+### 3.7 Type safety across the boundary: kills the #1 refactor source
 
 Use **`tauri-specta` + `specta`** to generate the TypeScript types for `AppCommand`, `AppEvent`, and every DTO directly from the Rust definitions, checked into `ui/ipc/bindings.ts` and verified in CI. Add a field in Rust → the TS won't compile until the frontend handles it. **There is no hand-written duplicate type anywhere.** This one choice eliminates the most common Tauri refactor storm.
 
@@ -203,13 +227,26 @@ Use **`tauri-specta` + `specta`** to generate the TypeScript types for `AppComma
 
 The ForgeMapToolkit design system is the **view layer only**.
 
-- **`design-system/`** — existing tokens + primitives lifted in as-is (`tokens.css`, `primitives.css`, primitive components). It stays a pure presentation library.
-- **A feature is a folder, not a class:** `features/<tab>/{ container.tsx, view.tsx, selectors.ts }`.
-  - `container.tsx` — selects state + dispatches commands. No other logic.
-  - `view.tsx` — pure, composed from design-system primitives only.
+- **`design-system/`**: existing tokens + primitives lifted in as-is (`tokens.css`, `primitives.css`, primitive components). It stays a pure presentation library.
+- **A feature is a folder, not a class:** `features/<tab>/` owns its view and focused
+  subcomponents. Small features may colocate selection and presentation in one file;
+  larger features extract dedicated components and pure helpers as they grow.
+  - Feature views select backend state and dispatch typed commands.
+  - Presentational subcomponents receive data and callbacks through props and compose
+    design-system primitives.
+  - Mature multi-view features keep their workspace shell small and give each tab,
+    advanced form, and reusable card/detail family its own module.
+  - Feature-specific CSS lives beside its feature; the global stylesheet is reserved
+    for shell layout, shared patterns, and cross-feature responsive rules.
   - There are **no "element classes."** Composition of primitives only. This structurally prevents "too many classes for simple UI elements."
-- **One typed IPC module + one event hook** for the entire app. Tabs never call `invoke`/`listen` directly. This is what kills per-tab inconsistency — every tab talks to the backend the same way.
-- **Store:** Zustand, slices mirroring the backend slices, one event reducer (§3.6).
+- **One IPC boundary + one ordinary event stream** for the entire app, plus the
+  snapshot-only lag recovery described above. `ipc/client.ts` owns typed domain
+  commands and events; `ipc/native.ts` owns narrow desktop facilities such as file
+  dialogs, notifications, external URLs and window focus. Features never import
+  Tauri packages directly. `pnpm run architecture` enforces both this rule and the
+  Rust service/infra dependency direction in CI.
+- **Store:** Zustand slices mirror the backend slices. The root reducer is only an
+  event router; each domain owns its pure frontend slice reducer (§3.6).
 - Routing reuses the existing ForgeMapToolkit `tabRoutes` pattern.
 
 Net effect: restyle freely without touching logic; add a tab without touching any other tab.
@@ -218,21 +255,27 @@ Net effect: restyle freely without touching logic; add a tab without touching an
 
 ## 5. External boundaries → Ports
 
-Each external system is a `Port` trait in `faf-app/ports`, implemented in `faf-app/infra`, and mockable in tests.
+Each external system is a `Port` trait in `faf-app/ports`, implemented in
+`faf-app/infra`, and mockable in tests. The canonical, compile-checked list is
+the [`Ports` bundle in `crates/faf-app/src/ports/mod.rs`](../crates/faf-app/src/ports/mod.rs).
+Do not duplicate that list here: adding a port must update the bundle, while a
+hand-maintained documentation table can silently drift.
 
-| Capability | External system | Port | Notes |
-|---|---|---|---|
-| Auth | OAuth2 (Ory Hydra) | `AuthPort` | Browser flow + local redirect listener, token refresh, secure storage |
-| Lobby protocol | `lobby.faforever.com` | `LobbyPort` | Long-lived TCP/WS JSON stream — modeled as an explicit **state machine** |
-| Chat | IRC | `IrcPort` | Channels, PMs, presence; second long-lived connection |
-| API / vault | REST (JSON:API) | `ApiPort` | Maps, mods, leaderboards, players, replay metadata |
-| Game connectivity | ICE adapter | `IcePort` | **Separate subprocess**, JSON-RPC over TCP |
-| Game launch | `ForgedAlliance.exe` | `ProcessPort` | Subprocess + args; files staged first |
-| Downloads / cache | Filesystem | `FsPort` | Maps, mods, featured-mod patches, avatars |
-| Replays | local files + live relay | (`FsPort` + `LobbyPort`) | SCFA replay parsing; live replay = relay stream |
-| Time | — | `ClockPort` | Injected for deterministic tests |
+Read-only request ports may use `ports::RequestError` when the frontend can act
+on the distinction between expired authentication, temporary unavailability,
+missing resources, rejected input and an unexpected client/response failure. The
+co-op path is the reference vertical slice. `infra::jsonapi::fetch_document_typed`
+preserves the category; the older `fetch_document` wrapper intentionally remains
+for adapters whose state and UI still accept only a sentence. Do not mechanically
+migrate those ports until the category produces a real recovery action.
 
 Long-lived/complex protocols (lobby, ICE) are each modeled as an **explicit state machine** inside their service, isolated and unit-tested.
+
+The lobby socket is a transport for several domain slices, not the owner of those
+slices. `services::lobby::connect` owns the connection lifecycle and
+`handle_update` demultiplexes one `LobbyUpdate` at a time into lobby, social, and
+notification events. Keep new server-pushed messages in
+that named update boundary rather than growing the `LobbyCommand::Connect` arm.
 
 ---
 
@@ -254,55 +297,55 @@ Long-lived/complex protocols (lobby, ICE) are each modeled as an **explicit stat
 
 ## 7. Phase plan
 
-### Phase 1 — design (this document). Done.
+### Phase 1: design (this document). Done.
 
-### Phase 2 — prove the loop end-to-end with ONE piece of state. No networking, no auth.
+### Phase 2: prove the loop end-to-end with ONE piece of state. No networking, no auth.
 
 1. **Workspace skeleton:** `faf-domain`, `faf-app`, `faf-ipc`, `src-tauri`, `ui/`. Everything compiles, empty.
-2. **One slice:** `SessionState { backend_version: String, status: ConnectionStatus }`. Define `SessionEvent`, `SessionCommand`, and the pure slice `reduce` — **with unit tests**.
+2. **One slice:** `SessionState { backend_version: String, status: ConnectionStatus }`. Define `SessionEvent`, `SessionCommand`, and the pure slice `reduce`: **with unit tests**.
 3. **Runtime loop:** `Dispatcher` (mpsc) + event `broadcast` + reduce step. One trivial `session` service handling a `Hello` command, emitting `BackendReady { version }`.
 4. **tauri-specta:** export TS bindings; `src-tauri` forwards every `AppEvent` to `emit("app://event")`.
 5. **Frontend loop:** typed IPC module + single `listen` hook + Zustand store with the `session` slice + mirror reducer. Status bar driven entirely by state.
 6. **Prove it:** app start → FE dispatches `Hello` → service emits `BackendReady` → reducer updates Rust `AppState` → same event emits to FE → store updates → status bar renders. One closed, fully-typed loop, tested at the reducer level.
 
-### Phase 3 — first real feature (auth). Done.
+### Phase 3: first real feature (auth). Done.
 
 Validated the "mechanical addition" claim by building the **auth** slice end-to-end and,
 in doing so, the pieces Phase 2 stubbed:
 
 - **Ports/infra layer** (`faf-app/ports/auth.rs`, `faf-app/infra/auth.rs`): an `AuthPort`
   trait with a `FakeAuth` impl, injected via a `Ports` bundle on `ServiceCtx`. The real
-  OAuth2 provider lands later behind the same trait — service/slice/UI unchanged.
+  OAuth2 provider lands later behind the same trait: service/slice/UI unchanged.
 - **Concurrent dispatch**: the loop spawns each command handler so a slow effect (login)
   never blocks other commands; state mutation still funnels through the single `emit`.
-- **State-driven routing**: the UI picks login vs. home purely from `auth.status` — no
+- **State-driven routing**: the UI picks login vs. the active destination purely from `auth.status`: no
   router logic in components.
 - **Mockability**: auth service tested (success + failure) by swapping the port, no IO.
 
-### Phase 4 — navigation + streaming lobby. Done.
+### Phase 4: navigation + streaming lobby. Done.
 
 Added the **nav** and **lobby** slices, exercising two things Phases 2–3 hadn't:
 
 - **Streaming port** (`LobbyPort::connect` → `mpsc::Receiver<Vec<Game>>`): the first
   *server-push* boundary, vs. auth's request/response. The lobby service forwards each
-  snapshot as a `GamesUpdated` event in a long-lived loop — which, thanks to per-command
+  snapshot as a `GamesUpdated` event in a long-lived loop: which, thanks to per-command
   task spawning, never blocks other commands. This is the pattern chat/IRC/live-replay reuse.
 - **Navigation in the source of truth**: `nav.activeTab` lives in `AppState`, changed via
-  the same command→event loop. Deliberate — it lets backend logic drive the view (e.g.
+  the same command→event loop. Deliberate: it lets backend logic drive the view (e.g.
   "joined a game → switch tab") and survives reconnects. Ephemeral widget state (hover, an
   open dropdown) still belongs in components, not here.
 - **Multi-tab shell**: `AppShell` renders a `TabBar` + active-tab content as a pure switch
   on `nav.activeTab`. Adding a tab = add a `Tab` variant + a feature folder; no other tab changes.
 
-### Phase 5+ — remaining features as mechanical additions.
+### Phase 5+: remaining features as mechanical additions.
 
 Each feature = *new slice + new service + new port impl*. None can introduce spaghetti: a service can't touch state, a tab can't touch logic.
 
-- **CI + bindings-drift check. Done.** `.github/workflows/ci.yml` runs `cargo test`, `cargo clippy -D warnings`, `tsc --noEmit`, `vite build`, and a job that regenerates `ui/src/ipc/bindings.ts` and fails on any diff — the type-drift guard, enforced.
-- **Real OAuth2. Done.** `faf-app/infra/oauth.rs` (`OAuthAuth`) implements `AuthPort` against FAF's Ory Hydra (Authorization Code + PKCE, loopback redirect listener, token exchange, keyring storage, `/me` lookup). `FakeAuth` stays for tests/offline (`FAF_FAKE_AUTH=1`). Service, slice and UI were untouched — the "swap the infra" claim, proven.
-- **Real lobby protocol + disconnect/cancellation. Done.** `faf-app/infra/lobby_ws.rs` (`LobbyClient`) speaks the FAF lobby WebSocket protocol (`ask_session`→`auth`→`game_info`) behind `LobbyPort`, aggregating `game_info` into the open-games list. `LobbyPort` gained `disconnect()` and the slice a `Disconnect` command, retiring the Phase-4 debt; cancellation is a `CancellationToken` shared between `connect` and `disconnect`, exercised by both fakes and the real client. The shared `TokenStore` (`infra/session.rs`) carries the OAuth access token from auth to the lobby without ever entering `AppState`. Lobby auth's anti-smurf `unique_id` is produced by running FAF's official `faf-uid` executable (`FAF_UID_PATH`) with the server-issued session — we invoke the binary rather than reproducing its encryption. `LobbyClient` is opt-in (`FAF_REAL_LOBBY=1`); `FakeLobby` remains the default so the app runs without that binary.
+- **CI + bindings-drift check. Done.** `.github/workflows/ci.yml` runs `cargo test`, `cargo clippy -D warnings`, `tsc --noEmit`, `vite build`, and a job that regenerates `ui/src/ipc/bindings.ts` and fails on any diff: the type-drift guard, enforced.
+- **Real OAuth2. Done.** `faf-app/infra/oauth.rs` (`OAuthAuth`) implements `AuthPort` against FAF's Ory Hydra (Authorization Code + PKCE, loopback redirect listener, token exchange, keyring storage, `/me` lookup). `FakeAuth` stays for tests/offline (`FAF_FAKE_AUTH=1`). Service, slice and UI were untouched: the "swap the infra" claim, proven.
+- **Real lobby protocol + disconnect/cancellation. Done.** `faf-app/infra/lobby_ws.rs` (`LobbyClient`) speaks the FAF lobby WebSocket protocol (`ask_session`→`auth`→`game_info`) behind `LobbyPort`, aggregating `game_info` into the open-games list. `LobbyPort` gained `disconnect()` and the slice a `Disconnect` command, retiring the Phase-4 debt; cancellation is a `CancellationToken` shared between `connect` and `disconnect`, exercised by both fakes and the real client. The shared `TokenStore` (`infra/session.rs`) carries the OAuth access token from auth to the lobby without ever entering `AppState`. Lobby auth's anti-smurf `unique_id` is produced by running FAF's official `faf-uid` executable (`FAF_UID_PATH`) with the server-issued session: we invoke the binary rather than reproducing its encryption. `LobbyClient` is selected automatically for account sessions; `FakeLobby` remains available through `FAF_FAKE_LOBBY=1` or the fully offline `FAF_FAKE_AUTH=1` mode.
 
-- **Settings + theming (central UI system). Done.** A `settings` slice — the first *persisted* slice — holds the UI `theme` (a typed `Theme` enum, so the frontend can't pick an invalid theme). New `SettingsPort` + `FileSettings` (JSON in the OS config dir) persist it; `SettingsCommand::Load` runs at startup, `SetTheme` persists on change. The service shows the persistence pattern: it emits the event (single reduce chokepoint), then reads the *post-reduce* slice back via a new `EventSink::snapshot()` and hands it to the port — services still never mutate state. The frontend projects `settings.theme` onto `<html data-theme>`; every component reads semantic CSS variables only, so the four shipped themes (`forgeDark`/`forgeLight`/`javaClient`/`pythonClient`) are pure token sets in `tokens.css`. A `Button` primitive centralizes control structure, and a dependency-free CI gate forbids hardcoded hex in component CSS. This is the contract that means a new design system never revisits a component file.
+- **Settings + theming (central UI system). Done.** A `settings` slice: the first *persisted* slice: holds the UI `theme` (a typed `Theme` enum, so the frontend can't pick an invalid theme). New `SettingsPort` + `FileSettings` (JSON in the OS config dir) persist it; `SettingsCommand::Load` runs at startup, `SetTheme` persists on change. The service shows the persistence pattern: it emits the event (single reduce chokepoint), then reads the *post-reduce* slice back via `EventSink::with_state` and hands it to the port: services still never mutate state, and unrelated slices are not cloned. The frontend projects `settings.theme` onto `<html data-theme>`; every component reads semantic CSS variables only, so the four shipped themes (`forgeDark`/`forgeLight`/`javaClient`/`pythonClient`) are pure token sets in `tokens.css`. A `Button` primitive centralizes control structure, and a dependency-free CI gate forbids hardcoded hex in component CSS. This is the contract that means a new design system never revisits a component file.
 
 Remaining order: chat → vault → launcher/ICE → replay → social → updater.
 

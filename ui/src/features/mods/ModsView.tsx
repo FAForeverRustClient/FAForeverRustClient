@@ -1,211 +1,321 @@
-// Mods tab — two sub-views mirroring the Python client's `ModVault` +
-// mod manager: Vault (the FAF mod vault, browse + install) and Installed
-// (a scan of the user's mods folder, with enable/disable + uninstall).
-// The sub-view choice is presentation-only, so it's local component state,
-// not routed through the backend Nav slice (same posture as MapsView.tsx).
+// Mods tab: vault discovery plus installed/active-mod management. Rust owns
+// the catalogue and filesystem/game.prefs state; this view derives only the
+// current search, filters, sorting and selection.
 
-import { useEffect, useState } from "react";
-import { ipc } from "../../ipc/client";
-import { useAppStore } from "../../store/store";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
-import type { InstalledMod, ModInstallStatus, ModListStatus, ModToggleStatus, VaultMod } from "../../ipc/bindings";
+import { SectionTabs } from "../../design-system/SectionTabs";
+import { Icon } from "../../design-system/Icon";
+import { RangeSlider } from "../../design-system/RangeSlider";
+import {
+  SearchField,
+  SearchPanel,
+  SearchPanelSubmit,
+  SearchPanelToggle,
+} from "../../design-system/SearchPanel";
+import type { InstalledMod } from "../../ipc/bindings";
+import { ipc } from "../../ipc/client";
+import { includesNormalized, isWithinDateRange, isWithinNumberRange } from "../../shared/filterRanges";
+import { loadStatusNote } from "../../shared/loadStatusNote";
+import { useAppStore } from "../../store/store";
+import {
+  installNote,
+  ModCard,
+  ModDetailPanel,
+  toggleNote,
+  UninstallDialog,
+} from "./ModVaultComponents";
+import { InstalledModsView } from "./InstalledModsView";
+import "./mods.css";
 
 type SubView = "vault" | "installed";
+type ModSort = "rating" | "newest" | "updated" | "name";
+type ModTypeFilter = "all" | "ui" | "sim";
+type RankedFilter = "all" | "ranked" | "unranked";
+type InstallFilter = "all" | "installed" | "available" | "updates";
+type ModPreset = "recommended" | "rating" | "ui" | "newest" | "all";
+type DateField = "updated" | "uploaded";
 
-const loadVault = () => ipc.dispatch({ kind: "Mods", command: { type: "loadVault" } });
+const PAGE_SIZE = 36;
+const MOD_PRESETS: Array<[ModPreset, string]> = [
+  ["recommended", "Featured"],
+  ["rating", "Highest rated"],
+  ["ui", "Recommended UI"],
+  ["newest", "Most recent"],
+  ["all", "All mods"],
+];
 
-const loadInstalled = () => ipc.dispatch({ kind: "Mods", command: { type: "loadInstalled" } });
-
-const installMod = (uid: string, downloadUrl: string) =>
-  ipc.dispatch({
-    kind: "Mods",
-    command: { type: "installMod", payload: { uid, downloadUrl } },
-  });
-
-const uninstallMod = (folderName: string) =>
-  ipc.dispatch({
-    kind: "Mods",
-    command: { type: "uninstallMod", payload: { folderName } },
-  });
-
-const toggleMod = (uid: string, enabled: boolean) =>
-  ipc.dispatch({
-    kind: "Mods",
-    command: { type: "toggleMod", payload: { uid, enabled } },
-  });
-
-function installNote(status: ModInstallStatus): string | null {
-  switch (status.type) {
-    case "idle":
-      return null;
-    case "installing":
-      return `Working on ${status.payload.uid}…`;
-    case "failed":
-      return `Failed: ${status.payload.reason}`;
-  }
-}
-
-function toggleNote(status: ModToggleStatus): string | null {
-  switch (status.type) {
-    case "idle":
-      return null;
-    case "toggling":
-      return `Updating ${status.payload.uid}…`;
-    case "failed":
-      return `Failed: ${status.payload.reason}`;
-  }
-}
-
-function loadNote(status: ModListStatus, loadingLabel: string, failedPrefix: string): string | null {
-  switch (status.type) {
-    case "idle":
-    case "ready":
-      return null;
-    case "loading":
-      return loadingLabel;
-    case "failed":
-      return `${failedPrefix}: ${status.payload.reason}`;
-  }
-}
-
-function ModTypeBadge({ modType }: { modType: "ui" | "sim" }) {
-  return <span className="muted"> · {modType === "ui" ? "UI mod" : "Sim mod"}</span>;
-}
+const loadVault = () => ipc.send({ kind: "Mods", command: { type: "loadVault" } });
+const loadInstalled = () => ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
+const installMod = (uid: string, downloadUrl: string) => ipc.send({ kind: "Mods", command: { type: "installMod", payload: { uid, downloadUrl } } });
+const uninstallMod = (folderName: string, uid: string) => ipc.send({ kind: "Mods", command: { type: "uninstallMod", payload: { folderName, uid } } });
+const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
 
 function VaultView({ busy }: { busy: boolean }) {
-  const vault = useAppStore((s) => s.state.mods.vault);
-  const vaultStatus = useAppStore((s) => s.state.mods.vaultStatus);
-  const installed = useAppStore((s) => s.state.mods.installed);
-  const installStatus = useAppStore((s) => s.state.mods.installStatus);
-  const note = loadNote(vaultStatus, "Loading mod vault…", "Could not load mod vault");
-  const installedUids = new Set(installed.map((m) => m.uid));
+  const vault = useAppStore((state) => state.state.mods.vault);
+  const vaultStatus = useAppStore((state) => state.state.mods.vaultStatus);
+  const installed = useAppStore((state) => state.state.mods.installed);
+  const installedStatus = useAppStore((state) => state.state.mods.installedStatus);
+  const installStatus = useAppStore((state) => state.state.mods.installStatus);
+  const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
+  const [search, setSearch] = useState("");
+  const [preset, setPreset] = useState<ModPreset>("recommended");
+  const [sort, setSort] = useState<ModSort>("rating");
+  const [modType, setModType] = useState<ModTypeFilter>("all");
+  const [ranked, setRanked] = useState<RankedFilter>("all");
+  const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
+  const [creator, setCreator] = useState("");
+  const [dateField, setDateField] = useState<DateField>("updated");
+  const [dateAfter, setDateAfter] = useState("");
+  const [dateBefore, setDateBefore] = useState("");
+  const [minimumRating, setMinimumRating] = useState<number | null>(null);
+  const [maximumRating, setMaximumRating] = useState<number | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [selectedUid, setSelectedUid] = useState<string | null>(null);
+  const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
+  const note = loadStatusNote(vaultStatus, "Loading mod vault…", "Could not load mod vault");
+  const installedByUid = useMemo(() => new Map(installed.map((mod) => [mod.uid, mod])), [installed]);
 
   useEffect(() => {
-    if (useAppStore.getState().state.mods.vaultStatus.type === "idle") {
-      loadVault();
-    }
+    const mods = useAppStore.getState().state.mods;
+    if (mods.vaultStatus.type === "idle") loadVault();
+    if (mods.installedStatus.type === "idle") loadInstalled();
   }, []);
+  useEffect(() => setPage(1), [
+    search, preset, sort, modType, ranked, installFilter, creator, dateField,
+    dateAfter, dateBefore, minimumRating, maximumRating,
+  ]);
+
+  const choosePreset = (next: ModPreset) => {
+    setPreset(next);
+    if (next === "recommended" || next === "rating" || next === "ui") setSort("rating");
+    if (next === "newest") setSort("newest");
+    if (next === "all") setSort("name");
+  };
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return vault
+      .filter((mod) => preset !== "recommended" || mod.recommended)
+      .filter((mod) => preset !== "ui" || mod.modType === "ui")
+      .filter((mod) => modType === "all" || mod.modType === modType)
+      .filter((mod) => ranked === "all" || mod.ranked === (ranked === "ranked"))
+      .filter((mod) => !creator.trim() || includesNormalized(mod.author, creator) || includesNormalized(mod.uploader, creator))
+      .filter((mod) => isWithinDateRange(dateField === "updated" ? mod.updatedAt : mod.createdAt, dateAfter, dateBefore))
+      .filter((mod) => isWithinNumberRange(mod.ratingTenths / 10, minimumRating, maximumRating))
+      .filter((mod) => {
+        const installedMod = installedByUid.get(mod.uid);
+        if (installFilter === "all") return true;
+        if (installFilter === "installed") return Boolean(installedMod);
+        if (installFilter === "updates") return Boolean(installedMod && installedMod.version !== mod.version);
+        return !installedMod;
+      })
+      .filter((mod) => !query || [mod.displayName, mod.author, mod.uploader, mod.description, mod.uid, mod.filename].some((value) => value.toLocaleLowerCase().includes(query)))
+      .slice()
+      .sort((left, right) => {
+        switch (sort) {
+          case "rating": return right.ratingTenths - left.ratingTenths || right.reviews - left.reviews;
+          case "newest": return (Date.parse(right.createdAt) || 0) - (Date.parse(left.createdAt) || 0);
+          case "updated": return (Date.parse(right.updatedAt) || 0) - (Date.parse(left.updatedAt) || 0);
+          case "name": return left.displayName.localeCompare(right.displayName);
+        }
+      });
+  }, [
+    vault, preset, modType, ranked, creator, dateField, dateAfter, dateBefore,
+    minimumRating, maximumRating, installFilter, installedByUid, search, sort,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageMods = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const selected = pageMods.find((mod) => mod.uid === selectedUid) ?? pageMods[0] ?? null;
+  const hiddenFilterCount = Number(installFilter !== "all")
+    + Number(dateAfter !== "" || dateBefore !== "");
+  const resetFilters = () => {
+    setModType("all");
+    setRanked("all");
+    setInstallFilter("all");
+    setCreator("");
+    setDateField("updated");
+    setDateAfter("");
+    setDateBefore("");
+    setMinimumRating(null);
+    setMaximumRating(null);
+  };
+  const clearSearch = () => {
+    setSearch("");
+    setPreset("recommended");
+    setSort("rating");
+    resetFilters();
+  };
 
   return (
     <>
-      {note && <p className="muted">{note}</p>}
-      {vaultStatus.type === "ready" && vault.length === 0 && (
-        <p className="muted">No mods found.</p>
-      )}
-      {vault.length > 0 && (
-        <ul className="game-list">
-          {vault.map((m: VaultMod) => {
-            const isInstalled = installedUids.has(m.uid);
-            const isBusy =
-              busy || (installStatus.type === "installing" && installStatus.payload.uid === m.uid);
-            return (
-              <li key={m.uid} className="game-row">
-                <span className="game-title">
-                  {m.displayName}
-                  <ModTypeBadge modType={m.modType} />
-                </span>
-                <span className="game-map muted">v{m.version}</span>
-                <span className="game-host muted">
-                  {m.author ? `by ${m.author}` : "unknown author"}
-                  {!m.ranked && " · unranked"}
-                </span>
-                <Button
-                  variant="primary"
-                  disabled={isBusy || isInstalled || !m.downloadUrl}
-                  onClick={() => installMod(m.uid, m.downloadUrl)}
-                >
-                  {isInstalled ? "Installed" : "Install"}
+      <SearchPanel
+        className="mod-search-panel"
+        onSubmit={(event) => { event.preventDefault(); setPage(1); }}
+        secondary={(
+          <>
+            {MOD_PRESETS.map(([key, label]) => (
+              <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)}>{label}</Button>
+            ))}
+            <span className="spacer" />
+            <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
+            <Button onClick={clearSearch}>Clear</Button>
+            <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> Refresh</Button>
+          </>
+        )}
+        advanced={filtersOpen ? (
+          <div className="search-panel-advanced">
+            <div className="search-panel-advanced-grid">
+              <SearchField label="Installation"><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">Any</option><option value="installed">Installed</option><option value="available">Not installed</option><option value="updates">Updates available</option></select></SearchField>
+              <SearchField label="Date field"><select className="search-panel-control" value={dateField} onChange={(event) => setDateField(event.target.value as DateField)}><option value="updated">Last updated</option><option value="uploaded">Uploaded</option></select></SearchField>
+              <SearchField label="After"><input className="search-panel-control" type="date" value={dateAfter} onChange={(event) => setDateAfter(event.target.value)} /></SearchField>
+              <SearchField label="Before"><input className="search-panel-control" type="date" value={dateBefore} onChange={(event) => setDateBefore(event.target.value)} /></SearchField>
+            </div>
+          </div>
+        ) : undefined}
+      >
+        <SearchField label="Mod" className="search-panel-field-grow">
+          <input className="search-panel-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, description, or UID" />
+        </SearchField>
+        <SearchField label="Creator" className="search-panel-field-grow">
+          <input className="search-panel-control" value={creator} onChange={(event) => setCreator(event.target.value)} placeholder="Any creator or uploader" />
+        </SearchField>
+        <RangeSlider
+          label="Review score"
+          min={0}
+          max={5}
+          step={0.5}
+          low={minimumRating}
+          high={maximumRating}
+          format={(value) => `${value}★`}
+          onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); }}
+        />
+        <SearchField label="Type" className="search-panel-field-compact">
+          <select className="search-panel-control" value={modType} onChange={(event) => { setModType(event.target.value as ModTypeFilter); setPreset("all"); }}><option value="all">Any</option><option value="ui">UI mods</option><option value="sim">Simulation mods</option></select>
+        </SearchField>
+        <SearchField label="Ranking" className="search-panel-field-compact">
+          <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">Any</option><option value="ranked">Ranked-safe</option><option value="unranked">Unranked</option></select>
+        </SearchField>
+        <SearchField label="Sort by" className="search-panel-field-compact">
+          <select className="search-panel-control" value={sort} onChange={(event) => { setSort(event.target.value as ModSort); setPreset("all"); }}><option value="rating">Highest rated</option><option value="newest">Most recent</option><option value="updated">Recently updated</option><option value="name">Name</option></select>
+        </SearchField>
+        <SearchPanelSubmit />
+      </SearchPanel>
+
+      {note && <p className="vault-note muted">{note}</p>}
+      {installedStatus.type === "failed" && <p className="vault-note muted">Installed-state detection is unavailable.</p>}
+      {vaultStatus.type === "ready" && filtered.length === 0 ? (
+        <div className="vault-empty">
+          <Icon name={vault.length === 0 ? "mods" : "search"} size={24} />
+          <h3>{vault.length === 0 ? "No mods available" : "No mods match"}</h3>
+          <p>
+            {vault.length === 0
+              ? "Refresh the vault when the FAF API is available."
+              : "Try a broader search or reset the filters."}
+          </p>
+        </div>
+      ) : pageMods.length > 0 ? (
+        <div className="vault-layout">
+          <section className="vault-browser">
+            <div className="vault-results-head">
+              <span>{filtered.length} {filtered.length === 1 ? "mod" : "mods"}</span>
+              <span>Page {currentPage} of {totalPages}</span>
+            </div>
+            <div className="mod-vault-grid">
+              {pageMods.map((mod) => {
+                const installedMod = installedByUid.get(mod.uid);
+                const isBusy = busy && (
+                  (installStatus.type === "installing" && installStatus.payload.uid === mod.uid)
+                  || (toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid)
+                );
+                return (
+                  <ModCard
+                    key={`${mod.uid}:${mod.versionId}`}
+                    mod={mod}
+                    installed={installedMod}
+                    active={selected?.uid === mod.uid}
+                    busy={busy}
+                    working={isBusy}
+                    onSelect={() => setSelectedUid(mod.uid)}
+                    onInstall={() => installMod(mod.uid, mod.downloadUrl)}
+                  />
+                );
+              })}
+            </div>
+            {totalPages > 1 && (
+              <div className="vault-pagination">
+                <Button disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+                  Previous
                 </Button>
-              </li>
+                <span>{currentPage} / {totalPages}</span>
+                <Button disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>
+                  Next
+                </Button>
+              </div>
+            )}
+          </section>
+          {selected && (() => {
+            const installedMod = installedByUid.get(selected.uid);
+            const installing = installStatus.type === "installing" && installStatus.payload.uid === selected.uid;
+            const toggling = toggleStatus.type === "toggling" && toggleStatus.payload.uid === selected.uid;
+            return (
+              <ModDetailPanel
+                mod={selected}
+                installed={installedMod}
+                busy={busy}
+                installing={installing}
+                toggling={toggling}
+                onInstall={() => installMod(selected.uid, selected.downloadUrl)}
+                onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
+                onUninstall={() => installedMod && setPendingUninstall(installedMod)}
+              />
             );
-          })}
-        </ul>
+          })()}
+        </div>
+      ) : null}
+      {pendingUninstall && (
+        <UninstallDialog
+          modName={pendingUninstall.displayName}
+          onCancel={() => setPendingUninstall(null)}
+          onConfirm={() => {
+            uninstallMod(pendingUninstall.folderName, pendingUninstall.uid);
+            setPendingUninstall(null);
+          }}
+        />
       )}
     </>
   );
 }
 
-function InstalledView({ busy }: { busy: boolean }) {
-  const installed = useAppStore((s) => s.state.mods.installed);
-  const installedStatus = useAppStore((s) => s.state.mods.installedStatus);
-  const installStatus = useAppStore((s) => s.state.mods.installStatus);
-  const toggleStatus = useAppStore((s) => s.state.mods.toggleStatus);
-  const note = loadNote(installedStatus, "Scanning mods folder…", "Could not scan mods folder");
-
-  useEffect(() => {
-    if (useAppStore.getState().state.mods.installedStatus.type === "idle") {
-      loadInstalled();
-    }
-  }, []);
-
-  return (
-    <>
-      {note && <p className="muted">{note}</p>}
-      {installedStatus.type === "ready" && installed.length === 0 && (
-        <p className="muted">No mods installed.</p>
-      )}
-      {installed.length > 0 && (
-        <ul className="game-list">
-          {installed.map((m: InstalledMod) => {
-            const isBusy =
-              busy ||
-              (installStatus.type === "installing" && installStatus.payload.uid === m.uid) ||
-              (toggleStatus.type === "toggling" && toggleStatus.payload.uid === m.uid);
-            return (
-              <li key={m.folderName} className="game-row">
-                <span className="game-title">
-                  {m.displayName}
-                  <ModTypeBadge modType={m.modType} />
-                </span>
-                <span className="game-map muted">v{m.version}</span>
-                <span className="game-host muted">{m.enabled ? "enabled" : "disabled"}</span>
-                <Button variant="ghost" disabled={isBusy} onClick={() => toggleMod(m.uid, !m.enabled)}>
-                  {m.enabled ? "Disable" : "Enable"}
-                </Button>
-                <Button variant="ghost" disabled={isBusy} onClick={() => uninstallMod(m.folderName)}>
-                  Uninstall
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </>
-  );
-}
-
-const SUB_VIEWS: Record<SubView, { label: string; Component: (p: { busy: boolean }) => JSX.Element }> = {
+const SUB_VIEWS: Record<
+  SubView,
+  { label: string; Component: (props: { busy: boolean }) => JSX.Element }
+> = {
   vault: { label: "Vault", Component: VaultView },
-  installed: { label: "Installed", Component: InstalledView },
+  installed: { label: "Installed & active", Component: InstalledModsView },
 };
 
 export function ModsView() {
   const [subView, setSubView] = useState<SubView>("vault");
-  const installStatus = useAppStore((s) => s.state.mods.installStatus);
-  const toggleStatus = useAppStore((s) => s.state.mods.toggleStatus);
+  const installStatus = useAppStore((state) => state.state.mods.installStatus);
+  const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const note = installNote(installStatus) ?? toggleNote(toggleStatus);
   const busy = installStatus.type === "installing" || toggleStatus.type === "toggling";
   const { Component } = SUB_VIEWS[subView];
-
   return (
-    <div className="lobby">
-      <div className="lobby-head">
-        <h2>Mods</h2>
-        {note && <span className="join-note muted">{note}</span>}
+    <div className="mods-workspace">
+      {note && <div className="vault-note muted">{note}</div>}
+      <div className="vault-subnav">
+        <SectionTabs
+          active={subView}
+          ariaLabel="Mod library views"
+          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: SUB_VIEWS[key].label }))}
+          onChange={setSubView}
+        />
       </div>
-
-      <div className="lobby-head">
-        {(Object.keys(SUB_VIEWS) as SubView[]).map((key) => (
-          <Button
-            key={key}
-            variant={subView === key ? "primary" : "ghost"}
-            onClick={() => setSubView(key)}
-          >
-            {SUB_VIEWS[key].label}
-          </Button>
-        ))}
-      </div>
-
       <Component busy={busy} />
     </div>
   );

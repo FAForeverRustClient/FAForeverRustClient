@@ -1,64 +1,154 @@
-//! Leaderboard slice — two parallel FAF ranking systems, mirrored from the
-//! two reference clients:
+//! Leaderboards: FAF's statistical rating boards and competitive leagues.
 //!
-//! - **Ladder brackets** (1v1/2v2/3v3/4v4): the league/season/division
-//!   system (mirrors the Java client's `theme/leaderboard/` views). Players
-//!   are placed into a league, each league runs seasons, and within a
-//!   season each player has a `score` and lands in a division/subdivision
-//!   (Bronze III, Gold I, …). Also carries the player's underlying rating
-//!   for that game mode (from the flat rating system below).
-//! - **Global** (and, if ever surfaced, other non-divisional categories):
-//!   a flat rating list with no divisions (mirrors the Python client's
-//!   `LeaderboardWidget`/`LeaderboardRatingApiConnector`).
-//!
-//! Both funnel into the same [`LeaderboardEntry`] shape; fields that don't
-//! apply to a given system (`score`/`division` for global, none missing for
-//! ladder entries) are `None`.
+//! The legacy Python client is the reference for paged rating statistics;
+//! the Java client is the reference for seasons, divisions and placement
+//! progress. Both are represented in this slice so the frontend remains a
+//! projection of authoritative application state.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-/// One ladder bracket, as listed from the FAF Data API (`GET /data/league`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum LeaderboardMode {
+    #[default]
+    Ratings,
+    Leagues,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RatingLeaderboard {
+    pub id: i32,
+    pub technical_name: String,
+    pub name: String,
+    pub description: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct League {
     pub id: i32,
-    /// e.g. `"ladder1v1"` — shown as-is; this client has no i18n table to
-    /// resolve a display name from (same pragmatic choice already made for
-    /// mod technical names in the replay vault).
     pub technical_name: String,
+    pub name: String,
+    pub description: String,
 }
 
-/// One row in a rankings table — either a ladder bracket's active-season
-/// entry or a global-rating entry (see the module docs for which fields
-/// apply to which).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct LeaderboardEntry {
-    /// Computed client-side from sort order — not an API field.
-    pub rank: i32,
-    pub player_name: String,
-    /// League placement score. `None` for global-rating entries, which
-    /// have no league/season concept.
-    pub score: Option<i32>,
-    /// The player's underlying TrueSkill-derived rating for this game
-    /// mode — present for both ladder and global entries.
-    pub rating: Option<i32>,
-    pub games_played: i32,
-    /// e.g. `"Bronze III"`. `None` for global-rating entries (no
-    /// divisions there), or if a ladder player has none yet (still in
-    /// placement games).
-    pub division: Option<String>,
-    /// `divisionIndex * 1000 + subdivisionIndex` — higher is a higher-tier
-    /// division. A separate sortable field from `division` (the display
-    /// string) so the frontend can put the highest division first without
-    /// parsing/guessing an order out of `nameKey` text.
-    pub division_order: Option<i32>,
+pub struct LeagueSeason {
+    pub id: i32,
+    pub league_id: i32,
+    pub leaderboard_id: i32,
+    pub season_number: i32,
+    pub name: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub placement_games: i32,
+    pub placement_games_returning_player: i32,
+    pub active: bool,
 }
 
-/// Status of a leagues/entries/global fetch (mirrors
-/// [`crate::state::MapListStatus`] — kept local since these load
-/// independently).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LeaderboardTier {
+    pub name: String,
+    pub division: String,
+    pub subdivision: String,
+    pub division_order: i32,
+    pub highest_score: i32,
+    pub image_url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LeaderboardEntry {
+    pub player_id: i32,
+    pub rank: i32,
+    pub player_name: String,
+    /// Absolute URL of the player's selected avatar, when one is assigned.
+    pub avatar_url: Option<String>,
+    pub score: Option<i32>,
+    pub rating: Option<i32>,
+    pub mean: Option<f64>,
+    pub deviation: Option<f64>,
+    pub games_played: i32,
+    pub won_games: Option<i32>,
+    pub update_time: Option<String>,
+    pub division: Option<String>,
+    pub division_order: Option<i32>,
+    pub highest_score: Option<i32>,
+    pub division_image_url: Option<String>,
+    pub returning_player: Option<bool>,
+}
+
+impl LeaderboardEntry {
+    pub fn win_rate(&self) -> Option<f64> {
+        self.won_games.map(|wins| {
+            if self.games_played == 0 {
+                0.0
+            } else {
+                wins as f64 / self.games_played as f64
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RatingQuery {
+    pub leaderboard: String,
+    pub page: i32,
+    pub page_size: i32,
+    pub active_only: bool,
+    pub updated_after: Option<String>,
+    pub updated_before: Option<String>,
+    pub player: String,
+}
+
+impl Default for RatingQuery {
+    fn default() -> Self {
+        Self {
+            leaderboard: "global".into(),
+            page: 1,
+            page_size: 100,
+            active_only: true,
+            updated_after: None,
+            updated_before: None,
+            player: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RatingPage {
+    pub entries: Vec<LeaderboardEntry>,
+    pub page: i32,
+    pub page_size: i32,
+    pub total_pages: i32,
+    pub total_results: Option<i32>,
+}
+
+impl Default for RatingPage {
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+            page: 1,
+            page_size: 100,
+            total_pages: 1,
+            total_results: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SeasonLeaderboard {
+    pub entries: Vec<LeaderboardEntry>,
+    pub tiers: Vec<LeaderboardTier>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum LeaderboardStatus {
@@ -66,81 +156,176 @@ pub enum LeaderboardStatus {
     Idle,
     Loading,
     Ready,
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardState {
+    pub mode: LeaderboardMode,
+    pub rating_leaderboards: Vec<RatingLeaderboard>,
     pub leagues: Vec<League>,
-    pub leagues_status: LeaderboardStatus,
+    pub catalog_status: LeaderboardStatus,
+    pub rating_query: RatingQuery,
+    pub rating_page: RatingPage,
+    pub ratings_status: LeaderboardStatus,
     pub selected_league_id: Option<i32>,
-    pub entries: Vec<LeaderboardEntry>,
-    pub entries_status: LeaderboardStatus,
-    pub global_entries: Vec<LeaderboardEntry>,
-    pub global_status: LeaderboardStatus,
+    pub seasons: Vec<LeagueSeason>,
+    pub seasons_status: LeaderboardStatus,
+    pub selected_season_id: Option<i32>,
+    pub season_entries: Vec<LeaderboardEntry>,
+    pub tiers: Vec<LeaderboardTier>,
+    pub season_status: LeaderboardStatus,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum LeaderboardEvent {
-    LeaguesLoading,
-    LeaguesLoaded { leagues: Vec<League> },
-    LeaguesLoadFailed { reason: String },
     #[serde(rename_all = "camelCase")]
-    EntriesLoading { league_id: i32 },
+    ModeChanged {
+        mode: LeaderboardMode,
+    },
+    CatalogLoading,
     #[serde(rename_all = "camelCase")]
-    EntriesLoaded { league_id: i32, entries: Vec<LeaderboardEntry> },
-    EntriesLoadFailed { reason: String },
-    GlobalLoading,
-    GlobalLoaded { entries: Vec<LeaderboardEntry> },
-    GlobalLoadFailed { reason: String },
+    CatalogLoaded {
+        rating_leaderboards: Vec<RatingLeaderboard>,
+        leagues: Vec<League>,
+    },
+    #[serde(rename_all = "camelCase")]
+    CatalogLoadFailed {
+        reason: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    RatingsLoading {
+        query: RatingQuery,
+    },
+    #[serde(rename_all = "camelCase")]
+    RatingsLoaded {
+        query: RatingQuery,
+        page: RatingPage,
+    },
+    #[serde(rename_all = "camelCase")]
+    RatingsLoadFailed {
+        reason: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    SeasonsLoading {
+        league_id: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    SeasonsLoaded {
+        league_id: i32,
+        seasons: Vec<LeagueSeason>,
+    },
+    #[serde(rename_all = "camelCase")]
+    SeasonsLoadFailed {
+        reason: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    SeasonLoading {
+        season_id: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    SeasonLoaded {
+        season_id: i32,
+        leaderboard: SeasonLeaderboard,
+    },
+    #[serde(rename_all = "camelCase")]
+    SeasonLoadFailed {
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum LeaderboardCommand {
-    LoadLeagues,
     #[serde(rename_all = "camelCase")]
-    SelectLeague { league_id: i32 },
-    LoadGlobal,
+    SetMode {
+        mode: LeaderboardMode,
+    },
+    LoadCatalog,
+    #[serde(rename_all = "camelCase")]
+    LoadRatings {
+        query: RatingQuery,
+    },
+    #[serde(rename_all = "camelCase")]
+    SelectLeague {
+        league_id: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    SelectSeason {
+        season_id: i32,
+    },
 }
 
 pub fn reduce(state: &mut LeaderboardState, event: &LeaderboardEvent) {
     match event {
-        LeaderboardEvent::LeaguesLoading => state.leagues_status = LeaderboardStatus::Loading,
-        LeaderboardEvent::LeaguesLoaded { leagues } => {
+        LeaderboardEvent::ModeChanged { mode } => state.mode = *mode,
+        LeaderboardEvent::CatalogLoading => state.catalog_status = LeaderboardStatus::Loading,
+        LeaderboardEvent::CatalogLoaded {
+            rating_leaderboards,
+            leagues,
+        } => {
+            state.rating_leaderboards = rating_leaderboards.clone();
             state.leagues = leagues.clone();
-            state.leagues_status = LeaderboardStatus::Ready;
+            state.catalog_status = LeaderboardStatus::Ready;
         }
-        LeaderboardEvent::LeaguesLoadFailed { reason } => {
-            state.leagues_status = LeaderboardStatus::Failed {
+        LeaderboardEvent::CatalogLoadFailed { reason } => {
+            state.catalog_status = LeaderboardStatus::Failed {
                 reason: reason.clone(),
-            }
+            };
         }
-        LeaderboardEvent::EntriesLoading { league_id } => {
+        LeaderboardEvent::RatingsLoading { query } => {
+            state.rating_query = query.clone();
+            state.ratings_status = LeaderboardStatus::Loading;
+        }
+        LeaderboardEvent::RatingsLoaded { query, page } => {
+            state.rating_query = query.clone();
+            state.rating_page = page.clone();
+            state.ratings_status = LeaderboardStatus::Ready;
+        }
+        LeaderboardEvent::RatingsLoadFailed { reason } => {
+            state.ratings_status = LeaderboardStatus::Failed {
+                reason: reason.clone(),
+            };
+        }
+        LeaderboardEvent::SeasonsLoading { league_id } => {
             state.selected_league_id = Some(*league_id);
-            state.entries_status = LeaderboardStatus::Loading;
+            state.seasons_status = LeaderboardStatus::Loading;
+            state.selected_season_id = None;
+            state.seasons.clear();
+            state.season_entries.clear();
+            state.tiers.clear();
         }
-        LeaderboardEvent::EntriesLoaded { league_id, entries } => {
+        LeaderboardEvent::SeasonsLoaded { league_id, seasons } => {
             state.selected_league_id = Some(*league_id);
-            state.entries = entries.clone();
-            state.entries_status = LeaderboardStatus::Ready;
+            state.seasons = seasons.clone();
+            state.seasons_status = LeaderboardStatus::Ready;
         }
-        LeaderboardEvent::EntriesLoadFailed { reason } => {
-            state.entries_status = LeaderboardStatus::Failed {
+        LeaderboardEvent::SeasonsLoadFailed { reason } => {
+            state.seasons_status = LeaderboardStatus::Failed {
                 reason: reason.clone(),
-            }
+            };
         }
-        LeaderboardEvent::GlobalLoading => state.global_status = LeaderboardStatus::Loading,
-        LeaderboardEvent::GlobalLoaded { entries } => {
-            state.global_entries = entries.clone();
-            state.global_status = LeaderboardStatus::Ready;
+        LeaderboardEvent::SeasonLoading { season_id } => {
+            state.selected_season_id = Some(*season_id);
+            state.season_status = LeaderboardStatus::Loading;
         }
-        LeaderboardEvent::GlobalLoadFailed { reason } => {
-            state.global_status = LeaderboardStatus::Failed {
+        LeaderboardEvent::SeasonLoaded {
+            season_id,
+            leaderboard,
+        } => {
+            state.selected_season_id = Some(*season_id);
+            state.season_entries = leaderboard.entries.clone();
+            state.tiers = leaderboard.tiers.clone();
+            state.season_status = LeaderboardStatus::Ready;
+        }
+        LeaderboardEvent::SeasonLoadFailed { reason } => {
+            state.season_status = LeaderboardStatus::Failed {
                 reason: reason.clone(),
-            }
+            };
         }
     }
 }
@@ -149,122 +334,75 @@ pub fn reduce(state: &mut LeaderboardState, event: &LeaderboardEvent) {
 mod tests {
     use super::*;
 
-    fn league(id: i32) -> League {
-        League {
-            id,
-            technical_name: "ladder1v1".into(),
-        }
-    }
-
-    fn entry(rank: i32, name: &str) -> LeaderboardEntry {
-        LeaderboardEntry {
-            rank,
-            player_name: name.into(),
-            score: Some(1500),
-            rating: Some(1200),
-            games_played: 42,
-            division: Some("Gold I".into()),
-            division_order: Some(5001),
-        }
+    #[test]
+    fn rating_query_defaults_match_python_client() {
+        let query = RatingQuery::default();
+        assert_eq!(query.leaderboard, "global");
+        assert_eq!(query.page, 1);
+        assert_eq!(query.page_size, 100);
+        assert!(query.active_only);
     }
 
     #[test]
-    fn leagues_loading_then_loaded() {
-        let mut s = LeaderboardState::default();
-        assert_eq!(s.leagues_status, LeaderboardStatus::Idle);
-        reduce(&mut s, &LeaderboardEvent::LeaguesLoading);
-        assert_eq!(s.leagues_status, LeaderboardStatus::Loading);
+    fn rating_load_keeps_query_and_page_together() {
+        let mut state = LeaderboardState::default();
+        let query = RatingQuery {
+            page: 3,
+            ..RatingQuery::default()
+        };
         reduce(
-            &mut s,
-            &LeaderboardEvent::LeaguesLoaded {
-                leagues: vec![league(1)],
+            &mut state,
+            &LeaderboardEvent::RatingsLoading {
+                query: query.clone(),
             },
         );
-        assert_eq!(s.leagues_status, LeaderboardStatus::Ready);
-        assert_eq!(s.leagues.len(), 1);
+        assert_eq!(state.rating_query.page, 3);
+        reduce(
+            &mut state,
+            &LeaderboardEvent::RatingsLoaded {
+                query,
+                page: RatingPage {
+                    page: 3,
+                    total_pages: 7,
+                    ..RatingPage::default()
+                },
+            },
+        );
+        assert_eq!(state.rating_page.page, 3);
+        assert_eq!(state.rating_page.total_pages, 7);
+        assert_eq!(state.ratings_status, LeaderboardStatus::Ready);
     }
 
     #[test]
-    fn leagues_load_failure_records_reason() {
-        let mut s = LeaderboardState::default();
+    fn changing_league_clears_stale_season_data() {
+        let mut state = LeaderboardState {
+            selected_season_id: Some(4),
+            season_entries: vec![LeaderboardEntry {
+                player_id: 1,
+                rank: 1,
+                player_name: "Commander".into(),
+                avatar_url: None,
+                score: Some(100),
+                rating: Some(1500),
+                mean: None,
+                deviation: None,
+                games_played: 4,
+                won_games: None,
+                update_time: None,
+                division: None,
+                division_order: None,
+                highest_score: None,
+                division_image_url: None,
+                returning_player: None,
+            }],
+            ..LeaderboardState::default()
+        };
         reduce(
-            &mut s,
-            &LeaderboardEvent::LeaguesLoadFailed {
-                reason: "offline".into(),
-            },
+            &mut state,
+            &LeaderboardEvent::SeasonsLoading { league_id: 8 },
         );
-        assert_eq!(
-            s.leagues_status,
-            LeaderboardStatus::Failed {
-                reason: "offline".into()
-            }
-        );
-    }
-
-    #[test]
-    fn entries_loading_then_loaded_tracks_selected_league() {
-        let mut s = LeaderboardState::default();
-        reduce(&mut s, &LeaderboardEvent::EntriesLoading { league_id: 7 });
-        assert_eq!(s.entries_status, LeaderboardStatus::Loading);
-        assert_eq!(s.selected_league_id, Some(7));
-        reduce(
-            &mut s,
-            &LeaderboardEvent::EntriesLoaded {
-                league_id: 7,
-                entries: vec![entry(1, "Seraphim-Noob")],
-            },
-        );
-        assert_eq!(s.entries_status, LeaderboardStatus::Ready);
-        assert_eq!(s.entries.len(), 1);
-        assert_eq!(s.selected_league_id, Some(7));
-    }
-
-    #[test]
-    fn entries_load_failure_records_reason() {
-        let mut s = LeaderboardState::default();
-        reduce(
-            &mut s,
-            &LeaderboardEvent::EntriesLoadFailed {
-                reason: "no active season".into(),
-            },
-        );
-        assert_eq!(
-            s.entries_status,
-            LeaderboardStatus::Failed {
-                reason: "no active season".into()
-            }
-        );
-    }
-
-    #[test]
-    fn global_loading_then_loaded() {
-        let mut s = LeaderboardState::default();
-        reduce(&mut s, &LeaderboardEvent::GlobalLoading);
-        assert_eq!(s.global_status, LeaderboardStatus::Loading);
-        reduce(
-            &mut s,
-            &LeaderboardEvent::GlobalLoaded {
-                entries: vec![entry(1, "Seraphim-Noob")],
-            },
-        );
-        assert_eq!(s.global_status, LeaderboardStatus::Ready);
-        assert_eq!(s.global_entries.len(), 1);
-    }
-
-    #[test]
-    fn global_load_failure_records_reason() {
-        let mut s = LeaderboardState::default();
-        reduce(
-            &mut s,
-            &LeaderboardEvent::GlobalLoadFailed {
-                reason: "offline".into(),
-            },
-        );
-        assert_eq!(
-            s.global_status,
-            LeaderboardStatus::Failed {
-                reason: "offline".into()
-            }
-        );
+        assert_eq!(state.selected_league_id, Some(8));
+        assert_eq!(state.selected_season_id, None);
+        assert!(state.season_entries.is_empty());
     }
 }

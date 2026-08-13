@@ -1,0 +1,529 @@
+.mods-workspace {
+  min-width: 0;
+}
+
+.mods-heading > div:first-child {
+  min-width: 0;
+}
+
+.mods-heading h2 {
+  margin-bottom: 2px;
+}
+
+.mods-heading p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.mod-vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+  gap: var(--space-3);
+}
+
+.mod-vault-card {
+  min-width: 0;
+  overflow: hidden;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.mod-vault-card:hover,
+.mod-vault-card.active {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.mod-vault-card.active {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.mod-vault-card-main {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  flex-direction: column;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.mod-vault-card-main:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.mod-vault-image-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.mod-vault-thumb,
+.mod-vault-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Mod art is a logo on transparency, so `contain` already leaves margin of its
+   own. 18px on top of that shrank the one thing identifying the mod. */
+.mod-vault-thumb {
+  padding: 10px;
+}
+
+.mod-vault-preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-subtle);
+  background: var(--color-bg);
+}
+
+/* The type moved off the art and into the facts line. It stays colour-coded:
+   a simulation mod is the kind that changes what happens in a match. */
+.mod-vault-type {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-sm);
+}
+
+.mod-vault-type.ui {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
+}
+
+.mod-vault-type.sim {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
+}
+
+.mod-vault-card-copy {
+  display: flex;
+  min-width: 0;
+  padding: 12px 12px 8px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Two lines, with the height reserved either way so a one-line name does not
+   make its card shorter than its neighbours in the grid. Mod names are long
+   ("BrewLAN: Additional unit mods") and a single ellipsised line hid the part
+   that distinguishes one release from another. */
+.mod-vault-card-copy strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  min-height: 2.6em;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.mod-vault-card-copy small {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Type, rating and date on one wrapping line. The previous three-column table
+   spent a vertical rule and an uppercase caption on each of three short
+   values, which read as a spec sheet rather than a card. */
+.mod-vault-card-facts {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 0 12px 12px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.mod-vault-fact {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mod-vault-fact svg {
+  flex: 0 0 auto;
+  color: var(--color-warn);
+}
+
+.mod-vault-card-action {
+  display: flex;
+  min-height: 40px;
+  padding: 6px 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* "Unranked" as bare grey text read as a caption rather than a property of the
+   mod. Toned so installed/ranked-safe and needs-attention are distinguishable
+   without reading, and status colour is reserved for status. */
+.mod-vault-state {
+  display: inline-flex;
+  min-width: 0;
+  overflow: hidden;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mod-vault-state.is-muted {
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+}
+
+.mod-vault-state.is-ok {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+}
+
+.mod-vault-state.is-warn {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+}
+
+.mod-vault-card-action button {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.mod-vault-details {
+  position: sticky;
+  top: var(--space-3);
+  overflow: hidden;
+}
+
+.mod-vault-detail-preview {
+  display: flex;
+  width: 100%;
+  height: 210px;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.mod-vault-detail-preview .mod-vault-preview {
+  padding: 24px;
+}
+
+.mod-vault-detail-body {
+  padding: var(--space-3);
+}
+
+.mod-vault-detail-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.mod-vault-detail-kicker span {
+  padding: 2px 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.mod-vault-detail-kicker .ui,
+.mod-vault-detail-kicker .ranked {
+  color: var(--color-ok);
+}
+
+.mod-vault-detail-kicker .sim,
+.mod-vault-detail-kicker .unranked {
+  color: var(--color-warn);
+}
+
+.mod-vault-detail-body h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.mod-vault-byline {
+  margin: 3px 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.mod-vault-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+}
+
+.mod-vault-summary > div {
+  min-width: 0;
+  padding: 8px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.mod-vault-summary dt {
+  margin-bottom: 2px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.mod-vault-summary dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mod-vault-description {
+  margin-top: var(--space-3);
+}
+
+.mod-vault-description h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+
+.mod-vault-description p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.mod-vault-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.mod-vault-uninstall,
+.mod-vault-uninstall-confirm {
+  color: var(--color-error);
+}
+
+.mod-vault-uninstall:hover,
+.mod-vault-uninstall:focus-visible,
+.mod-vault-uninstall-confirm:hover,
+.mod-vault-uninstall-confirm:focus-visible {
+  border-color: var(--color-error);
+}
+
+.mod-uninstall-dialog {
+  width: min(520px, calc(100vw - 64px));
+}
+
+.mod-uninstall-dialog h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+}
+
+.mod-uninstall-dialog p {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.mod-uninstall-dialog > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.installed-mod-library {
+  min-width: 0;
+}
+
+.installed-mod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--space-2);
+}
+
+.installed-mod-card {
+  display: grid;
+  min-width: 0;
+  min-height: 86px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px;
+}
+
+.installed-mod-card:hover,
+.installed-mod-card.is-enabled {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.installed-mod-card .mod-vault-thumb {
+  width: 72px;
+  height: 72px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+}
+
+.installed-mod-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.installed-mod-copy > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.installed-mod-copy strong,
+.installed-mod-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.installed-mod-copy strong {
+  font-size: 12px;
+}
+
+.installed-mod-copy small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.mod-state-dot {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+  text-transform: uppercase;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.mod-state-dot.is-enabled {
+  color: var(--color-ok);
+}
+
+.mod-state-dot.is-disabled {
+  color: var(--color-subtle);
+}
+
+.installed-mod-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.installed-mod-actions button {
+  min-height: 30px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+
+
+
+@media (max-width: 900px) {
+.mod-vault-details {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(220px, 0.75fr) minmax(300px, 1.25fr);
+  }
+
+}
+
+
+
+@media (max-width: 700px) {
+.mods-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mod-vault-toolbar {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .mod-vault-toolbar > .mod-vault-type-filter,
+  .mod-vault-toolbar > .mod-vault-ranking-filter,
+  .mod-vault-toolbar > .mod-vault-sort {
+    flex: 1 1 140px;
+    width: auto;
+  }
+
+  .mod-vault-details {
+    display: block;
+  }
+
+  .mod-vault-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  .installed-mod-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .installed-mod-card {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .installed-mod-card .mod-vault-thumb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .installed-mod-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}

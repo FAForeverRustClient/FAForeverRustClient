@@ -1,0 +1,6540 @@
+{
+  "initial": {
+    "session": {
+      "backendVersion": "",
+      "status": "disconnected",
+      "offlineAuth": false
+    },
+    "install": {
+      "gameReady": false,
+      "replayReady": false,
+      "checked": false
+    },
+    "auth": {
+      "status": "loggedOut",
+      "player": null,
+      "error": null,
+      "mode": "account"
+    },
+    "nav": {
+      "activeTab": "news"
+    },
+    "notifications": {
+      "items": []
+    },
+    "chat": {
+      "status": "disconnected",
+      "username": "",
+      "channels": [],
+      "retainedHistories": [],
+      "activeChannel": "",
+      "showJoinsParts": false,
+      "serverAutoJoin": []
+    },
+    "coop": {
+      "scenarios": [],
+      "missions": [],
+      "catalogStatus": {
+        "type": "idle"
+      },
+      "selectedMissionId": null,
+      "playerCount": 0,
+      "leaderboard": [],
+      "leaderboardStatus": {
+        "type": "idle"
+      }
+    },
+    "lobby": {
+      "status": "disconnected",
+      "games": [],
+      "liveGames": [],
+      "join": {
+        "type": "idle"
+      },
+      "matchmakerQueues": [],
+      "matchmaking": {
+        "type": "idle"
+      },
+      "party": {
+        "ownerId": null,
+        "members": []
+      },
+      "vetoes": [],
+      "playMode": "custom",
+      "availableAvatars": [],
+      "avatarListStatus": "idle",
+      "avatarListError": "",
+      "avatarSelectionStatus": "idle",
+      "avatarSelectionError": ""
+    },
+    "replays": {
+      "status": {
+        "type": "idle"
+      },
+      "lastWarning": null,
+      "liveTracking": null,
+      "vault": [],
+      "vaultStatus": {
+        "type": "idle"
+      },
+      "vaultQuery": {
+        "player": "",
+        "exactPlayer": false,
+        "map": "",
+        "mapAuthor": "",
+        "title": "",
+        "replayId": "",
+        "host": "",
+        "featuredMods": [],
+        "leaderboards": [],
+        "factions": [],
+        "victoryConditions": [],
+        "minRating": null,
+        "maxRating": null,
+        "minReviewScore": null,
+        "maxReviewScore": null,
+        "minDurationMinutes": null,
+        "maxDurationMinutes": null,
+        "mapMinPlayers": null,
+        "mapMaxPlayers": null,
+        "mapMinSizeKm": null,
+        "mapMaxSizeKm": null,
+        "rankedMapOnly": false,
+        "after": "",
+        "before": "",
+        "onlyRanked": false,
+        "sortBy": "startTime",
+        "sortDescending": true,
+        "page": 1,
+        "pageSize": 50
+      },
+      "vaultHasMore": false,
+      "downloadStatus": {
+        "type": "idle"
+      },
+      "featuredMods": [],
+      "local": [],
+      "localStatus": {
+        "type": "idle"
+      }
+    },
+    "maps": {
+      "vault": [],
+      "vaultStatus": {
+        "type": "idle"
+      },
+      "installed": [],
+      "installedStatus": {
+        "type": "idle"
+      },
+      "installStatus": {
+        "type": "idle"
+      },
+      "matchmakerPools": {},
+      "matchmakerPoolsStatus": {
+        "type": "idle"
+      }
+    },
+    "mapGenerator": {
+      "status": {
+        "type": "idle"
+      },
+      "latestVersion": "",
+      "optionLists": {
+        "symmetries": [],
+        "styles": [],
+        "terrainStyles": [],
+        "textureStyles": [],
+        "resourceStyles": [],
+        "propStyles": []
+      },
+      "options": {
+        "spawnCount": 6,
+        "numTeams": 2,
+        "mapSize": 512,
+        "seed": "",
+        "generationType": "casual",
+        "symmetry": "",
+        "style": "",
+        "terrainStyle": "",
+        "textureStyle": "",
+        "resourceStyle": "",
+        "propStyle": "",
+        "reclaimDensity": null,
+        "resourceDensity": null,
+        "numToGenerate": null,
+        "commandLineArgs": ""
+      }
+    },
+    "mods": {
+      "vault": [],
+      "vaultStatus": {
+        "type": "idle"
+      },
+      "installed": [],
+      "installedStatus": {
+        "type": "idle"
+      },
+      "installStatus": {
+        "type": "idle"
+      },
+      "toggleStatus": {
+        "type": "idle"
+      }
+    },
+    "leaderboard": {
+      "mode": "ratings",
+      "ratingLeaderboards": [],
+      "leagues": [],
+      "catalogStatus": {
+        "type": "idle"
+      },
+      "ratingQuery": {
+        "leaderboard": "global",
+        "page": 1,
+        "pageSize": 100,
+        "activeOnly": true,
+        "updatedAfter": null,
+        "updatedBefore": null,
+        "player": ""
+      },
+      "ratingPage": {
+        "entries": [],
+        "page": 1,
+        "pageSize": 100,
+        "totalPages": 1,
+        "totalResults": null
+      },
+      "ratingsStatus": {
+        "type": "idle"
+      },
+      "selectedLeagueId": null,
+      "seasons": [],
+      "seasonsStatus": {
+        "type": "idle"
+      },
+      "selectedSeasonId": null,
+      "seasonEntries": [],
+      "tiers": [],
+      "seasonStatus": {
+        "type": "idle"
+      }
+    },
+    "playerCard": {
+      "open": false,
+      "requestedLogin": "",
+      "profile": null,
+      "profileStatus": "idle",
+      "profileError": "",
+      "historyQuery": null,
+      "history": [],
+      "historyMaximum": null,
+      "historyPage": 0,
+      "historyTotalPages": 1,
+      "historyStatus": "idle",
+      "historyError": "",
+      "matchmakerProfile": null,
+      "matchmakerProfileStatus": "idle",
+      "matchmakerProfileError": ""
+    },
+    "reporting": {
+      "open": false,
+      "playerId": null,
+      "login": "",
+      "status": {
+        "type": "idle"
+      },
+      "history": [],
+      "historyStatus": {
+        "type": "idle"
+      }
+    },
+    "reviews": {
+      "target": null,
+      "reviews": [],
+      "summary": {
+        "total": 0,
+        "averageTenths": 0,
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "status": {
+        "type": "idle"
+      },
+      "submit": {
+        "type": "idle"
+      }
+    },
+    "social": {
+      "friends": [],
+      "foes": [],
+      "players": []
+    },
+    "tournaments": {
+      "tournaments": [],
+      "status": {
+        "type": "idle"
+      },
+      "selectedId": null
+    },
+    "tutorials": {
+      "categories": [],
+      "tutorials": [],
+      "status": {
+        "type": "idle"
+      },
+      "selectedId": null,
+      "launch": {
+        "type": "idle"
+      }
+    },
+    "uploads": {
+      "request": null,
+      "status": {
+        "type": "idle"
+      }
+    },
+    "clientUpdate": {
+      "status": {
+        "type": "idle"
+      },
+      "currentVersion": "",
+      "release": null,
+      "dismissedVersion": ""
+    },
+    "settings": {
+      "theme": "forgeDark",
+      "gamePath": "",
+      "replayGamePath": "",
+      "general": {
+        "startPage": "news"
+      },
+      "appearance": {
+        "density": "comfortable",
+        "reduceMotion": false
+      },
+      "social": {
+        "playerNotes": []
+      },
+      "notifications": {
+        "enabled": true,
+        "desktop": true,
+        "sound": true,
+        "notifyWhenFocused": false,
+        "matchFound": true,
+        "privateMessages": true,
+        "mentions": true,
+        "friendOnline": true,
+        "friendOffline": true,
+        "friendPlaying": true,
+        "newCustomGames": false,
+        "newCustomGamesFriendsOnly": true,
+        "gameFull": true,
+        "gameLaunched": true,
+        "reviewReminder": true,
+        "partyInvites": true,
+        "volume": 70
+      },
+      "chat": {
+        "showJoinsParts": false,
+        "showTimestamps": true,
+        "use24HourTime": true,
+        "coloredNames": false,
+        "rosterWidth": 236,
+        "nameColors": {
+          "friends": "",
+          "foes": "",
+          "moderators": "",
+          "admins": "",
+          "players": {}
+        },
+        "hideFoeMessages": true,
+        "visibleMessageLimit": 500,
+        "autoJoinChannels": [],
+        "autoJoinLanguageChannel": true,
+        "mutedPlayers": [],
+        "readMarkers": {}
+      },
+      "game": {
+        "additionalArguments": []
+      },
+      "discord": {
+        "enabled": true,
+        "disallowJoins": false
+      },
+      "connectivity": {
+        "adapter": "java",
+        "selectionVersion": 1
+      },
+      "updates": {
+        "automatic": true,
+        "preRelease": false
+      },
+      "browsing": {
+        "customGamesView": "tiles",
+        "replaysView": "tiles",
+        "customGamesBrowser": {
+          "sort": "players",
+          "hidePrivate": false,
+          "hideModded": false,
+          "applyFilters": false,
+          "rules": []
+        },
+        "matchmakerUnselectedQueues": [],
+        "matchmakerFactions": [
+          "UEF",
+          "Aeon",
+          "Cybran",
+          "Seraphim"
+        ],
+        "liveReplayFilters": {
+          "search": "",
+          "gameType": "",
+          "featuredMod": "",
+          "activePlayers": "",
+          "maxPlayers": "",
+          "hideModded": false,
+          "hideSinglePlayer": false,
+          "friendsOnly": false
+        },
+        "hostGame": {
+          "title": "",
+          "featuredMod": "faf",
+          "visibility": "public",
+          "map": "",
+          "passwordEnabled": false,
+          "password": "",
+          "enforceRatingRange": false,
+          "ratingMin": 800,
+          "ratingMax": 1500
+        },
+        "favoriteMaps": [],
+        "leaderboardRatingColumns": [
+          "rating",
+          "games",
+          "wins",
+          "winRate",
+          "updated"
+        ],
+        "legacyStorageMigrated": false
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "session connects and reports its version",
+      "steps": [
+        {
+          "event": {
+            "kind": "Session",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "backendVersion": "",
+            "offlineAuth": false,
+            "status": "connecting"
+          }
+        },
+        {
+          "event": {
+            "kind": "Session",
+            "event": {
+              "type": "backendReady",
+              "payload": {
+                "version": "1.2.3",
+                "offlineAuth": false
+              }
+            }
+          },
+          "expected": {
+            "backendVersion": "1.2.3",
+            "offlineAuth": false,
+            "status": "connected"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an offline development build keeps its flavour across a reconnect",
+      "steps": [
+        {
+          "event": {
+            "kind": "Session",
+            "event": {
+              "type": "backendReady",
+              "payload": {
+                "version": "1.2.3",
+                "offlineAuth": true
+              }
+            }
+          },
+          "expected": {
+            "backendVersion": "1.2.3",
+            "offlineAuth": true,
+            "status": "connected"
+          }
+        },
+        {
+          "event": {
+            "kind": "Session",
+            "event": {
+              "type": "disconnected"
+            }
+          },
+          "expected": {
+            "backendVersion": "",
+            "offlineAuth": true,
+            "status": "disconnected"
+          }
+        },
+        {
+          "event": {
+            "kind": "Session",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "backendVersion": "",
+            "offlineAuth": true,
+            "status": "connecting"
+          }
+        }
+      ]
+    },
+    {
+      "name": "auth logs in then out",
+      "steps": [
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "loginStarted"
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "loggingIn"
+          }
+        },
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "loggedIn",
+              "payload": {
+                "player": {
+                  "id": 7,
+                  "name": "Ada"
+                }
+              }
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": {
+              "id": 7,
+              "name": "Ada"
+            },
+            "status": "loggedIn"
+          }
+        },
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "loggedOut"
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "loggedOut"
+          }
+        }
+      ]
+    },
+    {
+      "name": "auth failure keeps the error",
+      "steps": [
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "loginStarted"
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "loggingIn"
+          }
+        },
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "loginFailed",
+              "payload": {
+                "message": "bad state"
+              }
+            }
+          },
+          "expected": {
+            "error": "bad state",
+            "mode": "account",
+            "player": null,
+            "status": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "nav selects a tab",
+      "steps": [
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "tabSelected",
+              "payload": {
+                "tab": "play"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "play"
+          }
+        },
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "tabSelected",
+              "payload": {
+                "tab": "tutorials"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "tutorials"
+          }
+        }
+      ]
+    },
+    {
+      "name": "install check flips both flags",
+      "steps": [
+        {
+          "event": {
+            "kind": "Install",
+            "event": {
+              "type": "checked",
+              "payload": {
+                "gameReady": true,
+                "replayReady": false
+              }
+            }
+          },
+          "expected": {
+            "checked": true,
+            "gameReady": true,
+            "replayReady": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "chat joins, counts unread, and clears on select",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "connected",
+              "payload": {
+                "username": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#aeolus"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#uef"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "messageReceived",
+              "payload": {
+                "channel": "#uef",
+                "message": {
+                  "id": "m-Bob-hello Ada",
+                  "sender": "Bob",
+                  "content": "hello Ada",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "kind": "message"
+                }
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [
+                  {
+                    "content": "hello Ada",
+                    "id": "m-Bob-hello Ada",
+                    "kind": "message",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#uef",
+                "topic": "",
+                "unread": 1,
+                "unreadMentions": 1,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelSelected",
+              "payload": {
+                "channel": "#uef"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [
+                  {
+                    "content": "hello Ada",
+                    "id": "m-Bob-hello Ada",
+                    "kind": "message",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "chat restores message history when a new message recreates a conversation",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#uef"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "messageReceived",
+              "payload": {
+                "channel": "#uef",
+                "message": {
+                  "id": "m-Bob-remember this",
+                  "sender": "Bob",
+                  "content": "remember this",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "kind": "message"
+                }
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "remember this",
+                    "id": "m-Bob-remember this",
+                    "kind": "message",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelLeft",
+              "payload": {
+                "channel": "#uef"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [
+              {
+                "channel": "#uef",
+                "messages": [
+                  {
+                    "content": "remember this",
+                    "id": "m-Bob-remember this",
+                    "kind": "message",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ]
+              }
+            ],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "messageReceived",
+              "payload": {
+                "channel": "#uef",
+                "message": {
+                  "id": "m-Carol-new line",
+                  "sender": "Carol",
+                  "content": "new line",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "kind": "message"
+                }
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "remember this",
+                    "id": "m-Bob-remember this",
+                    "kind": "message",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "new line",
+                    "id": "m-Carol-new line",
+                    "kind": "message",
+                    "sender": "Carol",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#uef",
+                "topic": "",
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "chat roster events for an unknown channel are dropped",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#uef"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "userLeft",
+              "payload": {
+                "channel": "#gone",
+                "user": "Bob"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "userElevationChanged",
+              "payload": {
+                "channel": "#gone",
+                "user": "Bob",
+                "elevation": "@"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "chat rename updates every roster and our own name",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "connected",
+              "payload": {
+                "username": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#uef"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "userJoined",
+              "payload": {
+                "channel": "#uef",
+                "user": {
+                  "name": "Ada",
+                  "elevation": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": [
+                  {
+                    "elevation": "",
+                    "name": "Ada"
+                  }
+                ]
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "userRenamed",
+              "payload": {
+                "oldName": "Ada",
+                "newName": "Zara"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": [
+                  {
+                    "elevation": "",
+                    "name": "Zara"
+                  }
+                ]
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Zara"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "disconnected"
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": "Zara"
+          }
+        }
+      ]
+    },
+    {
+      "name": "chat normalizes the server's auto-join channel list",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "autoJoinAnnounced",
+              "payload": {
+                "channels": [
+                  "aeolus",
+                  " german ",
+                  "#GERMAN",
+                  "",
+                  "#clan_qai"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [
+              "#aeolus",
+              "#german",
+              "#clan_qai"
+            ],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "autoJoinAnnounced",
+              "payload": {
+                "channels": [
+                  "aeolus"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [
+              "#aeolus"
+            ],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "chat applies connection metadata and quiet history without unread badges",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connecting",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "connected",
+              "payload": {
+                "username": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#uef"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "topicChanged",
+              "payload": {
+                "channel": "#uef",
+                "topic": "Build orders"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "Build orders",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "usersUpdated",
+              "payload": {
+                "channel": "#uef",
+                "users": [
+                  {
+                    "name": "Ada",
+                    "elevation": "@"
+                  },
+                  {
+                    "name": "Bob",
+                    "elevation": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "Build orders",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": [
+                  {
+                    "elevation": "@",
+                    "name": "Ada"
+                  },
+                  {
+                    "elevation": "",
+                    "name": "Bob"
+                  }
+                ]
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "joinsPartsToggled",
+              "payload": {
+                "enabled": true
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#uef",
+                "topic": "Build orders",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": [
+                  {
+                    "elevation": "@",
+                    "name": "Ada"
+                  },
+                  {
+                    "elevation": "",
+                    "name": "Bob"
+                  }
+                ]
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": true,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "messageReceivedQuietly",
+              "payload": {
+                "channel": "#uef",
+                "message": {
+                  "id": "m-Bob-restored history",
+                  "sender": "Bob",
+                  "content": "restored history",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "kind": "message"
+                }
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#uef",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "restored history",
+                    "id": "m-Bob-restored history",
+                    "kind": "message",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#uef",
+                "topic": "Build orders",
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": [
+                  {
+                    "elevation": "@",
+                    "name": "Ada"
+                  },
+                  {
+                    "elevation": "",
+                    "name": "Bob"
+                  }
+                ]
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": true,
+            "status": "connected",
+            "username": "Ada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "lobby runs the join state machine",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joining",
+              "payload": {
+                "id": 7,
+                "prepared": false
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "payload": {
+                "id": 7,
+                "prepared": false
+              },
+              "type": "joining"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joining",
+              "payload": {
+                "id": 7,
+                "prepared": true
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "payload": {
+                "id": 7,
+                "prepared": true
+              },
+              "type": "joining"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joinCancelled"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joining",
+              "payload": {
+                "id": 7,
+                "prepared": false
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "payload": {
+                "id": 7,
+                "prepared": false
+              },
+              "type": "joining"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "detail": "Updating faf",
+                "progress": 50
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "payload": {
+                "detail": "Updating faf",
+                "progress": 50
+              },
+              "type": "preparing"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "inGame"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "gameTerminated"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "disconnected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "matchmaker queues merge partial pushes and keep a stable order",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakerQueuesUpdated",
+              "payload": {
+                "queues": [
+                  {
+                    "queueName": "tmm4v4",
+                    "teamSize": 4,
+                    "numPlayers": 1,
+                    "queuePopTimeSeconds": 90
+                  },
+                  {
+                    "queueName": "ladder1v1",
+                    "teamSize": 1,
+                    "numPlayers": 7,
+                    "queuePopTimeSeconds": 30
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [
+              {
+                "numPlayers": 7,
+                "queueName": "ladder1v1",
+                "queuePopTimeSeconds": 30,
+                "teamSize": 1
+              },
+              {
+                "numPlayers": 1,
+                "queueName": "tmm4v4",
+                "queuePopTimeSeconds": 90,
+                "teamSize": 4
+              }
+            ],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakerQueuesUpdated",
+              "payload": {
+                "queues": [
+                  {
+                    "queueName": "tmm2v2",
+                    "teamSize": 2,
+                    "numPlayers": 3,
+                    "queuePopTimeSeconds": 60
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [
+              {
+                "numPlayers": 7,
+                "queueName": "ladder1v1",
+                "queuePopTimeSeconds": 30,
+                "teamSize": 1
+              },
+              {
+                "numPlayers": 3,
+                "queueName": "tmm2v2",
+                "queuePopTimeSeconds": 60,
+                "teamSize": 2
+              },
+              {
+                "numPlayers": 1,
+                "queueName": "tmm4v4",
+                "queuePopTimeSeconds": 90,
+                "teamSize": 4
+              }
+            ],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakerQueuesUpdated",
+              "payload": {
+                "queues": [
+                  {
+                    "queueName": "ladder1v1",
+                    "teamSize": 1,
+                    "numPlayers": 12,
+                    "queuePopTimeSeconds": 20
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [
+              {
+                "numPlayers": 12,
+                "queueName": "ladder1v1",
+                "queuePopTimeSeconds": 20,
+                "teamSize": 1
+              },
+              {
+                "numPlayers": 3,
+                "queueName": "tmm2v2",
+                "queuePopTimeSeconds": 60,
+                "teamSize": 2
+              },
+              {
+                "numPlayers": 1,
+                "queueName": "tmm4v4",
+                "queuePopTimeSeconds": 90,
+                "teamSize": 4
+              }
+            ],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "disconnected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "lobby keeps the play mode across a disconnect",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "playModeChanged",
+              "payload": {
+                "mode": "matchmaking"
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "matchmaking",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "matchmaking",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "disconnected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "matchmaking",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "lobby owns avatar loading selection and disconnect cleanup",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "avatarsLoading"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "loading",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "avatarsLoaded",
+              "payload": {
+                "avatars": [
+                  {
+                    "url": "https://content.test/avatar.png",
+                    "tooltip": "Winner"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [
+              {
+                "tooltip": "Winner",
+                "url": "https://content.test/avatar.png"
+              }
+            ],
+            "avatarListError": "",
+            "avatarListStatus": "ready",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "avatarSelectionStarted"
+            }
+          },
+          "expected": {
+            "availableAvatars": [
+              {
+                "tooltip": "Winner",
+                "url": "https://content.test/avatar.png"
+              }
+            ],
+            "avatarListError": "",
+            "avatarListStatus": "ready",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "loading",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "avatarSelectionSucceeded"
+            }
+          },
+          "expected": {
+            "availableAvatars": [
+              {
+                "tooltip": "Winner",
+                "url": "https://content.test/avatar.png"
+              }
+            ],
+            "avatarListError": "",
+            "avatarListStatus": "ready",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "ready",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "disconnected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "coop opens the first mission and drops a stale board",
+      "steps": [
+        {
+          "event": {
+            "kind": "Coop",
+            "event": {
+              "type": "catalogLoading"
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "loading"
+            },
+            "leaderboard": [],
+            "leaderboardStatus": {
+              "type": "idle"
+            },
+            "missions": [],
+            "playerCount": 0,
+            "scenarios": [],
+            "selectedMissionId": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Coop",
+            "event": {
+              "type": "catalogLoaded",
+              "payload": {
+                "scenarios": [
+                  {
+                    "id": 1,
+                    "name": "Ivory Sun",
+                    "description": "",
+                    "order": 1,
+                    "faction": "uef",
+                    "category": "scfa"
+                  }
+                ],
+                "missions": [
+                  {
+                    "id": 7,
+                    "name": "Ivory Sun 1",
+                    "description": "",
+                    "version": 1,
+                    "downloadUrl": "",
+                    "thumbnailUrlSmall": "",
+                    "thumbnailUrlLarge": "",
+                    "mapFolderName": "scmp_coop_7",
+                    "scenarioId": 1
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "ready"
+            },
+            "leaderboard": [],
+            "leaderboardStatus": {
+              "type": "idle"
+            },
+            "missions": [
+              {
+                "description": "",
+                "downloadUrl": "",
+                "id": 7,
+                "mapFolderName": "scmp_coop_7",
+                "name": "Ivory Sun 1",
+                "scenarioId": 1,
+                "thumbnailUrlLarge": "",
+                "thumbnailUrlSmall": "",
+                "version": 1
+              }
+            ],
+            "playerCount": 0,
+            "scenarios": [
+              {
+                "category": "scfa",
+                "description": "",
+                "faction": "uef",
+                "id": 1,
+                "name": "Ivory Sun",
+                "order": 1
+              }
+            ],
+            "selectedMissionId": 7
+          }
+        },
+        {
+          "event": {
+            "kind": "Coop",
+            "event": {
+              "type": "leaderboardLoaded",
+              "payload": {
+                "missionId": 99,
+                "playerCount": 0,
+                "results": []
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "ready"
+            },
+            "leaderboard": [],
+            "leaderboardStatus": {
+              "type": "idle"
+            },
+            "missions": [
+              {
+                "description": "",
+                "downloadUrl": "",
+                "id": 7,
+                "mapFolderName": "scmp_coop_7",
+                "name": "Ivory Sun 1",
+                "scenarioId": 1,
+                "thumbnailUrlLarge": "",
+                "thumbnailUrlSmall": "",
+                "version": 1
+              }
+            ],
+            "playerCount": 0,
+            "scenarios": [
+              {
+                "category": "scfa",
+                "description": "",
+                "faction": "uef",
+                "id": 1,
+                "name": "Ivory Sun",
+                "order": 1
+              }
+            ],
+            "selectedMissionId": 7
+          }
+        },
+        {
+          "event": {
+            "kind": "Coop",
+            "event": {
+              "type": "playerCountChanged",
+              "payload": {
+                "playerCount": 2
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "ready"
+            },
+            "leaderboard": [],
+            "leaderboardStatus": {
+              "type": "idle"
+            },
+            "missions": [
+              {
+                "description": "",
+                "downloadUrl": "",
+                "id": 7,
+                "mapFolderName": "scmp_coop_7",
+                "name": "Ivory Sun 1",
+                "scenarioId": 1,
+                "thumbnailUrlLarge": "",
+                "thumbnailUrlSmall": "",
+                "version": 1
+              }
+            ],
+            "playerCount": 2,
+            "scenarios": [
+              {
+                "category": "scfa",
+                "description": "",
+                "faction": "uef",
+                "id": 1,
+                "name": "Ivory Sun",
+                "order": 1
+              }
+            ],
+            "selectedMissionId": 7
+          }
+        },
+        {
+          "event": {
+            "kind": "Coop",
+            "event": {
+              "type": "leaderboardLoadFailed",
+              "payload": {
+                "reason": "session expired",
+                "kind": "unauthorized"
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "ready"
+            },
+            "leaderboard": [],
+            "leaderboardStatus": {
+              "payload": {
+                "kind": "unauthorized",
+                "reason": "session expired"
+              },
+              "type": "failed"
+            },
+            "missions": [
+              {
+                "description": "",
+                "downloadUrl": "",
+                "id": 7,
+                "mapFolderName": "scmp_coop_7",
+                "name": "Ivory Sun 1",
+                "scenarioId": 1,
+                "thumbnailUrlLarge": "",
+                "thumbnailUrlSmall": "",
+                "version": 1
+              }
+            ],
+            "playerCount": 2,
+            "scenarios": [
+              {
+                "category": "scfa",
+                "description": "",
+                "faction": "uef",
+                "id": 1,
+                "name": "Ivory Sun",
+                "order": 1
+              }
+            ],
+            "selectedMissionId": 7
+          }
+        }
+      ]
+    },
+    {
+      "name": "reviews summarise on load and again on save",
+      "steps": [
+        {
+          "event": {
+            "kind": "Reviews",
+            "event": {
+              "type": "opened",
+              "payload": {
+                "target": {
+                  "kind": "map",
+                  "id": 42,
+                  "name": "Seton's"
+                }
+              }
+            }
+          },
+          "expected": {
+            "reviews": [],
+            "status": {
+              "type": "idle"
+            },
+            "submit": {
+              "type": "idle"
+            },
+            "summary": {
+              "averageTenths": 0,
+              "counts": [
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "total": 0
+            },
+            "target": {
+              "id": 42,
+              "kind": "map",
+              "name": "Seton's"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Reviews",
+            "event": {
+              "type": "loading"
+            }
+          },
+          "expected": {
+            "reviews": [],
+            "status": {
+              "type": "loading"
+            },
+            "submit": {
+              "type": "idle"
+            },
+            "summary": {
+              "averageTenths": 0,
+              "counts": [
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "total": 0
+            },
+            "target": {
+              "id": 42,
+              "kind": "map",
+              "name": "Seton's"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Reviews",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "target": {
+                  "kind": "map",
+                  "id": 42,
+                  "name": "Seton's"
+                },
+                "reviews": [
+                  {
+                    "id": 1,
+                    "score": 5,
+                    "text": "Great",
+                    "player": "Bob",
+                    "version": "3"
+                  },
+                  {
+                    "id": 2,
+                    "score": 2,
+                    "text": "Meh",
+                    "player": "Cid",
+                    "version": "2"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "reviews": [
+              {
+                "id": 1,
+                "player": "Bob",
+                "score": 5,
+                "text": "Great",
+                "version": "3"
+              },
+              {
+                "id": 2,
+                "player": "Cid",
+                "score": 2,
+                "text": "Meh",
+                "version": "2"
+              }
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submit": {
+              "type": "idle"
+            },
+            "summary": {
+              "averageTenths": 35,
+              "counts": [
+                0,
+                1,
+                0,
+                0,
+                1
+              ],
+              "total": 2
+            },
+            "target": {
+              "id": 42,
+              "kind": "map",
+              "name": "Seton's"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Reviews",
+            "event": {
+              "type": "saving"
+            }
+          },
+          "expected": {
+            "reviews": [
+              {
+                "id": 1,
+                "player": "Bob",
+                "score": 5,
+                "text": "Great",
+                "version": "3"
+              },
+              {
+                "id": 2,
+                "player": "Cid",
+                "score": 2,
+                "text": "Meh",
+                "version": "2"
+              }
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submit": {
+              "type": "saving"
+            },
+            "summary": {
+              "averageTenths": 35,
+              "counts": [
+                0,
+                1,
+                0,
+                0,
+                1
+              ],
+              "total": 2
+            },
+            "target": {
+              "id": 42,
+              "kind": "map",
+              "name": "Seton's"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Reviews",
+            "event": {
+              "type": "saved",
+              "payload": {
+                "reviews": [
+                  {
+                    "id": 1,
+                    "score": 5,
+                    "text": "Great",
+                    "player": "Bob",
+                    "version": "3"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "reviews": [
+              {
+                "id": 1,
+                "player": "Bob",
+                "score": 5,
+                "text": "Great",
+                "version": "3"
+              }
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submit": {
+              "type": "saved"
+            },
+            "summary": {
+              "averageTenths": 50,
+              "counts": [
+                0,
+                0,
+                0,
+                0,
+                1
+              ],
+              "total": 1
+            },
+            "target": {
+              "id": 42,
+              "kind": "map",
+              "name": "Seton's"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "uploads keep a running publish when the dialog closes",
+      "steps": [
+        {
+          "event": {
+            "kind": "Uploads",
+            "event": {
+              "type": "opened",
+              "payload": {
+                "request": {
+                  "kind": "map",
+                  "folderName": "my_map.v0001",
+                  "displayName": "My Map",
+                  "ranked": false
+                }
+              }
+            }
+          },
+          "expected": {
+            "request": {
+              "displayName": "My Map",
+              "folderName": "my_map.v0001",
+              "kind": "map",
+              "ranked": false
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Uploads",
+            "event": {
+              "type": "rankedChanged",
+              "payload": {
+                "ranked": true
+              }
+            }
+          },
+          "expected": {
+            "request": {
+              "displayName": "My Map",
+              "folderName": "my_map.v0001",
+              "kind": "map",
+              "ranked": true
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Uploads",
+            "event": {
+              "type": "progressed",
+              "payload": {
+                "status": {
+                  "type": "compressing"
+                }
+              }
+            }
+          },
+          "expected": {
+            "request": {
+              "displayName": "My Map",
+              "folderName": "my_map.v0001",
+              "kind": "map",
+              "ranked": true
+            },
+            "status": {
+              "type": "compressing"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Uploads",
+            "event": {
+              "type": "closed"
+            }
+          },
+          "expected": {
+            "request": null,
+            "status": {
+              "type": "compressing"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Uploads",
+            "event": {
+              "type": "progressed",
+              "payload": {
+                "status": {
+                  "type": "succeeded"
+                }
+              }
+            }
+          },
+          "expected": {
+            "request": null,
+            "status": {
+              "type": "succeeded"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Uploads",
+            "event": {
+              "type": "closed"
+            }
+          },
+          "expected": {
+            "request": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a client update is offered, downloaded and then dismissed",
+      "steps": [
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "checkStarted",
+              "payload": {
+                "currentVersion": "0.2.0"
+              }
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "release": null,
+            "status": {
+              "type": "checking"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "available",
+              "payload": {
+                "release": {
+                  "version": "0.3.0",
+                  "notesUrl": "https://example.invalid/releases/0.3.0",
+                  "downloadUrl": "https://example.invalid/installer.exe",
+                  "assetName": "installer.exe",
+                  "sizeBytes": 4096,
+                  "preRelease": false,
+                  "publishedAt": "2026-02-01T00:00:00Z"
+                }
+              }
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "type": "available"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "downloadProgressed",
+              "payload": {
+                "receivedBytes": 2048,
+                "totalBytes": 4096
+              }
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "payload": {
+                "receivedBytes": 2048,
+                "totalBytes": 4096
+              },
+              "type": "downloading"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "downloaded",
+              "payload": {
+                "path": "/cache/updates/faf-client-0.3.0.exe"
+              }
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "payload": {
+                "path": "/cache/updates/faf-client-0.3.0.exe"
+              },
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "installing"
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "type": "installing"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "dismissed",
+              "payload": {
+                "version": "0.3.0"
+              }
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "0.3.0",
+            "release": {
+              "assetName": "installer.exe",
+              "downloadUrl": "https://example.invalid/installer.exe",
+              "notesUrl": "https://example.invalid/releases/0.3.0",
+              "preRelease": false,
+              "publishedAt": "2026-02-01T00:00:00Z",
+              "sizeBytes": 4096,
+              "version": "0.3.0"
+            },
+            "status": {
+              "type": "installing"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "upToDate"
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "0.3.0",
+            "release": null,
+            "status": {
+              "type": "upToDate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "tournaments keep the open event across a refresh",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tournaments",
+            "event": {
+              "type": "loading"
+            }
+          },
+          "expected": {
+            "selectedId": null,
+            "status": {
+              "type": "loading"
+            },
+            "tournaments": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Tournaments",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "tournaments": [
+                  {
+                    "id": 1,
+                    "name": "Event 1",
+                    "description": "",
+                    "tournamentType": "swiss",
+                    "participantCount": 0,
+                    "createdAt": 1700000000,
+                    "startingAt": null,
+                    "completedAt": null,
+                    "challongeUrl": "",
+                    "liveImageUrl": "",
+                    "signUpUrl": "",
+                    "openForSignup": false
+                  },
+                  {
+                    "id": 2,
+                    "name": "Event 2",
+                    "description": "",
+                    "tournamentType": "swiss",
+                    "participantCount": 0,
+                    "createdAt": 1700000000,
+                    "startingAt": null,
+                    "completedAt": null,
+                    "challongeUrl": "",
+                    "liveImageUrl": "",
+                    "signUpUrl": "",
+                    "openForSignup": false
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "selectedId": 1,
+            "status": {
+              "type": "ready"
+            },
+            "tournaments": [
+              {
+                "challongeUrl": "",
+                "completedAt": null,
+                "createdAt": 1700000000,
+                "description": "",
+                "id": 1,
+                "liveImageUrl": "",
+                "name": "Event 1",
+                "openForSignup": false,
+                "participantCount": 0,
+                "signUpUrl": "",
+                "startingAt": null,
+                "tournamentType": "swiss"
+              },
+              {
+                "challongeUrl": "",
+                "completedAt": null,
+                "createdAt": 1700000000,
+                "description": "",
+                "id": 2,
+                "liveImageUrl": "",
+                "name": "Event 2",
+                "openForSignup": false,
+                "participantCount": 0,
+                "signUpUrl": "",
+                "startingAt": null,
+                "tournamentType": "swiss"
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Tournaments",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "tournamentId": 2
+              }
+            }
+          },
+          "expected": {
+            "selectedId": 2,
+            "status": {
+              "type": "ready"
+            },
+            "tournaments": [
+              {
+                "challongeUrl": "",
+                "completedAt": null,
+                "createdAt": 1700000000,
+                "description": "",
+                "id": 1,
+                "liveImageUrl": "",
+                "name": "Event 1",
+                "openForSignup": false,
+                "participantCount": 0,
+                "signUpUrl": "",
+                "startingAt": null,
+                "tournamentType": "swiss"
+              },
+              {
+                "challongeUrl": "",
+                "completedAt": null,
+                "createdAt": 1700000000,
+                "description": "",
+                "id": 2,
+                "liveImageUrl": "",
+                "name": "Event 2",
+                "openForSignup": false,
+                "participantCount": 0,
+                "signUpUrl": "",
+                "startingAt": null,
+                "tournamentType": "swiss"
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Tournaments",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "tournaments": [
+                  {
+                    "id": 1,
+                    "name": "Event 1",
+                    "description": "",
+                    "tournamentType": "swiss",
+                    "participantCount": 0,
+                    "createdAt": 1700000000,
+                    "startingAt": null,
+                    "completedAt": null,
+                    "challongeUrl": "",
+                    "liveImageUrl": "",
+                    "signUpUrl": "",
+                    "openForSignup": false
+                  },
+                  {
+                    "id": 2,
+                    "name": "Event 2",
+                    "description": "",
+                    "tournamentType": "swiss",
+                    "participantCount": 0,
+                    "createdAt": 1700000000,
+                    "startingAt": null,
+                    "completedAt": null,
+                    "challongeUrl": "",
+                    "liveImageUrl": "",
+                    "signUpUrl": "",
+                    "openForSignup": false
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "selectedId": 2,
+            "status": {
+              "type": "ready"
+            },
+            "tournaments": [
+              {
+                "challongeUrl": "",
+                "completedAt": null,
+                "createdAt": 1700000000,
+                "description": "",
+                "id": 1,
+                "liveImageUrl": "",
+                "name": "Event 1",
+                "openForSignup": false,
+                "participantCount": 0,
+                "signUpUrl": "",
+                "startingAt": null,
+                "tournamentType": "swiss"
+              },
+              {
+                "challongeUrl": "",
+                "completedAt": null,
+                "createdAt": 1700000000,
+                "description": "",
+                "id": 2,
+                "liveImageUrl": "",
+                "name": "Event 2",
+                "openForSignup": false,
+                "participantCount": 0,
+                "signUpUrl": "",
+                "startingAt": null,
+                "tournamentType": "swiss"
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Tournaments",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "tournaments": [
+                  {
+                    "id": 1,
+                    "name": "Event 1",
+                    "description": "",
+                    "tournamentType": "swiss",
+                    "participantCount": 0,
+                    "createdAt": 1700000000,
+                    "startingAt": null,
+                    "completedAt": null,
+                    "challongeUrl": "",
+                    "liveImageUrl": "",
+                    "signUpUrl": "",
+                    "openForSignup": false
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "selectedId": 1,
+            "status": {
+              "type": "ready"
+            },
+            "tournaments": [
+              {
+                "challongeUrl": "",
+                "completedAt": null,
+                "createdAt": 1700000000,
+                "description": "",
+                "id": 1,
+                "liveImageUrl": "",
+                "name": "Event 1",
+                "openForSignup": false,
+                "participantCount": 0,
+                "signUpUrl": "",
+                "startingAt": null,
+                "tournamentType": "swiss"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "tutorials narrate a launch",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tutorials",
+            "event": {
+              "type": "loading"
+            }
+          },
+          "expected": {
+            "categories": [],
+            "launch": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "status": {
+              "type": "loading"
+            },
+            "tutorials": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Tutorials",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "categories": [
+                  {
+                    "id": 1,
+                    "name": "Basics"
+                  }
+                ],
+                "tutorials": [
+                  {
+                    "id": 7,
+                    "title": "Lesson 7",
+                    "description": "",
+                    "linkUrl": "",
+                    "imageUrl": "",
+                    "ordinal": 7,
+                    "launchable": true,
+                    "mapFolderName": "scmp_tut_7",
+                    "technicalName": "tut_7",
+                    "categoryId": 1
+                  },
+                  {
+                    "id": 8,
+                    "title": "Lesson 8",
+                    "description": "",
+                    "linkUrl": "",
+                    "imageUrl": "",
+                    "ordinal": 8,
+                    "launchable": true,
+                    "mapFolderName": "scmp_tut_8",
+                    "technicalName": "tut_8",
+                    "categoryId": 1
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "categories": [
+              {
+                "id": 1,
+                "name": "Basics"
+              }
+            ],
+            "launch": {
+              "type": "idle"
+            },
+            "selectedId": 7,
+            "status": {
+              "type": "ready"
+            },
+            "tutorials": [
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 7,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_7",
+                "ordinal": 7,
+                "technicalName": "tut_7",
+                "title": "Lesson 7"
+              },
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 8,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_8",
+                "ordinal": 8,
+                "technicalName": "tut_8",
+                "title": "Lesson 8"
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Tutorials",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "tutorialId": 8
+              }
+            }
+          },
+          "expected": {
+            "categories": [
+              {
+                "id": 1,
+                "name": "Basics"
+              }
+            ],
+            "launch": {
+              "type": "idle"
+            },
+            "selectedId": 8,
+            "status": {
+              "type": "ready"
+            },
+            "tutorials": [
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 7,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_7",
+                "ordinal": 7,
+                "technicalName": "tut_7",
+                "title": "Lesson 7"
+              },
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 8,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_8",
+                "ordinal": 8,
+                "technicalName": "tut_8",
+                "title": "Lesson 8"
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Tutorials",
+            "event": {
+              "type": "launchPreparing",
+              "payload": {
+                "tutorialId": 8,
+                "detail": "Updating tutorials"
+              }
+            }
+          },
+          "expected": {
+            "categories": [
+              {
+                "id": 1,
+                "name": "Basics"
+              }
+            ],
+            "launch": {
+              "payload": {
+                "detail": "Updating tutorials",
+                "tutorialId": 8
+              },
+              "type": "preparing"
+            },
+            "selectedId": 8,
+            "status": {
+              "type": "ready"
+            },
+            "tutorials": [
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 7,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_7",
+                "ordinal": 7,
+                "technicalName": "tut_7",
+                "title": "Lesson 7"
+              },
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 8,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_8",
+                "ordinal": 8,
+                "technicalName": "tut_8",
+                "title": "Lesson 8"
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Tutorials",
+            "event": {
+              "type": "launched",
+              "payload": {
+                "tutorialId": 8
+              }
+            }
+          },
+          "expected": {
+            "categories": [
+              {
+                "id": 1,
+                "name": "Basics"
+              }
+            ],
+            "launch": {
+              "payload": {
+                "tutorialId": 8
+              },
+              "type": "launched"
+            },
+            "selectedId": 8,
+            "status": {
+              "type": "ready"
+            },
+            "tutorials": [
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 7,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_7",
+                "ordinal": 7,
+                "technicalName": "tut_7",
+                "title": "Lesson 7"
+              },
+              {
+                "categoryId": 1,
+                "description": "",
+                "id": 8,
+                "imageUrl": "",
+                "launchable": true,
+                "linkUrl": "",
+                "mapFolderName": "scmp_tut_8",
+                "ordinal": 8,
+                "technicalName": "tut_8",
+                "title": "Lesson 8"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "notifications are added and dismissed",
+      "steps": [
+        {
+          "event": {
+            "kind": "Notifications",
+            "event": {
+              "type": "added",
+              "payload": {
+                "notification": {
+                  "id": "n1",
+                  "kind": "mention",
+                  "title": "Hello",
+                  "body": "World",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "read": false,
+                  "action": null
+                }
+              }
+            }
+          },
+          "expected": {
+            "items": [
+              {
+                "action": null,
+                "body": "World",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "n1",
+                "kind": "mention",
+                "read": false,
+                "title": "Hello"
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Notifications",
+            "event": {
+              "type": "dismissed",
+              "payload": {
+                "id": "n1"
+              }
+            }
+          },
+          "expected": {
+            "items": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "social records relations and removes offline profiles",
+      "steps": [
+        {
+          "event": {
+            "kind": "Social",
+            "event": {
+              "type": "relationsUpdated",
+              "payload": {
+                "friends": [
+                  "Bob"
+                ],
+                "foes": [
+                  "Cid"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "foes": [
+              "Cid"
+            ],
+            "friends": [
+              "Bob"
+            ],
+            "players": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Social",
+            "event": {
+              "type": "playersSeen",
+              "payload": {
+                "players": [
+                  {
+                    "id": 2,
+                    "login": "Bob",
+                    "globalRating": 0,
+                    "ratings": [],
+                    "country": "",
+                    "clan": "",
+                    "avatarUrl": "",
+                    "avatarTooltip": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "foes": [
+              "Cid"
+            ],
+            "friends": [
+              "Bob"
+            ],
+            "players": [
+              {
+                "avatarTooltip": "",
+                "avatarUrl": "",
+                "clan": "",
+                "country": "",
+                "globalRating": 0,
+                "id": 2,
+                "login": "Bob",
+                "ratings": []
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Social",
+            "event": {
+              "type": "playersRemoved",
+              "payload": {
+                "logins": [
+                  "Bob"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "foes": [
+              "Cid"
+            ],
+            "friends": [
+              "Bob"
+            ],
+            "players": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "maps load the vault and the installed list",
+      "steps": [
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoading"
+            }
+          },
+          "expected": {
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "loading"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoadFailed",
+              "payload": {
+                "reason": "503"
+              }
+            }
+          },
+          "expected": {
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "payload": {
+                "reason": "503"
+              },
+              "type": "failed"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "installedLoading"
+            }
+          },
+          "expected": {
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "loading"
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "payload": {
+                "reason": "503"
+              },
+              "type": "failed"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "installedLoaded",
+              "payload": {
+                "maps": [
+                  {
+                    "folderName": "scmp_009",
+                    "displayName": "Open Palms"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [
+              {
+                "displayName": "Open Palms",
+                "folderName": "scmp_009"
+              }
+            ],
+            "installedStatus": {
+              "type": "ready"
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "payload": {
+                "reason": "503"
+              },
+              "type": "failed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mods load and report a failure",
+      "steps": [
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "installedLoading"
+            }
+          },
+          "expected": {
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "loading"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "installedLoadFailed",
+              "payload": {
+                "reason": "no mods folder"
+              }
+            }
+          },
+          "expected": {
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "payload": {
+                "reason": "no mods folder"
+              },
+              "type": "failed"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the map generator narrates a run and keeps its option lists",
+      "steps": [
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "statusChanged",
+              "payload": {
+                "status": {
+                  "type": "resolvingVersion"
+                }
+              }
+            }
+          },
+          "expected": {
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "propStyle": "",
+              "reclaimDensity": null,
+              "resourceDensity": null,
+              "resourceStyle": "",
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "symmetry": "",
+              "terrainStyle": "",
+              "textureStyle": ""
+            },
+            "status": {
+              "type": "resolvingVersion"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "optionListLoaded",
+              "payload": {
+                "query": "styles",
+                "values": [
+                  "LAND",
+                  "BASIC"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [
+                "LAND",
+                "BASIC"
+              ],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "propStyle": "",
+              "reclaimDensity": null,
+              "resourceDensity": null,
+              "resourceStyle": "",
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "symmetry": "",
+              "terrainStyle": "",
+              "textureStyle": ""
+            },
+            "status": {
+              "type": "resolvingVersion"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "statusChanged",
+              "payload": {
+                "status": {
+                  "type": "generated",
+                  "payload": {
+                    "maps": [
+                      "neroxis_map_generator_1.9.0_abc"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [
+                "LAND",
+                "BASIC"
+              ],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "propStyle": "",
+              "reclaimDensity": null,
+              "resourceDensity": null,
+              "resourceStyle": "",
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "symmetry": "",
+              "terrainStyle": "",
+              "textureStyle": ""
+            },
+            "status": {
+              "payload": {
+                "maps": [
+                  "neroxis_map_generator_1.9.0_abc"
+                ]
+              },
+              "type": "generated"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "changing league clears stale season data",
+      "steps": [
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "modeChanged",
+              "payload": {
+                "mode": "leagues"
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "leagues": [],
+            "mode": "leagues",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "idle"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "seasonsLoading",
+              "payload": {
+                "leagueId": 3
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "leagues": [],
+            "mode": "leagues",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "idle"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "loading"
+            },
+            "selectedLeagueId": 3,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "seasonsLoadFailed",
+              "payload": {
+                "reason": "503"
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "leagues": [],
+            "mode": "leagues",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "idle"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "payload": {
+                "reason": "503"
+              },
+              "type": "failed"
+            },
+            "selectedLeagueId": 3,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "seasonsLoading",
+              "payload": {
+                "leagueId": 8
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "leagues": [],
+            "mode": "leagues",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "idle"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "loading"
+            },
+            "selectedLeagueId": 8,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "the player card opens and closes",
+      "steps": [
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "loading",
+              "payload": {
+                "login": "Bob"
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": true,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "loading",
+            "requestedLogin": "Bob"
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "loadFailed",
+              "payload": {
+                "reason": "no such player"
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": true,
+            "profile": null,
+            "profileError": "no such player",
+            "profileStatus": "failed",
+            "requestedLogin": "Bob"
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "closed"
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": null,
+            "profileError": "no such player",
+            "profileStatus": "idle",
+            "requestedLogin": "Bob"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the open own profile follows avatar selections",
+      "steps": [
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "profile": {
+                  "playerId": 7,
+                  "login": "Ada",
+                  "country": "",
+                  "registeredAt": "",
+                  "lastSeenAt": "",
+                  "userAgent": "",
+                  "avatars": [
+                    {
+                      "url": "old",
+                      "tooltip": "Old",
+                      "selected": true,
+                      "expiresAt": null
+                    }
+                  ],
+                  "names": [],
+                  "clan": null,
+                  "ratings": [],
+                  "leaguePlacements": [],
+                  "events": [],
+                  "achievements": [],
+                  "warnings": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": {
+              "achievements": [],
+              "avatars": [
+                {
+                  "expiresAt": null,
+                  "selected": true,
+                  "tooltip": "Old",
+                  "url": "old"
+                }
+              ],
+              "clan": null,
+              "country": "",
+              "events": [],
+              "lastSeenAt": "",
+              "leaguePlacements": [],
+              "login": "Ada",
+              "names": [],
+              "playerId": 7,
+              "ratings": [],
+              "registeredAt": "",
+              "userAgent": "",
+              "warnings": []
+            },
+            "profileError": "",
+            "profileStatus": "ready",
+            "requestedLogin": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "avatarSelected",
+              "payload": {
+                "playerId": 7,
+                "url": "new",
+                "tooltip": "New"
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": {
+              "achievements": [],
+              "avatars": [
+                {
+                  "expiresAt": null,
+                  "selected": false,
+                  "tooltip": "Old",
+                  "url": "old"
+                },
+                {
+                  "expiresAt": null,
+                  "selected": true,
+                  "tooltip": "New",
+                  "url": "new"
+                }
+              ],
+              "clan": null,
+              "country": "",
+              "events": [],
+              "lastSeenAt": "",
+              "leaguePlacements": [],
+              "login": "Ada",
+              "names": [],
+              "playerId": 7,
+              "ratings": [],
+              "registeredAt": "",
+              "userAgent": "",
+              "warnings": []
+            },
+            "profileError": "",
+            "profileStatus": "ready",
+            "requestedLogin": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "avatarSelected",
+              "payload": {
+                "playerId": 7,
+                "url": null,
+                "tooltip": ""
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": {
+              "achievements": [],
+              "avatars": [
+                {
+                  "expiresAt": null,
+                  "selected": false,
+                  "tooltip": "Old",
+                  "url": "old"
+                },
+                {
+                  "expiresAt": null,
+                  "selected": false,
+                  "tooltip": "New",
+                  "url": "new"
+                }
+              ],
+              "clan": null,
+              "country": "",
+              "events": [],
+              "lastSeenAt": "",
+              "leaguePlacements": [],
+              "login": "Ada",
+              "names": [],
+              "playerId": 7,
+              "ratings": [],
+              "registeredAt": "",
+              "userAgent": "",
+              "warnings": []
+            },
+            "profileError": "",
+            "profileStatus": "ready",
+            "requestedLogin": "Ada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "the matchmaker profile loads independently of the investigation modal",
+      "steps": [
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "matchmakerProfileLoading",
+              "payload": {
+                "playerId": 7
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "loading",
+            "open": false,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "matchmakerProfileLoaded",
+              "payload": {
+                "profile": {
+                  "playerId": 7,
+                  "login": "Ada",
+                  "country": "de",
+                  "clanTag": "FAF",
+                  "avatarUrl": "avatar",
+                  "avatarTooltip": "Champion",
+                  "gamesPlayed": 120,
+                  "ratings": [],
+                  "leaguePlacements": [],
+                  "warnings": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": {
+              "avatarTooltip": "Champion",
+              "avatarUrl": "avatar",
+              "clanTag": "FAF",
+              "country": "de",
+              "gamesPlayed": 120,
+              "leaguePlacements": [],
+              "login": "Ada",
+              "playerId": 7,
+              "ratings": [],
+              "warnings": []
+            },
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "ready",
+            "open": false,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "matchmakerProfileLoadFailed",
+              "payload": {
+                "playerId": 7,
+                "reason": "offline"
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "matchmakerProfile": {
+              "avatarTooltip": "Champion",
+              "avatarUrl": "avatar",
+              "clanTag": "FAF",
+              "country": "de",
+              "gamesPlayed": 120,
+              "leaguePlacements": [],
+              "login": "Ada",
+              "playerId": 7,
+              "ratings": [],
+              "warnings": []
+            },
+            "matchmakerProfileError": "offline",
+            "matchmakerProfileStatus": "failed",
+            "open": false,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "a replay connects, fails, and is dismissed",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "connecting"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "failed",
+              "payload": {
+                "reason": "delayed by five minutes"
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "reason": "delayed by five minutes"
+              },
+              "type": "failed"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "closed"
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "liveTrackingScheduled",
+              "payload": {
+                "tracking": {
+                  "target": {
+                    "uid": 7,
+                    "modName": "faf",
+                    "map": "scmp_009"
+                  },
+                  "title": "Tracked replay",
+                  "action": "notify",
+                  "readyAt": 1800000300
+                }
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": {
+              "action": "notify",
+              "readyAt": 1800000300,
+              "target": {
+                "map": "scmp_009",
+                "modName": "faf",
+                "uid": 7
+              },
+              "title": "Tracked replay"
+            },
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "liveTrackingCleared"
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloadStarted",
+              "payload": {
+                "uid": 42
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "payload": {
+                "uid": 42
+              },
+              "type": "downloading"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloaded",
+              "payload": {
+                "uid": 42,
+                "replay": {
+                  "path": "/replays/42.fafreplay",
+                  "fileName": "42.fafreplay",
+                  "uid": 42,
+                  "map": "scmp_009",
+                  "modName": "faf",
+                  "title": "Downloaded replay",
+                  "recorder": "Host",
+                  "startTime": null,
+                  "modifiedTime": 1,
+                  "fileSizeBytes": 100,
+                  "numPlayers": 2,
+                  "teams": [],
+                  "averageRating": null,
+                  "simMods": [],
+                  "status": "complete",
+                  "watchable": true
+                }
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "payload": {
+                "path": "/replays/42.fafreplay",
+                "uid": 42
+              },
+              "type": "downloaded"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloadStarted",
+              "payload": {
+                "uid": 43
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "payload": {
+                "uid": 43
+              },
+              "type": "downloading"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloadFailed",
+              "payload": {
+                "uid": 43,
+                "reason": "not uploaded yet"
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "payload": {
+                "reason": "not uploaded yet",
+                "uid": 43
+              },
+              "type": "failed"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a report is opened, submitted, and closed",
+      "steps": [
+        {
+          "event": {
+            "kind": "Reporting",
+            "event": {
+              "type": "opened",
+              "payload": {
+                "playerId": 7,
+                "login": "Bob"
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyStatus": {
+              "type": "idle"
+            },
+            "login": "Bob",
+            "open": true,
+            "playerId": 7,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Reporting",
+            "event": {
+              "type": "submitting"
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyStatus": {
+              "type": "idle"
+            },
+            "login": "Bob",
+            "open": true,
+            "playerId": 7,
+            "status": {
+              "type": "submitting"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Reporting",
+            "event": {
+              "type": "submitted"
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyStatus": {
+              "type": "idle"
+            },
+            "login": "Bob",
+            "open": true,
+            "playerId": 7,
+            "status": {
+              "type": "submitted"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Reporting",
+            "event": {
+              "type": "closed"
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyStatus": {
+              "type": "idle"
+            },
+            "login": "",
+            "open": false,
+            "playerId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "settings apply each group",
+      "steps": [
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "themeChanged",
+              "payload": {
+                "theme": "forgeLight"
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "replaysView": "tiles"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "coloredNames": false,
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "",
+                "foes": "",
+                "friends": "",
+                "moderators": "",
+                "players": {}
+              },
+              "readMarkers": {},
+              "rosterWidth": 236,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "game": {
+              "additionalArguments": []
+            },
+            "gamePath": "",
+            "general": {
+              "startPage": "news"
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": []
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "gamePathChanged",
+              "payload": {
+                "path": "C:/games/FA/bin/ForgedAlliance.exe"
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "replaysView": "tiles"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "coloredNames": false,
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "",
+                "foes": "",
+                "friends": "",
+                "moderators": "",
+                "players": {}
+              },
+              "readMarkers": {},
+              "rosterWidth": 236,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "game": {
+              "additionalArguments": []
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "startPage": "news"
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": []
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "socialChanged",
+              "payload": {
+                "preferences": {
+                  "playerNotes": [
+                    {
+                      "playerId": 42,
+                      "login": "Old Aurora",
+                      "note": "old"
+                    },
+                    {
+                      "playerId": 7,
+                      "login": "Ada",
+                      "note": "Map specialist"
+                    },
+                    {
+                      "playerId": 42,
+                      "login": "Aurora",
+                      "note": "Reliable teammate"
+                    },
+                    {
+                      "playerId": 0,
+                      "login": "Invalid",
+                      "note": "drop me"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "replaysView": "tiles"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "coloredNames": false,
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "",
+                "foes": "",
+                "friends": "",
+                "moderators": "",
+                "players": {}
+              },
+              "readMarkers": {},
+              "rosterWidth": 236,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "game": {
+              "additionalArguments": []
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "startPage": "news"
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": [
+                {
+                  "login": "Ada",
+                  "note": "Map specialist",
+                  "playerId": 7
+                },
+                {
+                  "login": "Aurora",
+                  "note": "Reliable teammate",
+                  "playerId": 42
+                }
+              ]
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "discordChanged",
+              "payload": {
+                "preferences": {
+                  "enabled": false,
+                  "disallowJoins": true
+                }
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "replaysView": "tiles"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "coloredNames": false,
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "",
+                "foes": "",
+                "friends": "",
+                "moderators": "",
+                "players": {}
+              },
+              "readMarkers": {},
+              "rosterWidth": 236,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": true,
+              "enabled": false
+            },
+            "game": {
+              "additionalArguments": []
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "startPage": "news"
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": [
+                {
+                  "login": "Ada",
+                  "note": "Map specialist",
+                  "playerId": 7
+                },
+                {
+                  "login": "Aurora",
+                  "note": "Reliable teammate",
+                  "playerId": 42
+                }
+              ]
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "browsingChanged",
+              "payload": {
+                "preferences": {
+                  "customGamesView": "list",
+                  "replaysView": "list",
+                  "customGamesBrowser": {
+                    "sort": "age",
+                    "hidePrivate": true,
+                    "hideModded": true,
+                    "applyFilters": true,
+                    "rules": [
+                      {
+                        "field": "host",
+                        "constraint": "contains",
+                        "value": "  noisy  "
+                      },
+                      {
+                        "field": "host",
+                        "constraint": "contains",
+                        "value": "NOISY"
+                      }
+                    ]
+                  },
+                  "matchmakerUnselectedQueues": [
+                    "  ladder_1v1 ",
+                    "LADDER_1V1"
+                  ],
+                  "matchmakerFactions": [
+                    "cybran",
+                    "unknown"
+                  ],
+                  "liveReplayFilters": {
+                    "search": "  tournament  ",
+                    "gameType": " matchmaker ",
+                    "featuredMod": " faf ",
+                    "activePlayers": "04",
+                    "maxPlayers": "999",
+                    "hideModded": true,
+                    "hideSinglePlayer": false,
+                    "friendsOnly": true
+                  },
+                  "hostGame": {
+                    "title": " Friday game ",
+                    "featuredMod": " faf ",
+                    "visibility": "friends",
+                    "map": " scmp_009 ",
+                    "passwordEnabled": true,
+                    "password": " secret ",
+                    "enforceRatingRange": true,
+                    "ratingMin": 700,
+                    "ratingMax": 1700
+                  },
+                  "favoriteMaps": [
+                    "adaptive_tabula.v0006"
+                  ],
+                  "leaderboardRatingColumns": [
+                    "rating",
+                    "games",
+                    "wins",
+                    "winRate",
+                    "updated"
+                  ],
+                  "legacyStorageMigrated": true
+                }
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": true,
+                "hideModded": true,
+                "hidePrivate": true,
+                "rules": [
+                  {
+                    "constraint": "contains",
+                    "field": "host",
+                    "value": "noisy"
+                  }
+                ],
+                "sort": "age"
+              },
+              "customGamesView": "list",
+              "favoriteMaps": [
+                "adaptive_tabula.v0006"
+              ],
+              "hostGame": {
+                "enforceRatingRange": true,
+                "featuredMod": "faf",
+                "map": "scmp_009",
+                "password": " secret ",
+                "passwordEnabled": true,
+                "ratingMax": 1700,
+                "ratingMin": 700,
+                "title": "Friday game",
+                "visibility": "friends"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": true,
+              "liveReplayFilters": {
+                "activePlayers": "4",
+                "featuredMod": "faf",
+                "friendsOnly": true,
+                "gameType": "matchmaker",
+                "hideModded": true,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": "tournament"
+              },
+              "matchmakerFactions": [
+                "Cybran"
+              ],
+              "matchmakerUnselectedQueues": [
+                "ladder_1v1"
+              ],
+              "replaysView": "list"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "coloredNames": false,
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "",
+                "foes": "",
+                "friends": "",
+                "moderators": "",
+                "players": {}
+              },
+              "readMarkers": {},
+              "rosterWidth": 236,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": true,
+              "enabled": false
+            },
+            "game": {
+              "additionalArguments": []
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "startPage": "news"
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": [
+                {
+                  "login": "Ada",
+                  "note": "Map specialist",
+                  "playerId": 7
+                },
+                {
+                  "login": "Aurora",
+                  "note": "Reliable teammate",
+                  "playerId": 42
+                }
+              ]
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "helpers": {
+    "reviewSummaries": [
+      {
+        "reviews": [],
+        "expected": {
+          "total": 0,
+          "averageTenths": 0,
+          "counts": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "reviews": [
+          {
+            "id": 1,
+            "score": 5,
+            "text": "",
+            "player": "Ada",
+            "version": "1"
+          },
+          {
+            "id": 2,
+            "score": 2,
+            "text": "",
+            "player": "Bob",
+            "version": "1"
+          }
+        ],
+        "expected": {
+          "total": 2,
+          "averageTenths": 35,
+          "counts": [
+            0,
+            1,
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "reviews": [
+          {
+            "id": 3,
+            "score": 1,
+            "text": "",
+            "player": "Ada",
+            "version": "1"
+          },
+          {
+            "id": 4,
+            "score": 2,
+            "text": "",
+            "player": "Bob",
+            "version": "1"
+          },
+          {
+            "id": 5,
+            "score": 2,
+            "text": "",
+            "player": "Cid",
+            "version": "1"
+          }
+        ],
+        "expected": {
+          "total": 3,
+          "averageTenths": 17,
+          "counts": [
+            1,
+            2,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "reviews": [
+          {
+            "id": 6,
+            "score": -1,
+            "text": "",
+            "player": "Ada",
+            "version": "1"
+          },
+          {
+            "id": 7,
+            "score": 9,
+            "text": "",
+            "player": "Bob",
+            "version": "1"
+          }
+        ],
+        "expected": {
+          "total": 2,
+          "averageTenths": 40,
+          "counts": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    ],
+    "uploadBusy": [
+      {
+        "status": {
+          "type": "idle"
+        },
+        "expected": false
+      },
+      {
+        "status": {
+          "type": "compressing"
+        },
+        "expected": true
+      },
+      {
+        "status": {
+          "type": "uploading",
+          "payload": {
+            "sentBytes": 5,
+            "totalBytes": 10
+          }
+        },
+        "expected": true
+      },
+      {
+        "status": {
+          "type": "finishing"
+        },
+        "expected": true
+      },
+      {
+        "status": {
+          "type": "succeeded"
+        },
+        "expected": false
+      },
+      {
+        "status": {
+          "type": "failed",
+          "payload": {
+            "reason": "rejected"
+          }
+        },
+        "expected": false
+      }
+    ],
+    "playerNoteLookups": [
+      {
+        "notes": [
+          {
+            "playerId": 42,
+            "login": "Aurora",
+            "note": "Reliable teammate"
+          },
+          {
+            "playerId": 7,
+            "login": "Ada",
+            "note": "Map specialist"
+          }
+        ],
+        "playerId": 7,
+        "expected": "Map specialist"
+      },
+      {
+        "notes": [],
+        "playerId": 99,
+        "expected": ""
+      }
+    ]
+  }
+}

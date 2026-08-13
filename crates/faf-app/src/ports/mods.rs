@@ -1,4 +1,4 @@
-//! Mods port — browsing the mod vault, managing locally installed mods,
+//! Mods port: browsing the mod vault, managing locally installed mods,
 //! and enabling/disabling them.
 //!
 //! The impl fetches vault listings from the FAF Data API, installs by
@@ -13,7 +13,7 @@ use faf_domain::state::{InstalledMod, VaultMod};
 #[async_trait]
 pub trait ModsPort: Send + Sync {
     /// List the mod vault (FAF Data API `/data/mod`, `include=latestVersion`
-    /// — mirrors the current default "newest first" posture of
+    ///: mirrors the current default "newest first" posture of
     /// `MapsPort::list_vault`).
     async fn list_vault(&self) -> Result<Vec<VaultMod>, String>;
 
@@ -37,13 +37,8 @@ pub trait ModsPort: Send + Sync {
     /// the refreshed installed list.
     async fn toggle_mod(&self, uid: String, enabled: bool) -> Result<Vec<InstalledMod>, String>;
 
-    /// Replace `game.prefs`'s entire active-mods set with exactly `uids` —
-    /// no merge with whatever was active before. Mirrors the Python
-    /// client's `setActiveMods(mods, keepuimods=None, temporary=False)`,
-    /// the call the host-game dialog uses (confirmed against
-    /// `D:\py-client\src\games\hostgamewidget.py::save_active_mods`):
-    /// hosting doesn't preserve any previously active mods, unlike joining
-    /// a replay (which keeps active UI mods — see [`Self::toggle_mod`]'s
-    /// use elsewhere).
-    async fn set_active_mods(&self, uids: Vec<String>) -> Result<(), String>;
+    /// Install missing simulation mods required by a game and enable them.
+    /// Already-installed versions are retained: this is compatibility
+    /// preparation, not the intentionally excluded automatic mod updater.
+    async fn ensure_game_mods(&self, uids: &[String]) -> Result<(), String>;
 }

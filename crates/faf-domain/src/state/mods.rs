@@ -1,4 +1,4 @@
-//! Mods slice — browsing the mod vault, local install management, and
+//! Mods slice: browsing the mod vault, local install management, and
 //! enabling/disabling installed mods.
 //!
 //! Mirrors the Python client's `vaults/modvault/` + `fa/mods.py` (primary
@@ -6,12 +6,12 @@
 //! which does the same thing more verbosely): the vault list comes from
 //! the FAF Data API (`GET /data/mod`, `include=latestVersion`), installing
 //! downloads the version's zip and extracts it into the user's mods
-//! folder, and the "installed" list scans that same folder — same shape as
+//! folder, and the "installed" list scans that same folder: same shape as
 //! [`crate::state::MapsState`]. The one real delta from maps: mods can be
-//! individually enabled/disabled without uninstalling — both reference
+//! individually enabled/disabled without uninstalling: both reference
 //! clients do this by reading/rewriting FA's own `game.prefs` file's
 //! `active_mods = { ['uid'] = true, ... }` table (see
-//! `D:\py-client\src\vaults\modvault\utils.py::setActiveMods`).
+//! `context/python_client/src/vaults/modvault/utils.py::setActiveMods`).
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -28,25 +28,36 @@ pub enum ModType {
 }
 
 /// One mod version, as listed from the FAF Data API (`GET /data/mod`,
-/// `include=latestVersion`) — the client always looks at `mod.latestVersion`,
+/// `include=latestVersion`): the client always looks at `mod.latestVersion`,
 /// same posture as [`crate::state::VaultMap`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultMod {
+    pub mod_id: i32,
+    pub version_id: i32,
     pub display_name: String,
     /// Flat attribute on the `mod` resource itself, not a relationship
     /// (unlike [`crate::state::VaultMap`]'s `author`, which is a `player`
-    /// relationship) — confirmed against the Java client's `Mod.author`.
+    /// relationship): confirmed against the Java client's `Mod.author`.
     pub author: String,
-    /// `latestVersion.uid` — the stable id matched against locally
+    pub uploader: String,
+    /// `latestVersion.uid`: the stable id matched against locally
     /// installed mods and `game.prefs`'s `active_mods` table. Distinct
     /// from the numeric JSON:API resource `id`.
     pub uid: String,
-    /// Stored as text — FAF mod versions aren't reliably semver (often a
+    /// Stored as text: FAF mod versions aren't reliably semver (often a
     /// bare integer).
     pub version: String,
+    pub description: String,
+    pub filename: String,
     pub mod_type: ModType,
     pub ranked: bool,
+    pub recommended: bool,
+    /// Average community review score in tenths (for example, `43` = 4.3).
+    pub rating_tenths: i32,
+    pub reviews: i32,
+    pub created_at: String,
+    pub updated_at: String,
     pub download_url: String,
     pub thumbnail_url: String,
 }
@@ -63,11 +74,12 @@ pub struct InstalledMod {
     pub display_name: String,
     pub version: String,
     pub author: String,
+    pub description: String,
     pub mod_type: ModType,
     pub enabled: bool,
 }
 
-/// Status of a list fetch (vault or installed) — separate from
+/// Status of a list fetch (vault or installed): separate from
 /// [`ModInstallStatus`]/[`ModToggleStatus`], mirrors
 /// [`crate::state::MapListStatus`].
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -77,7 +89,9 @@ pub enum ModListStatus {
     Idle,
     Loading,
     Ready,
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
 }
 
 /// Status of an install/uninstall action for one mod. Mirrors
@@ -88,8 +102,12 @@ pub enum ModInstallStatus {
     #[default]
     Idle,
     #[serde(rename_all = "camelCase")]
-    Installing { uid: String },
-    Failed { reason: String },
+    Installing {
+        uid: String,
+    },
+    Failed {
+        reason: String,
+    },
 }
 
 /// Status of an enable/disable action for one installed mod. Separate from
@@ -101,8 +119,12 @@ pub enum ModToggleStatus {
     #[default]
     Idle,
     #[serde(rename_all = "camelCase")]
-    Toggling { uid: String },
-    Failed { reason: String },
+    Toggling {
+        uid: String,
+    },
+    Failed {
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -120,33 +142,57 @@ pub struct ModsState {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ModsEvent {
     VaultLoading,
-    VaultLoaded { mods: Vec<VaultMod> },
-    VaultLoadFailed { reason: String },
+    VaultLoaded {
+        mods: Vec<VaultMod>,
+    },
+    VaultLoadFailed {
+        reason: String,
+    },
     InstalledLoading,
-    InstalledLoaded { mods: Vec<InstalledMod> },
-    InstalledLoadFailed { reason: String },
+    InstalledLoaded {
+        mods: Vec<InstalledMod>,
+    },
+    InstalledLoadFailed {
+        reason: String,
+    },
     // `rename_all` on the enum only renames variant tags, not the fields of
-    // struct-like variants (a serde/specta quirk) — so multi-word fields
+    // struct-like variants (a serde/specta quirk): so multi-word fields
     // need their own per-variant `rename_all` to stay camelCase on the wire.
     #[serde(rename_all = "camelCase")]
-    Installing { uid: String },
-    /// Install succeeded — carries the freshly-scanned installed list so
+    Installing {
+        uid: String,
+    },
+    /// Install succeeded: carries the freshly-scanned installed list so
     /// the UI doesn't need a separate `LoadInstalled` round-trip (mirrors
     /// `MapsEvent::Installed`).
-    Installed { installed: Vec<InstalledMod> },
-    InstallFailed { reason: String },
-    Uninstalled { installed: Vec<InstalledMod> },
-    UninstallFailed { reason: String },
+    Installed {
+        installed: Vec<InstalledMod>,
+    },
+    InstallFailed {
+        reason: String,
+    },
+    Uninstalled {
+        installed: Vec<InstalledMod>,
+    },
+    UninstallFailed {
+        reason: String,
+    },
     #[serde(rename_all = "camelCase")]
-    Toggling { uid: String },
-    Toggled { installed: Vec<InstalledMod> },
-    ToggleFailed { reason: String },
+    Toggling {
+        uid: String,
+    },
+    Toggled {
+        installed: Vec<InstalledMod>,
+    },
+    ToggleFailed {
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ModsCommand {
-    /// Fetch the mod vault (newest first — mirrors the current default
+    /// Fetch the mod vault (newest first: mirrors the current default
     /// posture of `MapsCommand::LoadVault`).
     LoadVault,
     /// Scan the user's mods folder (mirrors `MapsCommand::LoadInstalled`).
@@ -157,7 +203,7 @@ pub enum ModsCommand {
     InstallMod { uid: String, download_url: String },
     /// Delete a mod folder (mirrors `MapsCommand::UninstallMap`).
     #[serde(rename_all = "camelCase")]
-    UninstallMod { folder_name: String },
+    UninstallMod { folder_name: String, uid: String },
     /// Enable or disable an installed mod without uninstalling it (writes
     /// `game.prefs`'s `active_mods` table).
     #[serde(rename_all = "camelCase")]
@@ -231,12 +277,22 @@ mod tests {
 
     fn vault_mod(uid: &str) -> VaultMod {
         VaultMod {
+            mod_id: 1,
+            version_id: 1,
             display_name: "Total Mayhem".into(),
             author: "Some Author".into(),
+            uploader: "Uploader".into(),
             uid: uid.into(),
             version: "12".into(),
+            description: "Adds new units and experimentals.".into(),
+            filename: "total_mayhem.zip".into(),
             mod_type: ModType::Sim,
             ranked: false,
+            recommended: false,
+            rating_tenths: 44,
+            reviews: 21,
+            created_at: "2025-01-01T00:00:00Z".into(),
+            updated_at: "2026-01-01T00:00:00Z".into(),
             download_url: "https://content.faforever.com/mods/total_mayhem.zip".into(),
             thumbnail_url: "https://content.faforever.com/mods/total_mayhem.png".into(),
         }
@@ -249,6 +305,7 @@ mod tests {
             display_name: "Total Mayhem".into(),
             version: "12".into(),
             author: "Some Author".into(),
+            description: "Adds new units and experimentals.".into(),
             mod_type: ModType::Sim,
             enabled,
         }

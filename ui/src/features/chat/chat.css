@@ -1,0 +1,1047 @@
+/* Chat: channel tabs on top, conversation below, grouped roster on the right.
+   The shell assigns the workspace sizing class; panes scroll internally instead
+   of stacking a second scrollbar on `.content`. */
+.chat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, min(var(--chat-roster-width, 236px), 50%));
+  gap: var(--space-3);
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-main,
+.chat-roster-shell,
+.chat-roster {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.chat-roster-shell {
+  position: relative;
+}
+
+.chat-roster-shell > .chat-roster {
+  height: 100%;
+}
+
+.chat-roster-resizer {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  bottom: 10px;
+  left: -12px;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.chat-roster-resizer::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  content: "";
+  background: var(--color-border-strong);
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.chat-roster-resizer:hover::after,
+.chat-roster-resizer:focus-visible::after,
+.chat-roster-resizer.is-active::after {
+  opacity: 1;
+}
+
+.chat-roster-resizer:focus-visible {
+  outline: none;
+}
+
+html.is-resizing-chat-roster,
+html.is-resizing-chat-roster * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.chat-roster {
+  overflow: hidden;
+}
+
+/* Shared text input, so the composer, join field and roster filter match. */
+.chat-input {
+  font: inherit;
+  min-width: 0;
+  flex: 1;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+}
+
+.chat-input::placeholder {
+  color: var(--color-subtle);
+}
+
+.chat-input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.chat-input:disabled {
+  color: var(--color-subtle);
+  cursor: not-allowed;
+}
+
+/* Channel switcher. Same underline strip as the Play tab's mode tabs: the
+   styling comes from `section-tabs.css`, and only what a channel tab has on top
+   of a mode tab lives here. */
+.chat-tabs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+/* Wrapper that anchors the close button over the tab. */
+.chat-tab {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  max-width: 230px;
+  align-items: stretch;
+}
+
+/* `.section-tabs button` is `flex: 0 0 auto`, which would push a long channel
+   name past the wrapper's max-width instead of ellipsising inside it.
+   Both rules name the tab button explicitly: a `> button` selector would also
+   match the close button, and out-specify the reset below it. */
+.chat-tabs .chat-tab-button {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.chat-tab.is-closable .chat-tab-button {
+  padding-right: 32px;
+}
+
+.chat-tab-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A mention is the one unread that deserves a status colour. */
+.section-tab-count.is-mention {
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+}
+
+.chat-tab-join {
+  display: flex;
+  flex: none;
+  width: 190px;
+  align-items: center;
+  align-self: center;
+  margin-left: 4px;
+}
+
+.chat-tab-join .chat-input {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.chat-tab-close:focus-visible,
+.chat-tab-add:focus-visible,
+.chat-roster-identity:focus-visible,
+.chat-game-badge:focus-visible,
+.chat-nick:focus-visible,
+.chat-jump:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Close micro-button inside the tab */
+.chat-tabs .chat-tab-close {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+}
+
+.chat-tab:hover .chat-tab-close,
+.chat-tab:focus-within .chat-tab-close,
+.chat-tab-button.active ~ .chat-tab-close {
+  opacity: 0.85;
+}
+
+.chat-tabs .chat-tab-close:hover {
+  opacity: 1;
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+/* Sits immediately after the last tab, styled as an integrated ghost action button */
+.chat-tabs .chat-tab-add {
+  flex: 0 0 auto;
+  display: inline-flex;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 6px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  align-self: center;
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.chat-tabs .chat-tab-add:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.chat-tabs .chat-tab-add.is-active {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+/* Conversation context and controls sit below the switcher. The channel name
+   is not repeated here: the strip above is showing it. */
+.chat-head {
+  flex: none;
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 2px;
+  margin-bottom: var(--space-2);
+  min-width: 0;
+}
+
+.chat-head .spacer {
+  flex: 1;
+}
+
+.chat-topic {
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: min(680px, 48vw);
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.chat-head-action {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 5px;
+  padding: 4px 7px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-head-action:hover,
+.chat-head-action:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.chat-toggle:hover {
+  color: var(--color-text);
+}
+
+.chat-scroll-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px;
+  scrollbar-gutter: stable;
+}
+
+.chat-conversation-search {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.chat-conversation-search > svg {
+  flex: none;
+  color: var(--color-subtle);
+}
+
+.chat-conversation-search input {
+  min-width: 120px;
+  flex: 1;
+  padding: 4px 2px;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  font: inherit;
+}
+
+.chat-conversation-search input:focus-visible {
+  outline: none;
+}
+
+.chat-conversation-search > span {
+  min-width: 64px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-align: right;
+}
+
+.chat-conversation-search button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-conversation-search button:hover:not(:disabled),
+.chat-conversation-search button:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.chat-conversation-search button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.chat-conversation-search .is-previous {
+  transform: rotate(180deg);
+}
+
+.chat-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: auto;
+}
+
+.chat-jump {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  color: var(--color-text);
+  cursor: pointer;
+  box-shadow: var(--shadow-popover);
+}
+
+.chat-jump:hover {
+  background: var(--color-surface-hover);
+}
+
+.chat-message {
+  display: grid;
+  grid-template-columns: 40px minmax(76px, 101px) minmax(0, 1fr) 44px;
+  gap: 7px;
+  align-items: start;
+  min-height: 24px;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  line-height: 1.45;
+}
+
+.chat-message:hover {
+  background: var(--color-surface-hover);
+}
+
+.chat-message.is-search-active {
+  background: var(--color-accent-glow);
+  box-shadow: inset 2px 0 var(--color-accent);
+}
+
+/* Commentary and actions have no separate nickname column. */
+.chat-message.is-info,
+.chat-message.is-error,
+.chat-message.is-action {
+  grid-template-columns: minmax(0, 1fr) 44px;
+  padding-left: 42px;
+}
+
+.chat-message-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--color-subtle);
+  text-align: right;
+}
+
+.chat-message-avatar {
+  display: grid;
+  width: 40px;
+  height: 20px;
+  place-items: center;
+  overflow: hidden;
+}
+
+.chat-message-avatar img {
+  display: block;
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.chat-message-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chat-message:not(.is-action) > .chat-nick {
+  text-align: right;
+}
+
+.chat-message:not(.is-action) > .chat-nick::after {
+  content: ":";
+}
+
+.chat-message.is-info,
+.chat-message.is-action {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.chat-message.is-notice {
+  color: var(--color-warn);
+}
+
+.chat-message.is-error {
+  color: var(--color-error);
+}
+
+.chat-message-actor {
+  font-weight: 600;
+}
+
+.chat-action-star {
+  color: var(--color-subtle);
+}
+
+/*
+ * Generated nickname colour. The hue arrives per nickname as `--nick-hue`
+ * (see chatFormat.tsx); saturation and lightness are theme tokens so the
+ * result stays legible on every surface.
+ */
+.chat-nick {
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: hsl(
+    var(--nick-hue, 0) var(--chat-nick-saturation) var(--chat-nick-lightness)
+  );
+}
+
+.chat-roster-user .chat-nick {
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-nick:hover {
+  text-decoration: underline;
+}
+
+.chat-nick.is-monochrome {
+  color: var(--color-text);
+}
+
+@media (max-width: 760px) {
+  .settings-section-head,
+  .settings-section-body {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .setting-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .setting-control {
+    justify-content: flex-start;
+  }
+
+  .settings-select {
+    width: 100%;
+  }
+
+  .settings-save-line,
+  .settings-path-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chat-category-colors {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chat-message.is-self .chat-nick {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.chat-mention {
+  background: var(--color-accent-glow);
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 0 3px;
+}
+
+.chat-search-hit {
+  padding: 0 1px;
+  color: inherit;
+  background: var(--color-accent-glow);
+  border-radius: 2px;
+}
+
+.chat-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.chat-game-link {
+  display: inline;
+  padding: 0;
+  font: inherit;
+  text-align: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Shares the header row with the topic, so it matches its size. (`--font-size-xs`
+   was never defined, which left this declaration invalid and the size inherited.) */
+.chat-link-notice {
+  flex: none;
+  color: var(--color-warn);
+  font-size: 12px;
+}
+
+.chat-compose {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.chat-compose-input {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Roster ───────────────────────────────────────────────────────────── */
+.chat-roster-search {
+  padding: var(--space-2) 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chat-roster-search-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-subtle);
+  cursor: text;
+}
+
+.chat-roster-search-field:focus-within {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.chat-roster-search-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.chat-roster-search-field input::placeholder {
+  color: var(--color-subtle);
+}
+
+.chat-roster-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+
+.chat-roster-group ul {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+
+.chat-roster-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 2px;
+  padding: 0 var(--space-1);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+}
+
+.chat-roster-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-roster-user {
+  font: inherit;
+  font-size: 12px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px var(--space-1);
+  background: transparent;
+  border-radius: var(--radius-sm);
+}
+
+.chat-roster-user:hover {
+  background: var(--color-surface-hover);
+}
+
+.chat-roster-identity {
+  font: inherit;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chat-game-badge {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: help;
+}
+
+.chat-game-map {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chat-game-map-placeholder {
+  color: var(--color-subtle);
+}
+
+.chat-game-popover {
+  position: fixed;
+  z-index: 100;
+  width: min(410px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 10px;
+  pointer-events: none;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  box-shadow: var(--shadow-popover);
+}
+
+.chat-game-popover-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chat-game-popover-head > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-game-popover-head strong,
+.chat-game-popover-head span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-game-popover-head strong {
+  font-size: 13px;
+}
+
+.chat-game-popover-head > div > span,
+.chat-game-meta,
+.chat-game-team li small {
+  color: var(--color-muted);
+}
+
+.chat-game-popover-head > div > span {
+  font-size: 12px;
+}
+
+.chat-game-status {
+  flex: none;
+  padding: 2px 7px;
+  background: var(--color-surface-hover);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.chat-game-status.is-playing {
+  color: var(--color-ok);
+}
+
+.chat-game-status.is-hosting {
+  color: var(--color-warn);
+}
+
+.chat-game-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.chat-game-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.chat-game-team {
+  min-width: 0;
+  padding: 7px;
+}
+
+.chat-game-team h4 {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+
+.chat-game-team ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-game-team li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.chat-game-team li > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-game-team img,
+.chat-game-flag-placeholder {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.chat-game-no-teams {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+}
+
+/* Avatar. The box is reserved whether or not the player has one, so nicknames
+   stay aligned down the column; the reference clients do the same. */
+.chat-avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Country flag sits between the avatar and the clan/name identity. */
+.chat-flag {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 1px;
+}
+
+.chat-clan {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+/* ── User context menu ────────────────────────────────────────────────── */
+.chat-user-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: var(--space-1);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.chat-user-menu-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-user-menu-clan {
+  font-weight: 500;
+  color: var(--color-subtle);
+}
+
+.chat-user-menu-color {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.chat-user-menu-color label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.chat-user-menu-color input[type="color"] {
+  width: 30px;
+  height: 26px;
+  padding: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-user-menu-color > button {
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-user-menu-color > button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.chat-user-menu-color > button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chat-user-menu-separator {
+  height: 0;
+  margin: var(--space-1) var(--space-2);
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.chat-user-menu-item {
+  font: inherit;
+  display: block;
+  width: 100%;
+  padding: 6px var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.chat-user-menu-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.chat-user-menu-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.chat-user-menu-item.is-danger {
+  color: var(--color-error);
+}
+
+
+@media (max-width: 700px) {
+/*
+   * At narrow widths the roster is the first thing to go; the conversation is
+   * the pane you cannot work without. The channel tabs stay put (they scroll
+   * horizontally), so every open conversation is still reachable.
+   */
+  .chat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-roster-shell {
+    display: none;
+  }
+
+  .chat-topic {
+    display: none;
+  }
+}
+

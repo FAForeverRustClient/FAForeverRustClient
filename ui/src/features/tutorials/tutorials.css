@@ -1,0 +1,325 @@
+.tutorials-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.tutorials-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.tutorials-header h2 {
+  margin: var(--space-1) 0 0;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.tutorials-eyebrow {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tutorials-count {
+  font-size: 12px;
+}
+
+/* Surface treatment comes from `.surface` in design-system/patterns.css. */
+.tutorials-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.tutorials-body {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+}
+
+.tutorials-list {
+  overflow-y: auto;
+  max-height: 100%;
+  min-height: 0;
+  padding: var(--space-2);
+}
+
+.tutorials-group + .tutorials-group {
+  margin-top: var(--space-2);
+}
+
+.tutorials-group-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 10px 10px 7px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tutorial-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 58px;
+  padding: 7px 10px;
+  color: var(--color-text);
+  font-size: 13px;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tutorial-row:hover {
+  background: var(--color-surface-hover);
+}
+
+.tutorial-row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.tutorial-row-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tutorial-row-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+
+.tutorial-row-copy small {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.tutorial-row-thumb,
+.tutorial-row-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+}
+
+.tutorial-row-thumb {
+  display: block;
+  object-fit: contain;
+  background: var(--color-surface-raised);
+}
+
+/* A row's kind, as a mark rather than the word "unavailable": which sat on
+   most of the list and named what the client could not do instead of what the
+   entry is. */
+.tutorial-row-mark {
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+}
+
+.tutorial-row-mark.is-playable {
+  color: var(--color-text);
+}
+
+.tutorial-row-mark.is-empty::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  background: var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.tutorial-row + .tutorial-row {
+  margin-top: 2px;
+}
+
+.tutorial-row.is-active {
+  background: var(--color-surface-raised);
+}
+
+.tutorial-detail {
+  width: 100%;
+  padding: clamp(20px, 3vw, 36px);
+  overflow: hidden;
+}
+
+.tutorial-detail h3 {
+  margin: 5px 0 var(--space-3);
+  font-size: clamp(21px, 2vw, 28px);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+}
+
+.tutorial-detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  align-items: center;
+  gap: clamp(24px, 4vw, 48px);
+}
+
+.tutorial-detail-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  max-width: 72ch;
+}
+
+.tutorial-detail-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tutorial-detail-side {
+  display: grid;
+  place-items: center;
+}
+
+.tutorial-art {
+  display: block;
+  width: 120px;
+  height: 120px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.tutorial-art-empty {
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+}
+
+.tutorial-brief {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--color-muted);
+  font-size: 14px;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+.tutorial-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+}
+
+.tutorial-meta div {
+  display: flex;
+  min-width: 140px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tutorial-meta dt {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tutorial-meta dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tutorial-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.tutorial-actions .btn {
+  min-width: 132px;
+  justify-content: center;
+  gap: 7px;
+}
+
+.tutorial-launch-note {
+  max-width: 38ch;
+  font-size: 11px;
+}
+
+.tutorial-progress {
+  margin: var(--space-3) 0 0;
+  font-size: 13px;
+}
+
+/* Status colours, reserved for status. */
+.tutorial-progress.is-ok {
+  color: var(--color-ok);
+}
+
+.tutorial-progress.is-error {
+  color: var(--color-error);
+}
+
+@media (max-width: 900px) {
+  .tutorials-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tutorials-list {
+    max-height: 240px;
+  }
+
+  /* The map card moves above the briefing rather than shrinking a column that
+     is already at its natural size. */
+  .tutorial-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tutorial-detail-side {
+    order: -1;
+    justify-content: start;
+  }
+
+  .tutorial-art {
+    width: 120px;
+    height: 120px;
+  }
+}

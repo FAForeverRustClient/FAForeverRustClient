@@ -1,0 +1,137 @@
+// The message input.
+//
+// Both reference clients treat this as a mIRC-style line editor rather than a
+// plain text box, and the two behaviours that matter are:
+//
+//  * Tab completes the partial nickname before the caret, and pressing Tab
+//    again cycles through the other matches (Java's `AutoCompletionHelper`,
+//    Python's `ChatLineEdit.try_completion`). A completion at the start of the
+//    line gets a `: ` suffix, which is how people address each other in #aeolus.
+//  * Up/Down walk the history of sent lines (Python's `prev_history`/
+//    `next_history`), so correcting a typo doesn't mean retyping.
+//
+// Slash commands are *not* interpreted here: the backend owns that grammar
+// (`faf-domain::protocol::chat_input`). This component only sends raw text.
+
+import { useRef, useState } from "react";
+import { Button } from "../../design-system/Button";
+
+/** How many sent lines to keep for Up/Down recall. */
+const MAX_HISTORY = 50;
+
+interface Props {
+  channel: string;
+  nicknames: string[];
+  disabled: boolean;
+  onSend: (content: string) => void;
+}
+
+interface Completion {
+  /** Text before the word being completed. */
+  prefix: string;
+  matches: string[];
+  index: number;
+}
+
+export function Composer({ channel, nicknames, disabled, onSend }: Props) {
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const completion = useRef<Completion | null>(null);
+  const history = useRef<string[]>([]);
+  // `null` means "editing a fresh line", not browsing history.
+  const historyIndex = useRef<number | null>(null);
+
+  const edit = (value: string) => {
+    setDraft(value);
+    completion.current = null;
+    historyIndex.current = null;
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const content = draft.trim();
+    if (!content) return;
+    onSend(content);
+    history.current = [...history.current, content].slice(-MAX_HISTORY);
+    historyIndex.current = null;
+    completion.current = null;
+    setDraft("");
+  };
+
+  const complete = () => {
+    const active = completion.current;
+    if (active) {
+      // Subsequent Tab: cycle to the next candidate for the same partial word.
+      const index = (active.index + 1) % active.matches.length;
+      completion.current = { ...active, index };
+      setDraft(active.prefix + suffixed(active.matches[index], active.prefix));
+      return;
+    }
+
+    const separator = draft.lastIndexOf(" ");
+    const partial = draft.slice(separator + 1);
+    if (!partial) return;
+    const matches = nicknames
+      .filter((n) => n.toLowerCase().startsWith(partial.toLowerCase()))
+      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    if (matches.length === 0) return;
+
+    const prefix = draft.slice(0, separator + 1);
+    completion.current = { prefix, matches, index: 0 };
+    setDraft(prefix + suffixed(matches[0], prefix));
+  };
+
+  const recall = (delta: -1 | 1) => {
+    const entries = history.current;
+    if (entries.length === 0) return;
+    const current = historyIndex.current ?? entries.length;
+    const next = Math.min(Math.max(current + delta, 0), entries.length);
+    historyIndex.current = next;
+    completion.current = null;
+    // Walking past the newest entry returns to the empty line being composed.
+    setDraft(next === entries.length ? "" : entries[next]);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Tab" && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      complete();
+      return;
+    }
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      recall(e.key === "ArrowUp" ? -1 : 1);
+      return;
+    }
+    // Any other key ends the completion run, so the next Tab starts fresh.
+    if (e.key.length === 1 || e.key === "Backspace" || e.key === "Delete") {
+      completion.current = null;
+    }
+  };
+
+  return (
+    <form className="chat-compose" onSubmit={submit}>
+      <input
+        ref={inputRef}
+        className="chat-input chat-compose-input"
+        type="text"
+        maxLength={500}
+        value={draft}
+        placeholder={
+          disabled ? "Not connected" : `Message ${channel}: /me, /msg, /join, /topic`
+        }
+        aria-label={`Message ${channel}`}
+        disabled={disabled}
+        onChange={(e) => edit(e.target.value)}
+        onKeyDown={onKeyDown}
+      />
+      <Button type="submit" variant="primary" disabled={disabled || !draft.trim()}>
+        Send
+      </Button>
+    </form>
+  );
+}
+
+/** A nickname completed at the start of a line addresses that person. */
+const suffixed = (nickname: string, prefix: string) =>
+  prefix === "" ? `${nickname}: ` : nickname;

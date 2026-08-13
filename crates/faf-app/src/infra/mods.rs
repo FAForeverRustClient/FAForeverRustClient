@@ -1,73 +1,82 @@
-//! Real mods client — vault browsing, local install management, and
+//! Real mods client: vault browsing, local install management, and
 //! enabling/disabling installed mods.
 //!
 //! Mirrors the Python client's `vaults/modvault/` + `fa/mods.py` (primary
 //! source; cross-checked against the Java client's `ModService.java`):
 //!
 //! ## Vault listing
-//! `GET {api_base}/data/mod`, `include=latestVersion`,
-//! `filter=latestVersion.hidden=='false'`, sorted newest-first — same
+//! `GET {api_base}/data/mod`, including the latest version, uploader, and
+//! review summary,
+//! `filter=latestVersion.hidden=='false'`, sorted newest-first: same
 //! JSON:API shape as the map vault (see `infra/maps.rs`).
 //!
 //! ## Installed mods
-//! A folder scan of the user's mods folder — `<Documents>/My Games/Gas
+//! A folder scan of the user's mods folder: `<Documents>/My Games/Gas
 //! Powered Games/Supreme Commander Forged Alliance/mods` (mirrors
 //! `util.VAULTS_BASE_DIR` + a `mods` subfolder, same base as `maps_dir()`).
 //! Each subfolder's `mod_info.lua` is parsed for `name`/`uid`/`version`/
-//! `author`/`ui_only` — a small line-based key/value extractor, **not** a
-//! full Lua parser (the reference clients' own `luaparser.py` handles
-//! arbitrary nested tables; these six fields are always flat `key = value`
+//! `author`/`description`/`ui_only`: a small line-based key/value extractor,
+//! **not** a full Lua parser (the reference clients' own `luaparser.py` handles
+//! arbitrary nested tables; these seven fields are always flat `key = value`
 //! assignments in practice, confirmed against
-//! `D:\py-client\src\vaults\modvault\utils.py::getModInfo`). Folders
+//! `context/python_client/src/vaults/modvault/utils.py::getModInfo`). Folders
 //! without a valid `mod_info.lua` are skipped, not an error (mirrors
 //! Python's `getInstalledMods` try/except-continue).
 //!
 //! ## Enable/disable
 //! Unlike maps, mods can be toggled without uninstalling. Both reference
 //! clients do this by reading/rewriting FA's own `game.prefs` file's
-//! `active_mods = { ['uid'] = true, ... }` table — confirmed path via
+//! `active_mods = { ['uid'] = true, ... }` table: confirmed path via
 //! Python's `util.LOCALFOLDER`/`PREFSFILENAME`
 //! (`%LOCALAPPDATA%\Gas Powered Games\Supreme Commander Forged
 //! Alliance\game.prefs`). Only *enabled* uids are ever written into the
 //! table (mirrors `vaults/modvault/utils.py::setActiveMods` writing only
-//! `['uid'] = true` entries and omitting disabled mods entirely) — a plain
+//! `['uid'] = true` entries and omitting disabled mods entirely): a plain
 //! balanced-brace/string scan rather than a regex dependency, since the
 //! shape being parsed is this simple, fixed pattern, not arbitrary Lua.
 //!
 //! ## Install / uninstall
 //! Installing downloads the version's zip (unauthenticated CDN, like maps)
-//! and extracts it directly into the mods folder — its own top-level zip
+//! and extracts it directly into the mods folder: its own top-level zip
 //! entry is the mod's folder name, same as maps. Uninstalling removes that
 //! directory and also scrubs the mod's uid from `game.prefs`'s active set
 //! if present (an uninstalled mod can't stay "enabled").
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use async_trait::async_trait;
 use faf_domain::state::{InstalledMod, ModType, VaultMod};
-use serde::Deserialize;
 use serde_json::Value;
 
 use crate::infra::env_or;
+use crate::infra::jsonapi::{
+    fetch_document, rel_target, resource_index, value_bool, value_i32, JsonApiDoc,
+};
+use crate::infra::vault_install::{
+    bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
+};
 use crate::ports::ModsPort;
 
-/// Mods per vault page fetched in [`ModsClient::list_vault`] — mirrors
+/// Mods per vault page fetched in [`ModsClient::list_vault`]: mirrors
 /// `infra::maps`'s identical pagination constants.
 const VAULT_PAGE_SIZE: usize = 100;
 const MAX_VAULT_PAGES: u32 = 50;
 
 #[derive(Debug, Clone)]
 pub struct ModsConfig {
-    /// FAF Data API base, which serves `/data/mod` — same host as the map
+    /// FAF Data API base, which serves `/data/mod`: same host as the map
     /// and replay vaults.
     pub api_base: String,
+    /// Trusted origin for mod archives returned by the Data API.
+    pub content_base: String,
 }
 
 impl ModsConfig {
     pub fn faf() -> Self {
         Self {
             api_base: env_or("FAF_API_BASE", "https://api.faforever.com"),
+            content_base: env_or("FAF_CONTENT_BASE", "https://content.faforever.com"),
         }
     }
 }
@@ -83,12 +92,44 @@ impl ModsClient {
         Self {
             config,
             tokens,
-            http: reqwest::Client::new(),
+            http: super::http::shared_http_client(),
         }
     }
 
     pub fn faf(tokens: crate::infra::session::TokenStore) -> Self {
         Self::new(ModsConfig::faf(), tokens)
+    }
+
+    async fn mod_download_url(&self, uid: &str) -> Result<String, String> {
+        if uid.is_empty()
+            || !uid
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+        {
+            return Err("the game supplied an invalid simulation-mod uid".into());
+        }
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let mut url = url::Url::parse(&format!("{}/data/modVersion", self.config.api_base))
+            .map_err(|error| format!("invalid API base: {error}"))?;
+        url.query_pairs_mut()
+            .append_pair("filter", &format!(r#"uid=="{uid}""#))
+            .append_pair("page[size]", "1");
+        let document = fetch_document(&self.http, url, &token).await?;
+        document
+            .data
+            .into_iter()
+            .next()
+            .and_then(|resource| {
+                resource
+                    .attributes
+                    .get("downloadUrl")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned)
+            })
+            .ok_or_else(|| format!("simulation mod {uid} was not found in the vault"))
     }
 }
 
@@ -101,7 +142,7 @@ impl ModsPort for ModsClient {
             .ok_or_else(|| "not logged in".to_string())?;
 
         // Same "fetch every page up front" reasoning as `MapsClient::list_vault`
-        // — no paging UI yet, and a mod search is useless if most of the
+        //: no paging UI yet, and a mod search is useless if most of the
         // vault is missing.
         let mut all_mods = Vec::new();
         for page in 1..=MAX_VAULT_PAGES {
@@ -112,28 +153,9 @@ impl ModsPort for ModsClient {
                 .append_pair("sort", "-latestVersion.createTime")
                 .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
                 .append_pair("page[number]", &page.to_string())
-                .append_pair("include", "latestVersion");
+                .append_pair("include", "latestVersion,reviewsSummary,uploader");
 
-            let resp = self
-                .http
-                .get(url)
-                .bearer_auth(&token)
-                .header(reqwest::header::ACCEPT, "application/vnd.api+json")
-                .send()
-                .await
-                .map_err(|e| format!("request failed: {e}"))?;
-
-            let status = resp.status();
-            let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
-            if !status.is_success() {
-                return Err(format!(
-                    "/data/mod returned {status}: {}",
-                    body.chars().take(200).collect::<String>()
-                ));
-            }
-
-            let doc: JsonApiDoc =
-                serde_json::from_str(&body).map_err(|e| format!("invalid JSON: {e}"))?;
+            let doc = fetch_document(&self.http, url, &token).await?;
             let page_len = doc.data.len();
             all_mods.extend(parse_vault_mods(&doc));
 
@@ -153,20 +175,19 @@ impl ModsPort for ModsClient {
         uid: String,
         download_url: String,
     ) -> Result<Vec<InstalledMod>, String> {
+        validate_url(&download_url, &self.config.content_base, "mods")?;
         let resp = self
             .http
             .get(&download_url)
             .send()
             .await
             .map_err(|e| format!("could not download mod {uid}: {e}"))?;
+        validate_url(resp.url().as_str(), &self.config.content_base, "mods")?;
         let status = resp.status();
         if !status.is_success() {
             return Err(format!("could not download mod {uid}: {status}"));
         }
-        let bytes = resp
-            .bytes()
-            .await
-            .map_err(|e| format!("could not read mod {uid}: {e}"))?;
+        let bytes = bounded_body(resp, &format!("mod {uid}"), MAX_DOWNLOAD_BYTES).await?;
 
         let dest = mods_dir();
         tokio::fs::create_dir_all(&dest)
@@ -174,19 +195,35 @@ impl ModsPort for ModsClient {
             .map_err(|e| format!("could not create mods folder: {e}"))?;
 
         let dest_clone = dest.clone();
-        tokio::task::spawn_blocking(move || extract_zip(&bytes, &dest_clone))
-            .await
-            .map_err(|e| format!("extraction task panicked: {e}"))??;
+        let expected_uid = uid.clone();
+        tokio::task::spawn_blocking(move || {
+            install_archive(&bytes, &dest_clone, None, |staged_root| {
+                let info_path = staged_root.join("mod_info.lua");
+                let contents = std::fs::read_to_string(&info_path)
+                    .map_err(|error| format!("could not read {}: {error}", info_path.display()))?;
+                let info = parse_mod_info(&contents)
+                    .ok_or_else(|| "downloaded mod has no valid mod_info.lua".to_string())?;
+                if info.uid != expected_uid {
+                    return Err(format!(
+                        "downloaded mod uid {:?} does not match expected uid {:?}",
+                        info.uid, expected_uid
+                    ));
+                }
+                Ok(())
+            })
+        })
+        .await
+        .map_err(|e| format!("extraction task panicked: {e}"))??;
 
         list_installed_dir(&dest).await
     }
 
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String> {
         let dir = mods_dir();
-        let target = dir.join(&folder_name);
+        let target = safe_mod_target(&dir, &folder_name)?;
 
         // Read the uid before deleting so we can also scrub it from
-        // game.prefs — an uninstalled mod can't stay "enabled".
+        // game.prefs: an uninstalled mod can't stay "enabled".
         let uid = tokio::fs::read_to_string(target.join("mod_info.lua"))
             .await
             .ok()
@@ -218,22 +255,40 @@ impl ModsPort for ModsClient {
         list_installed_dir(&mods_dir()).await
     }
 
-    async fn set_active_mods(&self, uids: Vec<String>) -> Result<(), String> {
-        write_active_mod_uids_to_disk(&uids).await
+    async fn ensure_game_mods(&self, uids: &[String]) -> Result<(), String> {
+        if uids.is_empty() {
+            return Ok(());
+        }
+        let mut installed = self.list_installed().await?;
+        for uid in uids {
+            if installed.iter().any(|candidate| candidate.uid == *uid) {
+                continue;
+            }
+            let download_url = self.mod_download_url(uid).await?;
+            installed = self.install_mod(uid.clone(), download_url).await?;
+        }
+
+        let mut active = read_active_mod_uids().await;
+        for uid in uids {
+            if !active.contains(uid) {
+                active.push(uid.clone());
+            }
+        }
+        write_active_mod_uids_to_disk(&active).await
     }
 }
 
-/// Extract a zip archive's bytes directly into `dest` (mirrors
-/// `infra::maps::extract_zip` — its own top-level entry is the mod's
-/// folder name). Runs on a blocking thread since the `zip` crate is
-/// synchronous.
-fn extract_zip(bytes: &[u8], dest: &Path) -> Result<(), String> {
-    let reader = std::io::Cursor::new(bytes);
-    let mut archive =
-        zip::ZipArchive::new(reader).map_err(|e| format!("not a valid zip archive: {e}"))?;
-    archive
-        .extract(dest)
-        .map_err(|e| format!("could not extract zip into {}: {e}", dest.display()))
+pub(crate) fn safe_mod_target(root: &Path, folder_name: &str) -> Result<PathBuf, String> {
+    let components = Path::new(folder_name).components().collect::<Vec<_>>();
+    if components.is_empty()
+        || components.len() > 2
+        || components
+            .iter()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err("refusing to use a path outside the mods folder".to_string());
+    }
+    Ok(root.join(folder_name))
 }
 
 /// Scans `dir` for installed mod folders, parsing each one's
@@ -248,23 +303,43 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
 
     let active_uids = read_active_mod_uids().await;
 
-    let mut installed = Vec::new();
+    let mut mod_dirs = Vec::new();
     while let Some(entry) = entries
         .next_entry()
         .await
         .map_err(|e| format!("could not list {}: {e}", dir.display()))?
     {
-        let is_dir = entry
-            .file_type()
-            .await
-            .map(|t| t.is_dir())
-            .unwrap_or(false);
+        let is_dir = entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
         if !is_dir {
             continue;
         }
-        let folder_name = entry.file_name().to_string_lossy().to_string();
-        let Ok(contents) = tokio::fs::read_to_string(entry.path().join("mod_info.lua")).await
-        else {
+        let path = entry.path();
+        if path.join("mod_info.lua").is_file() {
+            mod_dirs.push(path);
+            continue;
+        }
+
+        // Match the Java client's `Files.walk(modsDirectory, 2)`: archives
+        // occasionally contain one extra wrapper directory.
+        let Ok(mut children) = tokio::fs::read_dir(&path).await else {
+            continue;
+        };
+        while let Ok(Some(child)) = children.next_entry().await {
+            if child.file_type().await.is_ok_and(|kind| kind.is_dir())
+                && child.path().join("mod_info.lua").is_file()
+            {
+                mod_dirs.push(child.path());
+            }
+        }
+    }
+
+    let mut installed = Vec::new();
+    for path in mod_dirs {
+        let Ok(relative) = path.strip_prefix(dir) else {
+            continue;
+        };
+        let folder_name = relative.to_string_lossy().replace('\\', "/");
+        let Ok(contents) = tokio::fs::read_to_string(path.join("mod_info.lua")).await else {
             continue;
         };
         let Some(info) = parse_mod_info(&contents) else {
@@ -277,7 +352,12 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
             display_name: info.name,
             version: info.version,
             author: info.author,
-            mod_type: if info.ui_only { ModType::Ui } else { ModType::Sim },
+            description: info.description,
+            mod_type: if info.ui_only {
+                ModType::Ui
+            } else {
+                ModType::Sim
+            },
             enabled,
         });
     }
@@ -286,17 +366,18 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
 }
 
 /// The subset of `mod_info.lua` fields this client needs (mirrors the
-/// Python client's `getModInfo`'s search dict — see the module docs).
+/// Python client's `getModInfo`'s search dict: see the module docs).
 struct ModInfoFields {
     name: String,
     uid: String,
     version: String,
     author: String,
+    description: String,
     ui_only: bool,
 }
 
 /// Parses a `mod_info.lua` file's flat `key = value` assignments. Not a
-/// full Lua parser — see the module docs for why that's fine for these six
+/// full Lua parser: see the module docs for why that's fine for these six
 /// scalar fields. Returns `None` if `uid` is missing (mirrors Python
 /// logging a warning and skipping the mod).
 fn parse_mod_info(contents: &str) -> Option<ModInfoFields> {
@@ -326,8 +407,12 @@ fn parse_mod_info(contents: &str) -> Option<ModInfoFields> {
     let uid = fields.get("uid")?.clone();
     let name = fields.get("name").cloned().unwrap_or_else(|| uid.clone());
     // Matches Python's `getModInfo` defaults exactly.
-    let version = fields.get("version").cloned().unwrap_or_else(|| "1".to_string());
+    let version = fields
+        .get("version")
+        .cloned()
+        .unwrap_or_else(|| "1".to_string());
     let author = fields.get("author").cloned().unwrap_or_default();
+    let description = fields.get("description").cloned().unwrap_or_default();
     let ui_only = fields.get("ui_only").is_some_and(|v| v == "true");
 
     Some(ModInfoFields {
@@ -335,6 +420,7 @@ fn parse_mod_info(contents: &str) -> Option<ModInfoFields> {
         uid,
         version,
         author,
+        description,
         ui_only,
     })
 }
@@ -348,14 +434,7 @@ pub(crate) fn mods_dir() -> PathBuf {
             return PathBuf::from(dir);
         }
     }
-    let documents = directories::UserDirs::new()
-        .and_then(|u| u.document_dir().map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from("."));
-    documents
-        .join("My Games")
-        .join("Gas Powered Games")
-        .join("Supreme Commander Forged Alliance")
-        .join("mods")
+    crate::infra::faf_content::vault_dir().join("mods")
 }
 
 /// FA's own `game.prefs` file: `%LOCALAPPDATA%\Gas Powered Games\Supreme
@@ -386,16 +465,19 @@ async fn read_active_mod_uids() -> Vec<String> {
 
 pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(), String> {
     let path = game_prefs_path();
-    // A read failure (missing file, locked, non-UTF-8 bytes, …) must abort —
+    // A read failure (missing file, locked, non-UTF-8 bytes, …) must abort,
     // never be treated as an empty file. `game.prefs` is FA's *entire*
     // config (hotkeys, video, audio, profiles); the previous
     // `.unwrap_or_default()` would have replaced all of it with a lone
     // `active_mods` block on any read hiccup. Mirrors Python's
     // `setActiveMods` returning `False` when it can't read the file, and
     // never creating one that doesn't exist.
-    let contents = tokio::fs::read_to_string(&path)
-        .await
-        .map_err(|e| format!("could not read {} — leaving it untouched: {e}", path.display()))?;
+    let contents = tokio::fs::read_to_string(&path).await.map_err(|e| {
+        format!(
+            "could not read {}: leaving it untouched: {e}",
+            path.display()
+        )
+    })?;
     let updated = write_active_mod_uids(&contents, uids);
     tokio::fs::write(&path, updated)
         .await
@@ -403,8 +485,8 @@ pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(),
 }
 
 /// Byte range `[start, end]` (inclusive) of the **whole**
-/// `active_mods = { ... }` block — from the first byte of `active_mods` to
-/// the closing brace — in `game.prefs`'s contents, if present. A balanced-
+/// `active_mods = { ... }` block: from the first byte of `active_mods` to
+/// the closing brace: in `game.prefs`'s contents, if present. A balanced-
 /// brace scan rather than the reference clients' regex
 /// (`active_mods\s*=\s*{.*?}`), without adding a regex dependency for one
 /// small parser.
@@ -413,10 +495,10 @@ pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(),
 /// free (and both confirmed live as corruption vectors when absent):
 /// - The span *includes* the `active_mods = ` prefix. An earlier version
 ///   returned only the brace span while [`write_active_mod_uids`] spliced
-///   in a replacement that itself starts with `active_mods = ` — producing
+///   in a replacement that itself starts with `active_mods = `: producing
 ///   `active_mods = active_mods = { … }`, which FA's Lua parser rejects,
 ///   whereupon FA discards the *entire* prefs file (renames it `.bad` and
-///   regenerates defaults — every hotkey and setting gone).
+///   regenerates defaults: every hotkey and setting gone).
 /// - The key must be followed by `\s*=\s*{` to match, like the regex. A
 ///   bare `.find('{')` after any occurrence of the substring `active_mods`
 ///   could otherwise pair the key with some unrelated later table and
@@ -446,7 +528,7 @@ fn find_active_mods_block(contents: &str) -> Option<(usize, usize)> {
                         _ => {}
                     }
                 }
-                return None; // unbalanced braces — refuse to splice blindly
+                return None; // unbalanced braces: refuse to splice blindly
             }
         }
         from = start + KEY.len();
@@ -485,7 +567,7 @@ fn parse_active_mod_uids(contents: &str) -> Vec<String> {
 }
 
 /// Rebuilds `game.prefs`'s `active_mods` block (or appends a fresh one if
-/// absent), leaving the rest of the file untouched — mirrors Python's
+/// absent), leaving the rest of the file untouched: mirrors Python's
 /// `setActiveMods` regex-substitution approach exactly, since `game.prefs`
 /// is a shared FA config file with many other unrelated keys we must not
 /// clobber. Only enabled uids are ever written (disabled mods are simply
@@ -507,44 +589,11 @@ fn write_active_mod_uids(contents: &str, uids: &[String]) -> String {
 }
 
 fn build_active_mods_block(uids: &[String]) -> String {
-    let entries: Vec<String> = uids.iter().map(|uid| format!("    ['{uid}'] = true")).collect();
-    format!("active_mods = {{\n{}\n}}", entries.join(",\n"))
-}
-
-/// A JSON:API document: the top-level resources plus everything the
-/// `include` query param pulled in (mirrors `infra::replay::JsonApiDoc`).
-#[derive(Debug, Default, Deserialize)]
-struct JsonApiDoc {
-    #[serde(default)]
-    data: Vec<JsonApiResource>,
-    #[serde(default)]
-    included: Vec<JsonApiResource>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct JsonApiResource {
-    #[serde(rename = "type")]
-    kind: String,
-    id: String,
-    #[serde(default)]
-    attributes: Value,
-    #[serde(default)]
-    relationships: Value,
-}
-
-fn resource_index(included: &[JsonApiResource]) -> HashMap<(String, String), &JsonApiResource> {
-    included
+    let entries: Vec<String> = uids
         .iter()
-        .map(|r| ((r.kind.clone(), r.id.clone()), r))
-        .collect()
-}
-
-fn rel_target(relationships: &Value, name: &str) -> Option<(String, String)> {
-    let data = relationships.get(name)?.get("data")?;
-    Some((
-        data.get("type")?.as_str()?.to_string(),
-        data.get("id")?.as_str()?.to_string(),
-    ))
+        .map(|uid| format!("    ['{uid}'] = true"))
+        .collect();
+    format!("active_mods = {{\n{}\n}}", entries.join(",\n"))
 }
 
 fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
@@ -554,16 +603,36 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
         .filter_map(|mod_res| {
             let (_, version_id) = rel_target(&mod_res.relationships, "latestVersion")?;
             let version = index.get(&("modVersion".to_string(), version_id))?;
+            let uploader = rel_target(&mod_res.relationships, "uploader")
+                .and_then(|key| index.get(&key))
+                .and_then(|player| player.attributes.get("login"))
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let reviews_summary = rel_target(&mod_res.relationships, "reviewsSummary")
+                .and_then(|key| index.get(&key));
+            let rating_tenths = reviews_summary
+                .and_then(|summary| summary.attributes.get("averageScore"))
+                .and_then(Value::as_f64)
+                .map(|rating| (rating * 10.0).round() as i32)
+                .unwrap_or(0);
+            let reviews = reviews_summary
+                .and_then(|summary| {
+                    value_i32(&summary.attributes, "reviews")
+                        .or_else(|| value_i32(&summary.attributes, "numReviews"))
+                })
+                .unwrap_or(0);
 
             // The exact wire value for `modType` (`"UI"`/`"SIM"` or
             // something else) couldn't be verified against a live
-            // authenticated call this session — same caveat as the
+            // authenticated call this session: same caveat as the
             // leaderboard's `leagueLeaderboard` type name. Defaults to
             // `Sim`, matching the reference clients' own `ui_only`
             // default of `false`.
             let mod_type = version
                 .attributes
-                .get("modType")
+                .get("type")
+                .or_else(|| version.attributes.get("modType"))
                 .and_then(Value::as_str)
                 .map(|s| {
                     if s.eq_ignore_ascii_case("ui") {
@@ -581,6 +650,8 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
             };
 
             Some(VaultMod {
+                mod_id: mod_res.id.parse().unwrap_or_default(),
+                version_id: version.id.parse().unwrap_or_default(),
                 display_name: mod_res
                     .attributes
                     .get("displayName")
@@ -593,6 +664,7 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
                     .and_then(Value::as_str)
                     .unwrap_or("")
                     .to_string(),
+                uploader,
                 uid: version
                     .attributes
                     .get("uid")
@@ -600,12 +672,39 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
                     .unwrap_or("")
                     .to_string(),
                 version: version_str,
+                description: version
+                    .attributes
+                    .get("description")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
+                filename: version
+                    .attributes
+                    .get("filename")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
                 mod_type,
                 ranked: version
                     .attributes
                     .get("ranked")
                     .and_then(Value::as_bool)
                     .unwrap_or(false),
+                recommended: value_bool(&mod_res.attributes, "recommended"),
+                rating_tenths,
+                reviews,
+                created_at: version
+                    .attributes
+                    .get("createTime")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
+                updated_at: version
+                    .attributes
+                    .get("updateTime")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
                 download_url: version
                     .attributes
                     .get("downloadUrl")
@@ -623,7 +722,7 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
         .collect()
 }
 
-/// Inert mods client — used offline and in tests (mirrors
+/// Inert mods client: used offline and in tests (mirrors
 /// [`crate::infra::FakeMaps`]).
 #[derive(Debug, Clone, Default)]
 pub struct FakeMods;
@@ -631,27 +730,31 @@ pub struct FakeMods;
 #[async_trait]
 impl ModsPort for FakeMods {
     async fn list_vault(&self) -> Result<Vec<VaultMod>, String> {
-        Err("mod vault is disabled (FAF_REAL_LAUNCH not set)".to_string())
+        Err("mod vault is unavailable in offline mode".to_string())
     }
 
     async fn list_installed(&self) -> Result<Vec<InstalledMod>, String> {
-        Err("mod install listing is disabled (FAF_REAL_LAUNCH not set)".to_string())
+        Err("mod install listing is unavailable in offline mode".to_string())
     }
 
-    async fn install_mod(&self, _uid: String, _download_url: String) -> Result<Vec<InstalledMod>, String> {
-        Err("mod install is disabled (FAF_REAL_LAUNCH not set)".to_string())
+    async fn install_mod(
+        &self,
+        _uid: String,
+        _download_url: String,
+    ) -> Result<Vec<InstalledMod>, String> {
+        Err("mod install is unavailable in offline mode".to_string())
     }
 
     async fn uninstall_mod(&self, _folder_name: String) -> Result<Vec<InstalledMod>, String> {
-        Err("mod uninstall is disabled (FAF_REAL_LAUNCH not set)".to_string())
+        Err("mod uninstall is unavailable in offline mode".to_string())
     }
 
     async fn toggle_mod(&self, _uid: String, _enabled: bool) -> Result<Vec<InstalledMod>, String> {
-        Err("mod toggling is disabled (FAF_REAL_LAUNCH not set)".to_string())
+        Err("mod toggling is unavailable in offline mode".to_string())
     }
 
-    async fn set_active_mods(&self, _uids: Vec<String>) -> Result<(), String> {
-        Err("mod activation is disabled (FAF_REAL_LAUNCH not set)".to_string())
+    async fn ensure_game_mods(&self, _uids: &[String]) -> Result<(), String> {
+        Ok(())
     }
 }
 
@@ -677,6 +780,7 @@ mod tests {
         assert_eq!(info.uid, "dcd9a5e5-5444-4266-a016-ccbbff528268");
         assert_eq!(info.version, "12");
         assert_eq!(info.author, "Some Author");
+        assert_eq!(info.description, "Extended content");
         assert!(!info.ui_only);
     }
 
@@ -685,12 +789,29 @@ mod tests {
         assert!(parse_mod_info("name = \"No UID Mod\"").is_none());
     }
 
+    #[tokio::test]
+    async fn required_mod_lookup_rejects_untrusted_uids_before_network_access() {
+        let client = ModsClient::new(
+            ModsConfig {
+                api_base: "https://api.invalid".into(),
+                content_base: "https://content.invalid".into(),
+            },
+            crate::infra::session::TokenStore::new(),
+        );
+        let error = client
+            .mod_download_url("valid-looking' || hidden==false")
+            .await
+            .expect_err("a filter-injection uid must be rejected");
+        assert!(error.contains("invalid simulation-mod uid"));
+    }
+
     #[test]
     fn parse_mod_info_applies_defaults() {
         let info = parse_mod_info("uid = \"abc-123\"").expect("should parse");
         assert_eq!(info.name, "abc-123");
         assert_eq!(info.version, "1");
         assert_eq!(info.author, "");
+        assert_eq!(info.description, "");
         assert!(!info.ui_only);
     }
 
@@ -701,9 +822,26 @@ mod tests {
     }
 
     #[test]
+    fn mod_folder_may_have_one_safe_wrapper_directory() {
+        let root = Path::new("mods");
+        assert_eq!(
+            safe_mod_target(root, "total_mayhem"),
+            Ok(root.join("total_mayhem"))
+        );
+        assert_eq!(
+            safe_mod_target(root, "bundle/mod"),
+            Ok(root.join("bundle/mod"))
+        );
+        assert!(safe_mod_target(root, "../outside").is_err());
+        assert!(safe_mod_target(root, "nested/mod/deeper").is_err());
+        assert!(safe_mod_target(root, ".").is_err());
+    }
+
+    #[test]
     fn active_mods_round_trips_through_write_then_parse() {
         let original = "some_other_setting = 1\nactive_mods = {\n    ['old-uid'] = true,\n}\nmore_settings = 2\n";
-        let updated = write_active_mod_uids(original, &["new-uid".to_string(), "other-uid".to_string()]);
+        let updated =
+            write_active_mod_uids(original, &["new-uid".to_string(), "other-uid".to_string()]);
         assert!(updated.contains("some_other_setting = 1"));
         assert!(updated.contains("more_settings = 2"));
         assert!(!updated.contains("old-uid"));
@@ -723,7 +861,7 @@ mod tests {
     /// Regression: replacing an existing block must never leave a doubled
     /// `active_mods = active_mods = { … }` behind. Semantic round-trip
     /// tests can't catch this ([`parse_active_mod_uids`] skips to the first
-    /// brace, so it parses the doubled form happily) — but FA's Lua parser
+    /// brace, so it parses the doubled form happily): but FA's Lua parser
     /// rejects it and then throws away the user's *entire* prefs file
     /// (renamed `.bad`, defaults regenerated: all hotkeys/settings lost).
     /// Confirmed live before this fix.
@@ -746,7 +884,7 @@ mod tests {
         assert_eq!(twice, updated);
     }
 
-    /// The key must be followed by `= {` to count as the block — a stray
+    /// The key must be followed by `= {` to count as the block: a stray
     /// `active_mods` substring elsewhere (comment, other key) must not make
     /// the splice grab an unrelated table's braces.
     #[test]
@@ -768,7 +906,9 @@ mod tests {
     #[tokio::test]
     async fn list_installed_dir_missing_folder_returns_empty() {
         let dir = std::env::temp_dir().join("forge-mods-does-not-exist");
-        let installed = list_installed_dir(&dir).await.expect("missing dir is not an error");
+        let installed = list_installed_dir(&dir)
+            .await
+            .expect("missing dir is not an error");
         assert!(installed.is_empty());
     }
 
@@ -777,17 +917,41 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("forge-mods-test-{}", std::process::id()));
         let good = dir.join("total_mayhem");
         tokio::fs::create_dir_all(&good).await.unwrap();
-        tokio::fs::write(good.join("mod_info.lua"), SAMPLE_MOD_INFO).await.unwrap();
+        tokio::fs::write(good.join("mod_info.lua"), SAMPLE_MOD_INFO)
+            .await
+            .unwrap();
 
         let bad = dir.join("not_a_mod");
         tokio::fs::create_dir_all(&bad).await.unwrap();
-        // No mod_info.lua at all — should be skipped.
+        // No mod_info.lua at all: should be skipped.
 
         let installed = list_installed_dir(&dir).await.expect("should list");
         assert_eq!(installed.len(), 1);
         assert_eq!(installed[0].uid, "dcd9a5e5-5444-4266-a016-ccbbff528268");
         assert_eq!(installed[0].folder_name, "total_mayhem");
         assert!(!installed[0].enabled); // no game.prefs override in this test env
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    #[tokio::test]
+    async fn list_installed_dir_finds_mod_below_one_wrapper_directory() {
+        let dir = std::env::temp_dir().join(format!(
+            "forge-nested-mods-test-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        let nested = dir.join("download_bundle").join("total_mayhem");
+        tokio::fs::create_dir_all(&nested).await.unwrap();
+        tokio::fs::write(nested.join("mod_info.lua"), SAMPLE_MOD_INFO)
+            .await
+            .unwrap();
+
+        let installed = list_installed_dir(&dir)
+            .await
+            .expect("should list nested mod");
+        assert_eq!(installed.len(), 1);
+        assert_eq!(installed[0].folder_name, "download_bundle/total_mayhem");
 
         let _ = tokio::fs::remove_dir_all(&dir).await;
     }
@@ -799,9 +963,15 @@ mod tests {
                 {
                     "type": "mod",
                     "id": "77",
-                    "attributes": { "displayName": "Total Mayhem", "author": "Some Author" },
+                    "attributes": {
+                        "displayName": "Total Mayhem",
+                        "author": "Some Author",
+                        "recommended": true
+                    },
                     "relationships": {
                         "latestVersion": { "data": { "type": "modVersion", "id": "9" } },
+                        "uploader": { "data": { "type": "player", "id": "5" } },
+                        "reviewsSummary": { "data": { "type": "reviewsSummary", "id": "15" } },
                     },
                 },
             ],
@@ -812,12 +982,26 @@ mod tests {
                     "attributes": {
                         "uid": "dcd9a5e5-5444-4266-a016-ccbbff528268",
                         "version": 12,
-                        "modType": "SIM",
+                        "description": "Adds new units and experimentals.",
+                        "filename": "total_mayhem.zip",
+                        "type": "SIM",
                         "ranked": false,
                         "downloadUrl": "https://content.faforever.com/mods/total_mayhem.zip",
                         "thumbnailUrl": "https://content.faforever.com/mods/total_mayhem.png",
+                        "createTime": "2025-01-02T03:04:05Z",
+                        "updateTime": "2026-02-03T04:05:06Z"
                     },
                 },
+                {
+                    "type": "player",
+                    "id": "5",
+                    "attributes": { "login": "VaultUploader" }
+                },
+                {
+                    "type": "reviewsSummary",
+                    "id": "15",
+                    "attributes": { "averageScore": 4.46, "reviews": 31 }
+                }
             ],
         }))
         .unwrap();
@@ -825,10 +1009,20 @@ mod tests {
         let mods = parse_vault_mods(&doc);
         assert_eq!(mods.len(), 1);
         assert_eq!(mods[0].display_name, "Total Mayhem");
+        assert_eq!(mods[0].mod_id, 77);
+        assert_eq!(mods[0].version_id, 9);
         assert_eq!(mods[0].author, "Some Author");
+        assert_eq!(mods[0].uploader, "VaultUploader");
         assert_eq!(mods[0].uid, "dcd9a5e5-5444-4266-a016-ccbbff528268");
         assert_eq!(mods[0].version, "12");
+        assert_eq!(mods[0].description, "Adds new units and experimentals.");
+        assert_eq!(mods[0].filename, "total_mayhem.zip");
         assert_eq!(mods[0].mod_type, ModType::Sim);
+        assert!(mods[0].recommended);
+        assert_eq!(mods[0].rating_tenths, 45);
+        assert_eq!(mods[0].reviews, 31);
+        assert_eq!(mods[0].created_at, "2025-01-02T03:04:05Z");
+        assert_eq!(mods[0].updated_at, "2026-02-03T04:05:06Z");
     }
 
     #[test]
@@ -845,7 +1039,10 @@ mod tests {
         let fake = FakeMods;
         assert!(fake.list_vault().await.is_err());
         assert!(fake.list_installed().await.is_err());
-        assert!(fake.install_mod("x".into(), "http://x".into()).await.is_err());
+        assert!(fake
+            .install_mod("x".into(), "http://x".into())
+            .await
+            .is_err());
         assert!(fake.uninstall_mod("x".into()).await.is_err());
         assert!(fake.toggle_mod("x".into(), true).await.is_err());
     }

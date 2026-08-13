@@ -1,17 +1,33 @@
-//! Lobby port — a *bidirectional, streaming* boundary.
+//! Lobby port: a *bidirectional, streaming* boundary.
 //!
 //! Unlike [`AuthPort`](crate::ports::AuthPort) (request/response), the lobby pushes
 //! data over time: `connect` returns a receiver that yields a [`LobbyUpdate`]
-//! whenever the server's view changes. It is also bidirectional — [`Self::join`]
+//! whenever the server's view changes. It is also bidirectional: [`Self::join`]
 //! sends a `game_join` over the *same* authenticated connection, and the server's
 //! `game_launch` / `game_join_failed` reply arrives back on the very same update
 //! stream. The real impl wraps the FAF lobby WS protocol; the fake simulates it.
 //! The service is identical against either.
 
 use async_trait::async_trait;
-use faf_domain::state::{Game, GameLaunch, HostGameRequest, PlayerRating};
+use faf_domain::state::{
+    AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
+    PartyState, PlayerProfile, PlayerVeto, Relation,
+};
 use serde_json::Value;
 use tokio::sync::mpsc;
+
+/// Operational severity attached to a lobby `notice` frame.
+///
+/// `Kill` and `Kick` are commands as well as presentation hints: the former
+/// terminates the active FA process, while the latter ends this lobby session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerNoticeStyle {
+    Info,
+    Warning,
+    Error,
+    Kill,
+    Kick,
+}
 
 /// One thing the lobby connection tells us about. Game-list snapshots, join
 /// replies, and in-game relay traffic all travel the same socket, so they share
@@ -22,23 +38,59 @@ pub enum LobbyUpdate {
     Games(Vec<Game>),
     /// A fresh full snapshot of the in-progress ("playing") games list.
     LiveGames(Vec<Game>),
+    MatchmakerQueues(Vec<MatchmakerQueue>),
+    Matchmaking(MatchmakingState),
+    Party(PartyState),
+    PartyInvite {
+        player_id: i32,
+        login: String,
+    },
+    Vetoes(Vec<PlayerVeto>),
+    /// Our friends/foes lists, resolved from account ids to logins. Re-sent
+    /// whenever a `player_info` resolves an id we couldn't name before.
+    Relations {
+        friends: Vec<String>,
+        foes: Vec<String>,
+    },
+    /// Channels the server says this account belongs in (language, clan),
+    /// from the same `social` message as the relations above.
+    AutoJoinChannels(Vec<String>),
+    /// Profiles newly announced or changed by `player_info`. Additive, not a
+    /// snapshot (see `faf_domain::state::social`).
+    PlayersSeen(Vec<PlayerProfile>),
+    /// Profiles carrying the authoritative `state: offline` transition.
+    /// Includes the last known profile so the service can classify the
+    /// departure before removing it from online state.
+    PlayersRemoved(Vec<PlayerProfile>),
+    /// Available choices returned by `avatar/list_avatar`.
+    Avatars(Vec<AvailableAvatar>),
+    /// A server-authored operational message. Unlike ordinary event alerts,
+    /// these must remain visible because they may explain a forced disconnect
+    /// or game termination.
+    Notice {
+        style: ServerNoticeStyle,
+        text: String,
+    },
+    /// Authentication/protocol rejection with the server's authoritative
+    /// reason. The transport closes immediately after sending this update.
+    ConnectionRejected {
+        reason: String,
+    },
     /// The server accepted a join and issued the launch order.
     Launch(GameLaunch),
     /// The server rejected a join (game not ready, host left, bad password, …).
-    JoinFailed { id: i32, reason: String },
-    /// A connectivity message addressed to the game (`target: "game"`) —
-    /// `HostGame`/`JoinGame`/`ConnectToPeer`/`IceMsg`/… — to be relayed to the
+    JoinFailed {
+        id: i32,
+        reason: String,
+    },
+    /// A connectivity message addressed to the game (`target: "game"`),
+    /// `HostGame`/`JoinGame`/`ConnectToPeer`/`IceMsg`/…: to be relayed to the
     /// ICE adapter. `args` keep their JSON types (ints vs strings) for the
     /// GPGNet codec.
-    GameRelay { command: String, args: Vec<Value> },
-    /// A game we hosted showed up in the open-games list (best-effort: matched
-    /// by `host == our login`, since the server has no dedicated host ack).
-    Hosted { id: i32 },
-    /// The server rejected (or we couldn't confirm) a host attempt.
-    HostFailed { reason: String },
-    /// A batch of player ratings (login → rating) from the server's
-    /// `player_info` stream.
-    PlayerRatings(Vec<PlayerRating>),
+    GameRelay {
+        command: String,
+        args: Vec<Value>,
+    },
 }
 
 #[async_trait]
@@ -51,7 +103,46 @@ pub trait LobbyPort: Send + Sync {
     /// reply arrives asynchronously on the [`Self::connect`] stream as
     /// [`LobbyUpdate::Launch`] or [`LobbyUpdate::JoinFailed`]. A no-op if there is
     /// no active connection.
-    fn join(&self, id: i32);
+    /// Returns whether the request entered the live socket's outgoing queue.
+    /// A disconnected or saturated queue must become a visible join failure,
+    /// not an indefinitely spinning optimistic state.
+    fn join(&self, id: i32, password: Option<String>) -> bool;
+
+    /// Create a custom game using the same `game_host` payload as the reference
+    /// client. The accepted request eventually produces a `game_launch` update.
+    fn host(&self, config: HostGameConfig);
+
+    /// Start or stop searching a named matchmaker queue.
+    fn matchmake(&self, queue_name: String, start: bool);
+
+    fn leave_party(&self);
+
+    fn kick_party_member(&self, player_id: i32);
+
+    /// Invite a player to our party (`invite_to_party`).
+    fn invite_to_party(&self, player_id: i32);
+
+    fn accept_party_invite(&self, player_id: i32);
+
+    /// Set the factions this player is willing to receive in matchmaker games.
+    fn set_party_factions(&self, factions: Vec<String>);
+
+    /// Add or remove a friend/foe (`social_add` / `social_remove`).
+    ///
+    /// Fire-and-forget: the server sends no acknowledgement and does not echo a
+    /// fresh `social` message, which is why the caller updates local state
+    /// optimistically: both reference clients do the same.
+    fn set_relation(&self, player_id: i32, relation: Relation, member: bool);
+
+    fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>);
+
+    /// Request the authenticated player's available avatars. Returns `false`
+    /// when there is no live connection or the outgoing queue is full.
+    fn request_avatars(&self) -> bool;
+
+    /// Select an avatar by its server-provided URL, or clear it with `None`.
+    /// Returns whether the command was accepted by the outgoing connection.
+    fn select_avatar(&self, url: Option<String>) -> bool;
 
     /// Relay a connectivity message to the server addressed to the game
     /// (`{ command, target: "game", args }`). Used by the launcher to forward
@@ -63,9 +154,4 @@ pub trait LobbyPort: Send + Sync {
     /// connection is a no-op. Closing drops the update sender, which ends the
     /// receiver returned by [`Self::connect`].
     fn disconnect(&self);
-
-    /// Request to host a new game (sends `game_host`). The reply arrives
-    /// asynchronously on the [`Self::connect`] stream as [`LobbyUpdate::Hosted`]
-    /// or [`LobbyUpdate::HostFailed`]. A no-op if there is no active connection.
-    fn host(&self, req: HostGameRequest);
 }

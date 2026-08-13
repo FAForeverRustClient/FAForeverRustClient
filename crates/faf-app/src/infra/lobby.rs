@@ -1,4 +1,4 @@
-//! Fake lobby provider — emits an evolving game list without any network.
+//! Fake lobby provider: emits an evolving game list without any network.
 //!
 //! Stands in for the real FAF lobby protocol. On `connect` it sends an immediate
 //! snapshot, then mutates the list every couple of seconds (player counts change,
@@ -7,18 +7,19 @@
 //! join path is exercised end-to-end offline. `disconnect` cancels the loop,
 //! exercising the same teardown path as the real client.
 
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use faf_domain::state::{Game, GameLaunch, HostGameRequest};
+use faf_domain::state::{
+    AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
+    PlayerProfile, PlayerVeto, Relation,
+};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::ports::{LobbyPort, LobbyUpdate};
-
-/// Delay before the fake server "accepts" a host request, mirroring [`JOIN_DELAY`].
-const HOST_DELAY: Duration = Duration::from_millis(150);
 
 /// Interval between simulated lobby updates.
 const TICK: Duration = Duration::from_secs(2);
@@ -33,6 +34,25 @@ pub struct FakeLobby {
     /// The live connection's update sender, so `join` (a separate call) can push a
     /// reply onto the same stream the service is draining.
     updates: Arc<Mutex<Option<mpsc::Sender<LobbyUpdate>>>>,
+    matchmaking: Arc<Mutex<MatchmakingState>>,
+    hosted: Arc<Mutex<Vec<HostGameConfig>>>,
+}
+
+impl FakeLobby {
+    /// Inject a server update into the active fake connection. Kept narrow so
+    /// integration tests can exercise transition-only behavior (offline,
+    /// invites, failures) without sleeping for the demo ticker.
+    pub fn push_update(&self, update: LobbyUpdate) -> bool {
+        self.updates
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|sender| sender.try_send(update).is_ok())
+    }
+
+    pub fn hosted_configs(&self) -> Vec<HostGameConfig> {
+        self.hosted.lock().unwrap().clone()
+    }
 }
 
 #[async_trait]
@@ -46,12 +66,58 @@ impl LobbyPort for FakeLobby {
 
         let (tx, rx) = mpsc::channel(8);
         *self.updates.lock().unwrap() = Some(tx.clone());
+        *self.matchmaking.lock().unwrap() = MatchmakingState::Idle;
         tokio::spawn(async move {
             let mut games = seed_games();
             // Immediate first snapshot so the UI fills instantly.
             if tx.send(LobbyUpdate::Games(games.clone())).await.is_err() {
                 return;
             }
+            // Identity + relations, so the offline path exercises the chat
+            // roster's ranking (friends above strangers, accounts above
+            // IRC-only nicknames), its flags and its clan tags instead of
+            // flattening everyone into one unadorned group.
+            let _ = tx.send(LobbyUpdate::PlayersSeen(seed_profiles())).await;
+            let _ = tx
+                .send(LobbyUpdate::Relations {
+                    friends: vec!["Stormlord".into()],
+                    foes: vec![],
+                })
+                .await;
+            // The real `social` message carries the channels the server has on
+            // file for this account, without the `#`. Language channels are
+            // *not* in it: those are derived client-side (see
+            // `faf_domain::state::auto_join_channels`), so the fake list here is
+            // the default channel plus a clan channel, which is what the real
+            // one actually looks like.
+            let _ = tx
+                .send(LobbyUpdate::AutoJoinChannels(vec![
+                    "aeolus".into(),
+                    "clan_bc".into(),
+                ]))
+                .await;
+            let _ = tx
+                .send(LobbyUpdate::MatchmakerQueues(vec![
+                    MatchmakerQueue {
+                        queue_name: "ladder1v1".into(),
+                        team_size: 1,
+                        num_players: 18,
+                        queue_pop_time_seconds: 95,
+                    },
+                    MatchmakerQueue {
+                        queue_name: "tmm2v2".into(),
+                        team_size: 2,
+                        num_players: 12,
+                        queue_pop_time_seconds: 150,
+                    },
+                    MatchmakerQueue {
+                        queue_name: "tmm4v4".into(),
+                        team_size: 4,
+                        num_players: 20,
+                        queue_pop_time_seconds: 210,
+                    },
+                ]))
+                .await;
             let mut tick: u32 = 0;
             loop {
                 tokio::select! {
@@ -61,43 +127,105 @@ impl LobbyPort for FakeLobby {
                 tick = tick.wrapping_add(1);
                 evolve(&mut games, tick);
                 if tx.send(LobbyUpdate::Games(games.clone())).await.is_err() {
-                    break; // receiver dropped — consumer gone, stop.
+                    break; // receiver dropped: consumer gone, stop.
                 }
             }
         });
         rx
     }
 
-    fn join(&self, id: i32) {
+    fn join(&self, id: i32, _password: Option<String>) -> bool {
         // Push a synthetic launch order back on the live stream, mimicking the
         // server's `game_launch`. No-op if there's no active connection.
         let Some(tx) = self.updates.lock().unwrap().clone() else {
-            return;
+            return false;
         };
         tokio::spawn(async move {
             tokio::time::sleep(JOIN_DELAY).await;
             let _ = tx.send(LobbyUpdate::Launch(fake_launch(id))).await;
         });
+        true
     }
 
-    fn send_game_relay(&self, _command: String, _args: Vec<serde_json::Value>) {
-        // The fake stops at the launch order; it doesn't simulate in-game relay.
-    }
-
-    fn host(&self, _req: HostGameRequest) {
-        // Fabricate an id and report success shortly after, mirroring `join`'s
-        // synthetic reply — good enough to exercise the Host dialog's state
-        // transitions offline. The fake's periodic snapshot (started in
-        // `connect`) isn't taught about this game, so it won't appear in the
-        // list — acceptable, since this stands in for the *reply*, not the
-        // list's visual fidelity.
+    fn host(&self, config: HostGameConfig) {
+        self.hosted.lock().unwrap().push(config.clone());
         let Some(tx) = self.updates.lock().unwrap().clone() else {
             return;
         };
         tokio::spawn(async move {
-            tokio::time::sleep(HOST_DELAY).await;
-            let _ = tx.send(LobbyUpdate::Hosted { id: fake_host_id() }).await;
+            tokio::time::sleep(JOIN_DELAY).await;
+            let mut launch = fake_launch(200);
+            launch.name = config.title;
+            launch.mapname = config.map;
+            launch.mod_name = config.mod_name;
+            let _ = tx.send(LobbyUpdate::Launch(launch)).await;
         });
+    }
+
+    fn matchmake(&self, queue_name: String, start: bool) {
+        let Some(tx) = self.updates.lock().unwrap().clone() else {
+            return;
+        };
+        let state = {
+            let mut matchmaking = self.matchmaking.lock().unwrap();
+            matchmaking.update_search(queue_name, start);
+            matchmaking.clone()
+        };
+        tokio::spawn(async move {
+            let _ = tx.send(LobbyUpdate::Matchmaking(state)).await;
+        });
+    }
+
+    fn leave_party(&self) {}
+
+    fn kick_party_member(&self, _player_id: i32) {}
+
+    fn invite_to_party(&self, _player_id: i32) {}
+
+    fn accept_party_invite(&self, _player_id: i32) {}
+
+    fn set_party_factions(&self, _factions: Vec<String>) {}
+
+    /// No-op: the real server sends no acknowledgement either, so the social
+    /// service's optimistic event is the whole observable effect.
+    fn set_relation(&self, _player_id: i32, _relation: Relation, _member: bool) {}
+
+    fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>) {
+        let Some(tx) = self.updates.lock().unwrap().clone() else {
+            return;
+        };
+        tokio::spawn(async move {
+            let _ = tx.send(LobbyUpdate::Vetoes(vetoes)).await;
+        });
+    }
+
+    fn request_avatars(&self) -> bool {
+        let Some(tx) = self.updates.lock().unwrap().clone() else {
+            return false;
+        };
+        tokio::spawn(async move {
+            let _ = tx
+                .send(LobbyUpdate::Avatars(vec![
+                    AvailableAvatar {
+                        url: "https://content.faforever.com/faf/avatars/GW_Cybran.png".into(),
+                        tooltip: "Cybran Galactic War".into(),
+                    },
+                    AvailableAvatar {
+                        url: "https://content.faforever.com/faf/avatars/GW_Aeon.png".into(),
+                        tooltip: "Aeon Galactic War".into(),
+                    },
+                ]))
+                .await;
+        });
+        true
+    }
+
+    fn select_avatar(&self, _url: Option<String>) -> bool {
+        self.updates.lock().unwrap().is_some()
+    }
+
+    fn send_game_relay(&self, _command: String, _args: Vec<serde_json::Value>) {
+        // The fake stops at the launch order; it doesn't simulate in-game relay.
     }
 
     fn disconnect(&self) {
@@ -107,6 +235,37 @@ impl LobbyPort for FakeLobby {
         // Drop the sender handle so a later `join` before reconnect is a no-op.
         *self.updates.lock().unwrap() = None;
     }
+}
+
+/// A handful of accounts matching `FakeChat`'s seeded roster, with countries,
+/// a clan tag and an avatar so the roster's decorations are visible offline.
+/// Deliberately does *not* cover every seeded nickname: the ones left out
+/// stand in for IRC-only users.
+fn seed_profiles() -> Vec<PlayerProfile> {
+    let profile = |id, login: &str, country: &str, clan: &str, avatar: &str| PlayerProfile {
+        id,
+        login: login.into(),
+        global_rating: 900 + id * 125,
+        ratings: vec![faf_domain::state::PlayerLobbyRating {
+            leaderboard: "global".into(),
+            rating: 900 + id * 125,
+            mean: 1_350 + id * 125,
+            deviation: 150,
+            games_played: 120 + id,
+        }],
+        country: country.into(),
+        clan: clan.into(),
+        avatar_url: avatar.into(),
+        avatar_tooltip: if avatar.is_empty() { "" } else { "Seraphim" }.into(),
+    };
+    vec![
+        profile(1, "ArchSupport", "us", "", ""),
+        profile(2, "Stormlord", "de", "BC", ""),
+        profile(3, "Aurora", "fr", "", ""),
+        profile(4, "Sheikah", "gb", "", ""),
+        profile(5, "BlackYps", "at", "", ""),
+        profile(6, "Petricpwnz", "ru", "", ""),
+    ]
 }
 
 fn seed_games() -> Vec<Game> {
@@ -119,10 +278,16 @@ fn seed_games() -> Vec<Game> {
             max_players: 2,
             map: "Theta Passage".into(),
             mod_name: "faf".into(),
-            rating_min: Some(1000),
-            rating_max: Some(1400),
-            teams: [("1".to_string(), vec!["Stormlord".to_string()])].into(),
-            ..Default::default()
+            average_rating: 1450,
+            password_protected: false,
+            visibility: "public".into(),
+            game_type: "custom".into(),
+            launched_at: None,
+            hosted_at: None,
+            rating_min: None,
+            rating_max: None,
+            teams: BTreeMap::from([("1".into(), vec!["Stormlord".into()])]),
+            sim_mods: Default::default(),
         },
         Game {
             id: 2,
@@ -132,13 +297,22 @@ fn seed_games() -> Vec<Game> {
             max_players: 8,
             map: "Seton's Clutch".into(),
             mod_name: "faf".into(),
-            sim_mods: vec!["Total Mayhem".into()],
-            teams: [
-                ("1".to_string(), vec!["Aurora".to_string(), "Stormlord".to_string()]),
-                ("2".to_string(), vec!["Vex".to_string()]),
-            ]
-            .into(),
-            ..Default::default()
+            average_rating: 1100,
+            password_protected: false,
+            visibility: "public".into(),
+            game_type: "custom".into(),
+            launched_at: None,
+            hosted_at: None,
+            rating_min: Some(700),
+            rating_max: Some(1600),
+            teams: BTreeMap::from([
+                (
+                    "1".into(),
+                    vec!["Aurora".into(), "Sheikah".into(), "ArchSupport".into()],
+                ),
+                ("2".into(), vec!["BlackYps".into(), "Petricpwnz".into()]),
+            ]),
+            sim_mods: Default::default(),
         },
         Game {
             id: 3,
@@ -148,16 +322,18 @@ fn seed_games() -> Vec<Game> {
             max_players: 12,
             map: "Open Palms".into(),
             mod_name: "faf".into(),
+            average_rating: 900,
             password_protected: true,
-            ..Default::default()
+            visibility: "public".into(),
+            game_type: "custom".into(),
+            launched_at: None,
+            hosted_at: None,
+            rating_min: None,
+            rating_max: None,
+            teams: Default::default(),
+            sim_mods: Default::default(),
         },
     ]
-}
-
-/// A fabricated id for a freshly hosted game — high enough to not collide with
-/// `seed_games`'s ids or the `evolve` transient id.
-fn fake_host_id() -> i32 {
-    1000
 }
 
 /// A plausible `game_launch` for the joined game, so the offline join path lands
@@ -170,6 +346,11 @@ fn fake_launch(id: i32) -> GameLaunch {
         mapname: "scmp_009".into(),
         game_type: "custom".into(),
         rating_type: "global".into(),
+        expected_players: None,
+        team: None,
+        faction: None,
+        map_position: None,
+        game_options: Default::default(),
         args: vec!["/numgames".into(), "0".into()],
     }
 }
@@ -192,7 +373,16 @@ fn evolve(games: &mut Vec<Game>, tick: u32) {
             max_players: 4,
             map: "Canis River".into(),
             mod_name: "faf".into(),
-            ..Default::default()
+            average_rating: 1250,
+            password_protected: false,
+            visibility: "public".into(),
+            game_type: "custom".into(),
+            launched_at: None,
+            hosted_at: None,
+            rating_min: None,
+            rating_max: None,
+            teams: Default::default(),
+            sim_mods: Default::default(),
         });
     } else if !tick.is_multiple_of(3) && present {
         games.retain(|g| g.id != TRANSIENT_ID);

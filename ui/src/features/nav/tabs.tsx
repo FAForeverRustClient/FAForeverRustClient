@@ -1,28 +1,56 @@
-// Tab registry — the single place tabs are defined. Each Tab maps to a label and
+// Tab registry: the single place tabs are defined. Each Tab maps to a label and
 // a view component; TabBar renders the labels (in TAB_ORDER) and AppShell renders
 // the active view. Adding a tab = a `Tab` variant in faf-domain + one entry here.
 
-import type { ComponentType } from "react";
+import { lazy, type ComponentType } from "react";
 import type { Tab } from "../../ipc/bindings";
-import { ChatView } from "../chat/ChatView";
-import { HomeScreen } from "../home/HomeScreen";
-import { LeaderboardView } from "../leaderboard/LeaderboardView";
-import { PlayView } from "../lobby/PlayView";
-import { MapsView } from "../maps/MapsView";
-import { ModsView } from "../mods/ModsView";
-import { NewsView } from "../news/NewsView";
-import { ReplaysView } from "../replays/ReplaysView";
-import { SettingsView } from "../settings/SettingsView";
-import { UnitsView } from "../units/UnitsView";
+import type { IconName } from "../../design-system/Icon";
+const ChatView = lazy(() =>
+  import("../chat/ChatView").then((module) => ({ default: module.ChatView })),
+);
+const ContributionView = lazy(() =>
+  import("../contribution/ContributionView").then((module) => ({ default: module.ContributionView })),
+);
+const LeaderboardView = lazy(() =>
+  import("../leaderboard/LeaderboardView").then((module) => ({ default: module.LeaderboardView })),
+);
+const LobbyView = lazy(() =>
+  import("../lobby/LobbyView").then((module) => ({ default: module.LobbyView })),
+);
+const MapsView = lazy(() =>
+  import("../maps/MapsView").then((module) => ({ default: module.MapsView })),
+);
+const ModsView = lazy(() =>
+  import("../mods/ModsView").then((module) => ({ default: module.ModsView })),
+);
+const NewsView = lazy(() =>
+  import("../news/NewsView").then((module) => ({ default: module.NewsView })),
+);
+const ReplaysView = lazy(() =>
+  import("../replays/ReplaysView").then((module) => ({ default: module.ReplaysView })),
+);
+const SettingsView = lazy(() =>
+  import("../settings/SettingsView").then((module) => ({ default: module.SettingsView })),
+);
+const TournamentsView = lazy(() =>
+  import("../tournaments/TournamentsView").then((module) => ({ default: module.TournamentsView })),
+);
+const TutorialsView = lazy(() =>
+  import("../tutorials/TutorialsView").then((module) => ({ default: module.TutorialsView })),
+);
+const UnitsView = lazy(() =>
+  import("../units/UnitsView").then((module) => ({ default: module.UnitsView })),
+);
 
 interface TabDef {
   label: string;
+  description: string;
+  icon: IconName;
   Component: ComponentType;
 }
 
 /** Left-to-right order in the tab bar. */
 export const TAB_ORDER: Tab[] = [
-  "home",
   "news",
   "chat",
   "play",
@@ -30,19 +58,24 @@ export const TAB_ORDER: Tab[] = [
   "maps",
   "mods",
   "leaderboard",
+  "tournaments",
+  "tutorials",
   "units",
+  "contribution",
   "settings",
 ];
 
 export const TABS: Record<Tab, TabDef> = {
-  home: { label: "Home", Component: HomeScreen },
-  news: { label: "News", Component: NewsView },
-  chat: { label: "Chat", Component: ChatView },
-  play: { label: "Play", Component: PlayView },
-  replays: { label: "Replays", Component: ReplaysView },
-  maps: { label: "Maps", Component: MapsView },
-  mods: { label: "Mods", Component: ModsView },
-  leaderboard: { label: "Leaderboard", Component: LeaderboardView },
-  units: { label: "Units", Component: UnitsView },
-  settings: { label: "Settings", Component: SettingsView },
+  news: { label: "News", description: "Community updates", icon: "news", Component: NewsView },
+  chat: { label: "Chat", description: "Channels and messages", icon: "chat", Component: ChatView },
+  play: { label: "Play", description: "Browse open games", icon: "play", Component: LobbyView },
+  contribution: { label: "Contribution", description: "Help build FAF", icon: "github", Component: ContributionView },
+  replays: { label: "Replays", description: "Watch and review", icon: "replays", Component: ReplaysView },
+  maps: { label: "Maps", description: "Browse the vault", icon: "maps", Component: MapsView },
+  mods: { label: "Mods", description: "Manage extensions", icon: "mods", Component: ModsView },
+  leaderboard: { label: "Leaderboard", description: "Rankings and leagues", icon: "leaderboard", Component: LeaderboardView },
+  tournaments: { label: "Tournaments", description: "Competitive events", icon: "trophy", Component: TournamentsView },
+  tutorials: { label: "Tutorials", description: "Learn the game", icon: "book", Component: TutorialsView },
+  units: { label: "Units", description: "Game database", icon: "units", Component: UnitsView },
+  settings: { label: "Settings", description: "Client preferences", icon: "settings", Component: SettingsView },
 };

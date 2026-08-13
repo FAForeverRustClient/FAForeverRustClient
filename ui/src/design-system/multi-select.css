@@ -1,0 +1,84 @@
+/* ── Multi-select (design-system/MultiSelect.tsx) ─────────────────────── */
+.multi-select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.multi-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.multi-select-trigger.is-active {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.multi-select-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-select-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.multi-select-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.multi-select-option:hover {
+  background: var(--color-surface-hover);
+}
+
+.multi-select-empty {
+  margin: 0;
+  padding: var(--space-2);
+  font-size: 12px;
+}
+
+.multi-select-clear {
+  font: inherit;
+  font-size: 12px;
+  width: 100%;
+  margin-top: var(--space-1);
+  padding: 5px var(--space-2);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.multi-select-clear:hover {
+  color: var(--color-text);
+}
+

@@ -1,0 +1,123 @@
+/* Login screen. The card is a real surface rather than floating text on the
+   sidebar colour, and the footnote sits outside it so the card holds only what
+   you can act on. No text below 11px (AGENTS.md, UI Design Language). */
+
+.login-screen {
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.login-card {
+  padding: 32px 28px 28px;
+}
+
+.login-button {
+  width: 100%;
+  min-height: 44px;
+  font-size: 15px;
+}
+
+/* Says what pressing it actually does. The browser handoff surprises people
+   who expect an in-client password field, and "we never see your password" is
+   the reassuring half of that. */
+.login-hint {
+  margin: 10px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.login-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.login-remember input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.login-error svg {
+  flex: 0 0 auto;
+}
+
+.login-account-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+}
+
+.login-account-links a {
+  color: var(--color-muted);
+  text-underline-offset: 3px;
+}
+
+.login-account-links a:hover {
+  color: var(--color-text);
+}
+
+.login-account-links a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Development-only block. Deliberately looks like scaffolding rather than a
+   second way to sign in: it is not one. */
+.login-dev {
+  margin-top: 20px;
+  padding: 14px;
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.login-dev-tag {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--color-warn);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-test-button {
+  width: 100%;
+}
+
+.login-dev p {
+  margin: 8px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.login-footnote {
+  max-width: 320px;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: center;
+}

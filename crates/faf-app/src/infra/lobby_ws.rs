@@ -1,4 +1,4 @@
-//! Real lobby provider — the FAF lobby WebSocket protocol.
+//! Real lobby provider: the FAF lobby WebSocket protocol.
 //!
 //! Connects to `wss://ws.faforever.com`, performs the session handshake and
 //! streams the open-games list behind the same [`LobbyPort`] the fake implements.
@@ -6,29 +6,35 @@
 //! the lobby service, slice and UI are unchanged.
 //!
 //! ## Protocol
-//! First, `GET {api}/lobby/access` (bearer token) returns `{ accessUrl }` — a
+//! First, `GET {api}/lobby/access` (bearer token) returns `{ accessUrl }`: a
 //! one-time verified `wss://…/?verify=…` URL (connecting to the bare host 403s).
-//! Then, one JSON object per text frame, keyed by `command`:
+//! Then, newline-delimited JSON messages (the Python client uses binary frames;
+//! we accept/send the same wire form), keyed by `command`:
 //!
 //! 1. → `ask_session { version, user_agent }`
 //! 2. ← `session { session }`
 //! 3. → `auth { token, unique_id, session }`
 //! 4. ← `welcome { me }` (or `authentication_failed`)
-//! 5. ← `game_info { … }` / `game_info { games: [ … ] }` — pushed continuously
+//! 5. ← `game_info { … }` / `game_info { games: [ … ] }`: pushed continuously
 //!
 //! ## `unique_id` (anti-smurf)
 //! The lobby `auth` also requires a `unique_id`: a machine fingerprint produced by
 //! FAF's `faf-uid` executable (we can't reproduce its encryption, but we don't need
-//! to — we run the official binary). We invoke `faf-uid <session>` and use its
-//! stdout. The binary path comes from `FAF_UID_PATH` (defaults to `faf-uid[.exe]`
-//! resolved against the working directory / `PATH`). This client is opt-in via
-//! `FAF_REAL_LOBBY=1`; without a working `faf-uid`, auth fails and the stream ends.
+//! to: we run the official binary). We invoke `faf-uid <session>` and use its
+//! stdout. The binary path comes from `FAF_UID_PATH`; otherwise the provider
+//! searches the development/package `natives` directory and finally `PATH`.
+//! The live provider is selected for normal account sessions; without a working
+//! `faf-uid`, lobby auth fails and the stream ends.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use faf_domain::state::{Game, GameLaunch, GameVisibility, HostGameRequest, PlayerRating};
+use faf_domain::state::{
+    AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
+    PartyMember, PartyState, PlayerLobbyRating, PlayerProfile, PlayerVeto, Relation,
+};
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -37,15 +43,20 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_util::sync::CancellationToken;
 
 use crate::infra::session::TokenStore;
-use crate::infra::{ensure_ws_path, env_or, fetch_access_url};
-use crate::ports::{LobbyPort, LobbyUpdate};
+use crate::infra::{env_or, fetch_access_url, validated_ws_url};
+use crate::ports::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
+
+const MAX_SERVER_MESSAGE_CHARS: usize = 4_000;
+// Keep the protocol identifier aligned with the established FAF client
+// handshake. This value is stored by the lobby and shown on player cards.
+const LOBBY_USER_AGENT: &str = "faf-client";
 
 /// Configuration for the real lobby client.
 #[derive(Debug, Clone)]
 pub struct LobbyConfig {
     /// Explicit WebSocket URL override (e.g. a local test server). Empty means
     /// "derive a verified URL from the API" via `/lobby/access`, which FAF prod
-    /// requires — connecting to the bare `wss://…` host returns 403.
+    /// requires: connecting to the bare `wss://…` host returns 403.
     pub ws_url: String,
     /// FAF *user* API base (`user.faforever.com`), which serves `/lobby/access`.
     /// Note this is a different host from the main `api.faforever.com`.
@@ -71,11 +82,41 @@ impl LobbyConfig {
     }
 }
 
-fn default_uid_path() -> &'static str {
-    if cfg!(windows) {
+fn default_uid_path() -> String {
+    let executable = if cfg!(windows) {
         "faf-uid.exe"
+    } else if cfg!(target_os = "macos") {
+        "faf-uid-macos"
     } else {
         "faf-uid"
+    };
+
+    let mut candidates = Vec::<PathBuf>::new();
+    if let Ok(current_dir) = std::env::current_dir() {
+        add_uid_candidates(&mut candidates, &current_dir, executable);
+    }
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(parent) = current_exe.parent() {
+            add_uid_candidates(&mut candidates, parent, executable);
+        }
+    }
+
+    candidates
+        .into_iter()
+        .find(|path| path.is_file())
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|| executable.to_string())
+}
+
+/// Development launches can run with `src-tauri` or `target/debug` as their
+/// working directory, while the helper is prepared in the workspace-level
+/// `natives/` directory. Walk ancestors so all of those layouts resolve the
+/// same bundled helper; packaged builds set `FAF_UID_PATH` from Tauri resources
+/// before this fallback is reached.
+fn add_uid_candidates(candidates: &mut Vec<PathBuf>, root: &std::path::Path, executable: &str) {
+    for directory in root.ancestors() {
+        candidates.push(directory.join("natives").join(executable));
+        candidates.push(directory.join(executable));
     }
 }
 
@@ -94,7 +135,7 @@ impl LobbyClient {
         Self {
             config,
             tokens,
-            http: reqwest::Client::new(),
+            http: super::http::shared_http_client(),
             cancel: Arc::new(Mutex::new(None)),
             outgoing: Arc::new(Mutex::new(None)),
         }
@@ -141,53 +182,114 @@ impl LobbyPort for LobbyClient {
         rx
     }
 
-    fn join(&self, id: i32) {
-        let frame = json!({ "command": "game_join", "uid": id, "gameport": 0 });
-        if !self.send_frame(frame) {
-            eprintln!("[lobby] join({id}) ignored: no active connection");
+    fn join(&self, id: i32, password: Option<String>) -> bool {
+        let mut frame = json!({ "command": "game_join", "uid": id, "gameport": 0 });
+        if let Some(password) = password.filter(|value| !value.is_empty()) {
+            frame["password"] = Value::String(password);
         }
+        let sent = self.send_frame(frame);
+        if !sent {
+            tracing::warn!(
+                game_id = id,
+                "join ignored because the lobby is disconnected"
+            );
+        }
+        sent
+    }
+
+    fn host(&self, config: HostGameConfig) {
+        let mut frame = json!({
+            "command": "game_host",
+            "title": config.title,
+            "mod": config.mod_name,
+            "visibility": config.visibility,
+            "mapname": config.map,
+            "password": config.password.unwrap_or_default(),
+        });
+        if config.enforce_rating_range {
+            if let Some(min) = config.rating_min {
+                frame["rating_min"] = json!(min);
+            }
+            if let Some(max) = config.rating_max {
+                frame["rating_max"] = json!(max);
+            }
+        }
+        if !self.send_frame(frame) {
+            tracing::warn!("host request ignored because the lobby is disconnected");
+        }
+    }
+
+    fn matchmake(&self, queue_name: String, start: bool) {
+        let state = if start { "start" } else { "stop" };
+        let frame = json!({
+            "command": "game_matchmaking",
+            "queue_name": queue_name,
+            "state": state,
+        });
+        if !self.send_frame(frame) {
+            tracing::warn!("matchmaker request ignored because the lobby is disconnected");
+        }
+    }
+
+    fn leave_party(&self) {
+        let _ = self.send_frame(json!({ "command": "leave_party" }));
+    }
+
+    fn kick_party_member(&self, player_id: i32) {
+        let _ = self.send_frame(json!({
+            "command": "kick_player_from_party",
+            "kicked_player_id": player_id,
+        }));
+    }
+
+    fn invite_to_party(&self, player_id: i32) {
+        let _ = self.send_frame(json!({
+            "command": "invite_to_party",
+            "recipient_id": player_id,
+        }));
+    }
+
+    fn accept_party_invite(&self, player_id: i32) {
+        let _ = self.send_frame(json!({
+            "command": "accept_party_invite",
+            "sender_id": player_id,
+        }));
+    }
+
+    fn set_party_factions(&self, factions: Vec<String>) {
+        let _ = self.send_frame(party_factions_frame(factions));
+    }
+
+    fn set_relation(&self, player_id: i32, relation: Relation, member: bool) {
+        let _ = self.send_frame(relation_frame(player_id, relation, member));
+    }
+
+    fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>) {
+        let vetoes = vetoes
+            .into_iter()
+            .map(|veto| {
+                json!({
+                    "matchmaker_queue_map_pool_id": veto.matchmaker_queue_map_pool_id,
+                    "map_pool_map_version_id": veto.map_pool_map_version_id,
+                    "veto_tokens_applied": veto.veto_tokens_applied,
+                })
+            })
+            .collect::<Vec<_>>();
+        let _ = self.send_frame(json!({ "command": "set_player_vetoes", "vetoes": vetoes }));
+    }
+
+    fn request_avatars(&self) -> bool {
+        self.send_frame(avatar_list_frame())
+    }
+
+    fn select_avatar(&self, url: Option<String>) -> bool {
+        self.send_frame(avatar_select_frame(url))
     }
 
     fn send_game_relay(&self, command: String, args: Vec<Value>) {
         let frame = json!({ "command": command, "target": "game", "args": args });
         if !self.send_frame(frame) {
-            eprintln!("[lobby] relay '{command}' dropped: no active connection");
-        }
-    }
-
-    fn host(&self, req: HostGameRequest) {
-        // Confirmed against the Python reference client
-        // (`src/client/_clientwindow.py::host_game`): mods are never part of
-        // this wire message. The real client writes selected mods into the
-        // local `game.prefs` (`setActiveMods`, same mechanism the replay
-        // launch path already uses) *before* sending `game_host` — FA reads
-        // its active mods from that file when it starts, not from the server.
-        // `req.sim_mods` isn't sent here; wiring it into a `game.prefs` write
-        // is a follow-up (that file has bitten us before on malformed writes —
-        // see the replay-launch notes — so it deserves its own careful pass,
-        // not a rushed addition here).
-        let visibility = serde_json::to_value(req.visibility).unwrap_or_else(|_| json!("public"));
-        let mut frame = json!({
-            "command": "game_host",
-            "title": req.title,
-            "mapname": req.mapname,
-            "mod": req.featured_mod,
-            "password": req.password,
-            "visibility": visibility,
-        });
-        // The reference client only includes rating_min/rating_max when
-        // enforcement is on, and omits `enforce_rating_range` from the wire
-        // message entirely — mirrored here rather than guessing at extra keys.
-        if req.enforce_rating_range {
-            if let Some(min) = req.rating_min {
-                frame["rating_min"] = json!(min);
-            }
-            if let Some(max) = req.rating_max {
-                frame["rating_max"] = json!(max);
-            }
-        }
-        if !self.send_frame(frame) {
-            eprintln!("[lobby] host({:?}) ignored: no active connection", req.title);
+            tracing::warn!(%command, "game relay message dropped because the lobby is disconnected");
         }
     }
 
@@ -211,18 +313,17 @@ async fn run_session(
     cancel: CancellationToken,
 ) {
     let Some(access_token) = access_token else {
-        eprintln!("[lobby] not connecting: no access token (are you logged in?)");
-        return; // not logged in — nothing to authenticate with
+        tracing::warn!("lobby connection skipped because there is no access token");
+        return; // not logged in: nothing to authenticate with
     };
 
     // Resolve the WebSocket URL. FAF prod requires a verified URL obtained from
     // the API (the bare host 403s); an explicit FAF_LOBBY_URL bypasses that.
     let ws_url = if config.ws_url.is_empty() {
-        match fetch_access_url(&http, &config.user_api_base, "/lobby/access", &access_token).await
-        {
+        match fetch_access_url(&http, &config.user_api_base, "/lobby/access", &access_token).await {
             Ok(url) => url,
             Err(e) => {
-                eprintln!("[lobby] could not get lobby access url: {e}");
+                tracing::error!(error = %e, "could not obtain lobby access URL");
                 return;
             }
         }
@@ -231,65 +332,75 @@ async fn run_session(
     };
     // The server returns "wss://host?verify=…" with no path, which some clients
     // reject with 400. Insert the missing "/" (mirrors the reference client).
-    let ws_url = ensure_ws_path(&ws_url);
-
-    // Note: ws_url carries a one-time verify token — never log it verbatim.
-    let ws = match tokio_tungstenite::connect_async(ws_url.as_str()).await {
-        Ok((ws, _)) => ws,
-        Err(e) => {
-            eprintln!("[lobby] could not open websocket: {e}");
+    let ws_url = match validated_ws_url(&ws_url) {
+        Ok(url) => url,
+        Err(error) => {
+            tracing::error!(%error, "lobby access service returned an unsafe URL");
             return;
         }
     };
-    eprintln!("[lobby] websocket connected");
+
+    // Note: ws_url carries a one-time verify token: never log it verbatim.
+    let ws = match tokio_tungstenite::connect_async(ws_url.as_str()).await {
+        Ok((ws, _)) => ws,
+        Err(e) => {
+            tracing::error!(error = %e, "could not open lobby WebSocket");
+            return;
+        }
+    };
+    tracing::info!("lobby WebSocket connected");
     let (mut write, mut read) = ws.split();
 
     // 1. Ask for a session.
     let ask = json!({
         "command": "ask_session",
         "version": config.version,
-        "user_agent": "forge-client",
+        "user_agent": LOBBY_USER_AGENT,
     });
-    if write.send(Message::text(ask.to_string())).await.is_err() {
-        eprintln!("[lobby] failed to send ask_session");
+    if write
+        .send(Message::binary(encode_lobby_message(&ask).into_bytes()))
+        .await
+        .is_err()
+    {
+        tracing::error!("failed to request a lobby session");
         return;
     }
 
     let mut games = GameSet::default();
-    // Set true when a `game_host` frame is sent; cleared on the matching
-    // `game_info` (success) or the next `notice` (best-effort failure signal —
-    // the server has no dedicated host ack/nack). `me_login` (from `welcome`)
-    // is what a hosted game's `host` field is matched against.
-    let mut pending_host = false;
-    let mut me_login: Option<String> = None;
-    loop {
+    // `game_info` carries team membership, while the actual player ratings
+    // arrive separately in `player_info`. Keep the latest displayed global
+    // rating by login so game rows can mirror the reference clients' live
+    // average-rating column.
+    let mut player_ratings = BTreeMap::<String, i32>::new();
+    // Identity (rather than rating) side of the same `player_info` stream,
+    // what chat needs to rank its roster. See `PlayerDirectory`.
+    let mut directory = PlayerDirectory::default();
+    let mut matchmaking = MatchmakingState::Idle;
+    'connection: loop {
         tokio::select! {
             _ = cancel.cancelled() => {
                 let _ = write.send(Message::Close(None)).await;
                 break;
             }
             // Client→server frames (e.g. game_join from `join`). `None` means the
-            // sender was dropped by `disconnect` — tear down gracefully.
+            // sender was dropped by `disconnect`: tear down gracefully.
             frame = outgoing.recv() => {
                 let Some(frame) = frame else {
                     let _ = write.send(Message::Close(None)).await;
                     break;
                 };
-                if command_of(&frame) == "game_host" {
-                    pending_host = true;
-                }
-                if write.send(Message::text(frame.to_string())).await.is_err() {
+                if write
+                    .send(Message::binary(encode_lobby_message(&frame).into_bytes()))
+                    .await
+                    .is_err()
+                {
                     break;
                 }
             }
             incoming = read.next() => {
-                let Some(Ok(message)) = incoming else { break };
-                let text = match message {
-                    Message::Text(t) => t,
-                    Message::Close(_) => break,
-                    _ => continue, // ping/pong/binary — ignore
-                };
-                let Ok(value) = serde_json::from_str::<Value>(text.as_str()) else { continue };
+                let Some(Ok(message)) = incoming else { break 'connection };
+                let Some(values) = decode_lobby_messages(message) else { break 'connection };
+                'message: for value in values {
 
                 // Connectivity messages addressed to the game are relayed to the
                 // local ICE adapter, regardless of their command name.
@@ -305,130 +416,186 @@ async fn run_session(
                         .await
                         .is_err()
                     {
-                        break;
+                        break 'connection;
                     }
-                    continue;
+                    continue 'message;
                 }
 
                 match command_of(&value) {
+                    "ping" => {
+                        let pong = json!({ "command": "pong" });
+                        if write
+                            .send(Message::binary(encode_lobby_message(&pong).into_bytes()))
+                            .await
+                            .is_err()
+                        {
+                            break 'connection;
+                        }
+                    }
                     "session" => {
                         // Compute the machine fingerprint and authenticate.
-                        eprintln!("[lobby] got session, running faf-uid…");
+                        tracing::debug!("lobby session received; generating machine proof");
                         let session = value.get("session").cloned().unwrap_or(Value::Null);
+                        // The Python client normalizes the server's numeric
+                        // session id to a string before sending `auth`.
+                        let session_id = session_to_string(&session);
                         let unique_id =
-                            match generate_unique_id(&config.uid_path, &session_to_string(&session))
-                                .await
+                            match generate_unique_id(&config.uid_path, &session_id).await
                             {
                                 Ok(uid) => uid,
                                 Err(e) => {
-                                    // Can't authenticate — end the stream (service
+                                    // Can't authenticate: end the stream (service
                                     // emits Disconnected). Surfaced for the dev console.
-                                    eprintln!("[lobby] faf-uid failed: {e}");
-                                    break;
+                                    tracing::error!(error = %e, "machine proof generation failed");
+                                    break 'connection;
                                 }
                             };
                         let auth = json!({
                             "command": "auth",
                             "token": access_token,
                             "unique_id": unique_id,
-                            "session": session,
+                            "session": session_id,
                         });
-                        if write.send(Message::text(auth.to_string())).await.is_err() {
-                            break;
+                        if write
+                            .send(Message::binary(encode_lobby_message(&auth).into_bytes()))
+                            .await
+                            .is_err()
+                        {
+                            break 'connection;
                         }
                     }
                     "authentication_failed" => {
-                        eprintln!(
-                            "[lobby] authentication failed: {}",
-                            value.get("text").and_then(Value::as_str).unwrap_or("(no detail)")
+                        let reason = server_text(
+                            &value,
+                            "The lobby server rejected authentication.",
                         );
-                        break;
+                        tracing::error!(%reason, "lobby authentication failed");
+                        let _ = tx.send(LobbyUpdate::ConnectionRejected { reason }).await;
+                        break 'connection;
                     }
                     "welcome" => {
-                        me_login = value
-                            .get("me")
-                            .and_then(|m| m.get("login"))
-                            .and_then(Value::as_str)
-                            .map(str::to_string);
-                        eprintln!("[lobby] authenticated as {me_login:?} — receiving games");
-                    }
-                    "notice" => {
-                        // Server-side messages (version kicks, kicks, info) land here.
-                        let text =
-                            value.get("text").and_then(Value::as_str).unwrap_or("").to_string();
-                        eprintln!(
-                            "[lobby] notice [{}]: {text}",
-                            value.get("style").and_then(Value::as_str).unwrap_or(""),
-                        );
-                        // Best-effort: the server has no dedicated `game_host`
-                        // ack/nack, so treat the next notice while a host request
-                        // is in flight as its (likely) rejection reason. May yield
-                        // false positives for unrelated notices — revisit once the
-                        // real failure signal is confirmed against a live server.
-                        if pending_host {
-                            pending_host = false;
-                            if tx.send(LobbyUpdate::HostFailed { reason: text }).await.is_err() {
-                                break;
-                            }
-                        }
-                    }
-                    "game_info" => {
-                        let raws = extract_raw_games(&value);
-                        if pending_host {
-                            if let Some(login) = &me_login {
-                                if let Some(hosted) =
-                                    raws.iter().find(|r| r.is_open() && &r.host == login)
-                                {
-                                    pending_host = false;
-                                    if tx
-                                        .send(LobbyUpdate::Hosted { id: hosted.uid })
-                                        .await
-                                        .is_err()
-                                    {
-                                        break;
-                                    }
+                        tracing::info!("lobby authenticated");
+                        if let Some(player) = value.get("me") {
+                            update_player_ratings(&mut player_ratings, player);
+                            if let Some(profile) = directory.observe(player) {
+                                if tx.send(LobbyUpdate::PlayersSeen(vec![profile])).await.is_err() {
+                                    break 'connection;
                                 }
                             }
                         }
-                        for raw in raws {
-                            games.apply(raw);
+                        let _ = write
+                            .send(Message::binary(
+                                encode_lobby_message(&json!({ "command": "matchmaker_info" }))
+                                    .into_bytes(),
+                            ))
+                            .await;
+                    }
+                    "player_info" => {
+                        if let Some(players) = value.get("players").and_then(Value::as_array) {
+                            let mut newly_seen = Vec::new();
+                            let mut removed = Vec::new();
+                            for player in players {
+                                if player.get("state").and_then(Value::as_str) == Some("offline") {
+                                    if let Some(profile) = directory.remove(player) {
+                                        player_ratings.remove(&profile.login);
+                                        removed.push(profile);
+                                    }
+                                    continue;
+                                }
+                                update_player_ratings(&mut player_ratings, player);
+                                if let Some(profile) = directory.observe(player) {
+                                    newly_seen.push(profile);
+                                }
+                            }
+                            if !removed.is_empty()
+                                && tx.send(LobbyUpdate::PlayersRemoved(removed)).await.is_err()
+                            {
+                                break 'connection;
+                            }
+                            if !newly_seen.is_empty() {
+                                if tx.send(LobbyUpdate::PlayersSeen(newly_seen)).await.is_err() {
+                                    break 'connection;
+                                }
+                                // Newly named accounts may be the friends whose
+                                // ids we couldn't resolve when `social` arrived.
+                                if directory.has_relations() {
+                                    let (friends, foes) = directory.relations();
+                                    if tx
+                                        .send(LobbyUpdate::Relations { friends, foes })
+                                        .await
+                                        .is_err()
+                                    {
+                                        break 'connection;
+                                    }
+                                }
+                            }
+                            games.refresh_ratings(&player_ratings);
+                            if tx.send(LobbyUpdate::Games(games.snapshot())).await.is_err() {
+                                break 'connection;
+                            }
+                            if tx
+                                .send(LobbyUpdate::LiveGames(games.snapshot_live()))
+                                .await
+                                .is_err()
+                            {
+                                break 'connection;
+                            }
+                        }
+                    }
+                    "notice" => {
+                        let (style, text) = parse_server_notice(&value);
+                        tracing::info!(?style, %text, "lobby notice received");
+                        if tx.send(LobbyUpdate::Notice { style, text }).await.is_err() {
+                            break 'connection;
+                        }
+                    }
+                    "invalid" => {
+                        let reason = server_text(
+                            &value,
+                            "The lobby server rejected an invalid client command.",
+                        );
+                        tracing::error!(%reason, "lobby protocol command rejected");
+                        let _ = tx.send(LobbyUpdate::ConnectionRejected { reason }).await;
+                        break 'connection;
+                    }
+                    "game_info" => {
+                        for raw in extract_raw_games(&value) {
+                            games.apply(raw, &player_ratings);
                         }
                         if tx.send(LobbyUpdate::Games(games.snapshot())).await.is_err() {
-                            break; // consumer gone
+                            break 'connection; // consumer gone
                         }
                         if tx
                             .send(LobbyUpdate::LiveGames(games.snapshot_live()))
                             .await
                             .is_err()
                         {
-                            break;
-                        }
-                    }
-                    "player_info" => {
-                        let ratings: Vec<PlayerRating> = extract_raw_players(&value)
-                            .into_iter()
-                            .filter_map(|p| {
-                                p.global_rating.map(|rating| PlayerRating {
-                                    login: p.login,
-                                    rating: rating.round() as i32,
-                                })
-                            })
-                            .collect();
-                        if !ratings.is_empty()
-                            && tx.send(LobbyUpdate::PlayerRatings(ratings)).await.is_err()
-                        {
-                            break;
+                            break 'connection;
                         }
                     }
                     "game_launch" => {
                         match parse_game_launch(&value) {
                             Some(launch) => {
-                                eprintln!("[lobby] game_launch for uid {}", launch.uid);
+                                tracing::info!(game_id = launch.uid, "lobby issued game launch");
+                                if launch.game_type.eq_ignore_ascii_case("matchmaker") {
+                                    if let Some(queue_name) =
+                                        matchmaking.matched_queue().map(str::to_owned)
+                                    {
+                                        matchmaking = MatchmakingState::Launching { queue_name };
+                                        if tx
+                                            .send(LobbyUpdate::Matchmaking(matchmaking.clone()))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break 'connection;
+                                        }
+                                    }
+                                }
                                 if tx.send(LobbyUpdate::Launch(launch)).await.is_err() {
-                                    break;
+                                    break 'connection;
                                 }
                             }
-                            None => eprintln!("[lobby] game_launch missing required fields"),
+                            None => tracing::warn!("game launch message was missing required fields"),
                         }
                     }
                     "game_join_failed" => {
@@ -438,25 +605,240 @@ async fn run_session(
                             .and_then(Value::as_str)
                             .unwrap_or("unknown")
                             .to_string();
-                        eprintln!("[lobby] game_join_failed (uid {id}): {reason}");
+                        tracing::warn!(game_id = id, %reason, "game join rejected");
                         if tx
                             .send(LobbyUpdate::JoinFailed { id, reason })
                             .await
                             .is_err()
                         {
-                            break;
+                            break 'connection;
                         }
                     }
-                    _ => {} // social, player_info, … — not needed yet
+                    "matchmaker_info" => {
+                        let queues = parse_matchmaker_queues(&value);
+                        if tx.send(LobbyUpdate::MatchmakerQueues(queues)).await.is_err() {
+                            break 'connection;
+                        }
+                    }
+                    "search_info" => {
+                        let queue_name = value
+                            .get("queue_name")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string();
+                        let searching = value.get("state").and_then(Value::as_str) == Some("start");
+                        matchmaking.update_search(queue_name, searching);
+                        if tx
+                            .send(LobbyUpdate::Matchmaking(matchmaking.clone()))
+                            .await
+                            .is_err()
+                        {
+                            break 'connection;
+                        }
+                    }
+                    "match_found" => {
+                        let queue_name = value
+                            .get("queue_name")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string();
+                        matchmaking = MatchmakingState::MatchFound { queue_name };
+                        if tx
+                            .send(LobbyUpdate::Matchmaking(matchmaking.clone()))
+                            .await
+                            .is_err()
+                        {
+                            break 'connection;
+                        }
+                        let _ = write
+                            .send(Message::binary(
+                                encode_lobby_message(&json!({ "command": "match_ready" }))
+                                    .into_bytes(),
+                            ))
+                            .await;
+                    }
+                    "match_cancelled" => {
+                        matchmaking = MatchmakingState::Cancelled {
+                            queue_name: matchmaking.matched_queue().map(str::to_owned),
+                        };
+                        if tx
+                            .send(LobbyUpdate::Matchmaking(matchmaking.clone()))
+                            .await
+                            .is_err()
+                        {
+                            break 'connection;
+                        }
+                    }
+                    "update_party" => {
+                        if tx.send(LobbyUpdate::Party(parse_party(&value))).await.is_err() {
+                            break 'connection;
+                        }
+                    }
+                    "party_invite" => {
+                        let player_id = value
+                            .get("sender")
+                            .or_else(|| value.get("sender_id"))
+                            .and_then(|id| id.as_i64().or_else(|| id.as_str()?.parse().ok()))
+                            .unwrap_or_default() as i32;
+                        if player_id > 0 {
+                            let login = directory
+                                .login(player_id)
+                                .unwrap_or_else(|| format!("Player {player_id}"));
+                            if tx
+                                .send(LobbyUpdate::PartyInvite { player_id, login })
+                                .await
+                                .is_err()
+                            {
+                                break 'connection;
+                            }
+                        }
+                    }
+                    "kicked_from_party" => {
+                        match tx.send(LobbyUpdate::Party(PartyState::default())).await {
+                            Ok(()) => {}
+                            Err(_) => break 'connection,
+                        }
+                    }
+                    "vetoes_info" => {
+                        match tx.send(LobbyUpdate::Vetoes(parse_vetoes(&value))).await {
+                            Ok(()) => {}
+                            Err(_) => break 'connection,
+                        }
+                    }
+                    "social" => {
+                        directory.set_relations(&value);
+                        let (friends, foes) = directory.relations();
+                        if tx
+                            .send(LobbyUpdate::Relations { friends, foes })
+                            .await
+                            .is_err()
+                        {
+                            break 'connection;
+                        }
+                        // The same message assigns this account's channels
+                        // (language, clan). Both reference clients take their
+                        // auto-join list from here rather than deriving it.
+                        if tx
+                            .send(LobbyUpdate::AutoJoinChannels(parse_autojoin(&value)))
+                            .await
+                            .is_err()
+                        {
+                            break 'connection;
+                        }
+                    }
+                    "avatar" => {
+                        match tx
+                            .send(LobbyUpdate::Avatars(parse_available_avatars(&value)))
+                            .await
+                        {
+                            Ok(()) => {}
+                            Err(_) => break 'connection,
+                        }
+                    }
+                    _ => {} // player_info variants without ratings, …
+                }
                 }
             }
         }
     }
-    eprintln!("[lobby] connection closed");
+    tracing::info!("lobby connection closed");
 }
 
 fn command_of(value: &Value) -> &str {
     value.get("command").and_then(Value::as_str).unwrap_or("")
+}
+
+fn server_text(value: &Value, fallback: &str) -> String {
+    let text = value
+        .get("text")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .unwrap_or(fallback);
+    text.chars().take(MAX_SERVER_MESSAGE_CHARS).collect()
+}
+
+fn parse_server_notice(value: &Value) -> (ServerNoticeStyle, String) {
+    let style = match value.get("style").and_then(Value::as_str) {
+        Some("warning" | "warn") => ServerNoticeStyle::Warning,
+        Some("error") => ServerNoticeStyle::Error,
+        Some("kill") => ServerNoticeStyle::Kill,
+        Some("kick") => ServerNoticeStyle::Kick,
+        _ => ServerNoticeStyle::Info,
+    };
+    (style, server_text(value, "The lobby server sent a notice."))
+}
+
+fn avatar_list_frame() -> Value {
+    json!({ "command": "avatar", "action": "list_avatar" })
+}
+
+fn avatar_select_frame(url: Option<String>) -> Value {
+    json!({ "command": "avatar", "action": "select", "avatar": url })
+}
+
+fn parse_available_avatars(message: &Value) -> Vec<AvailableAvatar> {
+    let avatars = message
+        .get("avatarlist")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|value| {
+            let url = value.get("url")?.as_str()?.trim();
+            if url.is_empty() {
+                return None;
+            }
+            Some(AvailableAvatar {
+                url: url.to_string(),
+                tooltip: value
+                    .get("tooltip")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string(),
+            })
+        })
+        .take(500)
+        .collect::<Vec<_>>();
+    let mut by_url = BTreeMap::new();
+    for avatar in avatars {
+        by_url.entry(avatar.url.clone()).or_insert(avatar);
+    }
+    let mut avatars = by_url.into_values().collect::<Vec<_>>();
+    avatars.sort_by(|left, right| {
+        left.tooltip
+            .to_lowercase()
+            .cmp(&right.tooltip.to_lowercase())
+            .then_with(|| left.url.cmp(&right.url))
+    });
+    avatars
+}
+
+/// The FAF lobby transport is newline-delimited JSON, including for WebSocket
+/// text frames. The Python client appends this delimiter before every send and
+/// the Java client uses a line encoder; keep the same wire contract here.
+fn encode_lobby_message(value: &Value) -> String {
+    format!("{value}\n")
+}
+
+/// Decode the lobby's newline-delimited JSON transport. The reference clients
+/// accept both text and binary WebSocket frames, and a frame may contain more
+/// than one JSON object; accepting both here prevents a valid game snapshot
+/// from being silently discarded.
+fn decode_lobby_messages(message: Message) -> Option<Vec<Value>> {
+    let text = match message {
+        Message::Text(text) => text.to_string(),
+        Message::Binary(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Message::Close(_) => return None,
+        _ => return Some(Vec::new()),
+    };
+
+    Some(
+        serde_json::Deserializer::from_str(&text)
+            .into_iter::<Value>()
+            .filter_map(Result::ok)
+            .collect(),
+    )
 }
 
 /// The session id may arrive as a JSON number or string; `faf-uid` wants it as a
@@ -469,26 +851,25 @@ fn session_to_string(value: &Value) -> String {
     }
 }
 
-/// Run `faf-uid <session>` and return its stdout — the `unique_id` blob. Errors
+/// Run `faf-uid <session>` and return its stdout: the `unique_id` blob. Errors
 /// if the binary is missing, exits non-zero, or produces nothing.
 async fn generate_unique_id(uid_path: &str, session: &str) -> Result<String, String> {
     let output = tokio::process::Command::new(uid_path)
         .arg(session)
         .output()
         .await
-        .map_err(|e| format!("could not run '{uid_path}': {e}"))?;
+        .map_err(|e| format!("could not start machine proof helper: {e}"))?;
 
     if !output.status.success() {
         return Err(format!(
-            "{uid_path} exited with {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr).trim()
+            "machine proof helper exited with {}",
+            output.status
         ));
     }
 
     let uid = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if uid.is_empty() {
-        return Err(format!("{uid_path} produced no output"));
+        return Err("machine proof helper produced no output".into());
     }
     Ok(uid)
 }
@@ -496,74 +877,465 @@ async fn generate_unique_id(uid_path: &str, session: &str) -> Result<String, Str
 /// One game as it arrives in a `game_info` message. Only the fields we surface.
 #[derive(Debug, Clone, Deserialize)]
 struct RawGame {
-    uid: i32,
+    /// Some lobby payloads omit optional fields or send them as JSON `null`.
+    /// Keep the wire model permissive and apply the client defaults in
+    /// `into_game` instead of dropping the complete game from the snapshot.
+    uid: Option<i32>,
     #[serde(default)]
-    state: String,
+    state: Option<String>,
     #[serde(default)]
-    num_players: i32,
+    num_players: Option<i32>,
     #[serde(default)]
-    max_players: i32,
+    max_players: Option<i32>,
     #[serde(default)]
-    title: String,
+    title: Option<String>,
     #[serde(default)]
-    host: String,
+    host: Option<String>,
     #[serde(default)]
-    mapname: String,
+    mapname: Option<String>,
     #[serde(default)]
-    featured_mod: String,
+    featured_mod: Option<String>,
     #[serde(default)]
-    visibility: GameVisibility,
+    average_rating: Option<f64>,
     #[serde(default)]
-    password_protected: bool,
+    password_protected: Option<bool>,
     #[serde(default)]
-    game_type: String,
-    /// Server sends `{uid: name}`; only the display names are surfaced.
+    visibility: Option<String>,
     #[serde(default)]
-    sim_mods: BTreeMap<String, String>,
+    game_type: Option<String>,
     #[serde(default)]
-    rating_type: String,
+    launched_at: Option<f64>,
     #[serde(default)]
-    rating_min: Option<i32>,
+    hosted_at: Option<String>,
     #[serde(default)]
-    rating_max: Option<i32>,
+    rating_min: Option<f64>,
     #[serde(default)]
-    enforce_rating_range: bool,
-    /// Team number (as a string key, e.g. `"1"`, `"-1"` for no team) → logins.
+    rating_max: Option<f64>,
     #[serde(default)]
-    teams: BTreeMap<String, Vec<String>>,
+    teams: Option<std::collections::BTreeMap<String, Vec<String>>>,
+    #[serde(default)]
+    sim_mods: Option<std::collections::BTreeMap<String, String>>,
 }
 
 impl RawGame {
     /// Only games still open for joining belong in the list.
     fn is_open(&self) -> bool {
-        self.state == "open"
+        self.state.as_deref() == Some("open")
     }
 
-    /// Games actively in progress — not joinable, but watchable live.
+    /// Games actively in progress: not joinable, but watchable live.
     fn is_playing(&self) -> bool {
-        self.state == "playing"
+        self.state.as_deref() == Some("playing")
     }
 
-    fn into_game(self) -> Game {
-        Game {
-            id: self.uid,
-            title: self.title,
-            host: self.host,
-            players: self.num_players,
-            max_players: self.max_players,
-            map: self.mapname,
-            mod_name: self.featured_mod,
-            visibility: self.visibility,
-            password_protected: self.password_protected,
-            game_type: self.game_type,
-            sim_mods: self.sim_mods.into_values().collect(),
-            rating_type: self.rating_type,
-            rating_min: self.rating_min,
-            rating_max: self.rating_max,
-            enforce_rating_range: self.enforce_rating_range,
-            teams: self.teams,
+    fn into_game(self, player_ratings: &BTreeMap<String, i32>) -> Option<Game> {
+        let id = self.uid?;
+        let average_rating = average_game_rating(self.teams.as_ref(), player_ratings);
+        Some(Game {
+            id,
+            title: self.title.unwrap_or_default(),
+            host: self.host.unwrap_or_default(),
+            players: self.num_players.unwrap_or_default(),
+            max_players: self.max_players.unwrap_or_default(),
+            map: self.mapname.unwrap_or_default(),
+            mod_name: self.featured_mod.unwrap_or_else(|| "faf".into()),
+            average_rating: self
+                .average_rating
+                .map(|value| value.round() as i32)
+                .filter(|value| *value > 0)
+                .unwrap_or(average_rating),
+            password_protected: self.password_protected.unwrap_or(false),
+            visibility: self.visibility.unwrap_or_else(|| "public".into()),
+            game_type: self.game_type.unwrap_or_else(|| "custom".into()),
+            launched_at: self.launched_at.map(|value| value.round() as u32),
+            hosted_at: self.hosted_at,
+            rating_min: self.rating_min.map(|value| value.round() as i32),
+            rating_max: self.rating_max.map(|value| value.round() as i32),
+            teams: self.teams.unwrap_or_default(),
+            sim_mods: self.sim_mods.unwrap_or_default(),
+        })
+    }
+}
+
+/// Compute the displayed global rating for a game from its active team
+/// members. Observers (`-1`/`null`) are intentionally excluded, matching both
+/// reference clients. A server-provided `average_rating` remains authoritative
+/// when present; this is the fallback used by current lobby payloads.
+fn average_game_rating(
+    teams: Option<&BTreeMap<String, Vec<String>>>,
+    player_ratings: &BTreeMap<String, i32>,
+) -> i32 {
+    let ratings = teams
+        .into_iter()
+        .flatten()
+        .filter(|(team, _)| team.as_str() != "-1" && team.as_str() != "null")
+        .flat_map(|(_, players)| players.iter())
+        .filter_map(|login| player_ratings.get(login).copied())
+        .collect::<Vec<_>>();
+
+    if ratings.is_empty() {
+        0
+    } else {
+        ratings.iter().sum::<i32>() / ratings.len() as i32
+    }
+}
+
+/// Store the conservative displayed global rating from a lobby `player_info`
+/// entry. FAF sends TrueSkill `[mean, deviation]`; the displayed value is
+/// `max(0, mean - 3 * deviation)`, as implemented by the Python client.
+/// Read the channel list out of a `social` message.
+///
+/// The server has used both `autojoin` and `channels` for this field, so both
+/// are accepted; the Java client reads `channels` while the Python client reads
+/// `autojoin`. Names arrive without the `#` prefix, which the domain adds when
+/// it normalizes them.
+fn parse_autojoin(value: &Value) -> Vec<String> {
+    value
+        .get("autojoin")
+        .or_else(|| value.get("channels"))
+        .and_then(Value::as_array)
+        .map(|channels| {
+            channels
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Build the `social_add`/`social_remove` frame:
+/// `{"command": "social_add"|"social_remove", "friend"|"foe": <id>}`. Verified
+/// against both reference clients (`py-client`'s `IrcRelationController` and
+/// the Java client's `ServerAccessorTest`).
+fn relation_frame(player_id: i32, relation: Relation, member: bool) -> Value {
+    let command = if member {
+        "social_add"
+    } else {
+        "social_remove"
+    };
+    let key = match relation {
+        Relation::Friend => "friend",
+        Relation::Foe => "foe",
+    };
+    json!({ "command": command, key: player_id })
+}
+
+fn party_factions_frame(factions: Vec<String>) -> Value {
+    let factions = factions
+        .into_iter()
+        .map(|faction| faction.to_ascii_lowercase())
+        .collect::<Vec<_>>();
+    json!({
+        "command": "set_party_factions",
+        "factions": factions,
+    })
+}
+
+/// Tracks who's who, so the chat roster can tell a FAF account from an
+/// IRC-only nickname and can rank friends above strangers.
+///
+/// The lobby announces relations (`social`) as account *ids* but announces
+/// identities (`player_info`) separately, and in either order: so this keeps
+/// the raw ids and re-resolves them each time the directory grows. Both
+/// reference clients do the same join; the Java client's `PlayerService` is
+/// this map under another name.
+#[derive(Debug, Default)]
+struct PlayerDirectory {
+    /// Last known account name by stable player id. Unlike `profiles`, this is
+    /// deliberately retained while a player is offline: social relation
+    /// payloads contain ids, so forgetting the name would make an unrelated
+    /// later player update silently drop offline friends from the social list.
+    logins: BTreeMap<i64, String>,
+    profiles: BTreeMap<i64, PlayerProfile>,
+    friend_ids: Vec<i64>,
+    foe_ids: Vec<i64>,
+}
+
+impl PlayerDirectory {
+    fn login(&self, id: i32) -> Option<String> {
+        self.logins.get(&(id as i64)).cloned()
+    }
+
+    /// Remove an authoritative offline entry, returning the last full profile.
+    /// Repeated/unknown offline messages are no-ops, which prevents duplicate
+    /// notifications and mirrors both reference clients' player maps.
+    fn remove(&mut self, player: &Value) -> Option<PlayerProfile> {
+        let id = player.get("id").and_then(Value::as_i64)?;
+        if let Some(login) = player
+            .get("login")
+            .or_else(|| player.get("name"))
+            .and_then(Value::as_str)
+            .filter(|login| !login.is_empty())
+        {
+            self.logins.insert(id, login.to_string());
+        }
+        self.profiles.remove(&id)
+    }
+
+    /// Record one `player_info`/`me` entry. Returns the profile only when it is
+    /// new or has actually changed, so a `player_info` that repeats what we
+    /// already know costs nothing on the update stream: this arrives for every
+    /// online player at login and then continuously.
+    fn observe(&mut self, player: &Value) -> Option<PlayerProfile> {
+        let login = player
+            .get("login")
+            .or_else(|| player.get("name"))
+            .and_then(Value::as_str)
+            .filter(|login| !login.is_empty())?
+            .to_string();
+        let id = player.get("id").and_then(Value::as_i64)?;
+        self.logins.insert(id, login.clone());
+
+        let string_field = |key: &str| {
+            player
+                .get(key)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
+        // `avatar` is `{"url": …, "tooltip": …}` when set, and `null` otherwise.
+        let avatar = player.get("avatar");
+        let avatar_field = |key: &str| {
+            avatar
+                .and_then(|a| a.get(key))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
+
+        let known = self.profiles.get(&id);
+        let ratings = player_lobby_ratings(player)
+            .or_else(|| known.map(|profile| profile.ratings.clone()))
+            .unwrap_or_else(|| {
+                player
+                    .get("global_rating")
+                    .and_then(value_as_f64)
+                    .map(|rating| {
+                        vec![PlayerLobbyRating {
+                            leaderboard: "global".into(),
+                            rating: rating.max(0.0).round() as i32,
+                            mean: rating.round() as i32,
+                            deviation: 0,
+                            games_played: 0,
+                        }]
+                    })
+                    .unwrap_or_default()
+            });
+
+        let profile = PlayerProfile {
+            // Ids are database serials, comfortably inside i32 (see `Player`).
+            id: id as i32,
+            login,
+            // Some incremental `player_info` variants omit ratings. Preserve
+            // the last known estimate instead of making the UI flash unrated.
+            global_rating: player_rating_estimate(player)
+                .or_else(|| known.map(|profile| profile.global_rating))
+                .unwrap_or_default(),
+            ratings,
+            // Flag filenames are lowercase; normalise here so the UI doesn't
+            // have to care that the server sends "DE".
+            country: string_field("country").to_lowercase(),
+            clan: string_field("clan"),
+            avatar_url: avatar_field("url"),
+            avatar_tooltip: avatar_field("tooltip"),
+        };
+
+        match self.profiles.get(&id) {
+            Some(known) if *known == profile => None,
+            _ => {
+                self.profiles.insert(id, profile.clone());
+                Some(profile)
+            }
         }
     }
+
+    fn set_relations(&mut self, value: &Value) {
+        self.friend_ids = id_list(value, "friends");
+        self.foe_ids = id_list(value, "foes");
+    }
+
+    fn has_relations(&self) -> bool {
+        !self.friend_ids.is_empty() || !self.foe_ids.is_empty()
+    }
+
+    /// Relations as logins, dropping ids we have never been able to name,
+    /// they resolve on a later `player_info`, which re-emits. Known identities
+    /// survive an offline transition even though their online profile does not.
+    fn relations(&self) -> (Vec<String>, Vec<String>) {
+        let resolve = |ids: &Vec<i64>| {
+            ids.iter()
+                .filter_map(|id| self.logins.get(id).cloned())
+                .collect()
+        };
+        (resolve(&self.friend_ids), resolve(&self.foe_ids))
+    }
+}
+
+/// The lobby sends relation ids as numbers, but has historically sent them as
+/// strings too; accept both rather than silently losing a friends list.
+fn id_list(value: &Value, key: &str) -> Vec<i64> {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|ids| {
+            ids.iter()
+                .filter_map(|id| id.as_i64().or_else(|| id.as_str()?.parse().ok()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn update_player_ratings(ratings: &mut BTreeMap<String, i32>, player: &Value) {
+    let Some(login) = player
+        .get("login")
+        .or_else(|| player.get("name"))
+        .and_then(Value::as_str)
+        .filter(|login| !login.is_empty())
+    else {
+        return;
+    };
+
+    if let Some(estimate) = player_rating_estimate(player) {
+        ratings.insert(login.to_string(), estimate);
+    }
+}
+
+fn player_rating_estimate(player: &Value) -> Option<i32> {
+    player
+        .get("ratings")
+        .and_then(|all| all.get("global"))
+        .and_then(|global| global.get("rating"))
+        .and_then(Value::as_array)
+        .and_then(|rating| {
+            let mean = rating.first().and_then(Value::as_f64)?;
+            let deviation = rating.get(1).and_then(Value::as_f64)?;
+            Some((mean - 3.0 * deviation).max(0.0).floor() as i32)
+        })
+        .or_else(|| {
+            player
+                .get("global_rating")
+                .and_then(value_as_f64)
+                .map(|value| value.max(0.0).round() as i32)
+        })
+}
+
+/// Preserve every rating queue from the live player directory for cheap UI
+/// summaries. `None` means this was a partial update with no ratings field;
+/// `Some([])` means the server explicitly supplied an empty rating map.
+fn player_lobby_ratings(player: &Value) -> Option<Vec<PlayerLobbyRating>> {
+    let ratings = player.get("ratings")?.as_object()?;
+    let mut summaries = ratings
+        .iter()
+        .filter_map(|(leaderboard, entry)| {
+            let rating = entry.get("rating")?.as_array()?;
+            let mean = rating.first().and_then(Value::as_f64)?;
+            let deviation = rating.get(1).and_then(Value::as_f64)?;
+            let games_played = entry
+                .get("number_of_games")
+                .and_then(|value| {
+                    value
+                        .as_i64()
+                        .or_else(|| value.as_str()?.parse::<i64>().ok())
+                })
+                .and_then(|value| i32::try_from(value).ok())
+                .unwrap_or_default()
+                .max(0);
+            Some(PlayerLobbyRating {
+                leaderboard: leaderboard.clone(),
+                rating: (mean - 3.0 * deviation).max(0.0).floor() as i32,
+                mean: mean.round() as i32,
+                deviation: deviation.round() as i32,
+                games_played,
+            })
+        })
+        .collect::<Vec<_>>();
+    summaries.sort_by(|left, right| left.leaderboard.cmp(&right.leaderboard));
+    Some(summaries)
+}
+
+fn value_as_f64(value: &Value) -> Option<f64> {
+    value
+        .as_f64()
+        .or_else(|| value.as_str()?.parse::<f64>().ok())
+}
+
+fn parse_matchmaker_queues(message: &Value) -> Vec<MatchmakerQueue> {
+    message
+        .get("queues")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|queue| MatchmakerQueue {
+            queue_name: queue
+                .get("queue_name")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            team_size: queue.get("team_size").and_then(Value::as_i64).unwrap_or(1) as i32,
+            num_players: queue
+                .get("num_players")
+                .and_then(Value::as_i64)
+                .unwrap_or(0) as i32,
+            queue_pop_time_seconds: queue
+                .get("queue_pop_time_delta")
+                .and_then(Value::as_f64)
+                .unwrap_or_default()
+                .round() as i32,
+        })
+        .filter(|queue| !queue.queue_name.is_empty())
+        .collect()
+}
+
+fn parse_party(message: &Value) -> PartyState {
+    let owner_id = message
+        .get("owner")
+        .and_then(Value::as_i64)
+        .map(|id| id as i32);
+    let members = message
+        .get("members")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|member| {
+            let player_id = member.get("player")?.as_i64()? as i32;
+            let factions = member
+                .get("factions")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect();
+            Some(PartyMember {
+                player_id,
+                name: member
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| format!("Player {player_id}")),
+                factions,
+            })
+        })
+        .collect();
+    PartyState { owner_id, members }
+}
+
+fn parse_vetoes(message: &Value) -> Vec<PlayerVeto> {
+    message
+        .get("vetoes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|veto| {
+            Some(PlayerVeto {
+                matchmaker_queue_map_pool_id: veto.get("matchmaker_queue_map_pool_id")?.as_i64()?
+                    as i32,
+                map_pool_map_version_id: veto.get("map_pool_map_version_id")?.as_i64()? as i32,
+                veto_tokens_applied: veto.get("veto_tokens_applied")?.as_i64()? as i32,
+            })
+        })
+        .collect()
 }
 
 /// A `game_info` message is either a single game or a batch under `games`.
@@ -574,35 +1346,13 @@ fn extract_raw_games(message: &Value) -> Vec<RawGame> {
             .filter_map(|v| serde_json::from_value(v.clone()).ok())
             .collect()
     } else {
-        serde_json::from_value(message.clone()).into_iter().collect()
-    }
-}
-
-/// One player as it arrives in a `player_info` message. Shape is a best-effort
-/// guess (server: `login`, `global_rating` as a single numeric display
-/// rating) — verify against a live capture. A parse failure here just means
-/// "no rating shown", not a functional break.
-#[derive(Debug, Clone, Deserialize)]
-struct RawPlayerInfo {
-    login: String,
-    #[serde(default)]
-    global_rating: Option<f64>,
-}
-
-/// A `player_info` message is either a single player or a batch under
-/// `players` (mirrors [`extract_raw_games`]'s `games` batching).
-fn extract_raw_players(message: &Value) -> Vec<RawPlayerInfo> {
-    if let Some(array) = message.get("players").and_then(Value::as_array) {
-        array
-            .iter()
-            .filter_map(|v| serde_json::from_value(v.clone()).ok())
+        serde_json::from_value(message.clone())
+            .into_iter()
             .collect()
-    } else {
-        serde_json::from_value(message.clone()).into_iter().collect()
     }
 }
 
-/// A `game_launch` message — the server's order to start a game. `args` arrives as
+/// A `game_launch` message: the server's order to start a game. `args` arrives as
 /// a mixed list of strings and numbers (`list[str | int]`), so we take it as raw
 /// `Value`s and stringify. `uid` is required; everything else defaults.
 #[derive(Debug, Clone, Deserialize)]
@@ -619,6 +1369,16 @@ struct RawGameLaunch {
     #[serde(default)]
     rating_type: String,
     #[serde(default)]
+    expected_players: Option<i32>,
+    #[serde(default)]
+    team: Option<i32>,
+    #[serde(default)]
+    faction: Option<i32>,
+    #[serde(default)]
+    map_position: Option<i32>,
+    #[serde(default)]
+    game_options: std::collections::BTreeMap<String, Value>,
+    #[serde(default)]
     args: Vec<Value>,
 }
 
@@ -631,6 +1391,15 @@ impl RawGameLaunch {
             mapname: self.mapname,
             game_type: self.game_type,
             rating_type: self.rating_type,
+            expected_players: self.expected_players,
+            team: self.team,
+            faction: self.faction,
+            map_position: self.map_position,
+            game_options: self
+                .game_options
+                .into_iter()
+                .map(|(name, value)| (name, value_to_arg(&value)))
+                .collect(),
             args: self.args.iter().map(value_to_arg).collect(),
         }
     }
@@ -664,17 +1433,33 @@ struct GameSet {
 }
 
 impl GameSet {
-    fn apply(&mut self, raw: RawGame) {
-        let (uid, open, playing) = (raw.uid, raw.is_open(), raw.is_playing());
+    fn apply(&mut self, raw: RawGame, player_ratings: &BTreeMap<String, i32>) {
+        let Some(uid) = raw.uid else {
+            return;
+        };
+        let (open, playing) = (raw.is_open(), raw.is_playing());
         if open {
-            self.games.insert(uid, raw.into_game());
+            if let Some(game) = raw.into_game(player_ratings) {
+                self.games.insert(uid, game);
+            }
             self.live_games.remove(&uid);
         } else if playing {
-            self.live_games.insert(uid, raw.into_game());
+            if let Some(game) = raw.into_game(player_ratings) {
+                self.live_games.insert(uid, game);
+            }
             self.games.remove(&uid);
         } else {
             self.games.remove(&uid);
             self.live_games.remove(&uid);
+        }
+    }
+
+    fn refresh_ratings(&mut self, player_ratings: &BTreeMap<String, i32>) {
+        for game in self.games.values_mut().chain(self.live_games.values_mut()) {
+            let average = average_game_rating(Some(&game.teams), player_ratings);
+            if average > 0 {
+                game.average_rating = average;
+            }
         }
     }
 
@@ -692,6 +1477,273 @@ mod tests {
     use super::*;
     use crate::infra::extract_access_url;
 
+    #[test]
+    fn server_notices_preserve_actions_and_bound_untrusted_text() {
+        let (style, text) = parse_server_notice(&json!({
+            "style": "kill",
+            "text": "  maintenance  "
+        }));
+        assert_eq!(style, ServerNoticeStyle::Kill);
+        assert_eq!(text, "maintenance");
+
+        let oversized = "ü".repeat(MAX_SERVER_MESSAGE_CHARS + 10);
+        let (_, text) = parse_server_notice(&json!({ "style": "warning", "text": oversized }));
+        assert_eq!(text.chars().count(), MAX_SERVER_MESSAGE_CHARS);
+        assert!(text.is_char_boundary(text.len()));
+    }
+
+    #[test]
+    fn unknown_notice_styles_are_safe_info_and_missing_text_has_context() {
+        assert_eq!(
+            parse_server_notice(&json!({ "style": "future-style" })),
+            (
+                ServerNoticeStyle::Info,
+                "The lobby server sent a notice.".into()
+            )
+        );
+        assert_eq!(
+            server_text(&json!({ "text": "  " }), "fallback"),
+            "fallback"
+        );
+    }
+
+    #[test]
+    fn directory_reports_only_profiles_that_are_new_or_changed() {
+        // `player_info` repeats every online player at login and then keeps
+        // arriving; re-emitting unchanged profiles would flood the UI.
+        let mut directory = PlayerDirectory::default();
+        assert_eq!(
+            directory
+                .observe(&json!({ "id": 1, "login": "Aurora" }))
+                .map(|p| p.login),
+            Some("Aurora".to_string())
+        );
+        assert_eq!(
+            directory.observe(&json!({ "id": 1, "login": "Aurora" })),
+            None
+        );
+        // A rename under the same id is a change.
+        assert_eq!(
+            directory
+                .observe(&json!({ "id": 1, "login": "Aurora_" }))
+                .map(|p| p.login),
+            Some("Aurora_".to_string())
+        );
+        // So is gaining an avatar.
+        assert_eq!(
+            directory
+                .observe(&json!({
+                    "id": 1,
+                    "login": "Aurora_",
+                    "avatar": { "url": "https://x/a.png", "tooltip": "Cat" },
+                }))
+                .map(|p| p.avatar_url),
+            Some("https://x/a.png".to_string())
+        );
+    }
+
+    #[test]
+    fn directory_reads_country_clan_and_avatar() {
+        let mut directory = PlayerDirectory::default();
+        let profile = directory
+            .observe(&json!({
+                "id": 7,
+                "login": "Stormlord",
+                // The server sends the country uppercased; flag assets are lowercase.
+                "country": "DE",
+                "clan": "BC",
+                "avatar": { "url": "https://content/a.png", "tooltip": "Aeon" },
+                "ratings": {
+                    "global": { "rating": [1800, 200], "number_of_games": 374 },
+                    "ladder_1v1": { "rating": [1500, 100], "number_of_games": "42" }
+                },
+            }))
+            .unwrap();
+        assert_eq!(profile.country, "de");
+        assert_eq!(profile.clan, "BC");
+        assert_eq!(profile.avatar_url, "https://content/a.png");
+        assert_eq!(profile.avatar_tooltip, "Aeon");
+        assert_eq!(profile.global_rating, 1200);
+        assert_eq!(
+            profile.ratings,
+            vec![
+                PlayerLobbyRating {
+                    leaderboard: "global".into(),
+                    rating: 1200,
+                    mean: 1800,
+                    deviation: 200,
+                    games_played: 374,
+                },
+                PlayerLobbyRating {
+                    leaderboard: "ladder_1v1".into(),
+                    rating: 1200,
+                    mean: 1500,
+                    deviation: 100,
+                    games_played: 42,
+                },
+            ]
+        );
+
+        assert_eq!(
+            directory.observe(&json!({
+                "id": 7,
+                "login": "Stormlord",
+                "country": "DE",
+                "clan": "BC",
+                "avatar": { "url": "https://content/a.png", "tooltip": "Aeon" },
+            })),
+            None,
+            "a partial update must retain the last known rating"
+        );
+    }
+
+    #[test]
+    fn directory_tolerates_a_null_avatar_and_missing_country() {
+        let mut directory = PlayerDirectory::default();
+        let profile = directory
+            .observe(&json!({ "id": 8, "login": "Aurora", "avatar": Value::Null }))
+            .unwrap();
+        assert_eq!(profile.country, "");
+        assert_eq!(profile.clan, "");
+        assert_eq!(profile.avatar_url, "");
+    }
+
+    #[test]
+    fn directory_ignores_entries_without_an_id_or_login() {
+        let mut directory = PlayerDirectory::default();
+        assert_eq!(directory.observe(&json!({ "login": "Aurora" })), None);
+        assert_eq!(directory.observe(&json!({ "id": 7 })), None);
+        assert_eq!(directory.observe(&json!({ "id": 7, "login": "" })), None);
+    }
+
+    #[test]
+    fn directory_offline_removal_is_authoritative_and_idempotent() {
+        let mut directory = PlayerDirectory::default();
+        directory.set_relations(&json!({ "friends": [7], "foes": [] }));
+        directory
+            .observe(&json!({ "id": 7, "login": "Aurora", "country": "DE" }))
+            .unwrap();
+
+        let removed = directory
+            .remove(&json!({ "id": 7, "login": "Aurora", "state": "offline" }))
+            .unwrap();
+        assert_eq!(removed.login, "Aurora");
+        assert_eq!(removed.country, "de");
+        assert_eq!(directory.login(7).as_deref(), Some("Aurora"));
+        assert_eq!(directory.relations().0, vec!["Aurora"]);
+        assert!(directory
+            .remove(&json!({ "id": 7, "login": "Aurora", "state": "offline" }))
+            .is_none());
+    }
+
+    #[test]
+    fn relation_frames_match_the_server_protocol() {
+        assert_eq!(
+            relation_frame(7, Relation::Friend, true),
+            json!({ "command": "social_add", "friend": 7 })
+        );
+        assert_eq!(
+            relation_frame(7, Relation::Foe, true),
+            json!({ "command": "social_add", "foe": 7 })
+        );
+        assert_eq!(
+            relation_frame(7, Relation::Friend, false),
+            json!({ "command": "social_remove", "friend": 7 })
+        );
+        assert_eq!(
+            relation_frame(7, Relation::Foe, false),
+            json!({ "command": "social_remove", "foe": 7 })
+        );
+    }
+
+    #[test]
+    fn avatar_frames_match_the_reference_protocol() {
+        assert_eq!(
+            avatar_list_frame(),
+            json!({ "command": "avatar", "action": "list_avatar" })
+        );
+        assert_eq!(
+            avatar_select_frame(Some("https://content.test/a.png".into())),
+            json!({
+                "command": "avatar",
+                "action": "select",
+                "avatar": "https://content.test/a.png"
+            })
+        );
+        assert_eq!(
+            avatar_select_frame(None),
+            json!({ "command": "avatar", "action": "select", "avatar": null })
+        );
+    }
+
+    #[test]
+    fn available_avatars_are_sanitized_deduplicated_and_sorted() {
+        let avatars = parse_available_avatars(&json!({
+            "command": "avatar",
+            "avatarlist": [
+                { "url": "https://content.test/z.png", "tooltip": "Zulu" },
+                { "url": "", "tooltip": "Invalid" },
+                { "url": "https://content.test/a.png", "tooltip": "Alpha" },
+                { "url": "https://content.test/a.png", "tooltip": "Duplicate" }
+            ]
+        }));
+        assert_eq!(avatars.len(), 2);
+        assert_eq!(avatars[0].tooltip, "Alpha");
+        assert_eq!(avatars[1].tooltip, "Zulu");
+    }
+
+    #[test]
+    fn faction_frame_matches_the_server_protocol() {
+        assert_eq!(
+            party_factions_frame(vec!["UEF".into(), "Cybran".into()]),
+            json!({
+                "command": "set_party_factions",
+                "factions": ["uef", "cybran"],
+            })
+        );
+    }
+
+    #[test]
+    fn relations_resolve_ids_that_arrive_after_the_social_message() {
+        // `social` routinely lands before the `player_info` naming those ids.
+        let mut directory = PlayerDirectory::default();
+        directory.set_relations(&json!({ "friends": [2, 3], "foes": [4] }));
+        assert_eq!(directory.relations(), (vec![], vec![]));
+
+        directory.observe(&json!({ "id": 2, "login": "Stormlord" }));
+        directory.observe(&json!({ "id": 4, "login": "Griefer" }));
+        assert_eq!(
+            directory.relations(),
+            (vec!["Stormlord".to_string()], vec!["Griefer".to_string()])
+        );
+
+        directory.observe(&json!({ "id": 3, "login": "Sheikah" }));
+        assert_eq!(
+            directory.relations().0,
+            vec!["Stormlord".to_string(), "Sheikah".to_string()]
+        );
+    }
+
+    #[test]
+    fn relation_ids_are_accepted_as_numbers_or_strings() {
+        let mut directory = PlayerDirectory::default();
+        directory.set_relations(&json!({ "friends": [2, "3", "not-a-number"], "foes": [] }));
+        directory.observe(&json!({ "id": 2, "login": "Stormlord" }));
+        directory.observe(&json!({ "id": 3, "login": "Sheikah" }));
+        assert_eq!(
+            directory.relations().0,
+            vec!["Stormlord".to_string(), "Sheikah".to_string()]
+        );
+    }
+
+    #[test]
+    fn a_social_message_without_relations_is_not_treated_as_having_any() {
+        let mut directory = PlayerDirectory::default();
+        assert!(!directory.has_relations());
+        directory.set_relations(&json!({ "command": "social", "autojoin": ["#aeolus"] }));
+        assert!(!directory.has_relations());
+    }
+
     fn open_game_json(uid: i32, state: &str, players: i32) -> Value {
         json!({
             "command": "game_info",
@@ -702,15 +1754,31 @@ mod tests {
             "title": format!("Game {uid}"),
             "host": "Stormlord",
             "mapname": "Theta Passage",
+            "launched_at": 1_700_000_000.4,
         })
+    }
+
+    #[test]
+    fn parses_server_veto_allocations() {
+        let vetoes = parse_vetoes(&json!({
+            "vetoes": [{
+                "matchmaker_queue_map_pool_id": 4,
+                "map_pool_map_version_id": 91,
+                "veto_tokens_applied": 2
+            }]
+        }));
+        assert_eq!(vetoes.len(), 1);
+        assert_eq!(vetoes[0].matchmaker_queue_map_pool_id, 4);
+        assert_eq!(vetoes[0].map_pool_map_version_id, 91);
+        assert_eq!(vetoes[0].veto_tokens_applied, 2);
     }
 
     #[test]
     fn extracts_single_game() {
         let raws = extract_raw_games(&open_game_json(7, "open", 3));
         assert_eq!(raws.len(), 1);
-        assert_eq!(raws[0].uid, 7);
-        assert_eq!(raws[0].num_players, 3);
+        assert_eq!(raws[0].uid, Some(7));
+        assert_eq!(raws[0].num_players, Some(3));
     }
 
     #[test]
@@ -721,98 +1789,88 @@ mod tests {
         });
         let raws = extract_raw_games(&msg);
         assert_eq!(raws.len(), 2);
-        assert_eq!(raws[1].uid, 2);
+        assert_eq!(raws[1].uid, Some(2));
     }
 
     #[test]
     fn raw_game_maps_to_domain_game() {
-        let raw = extract_raw_games(&open_game_json(42, "open", 5)).pop().unwrap();
-        let game = raw.into_game();
+        let raw = extract_raw_games(&open_game_json(42, "open", 5))
+            .pop()
+            .unwrap();
+        let game = raw.into_game(&BTreeMap::new()).unwrap();
         assert_eq!(game.id, 42);
         assert_eq!(game.players, 5);
         assert_eq!(game.max_players, 8);
         assert_eq!(game.map, "Theta Passage");
         assert_eq!(game.host, "Stormlord");
+        assert_eq!(game.launched_at, Some(1_700_000_000));
     }
 
     #[test]
-    fn raw_game_parses_extended_fields() {
-        let msg = json!({
-            "command": "game_info",
-            "uid": 7,
-            "state": "open",
-            "title": "1k+ lobby",
-            "host": "Stormlord",
-            "mapname": "Theta Passage",
-            "visibility": "friends",
-            "password_protected": true,
-            "game_type": "custom",
-            "sim_mods": { "abc-123": "Total Mayhem" },
-            "rating_min": 1000,
-            "rating_max": 2000,
-            "enforce_rating_range": true,
-            "teams": { "1": ["Stormlord"], "2": ["Aurora", "Vex"] },
+    fn computes_average_rating_from_player_info_and_ignores_observers() {
+        let mut ratings = BTreeMap::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Alpha",
+                "ratings": { "global": { "rating": [1800, 200] } }
+            }),
+        );
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Bravo",
+                "ratings": { "global": { "rating": [1700, 100] } }
+            }),
+        );
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Spectator",
+                "ratings": { "global": { "rating": [2500, 0] } }
+            }),
+        );
+
+        let mut message = open_game_json(43, "open", 3);
+        message["teams"] = json!({
+            "1": ["Alpha"],
+            "2": ["Bravo"],
+            "-1": ["Spectator"]
         });
-        let game = extract_raw_games(&msg).pop().unwrap().into_game();
-        assert_eq!(game.visibility, faf_domain::state::GameVisibility::Friends);
-        assert!(game.password_protected);
-        assert_eq!(game.sim_mods, vec!["Total Mayhem".to_string()]);
-        assert_eq!(game.rating_min, Some(1000));
-        assert_eq!(game.rating_max, Some(2000));
-        assert!(game.enforce_rating_range);
-        assert_eq!(game.teams.get("2"), Some(&vec!["Aurora".to_string(), "Vex".to_string()]));
+        let game = extract_raw_games(&message)
+            .pop()
+            .unwrap()
+            .into_game(&ratings)
+            .unwrap();
+
+        // Alpha = 1200 and Bravo = 1400; observer is excluded.
+        assert_eq!(game.average_rating, 1300);
     }
 
     #[test]
-    fn raw_game_defaults_extended_fields_when_missing() {
-        let game = extract_raw_games(&open_game_json(1, "open", 1)).pop().unwrap().into_game();
-        assert_eq!(game.visibility, faf_domain::state::GameVisibility::Public);
-        assert!(!game.password_protected);
-        assert!(game.sim_mods.is_empty());
-        assert_eq!(game.rating_min, None);
-        assert!(game.teams.is_empty());
-    }
-
-    #[test]
-    fn extract_raw_players_handles_single_and_batched() {
-        let single = json!({ "command": "player_info", "login": "Stormlord", "global_rating": 1500.4 });
-        let raws = extract_raw_players(&single);
-        assert_eq!(raws.len(), 1);
-        assert_eq!(raws[0].login, "Stormlord");
-        assert_eq!(raws[0].global_rating, Some(1500.4));
-
-        let batch = json!({
-            "command": "player_info",
-            "players": [
-                { "login": "Aurora", "global_rating": 1200.0 },
-                { "login": "Vex", "global_rating": 900.0 },
-            ],
-        });
-        let raws = extract_raw_players(&batch);
-        assert_eq!(raws.len(), 2);
-        assert_eq!(raws[1].login, "Vex");
-    }
-
-    #[test]
-    fn command_of_identifies_game_host_frame() {
-        let frame = json!({ "command": "game_host", "title": "test" });
-        assert_eq!(command_of(&frame), "game_host");
+    fn accepts_legacy_player_rating_field() {
+        let mut ratings = BTreeMap::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({ "login": "Legacy", "global_rating": 1234 }),
+        );
+        assert_eq!(ratings.get("Legacy"), Some(&1234));
     }
 
     #[test]
     fn gameset_adds_open_and_removes_closed() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(1, "open", 1)) {
-            set.apply(raw);
+            set.apply(raw, &BTreeMap::new());
         }
         for raw in extract_raw_games(&open_game_json(2, "open", 2)) {
-            set.apply(raw);
+            set.apply(raw, &BTreeMap::new());
         }
         assert_eq!(set.snapshot().len(), 2);
 
         // Game 1 transitions to playing → drops out of the open list.
         for raw in extract_raw_games(&open_game_json(1, "playing", 2)) {
-            set.apply(raw);
+            set.apply(raw, &BTreeMap::new());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -823,10 +1881,10 @@ mod tests {
     fn gameset_update_replaces_in_place() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(5, "open", 1)) {
-            set.apply(raw);
+            set.apply(raw, &BTreeMap::new());
         }
         for raw in extract_raw_games(&open_game_json(5, "open", 4)) {
-            set.apply(raw);
+            set.apply(raw, &BTreeMap::new());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -841,8 +1899,13 @@ mod tests {
             "mod": "faf",
             "name": "Big Team Game",
             "mapname": "scmp_009",
-            "game_type": "custom",
-            "rating_type": "global",
+            "game_type": "matchmaker",
+            "rating_type": "ladder_1v1",
+            "expected_players": 2,
+            "team": 1,
+            "faction": 3,
+            "map_position": 2,
+            "game_options": { "Timeouts": 3, "Share": "FullShare" },
             "args": ["/numgames", 137, "/init", true],
         });
         let launch = parse_game_launch(&msg).expect("should parse");
@@ -850,6 +1913,20 @@ mod tests {
         assert_eq!(launch.mod_name, "faf"); // `mod` renamed
         assert_eq!(launch.name, "Big Team Game");
         assert_eq!(launch.mapname, "scmp_009");
+        assert_eq!(launch.game_type, "matchmaker");
+        assert_eq!(launch.rating_type, "ladder_1v1");
+        assert_eq!(launch.expected_players, Some(2));
+        assert_eq!(launch.team, Some(1));
+        assert_eq!(launch.faction, Some(3));
+        assert_eq!(launch.map_position, Some(2));
+        assert_eq!(
+            launch.game_options.get("Timeouts").map(String::as_str),
+            Some("3")
+        );
+        assert_eq!(
+            launch.game_options.get("Share").map(String::as_str),
+            Some("FullShare")
+        );
         // Mixed string/number/bool args all stringified.
         assert_eq!(launch.args, vec!["/numgames", "137", "/init", "true"]);
     }
@@ -869,19 +1946,22 @@ mod tests {
     #[test]
     fn ensure_ws_path_inserts_missing_slash() {
         assert_eq!(
-            ensure_ws_path("wss://ws.faforever.com?verify=a.b-c_d"),
+            validated_ws_url("wss://ws.faforever.com?verify=a.b-c_d").unwrap(),
             "wss://ws.faforever.com/?verify=a.b-c_d"
         );
         // Already has a path → unchanged (no double slash, token untouched).
         assert_eq!(
-            ensure_ws_path("wss://ws.faforever.com/?verify=a.b-c_d"),
+            validated_ws_url("wss://ws.faforever.com/?verify=a.b-c_d").unwrap(),
             "wss://ws.faforever.com/?verify=a.b-c_d"
         );
         assert_eq!(
-            ensure_ws_path("wss://host/path?verify=x"),
+            validated_ws_url("wss://host/path?verify=x").unwrap(),
             "wss://host/path?verify=x"
         );
-        assert_eq!(ensure_ws_path("wss://host"), "wss://host");
+        assert_eq!(validated_ws_url("wss://host").unwrap(), "wss://host/");
+        assert!(validated_ws_url("ws://remote.example/verify").is_err());
+        assert!(validated_ws_url("wss://user:password@remote.example/verify").is_err());
+        assert!(validated_ws_url("ws://127.0.0.1:9876/verify").is_ok());
     }
 
     #[test]
@@ -905,13 +1985,75 @@ mod tests {
     }
 
     #[test]
+    fn decodes_binary_frames_and_multiple_json_messages() {
+        let first = open_game_json(1, "open", 1).to_string();
+        let second = open_game_json(2, "open", 2).to_string();
+        let frame = Message::Binary(format!("{first}\n{second}\n").into_bytes());
+
+        let messages = decode_lobby_messages(frame).expect("binary frames stay usable");
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].get("uid").and_then(Value::as_i64), Some(1));
+        assert_eq!(messages[1].get("uid").and_then(Value::as_i64), Some(2));
+    }
+
+    #[test]
+    fn encodes_outgoing_lobby_messages_with_line_delimiter() {
+        let encoded = encode_lobby_message(&json!({ "command": "ask_session" }));
+        assert!(encoded.ends_with('\n'));
+        let decoded: Value =
+            serde_json::from_str(&encoded).expect("newline is valid JSON whitespace");
+        assert_eq!(command_of(&decoded), "ask_session");
+    }
+
+    #[test]
     fn missing_fields_default_gracefully() {
         let msg = json!({ "command": "game_info", "uid": 9, "state": "open" });
         let raws = extract_raw_games(&msg);
         assert_eq!(raws.len(), 1);
-        let game = raws.into_iter().next().unwrap().into_game();
+        let game = raws
+            .into_iter()
+            .next()
+            .unwrap()
+            .into_game(&BTreeMap::new())
+            .unwrap();
         assert_eq!(game.id, 9);
         assert_eq!(game.title, "");
         assert_eq!(game.max_players, 0);
+    }
+
+    #[test]
+    fn accepts_nullable_fields_from_reference_lobby_payload() {
+        // The reference clients receive these fields as null for some open
+        // games (notably sim_mods, visibility and game_type). A null optional
+        // field must not make serde drop the entire game from the list.
+        let msg = json!({
+            "command": "game_info",
+            "uid": 12,
+            "state": "open",
+            "num_players": 1,
+            "max_players": 4,
+            "title": "Open game",
+            "host": "Commander",
+            "mapname": "scmp_007",
+            "featured_mod": "faf",
+            "password_protected": false,
+            "visibility": null,
+            "game_type": null,
+            "sim_mods": null,
+            "teams": null,
+            "rating_min": 0,
+            "rating_max": 3000
+        });
+
+        let game = extract_raw_games(&msg)
+            .into_iter()
+            .next()
+            .and_then(|raw| raw.into_game(&BTreeMap::new()))
+            .expect("nullable game payload should be retained");
+        assert_eq!(game.id, 12);
+        assert_eq!(game.visibility, "public");
+        assert_eq!(game.game_type, "custom");
+        assert!(game.sim_mods.is_empty());
+        assert!(game.teams.is_empty());
     }
 }

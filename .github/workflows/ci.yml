@@ -20,7 +20,7 @@ env:
 
 jobs:
   rust:
-    name: Rust — test + clippy
+    name: Rust - test + clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
 
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
@@ -51,11 +51,16 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --all-targets
 
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets
+        # Covers every workspace crate/all target and parses Rust, unlike the
+        # old grep (which missed crates and matched comments).
+        run: cargo clippy --workspace --all-targets -- -D warnings -D clippy::print_stderr
 
   frontend:
-    name: Frontend — typecheck + build
+    name: Frontend - lint + typecheck + test + build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,8 +77,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Architecture boundaries
+        run: pnpm run architecture
+
+      - name: No em dashes in source or project documentation
+        run: |
+          hits=$(grep -rnP '\x{2014}' crates ui/src src-tauri/src docs .github --include='*' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Em dashes are forbidden by AGENTS.md. Use punctuation appropriate to the sentence:"
+            echo "$hits"
+            exit 1
+          fi
+
       - name: tsc --noEmit
         run: pnpm run typecheck
+
+      - name: ESLint
+        run: pnpm run lint
+
+      - name: vitest
+        run: pnpm test
 
       - name: vite build
         run: pnpm run build
@@ -85,7 +108,7 @@ jobs:
         run: |
           hits=$(grep -rnE '#[0-9a-fA-F]{3,8}\b' ui/src --include='*.css' | grep -v 'design-system/tokens.css' || true)
           if [ -n "$hits" ]; then
-            echo "::error::Hardcoded hex colors found outside tokens.css — use a CSS variable:"
+            echo "::error::Hardcoded hex colors found outside tokens.css. Use a CSS variable:"
             echo "$hits"
             exit 1
           fi
@@ -94,7 +117,7 @@ jobs:
     name: Bindings drift check
     runs-on: ubuntu-latest
     # faf-ipc depends only on faf-domain + specta (no Tauri), so this job needs
-    # no system libraries — it just regenerates the bindings and diffs them.
+    # no system libraries. It just regenerates the bindings and diffs them.
     steps:
       - uses: actions/checkout@v4
 
@@ -111,5 +134,32 @@ jobs:
         run: |
           if ! git diff --exit-code ui/src/ipc/bindings.ts; then
             echo "::error file=ui/src/ipc/bindings.ts::Bindings are out of date. Run 'pnpm run bindings' and commit the result."
+            exit 1
+          fi
+
+  reducer-conformance-drift:
+    name: Reducer conformance fixture drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Regenerate reducer conformance fixture
+        run: |
+          if ! git ls-files --error-unmatch ui/src/store/__fixtures__/reducer-conformance.json >/dev/null; then
+            echo "::error file=ui/src/store/__fixtures__/reducer-conformance.json::Reducer conformance fixture is not tracked. Add it before relying on this job."
+            exit 1
+          fi
+          cargo test -p faf-domain --test conformance_fixtures
+
+      - name: Fail if the fixture is out of date
+        run: |
+          if ! git diff --exit-code ui/src/store/__fixtures__/reducer-conformance.json; then
+            echo "::error file=ui/src/store/__fixtures__/reducer-conformance.json::Reducer conformance fixture is out of date. Run 'cargo test -p faf-domain --test conformance_fixtures' and commit the result."
             exit 1
           fi

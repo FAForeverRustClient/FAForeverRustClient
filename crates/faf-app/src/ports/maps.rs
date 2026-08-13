@@ -1,4 +1,4 @@
-//! Maps port — browsing the map vault and managing locally installed maps.
+//! Maps port: browsing the map vault and managing locally installed maps.
 //!
 //! The impl fetches vault listings from the FAF Data API, and installs by
 //! downloading + extracting a version's zip into the user's maps folder
@@ -6,18 +6,24 @@
 //! `ZipDownloadExtract`). See `infra/maps.rs` for the real implementation.
 
 use async_trait::async_trait;
-use faf_domain::state::{InstalledMap, VaultMap};
+use faf_domain::state::{InstalledMap, MatchmakerMapPool, VaultMap};
 
 #[async_trait]
 pub trait MapsPort: Send + Sync {
     /// List the map vault (FAF Data API `/data/map`, `include=latestVersion`
-    /// — mirrors the Python client's `MapApiConnector`'s default "All" browse
+    ///: mirrors the Python client's `MapApiConnector`'s default "All" browse
     /// query, newest first).
     async fn list_vault(&self) -> Result<Vec<VaultMap>, String>;
 
     /// Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`
     /// / `fa.maps.getUserMaps`).
     async fn list_installed(&self) -> Result<Vec<InstalledMap>, String>;
+
+    /// Load the rating-bracket map pools and veto limits for one queue.
+    async fn list_matchmaker_pools(
+        &self,
+        queue_name: String,
+    ) -> Result<Vec<MatchmakerMapPool>, String>;
 
     /// Download and extract a map version's zip (mirrors
     /// `fa.maps._doDownloadMap`). Returns the refreshed installed list so the

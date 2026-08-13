@@ -10,15 +10,17 @@ faf-domain = { workspace = true }
 tokio = { workspace = true, features = ["net", "io-util", "process", "fs"] }
 tokio-util = "0.7"
 async-trait = { workspace = true }
+tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 futures-util = "0.3"
 directories = "5"
+tempfile = "3"
 
 # Real OAuth2 infra (see infra/oauth.rs). reqwest and tokio-tungstenite both use
 # the platform-native TLS stack (SChannel on Windows, Secure Transport on macOS,
 # OpenSSL on Linux) so no extra crypto build tooling is needed beyond libssl-dev.
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream", "multipart"] }
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 open = "5"

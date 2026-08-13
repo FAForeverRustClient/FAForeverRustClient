@@ -1,0 +1,168 @@
+.report-player-modal {
+  max-width: 620px;
+}
+
+.report-player-head {
+  padding-right: 28px;
+}
+
+.report-player-head h2 {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: 20px;
+}
+
+.report-player-head p {
+  margin: 0 0 var(--space-4);
+  line-height: 1.5;
+}
+
+.report-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.report-tabs button {
+  padding: 8px 10px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.report-tabs button:hover,
+.report-tabs button:focus-visible { color: var(--color-text); }
+.report-tabs button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.report-tabs button.active { color: var(--color-text); border-bottom-color: var(--color-text); }
+.report-tabs button span { color: var(--color-subtle); font-size: 11px; }
+
+.report-history {
+  display: flex;
+  max-height: 440px;
+  min-height: 120px;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+.report-history > .muted { margin: auto; }
+
+.report-history-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-error);
+}
+
+.report-history-card { padding: var(--space-3); }
+.report-history-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.report-history-card > header div { display: flex; flex-direction: column; gap: 2px; }
+.report-history-card time { color: var(--color-subtle); font-size: 11px; }
+.report-history-status { color: var(--color-muted); font-size: 11px; text-transform: capitalize; }
+.report-history-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-3) 0; }
+.report-history-card dl div { min-width: 0; }
+.report-history-card dt { color: var(--color-subtle); font-size: 11px; text-transform: uppercase; }
+.report-history-card dd { overflow: hidden; margin: 2px 0 0; text-overflow: ellipsis; white-space: nowrap; }
+.report-history-card > p { margin: 0; white-space: pre-wrap; }
+.report-history-card aside { display: flex; flex-direction: column; gap: 3px; margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--color-border); }
+.report-history-card aside strong { color: var(--color-muted); font-size: 11px; }
+
+.report-player-eyebrow {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.report-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.report-field > span {
+  font-weight: 600;
+}
+
+.report-field em {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.report-field input,
+.report-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--color-text);
+  font: inherit;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.report-field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.report-field input:focus-visible,
+.report-field textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.report-field small {
+  align-self: flex-end;
+  color: var(--color-subtle);
+}
+
+.report-game-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.report-error {
+  margin: var(--space-3) 0 0;
+  color: var(--color-error);
+}
+
+.report-success {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  color: var(--color-ok);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.report-success span {
+  color: var(--color-muted);
+}
+
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 620px) {
+  .report-game-fields {
+    grid-template-columns: 1fr;
+  }
+}

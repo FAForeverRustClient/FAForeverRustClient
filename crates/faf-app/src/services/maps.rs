@@ -2,7 +2,7 @@
 //!
 //! Thin handler (like `services/replays.rs`): asks the [`MapsPort`] to do the
 //! work, then emits the corresponding events. The actual API calls, folder
-//! scan and zip extraction live entirely behind the port — see `infra/maps.rs`.
+//! scan and zip extraction live entirely behind the port: see `infra/maps.rs`.
 
 use faf_domain::state::{MapsCommand, MapsEvent};
 
@@ -24,10 +24,23 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(MapsEvent::InstalledLoadFailed { reason }),
             }
         }
+        MapsCommand::LoadMatchmakerPools { queue_name } => {
+            out.emit(MapsEvent::MatchmakerPoolsLoading);
+            match ctx
+                .ports
+                .maps
+                .list_matchmaker_pools(queue_name.clone())
+                .await
+            {
+                Ok(pools) => out.emit(MapsEvent::MatchmakerPoolsLoaded { queue_name, pools }),
+                Err(reason) => out.emit(MapsEvent::MatchmakerPoolsLoadFailed { reason }),
+            }
+        }
         MapsCommand::InstallMap {
             folder_name,
             download_url,
         } => {
+            let _guard = ctx.maps_mutation.acquire().await;
             out.emit(MapsEvent::Installing {
                 folder_name: folder_name.clone(),
             });
@@ -37,7 +50,10 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         MapsCommand::UninstallMap { folder_name } => {
-            out.emit(MapsEvent::Installing { folder_name: folder_name.clone() });
+            let _guard = ctx.maps_mutation.acquire().await;
+            out.emit(MapsEvent::Installing {
+                folder_name: folder_name.clone(),
+            });
             match ctx.ports.maps.uninstall_map(folder_name).await {
                 Ok(installed) => out.emit(MapsEvent::Uninstalled { installed }),
                 Err(reason) => out.emit(MapsEvent::UninstallFailed { reason }),

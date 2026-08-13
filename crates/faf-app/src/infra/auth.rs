@@ -1,4 +1,4 @@
-//! Fake auth provider — simulates the login flow without any network.
+//! Fake auth provider: simulates the login flow without any network.
 //!
 //! Stands in for the real OAuth2 provider during Phase 3 and in tests. Configure
 //! it to succeed (default) or fail, with an optional delay to mimic latency.
@@ -35,7 +35,7 @@ impl Default for FakeAuth {
 
 #[async_trait]
 impl AuthPort for FakeAuth {
-    async fn login(&self) -> AuthResult<Player> {
+    async fn login(&self, _remember: bool) -> AuthResult<Player> {
         if !self.delay.is_zero() {
             tokio::time::sleep(self.delay).await;
         }

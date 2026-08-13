@@ -1,4 +1,4 @@
-# Project Guide — What's Where, and Why
+# Project Guide: What's Where, and Why
 
 > Onboarding map for new developers. **What** lives in the repo and **what** it's there for.
 > The **why** behind the architecture (rationale, rules, trade-offs) is in
@@ -32,9 +32,9 @@ Everything is **a directed loop**. There is exactly one way state can change:
 UI dispatch ─▶ Tauri command ─▶ service ─▶ event ─▶ reduce(AppState) ─▶ emit ─▶ store ─▶ UI
 ```
 
-- **State lives in Rust** (`AppState`) — the single source of truth.
+- **State lives in Rust** (`AppState`): the single source of truth.
 - **State only changes in the reducer**, triggered by an `Event`.
-- **Services** do IO (via ports) and **emit events** — they never touch state directly.
+- **Services** do IO (via ports) and **emit events**: they never touch state directly.
 - The same `Event` that mutates Rust state is forwarded to the frontend → the frontend store is a **mirror**.
 - **UI components contain no logic**: they read a state slice and dispatch commands.
 
@@ -52,7 +52,7 @@ src-tauri    ← depends on faf-app + faf-ipc (thin Tauri glue)
 ui/          ← depends only on the generated TS types
 ```
 
-**Golden rule:** A service never reaches a socket/filesystem directly — only through a
+**Golden rule:** A service never reaches a socket/filesystem directly: only through a
 `Port` trait. Real IO happens **exclusively** in `faf-app/src/infra/`.
 
 ---
@@ -64,7 +64,7 @@ ui/          ← depends only on the generated TS types
 | Path | Meaning |
 |---|---|
 | `Cargo.toml` | Workspace definition: member crates + shared dependency versions. |
-| `package.json` | Frontend deps + pnpm scripts (`dev`, `build`, `tauri`, `bindings`, `typecheck`). |
+| `package.json` | Frontend deps + pnpm scripts (`dev`, `build`, `tauri`, `bindings`, `lint`, `typecheck`, `test`). |
 | `vite.config.ts` | Vite config; `root: "ui"`, build output to `ui/dist`. |
 | `tsconfig.json` | TypeScript config for the frontend (strict). |
 | `README.md` | Quick start + status + commands. |
@@ -73,43 +73,43 @@ ui/          ← depends only on the generated TS types
 | `app-icon.png` | Source icon from which Tauri icons are generated. |
 | `.gitignore` | Ignores `target/`, `node_modules/`, `ui/dist/`, `src-tauri/gen/`. |
 
-### `crates/faf-domain/` — the pure domain (no IO, no async)
+### `crates/faf-domain/`: the pure domain (no IO, no async)
 
 The heart. Types, state, and the reducer live here. Trivially testable.
 
 | Path | Meaning |
 |---|---|
 | `src/lib.rs` | Re-exports (`AppState`, `AppCommand`, `AppEvent`, `reduce`). |
-| `src/state/mod.rs` | **`AppState`** — aggregates all slices. One field per slice, nothing else. |
+| `src/state/mod.rs` | **`AppState`**: aggregates all slices. One field per slice, nothing else. |
 | `src/state/session.rs` | Slice **session**: connection status. |
 | `src/state/auth.rs` | Slice **auth**: login status + `Player`. |
 | `src/state/nav.rs` | Slice **nav**: active tab (`Tab` enum). |
 | `src/state/lobby.rs` | Slice **lobby**: list of open games (`Game`). |
-| `src/events.rs` | **`AppEvent`** — enum-of-enums, one variant per slice. The only mutation source. |
-| `src/commands.rs` | **`AppCommand`** — enum-of-enums, intentions from the UI. |
-| `src/reducer.rs` | **`reduce()`** — the entire mutation surface of the app. Pure, total, tested. |
+| `src/events.rs` | **`AppEvent`**: enum-of-enums, one variant per slice. The only mutation source. |
+| `src/commands.rs` | **`AppCommand`**: enum-of-enums, intentions from the UI. |
+| `src/reducer.rs` | **`reduce()`**: the entire mutation surface of the app. Pure, total, tested. |
 
 > **Slice structure:** Each `state/<name>.rs` contains exactly four things: its `State`, its
 > `Event`s, its `Command`s, and its pure `reduce()` function. Plus unit tests.
 
-### `crates/faf-app/` — orchestration (all async + IO lives here)
+### `crates/faf-app/`: orchestration (all async + IO lives here)
 
 | Path | Meaning |
 |---|---|
 | `src/lib.rs` | Re-exports (`App`, `AppLoop`, `EventSink`, `ServiceCtx`, `Ports`). |
 | `src/runtime/mod.rs` | **The loop.** `App` (handle), `AppLoop` (processes commands), `EventSink` (the *one* point where reduction + broadcasting happens), `ServiceCtx` (injected dependencies). |
 | `src/ports/mod.rs` | **`Ports`** bundle (one field per external system), injected into `ServiceCtx`. |
-| `src/ports/auth.rs` | Trait **`AuthPort`** — request/response (login/logout). |
-| `src/ports/lobby.rs` | Trait **`LobbyPort`** — *streaming* (`connect()` → receiver of game snapshots; `disconnect()` cancels). |
-| `src/ports/settings.rs` | Trait **`SettingsPort`** — `load()` / `save()` persisted preferences (best-effort). |
-| `src/infra/mod.rs` | **`real_ports()` / `fake_ports()` / `ports_from_env()`** — builds the `Ports` bundle. Only IO-permitted zone. The shell uses `ports_from_env()` (real auth by default, `FAF_FAKE_AUTH=1` for offline; `FAF_REAL_LOBBY=1` for the real lobby). |
-| `src/infra/oauth.rs` | **`OAuthAuth`** — real login: FAF Ory Hydra, Authorization Code + PKCE, loopback redirect listener, token exchange, `/me` lookup, keyring storage. |
-| `src/infra/auth.rs` | **`FakeAuth`** — simulates login (offline); used by tests and `FAF_FAKE_AUTH=1`. |
-| `src/infra/session.rs` | **`TokenStore`** — in-memory access-token holder shared from auth to network ports (never in `AppState`). |
-| `src/infra/lobby_ws.rs` | **`LobbyClient`** — real FAF lobby WebSocket protocol (`ask_session`→`auth`→`game_info`), game-list aggregation, graceful disconnect. Opt-in (`FAF_REAL_LOBBY=1`); runs the `faf-uid` binary (`FAF_UID_PATH`) for the anti-smurf `unique_id`. |
-| `src/infra/lobby.rs` | **`FakeLobby`** — sends a changing game list every 2s; cancellable like the real client. |
-| `src/infra/settings_file.rs` | **`FileSettings`** — persists settings as JSON in the OS config dir. |
-| `src/infra/settings_fake.rs` | **`FakeSettings`** — in-memory settings for tests/offline. |
+| `src/ports/auth.rs` | Trait **`AuthPort`**: request/response (login/logout). |
+| `src/ports/lobby.rs` | Trait **`LobbyPort`**: *streaming* (`connect()` → receiver of game snapshots; `disconnect()` cancels). |
+| `src/ports/settings.rs` | Trait **`SettingsPort`**: `load()` / `save()` persisted preferences (best-effort). |
+| `src/infra/mod.rs` | **`real_ports()` / `fake_ports()` / `ports_from_env()`**: builds the `Ports` bundle. Only IO-permitted zone. The shell uses `ports_from_env()` (real auth, lobby, and chat by default; `FAF_FAKE_AUTH=1` for fully offline mode). |
+| `src/infra/oauth.rs` | **`OAuthAuth`**: real login: FAF Ory Hydra, Authorization Code + PKCE, loopback redirect listener, token exchange, `/me` lookup, keyring storage. |
+| `src/infra/auth.rs` | **`FakeAuth`**: simulates login (offline); used by tests and `FAF_FAKE_AUTH=1`. |
+| `src/infra/session.rs` | **`TokenStore`**: in-memory access-token holder shared from auth to network ports (never in `AppState`). |
+| `src/infra/lobby_ws.rs` | **`LobbyClient`**: real FAF lobby WebSocket protocol (`ask_session`→`auth`→`game_info`), game-list aggregation, graceful disconnect. Selected automatically for account sessions; runs the bundled `faf-uid` binary (or `FAF_UID_PATH`) for the anti-smurf `unique_id`. |
+| `src/infra/lobby.rs` | **`FakeLobby`**: sends a changing game list every 2s; cancellable like the real client. |
+| `src/infra/settings_file.rs` | **`FileSettings`**: persists settings as JSON in the OS config dir. |
+| `src/infra/settings_fake.rs` | **`FakeSettings`**: in-memory settings for tests/offline. |
 | `src/services/mod.rs` | Collection module for services. |
 | `src/services/session.rs` | Service **session**: handshake → reports backend version. |
 | `src/services/auth.rs` | Service **auth**: command → `AuthPort` → events. |
@@ -123,17 +123,17 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 > **Service structure:** A single `handle(cmd, ctx, out)` function. Reads ports via `ctx.ports`,
 > calls `out.emit(event)`. **Never touches `AppState`.**
 
-### `crates/faf-ipc/` — the type bridge (anti-drift boundary)
+### `crates/faf-ipc/`: the type bridge (anti-drift boundary)
 
 | Path | Meaning |
 |---|---|
-| `src/lib.rs` | `typescript_bindings()` — renders TS for `AppState`/`AppCommand`/`AppEvent` + all referenced types from the Rust code. |
+| `src/lib.rs` | `typescript_bindings()`: renders TS for `AppState`/`AppCommand`/`AppEvent` + all referenced types from the Rust code. |
 | `src/bin/export_bindings.rs` | Binary that writes the result to `ui/src/ipc/bindings.ts`. Run with: `pnpm run bindings`. |
 
 > **Important:** Run `pnpm run bindings` after every change to domain types.
-> Otherwise the frontend won't compile — that's by design to prevent type drift.
+> Otherwise the frontend won't compile: that's by design to prevent type drift.
 
-### `src-tauri/` — the Tauri shell (thin glue, no logic)
+### `src-tauri/`: the Tauri shell (thin glue, no logic)
 
 | Path | Meaning |
 |---|---|
@@ -143,26 +143,25 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `tauri.conf.json` | Window, build, and bundle configuration (frontend path, dev URL, icons). |
 | `capabilities/default.json` | Tauri permissions for the main window (events, window). |
 
-### `ui/` — the React frontend
+### `ui/`: the React frontend
 
 | Path | Meaning |
 |---|---|
 | `index.html` | HTML entry point, loads `src/main.tsx`. |
 | `src/main.tsx` | Mounts `<App>`. |
 | `src/App.tsx` | **App root.** Single event subscription + startup handshake. Routes purely from state: logged in → `AppShell`, otherwise → `LoginView`. |
-| `src/ipc/client.ts` | **The only typed bridge** to the backend (`dispatch`, `snapshot`, `onEvent`). No component calls `invoke`/`listen` directly. |
+| `src/ipc/client.ts` | **The only typed bridge** to the backend (`send` for event handlers, awaited `dispatch` for sequenced flows, plus `snapshot`/subscriptions). Rejected fire-and-forget bridge calls are reported to the shell; no component calls `invoke`/`listen` directly. |
 | `src/ipc/bindings.ts` | **GENERATED** from Rust. Do not edit manually. |
 | `src/store/store.ts` | Zustand store; mirrors `AppState`. Write access only via `apply` (events) + `hydrate` (snapshot). |
-| `src/store/reducer.ts` | **Mirror reducer** — structurally identical to `faf-domain/src/reducer.rs`. If you change the Rust reducer, change this twin too. |
+| `src/store/reducer.ts` | **Mirror reducer**: structurally identical to `faf-domain/src/reducer.rs`. If you change the Rust reducer, change this twin too. |
 | `src/design-system/tokens.css` | **Theming contract.** Semantic CSS variables under `:root` (= `forgeDark`) + one `[data-theme="…"]` block per theme (`forgeLight`/`javaClient`/`pythonClient`). Components reference these only. |
-| `src/design-system/Button.tsx` | **`Button` primitive** — encapsulates control structure/classes so theme-specific shape changes touch one file. |
-| `src/styles.css` | Global styles + component classes (token-driven; no hardcoded hex — enforced in CI). |
+| `src/design-system/Button.tsx` | **`Button` primitive**: encapsulates control structure/classes so theme-specific shape changes touch one file. |
+| `src/styles.css` | Global styles + component classes (token-driven; no hardcoded hex: enforced in CI). |
 | `src/features/status/StatusBar.tsx` | View: connection status. |
 | `src/features/auth/LoginView.tsx` | View: login screen. |
 | `src/features/shell/AppShell.tsx` | The logged-in shell: topbar + `TabBar` + `ThemeSwitcher` + active tab content. |
 | `src/features/nav/TabBar.tsx` | View: tab bar (dispatches nav commands). |
-| `src/features/home/HomeScreen.tsx` | View: home tab content. |
-| `src/features/lobby/LobbyView.tsx` | View: play tab — live game list. |
+| `src/features/lobby/LobbyView.tsx` | View: play tab: live game list. |
 | `src/features/settings/ThemeSwitcher.tsx` | View: theme dropdown (dispatches `SetTheme`). |
 
 > **Feature structure:** A folder `features/<name>/`. Components **select state +
@@ -172,9 +171,9 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 
 ## 5. One Click, Traced Through (Login)
 
-How data flows concretely — useful for debugging:
+How data flows concretely: useful for debugging:
 
-1. User clicks "Log in" → `LoginView` calls `ipc.dispatch({ kind: "Auth", command: { type: "login" }})`.
+1. User clicks "Log in" → `LoginView` calls `ipc.send({ kind: "Auth", command: { type: "login" }})`.
 2. `src-tauri/src/lib.rs` (command `dispatch`) pushes the `AppCommand` into the loop.
 3. `runtime/mod.rs` routes to `services/auth.rs::handle`.
 4. The service emits `LoginStarted`, calls `ctx.ports.auth.login()` (→ `OAuthAuth`: opens the browser, catches the redirect, exchanges the code, looks up `/me`), emits `LoggedIn { player }`.
@@ -212,7 +211,9 @@ pnpm run bindings      # Regenerate ui/src/ipc/bindings.ts from Rust
 pnpm run tauri dev     # Start the app (Vite + Tauri)
 
 cargo test             # Rust tests (reducer + loop + services)
+pnpm run lint          # ESLint, including React Hooks rules
 pnpm run typecheck     # tsc over the frontend
+pnpm test              # Frontend tests
 pnpm run build         # Build frontend to ui/dist
 ```
 
@@ -222,11 +223,12 @@ pnpm run build         # Build frontend to ui/dist
 
 - **Implemented:** session, auth, nav, lobby (4 slices), complete loop, type generation,
   multi-tab shell, CI + bindings-drift check.
-- **Real auth:** `OAuthAuth` — FAF Ory Hydra, Authorization Code + PKCE. `FakeAuth` remains
+- **Real auth:** `OAuthAuth`: FAF Ory Hydra, Authorization Code + PKCE. `FakeAuth` remains
   for tests and offline dev (`FAF_FAKE_AUTH=1`).
-- **Real lobby:** `LobbyClient` — FAF lobby WebSocket protocol behind `LobbyPort`, with
-  `connect`/`disconnect`. Opt-in via `FAF_REAL_LOBBY=1`; `FakeLobby` is the default. Live
-  auth runs FAF's `faf-uid` executable (`FAF_UID_PATH`) for the anti-smurf fingerprint.
+- **Real lobby:** `LobbyClient`: FAF lobby WebSocket protocol behind `LobbyPort`, with
+  `connect`/`disconnect`. It is selected automatically for account sessions; `FakeLobby`
+  remains available through `FAF_FAKE_LOBBY=1` or fully offline mode. Live auth runs FAF's
+  `faf-uid` executable (`FAF_UID_PATH`) for the anti-smurf fingerprint.
   Slices, services and UI did **not** change when the real client dropped in.
 - **Phase plan & rationale:** see [`ARCHITECTURE.md`](ARCHITECTURE.md) §7.
 

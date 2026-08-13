@@ -1,4 +1,4 @@
-//! Game version updater — makes sure a specific engine build is on disk
+//! Game version updater: makes sure a specific engine build is on disk
 //! before a replay is played back.
 //!
 //! Mirrors the Python client's `fa/check.py` + `fa/game_updater/*`: FA
@@ -6,13 +6,13 @@
 //! installed one (`"Ack! Unable to load game replay"`), so before *every*
 //! replay launch the reference clients diff the local install against the
 //! FAF API's file list for that exact `(featured_mod, version)` and update
-//! whatever's stale. There is no binary diffing — just per-file MD5
+//! whatever's stale. There is no binary diffing: just per-file MD5
 //! comparison, a content-addressed cache, full-file downloads for anything
 //! that doesn't match, a tiny 3-offset hex patch of the version number
 //! baked into the executable, and a generated `fa_path.lua` FA's Lua
 //! bootstrap reads to find everything. Scope: only the base featured-mod
 //! types we ever see in replays (`faf`, `ladder1v1`, `fafbeta`,
-//! `fafdevelop`) — real total-conversion mods needing the base `faf` files
+//! `fafdevelop`): real total-conversion mods needing the base `faf` files
 //! *plus* their own overlay is a documented gap, as are map/sim-mod
 //! auto-download and per-file progress reporting (all Qt-signal plumbing in
 //! the Python client, no architectural equivalent needed here).
@@ -23,9 +23,15 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::ports::PreparationStep;
+
+use crate::infra::vault_install::{
+    bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
+};
+
 /// Byte offsets inside `ForgedAlliance.exe` where the 4-byte little-endian
 /// engine version number is stored. Mirrors `FAPatcher.version_addresses` in
-/// the Python client's `fa/game_updater/patcher.py` — these must match
+/// the Python client's `fa/game_updater/patcher.py`: these must match
 /// exactly or FA reports/behaves as the wrong version.
 const VERSION_ADDRESSES: [u64; 3] = [0xd3d40, 0x47612d, 0x476666];
 
@@ -36,6 +42,10 @@ struct FeaturedModFile {
     group: String,
     name: String,
     md5: String,
+    /// The release this particular file belongs to. Only meaningful when the
+    /// list was fetched as `latest`: see [`effective_version`].
+    #[serde(default, deserialize_with = "lenient_i32")]
+    version: Option<i32>,
     #[serde(rename = "cacheableUrl")]
     cacheable_url: String,
     #[serde(rename = "hmacToken")]
@@ -44,8 +54,38 @@ struct FeaturedModFile {
     hmac_parameter: String,
 }
 
-/// A JSON:API document shaped like `{ data: [...] }` — reused here rather
-/// than the fuller `JsonApiDoc`/`JsonApiResource` in `infra/replay.rs` since
+/// The API sends `version` as a JSON string (`"3775"`), but has been observed
+/// as a bare number too, and it is absent from some older records. Accept all
+/// three rather than failing the whole update on a field that is only ever
+/// advisory: [`effective_version`] falls back when it is missing.
+fn lenient_i32<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<i32>, D::Error> {
+    Ok(match Value::deserialize(d)? {
+        Value::String(s) => s.parse().ok(),
+        Value::Number(n) => n.as_i64().and_then(|value| i32::try_from(value).ok()),
+        _ => None,
+    })
+}
+
+/// The version a file list actually resolved to.
+///
+/// Needed because a live game asks for `latest` and never learns the number
+/// from the request itself: but `fa_path.lua` and the executable's baked-in
+/// version both need it. Both reference clients derive it the same way: prefer
+/// the engine executable's own entry (Python's
+/// `patch_fa_executable`/`_resolve_base_version`), because that is the version
+/// FA will report; otherwise take the highest version in the list (Java's
+/// `maxVersion` in `SimpleHttpFeaturedModUpdaterTask`), which is what the
+/// release as a whole is called.
+fn effective_version(files: &[FeaturedModFile], exe_name: &str) -> Option<i32> {
+    files
+        .iter()
+        .find(|f| f.group == "bin" && f.name.eq_ignore_ascii_case(exe_name))
+        .and_then(|f| f.version)
+        .or_else(|| files.iter().filter_map(|f| f.version).max())
+}
+
+/// A JSON:API document shaped like `{ data: [...] }`: reused here rather
+/// than the fuller `JsonApiDoc`/`JsonApiResource` in `infra/jsonapi.rs` since
 /// these responses have no `included`/relationships to resolve, just flat
 /// attributes per resource.
 #[derive(Debug, Deserialize)]
@@ -63,12 +103,12 @@ struct JsonApiEntry {
 
 /// Ensure `target_dir` has the exact file set the FAF API lists for
 /// `(featured_mod, version)`, then stamp the engine executable's version and
-/// write `fa_path.lua`. Idempotent and cheap to call before every replay —
+/// write `fa_path.lua`. Idempotent and cheap to call before every replay,
 /// files already matching by MD5 are left untouched (mirrors Python calling
 /// `check()` unconditionally before each replay rather than pre-checking
 /// whether an update is needed).
 // Every parameter is independently required and there's a single call site
-// (`infra::replay::play_file`) — a params struct wouldn't add clarity here.
+// (`infra::replay::play_file`): a params struct wouldn't add clarity here.
 #[allow(clippy::too_many_arguments)]
 pub async fn ensure_game_version(
     http: &reqwest::Client,
@@ -80,25 +120,203 @@ pub async fn ensure_game_version(
     version: i32,
     exe_name: &str,
 ) -> Result<(), String> {
-    let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
-    let files = fetch_file_list(http, token, api_base, &mod_id, version).await?;
+    install_featured_mod(
+        http,
+        token,
+        api_base,
+        cache_dir,
+        target_dir,
+        featured_mod,
+        Some(version),
+        exe_name,
+        &|_| {},
+    )
+    .await?;
 
-    for file in &files {
-        update_file(http, cache_dir, target_dir, file).await?;
-    }
-
-    let exe_path = files
-        .iter()
-        .find(|f| f.group == "bin" && f.name == exe_name)
-        .map(|f| target_dir.join(&f.group).join(&f.name))
-        .unwrap_or_else(|| target_dir.join("bin").join(exe_name));
-    patch_exe_version(&exe_path, version)?;
-
-    write_fa_path_lua(target_dir, &retail_install_dir(target_dir), featured_mod, version)?;
+    write_fa_path_lua(
+        target_dir,
+        &retail_install_dir(target_dir),
+        featured_mod,
+        version,
+    )?;
     Ok(())
 }
 
-/// The retail Supreme Commander: Forged Alliance install root — where the
+/// The featured mods that *are* a complete game install. Everything else
+/// (`nomads`, `coop`, total conversions) is an overlay that only ships its own
+/// changed files and silently depends on `faf` for the rest.
+///
+/// Both reference clients hardcode the same idea with slightly different lists
+///: Java's `NAMES_OF_FEATURED_BASE_MODS` omits `ladder1v1`, the Python
+/// client's `FilesObtainer` includes it. The Python list is used here because
+/// it is the superset: treating `ladder1v1` as a base mod is what actually
+/// happens on the server (it is the `faf` files under another name), and
+/// treating it as an overlay would install `faf` twice for every ladder game.
+const BASE_FEATURED_MODS: [&str; 4] = ["faf", "ladder1v1", "fafbeta", "fafdevelop"];
+
+/// Bring the install up to whatever version the server is currently on, for a
+/// live game rather than a replay.
+///
+/// Two differences from [`ensure_game_version`], both load-bearing:
+///
+/// - **The version is `latest`, not a number.** A live game has no embedded
+///   version to read: the server expects every client to be current, and the
+///   only way to learn which release that is, is to ask for `latest` and read
+///   the version back out of the file list.
+/// - **Non-base mods pull `faf` in first.** `nomads` and friends publish only
+///   their own changed files; without the base install underneath, the game
+///   launches into a missing-file crash. Java's `GameUpdaterImpl::update`
+///   ("the featured-mod-mess") and the Python client's `FilesObtainer` both
+///   chain the two updates in exactly this order.
+///
+/// `progress` is called with a user-facing line and measured file progress.
+#[allow(clippy::too_many_arguments)]
+pub async fn ensure_latest_game_version(
+    http: &reqwest::Client,
+    token: &str,
+    api_base: &str,
+    cache_dir: &Path,
+    target_dir: &Path,
+    featured_mod: &str,
+    exe_name: &str,
+    progress: &(dyn Fn(PreparationStep) + Sync),
+) -> Result<i32, String> {
+    let mut base = None;
+    if !BASE_FEATURED_MODS.contains(&featured_mod) {
+        progress(PreparationStep::indeterminate(format!(
+            "Updating the base game for {featured_mod}…"
+        )));
+        base = Some(
+            install_featured_mod(
+                http, token, api_base, cache_dir, target_dir, "faf", None, exe_name, progress,
+            )
+            .await?,
+        );
+    }
+
+    progress(PreparationStep::indeterminate(format!(
+        "Updating {featured_mod}…"
+    )));
+    let installed = install_featured_mod(
+        http,
+        token,
+        api_base,
+        cache_dir,
+        target_dir,
+        featured_mod,
+        None,
+        exe_name,
+        progress,
+    )
+    .await?;
+
+    // `GameVersion` in `fa_path.lua` is the *engine* version, so it comes from
+    // whichever step shipped the executable: the overlay almost never does.
+    // (The Java client writes the last step's mod version here instead, which
+    // for an overlay is a mod revision like `5`; the Python client writes the
+    // engine version, which is what the Lua bootstrap actually means by it.)
+    let engine_version = installed
+        .engine_version
+        .or_else(|| base.as_ref().and_then(|b| b.engine_version))
+        .unwrap_or(installed.version);
+
+    write_fa_path_lua(
+        target_dir,
+        &retail_install_dir(target_dir),
+        featured_mod,
+        engine_version,
+    )?;
+    Ok(engine_version)
+}
+
+/// What one [`install_featured_mod`] pass put on disk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct InstalledMod {
+    /// The release the file list resolved to.
+    version: i32,
+    /// The engine version stamped into `ForgedAlliance.exe`, if this file list
+    /// shipped one. Overlay mods (`nomads`, …) never do.
+    engine_version: Option<i32>,
+}
+
+/// Sync one featured mod's file set into `target_dir` and stamp the engine
+/// executable, returning the version that was actually installed.
+///
+/// Deliberately does *not* write `fa_path.lua`: the overlay chain above calls
+/// this twice, and only the last call's featured mod and version belong in
+/// that file (mirrors Java writing it once, after the whole chain, from the
+/// final `PatchResult`).
+#[allow(clippy::too_many_arguments)]
+async fn install_featured_mod(
+    http: &reqwest::Client,
+    token: &str,
+    api_base: &str,
+    cache_dir: &Path,
+    target_dir: &Path,
+    featured_mod: &str,
+    version: Option<i32>,
+    exe_name: &str,
+    progress: &(dyn Fn(PreparationStep) + Sync),
+) -> Result<InstalledMod, String> {
+    let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
+    let files = fetch_file_list(http, token, api_base, &mod_id, version).await?;
+
+    // Requested version wins; `latest` resolves from the list itself. Falling
+    // back to 0 would silently mis-stamp the executable, so an unresolvable
+    // version is an error: it means the API gave us files we can't identify.
+    let resolved = match version {
+        Some(v) => v,
+        None => effective_version(&files, exe_name).ok_or_else(|| {
+            format!("the API did not say which version '{featured_mod}' is currently on")
+        })?,
+    };
+
+    let total = files.len();
+    for (done, file) in files.iter().enumerate() {
+        let detail = format!(
+            "Updating {featured_mod} {resolved}: {} ({}/{total})",
+            file.name,
+            done + 1
+        );
+        progress(PreparationStep::counted(detail.clone(), done, total));
+        update_file(http, cache_dir, target_dir, file).await?;
+        progress(PreparationStep::counted(detail, done + 1, total));
+    }
+
+    let shipped_exe = files
+        .iter()
+        .find(|f| f.group == "bin" && f.name.eq_ignore_ascii_case(exe_name));
+
+    // Stamp the executable when we know what to stamp it with. An explicit
+    // version is always stamped, including onto an executable the file list
+    // didn't mention: that is how replay playback has always worked, and the
+    // version is exact by construction there. Resolving `latest`, though, only
+    // stamps when the list actually shipped the executable: an overlay mod's
+    // "version" is a mod revision (`5`), and writing that into the engine
+    // header would tell FA it is a build from 2007.
+    let engine_version = match (version, shipped_exe) {
+        (Some(v), _) => {
+            let path = shipped_exe
+                .map(|f| target_dir.join(&f.group).join(&f.name))
+                .unwrap_or_else(|| target_dir.join("bin").join(exe_name));
+            patch_exe_version(&path, v)?;
+            Some(v)
+        }
+        (None, Some(file)) => {
+            let v = file.version.unwrap_or(resolved);
+            patch_exe_version(&target_dir.join(&file.group).join(&file.name), v)?;
+            Some(v)
+        }
+        (None, None) => None,
+    };
+
+    Ok(InstalledMod {
+        version: resolved,
+        engine_version,
+    })
+}
+
+/// The retail Supreme Commander: Forged Alliance install root: where the
 /// base-game `movies`, `sounds`, `fonts`, and `gamedata/*.scd` live. This is
 /// **not** the FAF patch dir (`target_dir`, e.g. `.../replaydata`), which
 /// only holds FAF's `.nx2` gamedata overrides and the patched executable.
@@ -106,7 +324,7 @@ pub async fn ensure_game_version(
 /// Mirrors the Python client's `ForgedAlliance/app/path` setting, which
 /// `writeFAPathLua` writes verbatim as `fa_path`. Getting this wrong is
 /// invisible-but-crippling: the FAF init script mounts `fa_path/movies`,
-/// `fa_path/sounds`, `fa_path/fonts` — point `fa_path` at the FAF patch dir
+/// `fa_path/sounds`, `fa_path/fonts`: point `fa_path` at the FAF patch dir
 /// (which has none of those) and the game still *runs* (base unit/effect
 /// blueprints come from the `.nx2` files, mounted relative to the exe), but
 /// with no loading-screen movie, no audio, and broken menu fonts.
@@ -131,7 +349,7 @@ fn retail_install_dir(target_dir: &Path) -> PathBuf {
 
 /// Candidate retail install locations, mirroring the Python client's
 /// `typicalForgedAlliancePaths` (THQ/GPG retail, bare retail, and the Steam
-/// library — both `%ProgramFiles%` and `%ProgramFiles(x86)%`, since the
+/// library: both `%ProgramFiles%` and `%ProgramFiles(x86)%`, since the
 /// 32-bit game usually sits under the x86 tree).
 fn typical_retail_install_paths() -> Vec<PathBuf> {
     let mut out = Vec::new();
@@ -189,13 +407,18 @@ async fn fetch_mod_id(
         .ok_or_else(|| format!("no featured mod named '{featured_mod}'"))
 }
 
+/// Fetch the file list for one release, or for `latest` when `version` is
+/// `None`: the exact segment both reference clients use for "whatever the
+/// server is on right now" (Java's `getFeaturedModFiles(mod, null)`, the
+/// Python client's `_resolve_base_version` returning `"latest"`).
 async fn fetch_file_list(
     http: &reqwest::Client,
     token: &str,
     api_base: &str,
     mod_id: &str,
-    version: i32,
+    version: Option<i32>,
 ) -> Result<Vec<FeaturedModFile>, String> {
+    let version = version.map_or_else(|| "latest".to_string(), |v| v.to_string());
     let url = format!("{api_base}/featuredMods/{mod_id}/files/{version}");
     let resp = http
         .get(&url)
@@ -232,7 +455,13 @@ async fn update_file(
     target_dir: &Path,
     file: &FeaturedModFile,
 ) -> Result<(), String> {
-    let target_path = target_dir.join(&file.group).join(&file.name);
+    let target_path = safe_join_file(target_dir, &file.group, &file.name)?;
+    if file.md5.len() != 32 || !file.md5.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!(
+            "the API returned an invalid checksum for {}",
+            file.name
+        ));
+    }
 
     if let Ok(bytes) = tokio::fs::read(&target_path).await {
         if format!("{:x}", md5::compute(&bytes)) == file.md5 {
@@ -246,16 +475,21 @@ async fn update_file(
             .map_err(|e| format!("could not create {}: {e}", parent.display()))?;
     }
 
-    let cache_path = cache_dir.join(&file.group).join(&file.md5);
-    if tokio::fs::metadata(&cache_path).await.is_ok() {
-        tokio::fs::copy(&cache_path, &target_path)
-            .await
-            .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
-        return Ok(());
+    let cache_path = safe_join_file(cache_dir, &file.group, &file.md5)?;
+    if let Ok(cached) = tokio::fs::read(&cache_path).await {
+        if format!("{:x}", md5::compute(&cached)).eq_ignore_ascii_case(&file.md5) {
+            tokio::fs::copy(&cache_path, &target_path)
+                .await
+                .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
+            return Ok(());
+        }
+        // A killed prior write or external cache edit must not be promoted
+        // into the live game merely because its filename looks like an MD5.
+        let _ = tokio::fs::remove_file(&cache_path).await;
     }
 
     // The hmac fields are an HTTP header, not a query param, despite the
-    // field name — mirrors `BaseDownload.prepare_request` in the Python
+    // field name: mirrors `BaseDownload.prepare_request` in the Python
     // client's `downloadManager/__init__.py`: `setRawHeader(hmac_parameter,
     // hmac_token)`. A custom User-Agent is set there too; some CDN configs
     // gate on it, so we send the same one.
@@ -267,12 +501,16 @@ async fn update_file(
         .await
         .map_err(|e| format!("could not download {}: {e}", file.name))?;
     if !resp.status().is_success() {
-        return Err(format!("could not download {}: {}", file.name, resp.status()));
+        return Err(format!(
+            "could not download {}: {}",
+            file.name,
+            resp.status()
+        ));
     }
-    let bytes = resp
-        .bytes()
-        .await
-        .map_err(|e| format!("could not read {}: {e}", file.name))?;
+    let bytes = bounded_body(resp, &file.name, MAX_DOWNLOAD_BYTES).await?;
+    if !format!("{:x}", md5::compute(&bytes)).eq_ignore_ascii_case(&file.md5) {
+        return Err(format!("downloaded {} failed its checksum", file.name));
+    }
 
     if let Some(parent) = cache_path.parent() {
         tokio::fs::create_dir_all(parent)
@@ -288,9 +526,26 @@ async fn update_file(
     Ok(())
 }
 
+fn safe_join_file(root: &Path, group: &str, name: &str) -> Result<PathBuf, String> {
+    let safe_relative = |value: &str| {
+        if value.contains('\\') || value.contains(':') {
+            return false;
+        }
+        let mut components = Path::new(value).components();
+        let has_component = components
+            .next()
+            .is_some_and(|part| matches!(part, std::path::Component::Normal(_)));
+        has_component && components.all(|part| matches!(part, std::path::Component::Normal(_)))
+    };
+    if !safe_relative(group) || !safe_relative(name) {
+        return Err("the API returned a file path outside the game directory".into());
+    }
+    Ok(root.join(group).join(name))
+}
+
 /// Stamp `version` (little-endian, 4 bytes) into the three fixed offsets in
 /// the FA executable. A no-op error (not fatal to the caller) if the exe
-/// isn't there — mirrors the Python client tolerating a missing exe path at
+/// isn't there: mirrors the Python client tolerating a missing exe path at
 /// this stage, since `update_file` above should already have placed it.
 fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
     let mut file = std::fs::OpenOptions::new()
@@ -313,15 +568,15 @@ fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
 /// reads it to locate everything else.
 ///
 /// `fa_path` is the **retail install root** ([`retail_install_dir`]), not
-/// `target_dir` — the init script mounts `fa_path/{movies,sounds,fonts}` and
+/// `target_dir`: the init script mounts `fa_path/{movies,sounds,fonts}` and
 /// `fa_path/gamedata/*.scd` from it, none of which exist under the FAF patch
 /// dir. This matches Python writing its `ForgedAlliance/app/path` setting
 /// verbatim. (FAF's own `.nx2` gamedata overrides are mounted separately by
-/// the init script, relative to the exe — `InitFileDir/../gamedata` — so
+/// the init script, relative to the exe: `InitFileDir/../gamedata`: so
 /// they keep coming from `target_dir` regardless of `fa_path`.)
 ///
 /// `custom_vault_path` is the user's actual vault root
-/// ([`documents_vault_dir`], mirroring Python's `util.VAULTS_BASE_DIR`) —
+/// ([`documents_vault_dir`], mirroring Python's `util.VAULTS_BASE_DIR`),
 /// the same root [`default_map_search_dirs`]'s first entry stages maps into,
 /// so the two never diverge.
 fn write_fa_path_lua(
@@ -341,16 +596,13 @@ fn write_fa_path_lua(
         .map_err(|e| format!("could not write fa_path.lua: {e}"))
 }
 
-/// The user's vault root — mirrors Python's `util.VAULTS_BASE_DIR` default
-/// (`PERSONAL_DIR/My Games/Gas Powered Games/Supreme Commander Forged
-/// Alliance`, `PERSONAL_DIR` being the user's Documents folder). Shared by
+/// The user's vault root, including a Java-client configured custom vault when
+/// available. Shared by
 /// [`write_fa_path_lua`] (as `custom_vault_path`) and
-/// [`default_map_search_dirs`] (as its first, and primary, map search dir) —
+/// [`default_map_search_dirs`] (as its first, and primary, map search dir),
 /// they must never diverge, since that's exactly the bug this fixes.
 fn documents_vault_dir() -> Option<PathBuf> {
-    directories::UserDirs::new()?
-        .document_dir()
-        .map(|docs| docs.join("My Games/Gas Powered Games/Supreme Commander Forged Alliance"))
+    Some(crate::infra::faf_content::vault_dir())
 }
 
 fn slashed(path: &Path) -> String {
@@ -404,7 +656,7 @@ fn read_nul_string(body: &[u8], pos: &mut usize) -> Option<String> {
 /// The two directories FA's replay-mode init scripts may search for maps:
 /// the user's real vault ([`documents_vault_dir`], honored by
 /// `custom_vault_path`-aware init scripts) plus a second, legacy hardcoded
-/// fallback under the replay install itself — old replays' init scripts
+/// fallback under the replay install itself: old replays' init scripts
 /// predate the "custom vault path" feature and never consult
 /// `fa_path.lua`'s `custom_vault_path` for map lookup at all. Mirrors the FAF
 /// Discord-documented workaround of manually copying a map into both.
@@ -420,9 +672,9 @@ fn default_map_search_dirs(replay_target_dir: &Path) -> Vec<PathBuf> {
 
 /// Every FAF vault map folder is named `{slug}.v{NNNN}` (confirmed against
 /// every real vault map this project has seen, e.g. `adaptive_gadostb.v0002`
-/// — the version suffix is how the vault disambiguates map revisions).
+///: the version suffix is how the vault disambiguates map revisions).
 /// Official/base-game maps never carry that suffix (`scmp_002`, `X1MP_002`,
-/// …) — they ship inside the FA install itself, mounted by `init_<mod>.lua`
+/// …): they ship inside the FA install itself, mounted by `init_<mod>.lua`
 /// straight from `fa_path`, entirely independent of the vault/custom-vault
 /// mechanism this module stages into. Used to skip the vault CDN lookup
 /// entirely for base maps: confirmed live (`X1MP_002`) that hitting the CDN
@@ -437,12 +689,12 @@ fn is_vault_map_folder(map_folder: &str) -> bool {
 }
 
 /// Makes sure `map_folder` (e.g. `adaptive_gadostb.v0002`) is present in
-/// every directory FA's replay mode searches — downloading the map's zip
+/// every directory FA's replay mode searches: downloading the map's zip
 /// from the public vault CDN and extracting it into each if it's missing
 /// everywhere. A no-op (not fatal) if the download fails: official/base-game
 /// maps (`scmp_XXX`) never need this and simply won't be found remotely,
 /// which shouldn't block playback of a replay that doesn't actually need a
-/// custom map — recognized up front via [`is_vault_map_folder`] so those
+/// custom map: recognized up front via [`is_vault_map_folder`] so those
 /// never even attempt (and can't fail/warn about) a CDN lookup.
 pub async fn ensure_map_available(
     http: &reqwest::Client,
@@ -450,67 +702,108 @@ pub async fn ensure_map_available(
     replay_target_dir: &Path,
     map_folder: &str,
 ) -> Result<(), String> {
+    stage_map(
+        http,
+        content_base,
+        &default_map_search_dirs(replay_target_dir),
+        map_folder,
+    )
+    .await
+}
+
+/// Makes sure `map_folder` is in the user's maps folder before a *live* game.
+///
+/// The live counterpart to [`ensure_map_available`], differing in where the map
+/// has to land: a live game reads `custom_vault_path` out of `fa_path.lua` and
+/// looks under it, so the two extra legacy locations: which exist purely for
+/// old replays' init scripts: are not needed.
+///
+/// `maps_dir` is where *this client* keeps maps, which is normally the same
+/// directory. It can be repointed (`FAF_MAPS_DIR`) while `custom_vault_path`
+/// stays derived from the user's Documents folder, so when the two differ the
+/// map is staged into both: one is where FA will look, the other is where the
+/// client's own installed-maps list looks, and a map visible in only one of
+/// them is exactly the confusing half-state this avoids.
+///
+/// Unlike the replay path this is a *hard* requirement, because the server has
+/// already put the player in a game on this map: launching without it is a
+/// guaranteed failure to load. Base-game maps (`scmp_009`) are not vault maps
+/// and return `Ok` untouched.
+pub async fn ensure_live_map(
+    http: &reqwest::Client,
+    content_base: &str,
+    maps_dir: &Path,
+    map_folder: &str,
+) -> Result<(), String> {
+    let dirs = live_map_dirs(
+        maps_dir,
+        documents_vault_dir().map(|dir| dir.join("maps")),
+        map_folder,
+    );
+    if dirs.is_empty() {
+        return Ok(());
+    }
+    stage_map(http, content_base, &dirs, map_folder).await
+}
+
+/// The live destinations still missing `map_folder`.
+///
+/// Filtering here rather than letting [`stage_map`] skip on *any* directory
+/// having the map: with two destinations, "present in one" is the half-state
+/// [`ensure_live_map`] exists to avoid, not a reason to stop.
+fn live_map_dirs(maps_dir: &Path, vault_maps: Option<PathBuf>, map_folder: &str) -> Vec<PathBuf> {
+    let mut dirs = vec![maps_dir.to_path_buf()];
+    if let Some(vault_maps) = vault_maps {
+        if vault_maps != maps_dir {
+            dirs.push(vault_maps);
+        }
+    }
+    dirs.retain(|dir| !dir.join(map_folder).is_dir());
+    dirs
+}
+
+/// Download `map_folder` from the vault CDN and extract it into every
+/// directory in `dirs`, unless it is already present in one of them.
+async fn stage_map(
+    http: &reqwest::Client,
+    content_base: &str,
+    dirs: &[PathBuf],
+    map_folder: &str,
+) -> Result<(), String> {
     if !is_vault_map_folder(map_folder) {
-        return Ok(()); // base/official map — ships with FA, not the vault
+        return Ok(()); // base/official map: ships with FA, not the vault
     }
 
-    let search_dirs = default_map_search_dirs(replay_target_dir);
+    let search_dirs = dirs.to_vec();
     if search_dirs.iter().any(|dir| dir.join(map_folder).is_dir()) {
-        return Ok(()); // already somewhere FA's replay mode will find it
+        return Ok(()); // already somewhere FA will find it
     }
 
     let url = format!("{content_base}/maps/{map_folder}.zip");
+    validate_url(&url, content_base, "maps")?;
     let resp = http
         .get(&url)
         .send()
         .await
         .map_err(|e| format!("could not download map {map_folder}: {e}"))?;
+    validate_url(resp.url().as_str(), content_base, "maps")?;
     if !resp.status().is_success() {
-        return Err(format!("could not download map {map_folder}: {}", resp.status()));
+        return Err(format!(
+            "could not download map {map_folder}: {}",
+            resp.status()
+        ));
     }
-    let bytes = resp
-        .bytes()
-        .await
-        .map_err(|e| format!("could not read map {map_folder}: {e}"))?;
+    let bytes = bounded_body(resp, &format!("map {map_folder}"), MAX_DOWNLOAD_BYTES).await?;
+    let expected_folder = map_folder.to_string();
 
-    for dir in &search_dirs {
-        tokio::fs::create_dir_all(dir)
-            .await
-            .map_err(|e| format!("could not create {}: {e}", dir.display()))?;
-        extract_zip(&bytes, dir)?;
-    }
-    Ok(())
-}
-
-/// Extracts a zip archive (already known to contain a single top-level
-/// `{map_folder}/...` directory, confirmed against a real vault download)
-/// into `dest_dir`.
-fn extract_zip(bytes: &[u8], dest_dir: &Path) -> Result<(), String> {
-    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
-        .map_err(|e| format!("invalid map archive: {e}"))?;
-    for i in 0..archive.len() {
-        let mut entry = archive
-            .by_index(i)
-            .map_err(|e| format!("could not read archive entry: {e}"))?;
-        let Some(relative) = entry.enclosed_name() else {
-            continue; // reject path-traversal entries
-        };
-        let out_path = dest_dir.join(relative);
-        if entry.is_dir() {
-            std::fs::create_dir_all(&out_path)
-                .map_err(|e| format!("could not create {}: {e}", out_path.display()))?;
-            continue;
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        for dir in &search_dirs {
+            install_archive(&bytes, dir, Some(&expected_folder), |_| Ok(()))?;
         }
-        if let Some(parent) = out_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("could not create {}: {e}", parent.display()))?;
-        }
-        let mut out_file = std::fs::File::create(&out_path)
-            .map_err(|e| format!("could not create {}: {e}", out_path.display()))?;
-        std::io::copy(&mut entry, &mut out_file)
-            .map_err(|e| format!("could not write {}: {e}", out_path.display()))?;
-    }
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("map extraction task failed: {e}"))?
 }
 
 #[cfg(test)]
@@ -616,7 +909,7 @@ mod tests {
         assert!(content.contains("GameVersion = \"3684\""));
         assert!(content.contains("ForceAffinity = false"));
         assert!(!content.contains('\\'), "paths must use forward slashes");
-        // fa_path must be the retail install root, never the FAF patch dir —
+        // fa_path must be the retail install root, never the FAF patch dir,
         // the game mounts movies/sounds/fonts from it (the bug this guards).
         assert!(
             content.contains(&format!("fa_path = \"{}\"", slashed(&retail))),
@@ -627,7 +920,7 @@ mod tests {
             "fa_path must not point at the FAF patch dir's bin: {content}",
         );
         // Only meaningful on a host that can resolve a Documents dir (not
-        // every CI runner can) — where it does, `write_fa_path_lua` must use
+        // every CI runner can): where it does, `write_fa_path_lua` must use
         // it rather than falling back to the never-populated
         // `target_dir/vault` (the bug this test guards).
         if let Some(vault_dir) = documents_vault_dir() {
@@ -637,7 +930,10 @@ mod tests {
                 slashed(&vault_dir),
             );
             assert!(
-                !content.contains(&format!("custom_vault_path = \"{}", slashed(&dir.join("vault")))),
+                !content.contains(&format!(
+                    "custom_vault_path = \"{}",
+                    slashed(&dir.join("vault"))
+                )),
                 "custom_vault_path must not point at an unpopulated target_dir/vault: {content}",
             );
         }
@@ -675,7 +971,163 @@ mod tests {
         assert_eq!(files[0].hmac_parameter, "verify");
     }
 
-    /// Builds an in-memory zip shaped like a real vault map download —
+    fn file(group: &str, name: &str, version: Option<i32>) -> FeaturedModFile {
+        FeaturedModFile {
+            group: group.into(),
+            name: name.into(),
+            md5: "abc".into(),
+            version,
+            cacheable_url: "https://example.invalid/f".into(),
+            hmac_token: "tok".into(),
+            hmac_parameter: "verify".into(),
+        }
+    }
+
+    #[test]
+    fn a_file_lists_version_is_accepted_as_a_string_a_number_or_not_at_all() {
+        let parse =
+            |attributes: Value| -> FeaturedModFile { serde_json::from_value(attributes).unwrap() };
+        let base = |extra: Value| {
+            let mut v = json!({
+                "group": "bin",
+                "name": "ForgedAlliance.exe",
+                "md5": "abc123",
+                "cacheableUrl": "https://example.invalid/f",
+                "hmacToken": "tok",
+                "hmacParameter": "verify",
+            });
+            if let (Some(map), Some(more)) = (v.as_object_mut(), extra.as_object()) {
+                map.extend(more.clone());
+            }
+            v
+        };
+
+        // The API sends it as a string today; a bare number and an absent
+        // field both have to stay non-fatal, since the field only feeds
+        // version *inference* and every other path supplies the number.
+        assert_eq!(parse(base(json!({"version": "3775"}))).version, Some(3775));
+        assert_eq!(parse(base(json!({"version": 3775}))).version, Some(3775));
+        assert_eq!(parse(base(json!({}))).version, None);
+        assert_eq!(parse(base(json!({"version": null}))).version, None);
+        assert_eq!(
+            parse(base(json!({"version": 4_294_967_296_u64}))).version,
+            None
+        );
+    }
+
+    #[test]
+    fn latest_resolves_to_the_engine_executables_own_version() {
+        // Not the highest in the list: a release can ship a newer data file
+        // than executable, and FA reports the version baked into the exe.
+        let files = [
+            file("gamedata", "units.nx2", Some(3777)),
+            file("bin", "ForgedAlliance.exe", Some(3775)),
+        ];
+        assert_eq!(
+            effective_version(&files, "ForgedAlliance.exe"),
+            Some(3775),
+            "the executable's entry wins over the list maximum"
+        );
+    }
+
+    #[test]
+    fn latest_falls_back_to_the_highest_version_without_an_executable() {
+        // An overlay mod (`nomads`) ships no executable at all.
+        let files = [
+            file("gamedata", "nomads.nx2", Some(4)),
+            file("gamedata", "nomadsinit.nx2", Some(7)),
+        ];
+        assert_eq!(effective_version(&files, "ForgedAlliance.exe"), Some(7));
+    }
+
+    #[test]
+    fn an_unversioned_file_list_resolves_to_nothing() {
+        // Better than defaulting to 0, which would stamp the executable as a
+        // build that never existed.
+        let files = [file("bin", "ForgedAlliance.exe", None)];
+        assert_eq!(effective_version(&files, "ForgedAlliance.exe"), None);
+    }
+
+    #[test]
+    fn the_executable_is_matched_case_insensitively() {
+        let files = [file("bin", "forgedalliance.exe", Some(3775))];
+        assert_eq!(effective_version(&files, "ForgedAlliance.exe"), Some(3775));
+    }
+
+    #[test]
+    fn overlay_mods_are_distinguished_from_complete_installs() {
+        // Only the four base mods are a whole game; everything else needs
+        // `faf` underneath it first.
+        for base in ["faf", "ladder1v1", "fafbeta", "fafdevelop"] {
+            assert!(BASE_FEATURED_MODS.contains(&base), "{base} is a base mod");
+        }
+        for overlay in ["nomads", "coop", "murderparty"] {
+            assert!(
+                !BASE_FEATURED_MODS.contains(&overlay),
+                "{overlay} must pull faf in first"
+            );
+        }
+    }
+
+    #[test]
+    fn a_live_map_already_in_place_needs_no_destinations() {
+        let temp = std::env::temp_dir().join(format!("faf-live-dirs-{}", std::process::id()));
+        let maps = temp.join("maps");
+        std::fs::create_dir_all(maps.join("adaptive_gadostb.v0002")).unwrap();
+
+        // Normal setup: the client's maps folder *is* the vault maps folder,
+        // and the map is there: nothing left to do, so no download.
+        assert!(live_map_dirs(&maps, Some(maps.clone()), "adaptive_gadostb.v0002").is_empty());
+
+        let _ = std::fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn a_map_present_in_only_one_live_destination_is_still_staged_into_the_other() {
+        let temp = std::env::temp_dir().join(format!("faf-live-split-{}", std::process::id()));
+        let maps = temp.join("maps");
+        let vault = temp.join("vault-maps");
+        std::fs::create_dir_all(maps.join("adaptive_gadostb.v0002")).unwrap();
+        std::fs::create_dir_all(&vault).unwrap();
+
+        // The client can list the map while the game cannot find it. Staging
+        // has to close that gap rather than reporting success.
+        assert_eq!(
+            live_map_dirs(&maps, Some(vault.clone()), "adaptive_gadostb.v0002"),
+            vec![vault],
+        );
+
+        let _ = std::fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn one_destination_is_never_listed_twice() {
+        let temp = std::env::temp_dir().join(format!("faf-live-dedup-{}", std::process::id()));
+        let maps = temp.join("maps");
+
+        // Extracting the same zip into the same directory twice is harmless
+        // but pointless; the usual case is exactly this one directory.
+        assert_eq!(
+            live_map_dirs(&maps, Some(maps.clone()), "adaptive_gadostb.v0002"),
+            vec![maps],
+        );
+    }
+
+    #[tokio::test]
+    async fn a_base_game_map_needs_no_staging_for_a_live_game() {
+        // `scmp_009` ships inside the FA install; the vault has never heard of
+        // it, so asking would be a guaranteed 404 that fails the launch.
+        let result = ensure_live_map(
+            &reqwest::Client::new(),
+            "http://127.0.0.1:1",
+            std::path::Path::new("definitely/not/here"),
+            "scmp_009",
+        )
+        .await;
+        assert!(result.is_ok(), "{result:?}");
+    }
+
+    /// Builds an in-memory zip shaped like a real vault map download,
     /// confirmed against `content.faforever.com/maps/adaptive_gadostb.v0002.zip`:
     /// a single top-level `{map_folder}/` directory containing the map's files.
     fn build_map_zip(map_folder: &str) -> Vec<u8> {
@@ -691,12 +1143,13 @@ mod tests {
     }
 
     #[test]
-    fn extract_zip_places_files_under_the_map_folder() {
+    fn vault_install_places_files_under_the_map_folder() {
         let dir = std::env::temp_dir().join(format!("forge-mapzip-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
 
         let zip_bytes = build_map_zip("adaptive_gadostb.v0002");
-        extract_zip(&zip_bytes, &dir).expect("should extract");
+        install_archive(&zip_bytes, &dir, Some("adaptive_gadostb.v0002"), |_| Ok(()))
+            .expect("should extract");
 
         let scmap = dir
             .join("adaptive_gadostb.v0002")
@@ -708,7 +1161,8 @@ mod tests {
 
     #[tokio::test]
     async fn ensure_map_available_skips_download_when_already_staged() {
-        let target_dir = std::env::temp_dir().join(format!("forge-maptarget-{}", std::process::id()));
+        let target_dir =
+            std::env::temp_dir().join(format!("forge-maptarget-{}", std::process::id()));
         let user_maps = target_dir
             .join("user")
             .join("My Games")
@@ -719,12 +1173,17 @@ mod tests {
         tokio::fs::create_dir_all(&user_maps).await.unwrap();
 
         let http = reqwest::Client::new();
-        // An unreachable content_base proves no network call was attempted —
+        // An unreachable content_base proves no network call was attempted,
         // this would error out immediately if the "already staged" short
         // circuit didn't fire.
-        ensure_map_available(&http, "http://127.0.0.1:1", &target_dir, "adaptive_gadostb.v0002")
-            .await
-            .expect("should skip the download entirely");
+        ensure_map_available(
+            &http,
+            "http://127.0.0.1:1",
+            &target_dir,
+            "adaptive_gadostb.v0002",
+        )
+        .await
+        .expect("should skip the download entirely");
 
         let _ = tokio::fs::remove_dir_all(&target_dir).await;
     }
@@ -739,11 +1198,28 @@ mod tests {
         assert!(!is_vault_map_folder("trailing_dot_v"));
     }
 
+    #[test]
+    fn featured_mod_files_cannot_escape_the_install_root() {
+        let root = Path::new("game");
+        assert_eq!(
+            safe_join_file(root, "gamedata", "units.nx2").unwrap(),
+            root.join("gamedata").join("units.nx2")
+        );
+        for (group, name) in [
+            ("..", "escape"),
+            ("bin", "../escape"),
+            ("/absolute", "escape"),
+            ("bin", "C:\\escape"),
+        ] {
+            assert!(safe_join_file(root, group, name).is_err());
+        }
+    }
+
     #[tokio::test]
     async fn ensure_map_available_skips_the_network_entirely_for_base_maps() {
         let target_dir = std::env::temp_dir().join(format!("forge-basemap-{}", std::process::id()));
         let http = reqwest::Client::new();
-        // An unreachable content_base proves no network call was attempted —
+        // An unreachable content_base proves no network call was attempted,
         // confirmed live (X1MP_002 → guaranteed 404, wrongly surfaced as a
         // "could not stage map" warning before this fix.
         ensure_map_available(&http, "http://127.0.0.1:1", &target_dir, "X1MP_002")

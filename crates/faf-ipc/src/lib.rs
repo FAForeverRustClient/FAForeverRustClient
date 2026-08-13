@@ -1,4 +1,4 @@
-//! IPC contract — the anti-drift boundary.
+//! IPC contract: the anti-drift boundary.
 //!
 //! Generates the TypeScript definitions for every type that crosses the Tauri
 //! boundary ([`AppState`], [`AppCommand`], [`AppEvent`] and everything they
@@ -28,7 +28,14 @@ pub fn typescript_bindings() -> Result<String, specta_typescript::Error> {
         .register::<AppEvent>();
 
     let body = Typescript::default().export(&types, specta_serde::Format)?;
-    Ok(format!("{HEADER}\n{body}"))
+    // Specta currently emits a space after several multiline union separators.
+    // Keep the checked-in contract deterministic and `git diff --check` clean.
+    let body = body
+        .lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n");
+    Ok(format!("{HEADER}\n{body}\n"))
 }
 
 #[cfg(test)]
@@ -41,5 +48,11 @@ mod tests {
         for ty in ["AppState", "AppCommand", "AppEvent", "SessionState"] {
             assert!(ts.contains(ty), "bindings missing `{ty}`:\n{ts}");
         }
+    }
+
+    #[test]
+    fn bindings_have_no_trailing_whitespace() {
+        let ts = typescript_bindings().expect("export should succeed");
+        assert!(ts.lines().all(|line| line.trim_end() == line));
     }
 }

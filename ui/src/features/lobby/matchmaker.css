@@ -1,0 +1,927 @@
+.matchmaker-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Two columns, matching `team_matchmaking.fxml`: identity, party and queues on
+   the left, matchmaking chat filling the right.
+   An earlier revision made this one column because the rail held only the
+   party panel, which is ~180px tall when solo. The answer was not to drop the
+   rail but to give it the thing Java puts there. */
+.matchmaking-layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Faction toggles: compact chips, not cards. An unselected chip is dimmed
+   rather than hidden, so "which factions am I queuing as" is readable at a
+   glance instead of requiring a check mark hunt. */
+.faction-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Each chip carries its faction's colour when selected. Four grey chips that
+   differ only by a small glyph turn "which factions am I queuing as" into a
+   reading task; the Java client colours them for the same reason. */
+.faction-chip {
+  --faction: var(--color-border-strong);
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px 0 12px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.faction-chip[data-faction="uef"] { --faction: var(--color-faction-uef); }
+.faction-chip[data-faction="aeon"] { --faction: var(--color-faction-aeon); }
+.faction-chip[data-faction="cybran"] { --faction: var(--color-faction-cybran); }
+.faction-chip[data-faction="seraphim"] { --faction: var(--color-faction-seraphim); }
+
+/* Desaturated rather than hidden while off, so the row still reads as four
+   known factions instead of four unlabelled buttons. */
+.faction-chip svg {
+  flex: 0 0 auto;
+  opacity: 0.4;
+  filter: saturate(0.25);
+  transition: opacity 120ms ease, filter 120ms ease;
+}
+
+.faction-chip:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--faction);
+}
+
+.faction-chip:hover:not(:disabled) svg {
+  opacity: 0.8;
+  filter: none;
+}
+
+.faction-chip.is-active {
+  color: var(--color-text);
+  border-color: var(--faction);
+  background: color-mix(in srgb, var(--faction) 12%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--faction);
+}
+
+.faction-chip.is-active svg {
+  opacity: 1;
+  filter: none;
+}
+
+.faction-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.faction-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Party: a horizontal strip of seats rather than a vertical list in a rail. */
+.party-strip {
+  padding: 16px 20px;
+}
+
+.party-strip-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.party-strip-head h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+.party-strip-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.party-seats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 220px));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.party-seat {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 6px 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.party-seat-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.party-seat strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.party-seat small {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+/* A dashed outline reads as "this could be filled" where a solid card would
+   read as a member whose name failed to load. */
+.party-seat-empty {
+  background: transparent;
+  border-style: dashed;
+}
+
+.party-seat-slot {
+  width: 28px;
+  height: 28px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.party-seat-kick {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.party-seat-kick:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.party-seat-kick:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.map-pool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 56vh;
+  margin-top: 18px;
+  overflow: auto;
+}
+
+.map-pool-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.map-pool-tabs button {
+  min-height: 30px;
+  padding: 4px 10px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.map-pool-tabs button:hover,
+.map-pool-tabs button.active {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+.map-pool-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 7px;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.map-pool-card.vetoed { opacity: .55; border-color: var(--color-error); }
+.map-pool-card img,
+.map-pool-card > .map-preview-placeholder { width: 54px; height: 54px; object-fit: cover; border-radius: var(--radius-sm); }
+.map-pool-card > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.map-pool-card strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.map-pool-card small { color: var(--color-subtle); font-size: 12px; }
+.map-pool-card em { position: absolute; top: 5px; right: 5px; color: var(--color-error); font-size: 12px; font-style: normal; text-transform: uppercase; }
+
+/* Matchmaker ------------------------------------------------------------- */
+.matchmaker-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.matchmaker-queues-section {
+  padding: 20px;
+}
+
+.matchmaker-player-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+}
+
+.matchmaker-player-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex: 1 1 320px;
+  gap: 14px;
+}
+
+/* No border or fill: the badge art carries its own frame, and a box around it
+   read as an empty placeholder whenever the image was missing. */
+.matchmaker-league-mark {
+  display: grid;
+  width: 74px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+}
+
+.matchmaker-league-mark img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.matchmaker-player-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-player-name {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.matchmaker-player-name:disabled { cursor: default; }
+.matchmaker-player-name:not(:disabled):hover strong { text-decoration: underline; }
+.matchmaker-player-name:focus-visible { outline: 2px solid var(--color-border-strong); outline-offset: 3px; }
+.matchmaker-player-name > span { color: var(--color-muted); font-size: 13px; }
+.matchmaker-player-name strong { overflow: hidden; font-size: 17px; text-overflow: ellipsis; white-space: nowrap; }
+
+.matchmaker-player-avatar {
+  width: 40px;
+  height: 20px;
+  margin-left: 4px;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.matchmaker-player-meta {
+  display: flex;
+  min-height: 18px;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.matchmaker-player-meta img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.matchmaker-profile-warning {
+  max-width: 300px;
+  overflow: hidden;
+  color: var(--color-warn);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matchmaker-section-copy {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.matchmaker-section-copy h1,
+.matchmaker-section-copy h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+.matchmaker-section-copy p {
+  max-width: 510px;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+/* `auto-fit` + `1fr` stretched a lone queue across the whole tab, leaving three
+   metrics floating in ~1300px of empty card. Cards now keep a readable width
+   and pack from the left however many queues the server offers. */
+/* `auto-fit` rather than `auto-fill`, so the queues the server offers share the
+   row instead of wrapping while empty tracks hold the width. The card's own
+   `max-width` is what stops a lone queue stretching across the whole tab, which
+   is the job `auto-fill` used to do badly. */
+.matchmaker-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  justify-content: start;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.matchmaker-queue-card {
+  min-width: 0;
+  max-width: 420px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+}
+
+/* Which queues you are about to search is the tab's most consequential state,
+   so selection reads as an accented card rather than a one-pixel grey inset.
+   The Java client outlines its selected queue buttons for the same reason. */
+.matchmaker-queue-card.is-selected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+/* An in-flight search outranks selection: it is the state that changes on its
+   own, so it keeps the status stripe and gives up the accent outline. */
+.matchmaker-queue-card[data-status="searching"],
+.matchmaker-queue-card[data-status="found"],
+.matchmaker-queue-card[data-status="launching"] {
+  border-color: var(--color-ok);
+  box-shadow: inset 3px 0 var(--color-ok);
+}
+
+.matchmaker-queue-card[data-status="cancelled"] {
+  border-color: var(--color-warn);
+  box-shadow: inset 3px 0 var(--color-warn);
+}
+
+.matchmaker-queue-card.incompatible {
+  opacity: .64;
+}
+
+/* The whole upper area is the toggle. The card used to be three bands split by
+   hairlines: a title strip, a bordered statistics table, then a footer. That
+   read as three stacked widgets rather than one queue. */
+.matchmaker-queue-select {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 16px 14px;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.matchmaker-queue-select:disabled {
+  cursor: not-allowed;
+}
+
+.matchmaker-queue-select:focus-visible,
+.matchmaker-map-pool-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.matchmaker-queue-head {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.matchmaker-queue-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-queue-title strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The number that decides whether this queue is worth entering. */
+.matchmaker-queue-rating {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.matchmaker-queue-rating strong {
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-queue-rating small {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+/* Icon-led facts on one line: three short values did not need a bordered
+   four-column table with 8px headings. */
+.matchmaker-queue-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.matchmaker-queue-facts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-queue-facts svg {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+.matchmaker-queue-check {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: var(--color-surface);
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.matchmaker-queue-card.is-selected .matchmaker-queue-check {
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.matchmaker-queue-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.matchmaker-map-pool-button {
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.matchmaker-queue-note,
+.matchmaker-queue-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.matchmaker-queue-status i {
+  width: 6px;
+  height: 6px;
+  background: var(--color-ok);
+  border-radius: 50%;
+}
+
+[data-status="cancelled"] .matchmaker-queue-status i {
+  background: var(--color-warn);
+}
+
+/* A footer of the queues card, not a floating strip of its own. */
+.matchmaker-search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.matchmaker-search-button {
+  min-height: 40px;
+  padding-inline: 20px;
+  font-size: 14px;
+}
+
+.matchmaker-search-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.matchmaker-search-copy > i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: var(--color-subtle);
+  border-radius: 50%;
+}
+
+.matchmaker-search-bar[data-state="searching"] .matchmaker-search-copy > i,
+.matchmaker-search-bar[data-state="matchFound"] .matchmaker-search-copy > i,
+.matchmaker-search-bar[data-state="launching"] .matchmaker-search-copy > i {
+  background: var(--color-ok);
+}
+
+.matchmaker-search-bar.cancelled .matchmaker-search-copy > i {
+  background: var(--color-warn);
+}
+
+.matchmaker-search-copy > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-search-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.matchmaker-search-copy span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.party-panel-note {
+  margin: 10px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Party chat now sits in a full-width card rather than a 290px rail, so it
+   drops the miniaturised type it needed there. Capped in width because a chat
+   line stretched across the whole tab is unreadable. */
+/* A full-height rail panel now, not an inset block inside the party card. */
+.matchmaker-party-chat {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.matchmaker-party-chat.is-empty > p {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.matchmaker-party-chat > header {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.matchmaker-party-chat > header strong { font-size: 12px; }
+
+.matchmaker-party-chat > header span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Takes the rail's leftover height so the composer stays pinned to the bottom
+   regardless of how many messages there are. */
+.matchmaker-party-chat .chat-messages {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  border-radius: var(--radius-md);
+}
+
+.matchmaker-party-chat .chat-message {
+  grid-template-columns: 0 minmax(0, auto) minmax(0, 1fr);
+  gap: 7px;
+  font-size: 12px;
+}
+
+.matchmaker-party-chat .chat-message.is-info,
+.matchmaker-party-chat .chat-message.is-error,
+.matchmaker-party-chat .chat-message.is-action {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.matchmaker-party-chat .chat-message-time { overflow: hidden; }
+
+.matchmaker-party-chat .chat-compose {
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.matchmaker-party-chat .chat-compose button { padding-inline: 9px; }
+
+.matchmaker-invite-search {
+  margin-top: 18px;
+  background: var(--color-surface-raised);
+}
+
+.matchmaker-invite-search:focus-within {
+  border-color: var(--color-border-strong);
+}
+
+.matchmaker-invite-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.matchmaker-invite-list {
+  max-height: 420px;
+  margin-top: 10px;
+  overflow: auto;
+}
+
+.matchmaker-invite-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.matchmaker-invite-row:last-child {
+  border-bottom: 0;
+}
+
+.matchmaker-invite-row > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-invite-row strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.matchmaker-invite-row small {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.matchmaker-map-pool-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.matchmaker-veto-toolbar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.matchmaker-token-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.matchmaker-token-wallet i {
+  width: 10px;
+  height: 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.matchmaker-token-wallet i.used {
+  background: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.matchmaker-token-wallet small {
+  margin-left: 4px;
+  color: var(--color-subtle);
+}
+
+.matchmaker-map-preview {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--color-surface-raised);
+}
+
+.matchmaker-map-preview > img,
+.matchmaker-map-preview > .map-preview-placeholder {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.matchmaker-map-preview > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-map-preview strong {
+  font-size: 12px;
+}
+
+.matchmaker-map-preview small {
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matchmaker-map-preview > button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.matchmaker-map-preview > button:hover,
+.matchmaker-map-preview > button:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.map-pool-card.previewed {
+  border-color: var(--color-border-strong);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+/* Below this the chat rail costs the queue cards more width than it is worth,
+   so it drops under the main column instead of squeezing it. */
+@media (max-width: 1100px) {
+  .matchmaking-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .matchmaker-main {
+    overflow: visible;
+  }
+
+  .matchmaker-party-chat {
+    height: 280px;
+  }
+}
+
+@media (max-width: 700px) {
+  .map-pool-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .faction-chips {
+    width: 100%;
+  }
+
+  .faction-chip {
+    flex: 1 1 calc(50% - 3px);
+    justify-content: center;
+  }
+
+  .matchmaker-queue-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .matchmaker-section-copy,
+  .matchmaker-map-pool-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .matchmaker-section-copy p {
+    text-align: left;
+  }
+
+  .matchmaker-search-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .matchmaker-search-bar > button {
+    width: 100%;
+  }
+
+  .matchmaker-veto-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .matchmaker-token-wallet {
+    margin-left: 0;
+  }
+}

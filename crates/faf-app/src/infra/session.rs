@@ -1,4 +1,4 @@
-//! In-memory session token store — the bridge between auth and the network ports.
+//! In-memory session token store: the bridge between auth and the network ports.
 //!
 //! The OAuth access token must never live in [`AppState`] (it would be serialized
 //! to the frontend). Instead the real auth provider writes it here after login and

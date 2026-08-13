@@ -5,116 +5,762 @@
 //! stream ends. `Join` sends a `game_join` over the live connection; the server's
 //! reply (`Launching` / `JoinFailed`) arrives back on that same update stream.
 //!
-//! When a launch order arrives and real launch is enabled (`FAF_REAL_LAUNCH=1`),
-//! the connect loop also drives the [`launcher`](crate::services::launcher): it
+//! When a launch order arrives, the connect loop also drives the
+//! [`launcher`](crate::services::launcher): it
 //! starts the ICE adapter + game and then forwards the `target: "game"` relay
 //! messages (which arrive on this very stream) to the adapter. Keeping the launch
-//! session in this loop means no cross-task plumbing — the loop already sees both
+//! session in this loop means no cross-task plumbing: the loop already sees both
 //! the launch order and the relay traffic.
 
-use std::sync::atomic::Ordering;
+use std::collections::HashMap;
 
-use faf_domain::state::{LobbyCommand, LobbyEvent};
+use faf_domain::state::{
+    ChatEvent, ChatStatus, Game, HostGamePreferences, LobbyCommand, LobbyEvent, MatchmakingState,
+    NotificationAction, NotificationKind, NotificationPreferences, PlayerCardEvent, SettingsEvent,
+    SocialEvent,
+};
 
 use crate::ports::LobbyUpdate;
+use crate::ports::ServerNoticeStyle;
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::launcher::{self, LaunchSession};
+use crate::services::notifications;
 
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
-        LobbyCommand::Connect => {
-            // Single-flight: only one connection may be active at a time. A
-            // redundant `Connect` (StrictMode double-invoke, rapid clicks) loses
-            // this compare-and-swap and is dropped, so overlapping connections
-            // can't race and clobber each other's state. Decided before any await,
-            // so there is no reorder window.
-            if ctx
-                .lobby_active
-                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-                .is_err()
-            {
-                return; // a connection is already active/connecting
+        LobbyCommand::Connect => connect(ctx, out).await,
+        LobbyCommand::Join { id, password } => {
+            if !ctx.lobby_join_active.try_start() {
+                return;
             }
 
-            out.emit(LobbyEvent::Connecting);
-            let mut updates = ctx.ports.lobby.connect().await;
-            out.emit(LobbyEvent::Connected);
+            if !out.with_state(|state| {
+                matches!(
+                    state.lobby.status,
+                    faf_domain::state::LobbyStatus::Connected
+                )
+            }) {
+                ctx.lobby_join_active.finish();
+                out.emit(LobbyEvent::JoinFailed {
+                    id,
+                    reason: "not connected to the lobby".into(),
+                });
+                return;
+            }
 
-            // Real launch (subprocesses) is opt-in; otherwise we stop at the
-            // modeled launch order, exactly as before this phase.
-            let launch_enabled = std::env::var("FAF_REAL_LAUNCH").is_ok_and(|v| !v.is_empty());
-            let mut session: Option<LaunchSession> = None;
-
-            // Runs until the stream closes — either the server ended it or a
-            // `Disconnect` command cancelled the connection (which drops the sender).
-            while let Some(update) = updates.recv().await {
-                match update {
-                    LobbyUpdate::Games(games) => out.emit(LobbyEvent::GamesUpdated { games }),
-                    LobbyUpdate::LiveGames(games) => {
-                        out.emit(LobbyEvent::LiveGamesUpdated { games })
-                    }
-                    LobbyUpdate::Launch(launch) => {
-                        out.emit(LobbyEvent::Launching {
-                            launch: launch.clone(),
-                        });
-                        if launch_enabled {
-                            session = launcher::start(&launch, ctx, out).await;
-                        }
-                    }
-                    LobbyUpdate::JoinFailed { id, reason } => {
-                        out.emit(LobbyEvent::JoinFailed { id, reason })
-                    }
-                    LobbyUpdate::Hosted { id } => out.emit(LobbyEvent::Hosted { id }),
-                    LobbyUpdate::HostFailed { reason } => {
-                        out.emit(LobbyEvent::HostFailed { reason })
-                    }
-                    LobbyUpdate::PlayerRatings(ratings) => {
-                        out.emit(LobbyEvent::PlayerRatingsUpdated { ratings })
-                    }
-                    // Connectivity messages for the game → forward to the adapter
-                    // through the active launch session (ignored if none).
-LobbyUpdate::GameRelay { command, args } => {
-    eprintln!("[relay] GameRelay {command} session={}", session.is_some());
-    if let Some(session) = &session {
-        session.forward_to_adapter(command, args);
-    }
-}
+            out.emit(LobbyEvent::Joining {
+                id,
+                prepared: false,
+            });
+            if ctx.ports.process.supports_live_launch() {
+                let game = out.with_state(|state| {
+                    state.lobby.games.iter().find(|game| game.id == id).cloned()
+                });
+                let Some(game) = game else {
+                    ctx.lobby_join_active.finish();
+                    out.emit(LobbyEvent::JoinFailed {
+                        id,
+                        reason: "the game is no longer available".into(),
+                    });
+                    return;
+                };
+                if let Err(reason) = launcher::prepare_custom_join(&game, ctx, out).await {
+                    ctx.lobby_join_active.finish();
+                    launcher::report_failure(ctx, out, reason);
+                    return;
+                }
+                // Preparation can take minutes. Return to an explicit joining
+                // state while waiting for the server's accept/reject response.
+                out.emit(LobbyEvent::Joining { id, prepared: true });
+            }
+            if !ctx.ports.lobby.join(id, password) {
+                ctx.lobby_join_active.finish();
+                out.emit(LobbyEvent::JoinFailed {
+                    id,
+                    reason: "the join request could not be sent".into(),
+                });
+            }
+        }
+        LobbyCommand::Host { config } => match config.validated() {
+            Ok(config) => {
+                // Co-op owns a separate launch surface in both references; do
+                // not let one mission replace the remembered custom-game form.
+                let remember = config.mod_name != "coop";
+                if remember {
+                    let mut browsing = out.with_state(|state| state.settings.browsing.clone());
+                    browsing.host_game = HostGamePreferences {
+                        title: config.title.clone(),
+                        featured_mod: config.mod_name.clone(),
+                        visibility: config.visibility.clone(),
+                        map: config.map.clone(),
+                        password_enabled: config.password.is_some(),
+                        password: config.password.clone().unwrap_or_default(),
+                        enforce_rating_range: config.enforce_rating_range,
+                        rating_min: config.rating_min.unwrap_or(800),
+                        rating_max: config.rating_max.unwrap_or(1_500),
+                    };
+                    out.emit(SettingsEvent::BrowsingChanged {
+                        preferences: browsing,
+                    });
+                }
+                ctx.ports.lobby.host(config);
+                if remember {
+                    crate::services::settings::persist(ctx, out).await;
                 }
             }
-
-            // Release the single-flight guard before announcing the disconnect, so
-            // a fresh `Connect` right after can immediately take over.
-            ctx.lobby_active.store(false, Ordering::SeqCst);
-            out.emit(LobbyEvent::Disconnected);
+            Err(reason) => {
+                tracing::warn!(reason, "invalid host-game request rejected");
+                notifications::add(
+                    out,
+                    NotificationKind::Error,
+                    "Could not host game",
+                    reason,
+                    None,
+                );
+            }
+        },
+        LobbyCommand::Matchmake { queue_name, start } => {
+            ctx.ports.lobby.matchmake(queue_name, start)
         }
-        LobbyCommand::Join { id } => {
-            // Optimistic state; the launch/failed reply lands on the connect stream.
-            out.emit(LobbyEvent::Joining { id });
-            ctx.ports.lobby.join(id);
+        LobbyCommand::LeaveParty => ctx.ports.lobby.leave_party(),
+        LobbyCommand::KickPartyMember { player_id } => ctx.ports.lobby.kick_party_member(player_id),
+        LobbyCommand::InviteToParty { player_id } => ctx.ports.lobby.invite_to_party(player_id),
+        LobbyCommand::AcceptPartyInvite { player_id } => {
+            ctx.ports.lobby.accept_party_invite(player_id)
+        }
+        LobbyCommand::SetPartyFactions { factions } => ctx.ports.lobby.set_party_factions(factions),
+        LobbyCommand::SetPlayMode { mode } => out.emit(LobbyEvent::PlayModeChanged { mode }),
+        LobbyCommand::SetPlayerVetoes { vetoes } => {
+            out.emit(LobbyEvent::VetoesUpdated {
+                vetoes: vetoes.clone(),
+            });
+            ctx.ports.lobby.set_player_vetoes(vetoes);
+        }
+        LobbyCommand::LoadAvatars => {
+            out.emit(LobbyEvent::AvatarsLoading);
+            if !ctx.ports.lobby.request_avatars() {
+                out.emit(LobbyEvent::AvatarsLoadFailed {
+                    reason: "Connect to the FAF lobby before loading avatars.".into(),
+                });
+            }
+        }
+        LobbyCommand::SelectAvatar { url } => {
+            out.emit(LobbyEvent::AvatarSelectionStarted);
+            let (available, player, profile) = out.with_state(|state| {
+                let available = url.as_deref().and_then(|url| {
+                    state
+                        .lobby
+                        .available_avatars
+                        .iter()
+                        .find(|avatar| avatar.url == url)
+                        .cloned()
+                });
+                let player = state.auth.player.clone();
+                let profile = player.as_ref().and_then(|player| {
+                    state
+                        .social
+                        .players
+                        .iter()
+                        .find(|profile| profile.id == player.id)
+                        .cloned()
+                });
+                (available, player, profile)
+            });
+            let choice = match url.as_deref() {
+                Some(_) => match available {
+                    Some(avatar) => Some(avatar),
+                    None => {
+                        out.emit(LobbyEvent::AvatarSelectionFailed {
+                            reason: "That avatar is not in the server-provided list.".into(),
+                        });
+                        return;
+                    }
+                },
+                None => None,
+            };
+
+            if !ctx.ports.lobby.select_avatar(url.clone()) {
+                out.emit(LobbyEvent::AvatarSelectionFailed {
+                    reason: "The avatar could not be sent because the lobby is disconnected."
+                        .into(),
+                });
+                return;
+            }
+
+            out.emit(LobbyEvent::AvatarSelectionSucceeded);
+            if let Some(player) = player {
+                let tooltip = choice
+                    .as_ref()
+                    .map(|avatar| avatar.tooltip.clone())
+                    .unwrap_or_default();
+                out.emit(PlayerCardEvent::AvatarSelected {
+                    player_id: player.id,
+                    url: url.clone(),
+                    tooltip: tooltip.clone(),
+                });
+
+                if let Some(mut profile) = profile {
+                    profile.avatar_url = url.unwrap_or_default();
+                    profile.avatar_tooltip = tooltip;
+                    out.emit(SocialEvent::PlayersSeen {
+                        players: vec![profile],
+                    });
+                }
+            }
+        }
+        LobbyCommand::TerminateGame => {
+            terminate_game(ctx, out);
         }
         LobbyCommand::Disconnect => {
             // Cancels the active connection; the `Connect` task above then sees the
             // stream close and emits `Disconnected`.
+            out.emit(LobbyEvent::JoinCancelled);
             ctx.ports.lobby.disconnect();
+            ctx.lobby_join_active.finish();
         }
-        LobbyCommand::Host { req } => {
-            // Mods are never sent over the wire (confirmed against the Python
-            // client — see `LobbyPort::host`'s docs): FA reads its active mods
-            // from the local game.prefs file at launch, so the dialog's
-            // selection has to land there *before* the `game_host` frame goes
-            // out. Skip the write entirely when nothing was selected, so the
-            // common "no mods" host (and the fake-ports dev/test path, which
-            // has no real game.prefs) doesn't touch the filesystem at all.
-            if !req.sim_mods.is_empty() {
-                if let Err(reason) = ctx.ports.mods.set_active_mods(req.sim_mods.clone()).await {
-                    out.emit(LobbyEvent::HostFailed { reason });
-                    return;
+    }
+}
+
+async fn connect(ctx: &ServiceCtx, out: &EventSink) {
+    if !ctx.lobby_active.try_start() {
+        return;
+    }
+
+    out.emit(LobbyEvent::Connecting);
+    let mut updates = ctx.ports.lobby.connect().await;
+    out.emit(LobbyEvent::Connected);
+
+    let launch_enabled = ctx.ports.process.supports_live_launch();
+    let mut session: Option<LaunchSession> = None;
+    let mut game_notifications = GameNotificationTracker::default();
+
+    while let Some(update) = updates.recv().await {
+        handle_update(
+            update,
+            ctx,
+            out,
+            launch_enabled,
+            &mut session,
+            &mut game_notifications,
+        )
+        .await;
+    }
+
+    ctx.lobby_active.finish();
+    ctx.lobby_join_active.finish();
+    out.emit(LobbyEvent::Disconnected);
+    out.emit(SocialEvent::Cleared);
+}
+
+async fn handle_update(
+    update: LobbyUpdate,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    launch_enabled: bool,
+    session: &mut Option<LaunchSession>,
+    game_notifications: &mut GameNotificationTracker,
+) {
+    match update {
+        LobbyUpdate::Games(games) => {
+            let (preferences, player_name) = out.with_state(|state| {
+                (
+                    state.settings.notifications.clone(),
+                    state.auth.player.as_ref().map(|player| player.name.clone()),
+                )
+            });
+            for signal in game_notifications.observe_open(&games, player_name.as_deref()) {
+                notify_game_signal(out, &preferences, signal);
+            }
+            out.emit(LobbyEvent::GamesUpdated { games });
+        }
+        LobbyUpdate::LiveGames(games) => {
+            let (preferences, friends, player_name) = out.with_state(|state| {
+                (
+                    state.settings.notifications.clone(),
+                    state.social.friends.clone(),
+                    state.auth.player.as_ref().map(|player| player.name.clone()),
+                )
+            });
+            for signal in game_notifications.observe_live(&games, &friends, player_name.as_deref())
+            {
+                notify_game_signal(out, &preferences, signal);
+            }
+            out.emit(LobbyEvent::LiveGamesUpdated { games })
+        }
+        LobbyUpdate::MatchmakerQueues(queues) => {
+            out.emit(LobbyEvent::MatchmakerQueuesUpdated { queues })
+        }
+        LobbyUpdate::Matchmaking(state) => {
+            let terminate_cancelled_game = matches!(&state, MatchmakingState::Cancelled { .. })
+                && out.with_state(|current| {
+                    matches!(
+                        current.lobby.matchmaking,
+                        MatchmakingState::Launching { .. }
+                    ) && matches!(
+                        current.lobby.join,
+                        faf_domain::state::JoinState::Launched { .. }
+                            | faf_domain::state::JoinState::InGame
+                    )
+                });
+            let (already_found, notify_match_found) = out.with_state(|current| {
+                (
+                    matches!(
+                        current.lobby.matchmaking,
+                        MatchmakingState::MatchFound { .. }
+                    ),
+                    current.settings.notifications.match_found,
+                )
+            });
+            if matches!(state, MatchmakingState::MatchFound { .. })
+                && !already_found
+                && notify_match_found
+            {
+                let queue = state.matched_queue().unwrap_or("matchmaker");
+                notifications::add(
+                    out,
+                    NotificationKind::MatchFound,
+                    "Match found",
+                    format!("Your {queue} match is ready."),
+                    Some(NotificationAction::OpenMatchmaking),
+                );
+            }
+            out.emit(LobbyEvent::MatchmakingUpdated { state });
+            if terminate_cancelled_game {
+                terminate_game(ctx, out);
+                *session = None;
+                notifications::add_required(
+                    out,
+                    NotificationKind::Error,
+                    "Match cancelled",
+                    "The server cancelled the match after launch, so Forged Alliance was stopped.",
+                    Some(NotificationAction::OpenMatchmaking),
+                );
+            }
+        }
+        LobbyUpdate::Party(party) => out.emit(LobbyEvent::PartyUpdated { party }),
+        LobbyUpdate::PartyInvite { player_id, login } => {
+            if out.with_state(|state| state.settings.notifications.party_invites) {
+                notifications::add(
+                    out,
+                    NotificationKind::PartyInvite,
+                    "Party invitation",
+                    format!("{login} invited you to their matchmaker party."),
+                    Some(NotificationAction::AcceptPartyInvite { player_id }),
+                );
+            }
+        }
+        LobbyUpdate::Vetoes(vetoes) => out.emit(LobbyEvent::VetoesUpdated { vetoes }),
+        LobbyUpdate::Launch(launch) => {
+            let already_prepared = out.with_state(|state| {
+                matches!(
+                    state.lobby.join,
+                    faf_domain::state::JoinState::Joining {
+                        id,
+                        prepared: true,
+                    } if id == launch.uid
+                )
+            });
+            out.emit(LobbyEvent::Launching {
+                launch: launch.clone(),
+            });
+            if launch_enabled {
+                *session = launcher::start(&launch, ctx, out, already_prepared).await;
+                if session.is_some()
+                    && out.with_state(|state| state.settings.notifications.game_launched)
+                {
+                    notifications::add(
+                        out,
+                        NotificationKind::GameLaunched,
+                        "Game launched",
+                        format!("{} started successfully.", launch.name),
+                        None,
+                    );
                 }
             }
-            // Optimistic state; the Hosted/HostFailed reply lands on the connect
-            // stream (same pattern as `Join`'s Launching/JoinFailed).
-            out.emit(LobbyEvent::Hosting);
-            ctx.ports.lobby.host(req);
+            ctx.lobby_join_active.finish();
         }
+        LobbyUpdate::JoinFailed { id, reason } => {
+            ctx.lobby_join_active.finish();
+            out.emit(LobbyEvent::JoinFailed { id, reason })
+        }
+        LobbyUpdate::Relations { friends, foes } => {
+            out.emit(SocialEvent::RelationsUpdated { friends, foes })
+        }
+        LobbyUpdate::AutoJoinChannels(channels) => {
+            // Recorded first: the reducer normalizes the names, and if chat is
+            // not connected yet the chat service picks the list up from state
+            // the moment it is. If chat *is* already up, this message is the
+            // only announcement we get, so act on it now.
+            out.emit(ChatEvent::AutoJoinAnnounced { channels });
+            join_auto_channels(ctx, out);
+        }
+        LobbyUpdate::PlayersSeen(players) => {
+            let newly_online = out.with_state(|state| {
+                if !state.settings.notifications.friend_online {
+                    return Vec::new();
+                }
+                players
+                    .iter()
+                    .filter(|player| {
+                        state.social.player(&player.login).is_none()
+                            && state.social.is_friend(&player.login)
+                    })
+                    .map(|player| player.login.clone())
+                    .collect::<Vec<_>>()
+            });
+            for login in newly_online {
+                notifications::add(
+                    out,
+                    NotificationKind::FriendOnline,
+                    "Friend online",
+                    format!("{login} is now online."),
+                    None,
+                );
+            }
+            let names_us = out.with_state(|state| {
+                state
+                    .auth
+                    .player
+                    .as_ref()
+                    .is_some_and(|me| players.iter().any(|player| player.login == me.name))
+            });
+            out.emit(SocialEvent::PlayersSeen { players });
+            // Our own `player_info` is what carries our country, and the
+            // language channel is derived from it. It routinely arrives after
+            // chat has connected, so this is the second half of that race.
+            if names_us {
+                join_auto_channels(ctx, out);
+            }
+        }
+        LobbyUpdate::PlayersRemoved(players) => {
+            let offline_friends = out.with_state(|state| {
+                if !state.settings.notifications.friend_offline {
+                    return Vec::new();
+                }
+                players
+                    .iter()
+                    .filter(|player| state.social.is_friend(&player.login))
+                    .map(|player| player.login.clone())
+                    .collect::<Vec<_>>()
+            });
+            for login in offline_friends {
+                notifications::add(
+                    out,
+                    NotificationKind::FriendOffline,
+                    "Friend offline",
+                    format!("{login} is now offline."),
+                    None,
+                );
+            }
+            out.emit(SocialEvent::PlayersRemoved {
+                logins: players.into_iter().map(|player| player.login).collect(),
+            });
+        }
+        LobbyUpdate::Avatars(avatars) => out.emit(LobbyEvent::AvatarsLoaded { avatars }),
+        LobbyUpdate::Notice { style, text } => {
+            let (kind, title) = match style {
+                ServerNoticeStyle::Info => (NotificationKind::ServerNotice, "Message from server"),
+                ServerNoticeStyle::Warning => {
+                    (NotificationKind::ServerWarning, "Warning from server")
+                }
+                ServerNoticeStyle::Error => (NotificationKind::Error, "Error from server"),
+                ServerNoticeStyle::Kill => (NotificationKind::Error, "Game stopped by server"),
+                ServerNoticeStyle::Kick => (NotificationKind::Error, "Disconnected by server"),
+            };
+            notifications::add_required(out, kind, title, text, None);
+            if style == ServerNoticeStyle::Kill {
+                terminate_game(ctx, out);
+                *session = None;
+            } else if style == ServerNoticeStyle::Kick {
+                ctx.ports.lobby.disconnect();
+            }
+        }
+        LobbyUpdate::ConnectionRejected { reason } => {
+            notifications::add_required(
+                out,
+                NotificationKind::Error,
+                "Lobby connection rejected",
+                reason,
+                None,
+            );
+        }
+        LobbyUpdate::GameRelay { command, args } => {
+            tracing::debug!(
+                %command,
+                has_launch_session = session.is_some(),
+                "game relay message received"
+            );
+            if let Some(session) = session.as_ref() {
+                session.forward_to_adapter(command, args).await;
+            }
+        }
+    }
+}
+
+/// Join whatever this account should now be in, if chat is up to receive it.
+///
+/// Called from the lobby side because both inputs to the list arrive here: the
+/// server's `social` announcement, and our own `player_info` (which carries the
+/// country the language channel is derived from). When chat is not connected
+/// yet, nothing is needed: `services::chat` runs the same computation the
+/// moment it is.
+fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
+    let channels = out.with_state(|state| {
+        if state.chat.status == ChatStatus::Connected {
+            faf_domain::state::auto_join_channels(state, &ctx.ports.os_language)
+        } else {
+            Vec::new()
+        }
+    });
+    for channel in channels {
+        ctx.ports.chat.join_channel(channel);
+    }
+}
+
+fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
+    ctx.ports.process.kill();
+    ctx.ports.ice.stop();
+    ctx.lobby_join_active.finish();
+    out.emit(LobbyEvent::GameTerminated);
+}
+
+#[derive(Debug, Clone)]
+enum GameNotificationSignal {
+    NewGame(Game),
+    GameFull(Game),
+    FriendPlaying { login: String, game: Game },
+    OwnGameEnded(Game),
+}
+
+/// Turns full lobby snapshots into transitions. `None` means no baseline has
+/// been received yet, so reconnect/initial snapshots never announce hundreds
+/// of existing games as new.
+#[derive(Default)]
+struct GameNotificationTracker {
+    open: Option<HashMap<i32, Game>>,
+    live: Option<HashMap<i32, Game>>,
+}
+
+impl GameNotificationTracker {
+    fn observe_open(
+        &mut self,
+        games: &[Game],
+        player_name: Option<&str>,
+    ) -> Vec<GameNotificationSignal> {
+        let next = indexed_games(games);
+        let Some(previous) = self.open.replace(next.clone()) else {
+            return Vec::new();
+        };
+
+        let mut signals = Vec::new();
+        for game in games {
+            if !previous.contains_key(&game.id) {
+                signals.push(GameNotificationSignal::NewGame(game.clone()));
+            }
+            if let (Some(player_name), Some(old)) = (player_name, previous.get(&game.id)) {
+                if old.host.eq_ignore_ascii_case(player_name)
+                    && old.players < old.max_players
+                    && game.players >= game.max_players
+                {
+                    signals.push(GameNotificationSignal::GameFull(game.clone()));
+                }
+            }
+        }
+        signals
+    }
+
+    fn observe_live(
+        &mut self,
+        games: &[Game],
+        friends: &[String],
+        player_name: Option<&str>,
+    ) -> Vec<GameNotificationSignal> {
+        let next = indexed_games(games);
+        let Some(previous) = self.live.replace(next.clone()) else {
+            return Vec::new();
+        };
+
+        let mut signals = Vec::new();
+        for game in games.iter().filter(|game| !previous.contains_key(&game.id)) {
+            for login in participants(game).filter(|login| contains_name(friends, login)) {
+                signals.push(GameNotificationSignal::FriendPlaying {
+                    login: login.to_owned(),
+                    game: game.clone(),
+                });
+            }
+        }
+        if let Some(player_name) = player_name {
+            for game in previous
+                .values()
+                .filter(|game| !next.contains_key(&game.id) && game_has_player(game, player_name))
+            {
+                signals.push(GameNotificationSignal::OwnGameEnded(game.clone()));
+            }
+        }
+        signals
+    }
+}
+
+fn notify_game_signal(
+    out: &EventSink,
+    preferences: &NotificationPreferences,
+    signal: GameNotificationSignal,
+) {
+    match signal {
+        GameNotificationSignal::NewGame(game) => {
+            let friend_host =
+                out.with_state(|state| contains_name(&state.social.friends, &game.host));
+            if preferences.new_custom_games
+                && (!preferences.new_custom_games_friends_only || friend_host)
+            {
+                notifications::add(
+                    out,
+                    NotificationKind::NewCustomGame,
+                    "New custom game",
+                    format!("{} hosted {}.", game.host, game.title),
+                    Some(NotificationAction::OpenCustomGames),
+                );
+            }
+        }
+        GameNotificationSignal::GameFull(game) if preferences.game_full => notifications::add(
+            out,
+            NotificationKind::GameFull,
+            "Game full",
+            format!("{} is full and ready to launch.", game.title),
+            Some(NotificationAction::OpenCustomGames),
+        ),
+        GameNotificationSignal::FriendPlaying { login, game } if preferences.friend_playing => {
+            notifications::add(
+                out,
+                NotificationKind::FriendPlaying,
+                "Friend started playing",
+                format!("{login} started playing {}.", game.title),
+                None,
+            )
+        }
+        GameNotificationSignal::OwnGameEnded(game) if preferences.review_reminder => {
+            notifications::add(
+                out,
+                NotificationKind::ReviewReminder,
+                "How was your game?",
+                format!("Review the map or mods you played in {}.", game.title),
+                None,
+            );
+        }
+        _ => {}
+    }
+}
+
+fn indexed_games(games: &[Game]) -> HashMap<i32, Game> {
+    games.iter().map(|game| (game.id, game.clone())).collect()
+}
+
+fn contains_name(names: &[String], candidate: &str) -> bool {
+    names
+        .iter()
+        .any(|name| name.eq_ignore_ascii_case(candidate))
+}
+
+fn participants(game: &Game) -> impl Iterator<Item = &str> {
+    game.teams.values().flatten().map(String::as_str)
+}
+
+fn game_has_player(game: &Game, player_name: &str) -> bool {
+    game.host.eq_ignore_ascii_case(player_name)
+        || participants(game).any(|name| name.eq_ignore_ascii_case(player_name))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use super::*;
+
+    fn game(id: i32, host: &str, players: &[&str], current: i32, max: i32) -> Game {
+        Game {
+            id,
+            title: format!("Game {id}"),
+            host: host.into(),
+            players: current,
+            max_players: max,
+            map: "scmp_001".into(),
+            mod_name: "faf".into(),
+            average_rating: 1_000,
+            password_protected: false,
+            visibility: "public".into(),
+            game_type: "custom".into(),
+            launched_at: None,
+            hosted_at: None,
+            rating_min: None,
+            rating_max: None,
+            teams: BTreeMap::from([(
+                "1".into(),
+                players.iter().map(|name| (*name).to_owned()).collect(),
+            )]),
+            sim_mods: BTreeMap::new(),
+        }
+    }
+
+    #[test]
+    fn initial_game_snapshots_never_emit_notifications() {
+        let mut tracker = GameNotificationTracker::default();
+        assert!(tracker
+            .observe_open(&[game(1, "Host", &["Host"], 1, 4)], Some("Me"))
+            .is_empty());
+        assert!(tracker
+            .observe_live(
+                &[game(2, "Friend", &["Friend"], 2, 2)],
+                &["Friend".into()],
+                Some("Me"),
+            )
+            .is_empty());
+    }
+
+    #[test]
+    fn open_game_transitions_detect_new_games_and_own_full_lobby() {
+        let mut tracker = GameNotificationTracker::default();
+        let mine = game(1, "Me", &["Me"], 1, 2);
+        tracker.observe_open(std::slice::from_ref(&mine), Some("me"));
+
+        let signals = tracker.observe_open(
+            &[
+                game(1, "ME", &["Me", "Other"], 2, 2),
+                game(2, "Host", &["Host"], 1, 4),
+            ],
+            Some("me"),
+        );
+        assert_eq!(signals.len(), 2);
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
+        ));
+        assert!(signals
+            .iter()
+            .any(|signal| matches!(signal, GameNotificationSignal::NewGame(game) if game.id == 2)));
+    }
+
+    #[test]
+    fn live_transitions_detect_friend_start_and_own_game_end() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.observe_live(
+            &[game(1, "Me", &["Me", "Other"], 2, 2)],
+            &["Friend".into()],
+            Some("Me"),
+        );
+
+        let signals = tracker.observe_live(
+            &[game(2, "Host", &["FRIEND", "Host"], 2, 2)],
+            &["Friend".into()],
+            Some("me"),
+        );
+        assert_eq!(signals.len(), 2);
+        assert!(signals.iter().any(|signal| matches!(
+            signal,
+            GameNotificationSignal::FriendPlaying { login, game }
+                if login == "FRIEND" && game.id == 2
+        )));
+        assert!(signals.iter().any(|signal| matches!(
+            signal,
+            GameNotificationSignal::OwnGameEnded(game) if game.id == 1
+        )));
     }
 }

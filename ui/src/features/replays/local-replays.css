@@ -1,0 +1,37 @@
+/* Local replay archive: online-vault search and full-width library views. */
+.local-vault-mod {
+  flex: 0 1 164px;
+  min-width: 148px;
+}
+
+.local-vault-status {
+  flex: 0 1 150px;
+  min-width: 138px;
+}
+
+.local-delete-confirm {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.local-delete-dialog {
+  max-width: 460px;
+}
+
+.local-delete-dialog h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.local-delete-dialog p {
+  margin: var(--space-2) 0 var(--space-4);
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.local-delete-dialog > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+

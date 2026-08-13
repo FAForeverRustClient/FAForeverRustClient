@@ -1,7 +1,7 @@
-//! Navigation slice — which top-level tab is active.
+//! Navigation slice: which top-level tab is active.
 //!
 //! Navigation lives in the single source of truth (not just the frontend) on
-//! purpose: it lets **backend** events drive the view too — e.g. "you joined a
+//! purpose: it lets **backend** events drive the view too: e.g. "you joined a
 //! game → switch to the game tab", or restoring the last tab on reconnect.
 //! Truly ephemeral widget state (hover, an open dropdown) stays in components.
 
@@ -14,7 +14,6 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 pub enum Tab {
     #[default]
-    Home,
     News,
     Chat,
     Play,
@@ -22,7 +21,10 @@ pub enum Tab {
     Maps,
     Mods,
     Leaderboard,
+    Tournaments,
+    Tutorials,
     Units,
+    Contribution,
     Settings,
 }
 
@@ -57,7 +59,7 @@ mod tests {
     #[test]
     fn selecting_a_tab_makes_it_active() {
         let mut s = NavState::default();
-        assert_eq!(s.active_tab, Tab::Home);
+        assert_eq!(s.active_tab, Tab::News);
         reduce(&mut s, &NavEvent::TabSelected { tab: Tab::Play });
         assert_eq!(s.active_tab, Tab::Play);
     }

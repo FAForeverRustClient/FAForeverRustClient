@@ -1,7 +1,17 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Core permissions for the main window: events + window controls + the native file dialog (Replays tab).",
+  "description": "Core permissions for the main window: events, window controls, native dialogs, desktop notifications, and trusted external links.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:event:default", "core:window:default", "dialog:default"]
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:default",
+    "dialog:default",
+    "notification:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }]
+    }
+  ]
 }

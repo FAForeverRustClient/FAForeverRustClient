@@ -1,4 +1,4 @@
-//! GPGNet wire codec — the binary framing the game and the ICE adapter speak.
+//! GPGNet wire codec: the binary framing the game and the ICE adapter speak.
 //!
 //! Forged Alliance's GPGNet channel uses Qt's `QDataStream` in **little-endian**
 //! mode (see the Python client's `GPGNetServer.py` read/write helpers). There is
@@ -77,7 +77,7 @@ pub fn encode(message: &GpgMessage) -> Vec<u8> {
 pub fn decode(buffer: &mut Vec<u8>) -> Vec<GpgMessage> {
     let mut messages = Vec::new();
     let mut pos = 0usize;
-    // Not enough bytes yet, or a frame we can't parse — stop here and keep
+    // Not enough bytes yet, or a frame we can't parse: stop here and keep
     // the unconsumed tail.
     while let ParseResult::Done(message, consumed) = parse_message(&buffer[pos..]) {
         messages.push(message);
@@ -92,7 +92,7 @@ pub fn decode(buffer: &mut Vec<u8>) -> Vec<GpgMessage> {
 enum ParseResult {
     /// A full message plus the number of bytes it consumed.
     Done(GpgMessage, usize),
-    /// Need more bytes — a complete frame may yet arrive.
+    /// Need more bytes: a complete frame may yet arrive.
     Incomplete,
     /// The bytes present cannot form a valid frame (bad length/type).
     Invalid,
@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn createlobby_int_arg_layout() {
-        // CreateLobby(mode=0, port=0, "me", id=7, 1) — ints carry a 0 tag + i32 LE.
+        // CreateLobby(mode=0, port=0, "me", id=7, 1): ints carry a 0 tag + i32 LE.
         let msg = GpgMessage::new(
             "CreateLobby",
             vec![
@@ -296,7 +296,7 @@ mod tests {
         let msg = GpgMessage::new("GameState", vec![GpgArg::Str("Launching".into())]);
         let full = encode(&msg);
 
-        // Only 2 bytes — not even a full length prefix.
+        // Only 2 bytes: not even a full length prefix.
         let mut buf = full[..2].to_vec();
         assert!(decode(&mut buf).is_empty());
         assert_eq!(buf.len(), 2);

@@ -1,55 +1,92 @@
-//! Infrastructure — the only place that performs real IO.
+//! Infrastructure: the only place that performs real IO.
 //!
 //! Concrete implementations of the [`crate::ports`] traits. Nothing outside this
 //! module does IO directly (ARCHITECTURE.md §2 dependency rule).
 //!
 //! Auth now has a real provider ([`OAuthAuth`], FAF Ory Hydra) alongside the
-//! offline [`FakeAuth`]; the lobby is still faked until its real protocol lands.
-//! Either way the services, slices and UI are unchanged (ARCHITECTURE.md §2).
+//! offline [`FakeAuth`]. The real lobby and chat providers are selected for a
+//! normal account session; the complete fake bundle remains available for
+//! offline development (ARCHITECTURE.md §2).
 
 pub mod auth;
 pub mod chat;
+pub mod client_update;
+pub mod coop;
+pub mod discord;
+pub(crate) mod faf_content;
 pub mod game;
+pub mod game_logs;
 pub mod game_updater;
+pub(crate) mod http;
 pub mod ice_java;
 pub mod ice_pioneer;
+pub mod ice_select;
 pub mod irc;
+pub(crate) mod irc_session;
+pub(crate) mod java_runtime;
+pub(crate) mod jsonapi;
 pub mod jsonrpc;
 pub mod leaderboard;
 pub mod lobby;
 pub mod lobby_ws;
+pub mod map_generator;
 pub mod maps;
 pub mod mods;
 pub mod oauth;
+pub mod player_card;
 pub mod relay;
 pub mod replay;
+pub mod reporting;
+pub mod reviews;
 pub mod session;
 pub mod settings_fake;
 pub mod settings_file;
+pub mod tournaments;
+pub mod tutorials;
+pub mod updater;
+pub mod uploads;
+pub(crate) mod vault_install;
 
 pub use auth::FakeAuth;
 pub use chat::FakeChat;
+pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
+pub use coop::{CoopClient, CoopConfig, FakeCoop};
+pub use discord::{DiscordClient, DiscordConfig, FakeDiscord};
 pub use game::{FakeGame, GameConfig, GameProcess};
 pub use ice_java::{JavaAdapter, JavaConfig};
 pub use ice_pioneer::{FakeIce, IceConfig, PioneerAdapter};
+pub use ice_select::SelectableIce;
 pub use irc::{IrcClient, IrcConfig};
 pub use leaderboard::{FakeLeaderboard, LeaderboardClient, LeaderboardConfig};
 pub use lobby::FakeLobby;
 pub use lobby_ws::{LobbyClient, LobbyConfig};
+pub use map_generator::{FakeMapGenerator, MapGeneratorConfig, NeroxisMapGenerator};
 pub use maps::{FakeMaps, MapsClient, MapsConfig};
 pub use mods::{FakeMods, ModsClient, ModsConfig};
 pub use oauth::{OAuthAuth, OAuthConfig};
-pub use relay::{FakeRelay, GpgRelayServer};
+pub use player_card::{FakePlayerCard, PlayerCardClient, PlayerCardConfig};
+pub use relay::{GpgRelayServer, RelayChannels};
 pub use replay::{FakeReplay, ReplayClient, ReplayConfig};
+pub use reporting::{FakeReporting, ReportingClient, ReportingConfig};
+pub use reviews::{FakeReviews, ReviewsClient, ReviewsConfig};
 pub use session::TokenStore;
 pub use settings_fake::FakeSettings;
 pub use settings_file::FileSettings;
+pub use tournaments::{FakeTournaments, TournamentsClient, TournamentsConfig};
+pub use tutorials::{FakeTutorials, TutorialsClient, TutorialsConfig};
+pub use updater::{FakeGameUpdater, GameUpdaterClient, UpdaterConfig};
+pub use uploads::{FakeUploads, UploadsClient, UploadsConfig};
 
 use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::ports::{ChatPort, IcePort, LobbyPort, MapsPort, ModsPort, Ports, ProcessPort, ReplayPort};
+use crate::ports::{
+    ChatPort, GameUpdaterPort, IcePort, LobbyPort, MapGeneratorPort, MapsPort, ModsPort, Ports,
+    ProcessPort, ReplayPort,
+};
+
+const MAX_ACCESS_RESPONSE_BYTES: u64 = 1024 * 1024;
 
 /// Reserve a free loopback TCP port by binding then dropping. Used by the adapter
 /// backends to pick GPGNet/RPC ports for subprocesses. Mirrors the Python client's
@@ -62,6 +99,16 @@ pub(crate) fn free_port() -> Option<u16> {
         .map(|addr| addr.port())
 }
 
+/// The client's cache root. Holds downloaded replays, game logs, and the
+/// content-addressed featured-mod file cache: which the replay and live-game
+/// updaters deliberately share, so patching for a live game also satisfies the
+/// next replay at that version without re-downloading.
+pub(crate) fn cache_dir() -> Result<std::path::PathBuf, String> {
+    directories::ProjectDirs::from("com", "forgeclient", "forge-client")
+        .map(|dirs| dirs.cache_dir().to_path_buf())
+        .ok_or_else(|| "could not resolve a cache directory".to_string())
+}
+
 /// Read an env var, falling back to `fallback` if unset or empty. Shared by the
 /// lobby and replay clients for their `*_from_env`/`faf()` constructors.
 pub(crate) fn env_or(key: &str, fallback: impl Into<String>) -> String {
@@ -71,8 +118,27 @@ pub(crate) fn env_or(key: &str, fallback: impl Into<String>) -> String {
         .unwrap_or_else(|| fallback.into())
 }
 
+/// The user's language, as the OS reports it, or empty when it cannot be read.
+///
+/// Used to pick FAF's language channel (see `faf_domain::state::language_channel`),
+/// which the Python client selects the same way. Deliberately env-var only, so
+/// this needs no platform crate: `LC_ALL`/`LC_MESSAGES`/`LANG` are set on Linux
+/// and macOS and are normally *unset* on Windows, where the account's country
+/// flag is the fallback instead. `FAF_LANGUAGE` overrides both, which is also
+/// the only way to exercise this in a test without touching the environment.
+pub(crate) fn os_language() -> String {
+    for key in ["FAF_LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"] {
+        let value = env_or(key, "");
+        // "C" and "POSIX" are the absence of a locale, not a language.
+        if !value.is_empty() && value != "C" && value != "POSIX" {
+            return value;
+        }
+    }
+    String::new()
+}
+
 /// Ask the FAF user API for a verified WebSocket access URL. Shared by the
-/// lobby (`/lobby/access`) and replay (`/replay/access`) clients — both return
+/// lobby (`/lobby/access`) and replay (`/replay/access`) clients: both return
 /// `{"accessUrl": "wss://…"}` (or the JSON:API-nested form) for a bearer token.
 pub(crate) async fn fetch_access_url(
     http: &reqwest::Client,
@@ -89,12 +155,17 @@ pub(crate) async fn fetch_access_url(
         .map_err(|e| format!("request failed: {e}"))?;
 
     let status = resp.status();
-    let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
+    let body = vault_install::bounded_body(resp, "access URL response", MAX_ACCESS_RESPONSE_BYTES)
+        .await
+        .and_then(|bytes| {
+            String::from_utf8(bytes)
+                .map_err(|_| "access URL response was not valid UTF-8".to_string())
+        })?;
     if !status.is_success() {
-        return Err(format!(
-            "{path} returned {status}: {}",
-            body.chars().take(200).collect::<String>()
-        ));
+        // This error is logged by connection supervisors. Do not echo an
+        // untrusted proxy/server body into local diagnostics; the status and
+        // endpoint are enough to act on, and bodies can contain internal data.
+        return Err(format!("{path} returned {status}"));
     }
 
     let value: Value = serde_json::from_str(&body).map_err(|e| format!("invalid JSON: {e}"))?;
@@ -125,110 +196,217 @@ pub(crate) fn ensure_ws_path(raw: &str) -> String {
     raw.to_string()
 }
 
+/// Validate a server-provided WebSocket endpoint before connecting to it.
+/// Verification tokens must never cross a plaintext remote connection;
+/// loopback `ws://` remains available for explicit local integration tests.
+pub(crate) fn validated_ws_url(raw: &str) -> Result<String, String> {
+    let normalized = ensure_ws_path(raw);
+    let url = url::Url::parse(&normalized)
+        .map_err(|_| "the access service returned an invalid WebSocket URL".to_string())?;
+    if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
+        return Err("the access service returned an unsafe WebSocket URL".into());
+    }
+
+    let loopback = url.host_str().is_some_and(|host| {
+        host.eq_ignore_ascii_case("localhost")
+            || host
+                .parse::<std::net::IpAddr>()
+                .is_ok_and(|address| address.is_loopback())
+    });
+    if url.scheme() != "wss" && !(url.scheme() == "ws" && loopback) {
+        return Err("remote WebSocket connections must use wss://".into());
+    }
+    Ok(url.to_string())
+}
+
 /// Build a [`Ports`] bundle backed entirely by fakes. Fully offline; used by tests.
 pub fn fake_ports() -> Ports {
     Ports {
         auth: Arc::new(FakeAuth::default()),
         chat: Arc::new(FakeChat::default()),
+        coop: Arc::new(FakeCoop),
+        discord: Arc::new(FakeDiscord),
         lobby: Arc::new(FakeLobby::default()),
         settings: Arc::new(FakeSettings::default()),
         ice: Arc::new(FakeIce),
         process: Arc::new(FakeGame),
+        updater: Arc::new(FakeGameUpdater),
         replay: Arc::new(FakeReplay),
         maps: Arc::new(FakeMaps),
+        map_generator: Arc::new(FakeMapGenerator),
         mods: Arc::new(FakeMods),
         leaderboard: Arc::new(FakeLeaderboard),
+        player_card: Arc::new(FakePlayerCard),
+        reporting: Arc::new(FakeReporting),
+        reviews: Arc::new(FakeReviews::default()),
+        tournaments: Arc::new(FakeTournaments),
+        tutorials: Arc::new(FakeTutorials),
+        uploads: Arc::new(FakeUploads),
+        client_update: Arc::new(FakeClientUpdates),
+        offline_auth: true,
+        // Deliberately not read from the environment: a test must not depend on
+        // the locale of the machine running it.
+        os_language: String::new(),
     }
 }
 
 /// Build a [`Ports`] bundle with the real OAuth2 auth provider, sharing one
-/// [`TokenStore`] so the lobby client can authenticate with the logged-in token.
+/// [`TokenStore`] so the lobby and chat clients authenticate with the logged-in
+/// token. This mirrors the reference clients: after OAuth succeeds, the UI
+/// connects to the live services automatically.
 ///
-/// The real lobby client is opt-in via `FAF_REAL_LOBBY=1`; it runs FAF's `faf-uid`
-/// executable (path via `FAF_UID_PATH`) for the anti-smurf fingerprint required by
-/// lobby auth (see [`lobby_ws`]). By default the lobby stays faked so the app
-/// remains usable end-to-end without that binary.
+/// Set `FAF_FAKE_LOBBY=1` or `FAF_FAKE_CHAT=1` to keep one service local while
+/// developing against the real account flow. `FAF_REAL_LOBBY` and
+/// `FAF_REAL_CHAT` remain accepted as backwards-compatible no-op overrides;
+/// real services are the default whenever `FAF_FAKE_AUTH` is not enabled.
 pub fn real_ports() -> Ports {
     let tokens = TokenStore::new();
-    let lobby: Arc<dyn LobbyPort> =
-        if std::env::var("FAF_REAL_LOBBY").is_ok_and(|v| !v.is_empty()) {
-            Arc::new(LobbyClient::faf(tokens.clone()))
-        } else {
-            Arc::new(FakeLobby::default())
-        };
-
-    // The real chat client speaks live IRC against production Ergochat, so
-    // it's opt-in via `FAF_REAL_CHAT=1` — same posture as `FAF_REAL_LOBBY`.
-    // By default chat stays faked so the app remains usable offline.
-    let chat: Arc<dyn ChatPort> = if std::env::var("FAF_REAL_CHAT").is_ok_and(|v| !v.is_empty()) {
-        Arc::new(IrcClient::faf(tokens.clone()))
+    let lobby: Arc<dyn LobbyPort> = if env_enabled("FAF_FAKE_LOBBY") {
+        Arc::new(FakeLobby::default())
     } else {
-        Arc::new(FakeChat::default())
+        Arc::new(LobbyClient::faf(tokens.clone()))
     };
 
-    // The connectivity + launch chain spawns real subprocesses, so it is opt-in
-    // via `FAF_REAL_LAUNCH=1`. Without it (the default), inert fakes keep the app
-    // usable without an adapter or the game installed. The adapter backend is
-    // chosen by `FAF_ICE_ADAPTER_KIND` (`java` default, or `go`).
-    let (ice, process): (Arc<dyn IcePort>, Arc<dyn ProcessPort>) =
-        if std::env::var("FAF_REAL_LAUNCH").is_ok_and(|v| !v.is_empty()) {
-            (select_ice_adapter(&tokens), Arc::new(GameProcess::faf()))
-        } else {
-            (Arc::new(FakeIce), Arc::new(FakeGame))
-        };
+    // The real chat client speaks live IRC against production Ergochat. It is
+    // selected by default for a real account; `FAF_FAKE_CHAT=1` is the local
+    // override for development.
+    let chat: Arc<dyn ChatPort> = if env_enabled("FAF_FAKE_CHAT") {
+        Arc::new(FakeChat::default())
+    } else {
+        Arc::new(IrcClient::faf(tokens.clone()))
+    };
 
-    // Replay watching launches the same game executable, so it rides on the
-    // same `FAF_REAL_LAUNCH` gate and shares the `process` port above.
-    let replay: Arc<dyn ReplayPort> =
-        if std::env::var("FAF_REAL_LAUNCH").is_ok_and(|v| !v.is_empty()) {
-            Arc::new(ReplayClient::faf(tokens.clone(), process.clone()))
-        } else {
-            Arc::new(FakeReplay)
-        };
+    // An authenticated client is a game launcher, not merely a browser. This
+    // used to be hidden behind `FAF_REAL_LAUNCH`, which installed inert ports
+    // in ordinary production sessions: the server accepted the join and sent
+    // `game_launch`, then the client intentionally did nothing. Offline
+    // development already selects `fake_ports` through `FAF_FAKE_AUTH`, so a
+    // real account always gets the real launch chain.
+    let ice: Arc<dyn IcePort> = select_ice_adapter(&tokens);
+    let process: Arc<dyn ProcessPort> = Arc::new(GameProcess::faf());
 
-    // Vault browsing + local install management is pure API + filesystem —
-    // no subprocess, so unlike ice/process/replay it isn't gated behind
-    // `FAF_REAL_LAUNCH`; it just needs the same bearer token.
+    // Follows `process`, not the other ports: patching writes into the live
+    // install and only ever runs on the launch path, which is itself inert
+    // without real launch. Sharing the same `process` handle is the point,
+    // it patches exactly the install that is about to be started, including
+    // after the user repoints it in Settings.
+    let updater: Arc<dyn GameUpdaterPort> =
+        Arc::new(GameUpdaterClient::faf(tokens.clone(), process.clone()));
+
+    // Browsing the replay vault (`/data/game`) and listing
+    // local `.fafreplay` files are a pure API read and a directory scan: they
+    // need no game install and no subprocess, exactly like the maps/mods/
+    // leaderboard ports below. These capabilities therefore stay available
+    // even when no local game path has been configured.
+    //
+    // Playback still needs an install, and that is enforced where it belongs:
+    // `GameProcess::launch_replay` fails with a message pointing at
+    // Settings → Paths when `replay_game_path` is unset or gone. So the replay
+    // client always shares the real process port (one child-tracking slot, so
+    // relaunching kills the previous FA).
+    let replay: Arc<dyn ReplayPort> = Arc::new(ReplayClient::faf(tokens.clone(), process.clone()));
+
+    // Vault browsing + local install management is pure API + filesystem,
+    // no subprocess; it just needs the same bearer token.
     let maps: Arc<dyn MapsPort> = Arc::new(MapsClient::faf(tokens.clone()));
 
-    // Same posture as maps: pure API + filesystem (game.prefs), no
-    // subprocess, not gated behind `FAF_REAL_LAUNCH`.
+    // Same posture as maps: pure API + filesystem (game.prefs), no subprocess.
     let mods: Arc<dyn ModsPort> = Arc::new(ModsClient::faf(tokens.clone()));
 
-    // Same posture as maps: pure API, no subprocess, not gated behind
-    // `FAF_REAL_LAUNCH`.
+    // The map generator is always real. It does spawn a subprocess (Java), but
+    // unlike the ice/process pair it needs no FA install and no adapter: and
+    // gating it would recreate exactly the bug that made the replay vault
+    // unreachable: matchmaker pools contain generated maps, so a client that
+    // cannot generate cannot start a ladder game. Missing Java surfaces as a
+    // clear per-run error instead.
+    let map_generator: Arc<dyn MapGeneratorPort> = Arc::new(NeroxisMapGenerator::faf());
+
+    // Same posture as maps: pure API, no subprocess.
     let leaderboard: Arc<dyn crate::ports::LeaderboardPort> =
         Arc::new(LeaderboardClient::faf(tokens.clone()));
+    let player_card: Arc<dyn crate::ports::PlayerCardPort> =
+        Arc::new(PlayerCardClient::faf(tokens.clone()));
+    let reporting: Arc<dyn crate::ports::ReportingPort> =
+        Arc::new(ReportingClient::faf(tokens.clone()));
+    let tournaments: Arc<dyn crate::ports::TournamentsPort> =
+        Arc::new(TournamentsClient::faf(tokens.clone()));
+    // Same posture as maps and tournaments: pure API reads, no subprocess.
+    let coop: Arc<dyn crate::ports::CoopPort> = Arc::new(CoopClient::faf(tokens.clone()));
+    let tutorials: Arc<dyn crate::ports::TutorialsPort> =
+        Arc::new(TutorialsClient::faf(tokens.clone()));
+    let reviews: Arc<dyn crate::ports::ReviewsPort> = Arc::new(ReviewsClient::faf(tokens.clone()));
+    let uploads: Arc<dyn crate::ports::UploadsPort> = Arc::new(UploadsClient::faf(tokens.clone()));
+
+    // Never gated, and never authenticated: the release list is a public
+    // GitHub endpoint, so the update check works before login and in an
+    // offline-ish session, which is when a broken client most needs replacing.
+    let client_update: Arc<dyn crate::ports::ClientUpdatePort> = Arc::new(GitHubUpdates::faf());
+
+    // Always real, and never gated: Rich Presence needs no account, no install
+    // and no subprocess: just a local socket that is usually not there. When
+    // Discord is not running it is a reconnect timer and nothing else, and the
+    // user-facing off switch is the `discord.enabled` preference, which the
+    // presence watcher honours before anything is published.
+    let discord: Arc<dyn crate::ports::DiscordPort> = Arc::new(DiscordClient::faf());
 
     Ports {
         auth: Arc::new(OAuthAuth::new(OAuthConfig::from_env(), tokens)),
         chat,
+        coop,
+        discord,
         lobby,
         settings: Arc::new(FileSettings::faf()),
         ice,
         process,
+        updater,
         replay,
         maps,
+        map_generator,
         mods,
         leaderboard,
+        player_card,
+        reporting,
+        reviews,
+        tournaments,
+        tutorials,
+        uploads,
+        client_update,
+        offline_auth: false,
+        os_language: os_language(),
     }
 }
 
-/// Pick the ICE adapter backend. `FAF_ICE_ADAPTER_KIND=go` selects faf-pioneer;
-/// anything else (default) selects the Java `faf-ice-adapter`, which is the path
-/// proven to connect in current environments.
+/// Build the connectivity backend.
+///
+/// Both adapters are constructed and handed to [`SelectableIce`], so the
+/// Settings toggle changes which one starts the next game without a restart.
 fn select_ice_adapter(tokens: &TokenStore) -> Arc<dyn IcePort> {
-    match std::env::var("FAF_ICE_ADAPTER_KIND").as_deref() {
-        Ok("go") => Arc::new(PioneerAdapter::faf(tokens.clone())),
-        _ => Arc::new(JavaAdapter::faf(tokens.clone())),
-    }
+    Arc::new(SelectableIce::new(
+        Arc::new(JavaAdapter::faf(tokens.clone())),
+        Arc::new(PioneerAdapter::faf(tokens.clone())),
+    ))
+}
+
+/// Treat a non-empty environment variable as enabled, matching the existing
+/// local-development toggles (`FAF_FAKE_AUTH=1`, etc.).
+fn env_enabled(name: &str) -> bool {
+    std::env::var(name).is_ok_and(|value| !value.is_empty())
 }
 
 /// Pick the port bundle the shell should use. Defaults to real auth; set
 /// `FAF_FAKE_AUTH=1` to run fully offline (no browser login) for local dev.
 pub fn ports_from_env() -> Ports {
     if std::env::var("FAF_FAKE_AUTH").is_ok_and(|v| !v.is_empty()) {
-        fake_ports()
+        // Fake auth is the recommended local UI workflow, but game-location
+        // settings are local capabilities rather than network services. Using
+        // FakeSettings/FakeGame here made Browse appear to work while dropping
+        // the choice immediately and permanently reporting "not installed".
+        // Keep external services inert, while exercising the same persisted
+        // paths and install discovery as a release build.
+        let mut ports = fake_ports();
+        ports.settings = Arc::new(FileSettings::faf());
+        ports.process = Arc::new(GameProcess::faf());
+        ports
     } else {
         real_ports()
     }

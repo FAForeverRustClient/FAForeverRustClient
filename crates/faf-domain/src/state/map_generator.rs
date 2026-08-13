@@ -1,0 +1,310 @@
+//! Map generator slice: producing Neroxis maps locally.
+//!
+//! Generated maps are not downloaded, they are *reproduced*: the map name
+//! carries the generator version and seed, and every client runs the same JAR
+//! to get byte-identical terrain (see
+//! [`crate::protocol::map_generator`] for the grammar and command line).
+//!
+//! Two entry points, matching the two reference clients:
+//!
+//! * **Reproduce by name**: you joined a lobby or matched into a queue whose
+//!   map you don't have. The Python client is built entirely around this case.
+//! * **Generate from options**: you are hosting and want a fresh map with
+//!   chosen size, spawns, style and so on. This is the Java client's
+//!   `GenerateMapController`.
+//!
+//! Generation is slow (the Java client allows three minutes) and CPU-bound, so
+//! the status here is a first-class progress model rather than a bool: the UI
+//! has to be able to say *which* stage is taking the time.
+
+use serde::{Deserialize, Serialize};
+use specta::Type;
+
+pub use crate::protocol::map_generator::{
+    GenerationType, GeneratorOptionQuery, GeneratorOptions, GeneratorVersion,
+};
+
+/// Where a generation run currently is.
+// No `Eq`: `Failed` is compared alongside options carrying `f32` densities in
+// the slice, and keeping the whole slice `PartialEq`-only is simpler than
+// splitting it.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum GeneratorStatus {
+    #[default]
+    Idle,
+    /// Asking GitHub which generator release to use. Only happens for an
+    /// options-driven run: reproducing a map takes its version from the name.
+    ResolvingVersion,
+    /// Fetching the generator JAR. Carries progress so a slow connection
+    /// doesn't look like a hang.
+    ///
+    /// Byte counts are `u32`: specta forbids 64-bit integers across the JS
+    /// boundary (precision loss), and a generator release is a few megabytes,
+    /// four gigabytes of headroom is not a constraint here.
+    #[serde(rename_all = "camelCase")]
+    Downloading {
+        version: String,
+        downloaded_bytes: u32,
+        total_bytes: Option<u32>,
+    },
+    /// The JAR is running. `detail` is the generator's own latest output line,
+    /// which is the only progress signal it offers.
+    #[serde(rename_all = "camelCase")]
+    Generating {
+        version: String,
+        detail: String,
+    },
+    /// Finished. `maps` are the folder names now on disk.
+    Generated {
+        maps: Vec<String>,
+    },
+    Failed {
+        reason: String,
+    },
+}
+
+impl GeneratorStatus {
+    /// Whether a run is in flight: the UI disables re-entry on this.
+    pub fn is_busy(&self) -> bool {
+        matches!(
+            self,
+            GeneratorStatus::ResolvingVersion
+                | GeneratorStatus::Downloading { .. }
+                | GeneratorStatus::Generating { .. }
+        )
+    }
+}
+
+/// The option lists the generator itself reports (`--styles`, `--symmetries`, …).
+///
+/// Queried from the JAR rather than hardcoded, because they change between
+/// generator releases: the Java client's `GeneratorOptionsTask` does the same.
+/// Empty until [`MapGeneratorCommand::LoadOptions`] has run.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GeneratorOptionLists {
+    pub symmetries: Vec<String>,
+    pub styles: Vec<String>,
+    pub terrain_styles: Vec<String>,
+    pub texture_styles: Vec<String>,
+    pub resource_styles: Vec<String>,
+    pub prop_styles: Vec<String>,
+}
+
+impl GeneratorOptionLists {
+    /// Whether anything has been loaded yet.
+    pub fn is_empty(&self) -> bool {
+        self.symmetries.is_empty()
+            && self.styles.is_empty()
+            && self.terrain_styles.is_empty()
+            && self.texture_styles.is_empty()
+            && self.resource_styles.is_empty()
+            && self.prop_styles.is_empty()
+    }
+
+    fn set(&mut self, query: GeneratorOptionQuery, values: Vec<String>) {
+        match query {
+            GeneratorOptionQuery::Symmetries => self.symmetries = values,
+            GeneratorOptionQuery::Styles => self.styles = values,
+            GeneratorOptionQuery::TerrainStyles => self.terrain_styles = values,
+            GeneratorOptionQuery::TextureStyles => self.texture_styles = values,
+            GeneratorOptionQuery::ResourceStyles => self.resource_styles = values,
+            GeneratorOptionQuery::PropStyles => self.prop_styles = values,
+        }
+    }
+}
+
+// No `Eq`: `options` carries `f32` densities.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MapGeneratorState {
+    pub status: GeneratorStatus,
+    /// The newest supported generator release, once resolved. Empty until then.
+    pub latest_version: String,
+    pub option_lists: GeneratorOptionLists,
+    /// The last options the user configured, kept so the host dialog reopens
+    /// where it was left: the Java client persists the same set in
+    /// `GeneratorPrefs`.
+    pub options: GeneratorOptions,
+}
+
+// No `Eq`: `OptionsChanged` carries `GeneratorOptions`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum MapGeneratorEvent {
+    StatusChanged {
+        status: GeneratorStatus,
+    },
+    VersionResolved {
+        version: String,
+    },
+    OptionListLoaded {
+        query: GeneratorOptionQuery,
+        values: Vec<String>,
+    },
+    OptionsChanged {
+        options: GeneratorOptions,
+    },
+}
+
+// No `Eq`: `Generate` carries `GeneratorOptions`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum MapGeneratorCommand {
+    /// Reproduce a specific generated map, downloading the matching generator
+    /// version first. The join path calls this when the map is missing.
+    GenerateNamed { map_name: String },
+    /// Generate one or more fresh maps from options (the host flow).
+    Generate { options: GeneratorOptions },
+    /// Fetch every option list from the generator, downloading the newest
+    /// supported release first if needed.
+    LoadOptions,
+    /// Remember the host dialog's current options without generating.
+    SetOptions { options: GeneratorOptions },
+    /// Delete generated maps except stable folder names explicitly protected
+    /// by the user's favorites.
+    ///
+    /// Generated maps are reproducible from their name, so keeping them costs
+    /// disk for no benefit. The Java client does this on shutdown
+    /// (`MapGeneratorService.destroy`); exposing it as a command instead lets
+    /// the user decide when, which suits a client that may not exit cleanly.
+    CleanUp,
+}
+
+pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
+    match event {
+        MapGeneratorEvent::StatusChanged { status } => state.status = status.clone(),
+        MapGeneratorEvent::VersionResolved { version } => state.latest_version = version.clone(),
+        MapGeneratorEvent::OptionListLoaded { query, values } => {
+            state.option_lists.set(*query, values.clone())
+        }
+        MapGeneratorEvent::OptionsChanged { options } => state.options = options.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_to_idle_with_nothing_loaded() {
+        let s = MapGeneratorState::default();
+        assert_eq!(s.status, GeneratorStatus::Idle);
+        assert!(s.latest_version.is_empty());
+        assert!(s.option_lists.is_empty());
+        assert!(!s.status.is_busy());
+    }
+
+    #[test]
+    fn every_in_flight_status_reads_as_busy() {
+        for status in [
+            GeneratorStatus::ResolvingVersion,
+            GeneratorStatus::Downloading {
+                version: "1.7.7".into(),
+                downloaded_bytes: 1,
+                total_bytes: Some(2),
+            },
+            GeneratorStatus::Generating {
+                version: "1.7.7".into(),
+                detail: "…".into(),
+            },
+        ] {
+            assert!(status.is_busy(), "{status:?} should be busy");
+        }
+        for status in [
+            GeneratorStatus::Idle,
+            GeneratorStatus::Generated { maps: vec![] },
+            GeneratorStatus::Failed { reason: "x".into() },
+        ] {
+            assert!(!status.is_busy(), "{status:?} should not be busy");
+        }
+    }
+
+    #[test]
+    fn status_changes_are_recorded() {
+        let mut s = MapGeneratorState::default();
+        reduce(
+            &mut s,
+            &MapGeneratorEvent::StatusChanged {
+                status: GeneratorStatus::Generated {
+                    maps: vec!["neroxis_map_generator_1.7.7_abc".into()],
+                },
+            },
+        );
+        assert_eq!(
+            s.status,
+            GeneratorStatus::Generated {
+                maps: vec!["neroxis_map_generator_1.7.7_abc".into()]
+            }
+        );
+    }
+
+    #[test]
+    fn each_option_list_lands_in_its_own_field() {
+        let mut s = MapGeneratorState::default();
+        for (query, value) in [
+            (GeneratorOptionQuery::Symmetries, "POINT4"),
+            (GeneratorOptionQuery::Styles, "LAND"),
+            (GeneratorOptionQuery::TerrainStyles, "BIG_ISLANDS"),
+            (GeneratorOptionQuery::TextureStyles, "BRIMSTONE"),
+            (GeneratorOptionQuery::ResourceStyles, "BASIC"),
+            (GeneratorOptionQuery::PropStyles, "ROCK_FIELD"),
+        ] {
+            reduce(
+                &mut s,
+                &MapGeneratorEvent::OptionListLoaded {
+                    query,
+                    values: vec![value.into()],
+                },
+            );
+        }
+        assert_eq!(s.option_lists.symmetries, vec!["POINT4"]);
+        assert_eq!(s.option_lists.styles, vec!["LAND"]);
+        assert_eq!(s.option_lists.terrain_styles, vec!["BIG_ISLANDS"]);
+        assert_eq!(s.option_lists.texture_styles, vec!["BRIMSTONE"]);
+        assert_eq!(s.option_lists.resource_styles, vec!["BASIC"]);
+        assert_eq!(s.option_lists.prop_styles, vec!["ROCK_FIELD"]);
+        assert!(!s.option_lists.is_empty());
+    }
+
+    #[test]
+    fn options_round_trip() {
+        let mut s = MapGeneratorState::default();
+        let options = GeneratorOptions {
+            spawn_count: Some(8),
+            num_teams: Some(4),
+            generation_type: GenerationType::Tournament,
+            ..Default::default()
+        };
+        reduce(
+            &mut s,
+            &MapGeneratorEvent::OptionsChanged {
+                options: options.clone(),
+            },
+        );
+        assert_eq!(s.options, options);
+    }
+
+    #[test]
+    fn resolved_version_is_remembered() {
+        let mut s = MapGeneratorState::default();
+        reduce(
+            &mut s,
+            &MapGeneratorEvent::VersionResolved {
+                version: "1.7.7".into(),
+            },
+        );
+        assert_eq!(s.latest_version, "1.7.7");
+    }
+}

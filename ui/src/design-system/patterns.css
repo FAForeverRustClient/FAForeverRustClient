@@ -1,0 +1,178 @@
+/* Reusable layout patterns that are not owned by any single feature. */
+
+.centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px;
+  background: var(--color-sidebar);
+}
+
+.entry-card {
+  width: min(100%, 360px);
+  text-align: center;
+}
+
+.entry-brand {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 28px;
+  place-items: center;
+}
+
+.entry-brand-image {
+  display: block;
+  object-fit: contain;
+  user-select: none;
+}
+
+.entry-heading h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
+.entry-heading p {
+  margin: 8px 0 24px;
+  color: var(--color-muted);
+}
+
+.eyebrow {
+  margin-bottom: 10px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.search-field {
+  display: flex;
+  flex: 1 1 240px;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.search-field:focus-within {
+  border-color: var(--color-border-strong);
+}
+
+.search-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 0;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 13px;
+}
+
+.tag {
+  display: inline-block;
+  margin: 0 5px 5px 0;
+  padding: 4px 7px;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+.option-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.option-check:hover {
+  color: var(--color-text);
+}
+
+.option-check input {
+  accent-color: var(--color-accent);
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* ── Surfaces ────────────────────────────────────────────────────────────────
+ *
+ * The panel treatment every feature draws: a quiet neutral fill, a one-pixel
+ * border, a soft radius. Before these existed, `border: 1px solid
+ * var(--color-border)` appeared 83 times across feature stylesheets, so a
+ * change to the client's surface language meant 83 edits and any one of them
+ * could be missed.
+ *
+ * Compose rather than fork: put `.surface` on the element and keep only what is
+ * genuinely local (layout, spacing) in the feature's own stylesheet.
+ */
+
+/* Keep surface defaults deliberately low-specificity. Vite may emit this
+ * global sheet after lazy feature CSS; feature-owned colour and shape rules
+ * must still be able to refine a primitive without selector escalation. */
+:where(.surface) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* A surface that sits *on* another surface: selected rows, active cards. */
+:where(.surface-raised) {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+/* A large panel: the detail pane beside a list, a settings section. */
+:where(.surface-panel) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* A surface the user can click. Adds the hover/focus affordances that every
+ * hand-rolled list row was re-declaring, usually inconsistently. */
+.surface-interactive {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.surface-interactive:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.surface-interactive:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* An error surface: reserved for genuine failure, per the design language's
+ * rule that status colours mean status. */
+:where(.surface-error) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+}

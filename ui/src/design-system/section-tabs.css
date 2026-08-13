@@ -1,0 +1,66 @@
+.section-tabs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  scrollbar-width: none;
+}
+
+.section-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.section-tabs button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: -1px;
+  padding: 0 14px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.section-tabs button:hover,
+.section-tabs button.active {
+  color: var(--color-text);
+}
+
+.section-tabs button.active {
+  border-bottom-color: var(--color-text);
+}
+
+.section-tabs button:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -3px;
+}
+
+.section-tab-label {
+  white-space: nowrap;
+}
+
+.section-tab-count {
+  display: grid;
+  min-width: 20px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-pill);
+  /* The 11px floor (AGENTS.md, UI Design Language) applies to badge text too. */
+  font-size: 11px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}

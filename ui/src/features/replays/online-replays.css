@@ -1,0 +1,785 @@
+/* Replay vault search: see VaultSearch.tsx. A primary row that covers the
+   common searches, a preset/action row, and an optional advanced grid. */
+.vault-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+/* Keep the desktop vault toolbar on one line. The generic SearchPanel is
+   intentionally allowed to wrap, but the replay vault has already assigned
+   compact widths to every non-text field and should only reflow on genuinely
+   narrow windows. */
+@media (min-width: 1200px) {
+  .online-vault-search .vault-search-primary,
+  .local-vault-search .vault-search-primary {
+    flex-wrap: nowrap;
+  }
+}
+
+/* The two fields worth giving the leftover width to. */
+.vault-field-grow {
+  flex: 1 1 180px;
+}
+
+/* Keep the selector columns stable when a technical name such as
+   "fafdevelop" is selected. The trigger truncates the label instead of
+   changing the width of the whole search form. */
+.vault-search-mod,
+.vault-search-leaderboard {
+  flex: 0 1 164px;
+  width: 164px;
+  min-width: 148px;
+}
+
+.vault-search-mod .multi-select-trigger,
+.vault-search-leaderboard .multi-select-trigger {
+  width: 100%;
+}
+
+/* Keep the rating range and replay identifier in the compact search row. */
+.vault-search-rating {
+  flex: 0 1 220px;
+  width: 220px;
+  max-width: 220px;
+  min-width: 200px;
+}
+
+.vault-search-replay-id {
+  flex: 0 1 140px;
+  min-width: 120px;
+}
+
+.vault-input {
+  font: inherit;
+  min-width: 0;
+  height: 34px;
+  line-height: normal;
+  text-align: left;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  padding: 0 var(--space-2);
+}
+
+input.vault-input {
+  line-height: 32px;
+}
+
+button.vault-input {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.vault-input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.vault-toggle-advanced {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.vault-toggle-advanced:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.vault-toggle-advanced:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.vault-search-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Sliders need more width than a text field to be usable, so they get their
+   own wider grid rather than sharing the text fields' track. */
+.vault-search-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.vault-search-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-2) var(--space-3);
+}
+
+/* Sort direction toggle sits flush against the sort picker. */
+.vault-search button.vault-sort-order.search-panel-control {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  cursor: pointer;
+  text-align: center;
+  justify-content: center;
+  align-self: flex-end;
+}
+
+.vault-sort-order:hover {
+  background: var(--color-surface-hover);
+}
+
+.vault-search-checks {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-self: end;
+}
+
+/* The date-floor explanation: spans the grid so it reads as a footnote. */
+.vault-search-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+}
+
+.replay-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.online-replay-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 34px;
+  margin: var(--space-2) 0;
+}
+
+/* Replay vault cards: modeled closely on the Java client's
+   replay_card.fxml: a fixed-width left column (128px thumbnail, review
+   stars, a 2-column meta grid) beside a right column (title, "on <map>"
+   subtitle, team lineup, footer). */
+.replay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 10px;
+}
+
+.replay-card {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
+  min-height: 220px;
+  padding: var(--space-3);
+  transition: border-color 120ms ease, opacity 120ms ease;
+}
+
+.replay-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.replay-card-watched {
+  opacity: 0.55;
+}
+
+.replay-card-selected {
+  box-shadow: inset 2px 0 var(--color-text);
+}
+
+/* Wider than the 128px thumbnail it centres: the meta grid below is two
+   columns, and once each fact carries an icon a 64px cell truncates "21.7.2026"
+   to an ellipsis. */
+.replay-card-left {
+  width: 158px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replay-card-thumb {
+  width: 128px;
+  height: 128px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  display: block;
+}
+
+/* Icon-paired facts, as in the Java card: the two durations are minutes apart
+   in a normal game, and a trailing "game"/"real" word made the pair read as
+   one value with a suffix. */
+.replay-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px var(--space-2);
+  font-size: 11px;
+  width: 100%;
+}
+
+.replay-meta-fact {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.replay-meta-fact > svg {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+
+.replay-meta-fact > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-card-right {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.replay-card-header {
+  min-width: 0;
+  margin-bottom: var(--space-2);
+}
+
+.replay-card-title {
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: 600;
+  font-size: 16px;
+  display: block;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-card-submap {
+  font-size: 12px;
+}
+
+.replay-card-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  align-content: start;
+  gap: var(--space-2) var(--space-3);
+  flex: 1;
+}
+
+.replay-card-team {
+  min-width: 0;
+}
+
+.replay-card-team-title {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* A shade larger than the surrounding card metadata: the roster is what a
+   reader actually scans a replay card for, so it should not be the smallest
+   type on it. */
+.replay-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  min-height: 22px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replay-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replay-player-faction {
+  flex: 0 0 auto;
+}
+
+.replay-player-observer {
+  display: inline-grid;
+  place-items: center;
+  color: var(--color-muted);
+}
+
+.replay-card-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  font-size: 11px;
+}
+
+.replay-stars {
+  color: var(--color-warn);
+  font-size: 12px;
+}
+
+/* Replay detail modal */
+.replay-detail-modal {
+  max-width: 1040px;
+  padding: var(--space-4);
+}
+
+.replay-detail-head {
+  display: grid;
+  grid-template-columns: 144px minmax(0, 1fr) 188px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-1) 28px var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.replay-detail-thumb {
+  width: 144px;
+  height: 144px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+}
+
+.replay-detail-thumb-empty {
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+}
+
+.replay-detail-headtext {
+  min-width: 0;
+}
+
+.replay-detail-headtext h2 {
+  margin: 3px 0 var(--space-1);
+  font-size: 24px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.replay-detail-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.replay-copy-id-button {
+  min-height: 20px;
+  padding: 2px 6px;
+  font-size: 11px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.replay-detail-map {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.replay-availability {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.replay-availability.ready {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 10%, transparent);
+}
+
+.replay-availability.pending {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+}
+
+.replay-availability.neutral {
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+}
+
+.replay-detail-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Watch is the reason this modal is open, so it gets the full width and the
+   file actions share a row beneath it. */
+.replay-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 188px;
+}
+
+.replay-watch-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.replay-detail-actions-secondary {
+  display: flex;
+  gap: 6px;
+}
+
+.replay-detail-actions-secondary > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.replay-download-error {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* One dense row: five short values do not need six boxed cells and two rows of
+   modal height. Wraps rather than truncating on narrow widths. */
+.replay-detail-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) 0;
+  margin: var(--space-3) 0 var(--space-4);
+  padding: 0;
+}
+
+.replay-detail-facts > div {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.replay-detail-facts > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.replay-detail-facts dt {
+  margin-bottom: 2px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.replay-detail-facts dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-detail-lineup {
+  min-width: 0;
+}
+
+.replay-detail-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.replay-detail-section-head h3 {
+  margin: 2px 0 0;
+  font-size: 15px;
+}
+
+.replay-detail-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  align-items: start;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+/* Exactly two teams read as a matchup, so they get a centred divider instead
+   of sitting side by side as equal grid cells. */
+.replay-detail-teams[data-layout="versus"] {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.replay-detail-versus {
+  align-self: center;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.replay-detail-team {
+  min-width: 0;
+  padding: var(--space-3);
+}
+
+.replay-detail-team-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.replay-detail-team-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.replay-team-outcome {
+  padding: 3px 6px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.replay-team-outcome.victory {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 10%, transparent);
+}
+
+.replay-team-outcome.defeat {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.replay-team-outcome.draw {
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+}
+
+.replay-detail-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+}
+
+.replay-detail-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 38px;
+  gap: var(--space-3);
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  overflow: visible;
+  font-size: 14px;
+}
+
+.replay-player-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* A lone team is the whole lineup, so its roster flows into columns instead of
+   stretching one name per full-width row. */
+.replay-detail-team:only-child .replay-detail-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2px var(--space-4);
+}
+
+.replay-detail-player:hover {
+  background: var(--color-surface-hover);
+}
+
+/* A won/lost row is tinted on its leading edge rather than filled, so a
+   revealed result stays scannable without shouting over the names. */
+.replay-detail-player[data-outcome="victory"] {
+  box-shadow: inset 2px 0 var(--color-ok);
+}
+
+.replay-detail-player[data-outcome="defeat"] {
+  box-shadow: inset 2px 0 var(--color-error);
+}
+
+.replay-player-link {
+  font: inherit;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.replay-player-link:hover > span:last-child {
+  text-decoration: underline;
+}
+
+.replay-player-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Matches the detail roster's marker size, so a player whose faction the API
+   never recorded does not pull their name out of the column. */
+.replay-player-faction-empty {
+  width: 21px;
+  height: 21px;
+}
+
+.replay-detail-player .replay-player-identity > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replay-player-outcome {
+  min-width: 52px;
+  padding: 3px 6px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.replay-player-outcome.victory {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 10%, transparent);
+}
+
+.replay-player-outcome.defeat {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.replay-player-outcome.draw {
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+}
+
+.replay-player-stat {
+  display: flex;
+  min-width: 48px;
+  align-items: flex-end;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.replay-player-stat strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.replay-player-stat small {
+  color: var(--color-subtle);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.replay-detail-empty {
+  margin: 0;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .replay-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .replay-detail-head {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .replay-detail-thumb {
+    width: 96px;
+    height: 96px;
+  }
+
+  .replay-detail-actions {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  /* Facts lose their dividers once they wrap onto several lines, where a
+     left border no longer separates neighbours but decorates line starts. */
+  .replay-detail-facts > div {
+    flex: 1 0 44%;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .replay-detail-teams[data-layout="versus"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .replay-detail-versus {
+    justify-self: center;
+  }
+}

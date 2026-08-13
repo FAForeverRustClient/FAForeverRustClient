@@ -1,0 +1,149 @@
+/* Generate-a-map dialog: see GenerateMapModal.tsx. */
+.generate-map-title {
+  margin: 0 0 var(--space-3);
+  font-size: 16px;
+}
+
+.generate-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: min(560px, 78vw);
+}
+
+.generate-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2) var(--space-3);
+}
+
+.generate-map-types {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+}
+
+.generate-map-types legend {
+  padding: 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.generate-map-type {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.generate-map-type span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.generate-map-type small {
+  font-size: 12px;
+}
+
+.generate-map-advanced-toggle {
+  font: inherit;
+  align-self: flex-start;
+  padding: 6px var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.generate-map-advanced-toggle:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.generate-map-advanced-toggle:focus-visible,
+.density-slider button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.generate-map-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Explains when one option silently overrides others: the generator ignores
+   the overridden flags, so saying so beats letting the user set them. */
+.generate-map-note {
+  margin: 0;
+  font-size: 12px;
+}
+
+.generate-map-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.density-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.density-slider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.density-slider input[type="range"] {
+  width: 100%;
+}
+
+.density-slider button {
+  font: inherit;
+  align-self: flex-start;
+  padding: 2px var(--space-2);
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.density-slider button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.generate-map-progress {
+  margin: 0;
+  font-size: 12px;
+}
+
+.generate-map-progress.is-ok {
+  color: var(--color-ok);
+}
+
+.generate-map-progress.is-error {
+  color: var(--color-error);
+}
+
+.generate-map-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

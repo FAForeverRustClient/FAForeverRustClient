@@ -17,13 +17,62 @@ target
 node_modules
 ui/dist
 *.local
+.pnpm-store/
 
 # Tauri generated
 src-tauri/gen
 
+# Runtime logs and crash output can contain player identities, game IDs, IPs,
+# ports, local paths, and authentication diagnostics.
+*.log
+/logs/
+/LOG_DIR_IS_UNDEFINED/
+/src-tauri/LOG_DIR_IS_UNDEFINED/
+
+# Local environment and client configuration. Keep documented templates.
+.env
+.env.*
+!.env.example
+!*.env.example
+*.prefs
+settings.json
+settings.local.json
+client-settings.json
+!settings.example.json
+!*.settings.example.json
+
+# Local databases and credential stores.
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.kdbx
+
+# Private keys and certificate bundles.
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+*.p7b
+*.p7c
+
+# Crash dumps and diagnostic traces.
+*.dmp
+*.dump
+*.core
+core
+core.*
+*.stackdump
+*.crash
+*.trace
+
 # FAF anti-smurf binary (downloaded from github.com/FAForever/uid/releases)
 /faf-uid
 /faf-uid.exe
+/natives/*
+!/natives/.gitkeep
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
@@ -31,4 +80,19 @@ src-tauri/gen
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-*.log logs/
+
+# Context
+/context
+
+# Agent rules file
+AGENTS.md
+Agents.md
+
+# Local development launch files
+/docs/env.txt
+CLAUDE.md
+FAForeverRustClient.code-workspace
+.claude/settings.local.json
+
+# Local working notes, deliberately untracked so they can stay blunt.
+TODO.md

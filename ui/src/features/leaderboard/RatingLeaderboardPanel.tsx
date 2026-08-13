@@ -1,0 +1,250 @@
+import { useEffect, useRef, useState } from "react";
+import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
+import { SectionTabs } from "../../design-system/SectionTabs";
+import {
+  SearchField,
+  SearchPanel,
+  SearchPanelSubmit,
+} from "../../design-system/SearchPanel";
+import type { LeaderboardColumn } from "./LeaderboardTable";
+import { LeaderboardTable } from "./LeaderboardTable";
+import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
+import { ipc } from "../../ipc/client";
+import type { LeaderboardEntry, RatingQuery } from "../../ipc/bindings";
+import { useAppStore } from "../../store/store";
+
+const OPTIONAL_COLUMNS: Array<{ key: LeaderboardColumn; label: string }> = [
+  { key: "rating", label: "Rating" },
+  { key: "mean", label: "Mean" },
+  { key: "deviation", label: "Deviation" },
+  { key: "games", label: "Games" },
+  { key: "wins", label: "Wins" },
+  { key: "winRate", label: "Win rate" },
+  { key: "updated", label: "Updated" },
+];
+
+function dayValue(timestamp: string | null): string {
+  return timestamp ? timestamp.slice(0, 10) : "";
+}
+
+function dayStart(day: string): string | null {
+  return day ? new Date(`${day}T00:00:00`).toISOString() : null;
+}
+
+function dayEnd(day: string): string | null {
+  return day ? new Date(`${day}T23:59:59.999`).toISOString() : null;
+}
+
+function load(query: RatingQuery) {
+  ipc.send({ kind: "Leaderboard", command: { type: "loadRatings", payload: { query } } });
+}
+
+export function RatingLeaderboardPanel() {
+  const state = useAppStore((store) => store.state.leaderboard);
+  const browsing = useAppStore((store) => store.state.settings.browsing);
+  const [player, setPlayer] = useState(state.ratingQuery.player);
+  const [activeOnly, setActiveOnly] = useState(state.ratingQuery.activeOnly);
+  const [after, setAfter] = useState(dayValue(state.ratingQuery.updatedAfter));
+  const [before, setBefore] = useState(dayValue(state.ratingQuery.updatedBefore));
+  const [pageSize, setPageSize] = useState(state.ratingQuery.pageSize);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const columnsRef = useRef<HTMLDivElement>(null);
+  const visibleColumns = (browsing.leaderboardRatingColumns ?? [
+    "rating", "games", "wins", "winRate", "updated",
+  ]) as LeaderboardColumn[];
+  const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
+
+  const toggleColumn = (key: LeaderboardColumn) => {
+    const updated = visibleColumns.includes(key)
+      ? visibleColumns.filter((col) => col !== key)
+      : [...visibleColumns, key];
+    if (updated.length === 0) return;
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "setBrowsing",
+        payload: {
+          preferences: {
+            ...browsing,
+            leaderboardRatingColumns: updated,
+          },
+        },
+      },
+    });
+  };
+
+  useEffect(() => {
+    if (state.catalogStatus.type !== "ready" || state.ratingsStatus.type !== "idle") return;
+    const preferred = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard)
+      ?? state.ratingLeaderboards[0];
+    if (preferred) void load({ ...state.ratingQuery, leaderboard: preferred.technicalName, page: 1 });
+  }, [state.catalogStatus.type, state.ratingLeaderboards, state.ratingQuery, state.ratingsStatus.type]);
+
+  useEffect(() => {
+    setSelected((current) => current && state.ratingPage.entries.some((entry) => entry.playerId === current.playerId)
+      ? current
+      : null);
+  }, [state.ratingPage.entries]);
+
+  useEffect(() => {
+    setPlayer(state.ratingQuery.player);
+    setActiveOnly(state.ratingQuery.activeOnly);
+    setAfter(dayValue(state.ratingQuery.updatedAfter));
+    setBefore(dayValue(state.ratingQuery.updatedBefore));
+    setPageSize(state.ratingQuery.pageSize);
+  }, [state.ratingQuery]);
+
+  useEffect(() => {
+    if (!columnsOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!columnsRef.current?.contains(event.target as Node)) setColumnsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setColumnsOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [columnsOpen]);
+
+  const currentBoard = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard);
+  const entries = state.ratingPage.entries;
+  const submit = () => void load({
+    leaderboard: state.ratingQuery.leaderboard,
+    page: 1,
+    pageSize,
+    activeOnly,
+    updatedAfter: activeOnly ? null : dayStart(after),
+    updatedBefore: activeOnly ? null : dayEnd(before),
+    player: player.trim(),
+  });
+  const changeActivityFilter = (nextActiveOnly: boolean) => {
+    setActiveOnly(nextActiveOnly);
+    void load({
+      leaderboard: state.ratingQuery.leaderboard,
+      page: 1,
+      pageSize,
+      activeOnly: nextActiveOnly,
+      updatedAfter: nextActiveOnly ? null : dayStart(after),
+      updatedBefore: nextActiveOnly ? null : dayEnd(before),
+      player: player.trim(),
+    });
+  };
+  const changePage = (page: number) => void load({ ...state.ratingQuery, page });
+  const columns: LeaderboardColumn[] = ["rank", "player", ...visibleColumns];
+  const clearFilters = () => {
+    setPlayer("");
+    setActiveOnly(true);
+    setAfter("");
+    setBefore("");
+    setPageSize(100);
+    void load({ ...state.ratingQuery, page: 1, pageSize: 100, activeOnly: true, updatedAfter: null, updatedBefore: null, player: "" });
+  };
+
+  return (
+    <section className="leaderboard-panel">
+      <SectionTabs
+        active={state.ratingQuery.leaderboard}
+        ariaLabel="Rating queues"
+        className="leaderboard-tabs"
+        items={state.ratingLeaderboards.map((board) => ({ id: board.technicalName, label: board.name }))}
+        onChange={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1, player: "" })}
+      />
+
+      {currentBoard?.description && <p className="leaderboard-description muted">{currentBoard.description}</p>}
+
+      <SearchPanel
+        className="leaderboard-search-panel"
+        onSubmit={(event) => { event.preventDefault(); submit(); }}
+        secondary={(
+          <>
+            <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>Active this month</Button>
+            <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>All players</Button>
+            <span className="spacer" />
+            <div className="leaderboard-columns" ref={columnsRef}>
+              <Button
+                className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
+                aria-expanded={columnsOpen}
+                aria-haspopup="dialog"
+                onClick={() => setColumnsOpen((open) => !open)}
+              >
+                <Icon name="filter" size={16} /> Columns
+              </Button>
+              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label="Visible leaderboard columns">
+                <div className="leaderboard-columns-menu-header">
+                  <strong>Visible columns</strong>
+                  <button type="button" className="leaderboard-columns-close" aria-label="Close columns menu" onClick={() => setColumnsOpen(false)}>
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+                {OPTIONAL_COLUMNS.map((column) => (
+                  <label key={column.key}>
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.includes(column.key)}
+                      onChange={() => toggleColumn(column.key)}
+                    />
+                    {column.label}
+                  </label>
+                ))}
+              </div>}
+            </div>
+            <Button onClick={clearFilters}>Clear</Button>
+            <Button aria-label="Refresh rankings" onClick={() => void load(state.ratingQuery)}><Icon name="refresh" size={15} /> Refresh</Button>
+          </>
+        )}
+      >
+        <SearchField label="Exact player" className="search-panel-field-grow leaderboard-search-player">
+          <input className="search-panel-control" value={player} placeholder="Player name" onChange={(event) => setPlayer(event.target.value)} />
+        </SearchField>
+        <SearchField label="Updated after" className="leaderboard-search-date">
+          <input className="search-panel-control" type="date" value={after} readOnly={activeOnly} aria-disabled={activeOnly} onChange={(event) => setAfter(event.target.value)} />
+        </SearchField>
+        <SearchField label="Updated before" className="leaderboard-search-date">
+          <input className="search-panel-control" type="date" value={before} readOnly={activeOnly} aria-disabled={activeOnly} onChange={(event) => setBefore(event.target.value)} />
+        </SearchField>
+        <SearchField label="Rows" className="leaderboard-search-rows">
+          <select className="search-panel-control" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+            {[25, 50, 100, 250, 500, 1000].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </SearchField>
+        <SearchPanelSubmit disabled={state.ratingsStatus.type === "loading"} />
+      </SearchPanel>
+
+      <div className="leaderboard-main-grid">
+        <div className="leaderboard-results surface-panel">
+          {state.ratingsStatus.type === "loading" && <div className="leaderboard-state muted">Loading rankings…</div>}
+          {state.ratingsStatus.type === "failed" && <div className="leaderboard-state leaderboard-error">{state.ratingsStatus.payload.reason}</div>}
+          {state.ratingsStatus.type !== "failed" && (
+            <LeaderboardTable
+              entries={entries}
+              columns={columns}
+              selectedPlayerId={selected?.playerId ?? null}
+              onSelect={setSelected}
+              emptyMessage={state.ratingsStatus.type === "loading" ? "" : "No rating entries match these filters."}
+            />
+          )}
+          <div className="leaderboard-pagination-shell">
+            <div className="leaderboard-pagination" aria-label="Leaderboard pages">
+              <Button disabled={state.ratingPage.page <= 1} onClick={() => changePage(1)}>First</Button>
+              <Button disabled={state.ratingPage.page <= 1} onClick={() => changePage(state.ratingPage.page - 1)}>Previous</Button>
+              <span>Page {state.ratingPage.page} of {state.ratingPage.totalPages}</span>
+              <Button disabled={state.ratingPage.page >= state.ratingPage.totalPages} onClick={() => changePage(state.ratingPage.page + 1)}>Next</Button>
+              <Button disabled={state.ratingPage.page >= state.ratingPage.totalPages} onClick={() => changePage(state.ratingPage.totalPages)}>Last</Button>
+            </div>
+            <span className="leaderboard-result-count leaderboard-result-count-footer muted">
+              {state.ratingPage.totalResults === null
+                ? `${state.ratingPage.entries.length} loaded`
+                : `${state.ratingPage.totalResults.toLocaleString("en-US")} players`}
+            </span>
+          </div>
+        </div>
+        <PlayerDetailsPanel entry={selected} />
+      </div>
+    </section>
+  );
+}

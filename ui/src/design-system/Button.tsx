@@ -10,7 +10,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
 }
 
-export function Button({ variant = "ghost", className, ...rest }: ButtonProps) {
+export function Button({ variant = "ghost", className, type = "button", ...rest }: ButtonProps) {
   const base = variant === "primary" ? "btn-primary" : "btn-ghost";
-  return <button className={className ? `${base} ${className}` : base} {...rest} />;
+  return <button type={type} className={className ? `${base} ${className}` : base} {...rest} />;
 }

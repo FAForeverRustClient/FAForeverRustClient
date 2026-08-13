@@ -1,4 +1,4 @@
-//! Auth port — abstracts *how* a player is authenticated.
+//! Auth port: abstracts *how* a player is authenticated.
 //!
 //! The real impl (OAuth2 against FAF's Ory Hydra: browser flow, redirect listener,
 //! token exchange, `/me` lookup) and the test/dev fake both implement this trait.
@@ -33,8 +33,15 @@ pub type AuthResult<T> = Result<T, AuthError>;
 
 #[async_trait]
 pub trait AuthPort: Send + Sync {
-    /// Run the full interactive login flow, resolving to the authenticated player.
-    async fn login(&self) -> AuthResult<Player>;
+    /// Run the full interactive login flow, resolving to the authenticated
+    /// player. `remember` controls whether a refresh token is retained.
+    async fn login(&self, remember: bool) -> AuthResult<Player>;
+
+    /// Restore a previously remembered session without opening a browser.
+    /// Implementations return `Ok(None)` when no credentials are stored.
+    async fn restore(&self) -> AuthResult<Option<Player>> {
+        Ok(None)
+    }
 
     /// Tear down the session (revoke tokens, clear stored credentials).
     async fn logout(&self) -> AuthResult<()>;
