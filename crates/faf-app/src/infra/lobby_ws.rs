@@ -166,7 +166,7 @@ impl LobbyPort for LobbyClient {
         // is a follow-up (that file has bitten us before on malformed writes —
         // see the replay-launch notes — so it deserves its own careful pass,
         // not a rushed addition here).
-        let visibility = serde_json::to_value(&req.visibility).unwrap_or_else(|_| json!("public"));
+        let visibility = serde_json::to_value(req.visibility).unwrap_or_else(|_| json!("public"));
         let mut frame = json!({
             "command": "game_host",
             "title": req.title,
