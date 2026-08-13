@@ -1,0 +1,11 @@
+[package]
+name = "faf-domain"
+description = "Pure domain layer: state, events, commands, reducer. No IO, no async."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+specta = { version = "=2.0.0-rc.25", features = ["derive"] }
+base64 = "0.22"

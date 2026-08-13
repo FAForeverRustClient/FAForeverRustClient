@@ -1,0 +1,112 @@
+/*
+ * Design tokens — the central theming contract.
+ *
+ * Components reference these semantic CSS variables ONLY (never raw hex/px), so a
+ * theme is a token set, not a code change. The active theme is chosen by the
+ * backend `settings.theme` and applied as `<html data-theme="…">` (see App.tsx).
+ *
+ *   :root                       → forgeDark (default — ForgeMapToolkit aesthetic)
+ *   [data-theme="forgeLight"]   → ForgeMapToolkit light
+ *   [data-theme="javaClient"]   → FAF Java client aesthetic
+ *   [data-theme="pythonClient"] → FAF Python client aesthetic
+ *
+ * To add a theme: add a `[data-theme="…"]` block + a `Theme` variant in
+ * faf-domain. No component is touched.
+ */
+
+/* Roboto is only used by [data-theme="javaClient"] below; Geist/Geist Mono
+ * (forgeDark's own fonts) are self-hosted in ./fonts.css — see that file's
+ * header comment for why. */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import "./fonts.css";
+
+/* ── forgeDark (default) — the real design language, matched exactly against
+ * the forgeDark reference mockup (near-black, flat, Geist/Geist Mono,
+ * cream-on-dark CTAs, 2px radii — no glow/gradient chrome). Replaces an
+ * earlier placeholder pass that borrowed ForgeMapToolkit's look wholesale. ── */
+:root {
+  --color-bg: #08080a;
+  --color-surface: #0c0c0e;
+  --color-surface-raised: #141416;
+  --color-border: rgba(255, 255, 255, 0.20);
+  --color-border-strong: rgba(255, 255, 255, 0.35);
+  --color-text: rgba(255, 255, 255, 0.95);
+  --color-muted: rgba(255, 255, 255, 0.55);
+  --color-accent: #f2f0ec;
+  --color-accent-contrast: #08080a;
+  --color-accent-glow: rgba(242, 240, 236, 0.18);
+  --color-ok: #41c78a;
+  --color-warn: #d1a13f;
+  --color-error: #e0645a;
+
+  --radius-md: 2px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', 'Cascadia Code', 'Courier New', monospace;
+}
+
+/* ── forgeLight — warm off-white, dark ink, deepened cyan ──────────────── */
+[data-theme='forgeLight'] {
+  --color-bg: #f4f3f0;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-border: rgba(0, 0, 0, 0.12);
+  --color-border-strong: rgba(0, 0, 0, 0.22);
+  --color-text: rgba(0, 0, 0, 0.88);
+  --color-muted: rgba(0, 0, 0, 0.5);
+  --color-accent: #008fa8;
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(0, 143, 168, 0.25);
+  --color-ok: #14a06a;
+  --color-warn: #c4730a;
+  --color-error: #d23b3b;
+}
+
+/* ── javaClient — JavaFX/Modena: cool blue-gray, rounder, Roboto, FAF blue ─ */
+[data-theme='javaClient'] {
+  --color-bg: #2b2f3a;
+  --color-surface: #353a47;
+  --color-surface-raised: #3f4555;
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-strong: rgba(255, 255, 255, 0.20);
+  --color-text: #e8eaf0;
+  --color-muted: #9aa3b2;
+  --color-accent: #3d9bfd;
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(61, 155, 253, 0.30);
+  --color-ok: #4caf50;
+  --color-warn: #ff9800;
+  --color-error: #f44336;
+
+  --radius-md: 6px;
+
+  --font-sans: 'Roboto', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Roboto Mono', 'JetBrains Mono', monospace;
+}
+
+/* ── pythonClient — PyQt/Fusion: neutral dark, square, system font, teal ── */
+[data-theme='pythonClient'] {
+  --color-bg: #2d2d30;
+  --color-surface: #3a3a3d;
+  --color-surface-raised: #444448;
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-text: #dcdcdc;
+  --color-muted: #9a9a9a;
+  --color-accent: #1ba39c;
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(27, 163, 156, 0.30);
+  --color-ok: #5fb35f;
+  --color-warn: #d8a200;
+  --color-error: #d65454;
+
+  --radius-md: 2px;
+
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Courier New', monospace;
+}

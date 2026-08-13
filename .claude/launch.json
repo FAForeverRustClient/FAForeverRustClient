@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "forge-client-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "FAF_FAKE_AUTH=1 FAF_REAL_LOBBY= FAF_REAL_LAUNCH= pnpm tauri dev"
+      ],
+      "port": 5173
+    }
+  ]
+}

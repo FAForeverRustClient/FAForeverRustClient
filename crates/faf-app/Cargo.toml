@@ -1,0 +1,44 @@
+[package]
+name = "faf-app"
+description = "Orchestration: command dispatcher, event bus, the reduce loop, services, ports, infra."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+faf-domain = { workspace = true }
+tokio = { workspace = true, features = ["net", "io-util", "process", "fs"] }
+tokio-util = "0.7"
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+futures-util = "0.3"
+directories = "5"
+
+# Real OAuth2 infra (see infra/oauth.rs). reqwest and tokio-tungstenite both use
+# the platform-native TLS stack (SChannel on Windows, Secure Transport on macOS,
+# OpenSSL on Linux) so no extra crypto build tooling is needed beyond libssl-dev.
+reqwest = { version = "0.12", features = ["json"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+open = "5"
+url = "2"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+# Decompresses `.fafreplay` bodies (see infra/replay.rs): "zstd" for
+# vault-downloaded replays, flate2 (zlib) for the legacy Qt `qCompress` format
+# locally-recorded replays still use (compression: null/absent).
+zstd = "0.13"
+flate2 = "1"
+# MD5 file-integrity checks for the game version updater (see infra/game_updater.rs).
+md5 = "0.7"
+# Extracts downloaded map zips into FA's replay-mode default search paths
+# (see infra/game_updater.rs::ensure_map_available).
+zip = "2"
+# Parses the API's RFC3339 startTime/endTime to compute vault replay
+# duration (see infra/replay.rs::parse_vault_replays).
+chrono = "0.4"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
