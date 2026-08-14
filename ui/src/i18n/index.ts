@@ -12,15 +12,12 @@
 // 3. **Formatting follows the language.** Dates and numbers go through the same
 //    locale, so a German UI does not print `Aug 10, 2026`.
 
-import { de } from "./catalog/de";
+import { CATALOGUES as CATALOGUE_REGISTRY } from "./catalog";
 import { en, type Message, type MessageKey, type PluralMessage } from "./catalog/en";
 import { intlTag, type Locale } from "./locales";
 import { getLocale } from "./store";
 
-const CATALOGUES: Record<Locale, Partial<Record<MessageKey, Message>>> = {
-  en,
-  de,
-};
+const CATALOGUES: Record<Locale, Partial<Record<MessageKey, Message>>> = CATALOGUE_REGISTRY;
 
 /** Values substituted into `{placeholder}` slots. */
 export type MessageValues = Record<string, string | number>;

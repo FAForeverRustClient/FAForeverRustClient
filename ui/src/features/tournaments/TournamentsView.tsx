@@ -18,6 +18,7 @@ import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import { formatMoment, statusOf, STATUS_LABELS } from "./tournamentStatus";
 import "./tournaments.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const load = () => ipc.send({ kind: "Tournaments", command: { type: "load" } });
 const select = (tournamentId: number) =>
@@ -34,6 +35,7 @@ function useNowSeconds(): number {
 }
 
 export function TournamentsView() {
+  const { t } = useTranslation();
   const state = useAppStore((store) => store.state.tournaments);
   const now = useNowSeconds();
 
@@ -49,11 +51,11 @@ export function TournamentsView() {
     <div className="tournaments-view">
       <header className="tournaments-header">
         <div>
-          <span className="tournaments-eyebrow">Competitive events</span>
-          <h2>Tournaments</h2>
+          <span className="tournaments-eyebrow">{t("tournaments.eyebrow")}</span>
+          <h2>{t("tournaments.title")}</h2>
         </div>
         <Button onClick={() => void load()} disabled={loading}>
-          <Icon name="refresh" size={16} /> {loading ? "Refreshing…" : "Refresh"}
+          <Icon name="refresh" size={16} /> {t(loading ? "tournaments.refreshing" : "tournaments.refresh")}
         </Button>
       </header>
 
@@ -61,7 +63,7 @@ export function TournamentsView() {
         <div className="surface-error tournaments-error">
           <span>{state.status.payload.reason}</span>
           <Button onClick={() => void load()}>
-            <Icon name="refresh" size={16} /> Retry
+            <Icon name="refresh" size={16} /> {t("common.retry")}
           </Button>
         </div>
       )}
@@ -72,7 +74,7 @@ export function TournamentsView() {
 
       {state.status.type === "ready" && state.tournaments.length === 0 && (
         <div className="surface tournaments-state muted">
-          No tournaments are scheduled right now. Check back before the next event.
+          {t("tournaments.none")}
         </div>
       )}
 
@@ -93,12 +95,12 @@ export function TournamentsView() {
                     aria-current={tournament.id === state.selectedId}
                     onClick={() => void select(tournament.id)}
                   >
-                    <span className="tournament-row-name">{tournament.name || "Untitled"}</span>
+                    <span className="tournament-row-name">{tournament.name || t("tournaments.untitled")}</span>
                     <span className={`tournament-badge is-${status}`}>
-                      {STATUS_LABELS[status]}
+                      {t(STATUS_LABELS[status])}
                     </span>
                     <span className="tournament-row-when muted">
-                      {formatMoment(tournament.startingAt, "No starting date set")}
+                      {formatMoment(tournament.startingAt, t("tournaments.noStart"))}
                     </span>
                   </button>
                 </li>
@@ -109,7 +111,7 @@ export function TournamentsView() {
           {selected ? (
             <TournamentDetail tournament={selected} now={now} />
           ) : (
-            <div className="surface tournaments-state muted">Select a tournament.</div>
+            <div className="surface tournaments-state muted">{t("tournaments.select")}</div>
           )}
         </div>
       )}
@@ -118,6 +120,7 @@ export function TournamentsView() {
 }
 
 function TournamentDetail({ tournament, now }: { tournament: Tournament; now: number }) {
+  const { t } = useTranslation();
   const status = statusOf(tournament, now);
   const signUpUrl = optionalHttpsUrl(tournament.signUpUrl);
   const challongeUrl = optionalHttpsUrl(tournament.challongeUrl);
@@ -126,20 +129,20 @@ function TournamentDetail({ tournament, now }: { tournament: Tournament; now: nu
     <section className="surface-panel tournament-detail">
       <header>
         <div>
-          <span className={`tournament-badge is-${status}`}>{STATUS_LABELS[status]}</span>
-          <h3>{tournament.name || "Untitled"}</h3>
+          <span className={`tournament-badge is-${status}`}>{t(STATUS_LABELS[status])}</span>
+          <h3>{tournament.name || t("tournaments.untitled")}</h3>
         </div>
         <div className="tournament-detail-actions">
           {/* Signup, seeding and results all live on Challonge: the client
               never had a way to enter a bracket, in any of the three clients. */}
           {status === "openForRegistration" && signUpUrl && (
             <Button variant="primary" onClick={() => void openHttpsUrl(signUpUrl)}>
-              <Icon name="external" size={16} /> Sign up
+              <Icon name="external" size={16} /> {t("tournaments.signUp")}
             </Button>
           )}
           {challongeUrl && (
             <Button onClick={() => void openHttpsUrl(challongeUrl)}>
-              <Icon name="external" size={16} /> Open on challonge.com
+              <Icon name="external" size={16} /> {t("tournaments.openChallonge")}
             </Button>
           )}
         </div>
@@ -147,20 +150,20 @@ function TournamentDetail({ tournament, now }: { tournament: Tournament; now: nu
 
       <dl className="tournament-facts">
         <div>
-          <dt>Game type</dt>
-          <dd>{tournament.tournamentType || "Unknown"}</dd>
+          <dt>{t("tournaments.gameType")}</dt>
+          <dd>{tournament.tournamentType || t("common.unknown")}</dd>
         </div>
         <div>
-          <dt>Participants</dt>
+          <dt>{t("tournaments.participants")}</dt>
           <dd>{tournament.participantCount}</dd>
         </div>
         <div>
-          <dt>Starting at</dt>
-          <dd>{formatMoment(tournament.startingAt, "No starting date set")}</dd>
+          <dt>{t("tournaments.startingAt")}</dt>
+          <dd>{formatMoment(tournament.startingAt, t("tournaments.noStart"))}</dd>
         </div>
         <div>
-          <dt>Completed at</dt>
-          <dd>{formatMoment(tournament.completedAt, "Not completed yet")}</dd>
+          <dt>{t("tournaments.completedAt")}</dt>
+          <dd>{formatMoment(tournament.completedAt, t("tournaments.notCompleted"))}</dd>
         </div>
       </dl>
 

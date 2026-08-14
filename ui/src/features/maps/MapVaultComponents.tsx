@@ -200,7 +200,7 @@ export function MapDetailPanel({
       </button>
       <div className="map-vault-detail-body">
         <div className="map-vault-detail-kicker">
-          <span>{map.mapType || "Map"}</span>
+          <span>{map.mapType || t("maps.vault.mapType")}</span>
           <span className={map.ranked ? "ranked" : "unranked"}>
             {t(map.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
           </span>

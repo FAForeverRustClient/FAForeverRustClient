@@ -206,7 +206,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   disabled={!listsReady}
                   onChange={(e) => set("symmetry", e.target.value)}
                 >
-                  <option value="">Any</option>
+                  <option value="">{t("maps.generate.any")}</option>
                   {lists.symmetries.map((value) => (
                     <option key={value} value={value}>
                       {value}
@@ -222,7 +222,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   disabled={!listsReady}
                   onChange={(e) => set("style", e.target.value)}
                 >
-                  <option value="">Any</option>
+                  <option value="">{t("maps.generate.any")}</option>
                   {lists.styles.map((value) => (
                     <option key={value} value={value}>
                       {value}
@@ -254,7 +254,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                     disabled={!listsReady || styleOverrides}
                     onChange={(e) => set(key, e.target.value)}
                   >
-                    <option value="">Any</option>
+                    <option value="">{t("maps.generate.any")}</option>
                     {values.map((value) => (
                       <option key={value} value={value}>
                         {value}
@@ -293,7 +293,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
         <div className="generate-map-actions">
           <Button type="button" onClick={onClose}>
-            Close
+            {t("maps.generate.close")}
           </Button>
           <Button
             type="button"
@@ -344,7 +344,7 @@ function DensitySlider({
         onChange={(e) => onChange(Number(e.target.value))}
       />
       <button type="button" disabled={value === null} onClick={() => onChange(null)}>
-        Auto
+        {t("maps.generate.auto")}
       </button>
     </div>
   );

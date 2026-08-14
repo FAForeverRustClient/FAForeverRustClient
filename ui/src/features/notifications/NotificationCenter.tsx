@@ -20,11 +20,11 @@ const dismiss = (id: string) =>
 function actionLabel(action: NotificationAction | null): string | null {
   if (!action) return null;
   switch (action.type) {
-    case "openChat": return "Open chat";
-    case "openMatchmaking": return "Open matchmaking";
-    case "openCustomGames": return "Open games";
-    case "acceptPartyInvite": return "Accept invite";
-    case "watchLive": return "Watch replay";
+    case "openChat": return t("notifications.action.openChat");
+    case "openMatchmaking": return t("notifications.action.openMatchmaking");
+    case "openCustomGames": return t("notifications.action.openCustomGames");
+    case "acceptPartyInvite": return t("notifications.action.acceptPartyInvite");
+    case "watchLive": return t("notifications.action.watchLive");
   }
 }
 
@@ -186,7 +186,7 @@ export function NotificationCenter() {
       <button
         type="button"
         className="notification-bell"
-        aria-label={unread ? `${unread} unread notifications` : "Notifications"}
+        aria-label={unread ? t("notifications.unread", { count: unread }) : t("notifications.title")}
         aria-expanded={open}
         title={t("notifications.title")}
         onClick={() => setOpen((value) => !value)}
@@ -201,7 +201,7 @@ export function NotificationCenter() {
             <strong>{t("notifications.title")}</strong>
             {items.length > 0 && (
               <button type="button" onClick={clearAll}>
-                Clear all
+                {t("notifications.clearAll")}
               </button>
             )}
           </header>
