@@ -1,4 +1,4 @@
-import { getLocale, intlTag } from "../i18n";
+import { getLocale, intlTag, t } from "../i18n";
 
 const SHORT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
@@ -22,7 +22,7 @@ export function clientIntlTag(): string {
 
 export function formatDate(
   value: string | number,
-  fallback = "Unknown",
+  fallback = t("common.unknown"),
   options?: Intl.DateTimeFormatOptions,
 ): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
@@ -30,11 +30,11 @@ export function formatDate(
   return Number.isNaN(date.getTime()) ? fallback : date.toLocaleDateString(clientIntlTag(), options);
 }
 
-export function formatShortDate(value: string | number, fallback = "Unknown"): string {
+export function formatShortDate(value: string | number, fallback = t("common.unknown")): string {
   return formatDate(value, fallback, SHORT_DATE_OPTIONS);
 }
 
-export function formatDateTime(value: string | number, fallback = "Unknown"): string {
+export function formatDateTime(value: string | number, fallback = t("common.unknown")): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
   return Number.isNaN(date.getTime())

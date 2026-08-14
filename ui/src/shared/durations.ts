@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 function wholeSeconds(seconds: number): number {
   return Math.max(0, Math.floor(seconds));
 }
@@ -27,7 +28,7 @@ interface RelativeDurationOptions {
 /** Coarse age for rapidly changing game lists, with optional ` ago` suffix. */
 export function formatRelativeDuration(
   seconds: number,
-  { nowLabel = "Now", suffix = "" }: RelativeDurationOptions = {},
+  { nowLabel = t("common.now"), suffix = "" }: RelativeDurationOptions = {},
 ): string {
   const total = wholeSeconds(seconds);
   if (total < 60) return nowLabel;

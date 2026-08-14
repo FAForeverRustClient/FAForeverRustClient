@@ -16,6 +16,7 @@ export interface LocaleDefinition {
 export const LOCALES = {
   en: { name: "English", intlTag: "en-US" },
   de: { name: "Deutsch", intlTag: "de-DE" },
+  fr: { name: "Français", intlTag: "fr-FR" },
 } as const satisfies Record<string, LocaleDefinition>;
 
 export type Locale = keyof typeof LOCALES;

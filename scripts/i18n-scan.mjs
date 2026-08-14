@@ -34,6 +34,8 @@ const IGNORED_FILES = new Map([
   ["ui/src/store/store.ts", "string-concatenation fragments, not standalone copy"],
   ["ui/src/shared/mapPresentation.ts", "official map names: proper nouns, never translated"],
   ["ui/src/design-system/Icon.tsx", "inline SVG path data"],
+  ["ui/src/shared/externalLinks.ts", "developer-facing throw messages, never rendered"],
+  ["ui/src/shared/factions.ts", "faction data keyed by wire id; the shown label is factions.random"],
 ]);
 
 // Attribute names whose values are machine tokens, never prose.
@@ -51,6 +53,11 @@ const KEYBOARD_KEYS = new Set([
   "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Shift", "Control", "Alt", "Meta",
 ]);
 
+// TypeScript builtins that appear as bare words in type positions.
+const TYPE_NAMES = new Set([
+  "Promise", "Record", "Partial", "Readonly", "Array", "Map", "Set", "ReactNode", "JSX",
+]);
+
 const NOT_PROSE = [
   /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/,          // kebab/snake/lower identifiers
   /^[A-Z][A-Z0-9_]*$/,                            // SCREAMING_CASE
@@ -63,12 +70,15 @@ const NOT_PROSE = [
   /(?:\|\||&&|===|!==|=>|\)\.)/,                  // half of a split expression
   /^[A-Z][a-z]+(?:[A-Z][a-z]+)+$/,                // PascalCase type or slice name
   /^[,;:.]/,                                      // half of a concatenation
+  /^\)/,                                          // starts mid-expression
+  /[<>{}]/,                                       // contains markup or a brace
 ];
 
 function isProse(value) {
   const text = value.trim();
   if (text.length < 3) return false;
   if (KEYBOARD_KEYS.has(text)) return false;
+  if (TYPE_NAMES.has(text)) return false;
   if (NOT_PROSE.some((rule) => rule.test(text))) return false;
   if (!/[a-z]/.test(text)) return false;
   // Either a sentence-cased word or several words: both read as copy.

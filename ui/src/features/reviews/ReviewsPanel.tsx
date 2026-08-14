@@ -55,7 +55,7 @@ export function ReviewsPanel() {
       <header className="reviews-head">
         <div>
           <span className="reviews-eyebrow">
-            {state.target.kind === "map" ? "Map reviews" : "Mod reviews"}
+            {t(state.target.kind === "map" ? "reviews.mapReviews" : "reviews.modReviews")}
           </span>
           <h2>{state.target.name}</h2>
         </div>
@@ -79,13 +79,13 @@ export function ReviewsPanel() {
           <section className="reviews-list">
             <h3>
               {others.length === 0
-                ? "No other reviews yet"
+                ? t("reviews.noOthers")
                 : `${others.length} other review${others.length === 1 ? "" : "s"}`}
             </h3>
             {others.map((review) => (
               <article className="surface review-row" key={review.id}>
                 <header>
-                  <strong>{review.player || "Unknown player"}</strong>
+                  <strong>{review.player || t("reviews.unknownPlayer")}</strong>
                   <Stars score={review.score} />
                   {review.version && <small className="muted">version {review.version}</small>}
                 </header>
@@ -148,7 +148,7 @@ function OwnReview({ mine }: { mine: Review | null }) {
 
   return (
     <section className="surface reviews-own">
-      <h3>{mine ? "Your review" : "Write a review"}</h3>
+      <h3>{t(mine ? "reviews.yours" : "reviews.write")}</h3>
 
       <div className="reviews-score-picker" role="group" aria-label={t("reviews.yourScore")}>
         {[1, 2, 3, 4, 5].map((value) => (
@@ -176,11 +176,11 @@ function OwnReview({ mine }: { mine: Review | null }) {
 
       <div className="reviews-own-actions">
         <Button variant="primary" disabled={saving} onClick={() => void submit(score, text)}>
-          {saving ? "Saving…" : mine ? "Update review" : "Post review"}
+          {t(saving ? "reviews.saving" : mine ? "reviews.update" : "reviews.post")}
         </Button>
         {mine && (
           <Button disabled={saving} onClick={() => void remove()}>
-            <Icon name="close" size={14} /> Withdraw
+            <Icon name="close" size={14} /> {t("reviews.withdraw")}
           </Button>
         )}
       </div>

@@ -28,16 +28,16 @@ export function ReportPlayerModal() {
   const parsedGameId = gameId.trim() ? Number(gameId) : null;
   const validation = useMemo(() => {
     const length = description.trim().length;
-    if (length > 0 && length < 10) return "Please describe the incident in at least 10 characters.";
-    if (length > 4_000) return "The description cannot exceed 4,000 characters.";
+    if (length > 0 && length < 10) return t("reporting.error.tooShort");
+    if (length > 4_000) return t("reporting.error.tooLong");
     if (gameId.trim() && (!Number.isInteger(parsedGameId) || (parsedGameId ?? 0) <= 0)) {
-      return "Game ID must be a positive whole number.";
+      return t("reporting.error.gameId");
     }
     if (parsedGameId !== null && !incidentTime.trim()) {
-      return "Add the approximate in-game time for a game-related report.";
+      return t("reporting.error.gameTime");
     }
     return "";
-  }, [description, gameId, incidentTime, parsedGameId]);
+  }, [description, gameId, incidentTime, parsedGameId, t]);
 
   if (!report.open || report.playerId === null) return null;
   const submitting = report.status.type === "submitting";
@@ -66,16 +66,16 @@ export function ReportPlayerModal() {
     <Modal onClose={() => { if (!submitting) void close(); }} className="report-player-modal">
       <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
         <header className="report-player-head">
-          <span className="report-player-eyebrow">Moderation report</span>
+          <span className="report-player-eyebrow">{t("reporting.title")}</span>
           <h2>Report {report.login}</h2>
           <p className="muted">
-            Reports go to the FAF moderation team. Include objective details and only submit one report per incident.
+            {t("reporting.intro")}
           </p>
         </header>
 
         <div className="report-tabs" role="tablist" aria-label={t("reporting.reportingViews")}>
-          <button type="button" role="tab" aria-selected={view === "new"} className={view === "new" ? "active" : ""} onClick={() => setView("new")}>New report</button>
-          <button type="button" role="tab" aria-selected={view === "history"} className={view === "history" ? "active" : ""} onClick={() => setView("history")}>Previous reports <span>{report.history.length}</span></button>
+          <button type="button" role="tab" aria-selected={view === "new"} className={view === "new" ? "active" : ""} onClick={() => setView("new")}>{t("reporting.tab.new")}</button>
+          <button type="button" role="tab" aria-selected={view === "history"} className={view === "history" ? "active" : ""} onClick={() => setView("history")}>{t("reporting.tab.history")} <span>{report.history.length}</span></button>
         </div>
 
         {view === "history" ? (
@@ -84,35 +84,35 @@ export function ReportPlayerModal() {
             {report.historyStatus.type === "failed" && (
               <div className="report-history-error" role="alert">
                 <span>{report.historyStatus.payload.reason}</span>
-                <Button type="button" onClick={() => ipc.send({ kind: "Reporting", command: { type: "loadHistory" } })}>Retry</Button>
+                <Button type="button" onClick={() => ipc.send({ kind: "Reporting", command: { type: "loadHistory" } })}>{t("common.retry")}</Button>
               </div>
             )}
-            {report.historyStatus.type === "ready" && report.history.length === 0 && <p className="muted">You have not submitted any reports.</p>}
+            {report.historyStatus.type === "ready" && report.history.length === 0 && <p className="muted">{t("reporting.historyEmpty")}</p>}
             {report.history.map((item) => (
               <article className="report-history-card surface" key={item.id}>
                 <header>
                   <div><strong>Report #{item.id}</strong><time dateTime={item.createTime}>{formatDateTime(item.createTime)}</time></div>
-                  <span className="report-history-status">{item.status || "Submitted"}</span>
+                  <span className="report-history-status">{item.status || t("reporting.statusFallback")}</span>
                 </header>
                 <dl>
-                  <div><dt>Offender</dt><dd>{item.offenders.join(", ") || "Unknown"}</dd></div>
-                  <div><dt>Game</dt><dd>{item.gameId ? `#${item.gameId}` : "Not game-related"}</dd></div>
-                  <div><dt>Moderator</dt><dd>{item.moderator || "Unassigned"}</dd></div>
+                  <div><dt>{t("reporting.offender")}</dt><dd>{item.offenders.join(", ") || t("common.unknown")}</dd></div>
+                  <div><dt>{t("reporting.game")}</dt><dd>{item.gameId ? `#${item.gameId}` : t("reporting.notGameRelated")}</dd></div>
+                  <div><dt>{t("reporting.moderator")}</dt><dd>{item.moderator || t("reporting.unassigned")}</dd></div>
                 </dl>
                 <p>{item.description}</p>
-                {item.moderatorNotice && <aside><strong>Moderator notice</strong><span>{item.moderatorNotice}</span></aside>}
+                {item.moderatorNotice && <aside><strong>{t("reporting.moderatorNotice")}</strong><span>{item.moderatorNotice}</span></aside>}
               </article>
             ))}
           </section>
         ) : submitted ? (
           <div className="report-success" role="status">
-            <strong>Report submitted</strong>
-            <span>The moderation team will review it. You do not need to report the same incident again.</span>
+            <strong>{t("reporting.submitted")}</strong>
+            <span>{t("reporting.submittedHint")}</span>
           </div>
         ) : (
           <>
             <label className="report-field">
-              <span>What happened? <em>Required</em></span>
+              <span>{t("reporting.whatHappened")} <em>{t("reporting.required")}</em></span>
               <textarea
                 autoFocus
                 value={description}
@@ -126,7 +126,7 @@ export function ReportPlayerModal() {
             </label>
             <div className="report-game-fields">
               <label className="report-field">
-                <span>Game ID <em>Optional</em></span>
+                <span>{t("reporting.gameId")} <em>{t("reporting.optional")}</em></span>
                 <input
                   type="number"
                   min={1}
@@ -138,7 +138,7 @@ export function ReportPlayerModal() {
                 />
               </label>
               <label className="report-field">
-                <span>Approximate in-game time {gameId.trim() ? <em>Required</em> : <em>Optional</em>}</span>
+                <span>{t("reporting.gameTime")} {gameId.trim() ? <em>{t("reporting.required")}</em> : <em>{t("reporting.optional")}</em>}</span>
                 <input
                   value={incidentTime}
                   disabled={submitting}
@@ -153,10 +153,10 @@ export function ReportPlayerModal() {
 
         <footer className="report-actions">
           <Button type="button" onClick={() => void close()} disabled={submitting}>
-            {submitted ? "Close" : "Cancel"}
+            {t(submitted ? "common.close" : "common.cancel")}
           </Button>
           {view === "new" && !submitted && <Button type="submit" variant="primary" disabled={!canSubmit}>
-            {submitting ? "Submitting…" : "Submit report"}
+            {t(submitting ? "reporting.submitting" : "reporting.submit")}
           </Button>}
         </footer>
       </form>

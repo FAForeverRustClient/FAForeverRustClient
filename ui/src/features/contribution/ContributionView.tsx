@@ -2,44 +2,45 @@ import { Icon } from "../../design-system/Icon";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import "./contribution.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import type { MessageKey } from "../../i18n";
 
 const REPOSITORIES = [
   {
-    name: "FAF game",
-    description: "The open-source Forged Alliance game project",
+    name: "contribution.repo.game",
+    description: "contribution.repo.gameHint",
     href: "https://github.com/FAForever/fa",
   },
   {
-    name: "FA engine patches",
-    description: "Binary patches for the game engine",
+    name: "contribution.repo.patches",
+    description: "contribution.repo.patchesHint",
     href: "https://github.com/FAForever/FA-Binary-Patches",
   },
   {
-    name: "Rust client",
-    description: "The next-generation FAF desktop client",
+    name: "contribution.repo.rust",
+    description: "contribution.repo.rustHint",
     href: "https://github.com/FAForeverRustClient/FAForever-Rust-Client",
   },
   {
-    name: "Java client",
-    description: "The official desktop client",
+    name: "contribution.repo.java",
+    description: "contribution.repo.javaHint",
     href: "https://github.com/FAForever/downlords-faf-client",
   },
   {
-    name: "Python client",
-    description: "The legacy client and its history",
+    name: "contribution.repo.python",
+    description: "contribution.repo.pythonHint",
     href: "https://github.com/FAForever/client",
   },
   {
-    name: "FAF server",
-    description: "The server-side game services",
+    name: "contribution.repo.server",
+    description: "contribution.repo.serverHint",
     href: "https://github.com/FAForever/server",
   },
   {
-    name: "FAForever on GitHub",
-    description: "Explore all FAF open-source projects",
+    name: "contribution.repo.github",
+    description: "contribution.repo.githubHint",
     href: "https://github.com/FAForever",
   },
-] as const;
+] as const satisfies readonly { name: MessageKey; description: MessageKey; href: string }[];
 
 export function ContributionView() {
   const { t } = useTranslation();
@@ -71,8 +72,8 @@ export function ContributionView() {
               }}
             >
               <span className="contribution-link-copy">
-                <strong>{repository.name}</strong>
-                <small>{repository.description}</small>
+                <strong>{t(repository.name)}</strong>
+                <small>{t(repository.description)}</small>
               </span>
               <Icon name="external" size={16} />
             </a>
