@@ -9,8 +9,22 @@
 // A plural value uses `{ one, other }` and is selected with `Intl.PluralRules`,
 // so languages whose plural rules differ from English stay correct.
 
+/**
+ * A count-dependent message.
+ *
+ * `one` and `other` are required because every language the catalogue supports
+ * needs at least those two. The remaining CLDR categories are optional: English
+ * and French never use them, German uses none, but Russian needs `few` and
+ * `many` ("2 файла" vs "5 файлов"), and Polish and Czech will too. A language
+ * that omits a category it actually needs falls back to `other`, which reads
+ * as clumsy rather than broken.
+ */
 export interface PluralMessage {
+  readonly zero?: string;
   readonly one: string;
+  readonly two?: string;
+  readonly few?: string;
+  readonly many?: string;
   readonly other: string;
 }
 

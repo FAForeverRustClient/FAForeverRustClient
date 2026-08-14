@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
+import { CATALOGUES } from "./catalog";
 import { de } from "./catalog/de";
+import type { Message } from "./catalog/en";
 import { en } from "./catalog/en";
 import { formatNumber, translateIn } from "./index";
 import { isLocale, LOCALE_KEYS } from "./locales";
@@ -29,10 +31,15 @@ describe("catalogue integrity", () => {
     // matches, because a real "ü" is followed by an ordinary letter.
     const mojibake = /[Â-ô][-¿]/;
     const damaged: string[] = [];
-    for (const catalogue of [en, de]) {
-      for (const [key, message] of Object.entries(catalogue)) {
-        const values = typeof message === "string" ? [message] : [message.one, message.other];
-        if (values.some((value) => mojibake.test(value))) damaged.push(key);
+    // Every catalogue, not just the two oldest: a new language is exactly where
+    // an encoding slip is most likely and least likely to be noticed.
+    for (const [code, catalogue] of Object.entries(CATALOGUES)) {
+      const entries = Object.entries(catalogue) as [string, Message][];
+      for (const [key, message] of entries) {
+        const forms: string[] = typeof message === "string"
+          ? [message]
+          : Object.values(message).filter((form): form is string => typeof form === "string");
+        if (forms.some((form) => mojibake.test(form))) damaged.push(`${code}:${key}`);
       }
     }
     expect(damaged).toEqual([]);
@@ -116,5 +123,34 @@ describe("locale helpers", () => {
   it("formats numbers in the selected language", () => {
     expect(formatNumber(1234567, "en")).toBe("1,234,567");
     expect(formatNumber(1234567, "de")).toBe("1.234.567");
+  });
+});
+
+describe("plural categories", () => {
+  it("uses the CLDR category Intl reports, not just one/other", () => {
+    // Russian needs four forms. Without this, "2 файла" and "5 файлов" would
+    // both render the `other` form and read as broken grammar to a native
+    // speaker, with nothing in the test suite noticing.
+    const message: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string } = {
+      one: "{count} файл",
+      few: "{count} файла",
+      many: "{count} файлов",
+      other: "{count} файла",
+    };
+    const pick = (count: number): string => {
+      const category = new Intl.PluralRules("ru-RU").select(count);
+      return message[category] ?? message.other;
+    };
+    expect(pick(1)).toBe("{count} файл");
+    expect(pick(2)).toBe("{count} файла");
+    expect(pick(5)).toBe("{count} файлов");
+    expect(pick(21)).toBe("{count} файл");
+  });
+
+  it("still resolves English and German with only one/other authored", () => {
+    expect(translateIn("en", "chat.header.online", { count: 1 })).toBe("1 person online");
+    expect(translateIn("en", "chat.header.online", { count: 4 })).toBe("4 people online");
+    expect(translateIn("de", "chat.header.online", { count: 1 })).toBe("1 Person online");
+    expect(translateIn("de", "chat.header.online", { count: 4 })).toBe("4 Personen online");
   });
 });
