@@ -18,6 +18,7 @@ import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
 import { UploadDialog } from "../uploads/UploadDialog";
 import { openPlayerCard } from "../player-card/playerCardActions";
+import { useTranslation } from "../../i18n/useTranslation";
 import { ReportPlayerModal } from "../reporting/ReportPlayerModal";
 import { NotificationCenter } from "../notifications/NotificationCenter";
 import { partyChatChannel } from "../lobby/partyChat";
@@ -31,6 +32,7 @@ const clampSidebarWidth = (width: number) =>
   Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
 
 export function AppShell() {
+  const { t } = useTranslation();
   const activeTab = useAppStore((s) => s.state.nav.activeTab);
   const auth = useAppStore((s) => s.state.auth);
   const chatStatus = useAppStore((s) => s.state.chat.status);
@@ -111,7 +113,7 @@ export function AppShell() {
           <span className="brand-mark"><BrandMark className="brand-mark-image" size={38} /></span>
           <span className="brand-copy">
             <strong>FAForever</strong>
-            <small>Desktop client</small>
+            <small>{t("shell.sidebar.desktopClient")}</small>
           </span>
         </div>
 
@@ -123,16 +125,16 @@ export function AppShell() {
             className="sidebar-profile-button"
             disabled={!player}
             onClick={() => player && void openPlayerCard(player.id, player.name)}
-            aria-label={player ? `Open profile for ${player.name}` : "Player profile unavailable"}
+            aria-label={player ? t("shell.sidebar.openProfile", { name: player.name }) : t("shell.sidebar.profileUnavailable")}
           >
             <span className="profile-avatar" aria-hidden>{player?.name.charAt(0).toUpperCase() ?? "F"}</span>
             <span className="profile-copy">
-              <span className="player-name">{player?.name ?? "Player"}</span>
-              <span className="profile-status"><i /> Online</span>
+              <span className="player-name">{player?.name ?? t("shell.sidebar.player")}</span>
+              <span className="profile-status"><i /> {t("shell.sidebar.online")}</span>
             </span>
           </button>
           <NotificationCenter />
-          <Button className="icon-button" onClick={logout} title="Log out" aria-label="Log out">
+          <Button className="icon-button" onClick={logout} title={t("shell.sidebar.logOut")} aria-label={t("shell.sidebar.logOut")}>
             <Icon name="logout" size={16} />
           </Button>
         </div>
@@ -141,7 +143,7 @@ export function AppShell() {
           className="sidebar-resizer"
           role="separator"
           tabIndex={0}
-          aria-label="Resize sidebar"
+          aria-label={t("shell.sidebar.resize")}
           aria-orientation="vertical"
           aria-valuemin={SIDEBAR_MIN_WIDTH}
           aria-valuemax={SIDEBAR_MAX_WIDTH}
@@ -159,9 +161,9 @@ export function AppShell() {
           <UpdateBanner />
           <InstallBanner />
         </div>
-        <section className="content" aria-label={`${TABS[activeTab].label} content`}>
+        <section className="content" aria-label={t("nav.content.aria", { tab: t(TABS[activeTab].label) })}>
           <div className={`content-inner content-${activeTab}`}>
-            <Suspense fallback={<div className="muted" role="status">Loading section…</div>}>
+            <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
               <ActiveView />
             </Suspense>
           </div>

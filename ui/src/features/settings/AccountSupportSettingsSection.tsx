@@ -1,6 +1,7 @@
 import { Icon } from "../../design-system/Icon";
 import { ACCOUNT_LINKS, openExternalUrl } from "../../shared/externalLinks";
 import { SettingRow } from "./SettingControls";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function ExternalAction({ href, children }: { href: string; children: string }) {
   return (
@@ -20,20 +21,21 @@ function ExternalAction({ href, children }: { href: string; children: string }) 
 }
 
 export function AccountSupportSettingsSection() {
+  const { t } = useTranslation();
   return (
     <>
-      <SettingRow label="FAF account" hint="These actions open the canonical FAF website in your browser.">
+      <SettingRow label={t("settings.account.fafAccount")} hint={t("settings.account.fafAccountHint")}>
         <div className="settings-external-links">
-          <ExternalAction href={ACCOUNT_LINKS.rename}>Change username</ExternalAction>
-          <ExternalAction href={ACCOUNT_LINKS.recover}>Reset password</ExternalAction>
-          <ExternalAction href={ACCOUNT_LINKS.steam}>Link Steam</ExternalAction>
+          <ExternalAction href={ACCOUNT_LINKS.rename}>{t("settings.account.changeUsername")}</ExternalAction>
+          <ExternalAction href={ACCOUNT_LINKS.recover}>{t("settings.account.resetPassword")}</ExternalAction>
+          <ExternalAction href={ACCOUNT_LINKS.steam}>{t("settings.account.linkSteam")}</ExternalAction>
         </div>
       </SettingRow>
-      <SettingRow label="Help and community rules" hint="Find account/client support or review the rules before reporting an incident.">
+      <SettingRow label={t("settings.account.helpCommunityRules")} hint={t("settings.account.helpCommunityRulesHint")}>
         <div className="settings-external-links">
-          <ExternalAction href={ACCOUNT_LINKS.support}>Account support</ExternalAction>
-          <ExternalAction href={ACCOUNT_LINKS.help}>Technical help</ExternalAction>
-          <ExternalAction href={ACCOUNT_LINKS.rules}>FAF rules</ExternalAction>
+          <ExternalAction href={ACCOUNT_LINKS.support}>{t("settings.account.support")}</ExternalAction>
+          <ExternalAction href={ACCOUNT_LINKS.help}>{t("settings.account.technicalHelp")}</ExternalAction>
+          <ExternalAction href={ACCOUNT_LINKS.rules}>{t("settings.account.rules")}</ExternalAction>
         </div>
       </SettingRow>
     </>

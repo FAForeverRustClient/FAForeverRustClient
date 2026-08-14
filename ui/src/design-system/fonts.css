@@ -1,9 +1,9 @@
 /*
- * Geist + Geist Mono — self-hosted (not on Google Fonts). Extracted from the
+ * Geist + Geist Mono: self-hosted (not on Google Fonts). Extracted from the
  * forgeDark design-language reference mockup so the app matches it exactly,
  * and self-hosted rather than fetched from a CDN so the desktop app doesn't
  * need network access just to render text. Variable fonts: each named weight
- * below points at the same per-subset file — the browser picks the right
+ * below points at the same per-subset file: the browser picks the right
  * instance out of the variable font.
  */
 

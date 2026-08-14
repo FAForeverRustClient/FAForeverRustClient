@@ -13,15 +13,16 @@ import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardEntry, RatingQuery } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const OPTIONAL_COLUMNS: Array<{ key: LeaderboardColumn; label: string }> = [
-  { key: "rating", label: "Rating" },
-  { key: "mean", label: "Mean" },
-  { key: "deviation", label: "Deviation" },
-  { key: "games", label: "Games" },
-  { key: "wins", label: "Wins" },
-  { key: "winRate", label: "Win rate" },
-  { key: "updated", label: "Updated" },
+  { key: "rating", label: "leaderboard.column.rating" },
+  { key: "mean", label: "leaderboard.column.mean" },
+  { key: "deviation", label: "leaderboard.column.deviation" },
+  { key: "games", label: "leaderboard.column.games" },
+  { key: "wins", label: "leaderboard.column.wins" },
+  { key: "winRate", label: "leaderboard.column.winRate" },
+  { key: "updated", label: "leaderboard.column.updated" },
 ];
 
 function dayValue(timestamp: string | null): string {
@@ -41,6 +42,7 @@ function load(query: RatingQuery) {
 }
 
 export function RatingLeaderboardPanel() {
+  const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
   const browsing = useAppStore((store) => store.state.settings.browsing);
   const [player, setPlayer] = useState(state.ratingQuery.player);
@@ -149,7 +151,7 @@ export function RatingLeaderboardPanel() {
     <section className="leaderboard-panel">
       <SectionTabs
         active={state.ratingQuery.leaderboard}
-        ariaLabel="Rating queues"
+        ariaLabel={t("leaderboard.ratings.ratingQueues")}
         className="leaderboard-tabs"
         items={state.ratingLeaderboards.map((board) => ({ id: board.technicalName, label: board.name }))}
         onChange={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1, player: "" })}
@@ -162,8 +164,8 @@ export function RatingLeaderboardPanel() {
         onSubmit={(event) => { event.preventDefault(); submit(); }}
         secondary={(
           <>
-            <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>Active this month</Button>
-            <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>All players</Button>
+            <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>{t("leaderboard.ratings.activeThisMonth")}</Button>
+            <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>{t("leaderboard.ratings.allPlayers")}</Button>
             <span className="spacer" />
             <div className="leaderboard-columns" ref={columnsRef}>
               <Button
@@ -172,12 +174,12 @@ export function RatingLeaderboardPanel() {
                 aria-haspopup="dialog"
                 onClick={() => setColumnsOpen((open) => !open)}
               >
-                <Icon name="filter" size={16} /> Columns
+                <Icon name="filter" size={16} /> {t("leaderboard.ratings.columns")}
               </Button>
-              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label="Visible leaderboard columns">
+              {columnsOpen && <div className="leaderboard-columns-menu" role="dialog" aria-label={t("leaderboard.ratings.visibleLeaderboardColumns")}>
                 <div className="leaderboard-columns-menu-header">
-                  <strong>Visible columns</strong>
-                  <button type="button" className="leaderboard-columns-close" aria-label="Close columns menu" onClick={() => setColumnsOpen(false)}>
+                  <strong>{t("leaderboard.ratings.visibleColumns")}</strong>
+                  <button type="button" className="leaderboard-columns-close" aria-label={t("leaderboard.ratings.closeColumnsMenu")} onClick={() => setColumnsOpen(false)}>
                     <Icon name="close" size={14} />
                   </button>
                 </div>
@@ -193,21 +195,21 @@ export function RatingLeaderboardPanel() {
                 ))}
               </div>}
             </div>
-            <Button onClick={clearFilters}>Clear</Button>
-            <Button aria-label="Refresh rankings" onClick={() => void load(state.ratingQuery)}><Icon name="refresh" size={15} /> Refresh</Button>
+            <Button onClick={clearFilters}>{t("leaderboard.ratings.clear")}</Button>
+            <Button aria-label={t("leaderboard.ratings.refreshRankings")} onClick={() => void load(state.ratingQuery)}><Icon name="refresh" size={15} /> {t("leaderboard.ratings.refresh")}</Button>
           </>
         )}
       >
-        <SearchField label="Exact player" className="search-panel-field-grow leaderboard-search-player">
-          <input className="search-panel-control" value={player} placeholder="Player name" onChange={(event) => setPlayer(event.target.value)} />
+        <SearchField label={t("leaderboard.ratings.exactPlayer")} className="search-panel-field-grow leaderboard-search-player">
+          <input className="search-panel-control" value={player} placeholder={t("leaderboard.ratings.playerName")} onChange={(event) => setPlayer(event.target.value)} />
         </SearchField>
-        <SearchField label="Updated after" className="leaderboard-search-date">
+        <SearchField label={t("leaderboard.ratings.updatedAfter")} className="leaderboard-search-date">
           <input className="search-panel-control" type="date" value={after} readOnly={activeOnly} aria-disabled={activeOnly} onChange={(event) => setAfter(event.target.value)} />
         </SearchField>
-        <SearchField label="Updated before" className="leaderboard-search-date">
+        <SearchField label={t("leaderboard.ratings.updatedBefore")} className="leaderboard-search-date">
           <input className="search-panel-control" type="date" value={before} readOnly={activeOnly} aria-disabled={activeOnly} onChange={(event) => setBefore(event.target.value)} />
         </SearchField>
-        <SearchField label="Rows" className="leaderboard-search-rows">
+        <SearchField label={t("leaderboard.ratings.rows")} className="leaderboard-search-rows">
           <select className="search-panel-control" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
             {[25, 50, 100, 250, 500, 1000].map((size) => <option key={size} value={size}>{size}</option>)}
           </select>
@@ -225,16 +227,16 @@ export function RatingLeaderboardPanel() {
               columns={columns}
               selectedPlayerId={selected?.playerId ?? null}
               onSelect={setSelected}
-              emptyMessage={state.ratingsStatus.type === "loading" ? "" : "No rating entries match these filters."}
+              emptyMessage={state.ratingsStatus.type === "loading" ? "" : t("leaderboard.ratings.empty")}
             />
           )}
           <div className="leaderboard-pagination-shell">
-            <div className="leaderboard-pagination" aria-label="Leaderboard pages">
-              <Button disabled={state.ratingPage.page <= 1} onClick={() => changePage(1)}>First</Button>
-              <Button disabled={state.ratingPage.page <= 1} onClick={() => changePage(state.ratingPage.page - 1)}>Previous</Button>
+            <div className="leaderboard-pagination" aria-label={t("leaderboard.ratings.leaderboardPages")}>
+              <Button disabled={state.ratingPage.page <= 1} onClick={() => changePage(1)}>{t("leaderboard.ratings.first")}</Button>
+              <Button disabled={state.ratingPage.page <= 1} onClick={() => changePage(state.ratingPage.page - 1)}>{t("leaderboard.ratings.previous")}</Button>
               <span>Page {state.ratingPage.page} of {state.ratingPage.totalPages}</span>
-              <Button disabled={state.ratingPage.page >= state.ratingPage.totalPages} onClick={() => changePage(state.ratingPage.page + 1)}>Next</Button>
-              <Button disabled={state.ratingPage.page >= state.ratingPage.totalPages} onClick={() => changePage(state.ratingPage.totalPages)}>Last</Button>
+              <Button disabled={state.ratingPage.page >= state.ratingPage.totalPages} onClick={() => changePage(state.ratingPage.page + 1)}>{t("leaderboard.ratings.next")}</Button>
+              <Button disabled={state.ratingPage.page >= state.ratingPage.totalPages} onClick={() => changePage(state.ratingPage.totalPages)}>{t("leaderboard.ratings.last")}</Button>
             </div>
             <span className="leaderboard-result-count leaderboard-result-count-footer muted">
               {state.ratingPage.totalResults === null

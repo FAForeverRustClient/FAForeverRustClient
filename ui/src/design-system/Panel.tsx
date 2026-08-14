@@ -1,4 +1,4 @@
-// Panel primitive — a dockable, collapsible side panel (as opposed to Modal's
+// Panel primitive: a dockable, collapsible side panel (as opposed to Modal's
 // backdrop overlay). Used for the Custom Games detail view: persistent beside
 // the tile grid rather than blocking it.
 

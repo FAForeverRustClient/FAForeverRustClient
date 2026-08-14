@@ -5,10 +5,12 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { formatDateTime } from "../../shared/dates";
 import "./reporting.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const close = () => ipc.send({ kind: "Reporting", command: { type: "close" } });
 
 export function ReportPlayerModal() {
+  const { t } = useTranslation();
   const report = useAppStore((state) => state.state.reporting);
   const [description, setDescription] = useState("");
   const [gameId, setGameId] = useState("");
@@ -71,7 +73,7 @@ export function ReportPlayerModal() {
           </p>
         </header>
 
-        <div className="report-tabs" role="tablist" aria-label="Reporting views">
+        <div className="report-tabs" role="tablist" aria-label={t("reporting.reportingViews")}>
           <button type="button" role="tab" aria-selected={view === "new"} className={view === "new" ? "active" : ""} onClick={() => setView("new")}>New report</button>
           <button type="button" role="tab" aria-selected={view === "history"} className={view === "history" ? "active" : ""} onClick={() => setView("history")}>Previous reports <span>{report.history.length}</span></button>
         </div>
@@ -118,7 +120,7 @@ export function ReportPlayerModal() {
                 rows={7}
                 disabled={submitting}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Describe the behavior, context, and relevant evidence…"
+                placeholder={t("reporting.describeBehaviorContext")}
               />
               <small>{description.length} / 4,000 characters</small>
             </label>
@@ -132,7 +134,7 @@ export function ReportPlayerModal() {
                   value={gameId}
                   disabled={submitting}
                   onChange={(event) => setGameId(event.target.value)}
-                  placeholder="e.g. 12345678"
+                  placeholder={t("reporting.eG12345678")}
                 />
               </label>
               <label className="report-field">
@@ -141,7 +143,7 @@ export function ReportPlayerModal() {
                   value={incidentTime}
                   disabled={submitting}
                   onChange={(event) => setIncidentTime(event.target.value)}
-                  placeholder="e.g. 18:30"
+                  placeholder={t("reporting.eG18")}
                 />
               </label>
             </div>

@@ -48,7 +48,7 @@ for (const path of await sourceFiles(resolve(root, "ui/src"), new Set([".ts", ".
 }
 
 // Foundation code must stay reusable and must not reach upward into a feature.
-for (const directory of ["design-system", "ipc", "shared", "store"]) {
+for (const directory of ["design-system", "i18n", "ipc", "shared", "store"]) {
   for (const path of await sourceFiles(resolve(root, "ui/src", directory), new Set([".ts", ".tsx"]))) {
     const source = await readFile(path, "utf8");
     if (/from\s+["'][^"']*features\//.test(source)) {

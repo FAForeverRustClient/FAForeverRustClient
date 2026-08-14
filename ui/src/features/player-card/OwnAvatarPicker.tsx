@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface OwnAvatarPickerProps {
   currentUrl: string;
@@ -9,6 +10,7 @@ interface OwnAvatarPickerProps {
 }
 
 export function OwnAvatarPicker({ currentUrl, onClose }: OwnAvatarPickerProps) {
+  const { t } = useTranslation();
   const lobby = useAppStore((store) => store.state.lobby);
   const selecting = lobby.avatarSelectionStatus === "loading";
 
@@ -25,20 +27,20 @@ export function OwnAvatarPicker({ currentUrl, onClose }: OwnAvatarPickerProps) {
     <section className="own-avatar-picker surface" aria-labelledby="own-avatar-picker-title">
       <header>
         <div>
-          <span className="player-card-eyebrow">Profile appearance</span>
-          <h3 id="own-avatar-picker-title">Choose your active avatar</h3>
+          <span className="player-card-eyebrow">{t("playerCard.avatar.eyebrow")}</span>
+          <h3 id="own-avatar-picker-title">{t("playerCard.avatar.title")}</h3>
         </div>
-        <Button onClick={onClose}>Done</Button>
+        <Button onClick={onClose}>{t("playerCard.avatar.done")}</Button>
       </header>
-      <p className="muted">Only avatars assigned to your FAF account by the server can be selected.</p>
+      <p className="muted">{t("playerCard.avatar.hint")}</p>
 
       {lobby.avatarListStatus === "loading" && (
-        <div className="own-avatar-picker-status muted">Loading available avatars…</div>
+        <div className="own-avatar-picker-status muted">{t("playerCard.avatar.loading")}</div>
       )}
       {lobby.avatarListStatus === "failed" && (
         <div className="own-avatar-picker-status is-error">
           <span>{lobby.avatarListError}</span>
-          <Button onClick={() => ipc.send({ kind: "Lobby", command: { type: "loadAvatars" } })}>Retry</Button>
+          <Button onClick={() => ipc.send({ kind: "Lobby", command: { type: "loadAvatars" } })}>{t("playerCard.avatar.retry")}</Button>
         </div>
       )}
       {lobby.avatarListStatus === "ready" && (
@@ -51,7 +53,7 @@ export function OwnAvatarPicker({ currentUrl, onClose }: OwnAvatarPickerProps) {
             onClick={() => select(null)}
           >
             <span className="own-avatar-none" aria-hidden>◇</span>
-            <span>No avatar</span>
+            <span>{t("playerCard.avatar.none")}</span>
           </button>
           {lobby.availableAvatars.map((avatar) => (
             <button
@@ -72,7 +74,7 @@ export function OwnAvatarPicker({ currentUrl, onClose }: OwnAvatarPickerProps) {
                 decoding="async"
                 draggable={false}
               />
-              <span>{avatar.tooltip || "Avatar"}</span>
+              <span>{avatar.tooltip || t("playerCard.avatar.fallback")}</span>
             </button>
           ))}
         </div>
@@ -81,7 +83,7 @@ export function OwnAvatarPicker({ currentUrl, onClose }: OwnAvatarPickerProps) {
         <div className="own-avatar-picker-status is-error" role="alert">{lobby.avatarSelectionError}</div>
       )}
       {lobby.avatarSelectionStatus === "ready" && (
-        <div className="own-avatar-picker-status is-success" role="status">Avatar selection updated.</div>
+        <div className="own-avatar-picker-status is-success" role="status">{t("playerCard.avatar.updated")}</div>
       )}
     </section>
   );

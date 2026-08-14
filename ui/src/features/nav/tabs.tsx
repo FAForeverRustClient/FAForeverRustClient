@@ -1,10 +1,15 @@
 // Tab registry: the single place tabs are defined. Each Tab maps to a label and
 // a view component; TabBar renders the labels (in TAB_ORDER) and AppShell renders
 // the active view. Adding a tab = a `Tab` variant in faf-domain + one entry here.
+//
+// Labels are message *keys*, not text: this registry is a module-level constant,
+// so a literal here would be captured once at import time and would not change
+// when the user switches language. Callers resolve them with `t()` at render.
 
 import { lazy, type ComponentType } from "react";
 import type { Tab } from "../../ipc/bindings";
 import type { IconName } from "../../design-system/Icon";
+import type { MessageKey } from "../../i18n";
 const ChatView = lazy(() =>
   import("../chat/ChatView").then((module) => ({ default: module.ChatView })),
 );
@@ -43,8 +48,8 @@ const UnitsView = lazy(() =>
 );
 
 interface TabDef {
-  label: string;
-  description: string;
+  label: MessageKey;
+  description: MessageKey;
   icon: IconName;
   Component: ComponentType;
 }
@@ -66,16 +71,16 @@ export const TAB_ORDER: Tab[] = [
 ];
 
 export const TABS: Record<Tab, TabDef> = {
-  news: { label: "News", description: "Community updates", icon: "news", Component: NewsView },
-  chat: { label: "Chat", description: "Channels and messages", icon: "chat", Component: ChatView },
-  play: { label: "Play", description: "Browse open games", icon: "play", Component: LobbyView },
-  contribution: { label: "Contribution", description: "Help build FAF", icon: "github", Component: ContributionView },
-  replays: { label: "Replays", description: "Watch and review", icon: "replays", Component: ReplaysView },
-  maps: { label: "Maps", description: "Browse the vault", icon: "maps", Component: MapsView },
-  mods: { label: "Mods", description: "Manage extensions", icon: "mods", Component: ModsView },
-  leaderboard: { label: "Leaderboard", description: "Rankings and leagues", icon: "leaderboard", Component: LeaderboardView },
-  tournaments: { label: "Tournaments", description: "Competitive events", icon: "trophy", Component: TournamentsView },
-  tutorials: { label: "Tutorials", description: "Learn the game", icon: "book", Component: TutorialsView },
-  units: { label: "Units", description: "Game database", icon: "units", Component: UnitsView },
-  settings: { label: "Settings", description: "Client preferences", icon: "settings", Component: SettingsView },
+  news: { label: "nav.tab.news.label", description: "nav.tab.news.description", icon: "news", Component: NewsView },
+  chat: { label: "nav.tab.chat.label", description: "nav.tab.chat.description", icon: "chat", Component: ChatView },
+  play: { label: "nav.tab.play.label", description: "nav.tab.play.description", icon: "play", Component: LobbyView },
+  contribution: { label: "nav.tab.contribution.label", description: "nav.tab.contribution.description", icon: "github", Component: ContributionView },
+  replays: { label: "nav.tab.replays.label", description: "nav.tab.replays.description", icon: "replays", Component: ReplaysView },
+  maps: { label: "nav.tab.maps.label", description: "nav.tab.maps.description", icon: "maps", Component: MapsView },
+  mods: { label: "nav.tab.mods.label", description: "nav.tab.mods.description", icon: "mods", Component: ModsView },
+  leaderboard: { label: "nav.tab.leaderboard.label", description: "nav.tab.leaderboard.description", icon: "leaderboard", Component: LeaderboardView },
+  tournaments: { label: "nav.tab.tournaments.label", description: "nav.tab.tournaments.description", icon: "trophy", Component: TournamentsView },
+  tutorials: { label: "nav.tab.tutorials.label", description: "nav.tab.tutorials.description", icon: "book", Component: TutorialsView },
+  units: { label: "nav.tab.units.label", description: "nav.tab.units.description", icon: "units", Component: UnitsView },
+  settings: { label: "nav.tab.settings.label", description: "nav.tab.settings.description", icon: "settings", Component: SettingsView },
 };

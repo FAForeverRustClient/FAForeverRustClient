@@ -11,6 +11,7 @@
     "preview": "node scripts/require-pnpm.mjs && vite preview",
     "lint": "node scripts/require-pnpm.mjs && eslint . --max-warnings 0",
     "architecture": "node scripts/require-pnpm.mjs && node scripts/check-architecture.mjs",
+    "i18n:check": "node scripts/require-pnpm.mjs && node scripts/i18n-scan.mjs",
     "typecheck": "node scripts/require-pnpm.mjs && tsc --noEmit",
     "prepare:native": "node scripts/require-pnpm.mjs && node scripts/ensure-faf-uid.mjs && node scripts/ensure-java-runtime.mjs && node scripts/ensure-java-ice-adapter.mjs",
     "tauri": "node scripts/require-pnpm.mjs && pnpm run prepare:native && tauri",

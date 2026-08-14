@@ -3,14 +3,15 @@ import type { ChatNameColors, ChatPreferences } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { DEFAULT_COLOR_PICKER_VALUE } from "../../shared/nameColors";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type CategoryKey = Exclude<keyof ChatNameColors, "players">;
 
 const CATEGORIES: Array<{ key: CategoryKey; label: string }> = [
-  { key: "friends", label: "Friends" },
-  { key: "foes", label: "Foes" },
-  { key: "moderators", label: "Moderators" },
-  { key: "admins", label: "Administrators" },
+  { key: "friends", label: "settings.nameColors.friends" },
+  { key: "foes", label: "settings.nameColors.foes" },
+  { key: "moderators", label: "settings.nameColors.moderators" },
+  { key: "admins", label: "settings.nameColors.admins" },
 ];
 
 export function ChatNameColorSettings({
@@ -20,6 +21,7 @@ export function ChatNameColorSettings({
   preferences: ChatPreferences;
   onSave: (preferences: ChatPreferences) => void;
 }) {
+  const { t } = useTranslation();
   const [player, setPlayer] = useState("");
   const [playerColor, setPlayerColor] = useState(DEFAULT_COLOR_PICKER_VALUE);
   const assignedPlayers = useMemo(
@@ -55,9 +57,9 @@ export function ChatNameColorSettings({
 
   return (
     <div className="setting-block chat-name-color-settings">
-      <span className="setting-label">Name color rules</span>
+      <span className="setting-label">{t("settings.nameColors.rules")}</span>
       <span className="muted">
-        Individual assignments take priority, followed by administrators, moderators, friends, and foes.
+        {t("settings.nameColors.rulesHint")}
       </span>
 
       <div className="chat-category-colors">
@@ -66,7 +68,7 @@ export function ChatNameColorSettings({
           return (
             <div className="chat-color-rule surface" key={key}>
               <span>{label}</span>
-              <span className="chat-color-state">{color || "Default"}</span>
+              <span className="chat-color-state">{color || t("settings.nameColors.default")}</span>
               <input
                 type="color"
                 value={color || DEFAULT_COLOR_PICKER_VALUE}
@@ -78,7 +80,7 @@ export function ChatNameColorSettings({
                 className="chat-color-clear surface surface-interactive"
                 disabled={!color}
                 aria-label={`Clear the name color for ${label.toLocaleLowerCase()}`}
-                title="Use default text color"
+                title={t("settings.nameColors.useDefaultText")}
                 onClick={() => setCategoryColor(key, "")}
               >
                 <Icon name="close" size={12} />
@@ -93,8 +95,8 @@ export function ChatNameColorSettings({
           className="settings-input"
           value={player}
           maxLength={64}
-          placeholder="Player name"
-          aria-label="Player name for custom chat color"
+          placeholder={t("settings.nameColors.playerName")}
+          aria-label={t("settings.nameColors.playerNameCustom")}
           onChange={(event) => setPlayer(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -106,14 +108,14 @@ export function ChatNameColorSettings({
         <input
           type="color"
           value={playerColor}
-          aria-label="Custom player name color"
+          aria-label={t("settings.nameColors.customPlayerName")}
           onChange={(event) => setPlayerColor(event.target.value)}
         />
-        <Button onClick={addPlayer} disabled={!player.trim()}>Assign</Button>
+        <Button onClick={addPlayer} disabled={!player.trim()}>{t("settings.nameColors.assign")}</Button>
       </div>
 
       {assignedPlayers.length > 0 ? (
-        <div className="chat-player-color-list" aria-label="Individual player name colors">
+        <div className="chat-player-color-list" aria-label={t("settings.nameColors.individualPlayerName")}>
           {assignedPlayers.map(([nickname, color]) => (
             <div className="chat-player-color surface" key={nickname}>
               <span>{nickname}</span>
@@ -139,7 +141,7 @@ export function ChatNameColorSettings({
           ))}
         </div>
       ) : (
-        <span className="settings-empty muted">No individual player colors.</span>
+        <span className="settings-empty muted">{t("settings.nameColors.empty")}</span>
       )}
     </div>
   );

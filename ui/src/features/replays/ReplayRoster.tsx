@@ -3,14 +3,16 @@ import { Icon } from "../../design-system/Icon";
 import type { ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { openPlayerCard } from "../player-card/playerCardActions";
+import { t } from "../../i18n";
+import { useLocale } from "../../i18n/useTranslation";
 
 // Team 1 is the FAF server's "no team" bucket. Calling that "No team" reads as
 // missing data; for a game where it holds everyone it is simply a free-for-all,
 // which is what the Java client's lineup shows too.
 function teamName(team: number, soleTeam: boolean): string {
-  if (team < 0) return "Observers";
+  if (team < 0) return t("replays.roster.observers");
   if (team > 1) return `Team ${team - 1}`;
-  return soleTeam ? "Free for all" : "Unassigned";
+  return soleTeam ? t("replays.roster.freeForAll") : t("replays.roster.unassigned");
 }
 
 export function isObserverTeam(team: number): boolean {
@@ -20,7 +22,7 @@ export function isObserverTeam(team: number): boolean {
 function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; observer: boolean; size: number }) {
   if (observer) {
     return (
-      <span className="replay-player-faction replay-player-observer" title="Observer" aria-label="Observer">
+      <span className="replay-player-faction replay-player-observer" title={t("replays.roster.observer")} aria-label={t("replays.roster.observer")}>
         <Icon name="eye" size={size} />
       </span>
     );
@@ -32,15 +34,16 @@ function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; 
 
 export function outcomeLabel(outcome: string): string {
   switch (outcome.toLocaleUpperCase()) {
-    case "VICTORY": return "Victory";
-    case "DEFEAT": return "Defeat";
+    case "VICTORY": return t("replays.roster.victory");
+    case "DEFEAT": return t("replays.roster.defeat");
     case "DRAW":
-    case "MUTUAL_DRAW": return "Draw";
+    case "MUTUAL_DRAW": return t("replays.roster.draw");
     default: return "";
   }
 }
 
 export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
+  useLocale();
   if (teams.length === 0) return null;
   const soleTeam = teams.filter((team) => !isObserverTeam(team.team)).length === 1;
   return (
@@ -80,6 +83,7 @@ export function ReplayDetailRoster({
   teams: ReplayTeam[];
   showResults?: boolean;
 }) {
+  useLocale();
   if (teams.length === 0) return null;
   const soleTeam = teams.filter((team) => !isObserverTeam(team.team)).length === 1;
   // Two teams get a versus divider between them, the way both reference clients
@@ -107,7 +111,7 @@ export function ReplayDetailRoster({
                 <span>{teamName(team.team, soleTeam)}</span>
                 <span className="replay-detail-team-summary">
                   {teamRating !== null && (
-                    <span title="Combined displayed rating">{teamRating} rating</span>
+                    <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
                   )}
                   {showResults && result && (
                     <span className={`replay-team-outcome ${result.toLocaleLowerCase()}`}>{result}</span>

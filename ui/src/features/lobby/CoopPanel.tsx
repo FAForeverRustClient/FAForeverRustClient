@@ -19,6 +19,7 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { mapThumbnailCandidates } from "../../shared/mapPresentation";
 import { coopFailureAction } from "./coopFailure";
 import "./coop.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 /** `0` means "any team size": matches `ANY_PLAYER_COUNT` in the domain. */
 const PLAYER_COUNTS = [0, 1, 2, 3, 4];
@@ -99,6 +100,7 @@ interface Props {
 }
 
 export function CoopPanel({ games, onJoin, onHost }: Props) {
+  const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const [search, setSearch] = useState("");
 
@@ -143,8 +145,8 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
   const missionCount = groups.reduce((total, group) => total + group.missions.length, 0);
   const catalogNote = loadStatusNote(
     coop.catalogStatus,
-    "Loading co-op missions…",
-    "Could not load co-op missions",
+    t("lobby.coop.loadingMissions"),
+    t("lobby.coop.loadFailed"),
   );
 
   return (
@@ -154,7 +156,7 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
           <Icon name="users" size={22} />
         </div>
         <div>
-          <h2>Co-op missions</h2>
+          <h2>{t("lobby.coop.title")}</h2>
           <p>
             Play the campaign together. Pick a mission to host it, and see how fast everyone else
             has finished it.
@@ -168,20 +170,20 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search missions"
-            aria-label="Search co-op missions"
+            placeholder={t("lobby.coop.searchPlaceholder")}
+            aria-label={t("lobby.coop.searchAria")}
           />
         </div>
         <span className="muted">{missionCount} missions</span>
         <Button onClick={() => void loadCatalog()}>
-          <Icon name="refresh" size={14} /> Refresh
+          <Icon name="refresh" size={14} /> {t("lobby.coop.refresh")}
         </Button>
       </div>
 
       {coop.catalogStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.catalogStatus}
-          title="Could not load co-op missions"
+          title={t("lobby.coop.loadFailed")}
           onRetry={() => void loadCatalog()}
         />
       ) : (
@@ -191,8 +193,8 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
       {coop.catalogStatus.type === "ready" && missionCount === 0 && (
         <div className="play-empty-state">
           <Icon name="maps" size={24} />
-          <h3>No co-op missions found</h3>
-          <p>{search ? "Try another search." : "The mission catalog came back empty."}</p>
+          <h3>{t("lobby.coop.empty")}</h3>
+          <p>{search ? t("lobby.coop.emptySearch") : t("lobby.coop.emptyCatalog")}</p>
         </div>
       )}
 
@@ -201,15 +203,15 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
           <section className="coop-mission-panel surface-panel">
             <div className="section-heading">
               <div>
-                <h3>Campaigns</h3>
-                <span>Select a mission</span>
+                <h3>{t("lobby.coop.campaigns")}</h3>
+                <span>{t("lobby.coop.selectMission")}</span>
               </div>
             </div>
             <div className="coop-mission-list">
               {groups.map((group) => (
                 <div className="coop-campaign" key={group.scenario?.id ?? "other"}>
                   <h4 className="coop-campaign-name">
-                    {group.scenario?.name ?? "Other missions"}
+                    {group.scenario?.name ?? t("lobby.coop.otherMissions")}
                     {group.scenario && (
                       <span className={`coop-faction is-${group.scenario.faction}`}>
                         {group.scenario.faction}
@@ -240,22 +242,22 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
             {selected ? (
               <MissionDetail mission={selected} onHost={onHost} />
             ) : (
-              <p className="muted">Select a mission.</p>
+              <p className="muted">{t("lobby.coop.selectMissionHint")}</p>
             )}
           </section>
 
           <aside className="coop-games-panel surface-panel">
             <div className="section-heading">
               <div>
-                <h3>Open co-op games</h3>
+                <h3>{t("lobby.coop.openGames")}</h3>
                 <span>{games.length} available</span>
               </div>
             </div>
             {games.length === 0 ? (
               <div className="coop-games-empty">
                 <Icon name="users" size={20} />
-                <p>No open co-op games right now.</p>
-                <small>Host a mission to start one.</small>
+                <p>{t("lobby.coop.noOpenGames")}</p>
+                <small>{t("lobby.coop.hostToStart")}</small>
               </div>
             ) : (
               <div className="coop-games-list">
@@ -288,12 +290,13 @@ function MissionDetail({
   mission: CoopMission;
   onHost: (mission: CoopMission) => void;
 }) {
+  const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
   const note = loadStatusNote(
     coop.leaderboardStatus,
-    "Loading records…",
-    "Could not load the leaderboard",
+    t("lobby.coop.loadingRecords"),
+    t("lobby.coop.leaderboardFailed"),
   );
 
   return (
@@ -304,7 +307,7 @@ function MissionDetail({
           <small className="muted">{mission.mapFolderName}</small>
         </div>
         <Button variant="primary" onClick={() => onHost(mission)}>
-          Host mission
+          {t("lobby.coop.hostMission")}
         </Button>
       </header>
 
@@ -313,17 +316,17 @@ function MissionDetail({
       {mission.description && <p className="coop-detail-brief">{mission.description}</p>}
 
       <div className="coop-board-head">
-        <h4>Fastest completions</h4>
+        <h4>{t("lobby.coop.fastest")}</h4>
         <label className="coop-board-filter">
-          <span className="muted">Players</span>
+          <span className="muted">{t("lobby.coop.column.players")}</span>
           <select
             value={coop.playerCount}
             onChange={(event) => void setPlayerCount(Number(event.target.value))}
-            aria-label="Filter records by team size"
+            aria-label={t("lobby.coop.teamSizeAria")}
           >
             {PLAYER_COUNTS.map((count) => (
               <option key={count} value={count}>
-                {count === 0 ? "Any" : count}
+                {count === 0 ? t("lobby.coop.anyCount") : count}
               </option>
             ))}
           </select>
@@ -333,7 +336,7 @@ function MissionDetail({
       {coop.leaderboardStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.leaderboardStatus}
-          title="Could not load mission records"
+          title={t("lobby.coop.recordsFailed")}
           onRetry={() => void setPlayerCount(coop.playerCount)}
         />
       ) : (
@@ -342,7 +345,7 @@ function MissionDetail({
 
       {coop.leaderboardStatus.type === "ready" && coop.leaderboard.length === 0 && (
         <p className="muted">
-          Nobody has finished this mission with that team size yet. Be the first.
+          {t("lobby.coop.noRecords")}
         </p>
       )}
 
@@ -352,11 +355,11 @@ function MissionDetail({
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">Time</th>
-                <th scope="col">Players</th>
-                <th scope="col">Team</th>
-                <th scope="col">Secondary</th>
-                <th scope="col">Replay</th>
+                <th scope="col">{t("lobby.coop.column.time")}</th>
+                <th scope="col">{t("lobby.coop.column.players")}</th>
+                <th scope="col">{t("lobby.coop.column.team")}</th>
+                <th scope="col">{t("lobby.coop.column.secondary")}</th>
+                <th scope="col">{t("lobby.coop.column.replay")}</th>
               </tr>
             </thead>
             <tbody>
@@ -380,6 +383,7 @@ function CoopLoadFailure({
   title: string;
   onRetry: () => void;
 }) {
+  const { t } = useTranslation();
   if (status.type !== "failed") return null;
 
   const { kind, reason } = status.payload;
@@ -395,12 +399,12 @@ function CoopLoadFailure({
       </div>
       {action === "signOut" && (
         <Button onClick={() => void signOut()}>
-          <Icon name="logout" size={14} /> Sign out
+          <Icon name="logout" size={14} /> {t("lobby.coop.signOut")}
         </Button>
       )}
       {action === "retry" && (
         <Button onClick={onRetry}>
-          <Icon name="refresh" size={14} /> Retry
+          <Icon name="refresh" size={14} /> {t("lobby.coop.retry")}
         </Button>
       )}
     </div>
@@ -408,6 +412,7 @@ function CoopLoadFailure({
 }
 
 function LeaderboardRow({ result }: { result: CoopResult }) {
+  const { t } = useTranslation();
   return (
     <tr>
       <td>{result.ranking}</td>
@@ -416,7 +421,7 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
       <td>{result.players.join(", ") || <span className="muted">unknown</span>}</td>
       {/* Completing the optional objectives is the harder run, so it is worth
           distinguishing rather than hiding in a tooltip. */}
-      <td>{result.secondaryObjectives ? "Yes" : "N/A"}</td>
+      <td>{result.secondaryObjectives ? t("lobby.coop.yes") : "N/A"}</td>
       <td>
         {result.replayId === null ? (
           <span className="muted">, </span>
@@ -431,7 +436,7 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
               })
             }
           >
-            Watch
+            {t("lobby.coop.watch")}
           </button>
         )}
       </td>

@@ -15,6 +15,7 @@ import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, SocialState
 import { Icon } from "../../design-system/Icon";
 import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
 import type { ChatGameLink } from "./chatFormat";
+import { useTranslation } from "../../i18n/useTranslation";
 
 /** Distance from the bottom, in px, still counted as "at the bottom". */
 const STICK_THRESHOLD = 48;
@@ -48,6 +49,7 @@ export const MessageList = memo(function MessageList({
   searchRequest = 0,
   onGameLink,
 }: Props) {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   // A ref, not state: the scroll effect must read the *current* value without
   // taking a dependency on it (re-running on pin changes would fight the user).
@@ -142,8 +144,8 @@ export const MessageList = memo(function MessageList({
           <input
             ref={searchInputRef}
             value={search}
-            placeholder="Search this conversation"
-            aria-label="Search this conversation"
+            placeholder={t("chat.search.placeholder")}
+            aria-label={t("chat.search.placeholder")}
             onChange={(event) => { setSearch(event.target.value); setActiveMatch(0); }}
             onKeyDown={(event) => {
               if (event.key === "Enter") { event.preventDefault(); navigateSearch(event.shiftKey ? -1 : 1); }
@@ -151,15 +153,15 @@ export const MessageList = memo(function MessageList({
             }}
           />
           <span aria-live="polite">
-            {search.trim() ? (matchingIds.length > 0 ? `${normalizedMatch + 1} of ${matchingIds.length}` : "No matches") : "Ctrl+F"}
+            {search.trim() ? (matchingIds.length > 0 ? t("chat.search.counter", { current: normalizedMatch + 1, total: matchingIds.length }) : t("chat.search.noMatches")) : t("chat.search.shortcut")}
           </span>
-          <button type="button" aria-label="Previous match" title="Previous match" disabled={matchingIds.length === 0} onClick={() => navigateSearch(-1)}>
+          <button type="button" aria-label={t("chat.search.previous")} title={t("chat.search.previous")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(-1)}>
             <Icon className="is-previous" name="arrowRight" size={14} />
           </button>
-          <button type="button" aria-label="Next match" title="Next match" disabled={matchingIds.length === 0} onClick={() => navigateSearch(1)}>
+          <button type="button" aria-label={t("chat.search.next")} title={t("chat.search.next")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(1)}>
             <Icon name="arrowRight" size={14} />
           </button>
-          <button type="button" aria-label="Close search" title="Close search" onClick={closeSearch}>
+          <button type="button" aria-label={t("chat.search.close")} title={t("chat.search.close")} onClick={closeSearch}>
             <Icon name="close" size={14} />
           </button>
         </div>
@@ -198,7 +200,7 @@ export const MessageList = memo(function MessageList({
 
       {missed && (
         <button type="button" className="chat-jump" onClick={jumpToLatest}>
-          Jump to latest
+          {t("chat.jumpToLatest")}
         </button>
       )}
     </div>

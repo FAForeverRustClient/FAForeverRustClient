@@ -1,12 +1,12 @@
-// GameCard primitive — a custom-games tile. Structure and values matched
+// GameCard primitive: a custom-games tile. Structure and values matched
 // directly against the forgeDark reference mockup's extracted source (a
 // 140px full-bleed tile: map-art background, a mod badge top-left,
 // lock/mod-count badges top-right, a 2-line clamped title, host/meta text
-// bottom-left, player count + a thin capacity bar bottom-right — the whole
+// bottom-left, player count + a thin capacity bar bottom-right: the whole
 // tile inverts to a cream fill on hover). The lobby protocol itself has no
-// map thumbnail, but the map vault does (`VaultMap.thumbnailUrl`) — callers
+// map thumbnail, but the map vault does (`VaultMap.thumbnailUrl`): callers
 // resolve `thumbnailUrl` by matching the game's map id against the vault
-// (see CustomGamesView's `mapThumbnails`) and pass it in; falls back to a
+// (see `shared/mapPresentation.ts`) and pass it in; falls back to a
 // deterministic gradient hashed from the map name for maps not in the vault
 // (unranked/custom maps) or before the vault has loaded.
 

@@ -33,18 +33,20 @@ import { RangeSlider } from "../../design-system/RangeSlider";
 import { advancedReplayFilterCount, EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
 import "../../design-system/search-panel.css";
+import type { MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const MIN_RATING = -1000;
 const MAX_RATING = 4000;
 
-const SORT_LABELS: Record<ReplaySortField, string> = {
-  startTime: "Date played",
-  endTime: "Date finished",
-  duration: "Duration",
-  reviewScore: "Review score",
-  title: "Game title",
-  id: "Replay ID",
-  victoryCondition: "Victory condition",
+const SORT_LABELS: Record<ReplaySortField, MessageKey> = {
+  startTime: "replays.search.sort.datePlayed",
+  endTime: "replays.search.sort.dateFinished",
+  duration: "replays.search.sort.duration",
+  reviewScore: "replays.search.sort.reviewScore",
+  title: "replays.search.sort.gameTitle",
+  id: "replays.search.sort.replayId",
+  victoryCondition: "replays.search.sort.victoryCondition",
 };
 
 /** The Java client's show-room categories, as one-click presets. */
@@ -65,6 +67,7 @@ const isoDaysAgo = (days: number) =>
   new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearch }: Props) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
   const [advanced, setAdvanced] = useState(false);
 
@@ -121,29 +124,29 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
     <form className="vault-search online-vault-search search-panel surface-panel" onSubmit={submit}>
       <div className="vault-search-primary search-panel-primary">
         <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
-          <span className="vault-field-label search-panel-label">Player</span>
+          <span className="vault-field-label search-panel-label">{t("replays.search.player")}</span>
           <input
             className="vault-input search-panel-control"
             type="search"
             value={form.player}
-            placeholder="Any player"
+            placeholder={t("replays.search.anyPlayer")}
             onChange={(e) => set("player", e.target.value)}
           />
         </label>
 
         <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
-          <span className="vault-field-label search-panel-label">Map</span>
+          <span className="vault-field-label search-panel-label">{t("replays.search.map")}</span>
           <input
             className="vault-input search-panel-control"
             type="search"
             value={form.map}
-            placeholder="Any map"
+            placeholder={t("replays.search.anyMap")}
             onChange={(e) => set("map", e.target.value)}
           />
         </label>
 
         <label className="vault-field vault-search-replay-id search-panel-field">
-          <span className="vault-field-label search-panel-label">Replay ID</span>
+          <span className="vault-field-label search-panel-label">{t("replays.search.replayId")}</span>
           <input
             className="vault-input search-panel-control"
             type="search"
@@ -155,7 +158,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
 
         <div className="vault-field vault-search-leaderboard">
           <MultiSelect
-            label="Leaderboard"
+            label={t("replays.search.leaderboard")}
             options={leagueOptions}
             selected={form.leaderboards}
             onChange={(v) => set("leaderboards", v)}
@@ -164,7 +167,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
 
         <div className="vault-field vault-search-mod">
           <MultiSelect
-            label="Mod"
+            label={t("replays.search.mod")}
             options={modOptions}
             selected={form.featuredMods}
             onChange={(v) => set("featuredMods", v)}
@@ -173,7 +176,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
 
         <div className="vault-search-rating">
           <RangeSlider
-            label="Rating"
+            label={t("replays.search.rating")}
             min={MIN_RATING}
             max={MAX_RATING}
             step={50}
@@ -184,7 +187,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         </div>
 
         <label className="vault-field search-panel-field">
-          <span className="vault-field-label search-panel-label">Sort by</span>
+          <span className="vault-field-label search-panel-label">{t("replays.search.sortBy")}</span>
           <select
             className="vault-input search-panel-control"
             value={form.sortBy}
@@ -192,7 +195,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
           >
             {(Object.keys(SORT_LABELS) as ReplaySortField[]).map((field) => (
               <option key={field} value={field}>
-                {SORT_LABELS[field]}
+                {t(SORT_LABELS[field])}
               </option>
             ))}
           </select>
@@ -201,30 +204,30 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         <button
           type="button"
           className="vault-input search-panel-control vault-sort-order"
-          aria-label={form.sortDescending ? "Descending; click for ascending" : "Ascending; click for descending"}
-          title={form.sortDescending ? "Descending" : "Ascending"}
+          aria-label={t(form.sortDescending ? "replays.search.descendingAria" : "replays.search.ascendingAria")}
+          title={t(form.sortDescending ? "replays.search.descending" : "replays.search.ascending")}
           onClick={toggleSortDirection}
         >
           {form.sortDescending ? "↓" : "↑"}
         </button>
 
         <Button type="submit" variant="primary" className="vault-search-submit search-panel-submit">
-          <Icon name="search" size={15} /> Search
+          <Icon name="search" size={15} /> {t("replays.search.submit")}
         </Button>
       </div>
 
       <div className="vault-search-presets search-panel-secondary">
         <Button type="button" onClick={() => applyPreset("newest")}>
-          Newest
+          {t("replays.search.preset.newest")}
         </Button>
         <Button type="button" onClick={() => applyPreset("highestRated")}>
-          Best reviewed
+          {t("replays.search.preset.bestReviewed")}
         </Button>
         <Button type="button" onClick={() => applyPreset("lastYear")}>
-          Last year
+          {t("replays.search.preset.lastYear")}
         </Button>
         <Button type="button" disabled={!self} onClick={() => applyPreset("own")}>
-          My replays
+          {t("replays.search.preset.myReplays")}
         </Button>
         <span className="spacer" />
         <button
@@ -235,11 +238,13 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         >
           <Icon name="filter" size={14} />
           {advanced
-            ? "Fewer filters"
-            : `More filters${hiddenFilterCount > 0 ? ` (${hiddenFilterCount})` : ""}`}
+            ? t("replays.search.fewerFilters")
+            : hiddenFilterCount > 0
+              ? t("replays.search.moreFiltersCount", { count: hiddenFilterCount })
+              : t("replays.search.moreFilters")}
         </button>
         <Button type="button" onClick={reset}>
-          Clear
+          {t("replays.search.clear")}
         </Button>
       </div>
 

@@ -7,6 +7,8 @@ import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/chatFormat";
 import { playNotificationAlert } from "./notificationSound";
 import "./notifications.css";
+import { t } from "../../i18n";
+import { useLocale } from "../../i18n/useTranslation";
 
 const TOAST_DURATION_MS = 8_000;
 
@@ -72,6 +74,7 @@ function notificationTone(item: ClientNotification): string {
 }
 
 export function NotificationCenter() {
+  useLocale();
   const items = useAppStore((state) => state.state.notifications.items);
   const preferences = useAppStore((state) => state.state.settings.notifications);
   const [open, setOpen] = useState(false);
@@ -185,7 +188,7 @@ export function NotificationCenter() {
         className="notification-bell"
         aria-label={unread ? `${unread} unread notifications` : "Notifications"}
         aria-expanded={open}
-        title="Notifications"
+        title={t("notifications.title")}
         onClick={() => setOpen((value) => !value)}
       >
         <Icon name="bell" size={16} />
@@ -193,9 +196,9 @@ export function NotificationCenter() {
       </button>
 
       {open && (
-        <section className="notification-panel" aria-label="Notifications">
+        <section className="notification-panel" aria-label={t("notifications.title")}>
           <header>
-            <strong>Notifications</strong>
+            <strong>{t("notifications.title")}</strong>
             {items.length > 0 && (
               <button type="button" onClick={clearAll}>
                 Clear all
@@ -204,7 +207,7 @@ export function NotificationCenter() {
           </header>
           <div className="notification-list">
             {items.length === 0 ? (
-              <p className="notification-empty muted">You’re all caught up.</p>
+              <p className="notification-empty muted">{t("notifications.empty")}</p>
             ) : items.map((item) => (
               <article className={`notification-item${item.read ? " is-read" : ""}${notificationTone(item)}`} key={item.id}>
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>

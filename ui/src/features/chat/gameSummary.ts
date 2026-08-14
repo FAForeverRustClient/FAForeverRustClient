@@ -1,4 +1,5 @@
 import type { Game, SocialState } from "../../ipc/bindings";
+import { t } from "../../i18n";
 
 export type GamePresenceStatus = "hosting" | "lobbying" | "playing";
 
@@ -56,9 +57,9 @@ export function gamePresenceIndex(openGames: Game[], liveGames: Game[]): Map<str
 }
 
 function teamLabel(id: string): string {
-  if (id === "-1" || id === "null") return "Observers";
-  if (id === "0") return "No team";
-  return `Team ${id}`;
+  if (id === "-1" || id === "null") return t("chat.team.observers");
+  if (id === "0") return t("chat.team.none");
+  return t("chat.team.numbered", { id });
 }
 
 function teamOrder([id]: [string, string[]]): number {

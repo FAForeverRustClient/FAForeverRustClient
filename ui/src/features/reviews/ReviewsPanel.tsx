@@ -12,6 +12,7 @@ import type { Review, ReviewSummary } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import "./reviews.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const SCORES = [5, 4, 3, 2, 1];
 
@@ -40,6 +41,7 @@ function Stars({ score, of = 5 }: { score: number; of?: number }) {
 }
 
 export function ReviewsPanel() {
+  const { t } = useTranslation();
   const state = useAppStore((store) => store.state.reviews);
   const player = useAppStore((store) => store.state.auth.player);
 
@@ -71,7 +73,7 @@ export function ReviewsPanel() {
           {player ? (
             <OwnReview mine={mine} />
           ) : (
-            <p className="muted">Sign in to write a review.</p>
+            <p className="muted">{t("reviews.signIn")}</p>
           )}
 
           <section className="reviews-list">
@@ -129,6 +131,7 @@ function Distribution({ summary }: { summary: ReviewSummary }) {
 }
 
 function OwnReview({ mine }: { mine: Review | null }) {
+  const { t } = useTranslation();
   const submitStatus = useAppStore((store) => store.state.reviews.submit);
   const [score, setScore] = useState(mine?.score ?? 5);
   const [text, setText] = useState(mine?.text ?? "");
@@ -147,7 +150,7 @@ function OwnReview({ mine }: { mine: Review | null }) {
     <section className="surface reviews-own">
       <h3>{mine ? "Your review" : "Write a review"}</h3>
 
-      <div className="reviews-score-picker" role="group" aria-label="Your score">
+      <div className="reviews-score-picker" role="group" aria-label={t("reviews.yourScore")}>
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             type="button"
@@ -167,7 +170,7 @@ function OwnReview({ mine }: { mine: Review | null }) {
         value={text}
         maxLength={2000}
         rows={4}
-        placeholder="What should other players know?"
+        placeholder={t("reviews.placeholder")}
         onChange={(event) => setText(event.target.value)}
       />
 
@@ -185,7 +188,7 @@ function OwnReview({ mine }: { mine: Review | null }) {
       {submitStatus.type === "failed" && (
         <p className="reviews-submit is-error">{submitStatus.payload.reason}</p>
       )}
-      {submitStatus.type === "saved" && <p className="reviews-submit is-ok">Saved.</p>}
+      {submitStatus.type === "saved" && <p className="reviews-submit is-ok">{t("reviews.saved")}</p>}
     </section>
   );
 }

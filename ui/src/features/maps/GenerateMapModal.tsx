@@ -18,6 +18,7 @@ import { ipc } from "../../ipc/client";
 import { recordEntries } from "../../shared/records";
 import { useAppStore } from "../../store/store";
 import "./generate-map.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 /** Map sizes the generator accepts, as the km figure players think in. */
 const MAP_SIZES: { value: number; label: string }[] = [
@@ -29,10 +30,10 @@ const MAP_SIZES: { value: number; label: string }[] = [
 
 /** Labels from the Java client's `game.generateMap.*` strings. */
 const GENERATION_TYPES: Record<GenerationType, { label: string; hint: string }> = {
-  casual: { label: "Casual", hint: "Honours every style option below." },
-  tournament: { label: "Tournament", hint: "No preview until the game starts." },
-  blind: { label: "Blind", hint: "No preview at all." },
-  unexplored: { label: "Unexplored", hint: "The map starts under fog." },
+  casual: { label: "maps.generate.kind.casual", hint: "maps.generate.kind.casualHint" },
+  tournament: { label: "maps.generate.kind.tournament", hint: "maps.generate.kind.tournamentHint" },
+  blind: { label: "maps.generate.kind.blind", hint: "maps.generate.kind.blindHint" },
+  unexplored: { label: "maps.generate.kind.unexplored", hint: "maps.generate.kind.unexploredHint" },
 };
 
 const generate = (options: GeneratorOptions) =>
@@ -49,6 +50,7 @@ interface Props {
 }
 
 export function GenerateMapModal({ onClose, onGenerated }: Props) {
+  const { t } = useTranslation();
   const state = useAppStore((s) => s.state.mapGenerator);
   const [form, setForm] = useState<GeneratorOptions>(state.options);
   const [advanced, setAdvanced] = useState(false);
@@ -100,11 +102,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
   return (
     <Modal onClose={onClose}>
-      <h2 className="generate-map-title">Generate a map</h2>
+      <h2 className="generate-map-title">{t("maps.generate.title")}</h2>
       <form className="generate-map" onSubmit={submit}>
         <div className="generate-map-grid">
           <label className="field">
-            <span>Map size</span>
+            <span>{t("maps.generate.mapSize")}</span>
             <select
               value={form.mapSize ?? 512}
               onChange={(e) => set("mapSize", Number(e.target.value))}
@@ -118,7 +120,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           </label>
 
           <label className="field">
-            <span>Spawns</span>
+            <span>{t("maps.generate.spawns")}</span>
             <input
               type="number"
               min={2}
@@ -129,7 +131,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           </label>
 
           <label className="field">
-            <span>Teams</span>
+            <span>{t("maps.generate.teams")}</span>
             <input
               type="number"
               min={2}
@@ -140,7 +142,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           </label>
 
           <label className="field">
-            <span>Maps to generate</span>
+            <span>{t("maps.generate.count")}</span>
             <input
               type="number"
               min={1}
@@ -152,7 +154,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
         </div>
 
         <fieldset className="generate-map-types surface">
-          <legend>Style of game</legend>
+          <legend>{t("maps.generate.styleOfGame")}</legend>
           {recordEntries(GENERATION_TYPES).map(([value, generationType]) => (
             <label key={value} className="generate-map-type">
               <input
@@ -175,7 +177,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           aria-expanded={advanced}
           onClick={() => setAdvanced((a) => !a)}
         >
-          {advanced ? "Fewer options" : "More options"}
+          {t(advanced ? "maps.generate.fewerOptions" : "maps.generate.moreOptions")}
         </button>
 
         {advanced && (
@@ -189,16 +191,16 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
             <div className="generate-map-grid">
               <label className="field">
-                <span>Seed</span>
+                <span>{t("maps.generate.seed")}</span>
                 <input
                   value={form.seed}
-                  placeholder="Random"
+                  placeholder={t("maps.generate.random")}
                   onChange={(e) => set("seed", e.target.value)}
                 />
               </label>
 
               <label className="field">
-                <span>Symmetry</span>
+                <span>{t("maps.generate.symmetry")}</span>
                 <select
                   value={form.symmetry}
                   disabled={!listsReady}
@@ -214,7 +216,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               </label>
 
               <label className="field">
-                <span>Map style</span>
+                <span>{t("maps.generate.mapStyle")}</span>
                 <select
                   value={form.style}
                   disabled={!listsReady}
@@ -232,17 +234,17 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
             {styleOverrides && (
               <p className="muted generate-map-note">
-                A map style replaces the individual terrain, texture, resource and prop styles.
+                {t("maps.generate.mapStyleHint")}
               </p>
             )}
 
             <div className="generate-map-grid">
               {(
                 [
-                  ["Terrain", "terrainStyle", lists.terrainStyles],
-                  ["Texture", "textureStyle", lists.textureStyles],
-                  ["Resources", "resourceStyle", lists.resourceStyles],
-                  ["Props", "propStyle", lists.propStyles],
+                  [t("maps.generate.terrain"), "terrainStyle", lists.terrainStyles],
+                  [t("maps.generate.texture"), "textureStyle", lists.textureStyles],
+                  [t("maps.generate.resources"), "resourceStyle", lists.resourceStyles],
+                  [t("maps.generate.props"), "propStyle", lists.propStyles],
                 ] as const
               ).map(([label, key, values]) => (
                 <label key={key} className="field">
@@ -265,22 +267,22 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
             <div className="generate-map-sliders">
               <DensitySlider
-                label="Reclaim density"
+                label={t("maps.generate.reclaimDensity")}
                 value={form.reclaimDensity}
                 onChange={(value) => set("reclaimDensity", value)}
               />
               <DensitySlider
-                label="Resource density"
+                label={t("maps.generate.resourceDensity")}
                 value={form.resourceDensity}
                 onChange={(value) => set("resourceDensity", value)}
               />
             </div>
 
             <label className="field">
-              <span>Raw generator arguments</span>
+              <span>{t("maps.generate.rawArguments")}</span>
               <input
                 value={form.commandLineArgs}
-                placeholder="Overrides every option above"
+                placeholder={t("maps.generate.overridesEveryOption")}
                 onChange={(e) => set("commandLineArgs", e.target.value)}
               />
             </label>
@@ -299,10 +301,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               void setOptions(form);
             }}
           >
-            Save settings
+            {t("maps.generate.saveSettings")}
           </Button>
           <Button type="submit" variant="primary" disabled={busy}>
-            {busy ? "Working…" : "Generate"}
+            {t(busy ? "maps.generate.working" : "maps.generate.generate")}
           </Button>
         </div>
       </form>
@@ -325,11 +327,12 @@ function DensitySlider({
   value: number | null;
   onChange: (value: number | null) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="density-slider">
       <div className="density-slider-head">
         <span>{label}</span>
-        <span className="muted">{value === null ? "Auto" : value}</span>
+        <span className="muted">{value === null ? t("maps.generate.auto") : value}</span>
       </div>
       <input
         type="range"

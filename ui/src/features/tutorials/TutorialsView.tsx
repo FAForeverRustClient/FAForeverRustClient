@@ -15,6 +15,7 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import "./tutorials.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const load = () => ipc.send({ kind: "Tutorials", command: { type: "load" } });
 const select = (tutorialId: number) =>
@@ -23,6 +24,7 @@ const launch = (tutorialId: number) =>
   ipc.send({ kind: "Tutorials", command: { type: "launch", payload: { tutorialId } } });
 
 export function TutorialsView() {
+  const { t } = useTranslation();
   const state = useAppStore((store) => store.state.tutorials);
 
   useEffect(() => {
@@ -93,7 +95,7 @@ export function TutorialsView() {
 
       {total > 0 && (
         <div className="tutorials-body">
-          <nav className="surface-panel tutorials-list" aria-label="Tutorials">
+          <nav className="surface-panel tutorials-list" aria-label={t("tutorials.tutorials")}>
             {groups.map((group) => (
               <div className="tutorials-group" key={group.category?.id ?? "other"}>
                 <h3 className="tutorials-group-name">
@@ -165,21 +167,22 @@ function tutorialKind(tutorial: Tutorial): string {
  * could not do rather than what the entry is.
  */
 function TutorialRowMark({ tutorial }: { tutorial: Tutorial }) {
+  const { t } = useTranslation();
   if (isPlayable(tutorial)) {
     return (
-      <span className="tutorial-row-mark is-playable" title="Playable lesson">
+      <span className="tutorial-row-mark is-playable" title={t("tutorials.playableLesson")}>
         <Icon name="play" size={13} />
       </span>
     );
   }
   if (isLink(tutorial)) {
     return (
-      <span className="tutorial-row-mark" title="Opens in your browser">
+      <span className="tutorial-row-mark" title={t("tutorials.opensBrowser")}>
         <Icon name="external" size={13} />
       </span>
     );
   }
-  return <span className="tutorial-row-mark is-empty" title="Not available yet" aria-hidden />;
+  return <span className="tutorial-row-mark is-empty" title={t("tutorials.notAvailableYet")} aria-hidden />;
 }
 
 function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; categoryName: string }) {

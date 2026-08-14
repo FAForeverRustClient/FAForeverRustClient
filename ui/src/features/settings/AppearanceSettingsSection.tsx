@@ -3,22 +3,24 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { ThemePicker } from "./ThemePicker";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (preferences: AppearancePreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setAppearance", payload: { preferences } } });
 
 export function AppearanceSettingsSection() {
+  const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.appearance);
 
   return (
     <>
       <div className="setting-block">
-        <span className="setting-label">Theme</span>
-        <span className="muted">Choose a built-in color system. Changes apply immediately.</span>
+        <span className="setting-label">{t("settings.appearance.theme")}</span>
+        <span className="muted">{t("settings.appearance.themeHint")}</span>
         <ThemePicker />
       </div>
-      <SettingRow label="Interface density" hint="Comfortable adds space; compact shows more at once.">
-        <div className="settings-segmented surface" role="group" aria-label="Interface density">
+      <SettingRow label={t("settings.appearance.interfaceDensity")} hint={t("settings.appearance.interfaceDensityHint")}>
+        <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceDensity")}>
           {(["compact", "comfortable"] as UiDensity[]).map((density) => (
             <button
               type="button"
@@ -27,16 +29,16 @@ export function AppearanceSettingsSection() {
               aria-pressed={preferences.density === density}
               onClick={() => void save({ ...preferences, density })}
             >
-              {density === "compact" ? "Compact" : "Comfortable"}
+              {t(density === "compact" ? "settings.appearance.compact" : "settings.appearance.comfortable")}
             </button>
           ))}
         </div>
       </SettingRow>
-      <SettingRow label="Reduce motion" hint="Minimize non-essential animation and transition effects.">
+      <SettingRow label={t("settings.appearance.reduceMotion")} hint={t("settings.appearance.reduceMotionHint")}>
         <SettingsSwitch
           checked={preferences.reduceMotion}
           onChange={(reduceMotion) => void save({ ...preferences, reduceMotion })}
-          label="Reduce motion"
+          label={t("settings.appearance.reduceMotion")}
         />
       </SettingRow>
     </>

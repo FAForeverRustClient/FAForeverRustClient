@@ -1,7 +1,9 @@
 import type { PlayerLobbyRating, PlayerProfile } from "../../ipc/bindings";
+import { formatNumber, t } from "../../i18n";
 
+// Only "Global" is prose; the queue names are the community's own shorthand and
+// stay identical in every language.
 const RATING_LABELS: Record<string, string> = {
-  global: "Global",
   ladder_1v1: "1v1",
   tmm_2v2: "2v2",
   tmm_3v3: "3v3",
@@ -11,6 +13,7 @@ const RATING_LABELS: Record<string, string> = {
 const RATING_ORDER = ["global", "ladder_1v1", "tmm_2v2", "tmm_3v3", "tmm_4v4"];
 
 function ratingLabel(technicalName: string): string {
+  if (technicalName === "global") return t("chat.rating.global");
   return RATING_LABELS[technicalName]
     ?? technicalName
       .replace(/_/g, " ")
@@ -39,15 +42,17 @@ function orderedRatings(profile: PlayerProfile): PlayerLobbyRating[] {
 
 /** Multiline native hover summary for a chat-roster identity. */
 export function rosterRatingSummary(displayName: string, profile: PlayerProfile | undefined): string {
-  if (!profile) return `${displayName}\nNo FAF rating data available`;
+  if (!profile) return `${displayName}\n${t("chat.rating.none")}`;
   const ratings = orderedRatings(profile);
-  if (ratings.length === 0) return `${displayName}\nUnrated`;
+  if (ratings.length === 0) return `${displayName}\n${t("chat.rating.unrated")}`;
 
   return [
-    `${displayName}: ratings`,
+    t("chat.rating.heading", { name: displayName }),
     ...ratings.map((rating) => {
-      const games = rating.gamesPlayed > 0 ? ` · ${rating.gamesPlayed.toLocaleString("en-US")} games` : "";
-      return `${ratingLabel(rating.leaderboard)}: ${rating.rating.toLocaleString("en-US")}${games}`;
+      const games = rating.gamesPlayed > 0
+        ? ` · ${t("chat.rating.games", { count: formatNumber(rating.gamesPlayed) })}`
+        : "";
+      return `${ratingLabel(rating.leaderboard)}: ${formatNumber(rating.rating)}${games}`;
     }),
   ].join("\n");
 }

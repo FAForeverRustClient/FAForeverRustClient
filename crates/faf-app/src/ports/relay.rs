@@ -1,4 +1,4 @@
-//! GPGNet relay port — the local TCP server the ICE adapter connects to.
+//! GPGNet relay port: the local TCP server the ICE adapter connects to.
 //!
 //! The adapter connects to this server (`--gpgnet-client-port`) and forwards the
 //! game's GPGNet messages here; we in turn relay them to the lobby, and relay the
@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 
 /// The live relay's endpoints, handed to the launcher.
 pub struct RelayChannels {
-    /// Port the server is listening on — passed to the adapter as its GPGNet
+    /// Port the server is listening on, passed to the adapter as its GPGNet
     /// client port.
     pub port: u16,
     /// Messages decoded from the adapter (to be relayed to the lobby).

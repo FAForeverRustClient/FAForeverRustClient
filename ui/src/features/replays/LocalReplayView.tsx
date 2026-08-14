@@ -27,6 +27,8 @@ import {
 } from "./localReplayQuery";
 import "./local-replays.css";
 import "./online-replays.css";
+import { t, type MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const LOCAL_WATCHED_STORAGE_KEY = "faf-watched-local-replays";
 
@@ -54,13 +56,15 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const LOCAL_STATUS_LABELS: Record<LocalReplay["status"], MessageKey> = {
+  complete: "replays.local.status.complete",
+  incomplete: "replays.local.status.incomplete",
+  legacy: "replays.local.status.legacy",
+  broken: "replays.local.status.broken",
+};
+
 function localStatusLabel(status: LocalReplay["status"]): string {
-  switch (status) {
-    case "complete": return "Complete";
-    case "incomplete": return "Incomplete metadata";
-    case "legacy": return "Legacy replay";
-    case "broken": return "Parse error";
-  }
+  return t(LOCAL_STATUS_LABELS[status]);
 }
 
 function localStatusTone(status: LocalReplay["status"]): "ok" | "warn" | "error" {
@@ -90,9 +94,9 @@ function localReplayCard(replay: LocalReplay, vault: VaultMap[]): ReplayCardData
   const presentation = replay.map ? mapPresentation(vault, replay.map) : null;
   const timestamp = localReplayTimestamp(replay);
   return {
-    idLabel: replay.uid === null ? "Replay ID N/A" : `#${replay.uid}`,
+    idLabel: replay.uid === null ? t("replays.local.noReplayId") : `#${replay.uid}`,
     title: replay.title || replay.fileName,
-    map: presentation?.displayName || replay.map || "Map unavailable",
+    map: presentation?.displayName || replay.map || t("replays.local.mapUnavailable"),
     mapThumbnailUrl: presentation?.thumbnailUrl || "",
     modName: replay.modName || "faf",
     startTime: timestamp > 0 ? new Date(timestamp).toISOString() : "",
@@ -107,6 +111,7 @@ function localReplayCard(replay: LocalReplay, vault: VaultMap[]): ReplayCardData
 }
 
 export function LocalReplayView({ busy }: { busy: boolean }) {
+  const { t } = useTranslation();
   const local = useAppStore((s) => s.state.replays.local);
   const localStatus = useAppStore((s) => s.state.replays.localStatus);
   const mapVault = useAppStore((s) => s.state.maps.vault);
@@ -127,7 +132,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     loadStoredSet(LOCAL_WATCHED_STORAGE_KEY, (value): value is string => typeof value === "string"),
   );
   const [pendingDelete, setPendingDelete] = useState<LocalReplay | null>(null);
-  const note = loadStatusNote(localStatus, "Scanning local replays…", "Could not update replay library");
+  const note = loadStatusNote(localStatus, t("replays.local.scanning"), t("replays.local.scanFailed"));
 
   useEffect(() => {
     if (useAppStore.getState().state.replays.localStatus.type === "idle") {
@@ -152,16 +157,16 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   );
 
   const grouped = useMemo(() => {
-    if (query.sortBy !== "date") return [{ label: "Results", replays: filtered }];
+    if (query.sortBy !== "date") return [{ label: t("replays.list.results"), replays: filtered }];
     const groups: Array<{ label: string; replays: LocalReplay[] }> = [];
     for (const replay of filtered) {
-      const label = formatShortDate(localReplayTimestamp(replay), "Unknown date");
+      const label = formatShortDate(localReplayTimestamp(replay), t("replays.list.unknownDate"));
       const current = groups[groups.length - 1];
       if (current?.label === label) current.replays.push(replay);
       else groups.push({ label, replays: [replay] });
     }
     return groups;
-  }, [filtered, query.sortBy]);
+  }, [filtered, query.sortBy, t]);
 
   const markWatchedAndOpen = (replay: LocalReplay) => {
     const key = localReplayKey(replay);
@@ -186,15 +191,19 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
         onOpenFile={pickReplayFile}
       />
       <div className="online-replay-view-bar">
-        <span className="muted">{filtered.length} of {local.length} {local.length === 1 ? "replay" : "replays"}</span>
+        <span className="muted">{t("replays.local.countOfTotal", {
+          shown: filtered.length,
+          total: local.length,
+          count: local.length,
+        })}</span>
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
       {note && <p className="muted">{note}</p>}
       {localStatus.type === "ready" && filtered.length === 0 ? (
         <div className="live-replay-empty surface-panel">
           <Icon name={local.length === 0 ? "replays" : "search"} size={22} />
-          <h3>{local.length === 0 ? "No local replays found" : "No local replays match"}</h3>
-          <p>{local.length === 0 ? "Recorded and downloaded replay files will appear here." : "Adjust the search or status filter."}</p>
+          <h3>{t(local.length === 0 ? "replays.local.noneFound" : "replays.local.noneMatch")}</h3>
+          <p>{t(local.length === 0 ? "replays.local.noneFoundHint" : "replays.local.noneMatchHint")}</p>
         </div>
       ) : filtered.length > 0 && viewMode === "tiles" ? (
         <div className="replay-grid">
@@ -218,13 +227,13 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
               const replayTimestamp = localReplayTimestamp(replay);
               const mapName = presentation?.displayName || replay.map || replay.fileName;
               const replayDetails = [
-                replay.recorder || "Recorder N/A",
+                replay.recorder || t("replays.local.noRecorder"),
                 formatFileSize(replay.fileSizeBytes),
-                replay.uid === null ? "Replay ID N/A" : `#${replay.uid}`,
+                replay.uid === null ? t("replays.local.noReplayId") : `#${replay.uid}`,
               ].join(" · ");
               const simModLabel = replay.simMods.length === 0
-                ? "No simulation mods"
-                : `${replay.simMods.length} simulation ${replay.simMods.length === 1 ? "mod" : "mods"}`;
+                ? t("replays.local.noSimMods")
+                : t("replays.local.simModCount", { count: replay.simMods.length });
               return {
                 key: replay.path,
                 mapName,
@@ -245,7 +254,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 },
                 duration: {
                   primary: "N/A",
-                  secondary: "Not recorded locally",
+                  secondary: t("replays.local.notRecorded"),
                 },
                 replay: {
                   primary: localStatusLabel(replay.status),
@@ -256,24 +265,24 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 onActivate: replay.watchable && !busy ? () => markWatchedAndOpen(replay) : undefined,
                 iconAction: {
                   icon: "close",
-                  ariaLabel: `Delete ${replay.title || replay.fileName}`,
-                  title: "Delete replay",
+                  ariaLabel: t("replays.local.deleteAria", { name: replay.title || replay.fileName }),
+                  title: t("replays.local.delete"),
                   onClick: () => setPendingDelete(replay),
                 },
               };
             }),
           }))}
-          footer={<><span>Showing {filtered.length} of {local.length} replays</span><span>Double-click to watch</span></>}
+          footer={<><span>{t("replays.local.footerCount", { shown: filtered.length, total: local.length })}</span><span>{t("replays.local.doubleClickHint")}</span></>}
         />
       )}
       {pendingDelete && (
         <Modal onClose={() => setPendingDelete(null)}>
           <div className="local-delete-dialog">
-            <h2>Delete local replay?</h2>
-            <p>“{pendingDelete.title || pendingDelete.fileName}” will be permanently removed from the shared FAF replay folder.</p>
+            <h2>{t("replays.local.confirmDelete")}</h2>
+            <p>{t("replays.local.confirmDeleteBody", { name: pendingDelete.title || pendingDelete.fileName })}</p>
             <div>
-              <Button onClick={() => setPendingDelete(null)}>Cancel</Button>
-              <Button className="local-delete-confirm" onClick={() => { deleteLocal(pendingDelete.path); setPendingDelete(null); }}>Delete replay</Button>
+              <Button onClick={() => setPendingDelete(null)}>{t("replays.local.cancel")}</Button>
+              <Button className="local-delete-confirm" onClick={() => { deleteLocal(pendingDelete.path); setPendingDelete(null); }}>{t("replays.local.delete")}</Button>
             </div>
           </div>
         </Modal>

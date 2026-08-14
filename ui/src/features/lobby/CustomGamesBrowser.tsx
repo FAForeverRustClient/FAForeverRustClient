@@ -11,6 +11,8 @@ import { flagSrc } from "../../shared/countryFlags";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
+import { formatNumber, t } from "../../i18n";
+import { useLocale } from "../../i18n/useTranslation";
 
 export type GameViewMode = "list" | "tiles";
 
@@ -39,9 +41,9 @@ function playingCount(game: Game): number {
 }
 
 function formatAge(hostedAt: string | null, now: number): string {
-  if (!hostedAt) return "New";
+  if (!hostedAt) return t("lobby.browser.new");
   const hosted = Date.parse(hostedAt);
-  if (!Number.isFinite(hosted)) return "New";
+  if (!Number.isFinite(hosted)) return t("lobby.browser.new");
   return formatRelativeDuration((now - hosted) / 1000);
 }
 
@@ -115,17 +117,17 @@ function GameLineup({
           {mirrored && <span className="game-lineup-versus" aria-hidden>VS</span>}
         </div>
       ) : (
-        <span className="game-lineup-empty">The lobby has not supplied a lineup yet.</span>
+        <span className="game-lineup-empty">{t("lobby.browser.noLineup")}</span>
       )}
       {observers.length > 0 && (
         <section className="game-lineup-observers">
-          <b>Observers</b>
+          <b>{t("lobby.browser.observers")}</b>
           <span>{observers.join(", ")}</span>
         </section>
       )}
       {mods.length > 0 && (
         <section className="game-lineup-mods">
-          <b>Simulation mods</b>
+          <b>{t("lobby.browser.simMods")}</b>
           <span>{mods.join(", ")}</span>
         </section>
       )}
@@ -144,7 +146,7 @@ function displayTeamName(team: string, soleTeam: boolean): string {
   if (!Number.isInteger(numeric)) return `Team ${team}`;
   // Team 1 is the server's "no team" bucket. When it holds everyone the game is
   // a free-for-all, which says more than "No team" did.
-  if (numeric === 1) return soleTeam ? "Free for all" : "Unassigned";
+  if (numeric === 1) return soleTeam ? t("lobby.browser.freeForAll") : t("lobby.browser.unassigned");
   return `Team ${numeric - 1}`;
 }
 
@@ -190,12 +192,12 @@ function TeamBalance({
       <span
         className="game-lineup-balance-bar"
         role="img"
-        aria-label={even ? "The teams are evenly matched" : `${favoured} is ahead by ${delta} rating`}
+        aria-label={even ? t("lobby.browser.evenAria") : t("lobby.browser.aheadAria", { player: favoured, delta })}
       >
         <span style={{ width: `${leftShare}%` }} />
       </span>
       <span className="game-lineup-balance-note">
-        {even ? "Evenly matched" : `${favoured} +${delta.toLocaleString("en-US")}`}
+        {even ? t("lobby.browser.evenlyMatched") : `${favoured} +${formatNumber(delta)}`}
       </span>
     </div>
   );
@@ -225,7 +227,7 @@ function GameLineupTeam({
         {total === null ? (
           <span>{players.length} player{players.length === 1 ? "" : "s"}</span>
         ) : (
-          <span title="Combined displayed rating">
+          <span title={t("lobby.browser.combinedRating")}>
             <strong>{total.toLocaleString("en-US")}</strong> rating
           </span>
         )}
@@ -312,7 +314,7 @@ function GameTile({
         />
         <span className="game-tile-map-name">{presentation.displayName}</span>
         {game.passwordProtected && (
-          <span className="game-tile-private" role="img" aria-label="Private game" title="Private game">
+          <span className="game-tile-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
             <Icon name="lock" size={12} />
           </span>
         )}
@@ -336,10 +338,10 @@ function GameTile({
           <i>{game.modName || "faf"}</i>
           {simModCount > 0 && <i className="modded">{simModCount} SIM mod{simModCount === 1 ? "" : "s"}</i>}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <i>{game.ratingMin ?? "Any"}–{game.ratingMax ?? "Any"}</i>
+            <i>{game.ratingMin ?? t("lobby.browser.any")}–{game.ratingMax ?? t("lobby.browser.any")}</i>
           )}
         </span>
-        <span className="game-tile-host"><small>Host:</small><b>{game.host}</b></span>
+        <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b>{game.host}</b></span>
       </button>
       {tooltipPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,
@@ -417,14 +419,14 @@ function GamePreviewDialog({
   const players = playingCount(game);
   const simMods = Object.values(game.simMods);
   const ratingRange = game.ratingMin !== null || game.ratingMax !== null
-    ? `${game.ratingMin ?? "Any"} to ${game.ratingMax ?? "Any"}`
-    : "Open";
+    ? t("lobby.browser.ratingBetween", { min: game.ratingMin ?? t("lobby.browser.any"), max: game.ratingMax ?? t("lobby.browser.any") })
+    : t("lobby.browser.openRange");
 
   return (
     <div className="game-preview-dialog">
       <header className="game-preview-dialog-header">
         <div>
-          <span className="game-preview-dialog-kicker">Map preview</span>
+          <span className="game-preview-dialog-kicker">{t("lobby.browser.mapPreview")}</span>
           <h2>{presentation.displayName}</h2>
           <p>{game.title}</p>
         </div>
@@ -440,35 +442,35 @@ function GamePreviewDialog({
             large
           />
           {game.passwordProtected && (
-            <span className="game-preview-dialog-private" role="img" aria-label="Private game" title="Private game">
+            <span className="game-preview-dialog-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
               <Icon name="lock" size={13} />
-              Private
+              {t("lobby.browser.private")}
             </span>
           )}
         </div>
-        <section className="game-preview-dialog-info" aria-label="Game details">
+        <section className="game-preview-dialog-info" aria-label={t("lobby.browser.gameDetails")}>
           <div className="game-preview-dialog-host">
-            <span>Hosted by</span>
+            <span>{t("lobby.browser.hostedBy")}</span>
             <strong>{game.host}</strong>
           </div>
           <dl className="game-preview-dialog-summary">
-            <div><dt>Players</dt><dd>{players} / {game.maxPlayers}</dd></div>
-            <div><dt>Average rating</dt><dd>{game.averageRating || "Unrated"}</dd></div>
-            <div><dt>Rating range</dt><dd>{ratingRange}</dd></div>
-            <div><dt>Visibility</dt><dd>{game.visibility || "Public"}</dd></div>
-            {vaultMap && <div><dt>Map size</dt><dd>{sizeLabel(vaultMap)}</dd></div>}
+            <div><dt>{t("lobby.browser.players")}</dt><dd>{players} / {game.maxPlayers}</dd></div>
+            <div><dt>{t("lobby.browser.averageRating")}</dt><dd>{game.averageRating || t("lobby.browser.unrated")}</dd></div>
+            <div><dt>{t("lobby.browser.ratingRange")}</dt><dd>{ratingRange}</dd></div>
+            <div><dt>{t("lobby.browser.visibility")}</dt><dd>{game.visibility || t("lobby.browser.public")}</dd></div>
+            {vaultMap && <div><dt>{t("lobby.browser.mapSize")}</dt><dd>{sizeLabel(vaultMap)}</dd></div>}
           </dl>
           {simMods.length > 0 && (
             <div className="game-preview-dialog-section">
-              <span>Simulation mods</span>
+              <span>{t("lobby.browser.simMods")}</span>
               <div>{simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}</div>
             </div>
           )}
         </section>
       </div>
       <footer className="game-preview-dialog-actions play-dialog-actions">
-        <Button onClick={onClose}>Close</Button>
-        <Button variant="primary" onClick={onJoin}>Join game</Button>
+        <Button onClick={onClose}>{t("lobby.browser.close")}</Button>
+        <Button variant="primary" onClick={onJoin}>{t("lobby.browser.joinGame")}</Button>
       </footer>
     </div>
   );
@@ -483,6 +485,7 @@ export function CustomGamesBrowser({
   onSelect,
   onJoin,
 }: Props) {
+  useLocale();
   const [now, setNow] = useState(() => Date.now());
   const [previewGame, setPreviewGame] = useState<Game | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -520,15 +523,15 @@ export function CustomGamesBrowser({
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
       {viewMode === "list" && (
         <div className="game-browser-head">
-          <span>Game</span><span>Map</span><span>Players</span><span>Rating</span>
+          <span>{t("lobby.browser.column.game")}</span><span>{t("lobby.browser.column.map")}</span><span>{t("lobby.browser.column.players")}</span><span>{t("lobby.browser.column.rating")}</span>
         </div>
       )}
       <div className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}>
         {games.length === 0 ? (
           <div className="play-empty-state">
             <Icon name="search" size={22} />
-            <h3>No games match</h3>
-            <p>Adjust the search or game filters.</p>
+            <h3>{t("lobby.browser.noMatch")}</h3>
+            <p>{t("lobby.browser.noMatchHint")}</p>
           </div>
         ) : viewMode === "tiles" ? (
           games.map((game) => (
@@ -560,7 +563,7 @@ export function CustomGamesBrowser({
       </div>
       <footer className="game-browser-footer">
         <span>Showing {games.length} of {totalGames} games</span>
-        <span>{viewMode === "tiles" ? "Click map art to preview · double-click details to join" : "Double-click a game to join"}</span>
+        <span>{t(viewMode === "tiles" ? "lobby.browser.tileHint" : "lobby.browser.listHint")}</span>
       </footer>
 
       {previewGame && (
@@ -581,8 +584,8 @@ export function CustomGamesBrowser({
           onPointerDown={(event) => event.stopPropagation()}
         >
           <strong>{contextMenu.game.title}</strong>
-          <button onClick={() => { onJoin(contextMenu.game); setContextMenu(null); }}>Join game</button>
-          <button onClick={() => { setPreviewGame(contextMenu.game); setContextMenu(null); }}>Preview map</button>
+          <button onClick={() => { onJoin(contextMenu.game); setContextMenu(null); }}>{t("lobby.browser.joinGame")}</button>
+          <button onClick={() => { setPreviewGame(contextMenu.game); setContextMenu(null); }}>{t("lobby.browser.previewMap")}</button>
         </div>
       )}
     </section>

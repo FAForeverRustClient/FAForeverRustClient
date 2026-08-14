@@ -28,6 +28,7 @@ import { flagSrc } from "../../shared/countryFlags";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { rosterRatingSummary } from "./ratingSummary";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface Props {
   users: ChatUser[];
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export const UserList = memo(function UserList({ users, self, social, openGames, liveGames, mapVault, preferences, onOpenConversation, onContextMenu }: Props) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState("");
   const presences = useMemo(
     () => gamePresenceIndex(openGames, liveGames),
@@ -87,7 +89,7 @@ export const UserList = memo(function UserList({ users, self, social, openGames,
           return (
             <section key={category} className="chat-roster-group">
               <h3 className="chat-roster-heading">
-                {USER_CATEGORY_LABELS[category]}
+                {t(USER_CATEGORY_LABELS[category])}
                 <span className="chat-roster-count">{bucket.length}</span>
               </h3>
               <ul>

@@ -7,30 +7,35 @@ import { useAppStore } from "../../store/store";
 import { TAB_ORDER, TABS } from "./tabs";
 import type { Tab } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
+import { useTranslation } from "../../i18n/useTranslation";
 import "./nav.css";
 
 export function TabBar() {
   const active = useAppStore((s) => s.state.nav.activeTab);
+  const { t } = useTranslation();
 
   const select = (tab: Tab) =>
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab } } });
 
-  const renderTab = (id: Tab) => (
-    <button
-      key={id}
-      className={id === active ? "tab tab-active" : "tab"}
-      onClick={() => select(id)}
-      aria-current={id === active ? "page" : undefined}
-      aria-label={TABS[id].label}
-      title={TABS[id].label}
-    >
-      <Icon name={TABS[id].icon} size={17} />
-      <span>{TABS[id].label}</span>
-    </button>
-  );
+  const renderTab = (id: Tab) => {
+    const label = t(TABS[id].label);
+    return (
+      <button
+        key={id}
+        className={id === active ? "tab tab-active" : "tab"}
+        onClick={() => select(id)}
+        aria-current={id === active ? "page" : undefined}
+        aria-label={label}
+        title={label}
+      >
+        <Icon name={TABS[id].icon} size={17} />
+        <span>{label}</span>
+      </button>
+    );
+  };
 
   return (
-    <nav className="tabbar" aria-label="Main navigation">
+    <nav className="tabbar" aria-label={t("nav.main")}>
       <div className="nav-group">
         {TAB_ORDER.filter((id) => id !== "contribution" && id !== "settings").map(renderTab)}
       </div>

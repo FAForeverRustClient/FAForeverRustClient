@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import type { LeaderboardEntry } from "../../ipc/bindings";
+import type { MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 export type LeaderboardColumn =
   | "rank"
@@ -14,18 +16,18 @@ export type LeaderboardColumn =
   | "winRate"
   | "updated";
 
-const LABELS: Record<LeaderboardColumn, string> = {
-  rank: "Rank",
-  player: "Player",
-  division: "Division",
-  score: "Score",
-  rating: "Rating",
-  mean: "Mean",
-  deviation: "Deviation",
-  games: "Games",
-  wins: "Wins",
-  winRate: "Win rate",
-  updated: "Updated",
+const LABELS: Record<LeaderboardColumn, MessageKey> = {
+  rank: "leaderboard.column.rank",
+  player: "leaderboard.column.player",
+  division: "leaderboard.column.division",
+  score: "leaderboard.column.score",
+  rating: "leaderboard.column.rating",
+  mean: "leaderboard.column.mean",
+  deviation: "leaderboard.column.deviation",
+  games: "leaderboard.column.games",
+  wins: "leaderboard.column.wins",
+  winRate: "leaderboard.column.winRate",
+  updated: "leaderboard.column.updated",
 };
 
 function value(entry: LeaderboardEntry, column: LeaderboardColumn): number | string | null {
@@ -103,8 +105,9 @@ export function LeaderboardTable({
   columns,
   selectedPlayerId,
   onSelect,
-  emptyMessage = "No players match the current filters.",
+  emptyMessage,
 }: LeaderboardTableProps) {
+  const { t } = useTranslation();
   const [sort, setSort] = useState<{ column: LeaderboardColumn; descending: boolean }>({
     column: "rank",
     descending: false,
@@ -128,7 +131,7 @@ export function LeaderboardTable({
             {columns.map((column) => (
               <th key={column} aria-sort={sort.column === column ? (sort.descending ? "descending" : "ascending") : "none"}>
                 <button type="button" className="leaderboard-sort" onClick={() => chooseSort(column)}>
-                  {LABELS[column]}
+                  {t(LABELS[column])}
                   {sort.column === column && <span aria-hidden="true">{sort.descending ? "↓" : "↑"}</span>}
                 </button>
               </th>

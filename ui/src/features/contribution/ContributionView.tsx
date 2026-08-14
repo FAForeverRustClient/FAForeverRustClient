@@ -1,6 +1,7 @@
 import { Icon } from "../../design-system/Icon";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import "./contribution.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const REPOSITORIES = [
   {
@@ -41,6 +42,7 @@ const REPOSITORIES = [
 ] as const;
 
 export function ContributionView() {
+  const { t } = useTranslation();
   return (
     <div className="contribution-view">
       <section className="contribution-intro">
@@ -48,13 +50,13 @@ export function ContributionView() {
           <Icon name="github" size={24} />
         </div>
         <div className="contribution-intro-copy">
-          <h2 className="view-title">Contribute</h2>
-          <p>FAF is open source. Contributions, fixes, and ideas are welcome.</p>
+          <h2 className="view-title">{t("contribution.title")}</h2>
+          <p>{t("contribution.subtitle")}</p>
         </div>
       </section>
 
       <section className="contribution-section" aria-labelledby="contribution-repositories">
-        <h3 id="contribution-repositories" className="contribution-section-title">GitHub repositories</h3>
+        <h3 id="contribution-repositories" className="contribution-section-title">{t("contribution.repositories")}</h3>
         <div className="contribution-links">
           {REPOSITORIES.map((repository) => (
             <a
