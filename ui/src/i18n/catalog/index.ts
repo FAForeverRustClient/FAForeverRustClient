@@ -15,6 +15,7 @@ import { en } from "./en";
 import { de } from "./de";
 import { fr } from "./fr";
 import { ru } from "./ru";
+import { es } from "./es";
 
 export type Catalogue = Partial<Record<MessageKey, Message>>;
 
@@ -23,6 +24,7 @@ export const CATALOGUES = {
   de,
   fr,
   ru,
+  es,
 } as const satisfies Record<string, Catalogue>;
 
 export type CatalogueCode = keyof typeof CATALOGUES;
