@@ -38,10 +38,12 @@ function resolve(key: MessageKey, locale: Locale): Message {
 function selectPlural(message: PluralMessage, locale: Locale, values?: MessageValues): string {
   const count = typeof values?.count === "number" ? values.count : 0;
   const category = new Intl.PluralRules(intlTag(locale)).select(count);
-  // Only `one` and `other` are authored; every other CLDR category (`few`,
-  // `many`, ...) maps onto `other`, which is correct for English and German and
-  // degrades safely for any language added later.
-  return category === "one" ? message.one : message.other;
+  // Ask `Intl` which CLDR category applies, then use the authored form for it.
+  // Languages differ in which categories they need at all: English and French
+  // only ever produce `one` and `other`, while Russian also produces `few` and
+  // `many`. Falling back to `other` for an unauthored category keeps a
+  // half-written catalogue readable instead of empty.
+  return message[category] ?? message.other;
 }
 
 /**
