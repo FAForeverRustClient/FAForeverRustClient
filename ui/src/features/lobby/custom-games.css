@@ -1,9 +1,27 @@
-/* Custom-game list, tile and detail presentation. */
 .custom-games-layout {
   display: grid;
   flex: 1;
   grid-template-columns: minmax(520px, 1fr) 300px;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
+  min-height: 0;
+}
+
+.custom-games-layout > .play-toolbar {
+  grid-column: 1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+
+.custom-games-layout > .game-browser-panel {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+}
+
+.custom-games-layout > .game-detail-panel {
+  grid-column: 2;
+  grid-row: 2;
   min-height: 0;
 }
 
@@ -959,7 +977,15 @@
   }
 
   .custom-games-layout {
+    grid-template-rows: auto auto auto;
     height: auto;
+  }
+
+  .custom-games-layout > .play-toolbar,
+  .custom-games-layout > .game-browser-panel,
+  .custom-games-layout > .game-detail-panel {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .game-browser-panel,

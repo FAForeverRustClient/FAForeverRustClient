@@ -15,6 +15,7 @@ import {
 } from "../../design-system/SearchPanel";
 import { openUpload } from "../uploads/UploadDialog";
 import { Modal } from "../../design-system/Modal";
+import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { loadStatusNote } from "../../shared/loadStatusNote";
@@ -31,8 +32,6 @@ import {
 } from "./MapVaultComponents";
 import { GenerateMapModal, GeneratorProgress } from "./GenerateMapModal";
 import "./maps.css";
-import type { MessageKey } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 type SubView = "vault" | "installed";
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
@@ -59,16 +58,20 @@ const uninstallMap = (folderName: string) =>
   });
 
 function VaultView({ busy }: { busy: boolean }) {
-  const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const vaultStatus = useAppStore((state) => state.state.maps.vaultStatus);
   const installed = useAppStore((state) => state.state.maps.installed);
   const installedStatus = useAppStore((state) => state.state.maps.installedStatus);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const browsing = useAppStore((state) => state.state.settings.browsing);
+  const preset = (browsing.mapVaultPreset as VaultPreset) || "recommended";
   const [search, setSearch] = useState("");
-  const [preset, setPreset] = useState<VaultPreset>("recommended");
-  const [sort, setSort] = useState<VaultSort>("rating");
+  const [sort, setSort] = useState<VaultSort>(() => {
+    if (preset === "newest") return "newest";
+    if (preset === "played") return "played";
+    if (preset === "all") return "name";
+    return "rating";
+  });
   const [ranked, setRanked] = useState<RankedFilter>("all");
   const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
   const [author, setAuthor] = useState("");
@@ -85,7 +88,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
   const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
-  const note = loadStatusNote(vaultStatus, t("maps.view.loadingVault"), t("maps.view.vaultFailed"));
+  const note = loadStatusNote(vaultStatus, "Loading map vault…", "Could not load map vault");
   const installedFolders = useMemo(
     () => new Set(installed.map((map) => map.folderName.toLocaleLowerCase())),
     [installed],
@@ -111,18 +114,29 @@ function VaultView({ busy }: { busy: boolean }) {
     if (maps.installedStatus.type === "idle") loadInstalled();
   }, []);
 
+  useEffect(() => {
+    if (preset === "newest") setSort("newest");
+    else if (preset === "played") setSort("played");
+    else if (preset === "all") setSort("name");
+    else if (preset === "rating" || preset === "recommended" || preset === "favorites") setSort("rating");
+  }, [preset]);
+
   useEffect(() => setPage(1), [
     search, preset, sort, ranked, installFilter, author, createdAfter, createdBefore, browsing.favoriteMaps,
     minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height,
   ]);
 
   const choosePreset = (next: VaultPreset) => {
-    setPreset(next);
-    if (next === "rating" || next === "recommended") setSort("rating");
+    if (next === "rating" || next === "recommended" || next === "favorites") setSort("rating");
     if (next === "newest") setSort("newest");
     if (next === "played") setSort("played");
-    if (next === "favorites") setSort("rating");
     if (next === "all") setSort("name");
+    if (browsing.mapVaultPreset !== next) {
+      ipc.send({
+        kind: "Settings",
+        command: { type: "setBrowsing", payload: { preferences: { ...browsing, mapVaultPreset: next } } },
+      });
+    }
   };
 
   const filtered = useMemo(() => {
@@ -183,8 +197,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const clearSearch = () => {
     setSearch("");
-    setPreset("recommended");
-    setSort("rating");
+    choosePreset("recommended");
     resetFilters();
   };
 
@@ -196,12 +209,12 @@ function VaultView({ busy }: { busy: boolean }) {
         secondary={(
           <>
             {([
-              ["recommended", t("maps.view.preset.recommended")],
-              ["favorites", t("maps.view.preset.favorites")],
-              ["rating", t("maps.view.preset.rating")],
-              ["newest", t("maps.view.preset.newest")],
-              ["played", t("maps.view.preset.played")],
-              ["all", t("maps.view.preset.all")],
+              ["recommended", "Featured"],
+              ["favorites", "Favorites"],
+              ["rating", "Highest rated"],
+              ["newest", "Most recent"],
+              ["played", "Most played"],
+              ["all", "All maps"],
             ] as Array<[VaultPreset, string]>).map(([key, label]) => (
             <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)} title={key === "favorites" ? `Show ${favoriteFolders.size} favorited maps` : undefined}>
               {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />} {label}
@@ -209,30 +222,30 @@ function VaultView({ busy }: { busy: boolean }) {
             ))}
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
-            <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
-            <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("maps.view.refresh")}</Button>
+            <Button onClick={clearSearch}>Clear</Button>
+            <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> Refresh</Button>
           </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">
             <div className="search-panel-advanced-grid">
-              <SearchField label={t("maps.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("maps.view.any")}</option><option value="installed">{t("maps.view.installed")}</option><option value="available">{t("maps.view.notInstalled")}</option></select></SearchField>
-              <SearchField label={t("maps.view.uploadedAfter")}><input className="search-panel-control" type="date" value={createdAfter} onChange={(event) => setCreatedAfter(event.target.value)} /></SearchField>
-              <SearchField label={t("maps.view.uploadedBefore")}><input className="search-panel-control" type="date" value={createdBefore} onChange={(event) => setCreatedBefore(event.target.value)} /></SearchField>
-              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}</select></SearchField>
-              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}</select></SearchField>
+              <SearchField label="Installation"><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">Any</option><option value="installed">Installed</option><option value="available">Not installed</option></select></SearchField>
+              <SearchField label="Uploaded after"><input className="search-panel-control" type="date" value={createdAfter} onChange={(event) => setCreatedAfter(event.target.value)} /></SearchField>
+              <SearchField label="Uploaded before"><input className="search-panel-control" type="date" value={createdBefore} onChange={(event) => setCreatedBefore(event.target.value)} /></SearchField>
+              <SearchField label="Width"><select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}><option value={0}>Any</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}</select></SearchField>
+              <SearchField label="Height"><select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}><option value={0}>Any</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}</select></SearchField>
             </div>
           </div>
         ) : undefined}
       >
-        <SearchField label={t("maps.view.map")} className="search-panel-field-grow map-search-query">
-          <input className="search-panel-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("maps.view.nameDescriptionFolder")} />
+        <SearchField label="Map" className="search-panel-field-grow map-search-query">
+          <input className="search-panel-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, description, or folder" />
         </SearchField>
-        <SearchField label={t("maps.view.author")} className="search-panel-field-grow map-search-author">
-          <input className="search-panel-control" value={author} onChange={(event) => setAuthor(event.target.value)} placeholder={t("maps.view.anyAuthor")} />
+        <SearchField label="Author" className="search-panel-field-grow map-search-author">
+          <input className="search-panel-control" value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="Any author" />
         </SearchField>
         <RangeSlider
-          label={t("maps.view.reviewScore")}
+          label="Review score"
           min={0}
           max={5}
           step={0.5}
@@ -242,26 +255,26 @@ function VaultView({ busy }: { busy: boolean }) {
           onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); }}
         />
         <RangeSlider
-          label={t("maps.view.playerSlots")}
+          label="Player slots"
           min={1}
           max={16}
           low={minimumPlayers}
           high={maximumPlayers}
           onChange={(low, high) => { setMinimumPlayers(low); setMaximumPlayers(high); }}
         />
-        <SearchField label={t("maps.view.ranking")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("maps.view.any")}</option><option value="ranked">{t("maps.view.ranked")}</option><option value="unranked">{t("maps.view.unranked")}</option></select>
+        <SearchField label="Ranking" className="search-panel-field-compact">
+          <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">Any</option><option value="ranked">Ranked</option><option value="unranked">Unranked</option></select>
         </SearchField>
-        <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => { setSort(event.target.value as VaultSort); setPreset("all"); }}><option value="rating">{t("maps.view.preset.rating")}</option><option value="newest">{t("maps.view.preset.newest")}</option><option value="played">{t("maps.view.preset.played")}</option><option value="name">{t("maps.view.sort.name")}</option><option value="size">{t("maps.view.sort.size")}</option></select>
+        <SearchField label="Sort by" className="search-panel-field-compact">
+          <select className="search-panel-control" value={sort} onChange={(event) => { setSort(event.target.value as VaultSort); choosePreset("all"); }}><option value="rating">Highest rated</option><option value="newest">Most recent</option><option value="played">Most played</option><option value="name">Name</option><option value="size">Largest</option></select>
         </SearchField>
         <SearchPanelSubmit />
       </SearchPanel>
 
       {note && <p className="vault-note muted">{note}</p>}
-      {installedStatus.type === "failed" && <p className="vault-note muted">{t("maps.view.detectionUnavailable")}</p>}
+      {installedStatus.type === "failed" && <p className="vault-note muted">Installed-state detection is unavailable.</p>}
       {vaultStatus.type === "ready" && filtered.length === 0 ? (
-        <div className="vault-empty"><Icon name={vault.length === 0 ? "maps" : "search"} size={24} /><h3>{t(vault.length === 0 ? "maps.view.emptyVault" : "maps.view.noMatch")}</h3><p>{t(vault.length === 0 ? "maps.view.emptyVaultHint" : "maps.view.noMatchHint")}</p></div>
+        <div className="vault-empty"><Icon name={vault.length === 0 ? "maps" : "search"} size={24} /><h3>{vault.length === 0 ? "No maps available" : "No maps match"}</h3><p>{vault.length === 0 ? "Refresh the vault when the FAF API is available." : "Try a broader search or reset the filters."}</p></div>
       ) : pageMaps.length > 0 && (
         <div className="vault-layout">
           <section className="vault-browser">
@@ -274,7 +287,11 @@ function VaultView({ busy }: { busy: boolean }) {
                 return <MapCard key={map.folderName} map={map} active={selected?.folderName === map.folderName} installed={isInstalled} busy={isBusy} favorite={favorite} onSelect={() => setSelectedFolder(map.folderName)} onInstall={() => installMap(map.folderName, map.downloadUrl)} onToggleFavorite={() => toggleFavorite(map.folderName)} />;
               })}
             </div>
-            {totalPages > 1 && <div className="vault-pagination"><Button disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>{t("maps.view.previous")}</Button><span>{currentPage} / {totalPages}</span><Button disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>{t("maps.view.next")}</Button></div>}
+            {totalPages > 1 && (
+              <div className="vault-pagination">
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+              </div>
+            )}
           </section>
           {selected && <MapDetailPanel map={selected} installed={mapInstalled(selected, installedFolders)} busy={busy && installStatus.type === "installing" && installStatus.payload.folderName === selected.folderName} favorite={favoriteFolders.has(selected.folderName.toLocaleLowerCase())} onInstall={() => installMap(selected.folderName, selected.downloadUrl)} onUninstall={() => setPendingUninstall(selected)} onPreview={() => setPreviewMap(selected)} onToggleFavorite={() => toggleFavorite(selected.folderName)} />}
         </div>
@@ -287,14 +304,13 @@ function VaultView({ busy }: { busy: boolean }) {
 }
 
 function InstalledView({ busy }: { busy: boolean }) {
-  const { t } = useTranslation();
   const installed = useAppStore((state) => state.state.maps.installed);
   const installedStatus = useAppStore((state) => state.state.maps.installedStatus);
   const vault = useAppStore((state) => state.state.maps.vault);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const [search, setSearch] = useState("");
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMap | null>(null);
-  const note = loadStatusNote(installedStatus, t("maps.view.scanning"), t("maps.view.scanFailed"));
+  const note = loadStatusNote(installedStatus, "Scanning maps folder…", "Could not scan maps folder");
   const vaultByFolder = useMemo(() => new Map(vault.map((map) => [map.folderName.toLocaleLowerCase(), map])), [vault]);
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -313,15 +329,15 @@ function InstalledView({ busy }: { busy: boolean }) {
   return (
     <>
       <div className="vault-toolbar">
-        <label className="search-field vault-search-field"><Icon name="search" size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("maps.view.searchInstalledMaps")} /></label>
-        <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("maps.view.rescan")}</Button>
+        <label className="search-field vault-search-field"><Icon name="search" size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search installed maps" /></label>
+        <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}><Icon name="refresh" size={15} /> Rescan</Button>
       </div>
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "ready" && filtered.length === 0 ? (
-        <div className="vault-empty"><Icon name={installed.length === 0 ? "maps" : "search"} size={24} /><h3>{t(installed.length === 0 ? "maps.view.noneInstalled" : "maps.view.noInstalledMatch")}</h3><p>{t(installed.length === 0 ? "maps.view.noneInstalledHint" : "maps.view.noInstalledMatchHint")}</p></div>
+        <div className="vault-empty"><Icon name={installed.length === 0 ? "maps" : "search"} size={24} /><h3>{installed.length === 0 ? "No user maps installed" : "No installed maps match"}</h3><p>{installed.length === 0 ? "Install a community map from the vault to see it here." : "Try a broader search."}</p></div>
       ) : filtered.length > 0 && (
         <section className="installed-map-library">
-          <div className="vault-results-head"><span>{t("maps.view.installedCount", { count: filtered.length })}</span><span>{t("maps.view.userMapsFolder")}</span></div>
+          <div className="vault-results-head"><span>{filtered.length} installed {filtered.length === 1 ? "map" : "maps"}</span><span>User maps folder</span></div>
           <div className="installed-map-grid">
             {filtered.map((map) => {
               const metadata = vaultByFolder.get(map.folderName.toLocaleLowerCase());
@@ -331,8 +347,8 @@ function InstalledView({ busy }: { busy: boolean }) {
                   {metadata ? <MapPreview map={metadata} /> : <span className="map-vault-thumb map-vault-preview-empty" aria-hidden="true"><Icon name="maps" size={24} /></span>}
                   <span><strong>{metadata?.displayName || map.displayName}</strong><small>{map.folderName}</small>{metadata && <small>{sizeLabel(metadata)} · {metadata.maxPlayers} players</small>}</span>
                   <span className="installed-map-actions">
-                    <Button disabled={isBusy} onClick={() => openUpload("map", map.folderName, metadata?.displayName || map.displayName)}>{t("maps.view.publish")}</Button>
-                    <Button className="map-vault-uninstall" disabled={isBusy} onClick={() => setPendingUninstall(map)}>{t(isBusy ? "maps.view.removing" : "maps.view.uninstall")}</Button>
+                    <Button disabled={isBusy} onClick={() => openUpload("map", map.folderName, metadata?.displayName || map.displayName)}>Publish</Button>
+                    <Button className="map-vault-uninstall" disabled={isBusy} onClick={() => setPendingUninstall(map)}>{isBusy ? "Removing…" : "Uninstall"}</Button>
                   </span>
                 </article>
               );
@@ -345,16 +361,15 @@ function InstalledView({ busy }: { busy: boolean }) {
   );
 }
 
-const SUB_VIEWS: Record<SubView, { label: MessageKey; Component: (props: { busy: boolean }) => JSX.Element }> = {
-  vault: { label: "maps.view.tab.vault", Component: VaultView },
-  installed: { label: "maps.view.tab.installed", Component: InstalledView },
+const SUB_VIEWS: Record<SubView, { label: string; Component: (props: { busy: boolean }) => JSX.Element }> = {
+  vault: { label: "Vault", Component: VaultView },
+  installed: { label: "Installed", Component: InstalledView },
 };
 
 const cleanUpGeneratedMaps = () =>
   ipc.send({ kind: "MapGenerator", command: { type: "cleanUp" } });
 
 export function MapsView() {
-  const { t } = useTranslation();
   const [subView, setSubView] = useState<SubView>("vault");
   const [generating, setGenerating] = useState(false);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
@@ -369,17 +384,17 @@ export function MapsView() {
       <div className="vault-subnav">
         <SectionTabs
           active={subView}
-          ariaLabel={t("maps.view.mapLibraryViews")}
-          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
+          ariaLabel="Map library views"
+          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: SUB_VIEWS[key].label }))}
           onChange={setSubView}
         />
         {subView === "installed" && (
           <>
             {/* Generated maps are reproducible from their name, so removing them
                 costs nothing but reclaims the disk a season of ladder accumulates. */}
-            <Button onClick={cleanUpGeneratedMaps}>{t("maps.view.clearGenerated")}</Button>
+            <Button onClick={cleanUpGeneratedMaps}>Clear generated</Button>
             <Button variant="primary" onClick={() => setGenerating(true)}>
-              <Icon name="plus" size={15} /> {t("maps.view.generateMap")}
+              <Icon name="plus" size={15} /> Generate map
             </Button>
           </>
         )}

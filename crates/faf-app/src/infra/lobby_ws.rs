@@ -61,6 +61,8 @@ pub struct LobbyConfig {
     /// FAF *user* API base (`user.faforever.com`), which serves `/lobby/access`.
     /// Note this is a different host from the main `api.faforever.com`.
     pub user_api_base: String,
+    /// FAF data API base (`api.faforever.com`), for querying offline accounts.
+    pub api_base: String,
     /// Client version reported in `ask_session`.
     pub version: String,
     /// Path to the `faf-uid` executable used to compute `unique_id`.
@@ -76,6 +78,7 @@ impl LobbyConfig {
                 .filter(|v| !v.is_empty())
                 .unwrap_or_default(),
             user_api_base: env_or("FAF_USER_API_BASE", "https://user.faforever.com"),
+            api_base: env_or("FAF_API_BASE", "https://api.faforever.com"),
             version: env_or("FAF_CLIENT_VERSION", env!("CARGO_PKG_VERSION")),
             uid_path: env_or("FAF_UID_PATH", default_uid_path()),
         }
@@ -707,6 +710,21 @@ async fn run_session(
                     }
                     "social" => {
                         directory.set_relations(&value);
+                        let missing_ids = directory.unresolved_relation_ids();
+                        if !missing_ids.is_empty() {
+                            if let Ok(resolved) = fetch_player_logins(
+                                &http,
+                                &config.api_base,
+                                Some(&access_token),
+                                &missing_ids,
+                            )
+                            .await
+                            {
+                                for (id, login) in resolved {
+                                    directory.record_login(id, login);
+                                }
+                            }
+                        }
                         let (friends, foes) = directory.relations();
                         if tx
                             .send(LobbyUpdate::Relations { friends, foes })
@@ -1155,6 +1173,20 @@ impl PlayerDirectory {
         self.foe_ids = id_list(value, "foes");
     }
 
+    fn unresolved_relation_ids(&self) -> Vec<i64> {
+        let mut missing = Vec::new();
+        for &id in self.friend_ids.iter().chain(self.foe_ids.iter()) {
+            if !self.logins.contains_key(&id) && !missing.contains(&id) {
+                missing.push(id);
+            }
+        }
+        missing
+    }
+
+    fn record_login(&mut self, id: i64, login: String) {
+        self.logins.insert(id, login);
+    }
+
     fn has_relations(&self) -> bool {
         !self.friend_ids.is_empty() || !self.foe_ids.is_empty()
     }
@@ -1170,6 +1202,71 @@ impl PlayerDirectory {
         };
         (resolve(&self.friend_ids), resolve(&self.foe_ids))
     }
+}
+
+/// Fetch usernames for player IDs from the FAF API so offline friends and foes
+/// are resolved by name.
+async fn fetch_player_logins(
+    http: &reqwest::Client,
+    api_base: &str,
+    token: Option<&str>,
+    ids: &[i64],
+) -> Result<Vec<(i64, String)>, String> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut results = Vec::new();
+    for chunk in ids.chunks(100) {
+        let id_str = chunk
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        let filter = format!("id=in=({id_str})");
+        let mut url =
+            match url::Url::parse(&format!("{}/data/player", api_base.trim_end_matches('/'))) {
+                Ok(url) => url,
+                Err(e) => return Err(format!("invalid player URL: {e}")),
+            };
+        url.query_pairs_mut()
+            .append_pair("filter", &filter)
+            .append_pair("fields[player]", "login")
+            .append_pair("page[size]", &chunk.len().to_string());
+
+        let mut request = http.get(url);
+        if let Some(tok) = token.filter(|t| !t.is_empty()) {
+            request = request.bearer_auth(tok);
+        }
+        let response = match request.send().await {
+            Ok(res) => res,
+            Err(e) => return Err(format!("player query failed: {e}")),
+        };
+        if !response.status().is_success() {
+            continue;
+        }
+        let doc: Value = match response.json().await {
+            Ok(doc) => doc,
+            Err(_) => continue,
+        };
+        if let Some(data) = doc.get("data").and_then(Value::as_array) {
+            for item in data {
+                let id = item
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .and_then(|s| s.parse::<i64>().ok());
+                let login = item
+                    .get("attributes")
+                    .and_then(|a| a.get("login"))
+                    .and_then(Value::as_str);
+                if let (Some(id), Some(login)) = (id, login) {
+                    if !login.is_empty() {
+                        results.push((id, login.to_string()));
+                    }
+                }
+            }
+        }
+    }
+    Ok(results)
 }
 
 /// The lobby sends relation ids as numbers, but has historically sent them as

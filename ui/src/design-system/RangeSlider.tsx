@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
 import "./range-slider.css";
 import "./search-panel.css";
-import { useTranslation } from "../i18n/useTranslation";
 
 interface Props {
   label: string;
@@ -26,7 +25,6 @@ export function RangeSlider({
   onChange,
   format = String,
 }: Props) {
-  const { t } = useTranslation();
   const id = useId();
   const [activeHandle, setActiveHandle] = useState<"low" | "high" | null>(null);
 
@@ -83,8 +81,8 @@ export function RangeSlider({
         </span>
         <span className={`range-slider-value${unbounded ? " is-any" : ""}`}>
           {unbounded
-            ? t("common.any")
-            : t("common.rangeBetween", { low: low === null ? t("common.any") : format(low), high: high === null ? t("common.any") : format(high) })}
+            ? "Any"
+            : `${low === null ? "Any" : format(low)} to ${high === null ? "Any" : format(high)}`}
         </span>
       </div>
 

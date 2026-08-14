@@ -71,13 +71,15 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::infra::jsonapi::{
-    fetch_document, rel_target, rel_targets, resource_index, value_i32, JsonApiDoc, JsonApiResource,
+    fetch_document, meta_page_i32, rel_target, rel_targets, resource_index, value_i32, JsonApiDoc,
+    JsonApiResource,
 };
 use crate::infra::session::TokenStore;
 use crate::infra::vault_install::{bounded_body, validate_origin_url, MAX_DOWNLOAD_BYTES};
 use crate::infra::{
     cache_dir, env_or, fetch_access_url, free_port, game_updater, validated_ws_url,
 };
+use crate::ports::replay::VaultSearchResult;
 use crate::ports::{ProcessPort, ReplayPort};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
@@ -533,7 +535,7 @@ impl ReplayPort for ReplayClient {
         Ok(warning)
     }
 
-    async fn search_vault(&self, query: ReplayQuery) -> Result<Vec<VaultReplay>, String> {
+    async fn search_vault(&self, query: ReplayQuery) -> Result<VaultSearchResult, String> {
         let token = self
             .tokens
             .get()
@@ -547,6 +549,7 @@ impl ReplayPort for ReplayClient {
                 .append_pair("sort", &query.sort_param())
                 .append_pair("page[size]", &query.page_size.to_string())
                 .append_pair("page[number]", &query.page.max(1).to_string())
+                .append_pair("page[totals]", "true")
                 .append_pair(
                     "include",
                     "mapVersion.map,featuredMod,playerStats.player,playerStats.ratingChanges,reviewsSummary",
@@ -560,7 +563,14 @@ impl ReplayPort for ReplayClient {
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
-        Ok(parse_vault_replays(&doc))
+        let replays = parse_vault_replays(&doc);
+        let total_pages = meta_page_i32(&doc.meta, "totalPages");
+        let total_records = meta_page_i32(&doc.meta, "totalRecords");
+        Ok(VaultSearchResult {
+            replays,
+            total_pages,
+            total_records,
+        })
     }
 
     async fn list_featured_mods(&self) -> Result<Vec<String>, String> {
@@ -1764,8 +1774,8 @@ impl ReplayPort for FakeReplay {
         Err("replay playback is unavailable in offline mode".to_string())
     }
 
-    async fn search_vault(&self, _query: ReplayQuery) -> Result<Vec<VaultReplay>, String> {
-        Ok(Vec::new())
+    async fn search_vault(&self, _query: ReplayQuery) -> Result<VaultSearchResult, String> {
+        Ok(VaultSearchResult::default())
     }
 
     async fn list_featured_mods(&self) -> Result<Vec<String>, String> {

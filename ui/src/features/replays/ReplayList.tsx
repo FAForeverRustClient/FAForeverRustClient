@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { formatRelativeDuration } from "../../shared/durations";
-import { clientIntlTag } from "../../shared/dates";
-import { t, type MessageKey } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 export type ReplayListCell = {
   primary: string;
@@ -50,22 +47,22 @@ export type ReplayListGroup = {
 };
 
 const COLUMNS = [
-  { label: "replays.column.map", className: "" },
-  { label: "replays.column.game", className: "" },
-  { label: "replays.column.mod", className: "" },
-  { label: "replays.column.played", className: "" },
-  { label: "replays.column.players", className: "replay-list-header-number" },
-  { label: "replays.column.rating", className: "replay-list-header-number" },
-  { label: "replays.column.duration", className: "" },
-  { label: "replays.column.replay", className: "" },
-] as const satisfies readonly { label: MessageKey; className: string }[];
+  { label: "Map", className: "" },
+  { label: "Game", className: "" },
+  { label: "Mod", className: "" },
+  { label: "Played", className: "" },
+  { label: "Players", className: "replay-list-header-number" },
+  { label: "Rating", className: "replay-list-header-number" },
+  { label: "Duration", className: "" },
+  { label: "Replay", className: "" },
+] as const;
 
 export function formatReplayListTime(value: string | number, fallback = "N/A"): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? fallback
-    : date.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" });
+    : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function formatReplayListAge(value: string | number, fallback = "N/A"): string {
@@ -74,9 +71,7 @@ export function formatReplayListAge(value: string | number, fallback = "N/A"): s
   if (Number.isNaN(played)) return fallback;
   const seconds = (Date.now() - played) / 1000;
   if (seconds < 0) return fallback;
-  const justNow = t("replays.card.justNow");
-  const elapsed = formatRelativeDuration(seconds, { nowLabel: justNow });
-  return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
+  return formatRelativeDuration(seconds, { nowLabel: "just now", suffix: " ago" });
 }
 
 function ReplayListCellView({ cell, className = "" }: { cell: ReplayListCell; className?: string }) {
@@ -97,7 +92,6 @@ function ReplayListStatus({
   action?: ReplayListAction;
   iconAction?: ReplayListIconAction;
 }) {
-  const { t } = useTranslation();
   const tone = cell.tone ? ` replay-list-status-${cell.tone}` : "";
   return (
     <div className="replay-list-cell replay-list-replay-cell" role="cell">
@@ -106,7 +100,7 @@ function ReplayListStatus({
         {cell.secondary && <small>{cell.secondary}</small>}
       </div>
       {(action || iconAction) && (
-        <div className="replay-list-actions" role="group" aria-label={t("replays.list.actionsAria")}>
+        <div className="replay-list-actions" role="group" aria-label="Replay actions">
           {action && (
             <button
               type="button"
@@ -185,11 +179,10 @@ export function ReplayList({
   groups: ReplayListGroup[];
   footer: ReactNode;
 }) {
-  const { t } = useTranslation();
   return (
-    <section className="replay-list-wrap surface-panel" role="table" aria-label={t("replays.list.aria")}>
+    <section className="replay-list-wrap surface-panel" role="table" aria-label="Replays">
       <div className="replay-list-header" role="row">
-        {COLUMNS.map((column) => <span className={column.className} key={column.label} role="columnheader">{t(column.label)}</span>)}
+        {COLUMNS.map((column) => <span className={column.className} key={column.label} role="columnheader">{column.label}</span>)}
       </div>
       <div className="replay-list-body" role="rowgroup">
         {groups.map((group) => (

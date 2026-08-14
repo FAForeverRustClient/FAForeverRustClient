@@ -116,7 +116,7 @@
 }
 
 .leaderboard-search-player {
-  flex-basis: 280px;
+  flex: 0 1 240px;
 }
 
 .leaderboard-search-date {

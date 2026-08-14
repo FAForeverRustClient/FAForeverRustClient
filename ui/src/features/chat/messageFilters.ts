@@ -1,14 +1,16 @@
 import type { ChatMessage, ChatPreferences, SocialState } from "../../ipc/bindings";
-
-const includesName = (names: string[], candidate: string) => names.some(
-  (name) => name.localeCompare(candidate, undefined, { sensitivity: "accent" }) === 0,
-);
+// Set-backed and cached on the identity of the source array. The local
+// `localeCompare` version this replaced ran once per foe and per muted player,
+// for every message in the scrollback, on every re-render: with foe hiding on
+// by default that was thousands of `Intl.Collator` constructions per incoming
+// message.
+import { includesName } from "../../shared/nameColorsUtil";
 
 /** Apply presentation preferences without discarding the domain's scrollback. */
 export function visibleChatMessages(
   messages: ChatMessage[],
   preferences: ChatPreferences,
-  social: SocialState,
+  social: SocialState | { foes: string[] },
 ): ChatMessage[] {
   let visible = preferences.showJoinsParts
     ? messages

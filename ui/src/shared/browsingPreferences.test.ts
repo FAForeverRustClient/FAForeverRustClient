@@ -59,6 +59,8 @@ describe("browsing preferences", () => {
         ratingMax: 800,
       },
       favoriteMaps: [" Adaptive_Tabula.v0006 ", "adaptive_tabula.v0006", ""],
+      mapVaultPreset: "  NEWEST  ",
+      modVaultPreset: "  UI  ",
       leaderboardRatingColumns: ["rating", "MEAN", "invalid_column"],
       legacyStorageMigrated: true,
     });
@@ -87,6 +89,8 @@ describe("browsing preferences", () => {
       ratingMax: 1500,
     });
     expect(normalized.favoriteMaps).toEqual(["adaptive_tabula.v0006"]);
+    expect(normalized.mapVaultPreset).toBe("newest");
+    expect(normalized.modVaultPreset).toBe("ui");
     expect(normalized.leaderboardRatingColumns).toEqual(["rating", "mean"]);
   });
 

@@ -122,14 +122,24 @@ pub struct MapGeneratorState {
     pub status: GeneratorStatus,
     /// The newest supported generator release, once resolved. Empty until then.
     pub latest_version: String,
+    /// All available supported generator releases from GitHub.
+    #[serde(default)]
+    pub available_versions: Vec<String>,
+    /// Currently selected version in the UI.
+    #[serde(default)]
+    pub selected_version: Option<String>,
     pub option_lists: GeneratorOptionLists,
     /// The last options the user configured, kept so the host dialog reopens
     /// where it was left: the Java client persists the same set in
     /// `GeneratorPrefs`.
     pub options: GeneratorOptions,
+    /// Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`).
+    #[serde(default)]
+    pub previews: std::collections::HashMap<String, String>,
 }
 
 // No `Eq`: `OptionsChanged` carries `GeneratorOptions`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(
     tag = "type",
@@ -144,6 +154,9 @@ pub enum MapGeneratorEvent {
     VersionResolved {
         version: String,
     },
+    VersionsLoaded {
+        versions: Vec<String>,
+    },
     OptionListLoaded {
         query: GeneratorOptionQuery,
         values: Vec<String>,
@@ -151,9 +164,13 @@ pub enum MapGeneratorEvent {
     OptionsChanged {
         options: GeneratorOptions,
     },
+    PreviewsLoaded {
+        previews: std::collections::HashMap<String, String>,
+    },
 }
 
 // No `Eq`: `Generate` carries `GeneratorOptions`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(
     tag = "type",
@@ -167,9 +184,12 @@ pub enum MapGeneratorCommand {
     GenerateNamed { map_name: String },
     /// Generate one or more fresh maps from options (the host flow).
     Generate { options: GeneratorOptions },
-    /// Fetch every option list from the generator, downloading the newest
-    /// supported release first if needed.
-    LoadOptions,
+    /// Fetch every option list from the generator, downloading the specified
+    /// (or newest supported) release first if needed.
+    LoadOptions {
+        #[serde(default)]
+        version: Option<String>,
+    },
     /// Remember the host dialog's current options without generating.
     SetOptions { options: GeneratorOptions },
     /// Delete generated maps except stable folder names explicitly protected
@@ -185,11 +205,25 @@ pub enum MapGeneratorCommand {
 pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
     match event {
         MapGeneratorEvent::StatusChanged { status } => state.status = status.clone(),
-        MapGeneratorEvent::VersionResolved { version } => state.latest_version = version.clone(),
+        MapGeneratorEvent::VersionResolved { version } => {
+            state.latest_version = version.clone();
+            state.selected_version = Some(version.clone());
+        }
+        MapGeneratorEvent::VersionsLoaded { versions } => {
+            state.available_versions = versions.clone();
+        }
         MapGeneratorEvent::OptionListLoaded { query, values } => {
             state.option_lists.set(*query, values.clone())
         }
-        MapGeneratorEvent::OptionsChanged { options } => state.options = options.clone(),
+        MapGeneratorEvent::OptionsChanged { options } => {
+            if let Some(v) = &options.version {
+                state.selected_version = Some(v.clone());
+            }
+            state.options = options.clone();
+        }
+        MapGeneratorEvent::PreviewsLoaded { previews } => {
+            state.previews.extend(previews.clone());
+        }
     }
 }
 

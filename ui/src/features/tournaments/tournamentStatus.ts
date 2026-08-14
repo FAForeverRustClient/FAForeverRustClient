@@ -7,7 +7,6 @@
 // badge honest while the tab sits open.
 
 import type { Tournament } from "../../ipc/bindings";
-import type { MessageKey } from "../../i18n";
 
 export type TournamentStatus =
   | "closedForRegistration"
@@ -15,11 +14,11 @@ export type TournamentStatus =
   | "running"
   | "finished";
 
-export const STATUS_LABELS: Record<TournamentStatus, MessageKey> = {
-  closedForRegistration: "tournaments.status.closedForRegistration",
-  openForRegistration: "tournaments.status.openForRegistration",
-  running: "tournaments.status.running",
-  finished: "tournaments.status.finished",
+export const STATUS_LABELS: Record<TournamentStatus, string> = {
+  closedForRegistration: "Closed for registration",
+  openForRegistration: "Open for registration",
+  running: "Running",
+  finished: "Finished",
 };
 
 /** Decision order matches the Rust twin exactly: completed, then started, then the signup flag. */

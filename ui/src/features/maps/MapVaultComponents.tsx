@@ -6,18 +6,15 @@ import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
 import type { MapInstallStatus, VaultMap } from "../../ipc/bindings";
 import { formatShortDate } from "../../shared/dates";
 import { openReviews } from "../reviews/openReviews";
-import { t } from "../../i18n";
-import { useLocale } from "../../i18n/useTranslation";
-import { clientIntlTag } from "../../shared/dates";
 
 export function installNote(status: MapInstallStatus): string | null {
   switch (status.type) {
     case "idle":
       return null;
     case "installing":
-      return t("maps.vault.working", { folder: status.payload.folderName });
+      return `Working on ${status.payload.folderName}…`;
     case "failed":
-      return t("maps.vault.operationFailed", { reason: status.payload.reason });
+      return `Map operation failed: ${status.payload.reason}`;
   }
 }
 
@@ -26,11 +23,11 @@ export function sizeLabel(map: Pick<VaultMap, "width" | "height">): string {
 }
 
 function ratingLabel(map: VaultMap): string {
-  return map.reviews > 0 ? `${(map.ratingTenths / 10).toFixed(1)} (${map.reviews})` : t("maps.vault.notRated");
+  return map.reviews > 0 ? `${(map.ratingTenths / 10).toFixed(1)} (${map.reviews})` : "Not rated";
 }
 
 function formatCount(value: number): string {
-  return new Intl.NumberFormat(clientIntlTag(), {
+  return new Intl.NumberFormat("en-US", {
     notation: value >= 10_000 ? "compact" : "standard",
   }).format(value);
 }
@@ -101,10 +98,9 @@ export function MapCard({
   favorite: boolean;
   onToggleFavorite: () => void;
 }) {
-  useLocale();
   const installState = installed
-    ? { label: t(isOfficialMap(map.folderName) ? "maps.vault.builtIn" : "maps.vault.installed"), tone: "ok" as const }
-    : { label: t("maps.vault.notInstalled"), tone: "muted" as const };
+    ? { label: isOfficialMap(map.folderName) ? "Built in" : "Installed", tone: "ok" as const }
+    : { label: "Not installed", tone: "muted" as const };
 
   return (
     <article className={active ? "map-vault-card surface-panel active" : "map-vault-card surface-panel"}>
@@ -120,15 +116,15 @@ export function MapCard({
         <span className="map-vault-card-copy">
           <strong title={map.displayName}>{map.displayName}</strong>
           <small>
-            {map.author ? t("maps.vault.byAuthor", { author: map.author }) : t("maps.vault.unknownAuthor")}
+            {map.author ? `by ${map.author}` : "Unknown author"}
             {map.version ? ` · v${map.version}` : ""}
           </small>
         </span>
         <span className="map-vault-card-facts">
           <span className={map.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
-            {t(map.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
+            {map.ranked ? "Ranked" : "Unranked"}
           </span>
-          <span className="map-vault-fact" title={t("maps.vault.maxPlayersTitle", { count: map.maxPlayers || t("maps.vault.unknown") })}>
+          <span className="map-vault-fact" title={`${map.maxPlayers || "Unknown"} maximum players`}>
             <Icon name="users" size={13} /> {map.maxPlayers || "N/A"}
           </span>
           <span className="map-vault-fact" title={`Map dimensions: ${sizeLabel(map)}`}>
@@ -136,7 +132,7 @@ export function MapCard({
           </span>
           <span
             className="map-vault-fact is-rating"
-            title={map.reviews ? t("maps.vault.ratingTitle", { score: (map.ratingTenths / 10).toFixed(1), reviews: map.reviews }) : t("maps.vault.noReviews")}
+            title={map.reviews ? `${(map.ratingTenths / 10).toFixed(1)} out of 5 from ${map.reviews} reviews` : "No reviews yet"}
           >
             <Icon name="star" size={12} />
             {map.reviews ? (map.ratingTenths / 10).toFixed(1) : "N/A"}
@@ -150,14 +146,14 @@ export function MapCard({
             className={favorite ? "map-favorite-button active" : "map-favorite-button"}
             aria-label={favorite ? `Remove ${map.displayName} from favorites` : `Add ${map.displayName} to favorites`}
             aria-pressed={favorite}
-            title={t(favorite ? "maps.vault.removeFavorite" : "maps.vault.addFavorite")}
+            title={favorite ? "Remove from favorites" : "Add to favorites"}
             onClick={onToggleFavorite}
           >
             <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
           </Button>
           {!installed && (
             <Button variant="primary" disabled={busy || !map.downloadUrl} onClick={onInstall}>
-              {t(busy ? "maps.vault.installing" : "maps.vault.install")}
+              {busy ? "Installing…" : "Install"}
             </Button>
           )}
         </span>
@@ -185,7 +181,6 @@ export function MapDetailPanel({
   favorite: boolean;
   onToggleFavorite: () => void;
 }) {
-  useLocale();
   const description = cleanDescription(map.description);
   const removable = installed && !isOfficialMap(map.folderName);
   return (
@@ -196,34 +191,34 @@ export function MapDetailPanel({
         aria-label={`Enlarge ${map.displayName} preview`}
       >
         <MapPreview map={map} large />
-        {(map.thumbnailUrlLarge || map.thumbnailUrl) && <span>{t("maps.vault.openPreview")}</span>}
+        {(map.thumbnailUrlLarge || map.thumbnailUrl) && <span>Open preview</span>}
       </button>
       <div className="map-vault-detail-body">
         <div className="map-vault-detail-kicker">
-          <span>{map.mapType || t("maps.vault.mapType")}</span>
+          <span>{map.mapType || "Map"}</span>
           <span className={map.ranked ? "ranked" : "unranked"}>
-            {t(map.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
+            {map.ranked ? "Ranked" : "Unranked"}
           </span>
-          {map.recommended && <span>{t("maps.vault.featured")}</span>}
+          {map.recommended && <span>Featured</span>}
         </div>
         <h2>{map.displayName}</h2>
         <p className="map-vault-byline">
-          {map.author ? t("maps.vault.createdBy", { author: map.author }) : t("maps.vault.unknownAuthor")}
+          {map.author ? `Created by ${map.author}` : "Unknown author"}
           {map.version ? ` · Version ${map.version}` : ""}
         </p>
         <dl className="map-vault-summary">
-          <div><dt>{t("maps.vault.dimensions")}</dt><dd>{sizeLabel(map)}</dd></div>
-          <div><dt>{t("maps.vault.maxPlayers")}</dt><dd>{map.maxPlayers || "N/A"}</dd></div>
-          <div><dt>{t("maps.vault.allTimePlays")}</dt><dd>{formatCount(map.gamesPlayed)}</dd></div>
-          <div><dt>{t("maps.vault.versionPlays")}</dt><dd>{formatCount(map.versionGamesPlayed)}</dd></div>
-          <div><dt>{t("maps.vault.communityRating")}</dt><dd>{ratingLabel(map)}</dd></div>
-          <div><dt>{t("maps.vault.uploaded")}</dt><dd>{formatShortDate(map.createdAt)}</dd></div>
-          <div><dt>{t("maps.vault.mapId")}</dt><dd>{map.mapId ? `#${map.mapId}` : "N/A"}</dd></div>
-          <div><dt>{t("maps.vault.folder")}</dt><dd title={map.folderName}>{map.folderName}</dd></div>
+          <div><dt>Dimensions</dt><dd>{sizeLabel(map)}</dd></div>
+          <div><dt>Max players</dt><dd>{map.maxPlayers || "N/A"}</dd></div>
+          <div><dt>All-time plays</dt><dd>{formatCount(map.gamesPlayed)}</dd></div>
+          <div><dt>Version plays</dt><dd>{formatCount(map.versionGamesPlayed)}</dd></div>
+          <div><dt>Community rating</dt><dd>{ratingLabel(map)}</dd></div>
+          <div><dt>Uploaded</dt><dd>{formatShortDate(map.createdAt)}</dd></div>
+          <div><dt>Map ID</dt><dd>{map.mapId ? `#${map.mapId}` : "N/A"}</dd></div>
+          <div><dt>Folder</dt><dd title={map.folderName}>{map.folderName}</dd></div>
         </dl>
         <section className="map-vault-description">
-          <h3>{t("maps.vault.description")}</h3>
-          <p>{description || t("maps.vault.noDescription")}</p>
+          <h3>Description</h3>
+          <p>{description || "No description is available for this version."}</p>
         </section>
         <div className="map-vault-detail-actions">
           <Button
@@ -232,24 +227,24 @@ export function MapDetailPanel({
             onClick={onToggleFavorite}
           >
             <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
-            {t(favorite ? "maps.vault.favorited" : "maps.vault.favorite")}
+            {favorite ? "Favorited" : "Favorite"}
           </Button>
           <Button onClick={() => void openReviews("map", map.mapId, map.displayName)}>
-            {t("maps.vault.reviews")}
+            Reviews
           </Button>
           {removable && (
             <Button className="map-vault-uninstall" disabled={busy} onClick={onUninstall}>
-              {t("maps.vault.uninstall")}
+              Uninstall
             </Button>
           )}
           <Button variant="primary" disabled={busy || installed || !map.downloadUrl} onClick={onInstall}>
             {busy
-              ? t("maps.vault.installing")
+              ? "Installing…"
               : installed
                 ? isOfficialMap(map.folderName)
-                  ? t("maps.vault.builtIn")
-                  : t("maps.vault.installed")
-                : t("maps.vault.installMap")}
+                  ? "Built in"
+                  : "Installed"
+                : "Install map"}
           </Button>
         </div>
       </div>
@@ -266,15 +261,14 @@ export function MapUninstallDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  useLocale();
   return (
     <Modal onClose={onCancel}>
       <div className="map-uninstall-dialog">
-        <h2>{t("maps.vault.uninstallTitle")}</h2>
+        <h2>Uninstall map?</h2>
         <p>“{mapName}” will be permanently removed from your user maps folder.</p>
         <div>
-          <Button onClick={onCancel}>{t("maps.vault.cancel")}</Button>
-          <Button className="map-vault-uninstall-confirm" onClick={onConfirm}>{t("maps.vault.uninstallConfirm")}</Button>
+          <Button onClick={onCancel}>Cancel</Button>
+          <Button className="map-vault-uninstall-confirm" onClick={onConfirm}>Uninstall map</Button>
         </div>
       </div>
     </Modal>

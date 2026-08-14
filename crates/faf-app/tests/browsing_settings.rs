@@ -43,7 +43,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
 
     app.dispatch(
         SettingsCommand::SetBrowsing {
-            preferences: BrowsingPreferences {
+            preferences: Box::new(BrowsingPreferences {
                 custom_games_view: CustomGameView::List,
                 replays_view: CustomGameView::List,
                 custom_games_browser: CustomGameBrowserPreferences {
@@ -66,9 +66,11 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 },
                 host_game: HostGamePreferences::default(),
                 favorite_maps: vec!["adaptive_tabula.v0006".into()],
+                map_vault_preset: "newest".into(),
+                mod_vault_preset: "rating".into(),
                 leaderboard_rating_columns: vec!["rating".into(), "GAMES".into(), "invalid".into()],
                 legacy_storage_migrated: true,
-            },
+            }),
         }
         .into(),
     )
@@ -93,6 +95,8 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.live_replay_filters.search, "tournament");
     assert_eq!(state.live_replay_filters.active_players, "4");
     assert_eq!(state.favorite_maps, ["adaptive_tabula.v0006"]);
+    assert_eq!(state.map_vault_preset, "newest");
+    assert_eq!(state.mod_vault_preset, "rating");
     assert_eq!(state.leaderboard_rating_columns, ["rating", "games"]);
     assert!(state.legacy_storage_migrated);
     assert_eq!(saved.lock().unwrap().last().unwrap().browsing, state);

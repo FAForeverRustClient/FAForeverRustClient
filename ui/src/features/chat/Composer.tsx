@@ -15,7 +15,6 @@
 
 import { useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
-import { useTranslation } from "../../i18n/useTranslation";
 
 /** How many sent lines to keep for Up/Down recall. */
 const MAX_HISTORY = 50;
@@ -35,7 +34,6 @@ interface Completion {
 }
 
 export function Composer({ channel, nicknames, disabled, onSend }: Props) {
-  const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const completion = useRef<Completion | null>(null);
@@ -120,15 +118,15 @@ export function Composer({ channel, nicknames, disabled, onSend }: Props) {
         maxLength={500}
         value={draft}
         placeholder={
-          disabled ? t("chat.composer.disabled") : t("chat.composer.placeholder", { channel })
+          disabled ? "Not connected" : `Message ${channel}: /me, /msg, /join, /topic`
         }
-        aria-label={t("chat.composer.aria", { channel })}
+        aria-label={`Message ${channel}`}
         disabled={disabled}
         onChange={(e) => edit(e.target.value)}
         onKeyDown={onKeyDown}
       />
       <Button type="submit" variant="primary" disabled={disabled || !draft.trim()}>
-        {t("chat.send")}
+        Send
       </Button>
     </form>
   );

@@ -1,49 +1,52 @@
 import { Icon } from "../../design-system/Icon";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import "./contribution.css";
-import { useTranslation } from "../../i18n/useTranslation";
-import type { MessageKey } from "../../i18n";
 
 const REPOSITORIES = [
   {
-    name: "contribution.repo.game",
-    description: "contribution.repo.gameHint",
+    name: "FAF game",
+    description: "The open-source Forged Alliance game project",
     href: "https://github.com/FAForever/fa",
   },
   {
-    name: "contribution.repo.patches",
-    description: "contribution.repo.patchesHint",
+    name: "FA engine patches",
+    description: "Binary patches for the game engine",
     href: "https://github.com/FAForever/FA-Binary-Patches",
   },
   {
-    name: "contribution.repo.rust",
-    description: "contribution.repo.rustHint",
+    name: "Rust client",
+    description: "The next-generation FAF desktop client",
     href: "https://github.com/FAForeverRustClient/FAForever-Rust-Client",
   },
   {
-    name: "contribution.repo.java",
-    description: "contribution.repo.javaHint",
+    name: "Java client",
+    description: "The official desktop client",
     href: "https://github.com/FAForever/downlords-faf-client",
   },
   {
-    name: "contribution.repo.python",
-    description: "contribution.repo.pythonHint",
+    name: "Python client",
+    description: "The legacy client and its history",
     href: "https://github.com/FAForever/client",
   },
   {
-    name: "contribution.repo.server",
-    description: "contribution.repo.serverHint",
+    name: "FAF server",
+    description: "The server-side game services",
     href: "https://github.com/FAForever/server",
   },
   {
-    name: "contribution.repo.github",
-    description: "contribution.repo.githubHint",
+    name: "FAForever on GitHub",
+    description: "Explore all FAF open-source projects",
     href: "https://github.com/FAForever",
   },
-] as const satisfies readonly { name: MessageKey; description: MessageKey; href: string }[];
+] as const;
+
+const ACKNOWLEDGMENTS = [
+  { name: "Seraphim-Noob", note: null },
+  { name: "Nory", note: null },
+  { name: "Nuggets", note: "feedback" },
+] as const;
 
 export function ContributionView() {
-  const { t } = useTranslation();
   return (
     <div className="contribution-view">
       <section className="contribution-intro">
@@ -51,13 +54,25 @@ export function ContributionView() {
           <Icon name="github" size={24} />
         </div>
         <div className="contribution-intro-copy">
-          <h2 className="view-title">{t("contribution.title")}</h2>
-          <p>{t("contribution.subtitle")}</p>
+          <h2 className="view-title">Contribute</h2>
+          <p>FAF is open source. Contributions, fixes, and ideas are welcome.</p>
         </div>
       </section>
 
+      <section className="contribution-section" aria-labelledby="contribution-thanks">
+        <h3 id="contribution-thanks" className="contribution-section-title">Special thanks</h3>
+        <ul className="contribution-thanks-list">
+          {ACKNOWLEDGMENTS.map((person) => (
+            <li key={person.name} className="contribution-thanks-item">
+              <span className="contribution-thanks-name">{person.name}</span>
+              {person.note && <span className="contribution-thanks-note"> ({person.note})</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className="contribution-section" aria-labelledby="contribution-repositories">
-        <h3 id="contribution-repositories" className="contribution-section-title">{t("contribution.repositories")}</h3>
+        <h3 id="contribution-repositories" className="contribution-section-title">GitHub repositories</h3>
         <div className="contribution-links">
           {REPOSITORIES.map((repository) => (
             <a
@@ -72,8 +87,8 @@ export function ContributionView() {
               }}
             >
               <span className="contribution-link-copy">
-                <strong>{t(repository.name)}</strong>
-                <small>{t(repository.description)}</small>
+                <strong>{repository.name}</strong>
+                <small>{repository.description}</small>
               </span>
               <Icon name="external" size={16} />
             </a>

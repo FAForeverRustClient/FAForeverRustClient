@@ -12,16 +12,14 @@ import { ClientStatusBar } from "../status/ClientStatusBar";
 import { InstallBanner } from "./InstallBanner";
 import { UpdateBanner } from "../updates/UpdateBanner";
 import { BrandMark } from "../../design-system/BrandMark";
-import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
 import { UploadDialog } from "../uploads/UploadDialog";
 import { openPlayerCard } from "../player-card/playerCardActions";
-import { useTranslation } from "../../i18n/useTranslation";
 import { ReportPlayerModal } from "../reporting/ReportPlayerModal";
 import { NotificationCenter } from "../notifications/NotificationCenter";
 import { partyChatChannel } from "../lobby/partyChat";
+import { PlayerName } from "../../shared/nameColors";
 import "./shell.css";
 
 const SIDEBAR_DEFAULT_WIDTH = 224;
@@ -32,7 +30,6 @@ const clampSidebarWidth = (width: number) =>
   Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
 
 export function AppShell() {
-  const { t } = useTranslation();
   const activeTab = useAppStore((s) => s.state.nav.activeTab);
   const auth = useAppStore((s) => s.state.auth);
   const chatStatus = useAppStore((s) => s.state.chat.status);
@@ -43,7 +40,6 @@ export function AppShell() {
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const joinedPartyChannelRef = useRef<string | null>(null);
 
-  const logout = () => ipc.send({ kind: "Auth", command: { type: auth.mode === "test" ? "logoutTest" : "logout" } });
   const ActiveView = TABS[activeTab].Component;
 
   useEffect(() => {
@@ -113,7 +109,7 @@ export function AppShell() {
           <span className="brand-mark"><BrandMark className="brand-mark-image" size={38} /></span>
           <span className="brand-copy">
             <strong>FAForever</strong>
-            <small>{t("shell.sidebar.desktopClient")}</small>
+            <small>Desktop client</small>
           </span>
         </div>
 
@@ -125,25 +121,22 @@ export function AppShell() {
             className="sidebar-profile-button"
             disabled={!player}
             onClick={() => player && void openPlayerCard(player.id, player.name)}
-            aria-label={player ? t("shell.sidebar.openProfile", { name: player.name }) : t("shell.sidebar.profileUnavailable")}
+            aria-label={player ? `Open profile for ${player.name}` : "Player profile unavailable"}
           >
             <span className="profile-avatar" aria-hidden>{player?.name.charAt(0).toUpperCase() ?? "F"}</span>
             <span className="profile-copy">
-              <span className="player-name">{player?.name ?? t("shell.sidebar.player")}</span>
-              <span className="profile-status"><i /> {t("shell.sidebar.online")}</span>
+              <span className="player-name">{player ? <PlayerName name={player.name} /> : "Player"}</span>
+              <span className="profile-status"><i /> Online</span>
             </span>
           </button>
           <NotificationCenter />
-          <Button className="icon-button" onClick={logout} title={t("shell.sidebar.logOut")} aria-label={t("shell.sidebar.logOut")}>
-            <Icon name="logout" size={16} />
-          </Button>
         </div>
 
         <div
           className="sidebar-resizer"
           role="separator"
           tabIndex={0}
-          aria-label={t("shell.sidebar.resize")}
+          aria-label="Resize sidebar"
           aria-orientation="vertical"
           aria-valuemin={SIDEBAR_MIN_WIDTH}
           aria-valuemax={SIDEBAR_MAX_WIDTH}
@@ -161,9 +154,9 @@ export function AppShell() {
           <UpdateBanner />
           <InstallBanner />
         </div>
-        <section className="content" aria-label={t("nav.content.aria", { tab: t(TABS[activeTab].label) })}>
+        <section className={`content content-tab-${activeTab}`} aria-label={`${TABS[activeTab].label} content`}>
           <div className={`content-inner content-${activeTab}`}>
-            <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
+            <Suspense fallback={<div className="muted" role="status">Loading section…</div>}>
               <ActiveView />
             </Suspense>
           </div>

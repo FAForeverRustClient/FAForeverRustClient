@@ -16,12 +16,10 @@ import {
   type SortDirection,
 } from "./liveReplayModel";
 import "./live-replays.css";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const connectLobby = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
 
 export function LiveReplayView({ busy }: { busy: boolean }) {
-  const { t } = useTranslation();
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const lobbyStatus = useAppStore((s) => s.state.lobby.status);
   const mapVault = useAppStore((s) => s.state.maps.vault);
@@ -178,8 +176,8 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     return (
       <div className="live-replay-empty surface-panel">
         <Icon name="activity" size={22} />
-        <h3>{t("replays.live.connecting")}</h3>
-        <p>{t("replays.live.connectingHint")}</p>
+        <h3>Connecting to live games</h3>
+        <p>The replay list will appear when the lobby stream is ready.</p>
       </div>
     );
   }
@@ -205,8 +203,8 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
       {filteredGames.length === 0 ? (
         <div className="live-replay-empty surface-panel">
           <Icon name={liveGames.length === 0 ? "activity" : "search"} size={22} />
-          <h3>{t(liveGames.length === 0 ? "replays.live.noneNow" : "replays.live.noneMatch")}</h3>
-          <p>{t(liveGames.length === 0 ? "replays.live.noneNowHint" : "replays.live.noneMatchHint")}</p>
+          <h3>{liveGames.length === 0 ? "No live games right now" : "No live games match"}</h3>
+          <p>{liveGames.length === 0 ? "This view updates automatically when a match starts." : "Adjust or clear the filters to widen the list."}</p>
         </div>
       ) : (
         <LiveReplayTable

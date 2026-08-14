@@ -3,7 +3,7 @@ export const FACTION_NAMES: Readonly<Record<number, string>> = {
   2: "Aeon",
   3: "Cybran",
   4: "Seraphim",
-  5: "Random", // proper noun in the picker; the translated label is factions.random
+  5: "Random",
 };
 
 export const FACTION_COLORS: Readonly<Record<number, string>> = {

@@ -8,6 +8,15 @@ use std::path::PathBuf;
 
 use async_trait::async_trait;
 use faf_domain::state::{LiveReplayTarget, LocalReplay, ReplayQuery, VaultReplay};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultSearchResult {
+    pub replays: Vec<VaultReplay>,
+    pub total_pages: Option<i32>,
+    pub total_records: Option<i32>,
+}
 
 #[async_trait]
 pub trait ReplayPort: Send + Sync {
@@ -34,7 +43,7 @@ pub trait ReplayPort: Send + Sync {
     /// Search the vault (FAF Data API `/data/game`). A default [`ReplayQuery`]
     /// is the unfiltered newest-first feed: the Java client's `NEWEST`
     /// category: so this covers browsing and searching alike.
-    async fn search_vault(&self, query: ReplayQuery) -> Result<Vec<VaultReplay>, String>;
+    async fn search_vault(&self, query: ReplayQuery) -> Result<VaultSearchResult, String>;
 
     /// Featured mod technical names (`/data/featuredMod`), for the search
     /// form's mod filter. Both reference clients populate the same dropdown

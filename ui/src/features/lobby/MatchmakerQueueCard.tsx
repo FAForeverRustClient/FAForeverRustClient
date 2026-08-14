@@ -2,21 +2,20 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { MatchmakerQueue, PlayerRatingSummary } from "../../ipc/bindings";
 import { formatClockDuration } from "../../shared/durations";
-import { t } from "../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
 
 export function queueTitle(queue: MatchmakerQueue) {
-  if (queue.queueName.toLocaleLowerCase() === "ladder1v1") return t("lobby.matchmaker.queue.ranked1v1");
+  if (queue.queueName.toLocaleLowerCase() === "ladder1v1") return "Ranked 1 vs 1";
   return `${queue.teamSize} vs ${queue.teamSize}`;
 }
 
 function statusText(status: QueueDisplayState) {
   switch (status) {
-    case "searching": return t("lobby.matchmaker.state.searching");
-    case "found": return t("lobby.matchmaker.state.found");
-    case "launching": return t("lobby.matchmaker.state.launching");
-    case "cancelled": return t("lobby.matchmaker.state.cancelled");
+    case "searching": return "Searching";
+    case "found": return "Match found";
+    case "launching": return "Game starting";
+    case "cancelled": return "Match cancelled";
     case "idle": return null;
   }
 }
@@ -81,9 +80,9 @@ export function MatchmakerQueueCard({
 
       <div className="matchmaker-queue-footer">
         <Button className="matchmaker-map-pool-button" onClick={onOpenMapPool}>
-          <Icon name="maps" size={15} /> {t("lobby.matchmaker.mapPool")}
+          <Icon name="maps" size={15} /> Map pool
         </Button>
-        {disabled ? <span className="matchmaker-queue-note">{t("lobby.matchmaker.partyTooLarge")}</span> : statusLabel ? <span className="matchmaker-queue-status"><i />{statusLabel}</span> : null}
+        {disabled ? <span className="matchmaker-queue-note">Party too large</span> : statusLabel ? <span className="matchmaker-queue-status"><i />{statusLabel}</span> : null}
       </div>
     </article>
   );

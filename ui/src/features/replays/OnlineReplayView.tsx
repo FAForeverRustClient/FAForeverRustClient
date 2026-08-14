@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "../../design-system/Button";
+import { Pagination } from "../../design-system/Pagination";
 import type { ReplayQuery } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -10,7 +10,6 @@ import { OnlineReplayList, ReplayCard, ReplayDetailPanel } from "./OnlineReplayP
 import { ReplayViewSwitch, type ReplayViewMode } from "./ReplayViewSwitch";
 import { VaultSearch } from "./VaultSearch";
 import "./online-replays.css";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const WATCHED_STORAGE_KEY = "faf-watched-replay-uids";
 
@@ -26,7 +25,6 @@ const downloadVault = (uid: number) =>
   ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid } } });
 
 export function OnlineReplayView({ busy }: { busy: boolean }) {
-  const { t } = useTranslation();
   const vault = useAppStore((s) => s.state.replays.vault);
   const vaultStatus = useAppStore((s) => s.state.replays.vaultStatus);
   const downloadStatus = useAppStore((s) => s.state.replays.downloadStatus);
@@ -35,7 +33,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const featuredMods = useAppStore((s) => s.state.replays.featuredMods);
   const leagues = useAppStore((s) => s.state.leaderboard.leagues);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
-  const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
+  const note = loadStatusNote(vaultStatus, "Searching replays…", "Could not load vault");
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
   const setViewMode = (mode: ReplayViewMode) => {
@@ -75,7 +73,6 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     openDownloadState = downloadStatus.type;
     if (downloadStatus.type === "failed") openDownloadError = downloadStatus.payload.reason;
   }
-  const loading = vaultStatus.type === "loading";
 
   const markWatchedAndPlay = (uid: number) => {
     const next = new Set(watchedUids).add(uid);
@@ -87,6 +84,12 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // Paging reads the *executed* query, so it can't be thrown off by edits
   // sitting unsubmitted in the form.
   const goToPage = (page: number) => searchVault({ ...query, page });
+  // Passed straight through, `null` and all. The old fallback of
+  // `Math.max(maxPage, query.page)` invented a page count from what had been
+  // clicked so far, which is why the numbered buttons appeared one at a time as
+  // you paged. When the API does not report a total, the control now says which
+  // page you are on instead of guessing how many there are.
+  const totalPages = useAppStore((s) => s.state.replays.vaultTotalPages);
 
   return (
     <>
@@ -95,15 +98,17 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         leagues={leagues}
         self={self}
         initialQuery={vaultStatus.type === "idle" ? personalReplayQuery(self) : query}
-        onSearch={(q) => searchVault(q)}
+        onSearch={searchVault}
       />
       <div className="online-replay-view-bar">
-        <span className="muted">{vault.length} {vault.length === 1 ? "replay" : "replays"} on this page</span>
+        <div className="online-replay-view-bar-left">
+          <span className="muted">{vault.length} {vault.length === 1 ? "replay" : "replays"} on this page</span>
+          {note && <span className="online-replay-status-note muted">· {note}</span>}
+        </div>
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
-      {note && <p className="muted">{note}</p>}
       {vaultStatus.type === "ready" && vault.length === 0 && (
-        <p className="muted">{t("replays.vault.noMatch")}</p>
+        <p className="muted">No replays match this search.</p>
       )}
       {vault.length > 0 && viewMode === "tiles" && (
         <div className="replay-grid">
@@ -135,17 +140,15 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           }}
         />
       )}
-      {(vault.length > 0 || query.page > 1) && (
-        <div className="replay-pager">
-          <Button disabled={query.page <= 1 || loading} onClick={() => goToPage(query.page - 1)}>
-            {t("replays.vault.previous")}
-          </Button>
-          <span className="muted">Page {query.page}</span>
-          <Button disabled={!hasMore || loading} onClick={() => goToPage(query.page + 1)}>
-            {t("replays.vault.next")}
-          </Button>
-        </div>
-      )}
+      <div className="vault-pagination">
+        <Pagination
+          currentPage={query.page}
+          totalPages={totalPages}
+          hasMore={hasMore}
+          onPageChange={goToPage}
+          ariaLabel="Online replay pages"
+        />
+      </div>
       {openReplay && (
         <ReplayDetailPanel
           replay={openReplay}

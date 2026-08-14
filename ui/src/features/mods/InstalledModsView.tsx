@@ -7,7 +7,6 @@ import { ipc } from "../../ipc/client";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
 import { ModPreview, UninstallDialog } from "./ModVaultComponents";
-import { useTranslation } from "../../i18n/useTranslation";
 
 type ModTypeFilter = "all" | "ui" | "sim";
 type EnabledFilter = "all" | "enabled" | "disabled";
@@ -41,7 +40,6 @@ function InstalledModCard({
   onToggle,
   onUninstall,
 }: InstalledModCardProps) {
-  const { t } = useTranslation();
   return (
     <article className={mod.enabled ? "installed-mod-card surface-panel is-enabled" : "installed-mod-card surface-panel"}>
       {metadata ? (
@@ -55,7 +53,7 @@ function InstalledModCard({
         <span>
           <strong>{mod.displayName}</strong>
           <i className={`mod-state-dot ${mod.enabled ? "is-enabled" : "is-disabled"}`}>
-            {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
+            {mod.enabled ? "Enabled" : "Disabled"}
           </i>
         </span>
         <small>
@@ -66,16 +64,16 @@ function InstalledModCard({
       </span>
       <div className="installed-mod-actions">
         <Button disabled={busy} onClick={onToggle}>
-          {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
+          {toggling ? "Updating…" : mod.enabled ? "Disable" : "Enable"}
         </Button>
         <Button
           disabled={busy}
           onClick={() => openUpload("mod", mod.folderName, mod.displayName)}
         >
-          {t("mods.installed.publish")}
+          Publish
         </Button>
         <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
-          {t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
+          {installing ? "Working…" : "Uninstall"}
         </Button>
       </div>
     </article>
@@ -83,7 +81,6 @@ function InstalledModCard({
 }
 
 export function InstalledModsView({ busy }: { busy: boolean }) {
-  const { t } = useTranslation();
   const installed = useAppStore((state) => state.state.mods.installed);
   const installedStatus = useAppStore((state) => state.state.mods.installedStatus);
   const vault = useAppStore((state) => state.state.mods.vault);
@@ -93,7 +90,7 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
   const [modType, setModType] = useState<ModTypeFilter>("all");
   const [enabled, setEnabled] = useState<EnabledFilter>("all");
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
-  const note = loadStatusNote(installedStatus, t("mods.installed.scanning"), t("mods.installed.scanFailed"));
+  const note = loadStatusNote(installedStatus, "Scanning mods folder…", "Could not scan mods folder");
   const vaultByUid = useMemo(() => new Map(vault.map((mod) => [mod.uid, mod])), [vault]);
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -128,29 +125,29 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("mods.installed.searchInstalledMods")}
+            placeholder="Search installed mods"
           />
         </label>
         <select
           value={modType}
           onChange={(event) => setModType(event.target.value as ModTypeFilter)}
-          aria-label={t("mods.installed.filterInstalledMod")}
+          aria-label="Filter installed mod type"
         >
-          <option value="all">{t("mods.installed.allTypes")}</option>
-          <option value="ui">{t("mods.installed.uiMods")}</option>
-          <option value="sim">{t("mods.installed.simMods")}</option>
+          <option value="all">All types</option>
+          <option value="ui">UI mods</option>
+          <option value="sim">Simulation mods</option>
         </select>
         <select
           value={enabled}
           onChange={(event) => setEnabled(event.target.value as EnabledFilter)}
-          aria-label={t("mods.installed.filterActivationState")}
+          aria-label="Filter activation state"
         >
-          <option value="all">{t("mods.installed.anyState")}</option>
-          <option value="enabled">{t("mods.installed.enabled")}</option>
-          <option value="disabled">{t("mods.installed.disabled")}</option>
+          <option value="all">Any state</option>
+          <option value="enabled">Enabled</option>
+          <option value="disabled">Disabled</option>
         </select>
         <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}>
-          <Icon name="refresh" size={15} /> {t("mods.installed.rescan")}
+          <Icon name="refresh" size={15} /> Rescan
         </Button>
       </div>
 
@@ -158,11 +155,11 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
       {installedStatus.type === "ready" && filtered.length === 0 ? (
         <div className="vault-empty">
           <Icon name={installed.length === 0 ? "mods" : "search"} size={24} />
-          <h3>{t(installed.length === 0 ? "mods.installed.none" : "mods.installed.noMatch")}</h3>
+          <h3>{installed.length === 0 ? "No mods installed" : "No installed mods match"}</h3>
           <p>
             {installed.length === 0
-              ? t("mods.installed.noneHint")
-              : t("mods.installed.noMatchHint")}
+              ? "Install a mod from the vault to see it here."
+              : "Try a broader search or different filters."}
           </p>
         </div>
       ) : filtered.length > 0 ? (

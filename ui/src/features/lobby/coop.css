@@ -51,14 +51,13 @@
 .coop-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
   gap: 12px;
   min-height: 0;
 }
 
-.coop-mission-panel,
-.coop-detail,
-.coop-games-panel {
+.coop-games-main,
+.coop-detail {
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -67,80 +66,16 @@
   padding: 14px;
 }
 
-.coop-mission-panel .section-heading,
-.coop-games-panel .section-heading {
+.coop-games-main .section-heading,
+.coop-detail .section-heading {
   flex: 0 0 auto;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.coop-mission-list,
-.coop-games-list {
+.coop-games-main .game-tile-grid {
   min-height: 0;
+  padding: 2px;
   overflow: auto;
-  padding-right: 6px;
-  scrollbar-gutter: stable;
-}
-
-.coop-mission-empty {
-  margin: 12px;
-}
-
-.coop-mission-card {
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 70px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.coop-mission-card:last-child {
-  border-bottom: 0;
-}
-
-.coop-mission-art {
-  display: grid;
-  width: 58px;
-  height: 52px;
-  place-items: center;
-  overflow: hidden;
-  color: var(--color-subtle);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-}
-
-.coop-mission-art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.coop-mission-copy {
-  min-width: 0;
-}
-
-.coop-mission-copy h4 {
-  overflow: hidden;
-  margin: 0;
-  color: var(--color-text);
-  font-size: 12px;
-  font-weight: 550;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.coop-mission-copy p {
-  margin: 3px 0 0;
-  color: var(--color-subtle);
-  font-size: 11px;
-}
-
-.coop-mission-card .btn-primary,
-.coop-mission-card .btn-ghost {
-  min-height: 28px;
-  padding: 5px 8px;
-  font-size: 11px;
 }
 
 .coop-games-empty {
@@ -149,88 +84,52 @@
   justify-content: center;
   flex: 1;
   flex-direction: column;
-  gap: 5px;
-  min-height: 160px;
+  gap: 8px;
+  min-height: 220px;
   color: var(--color-subtle);
   text-align: center;
+  padding: 24px;
 }
 
-.coop-games-empty p,
-.coop-games-empty small {
-  margin: 0;
+.coop-games-empty h4 {
+  margin: 4px 0 0;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .coop-games-empty p {
+  margin: 0 0 12px;
   color: var(--color-muted);
   font-size: 12px;
+  max-width: 320px;
 }
 
-.coop-games-empty small {
-  font-size: 11px;
+.coop-mission-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.coop-game-row {
+.coop-picker-field {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  min-height: 52px;
-  padding: 8px 0;
-  color: var(--color-muted);
-  text-align: left;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-}
-
-.coop-game-row:hover {
-  color: var(--color-text);
-}
-
-.coop-game-row span {
-  display: flex;
-  min-width: 0;
   flex-direction: column;
+  gap: 4px;
 }
 
-.coop-game-row strong,
-.coop-game-row small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.coop-game-row strong {
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 550;
-}
-
-.coop-game-row small {
-  margin-top: 2px;
-  color: var(--color-subtle);
-  font-size: 11px;
-}
-
-.coop-game-row b {
-  flex: 0 0 auto;
+.coop-picker-field label {
   color: var(--color-muted);
   font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 @media (max-width: 900px) {
   .coop-layout {
     grid-template-columns: 1fr;
     height: auto;
-  }
-
-  .coop-mission-panel,
-  .coop-games-panel {
-    min-height: 360px;
   }
 }
 
@@ -323,6 +222,105 @@
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+}
+
+.coop-detail-art-card {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 100px;
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.coop-detail-art-card[data-faction="uef"] {
+  border-left: 3px solid var(--color-faction-uef);
+}
+
+.coop-detail-art-card[data-faction="aeon"] {
+  border-left: 3px solid var(--color-faction-aeon);
+}
+
+.coop-detail-art-card[data-faction="cybran"] {
+  border-left: 3px solid var(--color-faction-cybran);
+}
+
+.coop-detail-art-card[data-faction="seraphim"] {
+  border-left: 3px solid var(--color-faction-seraphim);
+}
+
+.coop-detail-art-card[data-faction="custom"] {
+  border-left: 3px solid var(--color-border-strong);
+}
+
+.coop-detail-art-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.coop-detail-art-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.coop-detail-art-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.coop-detail-art-scenario {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.coop-detail-art-mission {
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.coop-detail-art-meta small {
+  font-size: 11px;
+}
+
+.coop-map-tile-badge {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  background: var(--color-surface-raised);
+}
+
+.coop-map-tile-badge[data-faction="uef"] {
+  border-bottom: 2px solid var(--color-faction-uef);
+}
+
+.coop-map-tile-badge[data-faction="aeon"] {
+  border-bottom: 2px solid var(--color-faction-aeon);
+}
+
+.coop-map-tile-badge[data-faction="cybran"] {
+  border-bottom: 2px solid var(--color-faction-cybran);
+}
+
+.coop-map-tile-badge[data-faction="seraphim"] {
+  border-bottom: 2px solid var(--color-faction-seraphim);
 }
 
 .coop-detail-brief {

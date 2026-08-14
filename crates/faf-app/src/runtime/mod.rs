@@ -106,6 +106,19 @@ pub struct VersionedSnapshot {
 }
 
 impl EventSink {
+    /// Reduce an event into the authoritative state and broadcast it.
+    ///
+    /// **The write guard is deliberately held across both sends.** It looks
+    /// like an easy win to drop it right after `reduce` so readers are not
+    /// blocked by broadcast work, and that is wrong: revisions are handed out
+    /// under this lock, so releasing it early lets two concurrent emitters
+    /// interleave and deliver revision N+1 before N. The frontend mirror
+    /// (`ui/src/ipc/revisionedMirror.ts`) treats any revision gap as
+    /// corruption and requests a fresh snapshot, and a snapshot is a few
+    /// megabytes: the map vault alone measures ~3.6 MiB of JSON at a
+    /// realistic 5000-entry catalogue. Trading a microsecond of lock hold for
+    /// intermittent multi-megabyte refetches is a bad deal. `broadcast::send`
+    /// does not block on slow receivers, so the hold is bounded anyway.
     pub fn emit(&self, event: impl Into<AppEvent>) {
         let event = event.into();
         let mut guard = self.state.write().expect("app state lock poisoned");

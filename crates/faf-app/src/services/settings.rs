@@ -130,9 +130,9 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         SettingsCommand::SetBrowsing { preferences } => {
             let mut next = out.with_state(|state| state.settings.clone());
-            next.browsing = preferences;
+            next.browsing = *preferences;
             out.emit(SettingsEvent::BrowsingChanged {
-                preferences: next.normalized().browsing,
+                preferences: Box::new(next.normalized().browsing),
             });
             persist(ctx, out).await;
         }

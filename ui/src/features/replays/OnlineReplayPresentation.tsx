@@ -19,8 +19,6 @@ import {
   ReplayList,
   type ReplayListGroup,
 } from "./ReplayList";
-import { t } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 /** "3d ago" beside the replay id, so recency reads without parsing a date. */
 function replayAge(startTime: string): string {
@@ -29,11 +27,7 @@ function replayAge(startTime: string): string {
   if (Number.isNaN(played)) return "";
   const seconds = (Date.now() - played) / 1000;
   if (seconds < 0) return "";
-  const justNow = t("replays.card.justNow");
-  const elapsed = formatRelativeDuration(seconds, { nowLabel: justNow });
-  // The whole phrase is one message: German fronts the preposition ("vor 3d"),
-  // which a suffix appended to the duration could not produce.
-  return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
+  return formatRelativeDuration(seconds, { nowLabel: "just now", suffix: " ago" });
 }
 
 export interface ReplayCardData {
@@ -85,15 +79,14 @@ function ReplayMetaFact({ icon, label, value }: { icon: IconName; label: string;
 }
 
 function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
-  const { t } = useTranslation();
   return (
     <div className="replay-meta-grid muted">
-      <ReplayMetaFact icon="calendar" label={t("replays.card.played")} value={formatDate(replay.startTime, "")} />
-      <ReplayMetaFact icon="users" label={t("replays.card.players")} value={`${playerCount(replay.teams)}`} />
-      <ReplayMetaFact icon="mods" label={t("replays.card.featuredMod")} value={replay.modName} />
+      <ReplayMetaFact icon="calendar" label="Played" value={formatDate(replay.startTime, "")} />
+      <ReplayMetaFact icon="users" label="Players" value={`${playerCount(replay.teams)}`} />
+      <ReplayMetaFact icon="mods" label="Featured mod" value={replay.modName} />
       <ReplayMetaFact
         icon="activity"
-        label={t("replays.card.averageRating")}
+        label="Average rating"
         value={replay.averageRating !== null ? `~${replay.averageRating}` : ""}
       />
       {/* The two durations are routinely minutes apart, so each carries its own
@@ -101,12 +94,12 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
           card uses (`game-duration-icon` / `world-duration-icon`). */}
       <ReplayMetaFact
         icon="hourglass"
-        label={t("replays.card.gameTime")}
+        label="Game time (simulation)"
         value={replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : ""}
       />
       <ReplayMetaFact
         icon="clock"
-        label={t("replays.card.realTime")}
+        label="Real time (wall clock)"
         value={replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : ""}
       />
     </div>
@@ -126,7 +119,6 @@ export function ReplayLibraryCard({
   onOpen: () => void;
   onDoubleClick?: () => void;
 }) {
-  const { t } = useTranslation();
   const cardTitle = replayCardTitle(replay.title, replay.map);
   const stateClasses = [watched && "replay-card-watched", selected && "replay-card-selected"]
     .filter(Boolean)
@@ -150,7 +142,7 @@ export function ReplayLibraryCard({
       <div className="replay-card-right">
         <div className="replay-card-header">
           <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-          <span className="replay-card-submap muted">{t("replays.card.onMap", { map: replay.map })}</span>
+          <span className="replay-card-submap muted">on {replay.map}</span>
         </div>
         <ReplayCardRoster teams={replay.teams} />
         <div className="replay-card-footer muted">
@@ -173,7 +165,6 @@ export function ReplayCard({
   onOpen: () => void;
   onDoubleClick?: () => void;
 }) {
-  const { t } = useTranslation();
   return (
     <ReplayLibraryCard
       replay={{
@@ -189,7 +180,7 @@ export function ReplayCard({
         durationSeconds: replay.durationSeconds,
         reviewsAverage: replay.reviewsAverage,
         reviewsCount: replay.reviewsCount,
-        footerNote: replay.replayAvailable ? "" : t("replays.card.notUploaded"),
+        footerNote: replay.replayAvailable ? "" : "not uploaded yet",
       }}
       watched={watched}
       onOpen={onOpen}
@@ -215,10 +206,9 @@ export function OnlineReplayList({
   onOpen: (uid: number) => void;
   onWatch?: (uid: number) => void;
 }) {
-  const { t } = useTranslation();
   const groups = groupByDate
     ? groupReplaysByDate(replays)
-    : [{ label: t("replays.list.results"), replays }];
+    : [{ label: "Results", replays }];
 
   const listGroups: ReplayListGroup[] = groups.map((group) => ({
     label: group.label,
@@ -228,7 +218,7 @@ export function OnlineReplayList({
       mapThumbnailUrl: replay.mapThumbnailUrl,
       game: {
         primary: replay.title || replay.map,
-        secondary: replay.map || t("replays.list.mapUnavailable"),
+        secondary: replay.map || "Map unavailable",
       },
       played: {
         primary: formatReplayListTime(replay.startTime),
@@ -244,12 +234,10 @@ export function OnlineReplayList({
       },
       duration: {
         primary: replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : "N/A",
-        secondary: replay.durationSeconds !== null
-          ? t("replays.list.realTimeSuffix", { duration: formatDuration(replay.durationSeconds) })
-          : t("replays.list.realTimeUnavailable"),
+        secondary: replay.durationSeconds !== null ? `${formatDuration(replay.durationSeconds)} real` : "Real time N/A",
       },
       replay: {
-        primary: t(replay.replayAvailable ? "replays.list.available" : "replays.list.processing"),
+        primary: replay.replayAvailable ? "Available" : "Processing",
         secondary: `#${replay.uid}`,
         tone: replay.replayAvailable ? "ok" : "warn",
       },
@@ -261,8 +249,8 @@ export function OnlineReplayList({
         else onOpen(replay.uid);
       },
       action: {
-        label: t("replays.list.details"),
-        ariaLabel: t("replays.list.detailsAria", { uid: replay.uid }),
+        label: "Details",
+        ariaLabel: `Open replay ${replay.uid} details`,
         onClick: () => onOpen(replay.uid),
       },
     })),
@@ -271,7 +259,7 @@ export function OnlineReplayList({
   return (
     <ReplayList
       groups={listGroups}
-      footer={<><span>{t("replays.list.count", { count: replays.length })}</span><span>{t("replays.list.selectHint")}</span></>}
+      footer={<><span>{replays.length} {replays.length === 1 ? "replay" : "replays"}</span><span>Select a row to highlight it · double-click to watch replay</span></>}
     />
   );
 }
@@ -279,7 +267,7 @@ export function OnlineReplayList({
 function groupReplaysByDate(replays: VaultReplay[]): Array<{ label: string; replays: VaultReplay[] }> {
   const groups: Array<{ label: string; replays: VaultReplay[] }> = [];
   for (const replay of replays) {
-    const label = formatShortDate(replay.startTime, t("replays.list.unknownDate"));
+    const label = formatShortDate(replay.startTime, "Unknown date");
     const current = groups[groups.length - 1];
     if (current?.label === label) current.replays.push(replay);
     else groups.push({ label, replays: [replay] });
@@ -304,7 +292,6 @@ export function ReplayDetailPanel({
   downloadState: "idle" | "downloading" | "downloaded" | "failed";
   downloadError: string;
 }) {
-  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -326,12 +313,11 @@ export function ReplayDetailPanel({
     );
   const age = replayAge(replay.startTime);
   const competingTeams = replay.teams.filter((team) => !isObserverTeam(team.team)).length;
-  const players = t("replays.detail.playerCount", { count: totalPlayers });
   const lineupSummary = competingTeams > 1
-    ? t("replays.detail.teamSummary", { teams: competingTeams, players })
-    : players;
+    ? `${competingTeams} teams · ${totalPlayers} ${totalPlayers === 1 ? "player" : "players"}`
+    : `${totalPlayers} ${totalPlayers === 1 ? "player" : "players"}`;
   return (
-    <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: replay.title || replay.map })} onClose={onClose}>
+    <Modal className="replay-detail-modal" ariaLabel={`Replay ${replay.title || replay.map}`} onClose={onClose}>
       <header className="replay-detail-head">
         {replay.mapThumbnailUrl ? (
           <img className="replay-detail-thumb" src={replay.mapThumbnailUrl} alt={replay.map} />
@@ -340,24 +326,24 @@ export function ReplayDetailPanel({
         )}
         <div className="replay-detail-headtext">
           <div className="replay-detail-eyebrow">
-            <span>{t("replays.detail.eyebrow", { uid: replay.uid })}{age && <> · {age}</>}</span>
+            <span>Replay #{replay.uid}{age && <> · {age}</>}</span>
             <Button
               className="replay-copy-id-button"
-              aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-              title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+              aria-label={copiedId ? "Replay ID copied" : "Copy replay ID"}
+              title={copiedId ? "Replay ID copied" : "Copy replay ID"}
               onClick={copyReplayId}
             >
-              {t(copiedId ? "replays.detail.copiedShort" : "replays.detail.copyIdShort")}
+              {copiedId ? "Copied" : "Copy ID"}
             </Button>
           </div>
           <h2>{replay.title || replay.map}</h2>
           <p className="replay-detail-map"><Icon name="maps" size={15} /> {replay.map}</p>
           <div className="replay-detail-badges">
             <span className={replay.replayAvailable ? "replay-availability ready" : "replay-availability pending"}>
-              {t(replay.replayAvailable ? "replays.detail.available" : "replays.detail.processing")}
+              {replay.replayAvailable ? "Replay available" : "Processing upload"}
             </span>
             {replay.reviewsCount ? (
-              <span className="replay-availability neutral" title={t("replays.detail.reviewCount", { count: replay.reviewsCount })}>
+              <span className="replay-availability neutral" title={`${replay.reviewsCount} community ${replay.reviewsCount === 1 ? "review" : "reviews"}`}>
                 ★ {replay.reviewsAverage?.toFixed(1) ?? "N/A"} · {replay.reviewsCount}
               </span>
             ) : null}
@@ -372,55 +358,55 @@ export function ReplayDetailPanel({
             disabled={busy || !replay.replayAvailable}
             onClick={onWatch}
           >
-            <Icon name="play" size={15} /> {t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}
+            <Icon name="play" size={15} /> {replay.replayAvailable ? "Watch" : "Not uploaded"}
           </Button>
           <div className="replay-detail-actions-secondary">
             <Button
               disabled={!replay.replayAvailable || downloadState === "downloading"}
               onClick={onDownload}
             >
-              {t(downloadState === "downloading"
-                ? "replays.detail.downloading"
+              {downloadState === "downloading"
+                ? "Downloading…"
                 : downloadState === "downloaded"
-                  ? "replays.detail.downloaded"
-                  : "replays.detail.download")}
+                  ? "Downloaded"
+                  : "Download"}
             </Button>
-            <Button onClick={copyLink}>{t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}</Button>
+            <Button onClick={copyLink}>{copied ? "Copied" : "Copy link"}</Button>
           </div>
         </div>
       </header>
       {downloadState === "failed" && (
-        <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
+        <p className="replay-download-error surface-error">Could not download replay: {downloadError}</p>
       )}
 
       {/* One dense row of facts instead of a six-cell boxed grid: the values are
           all short, and the grid spent ~120px of modal height saying very
           little. Mirrors the icon meta row in the Java client's detail view. */}
       <dl className="replay-detail-facts">
-        <div><dt>{t("replays.detail.played")}</dt><dd>{formatDateTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-        <div><dt>{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
-        <div><dt>{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
-        <div><dt>{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
+        <div><dt>Played</dt><dd>{formatDateTime(replay.startTime, "Unknown")}</dd></div>
+        <div><dt>Game time</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : "Unknown"}</dd></div>
+        <div><dt>Real time</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : "Unknown"}</dd></div>
+        <div><dt>Players</dt><dd>{totalPlayers}</dd></div>
+        <div><dt>Avg rating</dt><dd>{replay.averageRating !== null ? replay.averageRating : "Unrated"}</dd></div>
+        <div><dt>Featured mod</dt><dd>{replay.modName || "Unknown"}</dd></div>
       </dl>
 
       <section className="replay-detail-lineup">
         <div className="replay-detail-section-head">
           <div>
-            <span className="replay-detail-eyebrow">{t("replays.detail.lineup")}</span>
+            <span className="replay-detail-eyebrow">Lineup</span>
             <h3>{lineupSummary}</h3>
           </div>
           {hasResults && (
             <Button aria-pressed={showResults} onClick={() => setShowResults((visible) => !visible)}>
-              {t(showResults ? "replays.detail.hideResults" : "replays.detail.revealResults")}
+              {showResults ? "Hide results" : "Reveal results"}
             </Button>
           )}
         </div>
         {replay.teams.length > 0 ? (
           <ReplayDetailRoster teams={replay.teams} showResults={showResults} />
         ) : (
-          <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
+          <p className="replay-detail-empty muted">No lineup was recorded for this replay.</p>
         )}
       </section>
     </Modal>

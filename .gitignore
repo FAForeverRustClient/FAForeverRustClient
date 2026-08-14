@@ -59,10 +59,18 @@ client-settings.json
 *.p7c
 
 # Crash dumps and diagnostic traces.
+#
+# The `core` patterns are anchored to the repository root. Unanchored, `core`
+# and `core.*` match at *every* level, which silently excluded
+# `ui/src/store/reducers/core.ts` from the repository: the working tree built
+# fine and every gate passed, while a clean checkout was missing five reducer
+# twins and could not compile. Core dumps land in the working directory of the
+# process that crashed, so the root is the only place they need covering.
 *.dmp
 *.dump
 *.core
-core
+/core
+/core.*
 *.stackdump
 *.crash
 *.trace

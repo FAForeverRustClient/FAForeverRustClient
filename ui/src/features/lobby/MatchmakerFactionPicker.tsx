@@ -1,5 +1,4 @@
 import { FactionIcon } from "../../shared/FactionIcon";
-import { useTranslation } from "../../i18n/useTranslation";
 
 export const MATCHMAKER_FACTIONS = ["UEF", "Aeon", "Cybran", "Seraphim"] as const;
 
@@ -30,7 +29,6 @@ interface Props {
  * glance. `data-faction` picks the token; the colour never appears here.
  */
 export function MatchmakerFactionPicker({ selected, disabled, onChange }: Props) {
-  const { t } = useTranslation();
   const toggle = (faction: string) => {
     const next = selected.includes(faction)
       ? selected.filter((item) => item !== faction)
@@ -41,7 +39,7 @@ export function MatchmakerFactionPicker({ selected, disabled, onChange }: Props)
   };
 
   return (
-    <div className="faction-chips" role="group" aria-label={t("lobby.matchmaker.factions.aria")}>
+    <div className="faction-chips" role="group" aria-label="Factions you are willing to play">
       {MATCHMAKER_FACTIONS.map((faction) => {
         const active = selected.includes(faction);
         return (

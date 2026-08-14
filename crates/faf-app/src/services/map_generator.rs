@@ -30,6 +30,14 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             };
             if ctx.ports.map_generator.is_installed(&map_name) {
                 // Already reproduced: report success without spawning Java.
+                let previews = ctx
+                    .ports
+                    .map_generator
+                    .map_previews(std::slice::from_ref(&map_name))
+                    .await;
+                if !previews.is_empty() {
+                    out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
+                }
                 out.emit(MapGeneratorEvent::StatusChanged {
                     status: GeneratorStatus::Generated {
                         maps: vec![map_name],
@@ -53,7 +61,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         MapGeneratorCommand::SetOptions { options } => {
             out.emit(MapGeneratorEvent::OptionsChanged { options })
         }
-        MapGeneratorCommand::LoadOptions => load_options(ctx, out).await,
+        MapGeneratorCommand::LoadOptions { version } => load_options(version, ctx, out).await,
         MapGeneratorCommand::CleanUp => {
             let Some(_guard) = ctx.map_generator_active.try_acquire() else {
                 return;
@@ -97,11 +105,11 @@ async fn drain(
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
-    let mut succeeded = false;
+    let mut succeeded_maps: Vec<String> = Vec::new();
     while let Some(GeneratorUpdate::Status(status)) = updates.recv().await {
         match &status {
             GeneratorStatus::Generated { maps } => {
-                succeeded = true;
+                succeeded_maps = maps.clone();
                 services::notifications::add(
                     out,
                     NotificationKind::MapGenerated,
@@ -124,7 +132,11 @@ async fn drain(
         }
         out.emit(MapGeneratorEvent::StatusChanged { status });
     }
-    if succeeded {
+    if !succeeded_maps.is_empty() {
+        let previews = ctx.ports.map_generator.map_previews(&succeeded_maps).await;
+        if !previews.is_empty() {
+            out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
+        }
         refresh_installed_maps(ctx, out).await;
     }
 }
@@ -135,27 +147,43 @@ async fn refresh_installed_maps(ctx: &ServiceCtx, out: &EventSink) {
     services::maps::handle(MapsCommand::LoadInstalled, ctx, out).await;
 }
 
-/// Fetch every option list the generator reports, plus the release version.
-///
-/// Best-effort per list: one unavailable list (an older generator without that
-/// flag) must not leave the whole dialog empty.
-async fn load_options(ctx: &ServiceCtx, out: &EventSink) {
-    match ctx.ports.map_generator.latest_version().await {
-        Ok(version) => out.emit(MapGeneratorEvent::VersionResolved { version }),
-        Err(reason) => {
-            services::notifications::add(
-                out,
-                NotificationKind::Error,
-                "Could not find a usable map generator",
-                reason,
-                None,
-            );
-            return;
-        }
+/// Fetch available versions and option lists the generator reports.
+async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &EventSink) {
+    if let Ok(versions) = ctx.ports.map_generator.available_versions().await {
+        out.emit(MapGeneratorEvent::VersionsLoaded { versions });
     }
 
+    let resolved_version = if let Some(v) = explicit_version.clone() {
+        out.emit(MapGeneratorEvent::VersionResolved { version: v.clone() });
+        Some(v)
+    } else {
+        match ctx.ports.map_generator.latest_version().await {
+            Ok(version) => {
+                out.emit(MapGeneratorEvent::VersionResolved {
+                    version: version.clone(),
+                });
+                Some(version)
+            }
+            Err(reason) => {
+                services::notifications::add(
+                    out,
+                    NotificationKind::Error,
+                    "Could not find a usable map generator",
+                    reason,
+                    None,
+                );
+                None
+            }
+        }
+    };
+
     for query in GeneratorOptionQuery::ALL {
-        if let Ok(values) = ctx.ports.map_generator.query_options(query).await {
+        if let Ok(values) = ctx
+            .ports
+            .map_generator
+            .query_options(query, resolved_version.clone())
+            .await
+        {
             out.emit(MapGeneratorEvent::OptionListLoaded { query, values });
         }
     }

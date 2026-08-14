@@ -13,7 +13,6 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import "./multi-select.css";
 import "./search-panel.css";
-import { useTranslation } from "../i18n/useTranslation";
 
 export interface MultiSelectOption {
   /** The value sent to the backend. */
@@ -35,9 +34,8 @@ export function MultiSelect({
   options,
   selected,
   onChange,
-  anyLabel,
+  anyLabel = "Any",
 }: Props) {
-  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +62,7 @@ export function MultiSelect({
 
   const summary =
     selected.length === 0
-      ? anyLabel ?? t("common.any")
+      ? anyLabel
       : selected.length === 1
         ? (options.find((o) => o.value === selected[0])?.label ?? selected[0])
         : `${selected.length} selected`;
@@ -86,7 +84,7 @@ export function MultiSelect({
       {open && (
         <div className="multi-select-popover" role="group" aria-label={label}>
           {options.length === 0 ? (
-            <p className="muted multi-select-empty">{t("designSystem.multiSelect.empty")}</p>
+            <p className="muted multi-select-empty">Nothing to choose from yet.</p>
           ) : (
             options.map((option) => (
               <label key={option.value} className="multi-select-option">
@@ -105,7 +103,7 @@ export function MultiSelect({
               className="multi-select-clear"
               onClick={() => onChange([])}
             >
-              {t("designSystem.multiSelect.clear")}
+              Clear selection
             </button>
           )}
         </div>

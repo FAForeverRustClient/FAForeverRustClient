@@ -7,11 +7,12 @@ import { useAppStore } from "../../store/store";
 import { OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
 import { GameMapImage } from "./GameMapImage";
 import { GenerateMapModal } from "../maps/GenerateMapModal";
-import { useTranslation } from "../../i18n/useTranslation";
 
 interface Props {
   onClose: () => void;
   forcedFeaturedMod?: string;
+  initialMap?: string;
+  initialTitle?: string;
 }
 
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
@@ -32,15 +33,15 @@ function mapMeta(map: { maxPlayers: number; width: number; height: number }): st
   return parts.join(" · ");
 }
 
-export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
-  const { t } = useTranslation();
+export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialTitle }: Props) {
   const player = useAppStore((state) => state.state.auth.player);
   const maps = useAppStore((state) => state.state.maps);
+  const coopMissions = useAppStore((state) => state.state.coop.missions);
   const installedMods = useAppStore((state) => state.state.mods.installed);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const remembered = browsing.hostGame;
   const customGame = forcedFeaturedMod === undefined;
-  const [title, setTitle] = useState(remembered.title || t("lobby.host.defaultTitle", { player: player?.name ?? t("lobby.matchmaker.player") }));
+  const [title, setTitle] = useState(initialTitle ?? (remembered.title || `${player?.name ?? "Player"}'s game`));
   const [featuredMod, setFeaturedMod] = useState(forcedFeaturedMod ?? remembered.featuredMod);
   const [visibility, setVisibility] = useState(remembered.visibility);
   const [passwordEnabled, setPasswordEnabled] = useState(remembered.passwordEnabled);
@@ -51,7 +52,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
   const [mapSearch, setMapSearch] = useState("");
   const [modSearch, setModSearch] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(16);
-  const [selectedMap, setSelectedMap] = useState(remembered.map);
+  const [selectedMap, setSelectedMap] = useState(initialMap ?? remembered.map);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -94,11 +95,27 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
       });
     }
 
+    // 3. Co-op campaign missions
+    for (const mission of coopMissions) {
+      if (mission.mapFolderName) {
+        const key = mission.mapFolderName.toLocaleLowerCase();
+        if (!mapByFolder.has(key)) {
+          mapByFolder.set(key, {
+            displayName: mission.name,
+            folderName: mission.mapFolderName,
+            maxPlayers: 4,
+            width: 0,
+            height: 0,
+          });
+        }
+      }
+    }
+
     return Array.from(mapByFolder.values())
       .filter((map) => matches(map.displayName))
       .filter((map) => map.maxPlayers === 0 || map.maxPlayers <= maxPlayers)
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
-  }, [mapSearch, maps.installed, maps.vault, maxPlayers]);
+  }, [coopMissions, mapSearch, maps.installed, maps.vault, maxPlayers]);
 
   const chosen = availableMaps.find((map) => map.folderName === selectedMap) ?? availableMaps[0];
 
@@ -119,17 +136,17 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
   }, [installedMods, modSearch]);
 
   const titleError = !title.trim()
-    ? t("lobby.host.error.title")
+    ? "Enter a game title."
     : !PRINTABLE_ASCII.test(title.trim())
-      ? t("lobby.host.error.titleAscii")
+      ? "Game titles can only contain standard ASCII characters."
       : "";
   const passwordError = passwordEnabled && !PRINTABLE_ASCII.test(password)
-    ? t("lobby.host.error.passwordAscii")
+    ? "Passwords can only contain standard ASCII characters."
     : "";
   const ratingError = ratingEnabled && ratingMin > ratingMax
-    ? t("lobby.host.error.ratingOrder")
+    ? "Minimum rating cannot be greater than maximum rating."
     : "";
-  const formError = titleError || passwordError || ratingError || (!chosen ? t("lobby.host.error.selectMap") : "");
+  const formError = titleError || passwordError || ratingError || (!chosen ? "Select a map." : "");
 
   const chooseRandom = () => {
     if (availableMaps.length === 0) return;
@@ -192,8 +209,8 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
     <Modal className="host-game-modal" onClose={close}>
       <div className="play-dialog-head">
         <div>
-          <h2>{t(forcedFeaturedMod === "coop" ? "lobby.host.titleCoop" : "lobby.host.titleCustom")}</h2>
-          <p>{t("lobby.host.subtitle")}</p>
+          <h2>{forcedFeaturedMod === "coop" ? "Host a co-op mission" : "Host a custom game"}</h2>
+          <p>Choose the map, featured mod, access, and rating limits.</p>
         </div>
       </div>
 
@@ -201,37 +218,37 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
       <section className="host-config-card surface-panel">
         <div className="host-config-primary-row">
           <label className="field host-field-title">
-            <span>{t("lobby.host.gameTitle")}</span>
+            <span>Game title</span>
             <input
               value={title}
               maxLength={128}
               aria-invalid={Boolean(titleError)}
               aria-describedby={titleError ? "host-title-error" : undefined}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder={t("lobby.host.gameTitle")}
+              placeholder="Game title"
             />
             {titleError && <small id="host-title-error" className="host-field-error">{titleError}</small>}
           </label>
 
           <label className="field host-field-mod">
-            <span>{t("lobby.host.featuredMod")}</span>
+            <span>Featured mod</span>
             <select
               value={featuredMod}
               disabled={Boolean(forcedFeaturedMod)}
               onChange={(event) => setFeaturedMod(event.target.value)}
             >
-              <option value="faf">{t("lobby.host.mod.faf")}</option>
-              <option value="fafbeta">{t("lobby.host.mod.fafbeta")}</option>
-              <option value="nomads">{t("lobby.host.mod.nomads")}</option>
-              <option value="coop">{t("lobby.host.mod.coop")}</option>
+              <option value="faf">Forged Alliance Forever</option>
+              <option value="fafbeta">FAF Beta</option>
+              <option value="nomads">Nomads</option>
+              <option value="coop">Co-op</option>
             </select>
           </label>
 
           <label className="field host-field-visibility">
-            <span>{t("lobby.host.visibility")}</span>
+            <span>Visibility</span>
             <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
-              <option value="public">{t("lobby.host.visibility.public")}</option>
-              <option value="friends">{t("lobby.host.visibility.friends")}</option>
+              <option value="public">Public</option>
+              <option value="friends">Friends only</option>
             </select>
           </label>
         </div>
@@ -244,7 +261,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
                 checked={passwordEnabled}
                 onChange={(event) => setPasswordEnabled(event.target.checked)}
               />
-              <span>{t("lobby.host.passwordProtected")}</span>
+              <span>Password protected</span>
             </label>
             <div className="host-inline-field">
               <input
@@ -256,8 +273,8 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
                 aria-invalid={Boolean(passwordError)}
                 aria-describedby={passwordError ? "host-password-error" : undefined}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder={t("lobby.host.password")}
-                aria-label={t("lobby.host.passwordAria")}
+                placeholder="Password"
+                aria-label="Game password"
               />
               {passwordError && <small id="host-password-error" className="host-field-error">{passwordError}</small>}
             </div>
@@ -270,7 +287,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
                 checked={ratingEnabled}
                 onChange={(event) => setRatingEnabled(event.target.checked)}
               />
-              <span>{t("lobby.host.enforceRating")}</span>
+              <span>Enforce player rating</span>
             </label>
             <div className="host-rating-inputs">
               <input
@@ -282,7 +299,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
                 max={9999}
                 aria-invalid={Boolean(ratingError)}
                 onChange={(event) => setRatingMin(Number(event.target.value))}
-                aria-label={t("lobby.host.minRating")}
+                aria-label="Minimum rating"
               />
               <span className="muted">to</span>
               <input
@@ -294,7 +311,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
                 max={9999}
                 aria-invalid={Boolean(ratingError)}
                 onChange={(event) => setRatingMax(Number(event.target.value))}
-                aria-label={t("lobby.host.maxRating")}
+                aria-label="Maximum rating"
               />
             </div>
             {ratingError && <small className="host-field-error host-rating-error">{ratingError}</small>}
@@ -325,20 +342,20 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
 
             <div className="host-hero-details">
               <div className="host-hero-meta-top">
-                <span className="host-hero-eyebrow">{t("lobby.host.selectedMap")}</span>
+                <span className="host-hero-eyebrow">Selected Map</span>
                 <div className="host-hero-actions">
-                  <Button onClick={chooseRandom} title={t("lobby.host.randomTitle")}>
+                  <Button onClick={chooseRandom} title="Choose a random map from the filtered list">
                     <Icon name="refresh" size={13} />
-                    {t("lobby.host.random")}
+                    Random
                   </Button>
-                  <Button onClick={() => setGenerating(true)} title={t("lobby.host.generateTitle")}>
+                  <Button onClick={() => setGenerating(true)} title="Generate a new Neroxis map">
                     <Icon name="plus" size={13} />
-                    {t("lobby.host.generate")}
+                    Generate
                   </Button>
                 </div>
               </div>
-              <h3 className="host-hero-title" title={chosen?.displayName ?? t("lobby.host.selectMap")}>
-                {chosen?.displayName ?? t("lobby.host.selectMap")}
+              <h3 className="host-hero-title" title={chosen?.displayName ?? "Select a map"}>
+                {chosen?.displayName ?? "Select a map"}
               </h3>
               {chosen && mapMeta(chosen) && (
                 <div className="host-hero-chips">
@@ -354,26 +371,26 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
               <input
                 value={mapSearch}
                 onChange={(event) => setMapSearch(event.target.value)}
-                placeholder={t("lobby.host.searchMapsPlaceholder")}
-                aria-label={t("lobby.host.searchMapsAria")}
+                placeholder="Search maps..."
+                aria-label="Search maps"
               />
             </div>
             <select
               value={maxPlayers}
               onChange={(event) => setMaxPlayers(Number(event.target.value))}
-              aria-label={t("lobby.host.maxPlayersAria")}
+              aria-label="Maximum map players"
             >
-              <option value={2}>{t("lobby.host.upTo", { count: 2 })}</option>
-              <option value={4}>{t("lobby.host.upTo", { count: 4 })}</option>
-              <option value={8}>{t("lobby.host.upTo", { count: 8 })}</option>
-              <option value={12}>{t("lobby.host.upTo", { count: 12 })}</option>
-              <option value={16}>{t("lobby.host.upTo", { count: 16 })}</option>
+              <option value={2}>Up to 2 players</option>
+              <option value={4}>Up to 4 players</option>
+              <option value={8}>Up to 8 players</option>
+              <option value={12}>Up to 12 players</option>
+              <option value={16}>Up to 16 players</option>
             </select>
           </div>
 
-          <div className="host-map-list" role="listbox" aria-label={t("lobby.host.availableMaps")}>
+          <div className="host-map-list" role="listbox" aria-label="Available maps">
             {availableMaps.length === 0 ? (
-              <p className="play-empty">{t("lobby.host.noMaps")}</p>
+              <p className="play-empty">No matching maps found.</p>
             ) : (
               availableMaps.map((map) => (
                 <button
@@ -385,7 +402,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
                   onClick={() => setSelectedMap(map.folderName)}
                 >
                   <span className="host-map-name">{map.displayName}</span>
-                  <span className="host-map-meta">{mapMeta(map) || t("lobby.host.playersUnstated")}</span>
+                  <span className="host-map-meta">{mapMeta(map) || "Players unstated"}</span>
                 </button>
               ))
             )}
@@ -396,7 +413,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
         <section className="host-mods-column surface-panel">
           <header className="host-mods-header">
             <div>
-              <h3>{t("lobby.host.activeMods")}</h3>
+              <h3>Active mods</h3>
               <span className="host-count-badge">
                 {activeModsCount} active · {installedMods.length} installed
               </span>
@@ -408,15 +425,15 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
             <input
               value={modSearch}
               onChange={(event) => setModSearch(event.target.value)}
-              placeholder={t("lobby.host.searchModsPlaceholder")}
-              aria-label={t("lobby.host.searchModsAria")}
+              placeholder="Search mods..."
+              aria-label="Search mods"
             />
           </div>
 
           <div className="host-mod-list">
             {filteredMods.length === 0 ? (
               <p className="play-empty">
-                {t(installedMods.length === 0 ? "lobby.host.noInstalledMods" : "lobby.host.noModsMatch")}
+                {installedMods.length === 0 ? "No installed mods." : "No mods match search."}
               </p>
             ) : (
               filteredMods.map((mod) => (
@@ -447,9 +464,9 @@ export function HostGameModal({ onClose, forcedFeaturedMod }: Props) {
 
       <div className="play-dialog-actions">
         {formError && <span className="host-form-global-error">{formError}</span>}
-        <Button onClick={close}>{t("lobby.host.cancel")}</Button>
+        <Button onClick={close}>Cancel</Button>
         <Button variant="primary" disabled={Boolean(formError)} onClick={host}>
-          {t("lobby.host.submit")}
+          Host game
         </Button>
       </div>
 

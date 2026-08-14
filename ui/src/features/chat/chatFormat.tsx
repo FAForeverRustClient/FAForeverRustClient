@@ -8,33 +8,12 @@ import type { CSSProperties, ReactNode } from "react";
 import type { ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { openHttpsUrl, validateHttpsUrl } from "../../shared/externalLinks";
 import { findPlayer, isModerator } from "../../store/reducer";
-import { t, type MessageKey } from "../../i18n";
 
-/**
- * A stable hue per nickname, spread with the golden-ratio conjugate so nearby
- * names don't land on nearby colours. This is the same trick the Java client's
- * `ColorGeneratorUtil` uses; saturation and lightness stay in tokens.css so the
- * result is readable in every theme.
- */
-export function nickHue(name: string): number {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  }
-  const golden = 0.618033988749895;
-  return Math.round((((hash / 0xffffffff) + golden) % 1) * 360);
-}
-
-/** Inline style carrying the generated hue for `.chat-nick` to consume. */
-export const nickStyle = (name: string) =>
-  ({ "--nick-hue": `${nickHue(name)}` }) as CSSProperties;
+import { assignedPlayerColor, nickHue, nickStyle, resolvePlayerStyle } from "../../shared/nameColors";
+export { nickHue, nickStyle };
 
 export function isAdmin(user: ChatUser | undefined): boolean {
   return !!user?.elevation && user.elevation.split("").some((prefix) => prefix === "~" || prefix === "&");
-}
-
-function includesName(names: string[], name: string): boolean {
-  return names.some((candidate) => candidate.localeCompare(name, undefined, { sensitivity: "accent" }) === 0);
 }
 
 /**
@@ -48,20 +27,17 @@ export function resolvedNickStyle(
   social: SocialState,
   preferences: ChatPreferences,
 ): CSSProperties | undefined {
-  const assignedColor = Object.entries(preferences.nameColors.players)
-    .find(([player]) => player.localeCompare(name, undefined, { sensitivity: "accent" }) === 0)?.[1];
-  const categoryColor = isAdmin(user)
-    ? preferences.nameColors.admins
-    : user && isModerator(user)
-      ? preferences.nameColors.moderators
-      : includesName(social.friends, name)
-        ? preferences.nameColors.friends
-        : includesName(social.foes, name)
-          ? preferences.nameColors.foes
-          : "";
-  const color = assignedColor || categoryColor;
-  if (color) return { color };
-  return preferences.coloredNames ? nickStyle(name) : undefined;
+  const assignedColor = assignedPlayerColor(preferences.nameColors.players, name);
+  if (assignedColor) return { color: assignedColor };
+
+  if (isAdmin(user) && preferences.nameColors.admins) {
+    return { color: preferences.nameColors.admins };
+  }
+  if (user && isModerator(user) && preferences.nameColors.moderators) {
+    return { color: preferences.nameColors.moderators };
+  }
+
+  return resolvePlayerStyle(name, social, preferences);
 }
 
 /**
@@ -72,13 +48,13 @@ export function resolvedNickStyle(
  */
 export type UserCategory = "self" | "moderators" | "friends" | "players" | "ircOnly";
 
-export const USER_CATEGORY_LABELS = {
-  self: "chat.category.self",
-  moderators: "chat.category.moderators",
-  friends: "chat.category.friends",
-  players: "chat.category.players",
-  ircOnly: "chat.category.ircOnly",
-} as const satisfies Record<UserCategory, MessageKey>;
+export const USER_CATEGORY_LABELS: Record<UserCategory, string> = {
+  self: "You",
+  moderators: "Moderators & admins",
+  friends: "Friends",
+  players: "Players",
+  ircOnly: "IRC only",
+};
 
 export const USER_CATEGORY_ORDER: UserCategory[] = [
   "self",
@@ -200,7 +176,7 @@ export function renderBody(
             key={i}
             type="button"
             className="chat-link chat-game-link"
-            title={gameLink.kind === "openGame" ? t("chat.link.joinGame") : t("chat.link.watchLive")}
+            title={gameLink.kind === "openGame" ? "Join game" : "Watch live replay"}
             onClick={() => onGameLink(gameLink)}
           >
             {part}

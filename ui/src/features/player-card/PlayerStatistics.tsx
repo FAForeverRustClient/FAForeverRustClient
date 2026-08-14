@@ -1,6 +1,4 @@
 import type { PlayerCardProfile } from "../../ipc/bindings";
-import { formatNumber, type MessageKey } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const EVENTS = {
   airBuilt: "3ebb0c4d-5e92-4446-bf52-d17ba9c5cd3c",
@@ -50,8 +48,8 @@ function MetricChart({ title, firstLabel, secondLabel, metrics }: {
           <div className="player-metric" key={metric.label}>
             <span>{metric.label}</span>
             <div className="player-metric-bars">
-              <div className="is-first" style={{ width: `${(metric.first / max) * 100}%` }}><i>{formatNumber(metric.first)}</i></div>
-              <div className="is-second" style={{ width: `${(metric.second / max) * 100}%` }}><i>{formatNumber(metric.second)}</i></div>
+              <div className="is-first" style={{ width: `${(metric.first / max) * 100}%` }}><i>{metric.first.toLocaleString("en-US")}</i></div>
+              <div className="is-second" style={{ width: `${(metric.second / max) * 100}%` }}><i>{metric.second.toLocaleString("en-US")}</i></div>
             </div>
           </div>
         ))}
@@ -60,40 +58,25 @@ function MetricChart({ title, firstLabel, secondLabel, metrics }: {
   );
 }
 
-// Faction names are proper nouns and stay literal; the unit classes are copy and
-// carry a message key.
-const FACTIONS: Array<[string, string, string]> = [
-  ["Aeon", EVENTS.aeonPlays, EVENTS.aeonWins],
-  ["Cybran", EVENTS.cybranPlays, EVENTS.cybranWins],
-  ["UEF", EVENTS.uefPlays, EVENTS.uefWins],
-  ["Seraphim", EVENTS.seraphimPlays, EVENTS.seraphimWins],
-];
-
-const UNITS: Array<[MessageKey, string, string]> = [
-  ["playerCard.stats.unit.air", EVENTS.airBuilt, EVENTS.airLost],
-  ["playerCard.stats.unit.land", EVENTS.landBuilt, EVENTS.landLost],
-  ["playerCard.stats.unit.naval", EVENTS.navalBuilt, EVENTS.navalLost],
-  ["playerCard.stats.unit.tech1", EVENTS.tech1Built, EVENTS.tech1Lost],
-  ["playerCard.stats.unit.tech2", EVENTS.tech2Built, EVENTS.tech2Lost],
-  ["playerCard.stats.unit.tech3", EVENTS.tech3Built, EVENTS.tech3Lost],
-  ["playerCard.stats.unit.engineers", EVENTS.engineersBuilt, EVENTS.engineersLost],
-  ["playerCard.stats.unit.experimentals", EVENTS.experimentalsBuilt, EVENTS.experimentalsLost],
-];
-
 export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
-  const { t } = useTranslation();
   const counts = new Map(profile.events.map((event) => [event.eventId, event.count]));
   const count = (id: string) => counts.get(id) ?? 0;
-  const factions = FACTIONS.map(([label, plays, wins]) => ({
-    label,
-    first: count(wins),
-    second: Math.max(0, count(plays) - count(wins)),
-  }));
-  const units = UNITS.map(([label, built, lost]) => ({
-    label: t(label),
-    first: Math.max(0, count(built) - count(lost)),
-    second: count(lost),
-  }));
+  const factions = [
+    ["Aeon", EVENTS.aeonPlays, EVENTS.aeonWins],
+    ["Cybran", EVENTS.cybranPlays, EVENTS.cybranWins],
+    ["UEF", EVENTS.uefPlays, EVENTS.uefWins],
+    ["Seraphim", EVENTS.seraphimPlays, EVENTS.seraphimWins],
+  ].map(([label, plays, wins]) => ({ label, first: count(wins), second: Math.max(0, count(plays) - count(wins)) }));
+  const units = [
+    ["Air", EVENTS.airBuilt, EVENTS.airLost],
+    ["Land", EVENTS.landBuilt, EVENTS.landLost],
+    ["Naval", EVENTS.navalBuilt, EVENTS.navalLost],
+    ["Tech 1", EVENTS.tech1Built, EVENTS.tech1Lost],
+    ["Tech 2", EVENTS.tech2Built, EVENTS.tech2Lost],
+    ["Tech 3", EVENTS.tech3Built, EVENTS.tech3Lost],
+    ["Engineers", EVENTS.engineersBuilt, EVENTS.engineersLost],
+    ["Experimentals", EVENTS.experimentalsBuilt, EVENTS.experimentalsLost],
+  ].map(([label, built, lost]) => ({ label, first: Math.max(0, count(built) - count(lost)), second: count(lost) }));
   const games = profile.ratings.map((rating) => ({
     label: rating.name,
     first: rating.wonGames,
@@ -102,9 +85,9 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
 
   return (
     <div className="player-statistics-grid">
-      <MetricChart title={t("playerCard.stats.factionsTitle")} firstLabel={t("playerCard.stats.wins")} secondLabel={t("playerCard.stats.losses")} metrics={factions} />
-      <MetricChart title={t("playerCard.stats.queuesTitle")} firstLabel={t("playerCard.stats.wins")} secondLabel={t("playerCard.stats.losses")} metrics={games} />
-      <MetricChart title={t("playerCard.stats.unitsTitle")} firstLabel={t("playerCard.stats.survived")} secondLabel={t("playerCard.stats.lost")} metrics={units} />
+      <MetricChart title="Games per faction" firstLabel="Wins" secondLabel="Losses" metrics={factions} />
+      <MetricChart title="Games by rating queue" firstLabel="Wins" secondLabel="Losses" metrics={games} />
+      <MetricChart title="Units" firstLabel="Survived" secondLabel="Lost" metrics={units} />
     </div>
   );
 }

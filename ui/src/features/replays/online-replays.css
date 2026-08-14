@@ -171,6 +171,18 @@ button.vault-input {
   margin: var(--space-2) 0;
 }
 
+.online-replay-view-bar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.online-replay-status-note {
+  font-size: 12px;
+}
+
 /* Replay vault cards: modeled closely on the Java client's
    replay_card.fxml: a fixed-width left column (128px thumbnail, review
    stars, a 2-column meta grid) beside a right column (title, "on <map>"

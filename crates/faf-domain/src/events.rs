@@ -15,6 +15,7 @@ use crate::state::{
 };
 
 // No `Eq`: `ReplayEvent` carries an `f32` (vault replay review score).
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", content = "event")]
 pub enum AppEvent {

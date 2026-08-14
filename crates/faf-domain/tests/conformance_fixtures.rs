@@ -1035,7 +1035,7 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 SettingsEvent::BrowsingChanged {
-                    preferences: BrowsingPreferences {
+                    preferences: Box::new(BrowsingPreferences {
                         custom_games_view: CustomGameView::List,
                         replays_view: CustomGameView::List,
                         custom_games_browser: CustomGameBrowserPreferences {
@@ -1083,6 +1083,8 @@ fn cases() -> Vec<Case> {
                             rating_max: 1_700,
                         },
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
+                        map_vault_preset: "recommended".into(),
+                        mod_vault_preset: "recommended".into(),
                         leaderboard_rating_columns: vec![
                             "rating".into(),
                             "games".into(),
@@ -1091,7 +1093,7 @@ fn cases() -> Vec<Case> {
                             "updated".into(),
                         ],
                         legacy_storage_migrated: true,
-                    },
+                    }),
                 }
                 .into(),
             ],
@@ -1230,7 +1232,9 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Lobby:partyUpdated",
     "Lobby:vetoesUpdated",
     "MapGenerator:optionsChanged",
+    "MapGenerator:previewsLoaded",
     "MapGenerator:versionResolved",
+    "MapGenerator:versionsLoaded",
     "Maps:installFailed",
     "Maps:installed",
     "Maps:installedLoadFailed",

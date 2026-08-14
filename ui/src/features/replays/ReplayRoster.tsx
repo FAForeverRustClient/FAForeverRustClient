@@ -3,16 +3,15 @@ import { Icon } from "../../design-system/Icon";
 import type { ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { openPlayerCard } from "../player-card/playerCardActions";
-import { t } from "../../i18n";
-import { useLocale } from "../../i18n/useTranslation";
+import { PlayerName } from "../../shared/nameColors";
 
 // Team 1 is the FAF server's "no team" bucket. Calling that "No team" reads as
 // missing data; for a game where it holds everyone it is simply a free-for-all,
 // which is what the Java client's lineup shows too.
 function teamName(team: number, soleTeam: boolean): string {
-  if (team < 0) return t("replays.roster.observers");
+  if (team < 0) return "Observers";
   if (team > 1) return `Team ${team - 1}`;
-  return soleTeam ? t("replays.roster.freeForAll") : t("replays.roster.unassigned");
+  return soleTeam ? "Free for all" : "Unassigned";
 }
 
 export function isObserverTeam(team: number): boolean {
@@ -22,7 +21,7 @@ export function isObserverTeam(team: number): boolean {
 function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; observer: boolean; size: number }) {
   if (observer) {
     return (
-      <span className="replay-player-faction replay-player-observer" title={t("replays.roster.observer")} aria-label={t("replays.roster.observer")}>
+      <span className="replay-player-faction replay-player-observer" title="Observer" aria-label="Observer">
         <Icon name="eye" size={size} />
       </span>
     );
@@ -34,16 +33,15 @@ function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; 
 
 export function outcomeLabel(outcome: string): string {
   switch (outcome.toLocaleUpperCase()) {
-    case "VICTORY": return t("replays.roster.victory");
-    case "DEFEAT": return t("replays.roster.defeat");
+    case "VICTORY": return "Victory";
+    case "DEFEAT": return "Defeat";
     case "DRAW":
-    case "MUTUAL_DRAW": return t("replays.roster.draw");
+    case "MUTUAL_DRAW": return "Draw";
     default: return "";
   }
 }
 
 export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
-  useLocale();
   if (teams.length === 0) return null;
   const soleTeam = teams.filter((team) => !isObserverTeam(team.team)).length === 1;
   return (
@@ -64,7 +62,7 @@ export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
               <div key={player.name} className="replay-player">
                 <span className="replay-player-identity">
                   <ReplayPlayerMarker player={player} observer={observer} size={17} />
-                  <span title={player.name}>{player.name}</span>
+                  <PlayerName name={player.name} />
                 </span>
                 {player.rating !== null && <span className="muted">{player.rating}</span>}
               </div>
@@ -83,7 +81,6 @@ export function ReplayDetailRoster({
   teams: ReplayTeam[];
   showResults?: boolean;
 }) {
-  useLocale();
   if (teams.length === 0) return null;
   const soleTeam = teams.filter((team) => !isObserverTeam(team.team)).length === 1;
   // Two teams get a versus divider between them, the way both reference clients
@@ -111,7 +108,7 @@ export function ReplayDetailRoster({
                 <span>{teamName(team.team, soleTeam)}</span>
                 <span className="replay-detail-team-summary">
                   {teamRating !== null && (
-                    <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
+                    <span title="Combined displayed rating">{teamRating} rating</span>
                   )}
                   {showResults && result && (
                     <span className={`replay-team-outcome ${result.toLocaleLowerCase()}`}>{result}</span>
@@ -138,7 +135,7 @@ export function ReplayDetailRoster({
                         ) : (
                           <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
                         )}
-                        <span>{player.name}</span>
+                        <PlayerName name={player.name} />
                       </button>
                       <span className="replay-player-stats">
                         {showResults && player.score !== null && (

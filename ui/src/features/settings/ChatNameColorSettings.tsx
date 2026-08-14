@@ -2,16 +2,19 @@ import { useMemo, useState } from "react";
 import type { ChatNameColors, ChatPreferences } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { DEFAULT_COLOR_PICKER_VALUE } from "../../shared/nameColors";
-import { useTranslation } from "../../i18n/useTranslation";
+import {
+  DEFAULT_COLOR_PICKER_VALUE,
+  STANDARD_CATEGORY_COLORS,
+  type CategoryColorKey,
+} from "../../shared/nameColorsUtil";
 
-type CategoryKey = Exclude<keyof ChatNameColors, "players">;
+type CategoryKey = CategoryColorKey;
 
 const CATEGORIES: Array<{ key: CategoryKey; label: string }> = [
-  { key: "friends", label: "settings.nameColors.friends" },
-  { key: "foes", label: "settings.nameColors.foes" },
-  { key: "moderators", label: "settings.nameColors.moderators" },
-  { key: "admins", label: "settings.nameColors.admins" },
+  { key: "friends", label: "Friends" },
+  { key: "foes", label: "Foes" },
+  { key: "moderators", label: "Moderators" },
+  { key: "admins", label: "Administrators" },
 ];
 
 export function ChatNameColorSettings({
@@ -21,7 +24,6 @@ export function ChatNameColorSettings({
   preferences: ChatPreferences;
   onSave: (preferences: ChatPreferences) => void;
 }) {
-  const { t } = useTranslation();
   const [player, setPlayer] = useState("");
   const [playerColor, setPlayerColor] = useState(DEFAULT_COLOR_PICKER_VALUE);
   const assignedPlayers = useMemo(
@@ -33,6 +35,12 @@ export function ChatNameColorSettings({
   const saveColors = (nameColors: ChatNameColors) => onSave({ ...preferences, nameColors });
   const setCategoryColor = (key: CategoryKey, color: string) => {
     saveColors({ ...preferences.nameColors, [key]: color });
+  };
+  const resetToStandardColors = () => {
+    saveColors({
+      ...preferences.nameColors,
+      ...STANDARD_CATEGORY_COLORS,
+    });
   };
   const removePlayer = (nickname: string) => {
     saveColors({
@@ -57,10 +65,21 @@ export function ChatNameColorSettings({
 
   return (
     <div className="setting-block chat-name-color-settings">
-      <span className="setting-label">{t("settings.nameColors.rules")}</span>
-      <span className="muted">
-        {t("settings.nameColors.rulesHint")}
-      </span>
+      <div className="chat-name-color-header">
+        <div>
+          <span className="setting-label">Name color rules</span>
+          <span className="muted">
+            Individual assignments take priority, followed by administrators, moderators, friends, and foes.
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          onClick={resetToStandardColors}
+          aria-label="Reset category colors to standard defaults"
+        >
+          Reset to standard colors
+        </Button>
+      </div>
 
       <div className="chat-category-colors">
         {CATEGORIES.map(({ key, label }) => {
@@ -68,19 +87,22 @@ export function ChatNameColorSettings({
           return (
             <div className="chat-color-rule surface" key={key}>
               <span>{label}</span>
-              <span className="chat-color-state">{color || t("settings.nameColors.default")}</span>
-              <input
-                type="color"
-                value={color || DEFAULT_COLOR_PICKER_VALUE}
-                aria-label={`Choose a name color for ${label.toLocaleLowerCase()}`}
-                onChange={(event) => setCategoryColor(key, event.target.value)}
-              />
+              <span className="chat-color-state">{color || "Default"}</span>
+              <label className="chat-color-swatch-wrap" title={`Choose color for ${label}`}>
+                <span className="chat-color-preview-swatch" style={{ backgroundColor: color || DEFAULT_COLOR_PICKER_VALUE }} />
+                <input
+                  type="color"
+                  value={color || DEFAULT_COLOR_PICKER_VALUE}
+                  aria-label={`Choose a name color for ${label.toLocaleLowerCase()}`}
+                  onChange={(event) => setCategoryColor(key, event.target.value)}
+                />
+              </label>
               <button
                 type="button"
                 className="chat-color-clear surface surface-interactive"
                 disabled={!color}
                 aria-label={`Clear the name color for ${label.toLocaleLowerCase()}`}
-                title={t("settings.nameColors.useDefaultText")}
+                title="Use default text color"
                 onClick={() => setCategoryColor(key, "")}
               >
                 <Icon name="close" size={12} />
@@ -90,47 +112,64 @@ export function ChatNameColorSettings({
         })}
       </div>
 
-      <div className="settings-inline-form chat-player-color-form">
-        <input
-          className="settings-input"
-          value={player}
-          maxLength={64}
-          placeholder={t("settings.nameColors.playerName")}
-          aria-label={t("settings.nameColors.playerNameCustom")}
-          onChange={(event) => setPlayer(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              addPlayer();
-            }
-          }}
-        />
-        <input
-          type="color"
-          value={playerColor}
-          aria-label={t("settings.nameColors.customPlayerName")}
-          onChange={(event) => setPlayerColor(event.target.value)}
-        />
-        <Button onClick={addPlayer} disabled={!player.trim()}>{t("settings.nameColors.assign")}</Button>
+      <div className="chat-player-assign-section">
+        <span className="chat-player-assign-label">Assign individual player color</span>
+        <div className="chat-player-color-form">
+          <input
+            className="settings-input chat-player-name-input"
+            value={player}
+            maxLength={64}
+            placeholder="Player username"
+            aria-label="Player name for custom chat color"
+            onChange={(event) => setPlayer(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addPlayer();
+              }
+            }}
+          />
+          <label className="chat-color-picker-control surface surface-interactive" title="Choose custom player color">
+            <span className="chat-color-preview-swatch" style={{ backgroundColor: playerColor }} />
+            <span className="chat-color-state">{playerColor}</span>
+            <input
+              type="color"
+              value={playerColor}
+              aria-label="Custom player name color"
+              onChange={(event) => setPlayerColor(event.target.value)}
+            />
+          </label>
+          <Button
+            variant="primary"
+            className="chat-player-assign-btn"
+            onClick={addPlayer}
+            disabled={!player.trim()}
+          >
+            Assign
+          </Button>
+        </div>
       </div>
 
       {assignedPlayers.length > 0 ? (
-        <div className="chat-player-color-list" aria-label={t("settings.nameColors.individualPlayerName")}>
+        <div className="chat-player-color-list" aria-label="Individual player name colors">
           {assignedPlayers.map(([nickname, color]) => (
             <div className="chat-player-color surface" key={nickname}>
               <span>{nickname}</span>
-              <input
-                type="color"
-                value={color}
-                aria-label={`Change the name color for ${nickname}`}
-                onChange={(event) => saveColors({
-                  ...preferences.nameColors,
-                  players: { ...preferences.nameColors.players, [nickname]: event.target.value },
-                })}
-              />
+              <label className="chat-color-swatch-wrap" title={`Change color for ${nickname}`}>
+                <span className="chat-color-preview-swatch" style={{ backgroundColor: color }} />
+                <input
+                  type="color"
+                  value={color}
+                  aria-label={`Change the name color for ${nickname}`}
+                  onChange={(event) => saveColors({
+                    ...preferences.nameColors,
+                    players: { ...preferences.nameColors.players, [nickname]: event.target.value },
+                  })}
+                />
+              </label>
               <button
                 type="button"
-                className="surface surface-interactive"
+                className="chat-color-clear surface surface-interactive"
                 aria-label={`Remove the name color for ${nickname}`}
                 title={`Remove ${nickname}'s custom color`}
                 onClick={() => removePlayer(nickname)}
@@ -141,7 +180,7 @@ export function ChatNameColorSettings({
           ))}
         </div>
       ) : (
-        <span className="settings-empty muted">{t("settings.nameColors.empty")}</span>
+        <span className="settings-empty muted">No individual player colors assigned.</span>
       )}
     </div>
   );

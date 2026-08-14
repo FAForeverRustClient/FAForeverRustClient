@@ -33,12 +33,19 @@
   gap: 3px;
 }
 
+/* Capped, not just flexible. These were `flex: 1 1 220px` with no ceiling, so
+   on a wide display they absorbed every spare pixel: a player-name box ran to
+   well over a thousand pixels, which reads as a mistake and puts the label
+   miles from the value. A name or a map title needs a few dozen characters, so
+   the field stops growing there and the row keeps its controls together. */
 .search-panel-field-grow {
   flex: 1 1 220px;
+  max-width: 420px;
 }
 
 .search-panel-field-compact {
   flex: 0 1 160px;
+  max-width: 220px;
 }
 
 .search-panel-label {

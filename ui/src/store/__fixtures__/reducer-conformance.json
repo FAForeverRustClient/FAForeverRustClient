@@ -109,6 +109,8 @@
         "pageSize": 50
       },
       "vaultHasMore": false,
+      "vaultTotalPages": null,
+      "vaultTotalRecords": null,
       "downloadStatus": {
         "type": "idle"
       },
@@ -140,6 +142,8 @@
         "type": "idle"
       },
       "latestVersion": "",
+      "availableVersions": [],
+      "selectedVersion": null,
       "optionLists": {
         "symmetries": [],
         "styles": [],
@@ -149,22 +153,34 @@
         "propStyles": []
       },
       "options": {
+        "version": null,
         "spawnCount": 6,
         "numTeams": 2,
         "mapSize": 512,
         "seed": "",
         "generationType": "casual",
         "symmetry": "",
+        "symmetries": [],
         "style": "",
+        "styles": [],
         "terrainStyle": "",
+        "terrainStyles": [],
         "textureStyle": "",
+        "textureStyles": [],
         "resourceStyle": "",
+        "resourceStyles": [],
         "propStyle": "",
+        "propStyles": [],
         "reclaimDensity": null,
+        "reclaimDensityMin": null,
+        "reclaimDensityMax": null,
         "resourceDensity": null,
+        "resourceDensityMin": null,
+        "resourceDensityMax": null,
         "numToGenerate": null,
         "commandLineArgs": ""
-      }
+      },
+      "previews": {}
     },
     "mods": {
       "vault": [],
@@ -316,7 +332,8 @@
       },
       "appearance": {
         "density": "comfortable",
-        "reduceMotion": false
+        "reduceMotion": false,
+        "uiScale": 100
       },
       "social": {
         "playerNotes": []
@@ -347,10 +364,10 @@
         "coloredNames": false,
         "rosterWidth": 236,
         "nameColors": {
-          "friends": "",
-          "foes": "",
-          "moderators": "",
-          "admins": "",
+          "friends": "#87cefa",
+          "foes": "#dc143c",
+          "moderators": "#32cd32",
+          "admins": "#ba55d3",
           "players": {}
         },
         "hideFoeMessages": true,
@@ -358,10 +375,12 @@
         "autoJoinChannels": [],
         "autoJoinLanguageChannel": true,
         "mutedPlayers": [],
-        "readMarkers": {}
+        "readMarkers": {},
+        "hiddenRosterCategories": []
       },
       "game": {
-        "additionalArguments": []
+        "additionalArguments": [],
+        "autoGenerateMaps": true
       },
       "discord": {
         "enabled": true,
@@ -414,6 +433,8 @@
           "ratingMax": 1500
         },
         "favoriteMaps": [],
+        "mapVaultPreset": "recommended",
+        "modVaultPreset": "recommended",
         "leaderboardRatingColumns": [
           "rating",
           "games",
@@ -4085,6 +4106,7 @@
             }
           },
           "expected": {
+            "availableVersions": [],
             "latestVersion": "",
             "optionLists": {
               "propStyles": [],
@@ -4101,16 +4123,29 @@
               "numTeams": 2,
               "numToGenerate": null,
               "propStyle": "",
+              "propStyles": [],
               "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
               "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
               "resourceStyle": "",
+              "resourceStyles": [],
               "seed": "",
               "spawnCount": 6,
               "style": "",
+              "styles": [],
+              "symmetries": [],
               "symmetry": "",
               "terrainStyle": "",
-              "textureStyle": ""
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null
             },
+            "previews": {},
+            "selectedVersion": null,
             "status": {
               "type": "resolvingVersion"
             }
@@ -4131,6 +4166,7 @@
             }
           },
           "expected": {
+            "availableVersions": [],
             "latestVersion": "",
             "optionLists": {
               "propStyles": [],
@@ -4150,16 +4186,29 @@
               "numTeams": 2,
               "numToGenerate": null,
               "propStyle": "",
+              "propStyles": [],
               "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
               "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
               "resourceStyle": "",
+              "resourceStyles": [],
               "seed": "",
               "spawnCount": 6,
               "style": "",
+              "styles": [],
+              "symmetries": [],
               "symmetry": "",
               "terrainStyle": "",
-              "textureStyle": ""
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null
             },
+            "previews": {},
+            "selectedVersion": null,
             "status": {
               "type": "resolvingVersion"
             }
@@ -4183,6 +4232,7 @@
             }
           },
           "expected": {
+            "availableVersions": [],
             "latestVersion": "",
             "optionLists": {
               "propStyles": [],
@@ -4202,16 +4252,29 @@
               "numTeams": 2,
               "numToGenerate": null,
               "propStyle": "",
+              "propStyles": [],
               "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
               "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
               "resourceStyle": "",
+              "resourceStyles": [],
               "seed": "",
               "spawnCount": 6,
               "style": "",
+              "styles": [],
+              "symmetries": [],
               "symmetry": "",
               "terrainStyle": "",
-              "textureStyle": ""
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null
             },
+            "previews": {},
+            "selectedVersion": null,
             "status": {
               "payload": {
                 "maps": [
@@ -4889,7 +4952,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -4954,7 +5019,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -5013,7 +5080,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -5093,7 +5162,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -5152,7 +5223,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -5217,7 +5290,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -5320,7 +5395,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -5404,7 +5481,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         },
         {
@@ -5490,7 +5569,9 @@
             },
             "vaultStatus": {
               "type": "idle"
-            }
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         }
       ]
@@ -5600,7 +5681,8 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
-              "reduceMotion": false
+              "reduceMotion": false,
+              "uiScale": 100
             },
             "browsing": {
               "customGamesBrowser": {
@@ -5641,6 +5723,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "mapVaultPreset": "recommended",
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -5648,19 +5731,21 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "coloredNames": false,
+              "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
               "nameColors": {
-                "admins": "",
-                "foes": "",
-                "friends": "",
-                "moderators": "",
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
                 "players": {}
               },
               "readMarkers": {},
@@ -5679,7 +5764,8 @@
               "enabled": true
             },
             "game": {
-              "additionalArguments": []
+              "additionalArguments": [],
+              "autoGenerateMaps": true
             },
             "gamePath": "",
             "general": {
@@ -5728,7 +5814,8 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
-              "reduceMotion": false
+              "reduceMotion": false,
+              "uiScale": 100
             },
             "browsing": {
               "customGamesBrowser": {
@@ -5769,6 +5856,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "mapVaultPreset": "recommended",
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -5776,19 +5864,21 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "coloredNames": false,
+              "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
               "nameColors": {
-                "admins": "",
-                "foes": "",
-                "friends": "",
-                "moderators": "",
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
                 "players": {}
               },
               "readMarkers": {},
@@ -5807,7 +5897,8 @@
               "enabled": true
             },
             "game": {
-              "additionalArguments": []
+              "additionalArguments": [],
+              "autoGenerateMaps": true
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -5879,7 +5970,8 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
-              "reduceMotion": false
+              "reduceMotion": false,
+              "uiScale": 100
             },
             "browsing": {
               "customGamesBrowser": {
@@ -5920,6 +6012,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "mapVaultPreset": "recommended",
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -5927,19 +6020,21 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "coloredNames": false,
+              "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
               "nameColors": {
-                "admins": "",
-                "foes": "",
-                "friends": "",
-                "moderators": "",
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
                 "players": {}
               },
               "readMarkers": {},
@@ -5958,7 +6053,8 @@
               "enabled": true
             },
             "game": {
-              "additionalArguments": []
+              "additionalArguments": [],
+              "autoGenerateMaps": true
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -6021,7 +6117,8 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
-              "reduceMotion": false
+              "reduceMotion": false,
+              "uiScale": 100
             },
             "browsing": {
               "customGamesBrowser": {
@@ -6062,6 +6159,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "mapVaultPreset": "recommended",
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -6069,19 +6167,21 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "coloredNames": false,
+              "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
               "nameColors": {
-                "admins": "",
-                "foes": "",
-                "friends": "",
-                "moderators": "",
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
                 "players": {}
               },
               "readMarkers": {},
@@ -6100,7 +6200,8 @@
               "enabled": false
             },
             "game": {
-              "additionalArguments": []
+              "additionalArguments": [],
+              "autoGenerateMaps": true
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -6206,6 +6307,8 @@
                   "favoriteMaps": [
                     "adaptive_tabula.v0006"
                   ],
+                  "mapVaultPreset": "recommended",
+                  "modVaultPreset": "recommended",
                   "leaderboardRatingColumns": [
                     "rating",
                     "games",
@@ -6221,7 +6324,8 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
-              "reduceMotion": false
+              "reduceMotion": false,
+              "uiScale": 100
             },
             "browsing": {
               "customGamesBrowser": {
@@ -6270,25 +6374,28 @@
                 "maxPlayers": "",
                 "search": "tournament"
               },
+              "mapVaultPreset": "recommended",
               "matchmakerFactions": [
                 "Cybran"
               ],
               "matchmakerUnselectedQueues": [
                 "ladder_1v1"
               ],
+              "modVaultPreset": "recommended",
               "replaysView": "list"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "coloredNames": false,
+              "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
               "nameColors": {
-                "admins": "",
-                "foes": "",
-                "friends": "",
-                "moderators": "",
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
                 "players": {}
               },
               "readMarkers": {},
@@ -6307,7 +6414,8 @@
               "enabled": false
             },
             "game": {
-              "additionalArguments": []
+              "additionalArguments": [],
+              "autoGenerateMaps": true
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {

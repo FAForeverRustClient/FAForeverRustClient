@@ -270,6 +270,8 @@ pub struct ReplayState {
     pub vault_query: ReplayQuery,
     /// Whether another page of results is likely to exist.
     pub vault_has_more: bool,
+    pub vault_total_pages: Option<i32>,
+    pub vault_total_records: Option<i32>,
     /// Saving an online replay to the shared local replay library is separate
     /// from watching it and from loading either catalogue.
     pub download_status: ReplayDownloadStatus,
@@ -316,9 +318,11 @@ pub enum ReplayEvent {
         /// wire: serde and specta both see straight through the box.
         query: Box<ReplayQuery>,
         /// Whether a further page is likely to exist: a full page came back.
-        /// The API's `totalPages` needs an extra `page[totals]` round trip that
-        /// neither reference client bothers with for the vault list either.
         has_more: bool,
+        #[serde(default)]
+        total_pages: Option<i32>,
+        #[serde(default)]
+        total_records: Option<i32>,
     },
     VaultLoadFailed {
         reason: String,
@@ -435,10 +439,14 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             replays,
             query,
             has_more,
+            total_pages,
+            total_records,
         } => {
             state.vault = replays.clone();
             state.vault_query = (**query).clone();
             state.vault_has_more = *has_more;
+            state.vault_total_pages = *total_pages;
+            state.vault_total_records = *total_records;
             state.vault_status = VaultStatus::Ready;
         }
         ReplayEvent::FeaturedModsLoaded { mods } => state.featured_mods = mods.clone(),
@@ -685,10 +693,14 @@ mod tests {
                 replays: vec![vault_replay(1), vault_replay(2)],
                 query: Box::new(query.clone()),
                 has_more: true,
+                total_pages: Some(5),
+                total_records: Some(10),
             },
         );
         assert_eq!(s.vault_status, VaultStatus::Ready);
         assert_eq!(s.vault.len(), 2);
+        assert_eq!(s.vault_total_pages, Some(5));
+        assert_eq!(s.vault_total_records, Some(10));
         // The executed query travels with the results, so paging and the
         // results summary can never describe a different search than the one
         // that produced these rows.

@@ -147,3 +147,121 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
+
+/* A `fieldset` carries the disabled state for the whole options block while a
+   map name is being reproduced, so every control inside it greys out together
+   rather than each one repeating the condition. It is layout-neutral. */
+.generate-map-fieldset {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.generate-map-error {
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Seed field plus its reroll button. */
+.generate-map-seed {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.generate-map-seed input {
+  flex: 1;
+  min-width: 0;
+}
+
+.generate-map-seed button {
+  flex: none;
+  display: inline-flex;
+  width: 32px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.generate-map-seed button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+/* Which of several generated maps to carry back to the host form. */
+.generate-map-choices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.generate-map-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.generate-map-card:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+.generate-map-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.generate-map-card-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.generate-map-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.generate-map-card-placeholder {
+  color: var(--color-muted);
+}
+
+.generate-map-card-meta {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.generate-map-card-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

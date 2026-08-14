@@ -35,6 +35,21 @@ export type AppState = {
 export type AppearancePreferences = {
 	density: UiDensity,
 	reduceMotion: boolean,
+	/**
+	 *  Whole-interface zoom, as a percentage. Applied by the shell as a real
+	 *  webview zoom rather than a CSS transform, so layout, hit testing and
+	 *  `window.innerWidth` all stay in one coordinate space.
+	 *
+	 *  This client's dimensions are in CSS pixels throughout, so on a large
+	 *  high-resolution display running at 100% desktop scaling every control is
+	 *  physically tiny. Neither reference client offers this (the Java client
+	 *  zooms only its chat), but neither is a fixed-pixel web UI.
+	 *
+	 *  Settings files written before this existed still load: see the `Wire`
+	 *  reader below, which is how every other preference block in this module
+	 *  gains a field without making the generated IPC type optional.
+	 */
+	uiScale: number,
 };
 
 /**  What the UI can ask the auth service to do. */
@@ -97,6 +112,10 @@ export type BrowsingPreferences = {
 	 *  key and uses it in the host picker and generated-map cleanup.
 	 */
 	favoriteMaps: string[],
+	/**  Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all"). */
+	mapVaultPreset: string,
+	/**  Active preset filter in the mod vault ("recommended", "rating", "ui", "newest", "all"). */
+	modVaultPreset: string,
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
 	/**
@@ -295,6 +314,17 @@ export type ChatPreferences = {
 	 *  Keys are produced by [`super::chat::read_marker_key`].
 	 */
 	readMarkers: { [key in string]: string },
+	/**
+	 *  Roster categories the user has collapsed (`players`, `ircOnly`, …).
+	 *
+	 *  The Java client stores this per channel
+	 *  (`ChatPrefs.channelNameToHiddenCategories`). One global set is used here
+	 *  instead: the categories people actually collapse are the noisy ones
+	 *  (`#aeolus` alone lists 600+ under Players), and that judgement does not
+	 *  change from channel to channel. Per-channel remains possible later
+	 *  without moving this field, by widening the value to a map.
+	 */
+	hiddenRosterCategories: string[],
 };
 
 export type ChatState = {
@@ -694,7 +724,9 @@ export type GamePreferences = {
 	 *  Additional literal arguments prepended to both live-game and replay
 	 *  launches. Each entry is one process argument; no shell is involved.
 	 */
-	additionalArguments: string[],
+	additionalArguments?: string[],
+	/**  Automatically generate missing Neroxis maps when joining a lobby. */
+	autoGenerateMaps?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -742,11 +774,13 @@ export type GeneratorOptionQuery = "symmetries" | "styles" | "terrainStyles" | "
 /**
  *  Everything the host-a-generated-map flow can specify.
  *
- *  Mirrors the Java client's `GeneratorOptions` record one-for-one. `None`
+ *  Mirrors the Java client's `GeneratorOptions` record. `None`
  *  means "let the generator decide", which is not the same as a default value,
  *  omitting `--style` lets the generator pick one, while passing a style pins it.
  */
 export type GeneratorOptions = {
+	/**  Specific generator version to run (e.g. "1.15.2"), or None for latest. */
+	version?: string | null,
 	/**
 	 *  Total spawn points. The generator requires this together with
 	 *  `num_teams` and `map_size`.
@@ -758,20 +792,30 @@ export type GeneratorOptions = {
 	/**  Fixed seed, for reproducing a specific map. */
 	seed: string,
 	generationType: GenerationType,
-	symmetry: string,
+	symmetry?: string,
+	symmetries?: string[],
 	/**
 	 *  A whole-map style preset. Mutually exclusive with the four
 	 *  component styles below: the generator ignores those when a style is set,
 	 *  so the command builder stops after emitting it.
 	 */
-	style: string,
-	terrainStyle: string,
-	textureStyle: string,
-	resourceStyle: string,
-	propStyle: string,
+	style?: string,
+	styles?: string[],
+	terrainStyle?: string,
+	terrainStyles?: string[],
+	textureStyle?: string,
+	textureStyles?: string[],
+	resourceStyle?: string,
+	resourceStyles?: string[],
+	propStyle?: string,
+	propStyles?: string[],
 	/**  0–127 in the generator's units; the Java client's sliders use the same. */
 	reclaimDensity: number | null,
+	reclaimDensityMin?: number | null,
+	reclaimDensityMax?: number | null,
 	resourceDensity: number | null,
+	resourceDensityMin?: number | null,
+	resourceDensityMax?: number | null,
 	/**  Generate several maps in one run (`--num-to-generate`). */
 	numToGenerate: number | null,
 	/**
@@ -1288,10 +1332,12 @@ export type MapGeneratorCommand =
 	options: GeneratorOptions,
 } } |
 /**
- *  Fetch every option list from the generator, downloading the newest
- *  supported release first if needed.
+ *  Fetch every option list from the generator, downloading the specified
+ *  (or newest supported) release first if needed.
  */
-{ type: "loadOptions" } |
+{ type: "loadOptions"; payload: {
+	version?: string | null,
+} } |
 /**  Remember the host dialog's current options without generating. */
 { type: "setOptions"; payload: {
 	options: GeneratorOptions,
@@ -1311,17 +1357,25 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
 	status: GeneratorStatus,
 } } | { type: "versionResolved"; payload: {
 	version: string,
+} } | { type: "versionsLoaded"; payload: {
+	versions: string[],
 } } | { type: "optionListLoaded"; payload: {
 	query: GeneratorOptionQuery,
 	values: string[],
 } } | { type: "optionsChanged"; payload: {
 	options: GeneratorOptions,
+} } | { type: "previewsLoaded"; payload: {
+	previews: { [key in string]: string },
 } };
 
 export type MapGeneratorState = {
 	status: GeneratorStatus,
 	/**  The newest supported generator release, once resolved. Empty until then. */
 	latestVersion: string,
+	/**  All available supported generator releases from GitHub. */
+	availableVersions?: string[],
+	/**  Currently selected version in the UI. */
+	selectedVersion?: string | null,
 	optionLists: GeneratorOptionLists,
 	/**
 	 *  The last options the user configured, kept so the host dialog reopens
@@ -1329,6 +1383,8 @@ export type MapGeneratorState = {
 	 *  `GeneratorPrefs`.
 	 */
 	options: GeneratorOptions,
+	/**  Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`). */
+	previews?: { [key in string]: string },
 };
 
 /**  Status of an install/uninstall action for one map folder. */
@@ -2047,12 +2103,10 @@ export type ReplayEvent = { type: "connecting" } |
 	 *  wire: serde and specta both see straight through the box.
 	 */
 	query: ReplayQuery,
-	/**
-	 *  Whether a further page is likely to exist: a full page came back.
-	 *  The API's `totalPages` needs an extra `page[totals]` round trip that
-	 *  neither reference client bothers with for the vault list either.
-	 */
+	/**  Whether a further page is likely to exist: a full page came back. */
 	hasMore: boolean,
+	totalPages?: number | null,
+	totalRecords?: number | null,
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } |
@@ -2197,6 +2251,8 @@ export type ReplayState = {
 	vaultQuery: ReplayQuery,
 	/**  Whether another page of results is likely to exist. */
 	vaultHasMore: boolean,
+	vaultTotalPages: number | null,
+	vaultTotalRecords: number | null,
 	/**
 	 *  Saving an online replay to the shared local replay library is separate
 	 *  from watching it and from loading either catalogue.
