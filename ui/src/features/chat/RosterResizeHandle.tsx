@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
-import { useTranslation } from "../../i18n/useTranslation";
 
 export const ROSTER_MIN_WIDTH = 190;
 export const ROSTER_MAX_WIDTH = 520;
@@ -20,7 +19,6 @@ export function RosterResizeHandle({
   onResize: (width: number) => void;
   onCommit: (width: number) => void;
 }) {
-  const { t } = useTranslation();
   const [resizing, setResizing] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const widthRef = useRef(width);
@@ -81,7 +79,7 @@ export function RosterResizeHandle({
       className={`chat-roster-resizer${resizing ? " is-active" : ""}`}
       role="separator"
       tabIndex={0}
-      aria-label={t("chat.roster.resize")}
+      aria-label="Resize channel user list"
       aria-orientation="vertical"
       aria-valuemin={ROSTER_MIN_WIDTH}
       aria-valuemax={ROSTER_MAX_WIDTH}

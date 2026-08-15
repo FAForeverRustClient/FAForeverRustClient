@@ -2,7 +2,6 @@ import type { DiscordPreferences } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (preferences: DiscordPreferences) =>
   ipc.send({
@@ -11,31 +10,30 @@ const save = (preferences: DiscordPreferences) =>
   });
 
 export function DiscordSettingsSection() {
-  const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.discord);
   const update = (patch: Partial<DiscordPreferences>) => void save({ ...preferences, ...patch });
 
   return (
     <>
       <SettingRow
-        label={t("settings.discord.richPresence")}
-        hint={t("settings.discord.richPresenceHint")}
+        label="Rich Presence"
+        hint="Show the game you are hosting or playing on your Discord profile, including its title and player count."
       >
         <SettingsSwitch
           checked={preferences.enabled}
           onChange={(enabled) => update({ enabled })}
-          label={t("settings.discord.richPresence")}
+          label="Rich Presence"
         />
       </SettingRow>
       <SettingRow
-        label={t("settings.discord.disallowJoinsVia")}
-        hint={t("settings.discord.disallowJoinsViaHint")}
+        label="Disallow joins via Discord"
+        hint="Keep the status visible, but remove the Join button so nobody can enter your lobby from Discord."
       >
         <SettingsSwitch
           checked={preferences.disallowJoins}
           disabled={!preferences.enabled}
           onChange={(disallowJoins) => update({ disallowJoins })}
-          label={t("settings.discord.disallowJoinsVia")}
+          label="Disallow joins via Discord"
         />
       </SettingRow>
     </>

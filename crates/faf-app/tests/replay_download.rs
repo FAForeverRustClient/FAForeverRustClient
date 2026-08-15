@@ -7,7 +7,6 @@ use faf_app::ports::ReplayPort;
 use faf_app::{App, Ports};
 use faf_domain::state::{
     LiveReplayTarget, LocalReplay, LocalReplayStatus, ReplayCommand, ReplayEvent, ReplayQuery,
-    VaultReplay,
 };
 use faf_domain::AppEvent;
 
@@ -30,7 +29,10 @@ impl ReplayPort for DownloadReplay {
         unreachable!()
     }
 
-    async fn search_vault(&self, _query: ReplayQuery) -> Result<Vec<VaultReplay>, String> {
+    async fn search_vault(
+        &self,
+        _query: ReplayQuery,
+    ) -> Result<faf_app::ports::VaultSearchResult, String> {
         unreachable!()
     }
 

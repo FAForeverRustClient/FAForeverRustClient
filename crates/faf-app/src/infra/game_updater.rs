@@ -544,15 +544,46 @@ fn safe_join_file(root: &Path, group: &str, name: &str) -> Result<PathBuf, Strin
 }
 
 /// Stamp `version` (little-endian, 4 bytes) into the three fixed offsets in
-/// the FA executable. A no-op error (not fatal to the caller) if the exe
-/// isn't there: mirrors the Python client tolerating a missing exe path at
-/// this stage, since `update_file` above should already have placed it.
+/// the FA executable.
+///
+/// Every failure here propagates: the callers use `?`. That is deliberate.
+/// A half-patched or unpatched executable reports the wrong engine version,
+/// which desyncs against everyone else in the lobby, so failing the update is
+/// better than launching a subtly wrong game.
+///
+/// **The size check is load-bearing.** `Seek` past the end of a file is legal,
+/// and the following write extends it, filling the gap with zero bytes. Without
+/// the check, pointing this at any file smaller than the real executable (a
+/// stub, a truncated download, or the `bin/<exe>` fallback below when the file
+/// list shipped no executable at all) would not fail: it would silently produce
+/// a corrupt multi-megabyte `ForgedAlliance.exe` in the user's install, which
+/// only shows up when the game refuses to start.
 fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
+    let required = VERSION_ADDRESSES
+        .iter()
+        .copied()
+        .max()
+        .unwrap_or_default()
+        .saturating_add(std::mem::size_of::<i32>() as u64);
+
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
         .open(exe_path)
         .map_err(|e| format!("could not open {} for patching: {e}", exe_path.display()))?;
+
+    let length = file
+        .metadata()
+        .map_err(|e| format!("could not measure {}: {e}", exe_path.display()))?
+        .len();
+    if length < required {
+        return Err(format!(
+            "{} is {length} bytes, too small to be Forged Alliance (the version \
+             offsets need at least {required}): refusing to patch it",
+            exe_path.display()
+        ));
+    }
+
     let bytes = version.to_le_bytes();
     for &addr in &VERSION_ADDRESSES {
         file.seek(SeekFrom::Start(addr))
@@ -892,6 +923,27 @@ mod tests {
             file.read_exact(&mut buf).unwrap();
             assert_eq!(i32::from_le_bytes(buf), 3828, "offset {addr:#x}");
         }
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn refuses_to_patch_a_file_too_small_to_be_the_executable() {
+        // The regression this guards: seeking past the end of a short file and
+        // writing is legal, and would leave a zero-filled 4.6 MB "executable"
+        // behind rather than reporting a problem.
+        let dir = std::env::temp_dir().join(format!("forge-patch-small-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("stub.exe");
+        std::fs::write(&path, b"not really an executable").unwrap();
+
+        let error = patch_exe_version(&path, 3828).expect_err("a stub must not be patched");
+        assert!(error.contains("too small"), "{error}");
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().len(),
+            24,
+            "the file must be left exactly as it was"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../design-system/Icon";
 import type { VaultMap } from "../ipc/bindings";
+import { FactionIcon } from "./FactionIcon";
 import { mapPresentation, mapThumbnailCandidates } from "./mapPresentation";
+
+const COOP_FACTION_IDS: Record<string, number> = {
+  uef: 1,
+  aeon: 2,
+  cybran: 3,
+  seraphim: 4,
+  custom: 5,
+};
 
 interface Props {
   mapName: string;
@@ -30,6 +39,19 @@ export function MapThumbnail({
 
   const url = candidates[candidateIndex];
   if (!url) {
+    if (presentation.isCoop) {
+      const factionId = COOP_FACTION_IDS[presentation.coopFaction ?? "uef"] ?? 1;
+      return (
+        <span
+          className={`${placeholderClassName} coop-map-tile-badge`}
+          data-faction={presentation.coopFaction ?? "uef"}
+          aria-label={`${presentation.displayName} preview`}
+        >
+          <FactionIcon faction={factionId} size={large ? 36 : 22} />
+        </span>
+      );
+    }
+
     return (
       <span className={placeholderClassName} aria-label={`${presentation.displayName} preview unavailable`}>
         <Icon name="maps" size={large ? 34 : 18} />

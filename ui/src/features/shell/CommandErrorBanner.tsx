@@ -1,5 +1,4 @@
 import { Button } from "../../design-system/Button";
-import { useTranslation } from "../../i18n/useTranslation";
 
 interface CommandErrorBannerProps {
   message: string;
@@ -12,15 +11,13 @@ interface CommandErrorBannerProps {
  * is recoverable and should leave the user's current screen and input intact.
  */
 export function CommandErrorBanner({ message, onDismiss }: CommandErrorBannerProps) {
-  const { t } = useTranslation();
-
   return (
     <aside className="command-error-banner surface-error" role="alert" aria-live="assertive">
       <div>
-        <strong>{t("shell.commandError.title")}</strong>
+        <strong>Action could not be sent</strong>
         <span>{message}</span>
       </div>
-      <Button type="button" onClick={onDismiss}>{t("shell.commandError.dismiss")}</Button>
+      <Button type="button" onClick={onDismiss}>Dismiss</Button>
     </aside>
   );
 }

@@ -159,10 +159,10 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/styles.css` | Global styles + component classes (token-driven; no hardcoded hex: enforced in CI). |
 | `src/features/status/StatusBar.tsx` | View: connection status. |
 | `src/features/auth/LoginView.tsx` | View: login screen. |
-| `src/features/shell/AppShell.tsx` | The logged-in shell: topbar + `TabBar` + `ThemeSwitcher` + active tab content. |
+| `src/features/shell/AppShell.tsx` | The logged-in shell: topbar + `TabBar` + `ThemePicker` + active tab content. |
 | `src/features/nav/TabBar.tsx` | View: tab bar (dispatches nav commands). |
 | `src/features/lobby/LobbyView.tsx` | View: play tab: live game list. |
-| `src/features/settings/ThemeSwitcher.tsx` | View: theme dropdown (dispatches `SetTheme`). |
+| `src/features/settings/ThemePicker.tsx` | View: theme dropdown (dispatches `SetTheme`). |
 
 > **Feature structure:** A folder `features/<name>/`. Components **select state +
 > dispatch commands**, nothing else. No business logic, no direct IPC calls.
@@ -221,8 +221,10 @@ pnpm run build         # Build frontend to ui/dist
 
 ## 8. Current Status
 
-- **Implemented:** session, auth, nav, lobby (4 slices), complete loop, type generation,
-  multi-tab shell, CI + bindings-drift check.
+- **Implemented:** 22 state slices (session, auth, nav, lobby, chat, social, maps, mods,
+  replays, settings, notifications, player card, coop, tournaments, tutorials, reviews,
+  reporting, uploads, leaderboard, install, map generator, client update), complete loop,
+  type generation, multi-tab shell, CI + bindings-drift and reducer-conformance checks.
 - **Real auth:** `OAuthAuth`: FAF Ory Hydra, Authorization Code + PKCE. `FakeAuth` remains
   for tests and offline dev (`FAF_FAKE_AUTH=1`).
 - **Real lobby:** `LobbyClient`: FAF lobby WebSocket protocol behind `LobbyPort`, with

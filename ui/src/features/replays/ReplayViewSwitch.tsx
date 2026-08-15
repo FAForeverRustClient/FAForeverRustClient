@@ -1,5 +1,4 @@
 import { Icon } from "../../design-system/Icon";
-import { useTranslation } from "../../i18n/useTranslation";
 
 export type ReplayViewMode = "tiles" | "list";
 export const DEFAULT_REPLAY_VIEW: ReplayViewMode = "tiles";
@@ -11,15 +10,14 @@ export function ReplayViewSwitch({
   value: ReplayViewMode;
   onChange: (mode: ReplayViewMode) => void;
 }) {
-  const { t } = useTranslation();
   return (
-    <div className="replay-view-switch" role="group" aria-label={t("replays.view.aria")}>
+    <div className="replay-view-switch" role="group" aria-label="Replay view">
       <button
         type="button"
         className={value === "tiles" ? "active" : ""}
-        aria-label={t("replays.view.tile")}
+        aria-label="Tile view"
         aria-pressed={value === "tiles"}
-        title={t("replays.view.tile")}
+        title="Tile view"
         onClick={() => onChange("tiles")}
       >
         <Icon name="grid" size={16} />
@@ -27,9 +25,9 @@ export function ReplayViewSwitch({
       <button
         type="button"
         className={value === "list" ? "active" : ""}
-        aria-label={t("replays.view.list")}
+        aria-label="List view"
         aria-pressed={value === "list"}
-        title={t("replays.view.list")}
+        title="List view"
         onClick={() => onChange("list")}
       >
         <Icon name="list" size={16} />

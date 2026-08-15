@@ -16,10 +16,12 @@ import { ipc } from "../../ipc/client";
 import type { CoopMission, CoopResult, CoopScenario, CoopStatus, Game, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { loadStatusNote } from "../../shared/loadStatusNote";
-import { mapThumbnailCandidates } from "../../shared/mapPresentation";
+import { inferCoopFaction, mapThumbnailCandidates } from "../../shared/mapPresentation";
+import { FactionIcon } from "../../shared/FactionIcon";
+import { GameTile } from "./CustomGamesBrowser";
 import { coopFailureAction } from "./coopFailure";
+import "./custom-games.css";
 import "./coop.css";
-import { useTranslation } from "../../i18n/useTranslation";
 
 /** `0` means "any team size": matches `ANY_PLAYER_COUNT` in the domain. */
 const PLAYER_COUNTS = [0, 1, 2, 3, 4];
@@ -29,6 +31,14 @@ const COOP_FACTION_ORDER: Record<CoopScenario["faction"], number> = {
   aeon: 2,
   seraphim: 3,
   custom: 4,
+};
+
+const COOP_FACTION_NUMBERS: Record<string, number> = {
+  uef: 1,
+  aeon: 2,
+  cybran: 3,
+  seraphim: 4,
+  custom: 5,
 };
 
 const loadCatalog = () => ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
@@ -63,7 +73,15 @@ function coopPreviewCandidates(mission: CoopMission, vault: VaultMap[]): string[
   ].map(secureImageUrl).filter(Boolean))];
 }
 
-function CoopMissionPreview({ mission, vault }: { mission: CoopMission; vault: VaultMap[] }) {
+function CoopMissionPreview({
+  mission,
+  scenario,
+  vault,
+}: {
+  mission: CoopMission;
+  scenario?: CoopScenario;
+  vault: VaultMap[];
+}) {
   const candidates = useMemo(
     () => coopPreviewCandidates(mission, vault),
     [mission, vault],
@@ -74,9 +92,26 @@ function CoopMissionPreview({ mission, vault }: { mission: CoopMission; vault: V
 
   const url = candidates[candidateIndex];
   if (!url) {
+    const faction = scenario?.faction ?? inferCoopFaction(mission.mapFolderName);
+    const factionId = COOP_FACTION_NUMBERS[faction] ?? 1;
+
     return (
-      <div className="coop-detail-art-placeholder" role="img" aria-label={`${mission.name} preview unavailable`}>
-        <Icon name="maps" size={28} />
+      <div
+        className="coop-detail-art-card"
+        data-faction={faction}
+        role="img"
+        aria-label={`${mission.name} briefing`}
+      >
+        <div className="coop-detail-art-inner">
+          <div className="coop-detail-art-icon-wrap">
+            <FactionIcon faction={factionId} size={42} />
+          </div>
+          <div className="coop-detail-art-meta">
+            <span className="coop-detail-art-scenario">{scenario?.name ?? "Campaign Mission"}</span>
+            <strong className="coop-detail-art-mission">{mission.name}</strong>
+            <small className="muted">{mission.mapFolderName}</small>
+          </div>
+        </div>
       </div>
     );
   }
@@ -96,207 +131,201 @@ function CoopMissionPreview({ mission, vault }: { mission: CoopMission; vault: V
 interface Props {
   games: Game[];
   onJoin: (game: Game) => void;
-  onHost: (mission: CoopMission) => void;
+  onHost: (mission?: CoopMission) => void;
 }
 
 export function CoopPanel({ games, onJoin, onHost }: Props) {
-  const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
+  const maps = useAppStore((state) => state.state.maps);
   const [search, setSearch] = useState("");
+  const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
+  const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     if (useAppStore.getState().state.coop.catalogStatus.type === "idle") void loadCatalog();
   }, []);
 
-  const selected = coop.missions.find((mission) => mission.id === coop.selectedMissionId) ?? null;
+  // Organize scenarios and missions
+  const scenarios = useMemo(() => {
+    return [...coop.scenarios].sort(
+      (a, b) => factionRank(a.faction) - factionRank(b.faction) || a.order - b.order || a.name.localeCompare(b.name),
+    );
+  }, [coop.scenarios]);
 
-  // Group missions under their campaign, putting the four faction campaigns
-  // first in the same order as the faction picker. Within each faction, keep
-  // the API order and sort missions by name: it carries the mission number in
-  // practice ("Operation Ivory Sun 3"), so it is the campaign order.
-  const groups = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    const matches = (mission: CoopMission) =>
-      !query || mission.name.toLocaleLowerCase().includes(query);
+  // Set default scenario when catalog loads
+  useEffect(() => {
+    if (selectedScenarioId === null && scenarios.length > 0) {
+      setSelectedScenarioId(scenarios[0].id);
+    }
+  }, [scenarios, selectedScenarioId]);
 
-    const byScenario = [...coop.scenarios]
-      .sort((a, b) => factionRank(a.faction) - factionRank(b.faction) || a.order - b.order || a.name.localeCompare(b.name))
-      .map((scenario) => ({
-        scenario,
-        missions: coop.missions
-          .filter((mission) => mission.scenarioId === scenario.id)
-          .filter(matches)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      }))
-      .filter((group) => group.missions.length > 0);
+  const activeScenarioId = selectedScenarioId ?? scenarios[0]?.id ?? null;
 
-    // Missions the API did not place in any campaign still have to be
-    // playable, so they get their own group rather than disappearing.
-    const ungrouped = coop.missions
-      .filter((mission) => mission.scenarioId === null)
-      .filter(matches)
+  const missionsInActiveScenario = useMemo(() => {
+    return coop.missions
+      .filter((mission) => mission.scenarioId === activeScenarioId)
       .sort((a, b) => a.name.localeCompare(b.name));
+  }, [coop.missions, activeScenarioId]);
 
-    return ungrouped.length > 0
-      ? [...byScenario, { scenario: null, missions: ungrouped }]
-      : byScenario;
-  }, [coop.missions, coop.scenarios, search]);
+  // Selected mission
+  const selected = coop.missions.find((mission) => mission.id === coop.selectedMissionId) ?? missionsInActiveScenario[0] ?? null;
 
-  const missionCount = groups.reduce((total, group) => total + group.missions.length, 0);
+  // Auto-select first mission when scenario changes if current selection is not in scenario
+  useEffect(() => {
+    if (missionsInActiveScenario.length > 0) {
+      const isCurrentInScenario = missionsInActiveScenario.some((m) => m.id === coop.selectedMissionId);
+      if (!isCurrentInScenario) {
+        void selectMission(missionsInActiveScenario[0].id);
+      }
+    }
+  }, [missionsInActiveScenario, coop.selectedMissionId]);
+
+  const filteredGames = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    if (!query) return games;
+    return games.filter(
+      (g) =>
+        g.title.toLocaleLowerCase().includes(query) ||
+        g.host.toLocaleLowerCase().includes(query) ||
+        g.map.toLocaleLowerCase().includes(query),
+    );
+  }, [games, search]);
+
   const catalogNote = loadStatusNote(
     coop.catalogStatus,
-    t("lobby.coop.loadingMissions"),
-    t("lobby.coop.loadFailed"),
+    "Loading co-op missions…",
+    "Could not load co-op missions",
   );
 
   return (
     <div className="coop-panel">
-      <section className="coop-intro surface-panel">
-        <div className="coop-intro-icon">
-          <Icon name="users" size={22} />
-        </div>
-        <div>
-          <h2>{t("lobby.coop.title")}</h2>
-          <p>
-            Play the campaign together. Pick a mission to host it, and see how fast everyone else
-            has finished it.
-          </p>
-        </div>
-      </section>
-
       <div className="coop-toolbar">
+        <Button variant="primary" onClick={() => onHost(selected ?? undefined)}>
+          <Icon name="play" size={14} /> Host co-op game
+        </Button>
         <div className="search-field">
           <Icon name="search" size={15} />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("lobby.coop.searchPlaceholder")}
-            aria-label={t("lobby.coop.searchAria")}
+            placeholder="Search open co-op games…"
+            aria-label="Search open co-op games"
           />
         </div>
-        <span className="muted">{missionCount} missions</span>
+        <span className="muted">{games.length} games available</span>
         <Button onClick={() => void loadCatalog()}>
-          <Icon name="refresh" size={14} /> {t("lobby.coop.refresh")}
+          <Icon name="refresh" size={14} /> Refresh
         </Button>
       </div>
 
       {coop.catalogStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.catalogStatus}
-          title={t("lobby.coop.loadFailed")}
+          title="Could not load co-op missions"
           onRetry={() => void loadCatalog()}
         />
       ) : (
         catalogNote && <p className="muted">{catalogNote}</p>
       )}
 
-      {coop.catalogStatus.type === "ready" && missionCount === 0 && (
-        <div className="play-empty-state">
-          <Icon name="maps" size={24} />
-          <h3>{t("lobby.coop.empty")}</h3>
-          <p>{search ? t("lobby.coop.emptySearch") : t("lobby.coop.emptyCatalog")}</p>
-        </div>
-      )}
-
-      {missionCount > 0 && (
-        <div className="coop-layout">
-          <section className="coop-mission-panel surface-panel">
-            <div className="section-heading">
-              <div>
-                <h3>{t("lobby.coop.campaigns")}</h3>
-                <span>{t("lobby.coop.selectMission")}</span>
-              </div>
+      <div className="coop-layout">
+        {/* Left Column (Priority #1): Open Co-op Games Browser */}
+        <section className="coop-games-main surface-panel">
+          {filteredGames.length === 0 ? (
+            <div className="coop-games-empty">
+              <Icon name="users" size={32} />
+              <h4>No open co-op games right now</h4>
+              <p>Host a campaign mission to start playing with friends.</p>
+              <Button variant="primary" onClick={() => onHost(selected ?? undefined)}>
+                <Icon name="play" size={14} /> Host a Co-op Game
+              </Button>
             </div>
-            <div className="coop-mission-list">
-              {groups.map((group) => (
-                <div className="coop-campaign" key={group.scenario?.id ?? "other"}>
-                  <h4 className="coop-campaign-name">
-                    {group.scenario?.name ?? t("lobby.coop.otherMissions")}
-                    {group.scenario && (
-                      <span className={`coop-faction is-${group.scenario.faction}`}>
-                        {group.scenario.faction}
-                      </span>
-                    )}
-                  </h4>
-                  {group.missions.map((mission) => (
-                    <button
-                      type="button"
-                      key={mission.id}
-                      className={
-                        mission.id === coop.selectedMissionId
-                          ? "surface surface-interactive coop-mission-row is-active"
-                          : "surface surface-interactive coop-mission-row"
-                      }
-                      aria-current={mission.id === coop.selectedMissionId}
-                      onClick={() => void selectMission(mission.id)}
-                    >
-                      {mission.name}
-                    </button>
-                  ))}
-                </div>
+          ) : (
+            <div className="game-tile-grid">
+              {filteredGames.map((game) => (
+                <GameTile
+                  key={game.id}
+                  game={game}
+                  vault={maps.vault}
+                  selected={selectedGameId === game.id}
+                  now={now}
+                  onSelect={() => setSelectedGameId(game.id)}
+                  onJoin={() => onJoin(game)}
+                />
               ))}
             </div>
-          </section>
+          )}
+        </section>
 
-          <section className="coop-detail surface-panel">
-            {selected ? (
-              <MissionDetail mission={selected} onHost={onHost} />
-            ) : (
-              <p className="muted">{t("lobby.coop.selectMissionHint")}</p>
-            )}
-          </section>
-
-          <aside className="coop-games-panel surface-panel">
-            <div className="section-heading">
-              <div>
-                <h3>{t("lobby.coop.openGames")}</h3>
-                <span>{games.length} available</span>
-              </div>
+        {/* Right Column (Priority #2): Campaign & Mission Leaderboard */}
+        <aside className="coop-detail surface-panel">
+          <div className="section-heading">
+            <div>
+              <h3>Campaigns & Records</h3>
+              <span>Mission briefing and leaderboard</span>
             </div>
-            {games.length === 0 ? (
-              <div className="coop-games-empty">
-                <Icon name="users" size={20} />
-                <p>{t("lobby.coop.noOpenGames")}</p>
-                <small>{t("lobby.coop.hostToStart")}</small>
-              </div>
-            ) : (
-              <div className="coop-games-list">
-                {games.map((game) => (
-                  <button className="coop-game-row" key={game.id} onClick={() => onJoin(game)}>
-                    <span>
-                      <strong>{game.title}</strong>
-                      <small>
-                        {game.host} · {game.map}
-                      </small>
-                    </span>
-                    <b>
-                      {game.players}/{game.maxPlayers}
-                    </b>
-                  </button>
+          </div>
+
+          <div className="coop-mission-picker">
+            <div className="coop-picker-field">
+              <label htmlFor="coop-scenario-select">Campaign</label>
+              <select
+                id="coop-scenario-select"
+                className="search-panel-control"
+                value={activeScenarioId ?? ""}
+                onChange={(event) => {
+                  const id = Number(event.target.value);
+                  setSelectedScenarioId(id);
+                }}
+              >
+                {scenarios.map((scenario) => (
+                  <option key={scenario.id} value={scenario.id}>
+                    {scenario.name} ({scenario.faction.toUpperCase()})
+                  </option>
                 ))}
-              </div>
-            )}
-          </aside>
-        </div>
-      )}
+              </select>
+            </div>
+
+            <div className="coop-picker-field">
+              <label htmlFor="coop-mission-select">Mission</label>
+              <select
+                id="coop-mission-select"
+                className="search-panel-control"
+                value={selected?.id ?? ""}
+                onChange={(event) => {
+                  const id = Number(event.target.value);
+                  void selectMission(id);
+                }}
+              >
+                {missionsInActiveScenario.map((mission) => (
+                  <option key={mission.id} value={mission.id}>
+                    {mission.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {selected ? (
+            <MissionDetail mission={selected} />
+          ) : (
+            <p className="muted">Select a mission above to inspect records.</p>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
 
-function MissionDetail({
-  mission,
-  onHost,
-}: {
-  mission: CoopMission;
-  onHost: (mission: CoopMission) => void;
-}) {
-  const { t } = useTranslation();
+function MissionDetail({ mission }: { mission: CoopMission }) {
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
+  const scenario = coop.scenarios.find((s) => s.id === mission.scenarioId);
   const note = loadStatusNote(
     coop.leaderboardStatus,
-    t("lobby.coop.loadingRecords"),
-    t("lobby.coop.leaderboardFailed"),
+    "Loading records…",
+    "Could not load the leaderboard",
   );
 
   return (
@@ -306,27 +335,24 @@ function MissionDetail({
           <h3>{mission.name}</h3>
           <small className="muted">{mission.mapFolderName}</small>
         </div>
-        <Button variant="primary" onClick={() => onHost(mission)}>
-          {t("lobby.coop.hostMission")}
-        </Button>
       </header>
 
-      <CoopMissionPreview mission={mission} vault={maps.vault} />
+      <CoopMissionPreview mission={mission} scenario={scenario} vault={maps.vault} />
 
       {mission.description && <p className="coop-detail-brief">{mission.description}</p>}
 
       <div className="coop-board-head">
-        <h4>{t("lobby.coop.fastest")}</h4>
+        <h4>Fastest completions</h4>
         <label className="coop-board-filter">
-          <span className="muted">{t("lobby.coop.column.players")}</span>
+          <span className="muted">Players</span>
           <select
             value={coop.playerCount}
             onChange={(event) => void setPlayerCount(Number(event.target.value))}
-            aria-label={t("lobby.coop.teamSizeAria")}
+            aria-label="Filter records by team size"
           >
             {PLAYER_COUNTS.map((count) => (
               <option key={count} value={count}>
-                {count === 0 ? t("lobby.coop.anyCount") : count}
+                {count === 0 ? "Any" : count}
               </option>
             ))}
           </select>
@@ -336,7 +362,7 @@ function MissionDetail({
       {coop.leaderboardStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.leaderboardStatus}
-          title={t("lobby.coop.recordsFailed")}
+          title="Could not load mission records"
           onRetry={() => void setPlayerCount(coop.playerCount)}
         />
       ) : (
@@ -345,7 +371,7 @@ function MissionDetail({
 
       {coop.leaderboardStatus.type === "ready" && coop.leaderboard.length === 0 && (
         <p className="muted">
-          {t("lobby.coop.noRecords")}
+          Nobody has finished this mission with that team size yet. Be the first.
         </p>
       )}
 
@@ -355,11 +381,11 @@ function MissionDetail({
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">{t("lobby.coop.column.time")}</th>
-                <th scope="col">{t("lobby.coop.column.players")}</th>
-                <th scope="col">{t("lobby.coop.column.team")}</th>
-                <th scope="col">{t("lobby.coop.column.secondary")}</th>
-                <th scope="col">{t("lobby.coop.column.replay")}</th>
+                <th scope="col">Time</th>
+                <th scope="col">Players</th>
+                <th scope="col">Team</th>
+                <th scope="col">Secondary</th>
+                <th scope="col">Replay</th>
               </tr>
             </thead>
             <tbody>
@@ -383,7 +409,6 @@ function CoopLoadFailure({
   title: string;
   onRetry: () => void;
 }) {
-  const { t } = useTranslation();
   if (status.type !== "failed") return null;
 
   const { kind, reason } = status.payload;
@@ -399,12 +424,12 @@ function CoopLoadFailure({
       </div>
       {action === "signOut" && (
         <Button onClick={() => void signOut()}>
-          <Icon name="logout" size={14} /> {t("lobby.coop.signOut")}
+          <Icon name="logout" size={14} /> Sign out
         </Button>
       )}
       {action === "retry" && (
         <Button onClick={onRetry}>
-          <Icon name="refresh" size={14} /> {t("lobby.coop.retry")}
+          <Icon name="refresh" size={14} /> Retry
         </Button>
       )}
     </div>
@@ -412,7 +437,6 @@ function CoopLoadFailure({
 }
 
 function LeaderboardRow({ result }: { result: CoopResult }) {
-  const { t } = useTranslation();
   return (
     <tr>
       <td>{result.ranking}</td>
@@ -421,7 +445,7 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
       <td>{result.players.join(", ") || <span className="muted">unknown</span>}</td>
       {/* Completing the optional objectives is the harder run, so it is worth
           distinguishing rather than hiding in a tooltip. */}
-      <td>{result.secondaryObjectives ? t("lobby.coop.yes") : "N/A"}</td>
+      <td>{result.secondaryObjectives ? "Yes" : "N/A"}</td>
       <td>
         {result.replayId === null ? (
           <span className="muted">, </span>
@@ -436,7 +460,7 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
               })
             }
           >
-            {t("lobby.coop.watch")}
+            Watch
           </button>
         )}
       </td>

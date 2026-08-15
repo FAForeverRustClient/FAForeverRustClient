@@ -5,16 +5,14 @@ import type { LeaderboardEntry } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { openPlayerCard } from "../player-card/playerCardActions";
-import { useTranslation } from "../../i18n/useTranslation";
+import { PlayerName } from "../../shared/nameColors";
 
 interface PlayerDetailsPanelProps {
   entry: LeaderboardEntry | null;
   heading?: string;
 }
 
-export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) {
-  const { t } = useTranslation();
-  const title = heading ?? t("leaderboard.player.heading");
+export function PlayerDetailsPanel({ entry, heading = "Player details" }: PlayerDetailsPanelProps) {
   const [copied, setCopied] = useState(false);
   const me = useAppStore((state) => state.state.auth.player);
   const friends = useAppStore((state) => state.state.social.friends);
@@ -23,8 +21,8 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
   if (!entry) {
     return (
       <aside className="leaderboard-player-panel surface-panel">
-        <h3>{title}</h3>
-        <p className="muted">{t("leaderboard.player.selectRow")}</p>
+        <h3>{heading}</h3>
+        <p className="muted">Select a row to inspect the player and open related actions.</p>
       </aside>
     );
   }
@@ -62,7 +60,7 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
 
   return (
     <aside className="leaderboard-player-panel surface-panel">
-      <h3>{title}</h3>
+      <h3>{heading}</h3>
       <div className="leaderboard-player-identity">
         {entry.avatarUrl ? (
           <img
@@ -78,24 +76,24 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
         ) : (
           <span className="leaderboard-player-avatar leaderboard-avatar-slot" aria-hidden="true" />
         )}
-        <div className="leaderboard-player-name">{entry.playerName}</div>
+        <div className="leaderboard-player-name"><PlayerName name={entry.playerName} /></div>
       </div>
       {entry.division && <div className="leaderboard-player-division muted">{entry.division}</div>}
       <dl className="leaderboard-player-stats">
-        <div><dt>{t("leaderboard.column.rank")}</dt><dd>#{entry.rank}</dd></div>
-        {entry.score !== null && <div><dt>{t("leaderboard.column.score")}</dt><dd>{entry.score}</dd></div>}
-        {entry.rating !== null && <div><dt>{t("leaderboard.column.rating")}</dt><dd>{entry.rating}</dd></div>}
-        <div><dt>{t("leaderboard.column.games")}</dt><dd>{entry.gamesPlayed}</dd></div>
+        <div><dt>Rank</dt><dd>#{entry.rank}</dd></div>
+        {entry.score !== null && <div><dt>Score</dt><dd>{entry.score}</dd></div>}
+        {entry.rating !== null && <div><dt>Rating</dt><dd>{entry.rating}</dd></div>}
+        <div><dt>Games</dt><dd>{entry.gamesPlayed}</dd></div>
       </dl>
       <div className="leaderboard-player-actions">
-        <Button variant="primary" onClick={() => void openPlayerCard(entry.playerId, entry.playerName)}>{t("leaderboard.player.fullProfile")}</Button>
-        <Button onClick={() => void copy()}>{t(copied ? "leaderboard.player.copied" : "leaderboard.player.copyName")}</Button>
-        {!isMe && <Button onClick={message}>{t("leaderboard.player.message")}</Button>}
-        <Button onClick={browseReplays}>{t("leaderboard.player.browseReplays")}</Button>
+        <Button variant="primary" onClick={() => void openPlayerCard(entry.playerId, entry.playerName)}>Full profile</Button>
+        <Button onClick={() => void copy()}>{copied ? "Copied" : "Copy name"}</Button>
+        {!isMe && <Button onClick={message}>Message</Button>}
+        <Button onClick={browseReplays}>Browse replays</Button>
         {!isMe && entry.playerId > 0 && (
           <>
-            <Button onClick={() => setRelation("friend", !isFriend)}>{t(isFriend ? "leaderboard.player.removeFriend" : "leaderboard.player.addFriend")}</Button>
-            <Button onClick={() => setRelation("foe", !isFoe)}>{t(isFoe ? "leaderboard.player.removeFoe" : "leaderboard.player.markFoe")}</Button>
+            <Button onClick={() => setRelation("friend", !isFriend)}>{isFriend ? "Remove friend" : "Add friend"}</Button>
+            <Button onClick={() => setRelation("foe", !isFoe)}>{isFoe ? "Remove foe" : "Mark as foe"}</Button>
           </>
         )}
       </div>

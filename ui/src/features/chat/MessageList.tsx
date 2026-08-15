@@ -10,12 +10,11 @@
 //    bottom. Reading history is not interrupted by new traffic; a "jump to
 //    latest" affordance appears instead.
 
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
 import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
 import type { ChatGameLink } from "./chatFormat";
-import { useTranslation } from "../../i18n/useTranslation";
 
 /** Distance from the bottom, in px, still counted as "at the bottom". */
 const STICK_THRESHOLD = 48;
@@ -49,7 +48,6 @@ export const MessageList = memo(function MessageList({
   searchRequest = 0,
   onGameLink,
 }: Props) {
-  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   // A ref, not state: the scroll effect must read the *current* value without
   // taking a dependency on it (re-running on pin changes would fight the user).
@@ -60,6 +58,15 @@ export const MessageList = memo(function MessageList({
   const [activeMatch, setActiveMatch] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  // Stable, so `Line`'s `memo` actually holds. This used to be an inline
+  // `rowRef={(node) => …}`, a fresh function on every render, which gave all
+  // ~500 rows a changed prop for every incoming message: the whole scrollback
+  // re-rendered (and re-parsed its bodies) per message, which is what made
+  // joining a busy channel stall.
+  const registerRow = useCallback((id: string, node: HTMLDivElement | null) => {
+    if (node) rowRefs.current.set(id, node);
+    else rowRefs.current.delete(id);
+  }, []);
   const usersByName = useMemo(
     () => new Map(users.map((user) => [user.name.toLocaleLowerCase(), user])),
     [users],
@@ -144,8 +151,8 @@ export const MessageList = memo(function MessageList({
           <input
             ref={searchInputRef}
             value={search}
-            placeholder={t("chat.search.placeholder")}
-            aria-label={t("chat.search.placeholder")}
+            placeholder="Search this conversation"
+            aria-label="Search this conversation"
             onChange={(event) => { setSearch(event.target.value); setActiveMatch(0); }}
             onKeyDown={(event) => {
               if (event.key === "Enter") { event.preventDefault(); navigateSearch(event.shiftKey ? -1 : 1); }
@@ -153,15 +160,15 @@ export const MessageList = memo(function MessageList({
             }}
           />
           <span aria-live="polite">
-            {search.trim() ? (matchingIds.length > 0 ? t("chat.search.counter", { current: normalizedMatch + 1, total: matchingIds.length }) : t("chat.search.noMatches")) : t("chat.search.shortcut")}
+            {search.trim() ? (matchingIds.length > 0 ? `${normalizedMatch + 1} of ${matchingIds.length}` : "No matches") : "Ctrl+F"}
           </span>
-          <button type="button" aria-label={t("chat.search.previous")} title={t("chat.search.previous")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(-1)}>
+          <button type="button" aria-label="Previous match" title="Previous match" disabled={matchingIds.length === 0} onClick={() => navigateSearch(-1)}>
             <Icon className="is-previous" name="arrowRight" size={14} />
           </button>
-          <button type="button" aria-label={t("chat.search.next")} title={t("chat.search.next")} disabled={matchingIds.length === 0} onClick={() => navigateSearch(1)}>
+          <button type="button" aria-label="Next match" title="Next match" disabled={matchingIds.length === 0} onClick={() => navigateSearch(1)}>
             <Icon name="arrowRight" size={14} />
           </button>
-          <button type="button" aria-label={t("chat.search.close")} title={t("chat.search.close")} onClick={closeSearch}>
+          <button type="button" aria-label="Close search" title="Close search" onClick={closeSearch}>
             <Icon name="close" size={14} />
           </button>
         </div>
@@ -186,10 +193,7 @@ export const MessageList = memo(function MessageList({
               preferences={preferences}
               search={searchOpen ? search : ""}
               activeSearchMatch={message.id === activeMessageId}
-              rowRef={(node) => {
-                if (node) rowRefs.current.set(message.id, node);
-                else rowRefs.current.delete(message.id);
-              }}
+              registerRow={registerRow}
               onNickClick={onNickClick}
               onNickContextMenu={onNickContextMenu}
               onGameLink={onGameLink}
@@ -200,14 +204,14 @@ export const MessageList = memo(function MessageList({
 
       {missed && (
         <button type="button" className="chat-jump" onClick={jumpToLatest}>
-          {t("chat.jumpToLatest")}
+          Jump to latest
         </button>
       )}
     </div>
   );
 });
 
-function Line({
+const Line = memo(function Line({
   message,
   self,
   withTime,
@@ -220,7 +224,7 @@ function Line({
   preferences,
   search,
   activeSearchMatch,
-  rowRef,
+  registerRow,
   onGameLink,
 }: {
   message: ChatMessage;
@@ -235,9 +239,15 @@ function Line({
   preferences: ChatPreferences;
   search: string;
   activeSearchMatch: boolean;
-  rowRef: (node: HTMLDivElement | null) => void;
+  registerRow: (id: string, node: HTMLDivElement | null) => void;
   onGameLink: ((link: ChatGameLink) => void) | undefined;
 }) {
+  // Bound to this row's id here rather than in the parent, so the parent can
+  // pass one stable callback to every row.
+  const rowRef = useCallback(
+    (node: HTMLDivElement | null) => registerRow(message.id, node),
+    [registerRow, message.id],
+  );
   const body = renderBody(message.content, self, search, onGameLink);
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
@@ -293,4 +303,5 @@ function Line({
       <span className="chat-message-time">{time}</span>
     </div>
   );
-}
+});
+

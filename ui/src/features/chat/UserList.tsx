@@ -12,14 +12,15 @@
 //
 // Double-click opens a private conversation; right-click opens the user menu.
 
-import { memo, useMemo, useState } from "react";
-import type { ChatPreferences, ChatUser, Game, SocialState, VaultMap } from "../../ipc/bindings";
+import { memo, useCallback, useMemo, useState } from "react";
+import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, VaultMap } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
-import { findPlayer } from "../../store/reducer";
+import { ipc } from "../../ipc/client";
+import { useAppStore } from "../../store/store";
+import { isModerator } from "../../store/reducer";
 import {
   USER_CATEGORY_LABELS,
   USER_CATEGORY_ORDER,
-  categoryOf,
   displayName,
   resolvedNickStyle,
   type UserCategory,
@@ -28,7 +29,6 @@ import { flagSrc } from "../../shared/countryFlags";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { rosterRatingSummary } from "./ratingSummary";
-import { useTranslation } from "../../i18n/useTranslation";
 
 interface Props {
   users: ChatUser[];
@@ -42,12 +42,51 @@ interface Props {
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
 }
 
-export const UserList = memo(function UserList({ users, self, social, openGames, liveGames, mapVault, preferences, onOpenConversation, onContextMenu }: Props) {
-  const { t } = useTranslation();
+export const UserList = memo(function UserList({
+  users,
+  self,
+  social,
+  openGames,
+  liveGames,
+  mapVault,
+  preferences,
+  onOpenConversation,
+  onContextMenu,
+}: Props) {
   const [filter, setFilter] = useState("");
   const presences = useMemo(
     () => gamePresenceIndex(openGames, liveGames),
     [liveGames, openGames],
+  );
+
+  // Collapsed categories are a persisted preference, not component state: this
+  // list is remounted on every tab switch, so local state would forget the
+  // choice constantly. The Java client persists it too.
+  const hidden = useMemo(
+    () => new Set(preferences.hiddenRosterCategories),
+    [preferences.hiddenRosterCategories],
+  );
+  const toggleCategory = useCallback(
+    (category: UserCategory) => {
+      const current = useAppStore.getState().state.settings.chat;
+      const next = current.hiddenRosterCategories.includes(category)
+        ? current.hiddenRosterCategories.filter((entry) => entry !== category)
+        : [...current.hiddenRosterCategories, category];
+      ipc.send({
+        kind: "Settings",
+        command: { type: "setChat", payload: { preferences: { ...current, hiddenRosterCategories: next } } },
+      });
+    },
+    [],
+  );
+
+  const profilesByLogin = useMemo(
+    () => new Map(social.players.map((p) => [p.login.toLowerCase(), p])),
+    [social.players],
+  );
+  const friendsSet = useMemo(
+    () => new Set(social.friends.map((f) => f.toLowerCase())),
+    [social.friends],
   );
 
   const groups = useMemo(() => {
@@ -62,10 +101,23 @@ export const UserList = memo(function UserList({ users, self, social, openGames,
       USER_CATEGORY_ORDER.map((c) => [c, [] as ChatUser[]]),
     );
     for (const user of matching) {
-      buckets.get(categoryOf(user, self, social, socialKnown))?.push(user);
+      const lower = user.name.toLowerCase();
+      let category: UserCategory;
+      if (self && user.name === self) {
+        category = "self";
+      } else if (isModerator(user)) {
+        category = "moderators";
+      } else if (friendsSet.has(lower)) {
+        category = "friends";
+      } else if (!socialKnown || profilesByLogin.has(lower)) {
+        category = "players";
+      } else {
+        category = "ircOnly";
+      }
+      buckets.get(category)?.push(user);
     }
     return buckets;
-  }, [users, self, social, filter]);
+  }, [users, self, social, friendsSet, profilesByLogin, filter]);
 
   return (
     <div className="chat-roster surface-panel" id="chat-roster">
@@ -86,17 +138,36 @@ export const UserList = memo(function UserList({ users, self, social, openGames,
         {USER_CATEGORY_ORDER.map((category) => {
           const bucket = groups.get(category) ?? [];
           if (bucket.length === 0) return null;
+          // A filter is a search: honouring a collapsed section while one is
+          // active would hide the very match the user is looking for.
+          const collapsed = hidden.has(category) && filter.trim() === "";
           return (
             <section key={category} className="chat-roster-group">
-              <h3 className="chat-roster-heading">
-                {t(USER_CATEGORY_LABELS[category])}
-                <span className="chat-roster-count">{bucket.length}</span>
+              <h3>
+                <button
+                  type="button"
+                  className="chat-roster-heading"
+                  aria-expanded={!collapsed}
+                  title={collapsed ? `Show ${USER_CATEGORY_LABELS[category]}` : `Hide ${USER_CATEGORY_LABELS[category]}`}
+                  onClick={() => toggleCategory(category)}
+                >
+                  {/* One glyph, rotated: expanded points down, collapsed
+                      points right. The Java header uses the same two states. */}
+                  <Icon
+                    name="chevronRight"
+                    size={15}
+                    className={collapsed ? "chat-roster-chevron" : "chat-roster-chevron is-open"}
+                  />
+                  <span className="chat-roster-heading-label">{USER_CATEGORY_LABELS[category]}</span>
+                  <span className="chat-roster-count">{bucket.length}</span>
+                </button>
               </h3>
-              <ul>
+              <ul hidden={collapsed}>
                 {bucket.map((user) => (
                   <RosterRow
                     key={user.name}
                     user={user}
+                    profile={profilesByLogin.get(user.name.toLowerCase())}
                     social={social}
                     presence={presences.get(user.name.toLocaleLowerCase()) ?? null}
                     mapVault={mapVault}
@@ -117,8 +188,9 @@ export const UserList = memo(function UserList({ users, self, social, openGames,
   );
 });
 
-function RosterRow({
+const RosterRow = memo(function RosterRow({
   user,
+  profile,
   social,
   presence,
   mapVault,
@@ -127,6 +199,7 @@ function RosterRow({
   onContextMenu,
 }: {
   user: ChatUser;
+  profile: PlayerProfile | undefined;
   social: SocialState;
   presence: GamePresence | null;
   mapVault: VaultMap[];
@@ -134,7 +207,6 @@ function RosterRow({
   onOpenConversation: (nick: string) => void;
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
 }) {
-  const profile = findPlayer(social, user.name);
   const nameStyle = resolvedNickStyle(user.name, user, social, preferences);
   return (
     <li>
@@ -189,4 +261,4 @@ function RosterRow({
       </div>
     </li>
   );
-}
+});

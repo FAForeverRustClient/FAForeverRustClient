@@ -1,7 +1,6 @@
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { GameViewMode } from "./CustomGamesBrowser";
-import { useTranslation } from "../../i18n/useTranslation";
 
 export type SortMode = "players" | "rating" | "map" | "host" | "age";
 
@@ -25,16 +24,18 @@ interface Props {
 }
 
 export function CustomGamesToolbar(props: Props) {
-  const { t } = useTranslation();
   return (
     <div className="play-toolbar">
+      <Button variant="primary" disabled={!props.connected} onClick={props.onHost}>
+        <Icon name="plus" size={16} /> Host game
+      </Button>
       <label className="search-field">
         <Icon name="search" size={15} />
         <input
           value={props.search}
           onChange={(event) => props.onSearch(event.target.value)}
-          placeholder={t("lobby.toolbar.searchPlaceholder")}
-          aria-label={t("lobby.toolbar.searchAria")}
+          placeholder="Search games, maps, or hosts"
+          aria-label="Search custom games"
         />
       </label>
       <label className="toolbar-check">
@@ -43,7 +44,7 @@ export function CustomGamesToolbar(props: Props) {
           checked={props.hidePrivate}
           onChange={(event) => props.onHidePrivate(event.target.checked)}
         />
-        {t("lobby.toolbar.hidePrivate")}
+        Hide private
       </label>
       <label className="toolbar-check">
         <input
@@ -51,7 +52,7 @@ export function CustomGamesToolbar(props: Props) {
           checked={props.hideModded}
           onChange={(event) => props.onHideModded(event.target.checked)}
         />
-        {t("lobby.toolbar.hideModded")}
+        Hide modded
       </label>
       <label className="toolbar-check">
         <input
@@ -59,7 +60,7 @@ export function CustomGamesToolbar(props: Props) {
           checked={props.applyFilters}
           onChange={(event) => props.onApplyFilters(event.target.checked)}
         />
-        {t("lobby.toolbar.applyFilters")}
+        Apply filters
       </label>
       <Button onClick={props.onOpenFilters}>
         <Icon name="filter" size={15} />
@@ -69,20 +70,20 @@ export function CustomGamesToolbar(props: Props) {
         className="play-sort"
         value={props.sort}
         onChange={(event) => props.onSort(event.target.value as SortMode)}
-        aria-label={t("lobby.toolbar.sortAria")}
+        aria-label="Sort games"
       >
-        <option value="players">{t("lobby.toolbar.sort.players")}</option>
-        <option value="rating">{t("lobby.toolbar.sort.rating")}</option>
-        <option value="map">{t("lobby.toolbar.sort.map")}</option>
-        <option value="host">{t("lobby.toolbar.sort.host")}</option>
-        <option value="age">{t("lobby.toolbar.sort.age")}</option>
+        <option value="players">Sort by players</option>
+        <option value="rating">Sort by rating</option>
+        <option value="map">Sort by map</option>
+        <option value="host">Sort by host</option>
+        <option value="age">Sort by age</option>
       </select>
-      <div className="game-view-switch surface" role="group" aria-label={t("lobby.toolbar.viewAria")}>
+      <div className="game-view-switch surface" role="group" aria-label="Game view">
         <button
           className={props.viewMode === "tiles" ? "active" : ""}
           aria-pressed={props.viewMode === "tiles"}
-          aria-label={t("lobby.toolbar.tileView")}
-          title={t("lobby.toolbar.tileView")}
+          aria-label="Tile view"
+          title="Tile view"
           onClick={() => props.onViewMode("tiles")}
         >
           <Icon name="grid" size={15} />
@@ -90,16 +91,13 @@ export function CustomGamesToolbar(props: Props) {
         <button
           className={props.viewMode === "list" ? "active" : ""}
           aria-pressed={props.viewMode === "list"}
-          aria-label={t("lobby.toolbar.listView")}
-          title={t("lobby.toolbar.listView")}
+          aria-label="List view"
+          title="List view"
           onClick={() => props.onViewMode("list")}
         >
           <Icon name="list" size={15} />
         </button>
       </div>
-      <Button variant="primary" disabled={!props.connected} onClick={props.onHost}>
-        <Icon name="plus" size={16} /> {t("lobby.toolbar.hostGame")}
-      </Button>
     </div>
   );
 }

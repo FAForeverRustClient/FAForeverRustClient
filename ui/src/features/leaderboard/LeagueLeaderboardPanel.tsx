@@ -8,7 +8,6 @@ import { useAppStore } from "../../store/store";
 import { formatDate } from "../../shared/dates";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const selectLeague = (leagueId: number) => ipc.send({
   kind: "Leaderboard",
@@ -24,7 +23,6 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
   entries: LeaderboardEntry[];
   ownDivision: string | null;
 }) {
-  const { t } = useTranslation();
   const counts = useMemo(() => {
     const result = new Map<string, number>();
     for (const entry of entries) {
@@ -39,7 +37,7 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
   return (
     <section className="leaderboard-distribution-card surface-panel">
       <div className="leaderboard-section-title">
-        <div><h3>{t("leaderboard.leagues.population")}</h3><span className="muted">{t("leaderboard.leagues.populationHint")}</span></div>
+        <div><h3>Population</h3><span className="muted">All subdivisions, including empty ones</span></div>
         <span className="muted">{entries.length} placed</span>
       </div>
       <div className="leaderboard-distribution">
@@ -61,14 +59,13 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
 }
 
 function MyLeagueCard({ entry, placementGames }: { entry: LeaderboardEntry | null; placementGames: number }) {
-  const { t } = useTranslation();
   if (!entry) {
     return (
       <section className="leaderboard-own-card surface-panel">
         <div className="leaderboard-own-placeholder"><Icon name="activity" size={24} /></div>
         <div>
-          <span className="leaderboard-eyebrow">{t("leaderboard.leagues.yourPlacement")}</span>
-          <h3>{t("leaderboard.leagues.notPlaced")}</h3>
+          <span className="leaderboard-eyebrow">Your placement</span>
+          <h3>Not placed this season</h3>
           <p className="muted">Complete {placementGames} placement games to enter a subdivision.</p>
         </div>
       </section>
@@ -83,8 +80,8 @@ function MyLeagueCard({ entry, placementGames }: { entry: LeaderboardEntry | nul
         ? <img src={entry.divisionImageUrl} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />
         : <div className="leaderboard-own-placeholder"><Icon name="leaderboard" size={24} /></div>}
       <div className="leaderboard-own-body">
-        <span className="leaderboard-eyebrow">{t("leaderboard.leagues.yourPosition")}</span>
-        <h3>#{entry.rank} · {entry.division ?? t("leaderboard.leagues.placed")}</h3>
+        <span className="leaderboard-eyebrow">Your season position</span>
+        <h3>#{entry.rank} · {entry.division ?? "Placed"}</h3>
         <div className="leaderboard-progress" aria-label={`${progress.toFixed(0)} percent subdivision score progress`}>
           <span style={{ width: `${progress}%` }} />
         </div>
@@ -95,7 +92,6 @@ function MyLeagueCard({ entry, placementGames }: { entry: LeaderboardEntry | nul
 }
 
 export function LeagueLeaderboardPanel() {
-  const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
   const player = useAppStore((store) => store.state.auth.player);
   const [search, setSearch] = useState("");
@@ -144,7 +140,7 @@ export function LeagueLeaderboardPanel() {
     <section className="leaderboard-panel">
       <SectionTabs
         active={state.selectedLeagueId}
-        ariaLabel={t("leaderboard.leagues.leagueQueues")}
+        ariaLabel="League queues"
         className="leaderboard-tabs"
         items={state.leagues.map((league) => ({ id: league.id, label: league.name }))}
         onChange={(leagueId) => void selectLeague(leagueId)}
@@ -152,7 +148,7 @@ export function LeagueLeaderboardPanel() {
 
       <div className="leaderboard-season-toolbar">
         <label className="leaderboard-field">
-          <span>{t("leaderboard.leagues.season")}</span>
+          <span>Season</span>
           <select
             value={state.selectedSeasonId ?? ""}
             disabled={state.seasonsStatus.type === "loading" || state.seasons.length === 0}
@@ -165,7 +161,7 @@ export function LeagueLeaderboardPanel() {
         </label>
         {currentSeason && (
           <div className="leaderboard-season-meta">
-            <span className={currentSeason.active ? "leaderboard-active" : "muted"}>{t(currentSeason.active ? "leaderboard.leagues.active" : "leaderboard.leagues.finished")}</span>
+            <span className={currentSeason.active ? "leaderboard-active" : "muted"}>{currentSeason.active ? "Active" : "Finished"}</span>
             <span>{formatDate(currentSeason.startDate)} – {formatDate(currentSeason.endDate)}</span>
           </div>
         )}
@@ -173,7 +169,7 @@ export function LeagueLeaderboardPanel() {
 
       {state.seasonsStatus.type === "loading" && <div className="leaderboard-state muted">Loading seasons…</div>}
       {state.seasonsStatus.type === "failed" && <div className="leaderboard-state leaderboard-error">{state.seasonsStatus.payload.reason}</div>}
-      {state.seasonsStatus.type === "ready" && state.seasons.length === 0 && <div className="leaderboard-state muted">{t("leaderboard.leagues.noSeasons")}</div>}
+      {state.seasonsStatus.type === "ready" && state.seasons.length === 0 && <div className="leaderboard-state muted">No seasons are available for this league.</div>}
 
       {currentSeason && (
         <>
@@ -186,19 +182,19 @@ export function LeagueLeaderboardPanel() {
 
           <div className="leaderboard-table-toolbar leaderboard-league-filters">
             <label className="leaderboard-field leaderboard-field-grow">
-              <span>{t("leaderboard.leagues.findPlayer")}</span>
-              <input value={search} placeholder={t("leaderboard.leagues.searchLoadedSeason")} onChange={(event) => setSearch(event.target.value)} />
+              <span>Find player</span>
+              <input value={search} placeholder="Search loaded season…" onChange={(event) => setSearch(event.target.value)} />
             </label>
             <label className="leaderboard-field">
-              <span>{t("leaderboard.leagues.division")}</span>
+              <span>Division</span>
               <select value={division} onChange={(event) => { setDivision(event.target.value); setSubdivision("all"); }}>
-                <option value="all">{t("leaderboard.leagues.allDivisions")}</option>
+                <option value="all">All divisions</option>
                 {divisions.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
             </label>
             {subdivisions.length > 0 && (
-              <div className="leaderboard-subdivisions" aria-label={t("leaderboard.leagues.subdivision")}>
-                <Button variant={subdivision === "all" ? "primary" : "ghost"} onClick={() => setSubdivision("all")}>{t("leaderboard.leagues.all")}</Button>
+              <div className="leaderboard-subdivisions" aria-label="Subdivision">
+                <Button variant={subdivision === "all" ? "primary" : "ghost"} onClick={() => setSubdivision("all")}>All</Button>
                 {subdivisions.map((tier) => (
                   <Button key={tier.name} variant={subdivision === tier.name ? "primary" : "ghost"} onClick={() => setSubdivision(tier.name)}>
                     {tier.subdivision || tier.name}
@@ -218,11 +214,11 @@ export function LeagueLeaderboardPanel() {
                   columns={["rank", "player", "division", "score", "games"]}
                   selectedPlayerId={selected?.playerId ?? null}
                   onSelect={setSelected}
-                  emptyMessage={state.seasonStatus.type === "loading" ? "" : t("leaderboard.leagues.empty")}
+                  emptyMessage={state.seasonStatus.type === "loading" ? "" : "No placed players match these filters."}
                 />
               )}
             </div>
-            <PlayerDetailsPanel entry={selected} heading={t("leaderboard.leagues.leaguePlayer")} />
+            <PlayerDetailsPanel entry={selected} heading="League player" />
           </div>
         </>
       )}

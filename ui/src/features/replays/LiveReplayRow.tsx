@@ -1,15 +1,13 @@
-import { memo, useEffect, useState } from "react";
+import { Fragment, memo, useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { PlayerName } from "../../shared/nameColors";
 import type { Game, LiveReplayTracking } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatClockDuration, formatRelativeDuration } from "../../shared/durations";
 import type { MapPresentation } from "../../shared/mapPresentation";
 import { liveReplayLink } from "../../shared/replayLinks";
 import { gameStartedAt, prettyGameType } from "./liveReplayModel";
-import { t } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
-import { clientIntlTag } from "../../shared/dates";
 
 function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
   const [failed, setFailed] = useState(false);
@@ -19,7 +17,7 @@ function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
     <img
       className="live-replay-map-thumb"
       src={presentation.thumbnailUrl}
-      alt={t("replays.live.mapPreview", { map: presentation.displayName })}
+      alt={`${presentation.displayName} preview`}
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
@@ -32,15 +30,10 @@ function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
 }
 
 function LiveReplayAge({ game, now }: { game: Game; now: number }) {
-  const { t } = useTranslation();
   const started = gameStartedAt(game);
-  if (!started) return <small>{t("replays.live.startUnavailable")}</small>;
+  if (!started) return <small>Start time unavailable</small>;
   const elapsed = Math.max(0, (now - started.getTime()) / 1000);
-  // A live game is always "some time ago", so the zero case reads as `0m` in
-  // the same phrase rather than as its own wording.
-  const zero = t("replays.card.ago", { duration: "0m" });
-  const relative = formatRelativeDuration(elapsed, { nowLabel: zero });
-  return <small>{relative === zero ? relative : t("replays.card.ago", { duration: relative })}</small>;
+  return <small>{formatRelativeDuration(elapsed, { nowLabel: "0m ago", suffix: " ago" })}</small>;
 }
 
 function LiveWatchButton({
@@ -54,25 +47,22 @@ function LiveWatchButton({
   tracking: LiveReplayTracking | null;
   waitSeconds: number;
 }) {
-  const { t } = useTranslation();
   const waiting = waitSeconds > 0;
   const tracked = tracking?.target.uid === game.id ? tracking : null;
   const target = { uid: game.id, modName: game.modName, map: game.map };
 
   if (waiting) {
-    const trackedLabel = t(tracked?.action === "notify"
-      ? "replays.live.notificationSet"
-      : "replays.live.autoWatchSet");
+    const trackedLabel = tracked?.action === "notify" ? "Notification set" : "Auto-watch set";
     return (
       <details className={`live-delay-actions${tracked ? " is-tracked" : ""}`}>
         <summary
           className="live-delay-trigger"
-          title={t("replays.live.delayHint")}
+          title="The replay server makes live streams available after five minutes."
         >
-          {tracked ? trackedLabel : t("replays.live.readyIn", { time: formatClockDuration(waitSeconds) })}
+          {tracked ? trackedLabel : `Ready in ${formatClockDuration(waitSeconds)}`}
         </summary>
         <div className="live-delay-menu surface-raised">
-          <strong>{t("replays.live.whenReady")}</strong>
+          <strong>When the replay is ready</strong>
           <Button
             disabled={busy || tracked?.action === "notify"}
             onClick={() => ipc.send({
@@ -80,7 +70,7 @@ function LiveWatchButton({
               command: { type: "trackLive", payload: { target, action: "notify" } },
             })}
           >
-            {t("replays.live.notifyMe")}
+            Notify me
           </Button>
           <Button
             disabled={busy || tracked?.action === "watch"}
@@ -89,11 +79,11 @@ function LiveWatchButton({
               command: { type: "trackLive", payload: { target, action: "watch" } },
             })}
           >
-            {t("replays.live.watchAutomatically")}
+            Watch automatically
           </Button>
           {tracked && (
             <Button onClick={() => ipc.send({ kind: "Replays", command: { type: "cancelLiveTracking" } })}>
-              {t("replays.live.cancelTracking")}
+              Cancel
             </Button>
           )}
         </div>
@@ -106,7 +96,7 @@ function LiveWatchButton({
       variant="primary"
       className="live-watch-button"
       disabled={busy}
-      title={t("replays.live.watchTitle", { title: game.title })}
+      title={`Watch ${game.title}`}
       onClick={() =>
         ipc.send({
           kind: "Replays",
@@ -117,7 +107,7 @@ function LiveWatchButton({
         })
       }
     >
-      {t("replays.live.watch")}
+      Watch
     </Button>
   );
 }
@@ -143,7 +133,6 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   player: string;
   tracking: LiveReplayTracking | null;
 }) {
-  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const started = gameStartedAt(game);
   const simMods = Object.values(game.simMods);
@@ -171,7 +160,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
       >
         <td><LiveMapThumbnail presentation={presentation} /></td>
         <td className="live-start-cell">
-          <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
+          <strong>{started ? started.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
           <LiveReplayAge game={game} now={ageNow} />
         </td>
         <td>
@@ -182,15 +171,11 @@ export const LiveReplayRow = memo(function LiveReplayRow({
         </td>
         <td className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>
         <td className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : "N/A"}</td>
-        <td className="live-host-cell">{game.host}</td>
+        <td className="live-host-cell"><PlayerName name={game.host} /></td>
         <td className="live-mods-cell">
           <span>{game.modName || "faf"}</span>
           <small title={simMods.join(", ")}>
-            {simMods.length === 0
-              ? t("replays.live.noSimMods")
-              : simMods.length === 1
-                ? simMods[0]
-                : t("replays.live.moreSimMods", { first: simMods[0], count: simMods.length - 1 })}
+            {simMods.length === 0 ? "No SIM mods" : simMods.length === 1 ? simMods[0] : `${simMods[0]} +${simMods.length - 1}`}
           </small>
         </td>
         <td><LiveWatchButton busy={busy} game={game} tracking={tracking} waitSeconds={waitSeconds} /></td>
@@ -200,21 +185,28 @@ export const LiveReplayRow = memo(function LiveReplayRow({
           <td colSpan={8}>
             <div className="live-replay-details">
               <div>
-                <span className="live-detail-label">{t("replays.live.lineup")}</span>
+                <span className="live-detail-label">Lineup</span>
                 <div className="live-team-list">
-                  {teams.length === 0 ? <span className="muted">{t("replays.live.lineupUnavailable")}</span> : teams.map(([team, players]) => (
+                  {teams.length === 0 ? <span className="muted">Player lineup unavailable</span> : teams.map(([team, players]) => (
                     <div className="live-team surface" key={team}>
-                      <strong>{team === "-1" || team === "null" ? t("replays.live.observers") : t("replays.live.team", { team })}</strong>
-                      <span>{players.join(", ")}</span>
+                      <strong>{team === "-1" || team === "null" ? "Observers" : `Team ${team}`}</strong>
+                      <span>
+                        {players.map((p, i) => (
+                          <Fragment key={p}>
+                            {i > 0 && ", "}
+                            <PlayerName name={p} />
+                          </Fragment>
+                        ))}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
               <div className="live-detail-side">
                 <dl className="live-detail-meta">
-                  <div><dt>{t("replays.live.replayId")}</dt><dd>#{game.id}</dd></div>
-                  <div><dt>{t("replays.live.featuredMod")}</dt><dd>{game.modName || "faf"}</dd></div>
-                  <div><dt>{t("replays.live.simMods")}</dt><dd>{simMods.length > 0 ? simMods.join(", ") : t("replays.live.none")}</dd></div>
+                  <div><dt>Replay ID</dt><dd>#{game.id}</dd></div>
+                  <div><dt>Featured mod</dt><dd>{game.modName || "faf"}</dd></div>
+                  <div><dt>SIM mods</dt><dd>{simMods.length > 0 ? simMods.join(", ") : "None"}</dd></div>
                 </dl>
                 <Button
                   className="live-copy-link"
@@ -226,7 +218,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                     )
                   }
                 >
-                  {t(copied ? "replays.live.linkCopied" : "replays.live.copyLink")}
+                  {copied ? "Link copied" : "Copy live link"}
                 </Button>
               </div>
             </div>

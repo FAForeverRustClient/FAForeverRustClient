@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { PlayerName } from "../../shared/nameColors";
 import { ipc } from "../../ipc/client";
 import type { CoopMission, Game } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -17,7 +18,6 @@ import { findVaultMap, mapPresentation } from "../../shared/mapPresentation";
 import "./custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const connect = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
 const join = (id: number, password: string | null = null) => ipc.send({ kind: "Lobby", command: { type: "join", payload: { id, password } } });
@@ -57,7 +57,6 @@ function compareGames(sort: SortMode, left: Game, right: Game): number {
 }
 
 function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; onJoin: () => void }) {
-  const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
   const vaultMap = findVaultMap(maps.vault, game.map);
   const presentation = mapPresentation(maps.vault, game.map);
@@ -76,19 +75,19 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
           large
         />
         {game.passwordProtected && (
-          <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>
+          <span className="private-badge" role="img" aria-label="Private game" title="Private game">
             <Icon name="lock" size={13} />
           </span>
         )}
       </div>
       <div className="game-detail-content">
-        <div className="game-detail-title"><span>{game.modName || "faf"}</span><h2>{game.title}</h2><p>{t("lobby.details.host", { name: game.host })}</p></div>
+        <div className="game-detail-title"><span>{game.modName || "faf"}</span><h2>{game.title}</h2><p>Host: <PlayerName name={game.host} /></p></div>
         <dl className="game-summary-list">
-          <div><dt>{t("lobby.details.map")}</dt><dd>{presentation.displayName}</dd></div>
-          <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
-          <div><dt>{t("lobby.details.averageRating")}</dt><dd>{game.averageRating || t("lobby.details.unrated")}</dd></div>
-          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} – ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
-          <div><dt>{t("lobby.details.visibility")}</dt><dd>{game.visibility || t("lobby.details.public")}</dd></div>
+          <div><dt>Map</dt><dd>{presentation.displayName}</dd></div>
+          <div><dt>Players</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
+          <div><dt>Average rating</dt><dd>{game.averageRating || "Unrated"}</dd></div>
+          <div><dt>Rating range</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? "Any"} – ${game.ratingMax ?? "Any"}` : "Open"}</dd></div>
+          <div><dt>Visibility</dt><dd>{game.visibility || "Public"}</dd></div>
         </dl>
         {!installed && vaultMap && (
           <Button
@@ -105,34 +104,40 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
               })
             }
           >
-            {t("lobby.details.downloadMap")}
+            Download map
           </Button>
         )}
         {simMods.length > 0 && (
           <div className="game-detail-section">
-            <h3>{t("lobby.details.simMods")}</h3>
+            <h3>Simulation mods</h3>
             {simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}
           </div>
         )}
         {teams.length > 0 && (
           <div className="game-detail-section">
-            <h3>{t("lobby.details.teams")}</h3>
+            <h3>Teams</h3>
             {teams.map(([team, players]) => (
               <div className="game-team" key={team}>
-                <span>{team === "-1" || team === "null" ? t("lobby.details.observers") : t("lobby.details.team", { id: team })}</span>
-                <small>{players.join(", ")}</small>
+                <span>{team === "-1" || team === "null" ? "Observers" : `Team ${team}`}</span>
+                <small>
+                  {players.map((p, i) => (
+                    <Fragment key={p}>
+                      {i > 0 && ", "}
+                      <PlayerName name={p} />
+                    </Fragment>
+                  ))}
+                </small>
               </div>
             ))}
           </div>
         )}
-        <Button className="game-detail-join" variant="primary" disabled={joining} onClick={onJoin}>{t(joining ? "lobby.details.joining" : "lobby.details.joinGame")}</Button>
+        <Button className="game-detail-join" variant="primary" disabled={joining} onClick={onJoin}>{joining ? "Joining…" : "Join game"}</Button>
       </div>
     </aside>
   );
 }
 
 export function LobbyView() {
-  const { t } = useTranslation();
   const lobby = useAppStore((state) => state.state.lobby);
   const maps = useAppStore((state) => state.state.maps);
   const browsing = useAppStore((state) => state.state.settings.browsing);
@@ -208,24 +213,12 @@ export function LobbyView() {
     });
   };
 
-  const hostMission = (mission: CoopMission) => ipc.send({
-    kind: "Lobby",
-    command: {
-      type: "host",
-      payload: {
-        config: {
-          title: `${mission.name} co-op`,
-          modName: "coop",
-          visibility: "public",
-          map: mission.mapFolderName,
-          password: null,
-          enforceRatingRange: false,
-          ratingMin: null,
-          ratingMax: null,
-        },
-      },
-    },
-  });
+  const [coopMissionToHost, setCoopMissionToHost] = useState<CoopMission | null>(null);
+
+  const handleHostCoop = (mission?: CoopMission) => {
+    setCoopMissionToHost(mission ?? null);
+    setHostOpen(true);
+  };
 
   return (
     <div className="play-view">
@@ -252,29 +245,31 @@ export function LobbyView() {
           party={lobby.party}
         />
       ) : inCoop ? (
-        <CoopPanel games={coopGames} onJoin={requestJoin} onHost={hostMission} />
+        <CoopPanel games={coopGames} onJoin={requestJoin} onHost={handleHostCoop} />
       ) : (
-        <>
-        <CustomGamesToolbar
-          search={search}
-          sort={sort}
-          viewMode={gameView}
-          hidePrivate={hidePrivate}
-          hideModded={hideModded}
-          applyFilters={applyFilters}
-          filterCount={rules.length}
-          connected={connected}
-          onSearch={setSearch}
-          onSort={(value) => updateGameBrowser({ sort: value })}
-          onViewMode={selectGameView}
-          onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
-          onHideModded={(value) => updateGameBrowser({ hideModded: value })}
-          onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
-          onOpenFilters={() => setFiltersOpen(true)}
-          onHost={() => setHostOpen(true)}
-        />
-
         <div className="custom-games-layout">
+          <CustomGamesToolbar
+            search={search}
+            sort={sort}
+            viewMode={gameView}
+            hidePrivate={hidePrivate}
+            hideModded={hideModded}
+            applyFilters={applyFilters}
+            filterCount={rules.length}
+            connected={connected}
+            onSearch={setSearch}
+            onSort={(value) => updateGameBrowser({ sort: value })}
+            onViewMode={selectGameView}
+            onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
+            onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+            onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
+            onOpenFilters={() => setFiltersOpen(true)}
+            onHost={() => {
+              setCoopMissionToHost(null);
+              setHostOpen(true);
+            }}
+          />
+
           <CustomGamesBrowser
             games={filtered}
             totalGames={customGames.length}
@@ -289,15 +284,24 @@ export function LobbyView() {
           ) : (
             <aside className="game-detail-panel surface-panel empty">
               <Icon name="play" size={24} />
-              <p>{t("lobby.details.selectGame")}</p>
+              <p>Select a game to see its details.</p>
             </aside>
           )}
         </div>
-        </>
       )}
 
       {filtersOpen && <GameFiltersModal rules={rules} onChange={(nextRules) => updateGameBrowser({ rules: nextRules })} onClose={() => setFiltersOpen(false)} />}
-      {hostOpen && <HostGameModal forcedFeaturedMod={inCoop ? "coop" : undefined} onClose={() => setHostOpen(false)} />}
+      {hostOpen && (
+        <HostGameModal
+          forcedFeaturedMod={inCoop ? "coop" : undefined}
+          initialMap={coopMissionToHost?.mapFolderName}
+          initialTitle={coopMissionToHost ? `${coopMissionToHost.name} co-op` : undefined}
+          onClose={() => {
+            setHostOpen(false);
+            setCoopMissionToHost(null);
+          }}
+        />
+      )}
       {passwordGame && (
         <PrivateGameDialog
           game={passwordGame}

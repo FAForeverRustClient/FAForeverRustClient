@@ -1,0 +1,101 @@
+/* Pagination component styling. */
+.pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  user-select: none;
+}
+
+/* Every slot is exactly the same width, page numbers and ellipses alike.
+   `min-width` alone was not enough: a three-digit page is wider than a
+   one-digit one, so the row grew as you paged into higher numbers and, being
+   centred, shifted every button sideways. A fixed width plus a fixed slot count
+   is what actually holds the control still. Wide enough for four digits, which
+   is far past any vault's page count. */
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  flex: 0 0 36px;
+  height: 32px;
+  padding: 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.pagination-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.pagination-btn.active {
+  color: var(--color-text);
+  font-weight: 600;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  flex: 0 0 36px;
+  height: 32px;
+  padding: 0;
+  color: var(--color-subtle);
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.pagination-ellipsis:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.pagination-ellipsis:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.pagination-nav {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* Previous/Next keep a fixed width too, so the two ends of the row stay put
+   regardless of the label's rendered length in the active language. */
+.pagination-nav {
+  flex: 0 0 auto;
+  min-width: 86px;
+  justify-content: center;
+}

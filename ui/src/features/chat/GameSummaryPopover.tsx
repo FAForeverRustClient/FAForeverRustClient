@@ -5,14 +5,12 @@ import { MapThumbnail } from "../../shared/MapThumbnail";
 import { flagSrc } from "../../shared/countryFlags";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { gameTeamSummaries, type GamePresence } from "./gameSummary";
-import type { MessageKey } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const STATUS_LABEL = {
-  hosting: "chat.presence.hosting",
-  lobbying: "chat.presence.lobbying",
-  playing: "chat.presence.playing",
-} as const satisfies Record<GamePresence["status"], MessageKey>;
+  hosting: "Hosting",
+  lobbying: "In lobby",
+  playing: "Playing",
+} as const;
 
 interface Props {
   presence: GamePresence;
@@ -50,8 +48,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   // Team/profile joins are only needed for the one card currently visible;
   // closed badges stay cheap even in a several-hundred-user channel.
   const teams = open ? gameTeamSummaries(presence.game, social) : [];
-  const { t } = useTranslation();
-  const status = t(STATUS_LABEL[presence.status]);
+  const status = STATUS_LABEL[presence.status];
 
   return (
     <>
@@ -82,7 +79,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
         >
           <header className="chat-game-popover-head">
             <div>
-              <strong>{presence.game.title || t("chat.game.untitled")}</strong>
+              <strong>{presence.game.title || "Untitled game"}</strong>
               <span>{presentation.displayName}</span>
             </div>
             <span className={`chat-game-status is-${presence.status}`}>{status}</span>
@@ -123,7 +120,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
               ))}
             </div>
           ) : (
-            <p className="chat-game-no-teams muted">{t("chat.game.noLineup")}</p>
+            <p className="chat-game-no-teams muted">The lobby has not supplied a lineup yet.</p>
           )}
         </aside>,
         document.body,

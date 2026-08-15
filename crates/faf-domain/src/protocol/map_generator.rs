@@ -253,13 +253,16 @@ impl GenerationType {
 
 /// Everything the host-a-generated-map flow can specify.
 ///
-/// Mirrors the Java client's `GeneratorOptions` record one-for-one. `None`
+/// Mirrors the Java client's `GeneratorOptions` record. `None`
 /// means "let the generator decide", which is not the same as a default value,
 /// omitting `--style` lets the generator pick one, while passing a style pins it.
 // No `Eq`: the density fields are `f32`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GeneratorOptions {
+    /// Specific generator version to run (e.g. "1.15.2"), or None for latest.
+    #[serde(default)]
+    pub version: Option<String>,
     /// Total spawn points. The generator requires this together with
     /// `num_teams` and `map_size`.
     pub spawn_count: Option<u32>,
@@ -269,18 +272,44 @@ pub struct GeneratorOptions {
     /// Fixed seed, for reproducing a specific map.
     pub seed: String,
     pub generation_type: GenerationType,
+    #[serde(default)]
     pub symmetry: String,
+    #[serde(default)]
+    pub symmetries: Vec<String>,
     /// A whole-map style preset. Mutually exclusive with the four
     /// component styles below: the generator ignores those when a style is set,
     /// so the command builder stops after emitting it.
+    #[serde(default)]
     pub style: String,
+    #[serde(default)]
+    pub styles: Vec<String>,
+    #[serde(default)]
     pub terrain_style: String,
+    #[serde(default)]
+    pub terrain_styles: Vec<String>,
+    #[serde(default)]
     pub texture_style: String,
+    #[serde(default)]
+    pub texture_styles: Vec<String>,
+    #[serde(default)]
     pub resource_style: String,
+    #[serde(default)]
+    pub resource_styles: Vec<String>,
+    #[serde(default)]
     pub prop_style: String,
+    #[serde(default)]
+    pub prop_styles: Vec<String>,
     /// 0–127 in the generator's units; the Java client's sliders use the same.
     pub reclaim_density: Option<f32>,
+    #[serde(default)]
+    pub reclaim_density_min: Option<f32>,
+    #[serde(default)]
+    pub reclaim_density_max: Option<f32>,
     pub resource_density: Option<f32>,
+    #[serde(default)]
+    pub resource_density_min: Option<f32>,
+    #[serde(default)]
+    pub resource_density_max: Option<f32>,
     /// Generate several maps in one run (`--num-to-generate`).
     pub num_to_generate: Option<u32>,
     /// Raw passthrough. When set it replaces every other option: the escape
@@ -292,19 +321,30 @@ impl Default for GeneratorOptions {
     fn default() -> Self {
         Self {
             // The Java client's `GeneratorPrefs` defaults.
+            version: None,
             spawn_count: Some(6),
             num_teams: Some(2),
             map_size: Some(512),
             seed: String::new(),
             generation_type: GenerationType::Casual,
             symmetry: String::new(),
+            symmetries: Vec::new(),
             style: String::new(),
+            styles: Vec::new(),
             terrain_style: String::new(),
+            terrain_styles: Vec::new(),
             texture_style: String::new(),
+            texture_styles: Vec::new(),
             resource_style: String::new(),
+            resource_styles: Vec::new(),
             prop_style: String::new(),
+            prop_styles: Vec::new(),
             reclaim_density: None,
+            reclaim_density_min: None,
+            reclaim_density_max: None,
             resource_density: None,
+            resource_density_min: None,
+            resource_density_max: None,
             num_to_generate: None,
             command_line_args: String::new(),
         }
@@ -336,6 +376,57 @@ impl std::fmt::Display for CommandError {
                 "this map needs a newer map generator than this client supports: update the client"
             ),
         }
+    }
+}
+
+fn pick_choice(single: &str, multi: &[String], seed_str: &str) -> Option<String> {
+    if !single.is_empty() {
+        return Some(single.to_string());
+    }
+    if multi.is_empty() {
+        return None;
+    }
+    if multi.len() == 1 {
+        return multi.first().cloned();
+    }
+    let seed_num: u64 = seed_str.parse().unwrap_or_else(|_| {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0)
+    });
+    let idx = (seed_num as usize) % multi.len();
+    multi.get(idx).cloned()
+}
+
+fn pick_density(
+    single: Option<f32>,
+    min: Option<f32>,
+    max: Option<f32>,
+    seed_str: &str,
+) -> Option<f32> {
+    if let Some(val) = single {
+        return Some(val);
+    }
+    match (min, max) {
+        (Some(a), Some(b)) if (a - b).abs() < f32::EPSILON => Some(a),
+        (Some(a), Some(b)) => {
+            let low = a.min(b);
+            let high = a.max(b);
+            let seed_num: u64 = seed_str.parse().unwrap_or_else(|_| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0)
+            });
+            let frac = ((seed_num.wrapping_mul(6364136223846793005).wrapping_add(1) >> 32) as u32
+                % 1000) as f32
+                / 1000.0;
+            Some(low + frac * (high - low))
+        }
+        (Some(a), None) => Some(a),
+        (None, Some(b)) => Some(b),
+        (None, None) => None,
     }
 }
 
@@ -398,9 +489,15 @@ pub fn build_arguments(
         teams.to_string(),
     ];
 
-    if let Some(count) = options.num_to_generate.filter(|n| *n > 1) {
-        args.push("--num-to-generate".to_string());
-        args.push(count.to_string());
+    // A fixed seed pins the terrain, so asking for several maps would produce
+    // several *identical* ones. The Java client resolves the same conflict in
+    // `GenerateMapController.onGenerateMap`, which forces its map count to 1
+    // whenever a seed is set.
+    if options.seed.is_empty() {
+        if let Some(count) = options.num_to_generate.filter(|n| *n > 1) {
+            args.push("--num-to-generate".to_string());
+            args.push(count.to_string());
+        }
     }
 
     // A generation type is a whole-map preset: it replaces the style and
@@ -417,25 +514,58 @@ pub fn build_arguments(
         }
     };
     push_flag("--seed", &options.seed);
-    push_flag("--terrain-symmetry", &options.symmetry);
+
+    if let Some(symmetry) = pick_choice(&options.symmetry, &options.symmetries, &options.seed) {
+        push_flag("--terrain-symmetry", &symmetry);
+    }
 
     // A whole-map style likewise supersedes the four component styles.
-    if !options.style.is_empty() {
+    if let Some(style) = pick_choice(&options.style, &options.styles, &options.seed) {
         args.push("--style".to_string());
-        args.push(options.style.clone());
+        args.push(style);
         return Ok(args);
     }
 
-    push_flag("--terrain-style", &options.terrain_style);
-    push_flag("--texture-style", &options.texture_style);
-    push_flag("--resource-style", &options.resource_style);
-    push_flag("--prop-style", &options.prop_style);
+    if let Some(terrain) = pick_choice(
+        &options.terrain_style,
+        &options.terrain_styles,
+        &options.seed,
+    ) {
+        push_flag("--terrain-style", &terrain);
+    }
+    if let Some(texture) = pick_choice(
+        &options.texture_style,
+        &options.texture_styles,
+        &options.seed,
+    ) {
+        push_flag("--texture-style", &texture);
+    }
+    if let Some(resource) = pick_choice(
+        &options.resource_style,
+        &options.resource_styles,
+        &options.seed,
+    ) {
+        push_flag("--resource-style", &resource);
+    }
+    if let Some(prop) = pick_choice(&options.prop_style, &options.prop_styles, &options.seed) {
+        push_flag("--prop-style", &prop);
+    }
 
-    if let Some(density) = options.resource_density {
+    if let Some(density) = pick_density(
+        options.resource_density,
+        options.resource_density_min,
+        options.resource_density_max,
+        &options.seed,
+    ) {
         args.push("--resource-density".to_string());
         args.push(density.to_string());
     }
-    if let Some(density) = options.reclaim_density {
+    if let Some(density) = pick_density(
+        options.reclaim_density,
+        options.reclaim_density_min,
+        options.reclaim_density_max,
+        &options.seed,
+    ) {
         args.push("--reclaim-density".to_string());
         args.push(density.to_string());
     }
@@ -854,6 +984,23 @@ mod tests {
         let args =
             build_arguments(version(1, 7, 7), None, &many, VersionPolicy::default()).unwrap();
         assert!(args.windows(2).any(|w| w == ["--num-to-generate", "4"]));
+    }
+
+    #[test]
+    fn a_fixed_seed_suppresses_the_map_count() {
+        // Otherwise the generator is asked for four copies of one map.
+        let options = GeneratorOptions {
+            seed: "12345".into(),
+            num_to_generate: Some(4),
+            ..Default::default()
+        };
+        let args =
+            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        assert!(!args.contains(&"--num-to-generate".to_string()), "{args:?}");
+        assert!(
+            args.windows(2).any(|w| w == ["--seed", "12345"]),
+            "{args:?}"
+        );
     }
 
     #[test]

@@ -18,7 +18,7 @@ use faf_app::{App, Ports};
 use faf_domain::state::{
     Game, HostGameConfig, LiveReplayTarget, LiveReplayTrackingAction, LobbyCommand, LocalReplay,
     NotificationAction, NotificationKind, PlayerVeto, Relation, ReplayCommand, ReplayEvent,
-    ReplayQuery, VaultReplay, LIVE_REPLAY_DELAY_SECONDS,
+    ReplayQuery, LIVE_REPLAY_DELAY_SECONDS,
 };
 use faf_domain::AppEvent;
 use serde_json::Value;
@@ -42,8 +42,11 @@ impl ReplayPort for RecordingReplay {
     async fn play_file(&self, _path: PathBuf) -> Result<Option<String>, String> {
         Ok(None)
     }
-    async fn search_vault(&self, _query: ReplayQuery) -> Result<Vec<VaultReplay>, String> {
-        Ok(Vec::new())
+    async fn search_vault(
+        &self,
+        _query: ReplayQuery,
+    ) -> Result<faf_app::ports::VaultSearchResult, String> {
+        Ok(faf_app::ports::VaultSearchResult::default())
     }
     async fn list_featured_mods(&self) -> Result<Vec<String>, String> {
         Ok(Vec::new())

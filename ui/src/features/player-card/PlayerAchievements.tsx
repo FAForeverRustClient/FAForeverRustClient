@@ -1,11 +1,8 @@
 import { useMemo, useState } from "react";
 import type { PlayerAchievement } from "../../ipc/bindings";
 import { formatDate } from "../../shared/dates";
-import { formatNumber } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 function AchievementCard({ achievement }: { achievement: PlayerAchievement }) {
-  const { t } = useTranslation();
   const unlocked = achievement.state === "unlocked";
   const icon = unlocked ? achievement.unlockedIconUrl : achievement.revealedIconUrl;
   const progress = achievement.totalSteps
@@ -22,17 +19,12 @@ function AchievementCard({ achievement }: { achievement: PlayerAchievement }) {
         {achievement.incremental && achievement.totalSteps !== null && (
           <div className="player-achievement-progress">
             <div><span style={{ width: `${progress}%` }} /></div>
-            <small>{t("playerCard.achievements.progress", {
-              current: formatNumber(achievement.currentSteps),
-              total: formatNumber(achievement.totalSteps),
-            })}</small>
+            <small>{achievement.currentSteps.toLocaleString("en-US")} / {achievement.totalSteps.toLocaleString("en-US")}</small>
           </div>
         )}
         {(achievement.unlockersCount !== null || achievement.unlockersPercent !== null) && (
           <small className="muted">
-            {t("playerCard.achievements.unlockers", {
-              count: achievement.unlockersCount === null ? "N/A" : formatNumber(achievement.unlockersCount),
-            })}
+            Unlocked by {achievement.unlockersCount?.toLocaleString("en-US") ?? "N/A"} players
             {achievement.unlockersPercent !== null ? ` (${achievement.unlockersPercent.toFixed(1)}%)` : ""}
           </small>
         )}
@@ -42,7 +34,6 @@ function AchievementCard({ achievement }: { achievement: PlayerAchievement }) {
 }
 
 export function PlayerAchievements({ achievements }: { achievements: PlayerAchievement[] }) {
-  const { t } = useTranslation();
   const [filter, setFilter] = useState("");
   const unlocked = useMemo(() => achievements
     .filter((achievement) => achievement.state === "unlocked")
@@ -59,15 +50,15 @@ export function PlayerAchievements({ achievements }: { achievements: PlayerAchie
   return (
     <div className="player-achievements-view">
       <div className="player-achievement-summary surface-panel">
-        <div><strong>{unlocked.length}</strong><span>{t("playerCard.achievements.unlocked")}</span></div>
-        <div><strong>{locked.length}</strong><span>{t("playerCard.achievements.locked")}</span></div>
-        <div><strong>{t("playerCard.achievements.progress", { current: formatNumber(earnedXp), total: formatNumber(totalXp) })}</strong><span>{t("playerCard.achievements.experience")}</span></div>
-        {mostRecent && <div className="player-recent-achievement"><span>{t("playerCard.achievements.mostRecent")}</span><strong>{mostRecent.name}</strong><small className="muted">{formatDate(mostRecent.updatedAt)}</small></div>}
+        <div><strong>{unlocked.length}</strong><span>Unlocked</span></div>
+        <div><strong>{locked.length}</strong><span>Locked</span></div>
+        <div><strong>{earnedXp.toLocaleString("en-US")} / {totalXp.toLocaleString("en-US")}</strong><span>Experience</span></div>
+        {mostRecent && <div className="player-recent-achievement"><span>Most recent</span><strong>{mostRecent.name}</strong><small className="muted">{formatDate(mostRecent.updatedAt)}</small></div>}
       </div>
-      <label className="player-card-search"><span>{t("playerCard.achievements.filter")}</span><input value={filter} placeholder={t("playerCard.achievements.filterPlaceholder")} onChange={(event) => setFilter(event.target.value)} /></label>
-      <h3>{t("playerCard.achievements.unlockedHeading", { count: unlocked.length })}</h3>
+      <label className="player-card-search"><span>Filter achievements</span><input value={filter} placeholder="Achievement name…" onChange={(event) => setFilter(event.target.value)} /></label>
+      <h3>Unlocked ({unlocked.length})</h3>
       <div className="player-achievement-grid">{unlocked.map((achievement) => <AchievementCard key={achievement.id} achievement={achievement} />)}</div>
-      <h3>{t("playerCard.achievements.lockedHeading", { count: locked.length })}</h3>
+      <h3>Locked ({locked.length})</h3>
       <div className="player-achievement-grid">{locked.map((achievement) => <AchievementCard key={achievement.id} achievement={achievement} />)}</div>
     </div>
   );

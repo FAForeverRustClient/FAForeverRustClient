@@ -10,7 +10,6 @@ import "./auth.css";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { ACCOUNT_LINKS, openExternalUrl } from "../../shared/externalLinks";
-import { useTranslation } from "../../i18n/useTranslation";
 
 function AccountLink({ href, children }: { href: string; children: string }) {
   return (
@@ -29,7 +28,6 @@ function AccountLink({ href, children }: { href: string; children: string }) {
 }
 
 export function LoginView() {
-  const { t } = useTranslation();
   const auth = useAppStore((s) => s.state.auth);
   // Whether this process was built with the offline development ports. The
   // credential-free login only produces a working session there; see
@@ -46,18 +44,18 @@ export function LoginView() {
       <div className="entry-card surface-panel login-card">
         <div className="entry-brand"><BrandMark className="entry-brand-image" size={68} /></div>
         <div className="entry-heading">
-          <h1>{t("auth.welcome")}</h1>
-          <p>{t("auth.subtitle")}</p>
+          <h1>Welcome to FAForever</h1>
+          <p>Sign in with your FAF account to continue.</p>
         </div>
 
         <Button className="login-button" variant="primary" onClick={login} disabled={busy}>
-          {busy ? t("auth.signingIn") : t("auth.login")}
+          {busy ? "Signing in…" : "Log in with FAF"}
         </Button>
-        <p className="login-hint">{t("auth.hint")}</p>
+        <p className="login-hint">Opens your browser to sign in. The client never sees your password.</p>
 
         <label className="login-remember">
           <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
-          <span>{t("auth.staySignedIn")}</span>
+          <span>Stay signed in on this computer</span>
         </label>
 
         {auth.status === "failed" && auth.error && (
@@ -67,10 +65,10 @@ export function LoginView() {
           </p>
         )}
 
-        <nav className="login-account-links" aria-label={t("auth.helpNav")}>
-          <AccountLink href={ACCOUNT_LINKS.create}>{t("auth.createAccount")}</AccountLink>
-          <AccountLink href={ACCOUNT_LINKS.recover}>{t("auth.forgotPassword")}</AccountLink>
-          <AccountLink href={ACCOUNT_LINKS.support}>{t("auth.support")}</AccountLink>
+        <nav className="login-account-links" aria-label="FAF account help">
+          <AccountLink href={ACCOUNT_LINKS.create}>Create account</AccountLink>
+          <AccountLink href={ACCOUNT_LINKS.recover}>Forgot password?</AccountLink>
+          <AccountLink href={ACCOUNT_LINKS.support}>Support</AccountLink>
         </nav>
 
         {/* Development builds only. Against real ports this fabricates a player
@@ -78,16 +76,16 @@ export function LoginView() {
             request afterwards fails in a way that looks like a broken client. */}
         {offlineAuth && (
           <div className="login-dev">
-            <span className="login-dev-tag">{t("auth.devBuild")}</span>
+            <span className="login-dev-tag">Development build</span>
             <Button className="login-test-button" onClick={loginTest} disabled={busy}>
-              {t("auth.enterTestMode")}
+              Enter test mode
             </Button>
-            <p>{t("auth.devHint")}</p>
+            <p>Local sample account. No browser, no server.</p>
           </div>
         )}
       </div>
 
-      <p className="login-footnote">{t("auth.footnote")}</p>
+      <p className="login-footnote">The open-source multiplayer client for Forged Alliance Forever.</p>
     </main>
   );
 }

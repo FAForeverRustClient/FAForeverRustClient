@@ -132,18 +132,81 @@ impl Default for GeneralPreferences {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AppearancePreferences {
     pub density: UiDensity,
     pub reduce_motion: bool,
+    /// Whole-interface zoom, as a percentage. Applied by the shell as a real
+    /// webview zoom rather than a CSS transform, so layout, hit testing and
+    /// `window.innerWidth` all stay in one coordinate space.
+    ///
+    /// This client's dimensions are in CSS pixels throughout, so on a large
+    /// high-resolution display running at 100% desktop scaling every control is
+    /// physically tiny. Neither reference client offers this (the Java client
+    /// zooms only its chat), but neither is a fixed-pixel web UI.
+    ///
+    /// Settings files written before this existed still load: see the `Wire`
+    /// reader below, which is how every other preference block in this module
+    /// gains a field without making the generated IPC type optional.
+    pub ui_scale: u16,
 }
+
+// A field-level `#[serde(default)]` would have been shorter, but specta turns
+// it into an *optional* TS property, and the field is never actually absent in
+// a serialized snapshot. That would push a `?? 100` onto every use site to
+// satisfy a case that cannot happen.
+impl<'de> Deserialize<'de> for AppearancePreferences {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase", default)]
+        struct Wire {
+            density: UiDensity,
+            reduce_motion: bool,
+            ui_scale: u16,
+        }
+
+        impl Default for Wire {
+            fn default() -> Self {
+                let defaults = AppearancePreferences::default();
+                Self {
+                    density: defaults.density,
+                    reduce_motion: defaults.reduce_motion,
+                    ui_scale: defaults.ui_scale,
+                }
+            }
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Ok(Self {
+            density: wire.density,
+            reduce_motion: wire.reduce_motion,
+            ui_scale: wire.ui_scale,
+        })
+    }
+}
+
+/// 100% means "one CSS pixel per desktop pixel", matching the desktop's own
+/// scaling rather than second-guessing it.
+fn default_ui_scale() -> u16 {
+    100
+}
+
+/// Bounds for [`AppearancePreferences::ui_scale`]. Below the minimum text stops
+/// being legible; above the maximum the narrowest supported layout no longer
+/// fits, and the sidebar starts colliding with content.
+pub const MIN_UI_SCALE: u16 = 80;
+pub const MAX_UI_SCALE: u16 = 200;
 
 impl Default for AppearancePreferences {
     fn default() -> Self {
         Self {
             density: UiDensity::Comfortable,
             reduce_motion: false,
+            ui_scale: default_ui_scale(),
         }
     }
 }
@@ -280,7 +343,7 @@ impl NotificationPreferences {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatNameColors {
     /// Empty strings mean that the category uses the ordinary text colour.
@@ -290,6 +353,18 @@ pub struct ChatNameColors {
     pub admins: String,
     /// Player login to a user-selected `#rrggbb` colour.
     pub players: BTreeMap<String, String>,
+}
+
+impl Default for ChatNameColors {
+    fn default() -> Self {
+        Self {
+            friends: "#87cefa".into(),
+            foes: "#dc143c".into(),
+            moderators: "#32cd32".into(),
+            admins: "#ba55d3".into(),
+            players: BTreeMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
@@ -321,6 +396,15 @@ pub struct ChatPreferences {
     /// IRC history backfill from restoring an unread badge after a restart.
     /// Keys are produced by [`super::chat::read_marker_key`].
     pub read_markers: BTreeMap<String, String>,
+    /// Roster categories the user has collapsed (`players`, `ircOnly`, …).
+    ///
+    /// The Java client stores this per channel
+    /// (`ChatPrefs.channelNameToHiddenCategories`). One global set is used here
+    /// instead: the categories people actually collapse are the noisy ones
+    /// (`#aeolus` alone lists 600+ under Players), and that judgement does not
+    /// change from channel to channel. Per-channel remains possible later
+    /// without moving this field, by widening the value to a map.
+    pub hidden_roster_categories: Vec<String>,
 }
 
 impl Default for ChatPreferences {
@@ -338,6 +422,7 @@ impl Default for ChatPreferences {
             auto_join_language_channel: true,
             muted_players: Vec::new(),
             read_markers: BTreeMap::new(),
+            hidden_roster_categories: Vec::new(),
         }
     }
 }
@@ -365,6 +450,7 @@ impl<'de> Deserialize<'de> for ChatPreferences {
             auto_join_language_channel: bool,
             muted_players: Vec<String>,
             read_markers: BTreeMap<String, String>,
+            hidden_roster_categories: Vec<String>,
         }
 
         impl Default for Wire {
@@ -383,6 +469,7 @@ impl<'de> Deserialize<'de> for ChatPreferences {
                     auto_join_language_channel: defaults.auto_join_language_channel,
                     muted_players: defaults.muted_players,
                     read_markers: defaults.read_markers,
+                    hidden_roster_categories: defaults.hidden_roster_categories,
                 }
             }
         }
@@ -401,6 +488,7 @@ impl<'de> Deserialize<'de> for ChatPreferences {
             auto_join_language_channel: wire.auto_join_language_channel,
             muted_players: wire.muted_players,
             read_markers: wire.read_markers,
+            hidden_roster_categories: wire.hidden_roster_categories,
         })
     }
 }
@@ -517,12 +605,29 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GamePreferences {
     /// Additional literal arguments prepended to both live-game and replay
     /// launches. Each entry is one process argument; no shell is involved.
+    #[serde(default)]
     pub additional_arguments: Vec<String>,
+    /// Automatically generate missing Neroxis maps when joining a lobby.
+    #[serde(default = "default_true")]
+    pub auto_generate_maps: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+impl Default for GamePreferences {
+    fn default() -> Self {
+        Self {
+            additional_arguments: Vec::new(),
+            auto_generate_maps: true,
+        }
+    }
 }
 
 impl GamePreferences {
@@ -905,6 +1010,10 @@ pub struct BrowsingPreferences {
     /// Stable map folder names starred by the user. Python persists the same
     /// key and uses it in the host picker and generated-map cleanup.
     pub favorite_maps: Vec<String>,
+    /// Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all").
+    pub map_vault_preset: String,
+    /// Active preset filter in the mod vault ("recommended", "rating", "ui", "newest", "all").
+    pub mod_vault_preset: String,
     /// Visible column keys in the rating leaderboard table.
     pub leaderboard_rating_columns: Vec<String>,
     /// Set after the webview has offered its pre-0.2 browser-storage values to
@@ -939,6 +1048,8 @@ impl Default for BrowsingPreferences {
             live_replay_filters: LiveReplayFilters::default(),
             host_game: HostGamePreferences::default(),
             favorite_maps: Vec::new(),
+            map_vault_preset: "recommended".into(),
+            mod_vault_preset: "recommended".into(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
                 .map(|col| (*col).to_owned())
@@ -964,6 +1075,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             live_replay_filters: LiveReplayFilters,
             host_game: HostGamePreferences,
             favorite_maps: Vec<String>,
+            map_vault_preset: String,
+            mod_vault_preset: String,
             leaderboard_rating_columns: Vec<String>,
             legacy_storage_migrated: bool,
         }
@@ -980,6 +1093,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     live_replay_filters: defaults.live_replay_filters,
                     host_game: defaults.host_game,
                     favorite_maps: defaults.favorite_maps,
+                    map_vault_preset: defaults.map_vault_preset,
+                    mod_vault_preset: defaults.mod_vault_preset,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     legacy_storage_migrated: defaults.legacy_storage_migrated,
                 }
@@ -996,6 +1111,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             live_replay_filters: wire.live_replay_filters,
             host_game: wire.host_game,
             favorite_maps: wire.favorite_maps,
+            map_vault_preset: wire.map_vault_preset,
+            mod_vault_preset: wire.mod_vault_preset,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             legacy_storage_migrated: wire.legacy_storage_migrated,
         })
@@ -1040,6 +1157,21 @@ impl BrowsingPreferences {
             .into_iter()
             .map(|folder| folder.to_ascii_lowercase())
             .collect();
+        self.map_vault_preset = match self.map_vault_preset.trim().to_ascii_lowercase().as_str() {
+            "favorites" => "favorites".into(),
+            "rating" => "rating".into(),
+            "newest" => "newest".into(),
+            "played" => "played".into(),
+            "all" => "all".into(),
+            _ => "recommended".into(),
+        };
+        self.mod_vault_preset = match self.mod_vault_preset.trim().to_ascii_lowercase().as_str() {
+            "rating" => "rating".into(),
+            "ui" => "ui".into(),
+            "newest" => "newest".into(),
+            "all" => "all".into(),
+            _ => "recommended".into(),
+        };
         let selected_columns: Vec<String> = VALID_LEADERBOARD_RATING_COLUMNS
             .iter()
             .filter(|canonical| {
@@ -1135,6 +1267,10 @@ impl SettingsState {
         self.notifications = self.notifications.normalized();
         self.game = self.game.normalized();
         self.browsing = self.browsing.normalized();
+        // Clamped at the state boundary, so a hand-edited settings file cannot
+        // zoom the interface to something unusable that is then hard to undo:
+        // the control for fixing it would be off screen.
+        self.appearance.ui_scale = self.appearance.ui_scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE);
         self
     }
 }
@@ -1182,7 +1318,7 @@ pub enum SettingsEvent {
         preferences: UpdatePreferences,
     },
     BrowsingChanged {
-        preferences: BrowsingPreferences,
+        preferences: Box<BrowsingPreferences>,
     },
 }
 
@@ -1229,7 +1365,7 @@ pub enum SettingsCommand {
         preferences: UpdatePreferences,
     },
     SetBrowsing {
-        preferences: BrowsingPreferences,
+        preferences: Box<BrowsingPreferences>,
     },
     CheckInstalls,
 }
@@ -1254,7 +1390,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::ConnectivityChanged { preferences } => state.connectivity = *preferences,
         SettingsEvent::UpdatesChanged { preferences } => state.updates = *preferences,
         SettingsEvent::BrowsingChanged { preferences } => {
-            state.browsing = preferences.clone().normalized()
+            state.browsing = preferences.as_ref().clone().normalized()
         }
     }
 }
@@ -1504,6 +1640,7 @@ mod tests {
             },
             game: GamePreferences {
                 additional_arguments: vec![" /windowed ".into(), String::new()],
+                ..Default::default()
             },
             ..SettingsState::default()
         }
@@ -1602,6 +1739,8 @@ mod tests {
                     "adaptive_tabula.v0006".into(),
                     String::new(),
                 ],
+                map_vault_preset: "  NEWEST  ".into(),
+                mod_vault_preset: "  UI  ".into(),
                 leaderboard_rating_columns: vec![
                     "rating".into(),
                     "MEAN".into(),
@@ -1649,6 +1788,8 @@ mod tests {
         assert_eq!(settings.browsing.host_game.rating_min, 800);
         assert_eq!(settings.browsing.host_game.rating_max, 1_500);
         assert_eq!(settings.browsing.favorite_maps, ["adaptive_tabula.v0006"]);
+        assert_eq!(settings.browsing.map_vault_preset, "newest");
+        assert_eq!(settings.browsing.mod_vault_preset, "ui");
         assert_eq!(
             settings.browsing.leaderboard_rating_columns,
             ["rating", "mean"]

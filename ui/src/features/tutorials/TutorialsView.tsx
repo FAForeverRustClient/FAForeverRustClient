@@ -15,8 +15,6 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import "./tutorials.css";
-import { t } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const load = () => ipc.send({ kind: "Tutorials", command: { type: "load" } });
 const select = (tutorialId: number) =>
@@ -25,7 +23,6 @@ const launch = (tutorialId: number) =>
   ipc.send({ kind: "Tutorials", command: { type: "launch", payload: { tutorialId } } });
 
 export function TutorialsView() {
-  const { t } = useTranslation();
   const state = useAppStore((store) => store.state.tutorials);
 
   useEffect(() => {
@@ -33,7 +30,7 @@ export function TutorialsView() {
   }, []);
 
   const selected = state.tutorials.find((t) => t.id === state.selectedId) ?? null;
-  const note = loadStatusNote(state.status, t("tutorials.loading"), t("tutorials.loadFailed"));
+  const note = loadStatusNote(state.status, "Loading tutorials…", "Could not load tutorials");
 
   // Group by category, keeping each author's teaching order (`ordinal`).
   const groups = useMemo(() => {
@@ -57,15 +54,15 @@ export function TutorialsView() {
 
   const total = groups.reduce((sum, group) => sum + group.tutorials.length, 0);
   const selectedCategory = selected
-    ? state.categories.find((category) => category.id === selected.categoryId)?.name ?? t("tutorials.otherLessons")
+    ? state.categories.find((category) => category.id === selected.categoryId)?.name ?? "Other lessons"
     : "";
 
   return (
     <div className="tutorials-view">
       <header className="tutorials-header">
         <div>
-          <span className="tutorials-eyebrow">{t("tutorials.eyebrow")}</span>
-          <h2>{t("tutorials.tutorials")}</h2>
+          <span className="tutorials-eyebrow">Learn the game</span>
+          <h2>Tutorials</h2>
         </div>
         {total > 0 && (
           <span className="muted tutorials-count">
@@ -82,7 +79,7 @@ export function TutorialsView() {
           <span>{note}</span>
           {state.status.type === "failed" && (
             <Button onClick={() => void load()}>
-              <Icon name="refresh" size={15} /> {t("tutorials.tryAgain")}
+              <Icon name="refresh" size={15} /> Try again
             </Button>
           )}
         </p>
@@ -90,17 +87,17 @@ export function TutorialsView() {
 
       {state.status.type === "ready" && total === 0 && (
         <p className="surface tutorials-state muted">
-          <span>{t("tutorials.none")}</span>
+          <span>No tutorials are published right now.</span>
         </p>
       )}
 
       {total > 0 && (
         <div className="tutorials-body">
-          <nav className="surface-panel tutorials-list" aria-label={t("tutorials.tutorials")}>
+          <nav className="surface-panel tutorials-list" aria-label="Tutorials">
             {groups.map((group) => (
               <div className="tutorials-group" key={group.category?.id ?? "other"}>
                 <h3 className="tutorials-group-name">
-                  <span>{group.category?.name ?? t("tutorials.otherLessons")}</span>
+                  <span>{group.category?.name ?? "Other lessons"}</span>
                   <span>{group.tutorials.length}</span>
                 </h3>
                 {group.tutorials.map((tutorial) => (
@@ -121,7 +118,7 @@ export function TutorialsView() {
                       <TutorialRowMark tutorial={tutorial} />
                     )}
                     <span className="tutorial-row-copy">
-                      <strong>{tutorial.title || t("tutorials.untitled")}</strong>
+                      <strong>{tutorial.title || "Untitled"}</strong>
                       <small>{tutorialKind(tutorial)}</small>
                     </span>
                   </button>
@@ -133,7 +130,7 @@ export function TutorialsView() {
           {selected ? (
             <TutorialDetail tutorial={selected} categoryName={selectedCategory} />
           ) : (
-            <p className="surface tutorials-state muted"><span>{t("tutorials.select")}</span></p>
+            <p className="surface tutorials-state muted"><span>Select a tutorial.</span></p>
           )}
         </div>
       )}
@@ -157,9 +154,9 @@ function isLink(tutorial: Tutorial): boolean {
 }
 
 function tutorialKind(tutorial: Tutorial): string {
-  if (isPlayable(tutorial)) return t("tutorials.kind.playable");
-  if (isLink(tutorial)) return t("tutorials.kind.link");
-  return t("tutorials.kind.comingSoon");
+  if (isPlayable(tutorial)) return "Playable lesson";
+  if (isLink(tutorial)) return "External guide";
+  return "Coming soon";
 }
 
 /**
@@ -168,26 +165,24 @@ function tutorialKind(tutorial: Tutorial): string {
  * could not do rather than what the entry is.
  */
 function TutorialRowMark({ tutorial }: { tutorial: Tutorial }) {
-  const { t } = useTranslation();
   if (isPlayable(tutorial)) {
     return (
-      <span className="tutorial-row-mark is-playable" title={t("tutorials.playableLesson")}>
+      <span className="tutorial-row-mark is-playable" title="Playable lesson">
         <Icon name="play" size={13} />
       </span>
     );
   }
   if (isLink(tutorial)) {
     return (
-      <span className="tutorial-row-mark" title={t("tutorials.opensBrowser")}>
+      <span className="tutorial-row-mark" title="Opens in your browser">
         <Icon name="external" size={13} />
       </span>
     );
   }
-  return <span className="tutorial-row-mark is-empty" title={t("tutorials.notAvailableYet")} aria-hidden />;
+  return <span className="tutorial-row-mark is-empty" title="Not available yet" aria-hidden />;
 }
 
 function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; categoryName: string }) {
-  const { t } = useTranslation();
   const launchState = useAppStore((store) => store.state.tutorials.launch);
   const playable = isPlayable(tutorial);
   const link = isLink(tutorial);
@@ -210,15 +205,15 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
             <span aria-hidden>·</span>
             <span>{tutorialKind(tutorial)}</span>
           </div>
-          <h3>{tutorial.title || t("tutorials.untitled")}</h3>
+          <h3>{tutorial.title || "Untitled"}</h3>
           {tutorial.description
             ? <p className="tutorial-brief">{tutorial.description}</p>
-            : <p className="muted tutorial-brief">{t("tutorials.noBriefing")}</p>}
+            : <p className="muted tutorial-brief">No briefing was published for this lesson.</p>}
 
           {playable && (
             <dl className="tutorial-meta">
-              <div><dt>{t("tutorials.map")}</dt><dd>{tutorial.mapFolderName}</dd></div>
-              <div><dt>{t("tutorials.mode")}</dt><dd>{t("tutorials.offline")}</dd></div>
+              <div><dt>Map</dt><dd>{tutorial.mapFolderName}</dd></div>
+              <div><dt>Mode</dt><dd>Offline tutorial</dd></div>
             </dl>
           )}
 
@@ -232,7 +227,7 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
 
           {!playable && !link && (
             <p className="muted tutorial-brief">
-              {t("tutorials.notPlayable")}
+              This lesson is listed but not yet playable: its map has not been published.
             </p>
           )}
 
@@ -243,21 +238,21 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
                 title={tutorial.linkUrl}
                 onClick={() => ipc.run(openHttpsUrl(tutorial.linkUrl))}
               >
-                <Icon name="external" size={16} /> {t("tutorials.openGuide")}
+                <Icon name="external" size={16} /> Open guide
               </Button>
             ) : (
               <Button
                 variant="primary"
                 disabled={!playable || preparing !== null}
-                title={playable ? t("tutorials.play", { title: tutorial.title }) : t("tutorials.noMapYet")}
+                title={playable ? `Play ${tutorial.title}` : "This tutorial has no playable map yet"}
                 onClick={() => void launch(tutorial.id)}
               >
-                {preparing !== null ? t("tutorials.preparing") : <><Icon name="play" size={16} /> {t("tutorials.start")}</>}
+                {preparing !== null ? "Preparing…" : <><Icon name="play" size={16} /> Start lesson</>}
               </Button>
             )}
             {playable && (
               <span className="muted tutorial-launch-note">
-                {t("tutorials.autoPrepared")}
+                Required game files and the map are prepared automatically.
               </span>
             )}
           </div>

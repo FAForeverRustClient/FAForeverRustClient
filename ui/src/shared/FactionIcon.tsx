@@ -1,6 +1,5 @@
 import type { SVGProps } from "react";
 import { FACTION_COLORS, FACTION_NAMES } from "./factions";
-import { useTranslation } from "../i18n/useTranslation";
 
 const FACTION_PATHS: Readonly<Record<number, { path: string; viewBox: string }>> = {
   1: {
@@ -28,11 +27,10 @@ interface FactionIconProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
 
 /** The official faction glyphs used by the Java client, normalized for the web UI. */
 export function FactionIcon({ faction, size = 16, style, ...props }: FactionIconProps) {
-  const { t } = useTranslation();
   if (faction === 5) {
     return (
       <svg
-        aria-label={t("factions.random")}
+        aria-label="Random"
         role="img"
         height={size}
         width={size}
@@ -59,7 +57,7 @@ export function FactionIcon({ faction, size = 16, style, ...props }: FactionIcon
   const glyph = FACTION_PATHS[faction];
   if (!glyph) return null;
 
-  const name = FACTION_NAMES[faction] ?? t("factions.unknown");
+  const name = FACTION_NAMES[faction] ?? "Unknown faction";
   return (
     <svg
       aria-label={name}

@@ -41,6 +41,13 @@ pub(crate) struct JsonApiResource {
 
 pub(crate) type ResourceIndex<'a> = HashMap<(String, String), &'a JsonApiResource>;
 
+pub(crate) fn meta_page_i32(meta: &Value, key: &str) -> Option<i32> {
+    meta.get("page")?
+        .get(key)?
+        .as_i64()
+        .and_then(|value| i32::try_from(value).ok())
+}
+
 pub(crate) async fn fetch_document(
     http: &reqwest::Client,
     url: url::Url,

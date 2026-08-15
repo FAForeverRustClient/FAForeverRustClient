@@ -11,8 +11,6 @@ import { MatchmakerPlayerCard } from "./MatchmakerPlayerCard";
 import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./MatchmakerQueueCard";
 import { ratingForQueue } from "./matchmakerRatings";
 import "./matchmaker.css";
-import { t } from "../../i18n";
-import { useLocale } from "../../i18n/useTranslation";
 
 function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplayState {
   switch (state.type) {
@@ -29,15 +27,14 @@ function searchingQueues(state: MatchmakingState) {
 }
 
 function MatchmakerSearchSummary({ state, selectedCount }: { state: MatchmakingState; selectedCount: number }) {
-  if (state.type === "idle") return <span>{t("lobby.matchmaker.summary.selected", { count: selectedCount })}</span>;
-  if (state.type === "searching") return <span>{t("lobby.matchmaker.summary.searching", { count: state.payload.queueNames.length })}</span>;
-  if (state.type === "matchFound") return <span>{t("lobby.matchmaker.summary.found", { queue: state.payload.queueName })}</span>;
-  if (state.type === "launching") return <span>{t("lobby.matchmaker.summary.launching")}</span>;
-  return <span>{t("lobby.matchmaker.cancelled")}</span>;
+  if (state.type === "idle") return <span>{selectedCount} queue{selectedCount === 1 ? "" : "s"} selected</span>;
+  if (state.type === "searching") return <span>Searching {state.payload.queueNames.length} queue{state.payload.queueNames.length === 1 ? "" : "s"}</span>;
+  if (state.type === "matchFound") return <span>Match found in {state.payload.queueName}</span>;
+  if (state.type === "launching") return <span>Starting your match…</span>;
+  return <span>The match was cancelled. You can search again.</span>;
 }
 
 export function MatchmakingPanel({ queues, matchmaking, party }: { queues: MatchmakerQueue[]; matchmaking: MatchmakingState; party: PartyState }) {
-  useLocale();
   const maps = useAppStore((state) => state.state.maps);
   const social = useAppStore((state) => state.state.social);
   const liveGames = useAppStore((state) => state.state.lobby.liveGames);
@@ -58,7 +55,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   const isSearching = activeSearches.length > 0;
   const searchLocked = matchmaking.type === "matchFound" || matchmaking.type === "launching";
   const playerId = player?.id ?? null;
-  const playerName = player?.name ?? t("lobby.matchmaker.player");
+  const playerName = player?.name ?? "Player";
   const partyNeedsLeader = party.members.length > 1 && party.ownerId !== playerId;
   const compatibleQueues = selectedQueues.filter((queue) => party.members.length <= queue.teamSize);
   const mapPoolQueue = sortedQueues.find((queue) => queue.queueName === mapPoolQueueName) ?? null;
@@ -158,7 +155,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   };
 
   if (queues.length === 0) {
-    return <div className="play-empty-state"><Icon name="users" size={24} /><h3>{t("lobby.matchmaker.loading")}</h3><p>{t("lobby.matchmaker.loadingHint")}</p></div>;
+    return <div className="play-empty-state"><Icon name="users" size={24} /><h3>Loading matchmaker queues</h3><p>Queue availability arrives from the lobby server after connecting.</p></div>;
   }
 
   const canSearch = !partyNeedsLeader && compatibleQueues.length > 0 && !searchLocked;
@@ -183,7 +180,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
 
         <section className="matchmaker-card surface-panel matchmaker-queues-section" aria-labelledby="matchmaker-queues-title">
           <div className="matchmaker-section-copy">
-            <div><span className="matchmaker-kicker">{t("lobby.matchmaker.gameModes")}</span><h2 id="matchmaker-queues-title">{t("lobby.matchmaker.selectQueues")}</h2></div>
+            <div><span className="matchmaker-kicker">Game modes</span><h2 id="matchmaker-queues-title">Select queues</h2></div>
             {/* Only says something when it is not obvious from the cards: a
                 party has a size floor that silently disables some of them. */}
             {party.members.length > 1 && (
@@ -221,14 +218,14 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
               <div>
                 <strong><MatchmakerSearchSummary state={matchmaking} selectedCount={compatibleQueues.length} /></strong>
                 <span>{isSearching
-                  ? t("lobby.matchmaker.hint.editable")
+                  ? "Queue selection stays editable while searching."
                   : compatibleQueues.length === 0
-                    ? t("lobby.matchmaker.hint.selectOne")
-                    : t("lobby.matchmaker.hint.filesChecked")}</span>
+                    ? "Select at least one compatible queue."
+                    : "Maps and game files are checked when a match is prepared."}</span>
               </div>
             </div>
             <Button variant="primary" className="matchmaker-search-button" disabled={partyNeedsLeader || (!isSearching && !canSearch)} onClick={toggleSearch}>
-              {isSearching ? t("lobby.matchmaker.stopSearching") : searchLocked ? matchmaking.type === "matchFound" ? t("lobby.matchmaker.state.found") : t("lobby.matchmaker.state.launching") : t("lobby.matchmaker.startSearch")}
+              {isSearching ? "Stop searching" : searchLocked ? matchmaking.type === "matchFound" ? "Match found" : "Game starting" : "Start search"}
             </Button>
           </div>
         </section>

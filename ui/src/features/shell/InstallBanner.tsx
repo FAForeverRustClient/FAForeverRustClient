@@ -17,8 +17,6 @@ import { native } from "../../ipc/native";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useAppStore } from "../../store/store";
-import { t } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const openSettings = () =>
   ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
@@ -26,16 +24,10 @@ const openSettings = () =>
 const checkAgain = () =>
   ipc.send({ kind: "Settings", command: { type: "checkInstalls" } });
 
-/**
- * Set both installs at once: the common case is one FA folder for both.
- *
- * Not a component, so it uses the standalone `t` rather than the hook: the
- * dialog title is produced once, at click time, and needs the language that is
- * current then.
- */
+/** Set both installs at once: the common case is one FA folder for both. */
 async function pickInstall() {
   const path = await native.selectFile({
-    title: t("shell.install.pickTitle"),
+    title: "Select FAF-managed ForgedAlliance.exe",
     filters: [{ name: "ForgedAlliance.exe", extensions: ["exe"] }],
   });
   if (!path) return;
@@ -47,7 +39,6 @@ async function pickInstall() {
 }
 
 export function InstallBanner() {
-  const { t } = useTranslation();
   const install = useAppStore((s) => s.state.install);
   const [dismissed, setDismissed] = useState(false);
 
@@ -69,28 +60,28 @@ export function InstallBanner() {
       <div className="install-banner-copy">
         <strong>
           {replayOnly
-            ? t("shell.install.noGameConfigured")
-            : t("shell.install.notFound")}
+            ? "No game install configured"
+            : "Forged Alliance install not found"}
         </strong>
         <span className="muted">
           {replayOnly
-            ? t("shell.install.replayOnlyHint")
-            : t("shell.install.missingHint")}
+            ? "Replays can play, but joining and hosting games needs the game install."
+            : "Chat, the vault and the leaderboard work without it: playing and watching replays do not."}
         </span>
       </div>
       <div className="install-banner-actions">
         <Button variant="primary" onClick={() => void pickInstall()}>
-          {t("shell.install.locate")}
+          Locate FAF executable
         </Button>
-        <Button onClick={() => void openSettings()}>{t("shell.install.settings")}</Button>
-        <Button onClick={() => void checkAgain()} title={t("shell.install.checkAgainTitle")}>
-          {t("shell.install.checkAgain")}
+        <Button onClick={() => void openSettings()}>Settings</Button>
+        <Button onClick={() => void checkAgain()} title="Re-check the configured paths">
+          Check again
         </Button>
         <button
           type="button"
           className="install-banner-close"
-          aria-label={t("shell.install.dismiss")}
-          title={t("shell.install.dismissTitle")}
+          aria-label="Dismiss"
+          title="Dismiss until the next launch"
           onClick={() => setDismissed(true)}
         >
           <Icon name="close" size={14} />

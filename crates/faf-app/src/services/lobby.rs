@@ -100,7 +100,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                         rating_max: config.rating_max.unwrap_or(1_500),
                     };
                     out.emit(SettingsEvent::BrowsingChanged {
-                        preferences: browsing,
+                        preferences: Box::new(browsing),
                     });
                 }
                 ctx.ports.lobby.host(config);

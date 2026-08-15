@@ -16,6 +16,7 @@ use crate::state::{
 
 // No `Eq`: `ReplayCommand` carries a `ReplayQuery`, which has an `f32`
 // (minimum review score): the same reason `AppEvent` has no `Eq`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", content = "command")]
 pub enum AppCommand {

@@ -2,7 +2,6 @@ import type { FormEventHandler, ReactNode } from "react";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
 import "./search-panel.css";
-import { useTranslation } from "../i18n/useTranslation";
 
 interface SearchPanelProps {
   children: ReactNode;
@@ -51,15 +50,14 @@ export function SearchField({
 
 export function SearchPanelSubmit({
   disabled = false,
-  label,
+  label = "Search",
 }: {
   disabled?: boolean;
   label?: string;
 }) {
-  const { t } = useTranslation();
   return (
     <Button type="submit" variant="primary" className="search-panel-submit" disabled={disabled}>
-      <Icon name="search" size={15} /> {label ?? t("designSystem.searchPanel.search")}
+      <Icon name="search" size={15} /> {label}
     </Button>
   );
 }
@@ -73,7 +71,6 @@ export function SearchPanelToggle({
   count?: number;
   onClick: () => void;
 }) {
-  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -82,7 +79,7 @@ export function SearchPanelToggle({
       onClick={onClick}
     >
       <Icon name="filter" size={14} />
-      {expanded ? t("designSystem.searchPanel.fewer") : count > 0 ? t("designSystem.searchPanel.moreCount", { count }) : t("designSystem.searchPanel.more")}
+      {expanded ? "Fewer filters" : `More filters${count > 0 ? ` (${count})` : ""}`}
     </button>
   );
 }

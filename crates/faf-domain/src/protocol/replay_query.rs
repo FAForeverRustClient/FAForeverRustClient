@@ -229,6 +229,35 @@ impl ReplayQuery {
     }
 }
 
+/// Widen a bare `YYYY-MM-DD` into the full instant the API demands.
+///
+/// Comparing `startTime` against a date-only value is rejected outright:
+/// `Could not load vault: Invalid value: 2025-08-14`. Both the date pickers
+/// (an `<input type="date">` yields `YYYY-MM-DD`) and the "Last year" preset
+/// produced exactly that, so every dated search failed while the internal
+/// fallback bound, which is already a full RFC 3339 instant, worked fine.
+///
+/// `before` is expanded to the *end* of its day: the bound is documented as
+/// inclusive, and "before the 14th" meaning "excluding all of the 14th" is not
+/// what a date picker implies.
+fn as_instant(value: &str, end_of_day: bool) -> String {
+    let is_date_only = value.len() == 10
+        && value.as_bytes()[4] == b'-'
+        && value.as_bytes()[7] == b'-'
+        && value
+            .bytes()
+            .enumerate()
+            .all(|(i, b)| i == 4 || i == 7 || b.is_ascii_digit());
+    if !is_date_only {
+        return value.to_string();
+    }
+    if end_of_day {
+        format!("{value}T23:59:59Z")
+    } else {
+        format!("{value}T00:00:00Z")
+    }
+}
+
 /// Build the RSQL `filter` parameter, or `None` when nothing narrows the search.
 ///
 /// `fallback_after` is the timestamp computed from [`ReplayQuery::fallback_months`]
@@ -331,12 +360,18 @@ pub fn build_filter(query: &ReplayQuery, fallback_after: Option<&str>) -> Option
         clauses.push(r#"mapVersion.ranked=="true""#.to_string());
     }
     if !query.after.is_empty() {
-        clauses.push(format!(r#"startTime=ge="{}""#, escape(&query.after)));
+        clauses.push(format!(
+            r#"startTime=ge="{}""#,
+            escape(&as_instant(&query.after, false))
+        ));
     } else if let Some(fallback) = fallback_after {
         clauses.push(format!(r#"startTime=ge="{}""#, escape(fallback)));
     }
     if !query.before.is_empty() {
-        clauses.push(format!(r#"startTime=le="{}""#, escape(&query.before)));
+        clauses.push(format!(
+            r#"startTime=le="{}""#,
+            escape(&as_instant(&query.before, true))
+        ));
     }
 
     if clauses.is_empty() {
@@ -598,10 +633,39 @@ mod tests {
             before: "2024-02-01".into(),
             ..query()
         };
+        // Date-only bounds are widened to instants: the API rejects a bare
+        // date against `startTime`, which is what broke every dated search.
         assert_eq!(
             build_filter(&q, None).unwrap(),
-            r#"(startTime=ge="2024-01-01";startTime=le="2024-02-01")"#
+            r#"(startTime=ge="2024-01-01T00:00:00Z";startTime=le="2024-02-01T23:59:59Z")"#
         );
+    }
+
+    #[test]
+    fn a_full_instant_is_passed_through_untouched() {
+        let q = ReplayQuery {
+            after: "2024-01-01T12:30:00Z".into(),
+            ..query()
+        };
+        assert!(
+            build_filter(&q, None)
+                .unwrap()
+                .contains(r#"startTime=ge="2024-01-01T12:30:00Z""#),
+            "an explicit instant must not be rewritten"
+        );
+    }
+
+    #[test]
+    fn a_before_bound_covers_the_whole_named_day() {
+        // "before the 14th" including the 14th: the bound is documented as
+        // inclusive, and a date picker implies the day, not its first instant.
+        let q = ReplayQuery {
+            before: "2024-02-01".into(),
+            ..query()
+        };
+        assert!(build_filter(&q, None)
+            .unwrap()
+            .contains("2024-02-01T23:59:59Z"));
     }
 
     #[test]
@@ -656,7 +720,12 @@ mod tests {
             ..q
         };
         let filter = build_filter(&explicit, Some("2024-01-01T00:00:00Z")).unwrap();
-        assert!(filter.contains(r#"startTime=ge="2020-06-01""#), "{filter}");
+        // Widened to an instant like any other date-only bound; the point of
+        // this case is that the explicit bound wins over the fallback.
+        assert!(
+            filter.contains(r#"startTime=ge="2020-06-01T00:00:00Z""#),
+            "{filter}"
+        );
         assert!(!filter.contains("2024-01-01"), "{filter}");
     }
 

@@ -6,18 +6,15 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import type { Theme } from "../../ipc/bindings";
 import { recordEntries } from "../../shared/records";
-import type { MessageKey } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
-const THEMES: Record<Theme, { label: MessageKey; hint: MessageKey }> = {
-  forgeDark: { label: "settings.theme.forgeDark", hint: "settings.theme.forgeDarkHint" },
-  forgeLight: { label: "settings.theme.forgeLight", hint: "settings.theme.forgeLightHint" },
-  javaClient: { label: "settings.theme.javaClient", hint: "settings.theme.javaClientHint" },
-  pythonClient: { label: "settings.theme.pythonClient", hint: "settings.theme.pythonClientHint" },
+const THEMES: Record<Theme, { label: string; hint: string }> = {
+  forgeDark: { label: "FAF Dark", hint: "Default · quiet neutral workspace" },
+  forgeLight: { label: "FAF Light", hint: "Bright neutral workspace" },
+  javaClient: { label: "Java Client", hint: "FAF Java client aesthetic" },
+  pythonClient: { label: "Python Client", hint: "FAF Python client aesthetic" },
 };
 
 export function ThemePicker() {
-  const { t } = useTranslation();
   const theme = useAppStore((s) => s.state.settings.theme);
 
   const setTheme = (value: Theme) =>
@@ -35,8 +32,8 @@ export function ThemePicker() {
           onClick={() => setTheme(value)}
           aria-pressed={value === theme}
         >
-          <span className="theme-card-label">{t(themeOption.label)}</span>
-          <span className="theme-card-hint muted">{t(themeOption.hint)}</span>
+          <span className="theme-card-label">{themeOption.label}</span>
+          <span className="theme-card-hint muted">{themeOption.hint}</span>
         </button>
       ))}
     </div>

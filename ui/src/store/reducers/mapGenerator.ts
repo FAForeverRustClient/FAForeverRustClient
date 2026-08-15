@@ -10,7 +10,13 @@ export function reduceMapGenerator(
     case "statusChanged":
       return { ...state, status: event.payload.status };
     case "versionResolved":
-      return { ...state, latestVersion: event.payload.version };
+      return {
+        ...state,
+        latestVersion: event.payload.version,
+        selectedVersion: event.payload.version,
+      };
+    case "versionsLoaded":
+      return { ...state, availableVersions: event.payload.versions };
     case "optionListLoaded": {
       // Each query fills its own list; the key mapping matches the Rust
       // `GeneratorOptionLists::set`.
@@ -28,6 +34,15 @@ export function reduceMapGenerator(
       };
     }
     case "optionsChanged":
-      return { ...state, options: event.payload.options };
+      return {
+        ...state,
+        selectedVersion: event.payload.options.version ?? state.selectedVersion,
+        options: event.payload.options,
+      };
+    case "previewsLoaded":
+      return {
+        ...state,
+        previews: { ...state.previews, ...event.payload.previews },
+      };
   }
 }

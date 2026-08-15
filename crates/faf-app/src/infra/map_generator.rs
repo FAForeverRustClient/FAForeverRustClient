@@ -408,8 +408,7 @@ impl NeroxisMapGenerator {
         Ok(names)
     }
 
-    /// The newest release whose major version this client supports.
-    async fn resolve_latest(&self) -> Result<GeneratorVersion, String> {
+    async fn fetch_releases(&self) -> Result<Vec<GitHubRelease>, String> {
         let response = self
             .http
             .get(&self.config.releases_url)
@@ -423,11 +422,15 @@ impl NeroxisMapGenerator {
                 response.status()
             ));
         }
-        let releases: Vec<GitHubRelease> = response
+        response
             .json()
             .await
-            .map_err(|e| format!("could not read the map generator releases: {e}"))?;
+            .map_err(|e| format!("could not read the map generator releases: {e}"))
+    }
 
+    /// The newest release whose major version this client supports.
+    async fn resolve_latest(&self) -> Result<GeneratorVersion, String> {
+        let releases = self.fetch_releases().await?;
         releases
             .iter()
             .filter_map(|release| GeneratorVersion::parse(release.tag_name.trim_start_matches('v')))
@@ -439,6 +442,54 @@ impl NeroxisMapGenerator {
                     self.config.version_policy.min_major, self.config.version_policy.max_major
                 )
             })
+    }
+
+    async fn resolve_version(&self, explicit: Option<&str>) -> Result<GeneratorVersion, String> {
+        if let Some(v_str) = explicit {
+            let parsed = GeneratorVersion::parse(v_str.trim_start_matches('v'))
+                .ok_or_else(|| format!("invalid generator version: {v_str}"))?;
+            if !self.config.version_policy.allows_major(parsed.major) {
+                return Err(format!(
+                    "generator version {v_str} is outside the supported range"
+                ));
+            }
+            return Ok(parsed);
+        }
+        self.resolve_latest().await
+    }
+
+    async fn available_versions(&self) -> Result<Vec<String>, String> {
+        let releases = self.fetch_releases().await?;
+        let mut versions: Vec<GeneratorVersion> = releases
+            .into_iter()
+            .filter_map(|r| GeneratorVersion::parse(r.tag_name.trim_start_matches('v')))
+            .filter(|v| self.config.version_policy.allows_major(v.major))
+            .collect();
+        versions.sort();
+        versions.dedup();
+        versions.reverse();
+        Ok(versions.into_iter().map(|v| v.to_string()).collect())
+    }
+
+    async fn read_map_preview(&self, map_name: &str) -> Option<String> {
+        use base64::Engine as _;
+        let folder = self.config.maps_dir.join(map_name);
+        let candidates = [
+            folder.join(format!("{map_name}.png")),
+            folder.join(format!("{map_name}_preview.png")),
+            folder.join("preview.png"),
+        ];
+        for path in candidates {
+            if let Ok(bytes) = tokio::fs::read(&path).await {
+                if !bytes.is_empty() {
+                    return Some(format!(
+                        "data:image/png;base64,{}",
+                        base64::engine::general_purpose::STANDARD.encode(&bytes)
+                    ));
+                }
+            }
+        }
+        None
     }
 
     /// Prepare and run, funnelling every failure into one `Failed` status.
@@ -462,8 +513,8 @@ impl NeroxisMapGenerator {
         options: GeneratorOptions,
         tx: &mpsc::Sender<GeneratorUpdate>,
     ) -> Result<Vec<String>, String> {
-        // Reproducing a map takes its version from the name; a fresh map needs
-        // a round trip to GitHub to find the newest supported release.
+        // Reproducing a map takes its version from the name; a fresh map uses
+        // either the explicitly selected version or resolves the newest supported release.
         let version = match &map_name {
             Some(name) => {
                 map_generator::parse_generated_map_name(name)
@@ -471,10 +522,14 @@ impl NeroxisMapGenerator {
                     .version
             }
             None => {
-                let _ = tx
-                    .send(GeneratorUpdate::Status(GeneratorStatus::ResolvingVersion))
-                    .await;
-                self.resolve_latest().await?
+                if let Some(explicit) = &options.version {
+                    self.resolve_version(Some(explicit)).await?
+                } else {
+                    let _ = tx
+                        .send(GeneratorUpdate::Status(GeneratorStatus::ResolvingVersion))
+                        .await;
+                    self.resolve_latest().await?
+                }
             }
         };
 
@@ -519,12 +574,16 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         rx
     }
 
-    async fn query_options(&self, query: GeneratorOptionQuery) -> Result<Vec<String>, String> {
-        let version = self.resolve_latest().await?;
+    async fn query_options(
+        &self,
+        query: GeneratorOptionQuery,
+        version: Option<String>,
+    ) -> Result<Vec<String>, String> {
+        let ver = self.resolve_version(version.as_deref()).await?;
         // The download reporter is discarded: an option query is a background
         // detail of opening a dialog, not something to narrate.
         let (tx, _rx) = mpsc::channel(8);
-        let jar = self.ensure_jar(version, &tx).await?;
+        let jar = self.ensure_jar(ver, &tx).await?;
 
         let output = tokio::time::timeout(
             OPTION_QUERY_TIMEOUT,
@@ -547,6 +606,10 @@ impl MapGeneratorPort for NeroxisMapGenerator {
 
     async fn latest_version(&self) -> Result<String, String> {
         self.resolve_latest().await.map(|v| v.to_string())
+    }
+
+    async fn available_versions(&self) -> Result<Vec<String>, String> {
+        NeroxisMapGenerator::available_versions(self).await
     }
 
     fn is_installed(&self, map_name: &str) -> bool {
@@ -578,6 +641,19 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         }
         Ok(removed)
     }
+
+    async fn map_previews(
+        &self,
+        map_names: &[String],
+    ) -> std::collections::HashMap<String, String> {
+        let mut map = std::collections::HashMap::new();
+        for name in map_names {
+            if let Some(data_url) = self.read_map_preview(name).await {
+                map.insert(name.clone(), data_url);
+            }
+        }
+        map
+    }
 }
 
 /// Inert generator: used offline and in tests.
@@ -607,7 +683,11 @@ impl MapGeneratorPort for FakeMapGenerator {
         rx
     }
 
-    async fn query_options(&self, query: GeneratorOptionQuery) -> Result<Vec<String>, String> {
+    async fn query_options(
+        &self,
+        query: GeneratorOptionQuery,
+        _version: Option<String>,
+    ) -> Result<Vec<String>, String> {
         // Representative values so the host dialog's pickers aren't empty offline.
         Ok(match query {
             GeneratorOptionQuery::Symmetries => vec!["POINT2".into(), "POINT4".into(), "XZ".into()],
@@ -625,12 +705,23 @@ impl MapGeneratorPort for FakeMapGenerator {
         Ok("1.7.7".into())
     }
 
+    async fn available_versions(&self) -> Result<Vec<String>, String> {
+        Ok(vec!["1.7.7".into(), "1.6.0".into(), "1.5.0".into()])
+    }
+
     fn is_installed(&self, _map_name: &str) -> bool {
         false
     }
 
     async fn clean_up(&self, _protected_maps: &[String]) -> Result<usize, String> {
         Ok(0)
+    }
+
+    async fn map_previews(
+        &self,
+        _map_names: &[String],
+    ) -> std::collections::HashMap<String, String> {
+        std::collections::HashMap::new()
     }
 }
 

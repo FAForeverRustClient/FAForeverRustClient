@@ -55,6 +55,32 @@
   text-transform: uppercase;
 }
 
+.contribution-thanks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.5;
+  list-style-type: disc;
+}
+
+.contribution-thanks-item {
+  display: list-item;
+}
+
+.contribution-thanks-name {
+  font-weight: 550;
+  color: var(--color-text);
+}
+
+.contribution-thanks-note {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
 .contribution-links {
   display: grid;
   gap: var(--space-2);

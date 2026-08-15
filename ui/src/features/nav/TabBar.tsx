@@ -12,13 +12,16 @@ import "./nav.css";
 
 export function TabBar() {
   const active = useAppStore((s) => s.state.nav.activeTab);
+  // Looked up per render rather than read from the `TABS` registry, whose
+  // `label` is a fixed English string. Resolving through the hook is what makes
+  // the bar follow a language change instead of being fixed at import time.
   const { t } = useTranslation();
 
   const select = (tab: Tab) =>
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab } } });
 
   const renderTab = (id: Tab) => {
-    const label = t(TABS[id].label);
+    const label = t(`nav.tab.${id}.label`);
     return (
       <button
         key={id}

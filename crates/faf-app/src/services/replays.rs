@@ -150,16 +150,17 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 return;
             }
             match result {
-                Ok(replays) => {
-                    // A full page back means there is probably another one.
-                    // The API can report exact totals, but only via an extra
-                    // `page[totals]` round trip neither reference client makes
-                    // for this list either.
-                    let has_more = replays.len() as u32 >= query.page_size;
+                Ok(search) => {
+                    let has_more = search
+                        .total_pages
+                        .map(|pages| query.page < pages as u32)
+                        .unwrap_or_else(|| search.replays.len() as u32 >= query.page_size);
                     out.emit(ReplayEvent::VaultLoaded {
-                        replays,
+                        replays: search.replays,
                         query,
                         has_more,
+                        total_pages: search.total_pages,
+                        total_records: search.total_records,
                     })
                 }
                 Err(reason) => out.emit(ReplayEvent::VaultLoadFailed { reason }),

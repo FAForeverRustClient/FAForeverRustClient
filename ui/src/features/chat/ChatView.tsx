@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
+import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
 import { noteForPlayer } from "../../shared/playerNotes";
 import { useAppStore } from "../../store/store";
 import { Icon } from "../../design-system/Icon";
@@ -31,17 +32,15 @@ import { UserMenu, type UserMenuTarget } from "./UserMenu";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
 import "./chat.css";
-import { t, type MessageKey } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 /** Mirrors `faf_domain::state::chat::DEFAULT_CHANNEL`. */
 const DEFAULT_CHANNEL = "#aeolus";
 
-const STATUS_LABEL = {
-  disconnected: "chat.status.disconnected",
-  connecting: "chat.status.connecting",
-  connected: "chat.status.connected",
-} as const satisfies Record<ChatStatus, MessageKey>;
+const STATUS_LABEL: Record<ChatStatus, string> = {
+  disconnected: "Disconnected",
+  connecting: "Connecting…",
+  connected: "Connected",
+};
 
 /**
  * What the header line says about the open conversation.
@@ -52,11 +51,11 @@ const STATUS_LABEL = {
  * without a topic are the minority.
  */
 function channelContext(channel: ChatChannel | undefined, status: ChatStatus): string {
-  if (!channel) return t(STATUS_LABEL[status]);
+  if (!channel) return STATUS_LABEL[status];
   if (channel.topic) return channel.topic;
-  if (isPrivateChannel(channel.name)) return t("chat.header.privateWith", { name: channel.name });
+  if (isPrivateChannel(channel.name)) return `Private conversation with ${channel.name}`;
   const count = channel.users.length;
-  return t("chat.header.online", { count });
+  return `${count} ${count === 1 ? "person" : "people"} online`;
 }
 
 const connect = (username: string) =>
@@ -94,7 +93,6 @@ const openTab = (tab: "replays") =>
   ipc.send({ kind: "Nav", command: { type: "select", payload: { tab } } });
 
 export function ChatView() {
-  const { t } = useTranslation();
   const state = useAppStore((s) => s.state.chat);
   const social = useAppStore((s) => s.state.social);
   const player = useAppStore((s) => s.state.auth.player);
@@ -119,6 +117,19 @@ export function ChatView() {
     }
   }, []);
 
+  // The roster's game badges resolve their map art through `maps.vault`, but
+  // nothing here was asking for it: the vault is loaded by the Play, Maps and
+  // Replay tabs only. Opening the client straight into chat therefore left
+  // every badge falling back to a guessed CDN path, which 404s for any map
+  // whose folder name carries a version suffix, so "some maps" silently became
+  // placeholders. Guarded on `idle` exactly like the other consumers, so this
+  // never re-fetches a vault somebody else already loaded.
+  useEffect(() => {
+    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
+      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    }
+  }, []);
+
   useEffect(() => {
     setRosterWidth(clampRosterWidth(chatPreferences.rosterWidth));
   }, [chatPreferences.rosterWidth]);
@@ -137,14 +148,16 @@ export function ChatView() {
   const isLive = state.status === "connected" || state.status === "connecting";
   const self = state.username || player?.name || "";
 
+  const foes = useAppStore((s) => s.state.social.foes);
+
   // Channel commentary (joins, parts, quits, topic changes) is filtered here
   // rather than dropped on arrival, so flipping the preference reveals history
   // that already exists: the Python client's `joinsparts` behaviour without
   // its "you had to have it on at the time" cost.
   const messages = useMemo(() => {
     if (!active) return [];
-    return visibleChatMessages(active.messages, chatPreferences, social);
-  }, [active, chatPreferences, social]);
+    return visibleChatMessages(active.messages, chatPreferences, { foes });
+  }, [active, chatPreferences, foes]);
 
   const nicknames = useMemo(() => active?.users.map((u) => u.name) ?? [], [active]);
 
@@ -176,9 +189,9 @@ export function ChatView() {
 
   const setPlayerNameColor = useCallback((nickname: string, color: string | null) => {
     const preferences = useAppStore.getState().state.settings.chat;
+    const key = nickKey(nickname);
     const players = Object.fromEntries(
-      Object.entries(preferences.nameColors.players)
-        .filter(([player]) => player.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0),
+      Object.entries(preferences.nameColors.players).filter(([player]) => nickKey(player) !== key),
     );
     if (color) players[nickname] = color;
     ipc.send({
@@ -222,26 +235,21 @@ export function ChatView() {
   const menuLiveGame = menu ? inGame(liveGames, menu.nickname) : undefined;
   const inParty = (id: number) => party.members.some((m) => m.playerId === id);
   const menuNameColor = menu
-    ? Object.entries(chatPreferences.nameColors.players)
-        .find(([nickname]) => nickname.localeCompare(menu.nickname, undefined, { sensitivity: "accent" }) === 0)?.[1]
+    ? assignedPlayerColor(chatPreferences.nameColors.players, menu.nickname)
     : undefined;
-  const menuIsMuted = !!menu && chatPreferences.mutedPlayers.some(
-    (player) => player.localeCompare(menu.nickname, undefined, { sensitivity: "accent" }) === 0,
-  );
+  const menuIsMuted = !!menu && includesName(chatPreferences.mutedPlayers, menu.nickname);
 
   const activateGameLink = useCallback((link: ChatGameLink) => {
     const game = (link.kind === "openGame" ? games : liveGames)
       .find((candidate) => candidate.id === link.uid);
     if (!game) {
-      setGameLinkNotice(t("chat.gameLink.unavailable"));
+      setGameLinkNotice("That game is no longer available.");
       return;
     }
     setGameLinkNotice("");
     if (link.kind === "openGame") void joinGame(game);
     else void watchGame(game);
-    // `t` is part of the identity: switching language must rebuild this so a
-    // later click reports the failure in the language now selected.
-  }, [games, liveGames, t]);
+  }, [games, liveGames]);
 
   const userMenu = menu && (
         <UserMenu
@@ -306,7 +314,7 @@ export function ChatView() {
           <span className="spacer" />
           {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
           <button type="button" className="chat-head-action" onClick={() => setSearchRequest((request) => request + 1)}>
-            <Icon name="search" size={14} /> {t("chat.search.open")}
+            <Icon name="search" size={14} /> Search
           </button>
           <label className="chat-toggle">
             <input
@@ -333,8 +341,8 @@ export function ChatView() {
             self={self}
             emptyLabel={
               isLive
-                ? t("chat.empty.live")
-                : t("chat.empty.offline")
+                ? "No messages yet."
+                : "Not connected: messages will appear once you're online."
             }
             onNickClick={openConversation}
             onNickContextMenu={openMenu}
@@ -349,7 +357,7 @@ export function ChatView() {
         ) : (
           <div className="chat-scroll-wrap">
             <p className="muted chat-empty">
-              <Icon name="chat" size={18} /> {t(STATUS_LABEL[state.status])}
+              <Icon name="chat" size={18} /> {STATUS_LABEL[state.status]}
             </p>
           </div>
         )}

@@ -4,7 +4,6 @@ import type { Game, LiveReplayTracking } from "../../ipc/bindings";
 import type { MapPresentation } from "../../shared/mapPresentation";
 import { LiveReplayRow } from "./LiveReplayRow";
 import { replayDelayRemaining, type LiveSortKey, type SortDirection } from "./liveReplayModel";
-import { useTranslation } from "../../i18n/useTranslation";
 
 function SortHeader({
   label,
@@ -50,7 +49,6 @@ interface Props {
 }
 
 export function LiveReplayTable(props: Props) {
-  const { t } = useTranslation();
   // One pair of clocks serves the whole table. Giving every row its own
   // interval scales timer work with the result count (75 rows per batch).
   // Mature rows receive a stable zero wait, so React.memo still skips them on
@@ -75,14 +73,14 @@ export function LiveReplayTable(props: Props) {
       <table className="live-replay-table">
         <thead>
           <tr>
-            <th className="live-map-column">{t("replays.live.column.map")}</th>
-            <SortHeader label={t("replays.column.started")} sortKey="started" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
-            <SortHeader label={t("replays.column.game")} sortKey="title" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
-            <SortHeader label={t("replays.column.players")} sortKey="players" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" />
-            <SortHeader label={t("replays.column.rating")} sortKey="rating" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" />
-            <SortHeader label={t("replays.column.host")} sortKey="host" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
-            <SortHeader label={t("replays.column.mods")} sortKey="mods" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
-            <th className="live-watch-column">{t("replays.column.watch")}</th>
+            <th className="live-map-column">Map</th>
+            <SortHeader label="Started" sortKey="started" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
+            <SortHeader label="Game" sortKey="title" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
+            <SortHeader label="Players" sortKey="players" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" />
+            <SortHeader label="Rating" sortKey="rating" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" />
+            <SortHeader label="Host" sortKey="host" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
+            <SortHeader label="Mods" sortKey="mods" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} />
+            <th className="live-watch-column">Watch</th>
           </tr>
         </thead>
         <tbody>
@@ -105,7 +103,7 @@ export function LiveReplayTable(props: Props) {
       <footer className="live-replay-footer">
         <span>Showing {props.games.length} of {props.matchingCount} matching live games ({props.totalCount} total)</span>
         <div className="live-replay-footer-actions">
-          <span>{t(props.previewsLoading ? "replays.live.loadingPreviews" : "replays.live.selectGame")}</span>
+          <span>{props.previewsLoading ? "Loading map previews…" : "Select a game title to inspect teams"}</span>
           {props.games.length < props.matchingCount && (
             <Button className="live-replay-load-more" onClick={props.onLoadMore}>
               Show {Math.min(props.batchSize, props.matchingCount - props.games.length)} more

@@ -1,9 +1,12 @@
-import type { VaultMap } from "../ipc/bindings";
+import type { CoopFaction, CoopMission, VaultMap } from "../ipc/bindings";
+import { useAppStore } from "../store/store";
 
 export type MapPresentation = {
   displayName: string;
   thumbnailUrl: string;
   thumbnailUrls: string[];
+  coopFaction?: CoopFaction;
+  isCoop?: boolean;
 };
 
 // Base-game maps are not vault records, so they never appear in the vault
@@ -123,6 +126,24 @@ function baseMapName(mapName: string): string {
   return normalizeMapName(mapName).replace(/\.v\d+$/i, "");
 }
 
+function findCoopMission(mapName: string, missions?: CoopMission[]): CoopMission | undefined {
+  const coopMissions = missions ?? (typeof window !== "undefined" ? useAppStore.getState?.()?.state?.coop?.missions : []);
+  if (!coopMissions || coopMissions.length === 0) return undefined;
+  const normalized = normalizeMapName(mapName);
+  const baseName = baseMapName(mapName);
+  return coopMissions.find((m) => {
+    const folder = normalizeMapName(m.mapFolderName);
+    const missionBase = baseMapName(m.mapFolderName);
+    return (
+      folder === normalized ||
+      folder === baseName ||
+      missionBase === normalized ||
+      missionBase === baseName ||
+      m.name.toLocaleLowerCase() === mapName.trim().toLocaleLowerCase()
+    );
+  });
+}
+
 function vaultMapLookup(vault: VaultMap[]): VaultMapLookup {
   const cached = VAULT_MAP_LOOKUPS.get(vault);
   if (cached) return cached;
@@ -145,7 +166,8 @@ function vaultMapLookup(vault: VaultMap[]): VaultMapLookup {
   return lookup;
 }
 
-function isGeneratedMap(mapName: string): boolean {
+/** Twin of `faf_domain::protocol::map_generator::is_generated_map`. */
+export function isGeneratedMap(mapName: string): boolean {
   return /^neroxis_map_generator_\d{1,3}\.\d{1,3}\.\d{1,3}_.+/i.test(normalizeMapName(mapName));
 }
 
@@ -168,8 +190,10 @@ export function mapThumbnailCandidates(
   vault: VaultMap[],
   mapName: string,
   large = false,
+  missions?: CoopMission[],
 ): string[] {
   const vaultMap = findVaultMap(vault, mapName);
+  const coopMission = findCoopMission(mapName, missions);
   const normalized = normalizeMapName(mapName);
   const baseName = baseMapName(mapName);
   const officialKey = OFFICIAL_MAPS[baseName]
@@ -177,8 +201,17 @@ export function mapThumbnailCandidates(
     : OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
   const size = large ? "large" : "small";
 
+  const generatedPreview = isGeneratedMap(mapName)
+    ? (typeof window !== "undefined"
+        ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName]
+        : undefined)
+    : undefined;
+
   return uniqueUrls([
+    generatedPreview,
     isGeneratedMap(mapName) ? "/generated-map.svg" : undefined,
+    large ? coopMission?.thumbnailUrlLarge : coopMission?.thumbnailUrlSmall,
+    large ? coopMission?.thumbnailUrlSmall : coopMission?.thumbnailUrlLarge,
     large ? vaultMap?.thumbnailUrlLarge : vaultMap?.thumbnailUrl,
     large ? vaultMap?.thumbnailUrl : vaultMap?.thumbnailUrlLarge,
     officialKey
@@ -193,8 +226,18 @@ export function mapThumbnailCandidates(
   ]);
 }
 
-export function mapPresentation(vault: VaultMap[], mapName: string): MapPresentation {
+export function inferCoopFaction(mapName: string): CoopFaction {
+  const normalized = normalizeMapName(mapName);
+  if (normalized.includes("scca_coop_e") || normalized.includes("uef")) return "uef";
+  if (normalized.includes("scca_coop_c") || normalized.includes("cybran")) return "cybran";
+  if (normalized.includes("scca_coop_a") || normalized.includes("aeon")) return "aeon";
+  if (normalized.includes("x1ca_coop_") || normalized.includes("seraphim")) return "seraphim";
+  return "custom";
+}
+
+export function mapPresentation(vault: VaultMap[], mapName: string, missions?: CoopMission[]): MapPresentation {
   const vaultMap = findVaultMap(vault, mapName);
+  const coopMission = findCoopMission(mapName, missions);
   const baseName = baseMapName(mapName);
   const officialEntry = OFFICIAL_MAPS[baseName]
     ? ([baseName, OFFICIAL_MAPS[baseName]] as const)
@@ -202,7 +245,33 @@ export function mapPresentation(vault: VaultMap[], mapName: string): MapPresenta
         const key = OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
         return key ? ([key, OFFICIAL_MAPS[key]] as const) : undefined;
       })();
-  const thumbnailUrls = mapThumbnailCandidates(vault, mapName);
+  const thumbnailUrls = mapThumbnailCandidates(vault, mapName, false, missions);
+
+  if (coopMission) {
+    const coopFaction = coopMission.scenarioId
+      ? (typeof window !== "undefined"
+          ? useAppStore.getState?.()?.state?.coop?.scenarios?.find((s) => s.id === coopMission.scenarioId)?.faction
+          : undefined) ?? inferCoopFaction(coopMission.mapFolderName)
+      : inferCoopFaction(coopMission.mapFolderName);
+    return {
+      displayName: coopMission.name,
+      thumbnailUrl: thumbnailUrls[0] ?? "",
+      thumbnailUrls,
+      isCoop: true,
+      coopFaction,
+    };
+  }
+
+  const isCoopMap = /^(scca_coop_|x1ca_coop_)/i.test(normalizeMapName(mapName)) || mapName.toLowerCase().includes("coop");
+  if (isCoopMap) {
+    return {
+      displayName: fallbackDisplayName(mapName),
+      thumbnailUrl: thumbnailUrls[0] ?? "",
+      thumbnailUrls,
+      isCoop: true,
+      coopFaction: inferCoopFaction(mapName),
+    };
+  }
 
   if (officialEntry) {
     return {

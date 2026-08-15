@@ -1,5 +1,4 @@
 import type { Game, SocialState } from "../../ipc/bindings";
-import { t } from "../../i18n";
 
 export type GamePresenceStatus = "hosting" | "lobbying" | "playing";
 
@@ -21,10 +20,13 @@ export interface GameSummaryTeam {
   players: GameSummaryPlayer[];
 }
 
-const sameLogin = (left: string, right: string) =>
-  left.localeCompare(right, undefined, { sensitivity: "accent" }) === 0;
-
 const loginKey = (login: string) => login.toLocaleLowerCase();
+
+// Key comparison rather than `localeCompare(…, { sensitivity: "accent" })`:
+// the options object forces a fresh `Intl.Collator` per call, and this runs
+// once per player of every open game, plus once per entry of the whole player
+// directory when resolving a roster.
+const sameLogin = (left: string, right: string) => loginKey(left) === loginKey(right);
 
 /** Find the authoritative game presence represented by lobby snapshots. */
 export function gamePresenceForPlayer(
@@ -57,9 +59,9 @@ export function gamePresenceIndex(openGames: Game[], liveGames: Game[]): Map<str
 }
 
 function teamLabel(id: string): string {
-  if (id === "-1" || id === "null") return t("chat.team.observers");
-  if (id === "0") return t("chat.team.none");
-  return t("chat.team.numbered", { id });
+  if (id === "-1" || id === "null") return "Observers";
+  if (id === "0") return "No team";
+  return `Team ${id}`;
 }
 
 function teamOrder([id]: [string, string[]]): number {

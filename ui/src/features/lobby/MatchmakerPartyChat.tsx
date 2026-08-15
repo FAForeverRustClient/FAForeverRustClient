@@ -8,10 +8,8 @@ import type { ChatGameLink } from "../chat/chatFormat";
 import { visibleChatMessages } from "../chat/messageFilters";
 import { partyChatChannel } from "./partyChat";
 import "../chat/chat.css";
-import { useTranslation } from "../../i18n/useTranslation";
 
 export function MatchmakerPartyChat({ party }: { party: PartyState }) {
-  const { t } = useTranslation();
   const chat = useAppStore((state) => state.state.chat);
   const social = useAppStore((state) => state.state.social);
   const preferences = useAppStore((state) => state.state.settings.chat);
@@ -42,7 +40,7 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
     const game = (link.kind === "openGame" ? games : liveGames)
       .find((candidate) => candidate.id === link.uid);
     if (!game) {
-      setGameLinkNotice(t("chat.gameLink.unavailable"));
+      setGameLinkNotice("That game is no longer available.");
       return;
     }
     setGameLinkNotice("");
@@ -65,9 +63,9 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
   // showing an inert message list.
   if (!roomName) {
     return (
-      <aside className="matchmaker-party-chat is-empty" aria-label={t("lobby.matchmaker.partyChat")}>
+      <aside className="matchmaker-party-chat is-empty" aria-label="Party chat">
         <header>
-          <strong>{t("lobby.matchmaker.partyChat")}</strong>
+          <strong>Party chat</strong>
         </header>
         <p className="muted">
           Invite someone to your party and this becomes a private room for
@@ -78,16 +76,16 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
   }
 
   return (
-    <aside className="matchmaker-party-chat" aria-label={t("lobby.matchmaker.partyChat")}>
+    <aside className="matchmaker-party-chat" aria-label="Party chat">
       <header>
-        <strong>{t("lobby.matchmaker.partyChat")}</strong>
+        <strong>Party chat</strong>
         <span>{gameLinkNotice || roomName}</span>
       </header>
       <MessageList
         key={room?.name ?? roomName ?? "party-chat"}
         messages={messages}
         self={self}
-        emptyLabel={t(room ? "lobby.party.noMessages" : "lobby.party.joiningChannel")}
+        emptyLabel={room ? "No party messages yet." : "Joining the party channel…"}
         onNickClick={openConversation}
         onNickContextMenu={(nickname, event) => {
           event.preventDefault();

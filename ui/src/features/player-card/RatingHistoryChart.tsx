@@ -2,8 +2,6 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { RatingHistoryPoint } from "../../ipc/bindings";
 import { formatDate, formatDateTime } from "../../shared/dates";
-import { formatNumber } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 
 interface ChartPoint {
   timestamp: number;
@@ -103,7 +101,6 @@ function horizontalPadding(element: HTMLElement): number {
 }
 
 export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHistoryChartProps) {
-  const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement>(null);
   const [wrapRef, width] = useMeasuredWidth();
   const [hover, setHover] = useState<ChartPoint | null>(null);
@@ -203,7 +200,7 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
   }, [maximum, parsed, project]);
 
   if (!domain || !project || chart.length === 0) {
-    return <div className="player-card-chart-empty surface-panel muted">{t("playerCard.chart.empty")}</div>;
+    return <div className="player-card-chart-empty surface-panel muted">No rating history for this period.</div>;
   }
 
   const tickCount = 5;
@@ -227,16 +224,16 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
       {selection && (
         <div className="player-rating-selection">
           <span className="player-rating-selection-range">
-            {t("playerCard.chart.range", { start: formatDate(selection.start), end: formatDate(selection.end) })}
+            {formatDate(selection.start)} to {formatDate(selection.end)}
           </span>
-          <span>{t("playerCard.chart.games", { count: formatNumber(selection.games) })}</span>
-          <span>{t("playerCard.chart.low")} <strong>{selection.min.toFixed(0)}</strong></span>
-          <span>{t("playerCard.chart.high")} <strong>{selection.max.toFixed(0)}</strong></span>
+          <span>{selection.games.toLocaleString("en-US")} games</span>
+          <span>Low <strong>{selection.min.toFixed(0)}</strong></span>
+          <span>High <strong>{selection.max.toFixed(0)}</strong></span>
           <span className={selection.change >= 0 ? "is-gain" : "is-loss"}>
             {selection.change >= 0 ? "+" : ""}{selection.change.toFixed(0)}
           </span>
           <button type="button" className="player-rating-selection-clear" onClick={() => setDrag(null)}>
-            {t("playerCard.chart.clear")}
+            Clear
           </button>
         </div>
       )}
@@ -247,7 +244,7 @@ export function RatingHistoryChart({ points, maximum, showMaximum }: RatingHisto
         height={HEIGHT}
         viewBox={`0 0 ${width} ${HEIGHT}`}
         role="img"
-        aria-label={t("playerCard.chart.aria", { count: parsed.length })}
+        aria-label={`Rating history, ${parsed.length} entries`}
         onMouseDown={(event) => setDrag({ start: chartX(event), end: chartX(event) })}
         onMouseMove={(event) => {
           const x = chartX(event);

@@ -62,6 +62,23 @@ export const VALID_LEADERBOARD_RATING_COLUMNS = [
   "updated",
 ] as const;
 
+export const VALID_MAP_VAULT_PRESETS = [
+  "recommended",
+  "favorites",
+  "rating",
+  "newest",
+  "played",
+  "all",
+] as const;
+
+export const VALID_MOD_VAULT_PRESETS = [
+  "recommended",
+  "rating",
+  "ui",
+  "newest",
+  "all",
+] as const;
+
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   customGamesView: "tiles",
   replaysView: "tiles",
@@ -77,6 +94,8 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   liveReplayFilters: { ...DEFAULT_LIVE_REPLAY_FILTERS },
   hostGame: { ...DEFAULT_HOST_GAME_PREFERENCES },
   favoriteMaps: [],
+  mapVaultPreset: "recommended",
+  modVaultPreset: "recommended",
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   legacyStorageMigrated: false,
 };
@@ -115,9 +134,25 @@ export function normalizeBrowsingPreferences(
     },
     hostGame: normalizeHostGamePreferences(preferences.hostGame),
     favoriteMaps: normalizeLabels(preferences.favoriteMaps ?? [], 512, 256).map(asciiLower),
+    mapVaultPreset: normalizeMapVaultPreset(preferences.mapVaultPreset),
+    modVaultPreset: normalizeModVaultPreset(preferences.modVaultPreset),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   };
+}
+
+function normalizeMapVaultPreset(preset: string | undefined): string {
+  const normalized = asciiLower((preset ?? "").trim());
+  return (VALID_MAP_VAULT_PRESETS as readonly string[]).includes(normalized)
+    ? normalized
+    : "recommended";
+}
+
+function normalizeModVaultPreset(preset: string | undefined): string {
+  const normalized = asciiLower((preset ?? "").trim());
+  return (VALID_MOD_VAULT_PRESETS as readonly string[]).includes(normalized)
+    ? normalized
+    : "recommended";
 }
 
 function normalizeCustomGamesBrowser(

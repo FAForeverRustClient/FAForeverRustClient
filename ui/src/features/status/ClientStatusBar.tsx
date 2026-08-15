@@ -7,42 +7,40 @@ import type {
   LobbyStatus,
   ReplayDownloadStatus,
 } from "../../ipc/bindings";
-import type { MessageKey } from "../../i18n";
-import { useTranslation } from "../../i18n/useTranslation";
 import "./status.css";
 
 type ConnectionKind = "faf" | "chat";
 type ConnectionStatus = ChatStatus | LobbyStatus;
 
-const STATUS_LABEL = {
-  disconnected: "status.connection.disconnected",
-  connecting: "status.connection.connecting",
-  connected: "status.connection.connected",
-} as const satisfies Record<ConnectionStatus, MessageKey>;
+const STATUS_LABEL: Record<ConnectionStatus, string> = {
+  disconnected: "offline",
+  connecting: "connecting",
+  connected: "connected",
+};
+
+function connectionLabel(status: ConnectionStatus): string {
+  return STATUS_LABEL[status];
+}
 
 export function GamePreparationStatus({
   state,
 }: {
   state: Extract<JoinState, { type: "preparing" }>;
 }) {
-  const { t } = useTranslation();
   const progress = state.payload.progress === null
     ? null
     : Math.min(100, Math.max(0, state.payload.progress));
 
   return (
     <div className="client-status-task" aria-live="polite">
-      <span
-        className="client-status-task-label"
-        title={t("status.matchSetup.title", { detail: state.payload.detail })}
-      >
-        <strong>{t("status.matchSetup.label")}</strong> {state.payload.detail}
+      <span className="client-status-task-label" title={`Match setup: ${state.payload.detail}`}>
+        <strong>Match setup:</strong> {state.payload.detail}
       </span>
       <span
         className="client-status-progress"
         data-indeterminate={progress === null ? "true" : undefined}
         role="progressbar"
-        aria-label={t("status.matchSetup.aria")}
+        aria-label="Match setup"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progress ?? undefined}
@@ -51,7 +49,7 @@ export function GamePreparationStatus({
         <span style={progress === null ? undefined : { width: `${progress}%` }} />
       </span>
       <span className="client-status-task-percent">
-        {progress === null ? t("status.active") : `${progress}%`}
+        {progress === null ? "Active" : `${progress}%`}
       </span>
     </div>
   );
@@ -66,8 +64,7 @@ export function GamePreparationStatus({
  * long-running client state, so they belong beside it.
  */
 export function GameJoinStatus({ state }: { state: JoinState }) {
-  const { t } = useTranslation();
-  const note = joinStatusNote(state, t);
+  const note = joinStatusNote(state);
   if (note === null) return null;
   return (
     <div className="client-status-task" aria-live="polite">
@@ -76,13 +73,11 @@ export function GameJoinStatus({ state }: { state: JoinState }) {
   );
 }
 
-type Translate = ReturnType<typeof useTranslation>["t"];
-
-function joinStatusNote(state: JoinState, t: Translate): string | null {
+function joinStatusNote(state: JoinState): string | null {
   switch (state.type) {
-    case "joining": return t("status.join.connecting", { id: state.payload.id });
-    case "launched": return t("status.join.launched", { name: state.payload.launch.name });
-    case "failed": return t("status.join.failed", { reason: state.payload.reason.replace(/_/g, " ") });
+    case "joining": return `Connecting to match ${state.payload.id}…`;
+    case "launched": return `Initiating “${state.payload.launch.name}”`;
+    case "failed": return `Join failed: ${state.payload.reason.replace(/_/g, " ")}`;
     // In-game needs no narration, and a launch failure is retained by the
     // notification centre where it can be dismissed.
     case "inGame":
@@ -104,31 +99,29 @@ export function ReplayDownloadTask({
 }: {
   status: Extract<ReplayDownloadStatus, { type: "downloading" }>;
 }) {
-  const { t } = useTranslation();
   const uid = status.payload.uid;
   return (
     <div className="client-status-task" aria-live="polite">
-      <span className="client-status-task-label" title={t("status.replay.title", { uid })}>
-        <strong>{t("status.replay.label")}</strong> {t("status.replay.downloading", { uid })}
+      <span className="client-status-task-label" title={`Downloading replay ${uid}`}>
+        <strong>Replay:</strong> Downloading {uid}
       </span>
       <span
         className="client-status-progress"
         data-indeterminate="true"
         role="progressbar"
-        aria-label={t("status.replay.aria")}
+        aria-label="Downloading replay"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuetext={t("status.active")}
+        aria-valuetext="Active"
       >
         <span />
       </span>
-      <span className="client-status-task-percent">{t("status.active")}</span>
+      <span className="client-status-task-percent">Active</span>
     </div>
   );
 }
 
 export function ClientStatusBar() {
-  const { t } = useTranslation();
   const session = useAppStore((state) => state.state.session);
   const player = useAppStore((state) => state.state.auth.player);
   const lobbyStatus = useAppStore((state) => state.state.lobby.status);
@@ -184,8 +177,7 @@ export function ClientStatusBar() {
   const renderConnectionMenu = (kind: ConnectionKind, status: ConnectionStatus, label: string) => {
     const isOpen = openMenu === kind;
     const canConnect = kind !== "chat" || Boolean(player?.name);
-    const actionLabel = status === "disconnected" ? t("status.reconnect") : t("status.disconnect");
-    const stateLabel = t(STATUS_LABEL[status]);
+    const actionLabel = status === "disconnected" ? "Reconnect" : "Disconnect";
 
     return (
       <div className="client-status-menu" key={kind}>
@@ -199,15 +191,15 @@ export function ClientStatusBar() {
           onClick={() => setOpenMenu(isOpen ? null : kind)}
         >
           <i aria-hidden="true" />
-          <span>{t("status.connection.summary", { service: label, state: stateLabel })}</span>
+          <span>{label} {connectionLabel(status)}</span>
           <span className="client-status-chevron" aria-hidden="true" />
         </button>
         {isOpen && (
           <div className="client-status-popover" id={`client-status-menu-${kind}`} role="menu">
             <div className="client-status-popover-heading">
               <span className="client-status-popover-dot" data-status={status} aria-hidden="true" />
-              <span>{t("status.connection.heading", { service: label })}</span>
-              <strong>{stateLabel}</strong>
+              <span>{label} connection</span>
+              <strong>{connectionLabel(status)}</strong>
             </div>
             <button
               type="button"
@@ -225,8 +217,8 @@ export function ClientStatusBar() {
   };
 
   return (
-    <footer ref={rootRef} className="client-status-bar" aria-label={t("status.bar.aria")}>
-      <span className="client-status-version">v{session.backendVersion || "0.2.0"}</span>
+    <footer ref={rootRef} className="client-status-bar" aria-label="Client status">
+      <span className="client-status-version">v{session.backendVersion || "0.3.0"}</span>
       {joinState.type === "preparing"
         ? <GamePreparationStatus state={joinState} />
         : joinTaskVisible

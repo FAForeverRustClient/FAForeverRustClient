@@ -243,6 +243,13 @@ async fn ensure_generated_map(
         return Ok(());
     }
 
+    let settings = ctx.ports.settings.load().await;
+    if !settings.game.auto_generate_maps {
+        return Err(format!(
+            "map {map_name} is not installed and automatic map generation is disabled in settings"
+        ));
+    }
+
     tracing::info!(map_name, "generating map required by launch");
     let mut updates = ctx
         .ports

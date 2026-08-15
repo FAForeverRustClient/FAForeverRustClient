@@ -41,7 +41,7 @@ pub use maps::MapsPort;
 pub use mods::ModsPort;
 pub use player_card::PlayerCardPort;
 pub use process::{DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort};
-pub use replay::ReplayPort;
+pub use replay::{ReplayPort, VaultSearchResult};
 pub use reporting::{GameParticipation, ReportPlayerRequest, ReportingPort};
 pub use reviews::{ReviewPage, ReviewsPort};
 pub use settings::SettingsPort;

@@ -29,16 +29,22 @@ pub trait MapGeneratorPort: Send + Sync {
     /// either `Generated` or `Failed`.
     async fn generate_named(&self, map_name: String) -> mpsc::Receiver<GeneratorUpdate>;
 
-    /// Generate one or more fresh maps from options, using the newest supported
-    /// generator release.
+    /// Generate one or more fresh maps from options.
     async fn generate(&self, options: GeneratorOptions) -> mpsc::Receiver<GeneratorUpdate>;
 
     /// Ask the generator for one of its option lists (`--styles`, …).
-    /// Downloads the newest supported release first if necessary.
-    async fn query_options(&self, query: GeneratorOptionQuery) -> Result<Vec<String>, String>;
+    /// Downloads the specified (or newest supported) release first if necessary.
+    async fn query_options(
+        &self,
+        query: GeneratorOptionQuery,
+        version: Option<String>,
+    ) -> Result<Vec<String>, String>;
 
     /// The newest generator release this client supports, as `x.y.z`.
     async fn latest_version(&self) -> Result<String, String>;
+
+    /// All available generator releases from GitHub supported by this client.
+    async fn available_versions(&self) -> Result<Vec<String>, String>;
 
     /// Whether a generated map of this name is already on disk.
     ///
@@ -52,4 +58,8 @@ pub trait MapGeneratorPort: Send + Sync {
     /// Safe because generated maps are reproducible from their name alone. The
     /// Java client does this on shutdown; here it is user-triggered.
     async fn clean_up(&self, protected_maps: &[String]) -> Result<usize, String>;
+
+    /// Read preview PNGs from disk for generated maps and return as base64 data URLs.
+    async fn map_previews(&self, map_names: &[String])
+        -> std::collections::HashMap<String, String>;
 }
