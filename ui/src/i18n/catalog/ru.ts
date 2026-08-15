@@ -856,7 +856,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.section.general.keywords": "стартовая страница запуск новости чат играть реплеи карты моды рейтинг турниры обучение язык",
   "settings.section.account.title": "Учётная запись и поддержка",
   "settings.section.account.description": "Открыть официальные страницы FAF для управления учётной записью и помощи.",
-  "settings.section.account.keywords": "учётная запись имя пароль steam поддержка помощь сообщество правила браузер сайт",
+  "settings.section.account.keywords": "учётная запись выход выйти сеанс имя пароль steam поддержка помощь сообщество правила браузер сайт",
   "settings.section.appearance.title": "Внешний вид",
   "settings.section.appearance.description": "Настройте рабочую область, не меняя её структуру.",
   "settings.section.appearance.keywords": "тема цвет плотность компактно свободно уменьшить движение анимация переход",
@@ -1000,6 +1000,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "settings.appearance.interfaceDensity": "Плотность интерфейса",
   "settings.appearance.interfaceDensityHint": "Свободный режим добавляет воздуха, компактный показывает больше сразу.",
+  "settings.appearance.interfaceScale": "Масштаб интерфейса",
+  "settings.appearance.interfaceScaleHint": "Масштабирует весь клиент. Полезно на экране высокого разрешения при масштабе рабочего стола 100 %, где стандартный размер физически мал.",
   "settings.appearance.reduceMotion": "Уменьшить анимацию",
   "settings.appearance.reduceMotionHint": "Свести к минимуму необязательные анимации и переходы.",
   "settings.appearance.compact": "Компактно",
@@ -1152,6 +1154,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.vault.previous": "Назад",
   "replays.vault.next": "Вперёд",
 
+  "replays.vault.pagesAria": "Страницы сетевых повторов",
   "replays.search.player": "Игрок",
   "replays.search.anyPlayer": "Любой игрок",
   "replays.search.map": "Карта",

@@ -839,7 +839,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.section.general.keywords": "página de inicio arranque destino noticias chat jugar repeticiones mapas mods clasificación torneos tutoriales idioma",
   "settings.section.account.title": "Cuenta y soporte",
   "settings.section.account.description": "Abrir los recursos oficiales de FAF para gestionar la cuenta y obtener ayuda.",
-  "settings.section.account.keywords": "cuenta usuario contraseña steam soporte ayuda comunidad reglas navegador sitio web",
+  "settings.section.account.keywords": "cuenta cerrar sesion salir sesión usuario contraseña steam soporte ayuda comunidad reglas navegador sitio web",
   "settings.section.appearance.title": "Apariencia",
   "settings.section.appearance.description": "Ajusta el espacio de trabajo sin cambiar su estructura.",
   "settings.section.appearance.keywords": "tema color densidad compacto cómodo reducir movimiento animación transición",
@@ -983,6 +983,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "settings.appearance.interfaceDensity": "Densidad de la interfaz",
   "settings.appearance.interfaceDensityHint": "El modo cómodo añade espacio; el compacto muestra más de una vez.",
+  "settings.appearance.interfaceScale": "Escala de la interfaz",
+  "settings.appearance.interfaceScaleHint": "Escala todo el cliente. Útil en una pantalla de alta resolución con escalado de escritorio al 100 %, donde el tamaño predeterminado resulta físicamente pequeño.",
   "settings.appearance.reduceMotion": "Reducir el movimiento",
   "settings.appearance.reduceMotionHint": "Minimizar las animaciones y transiciones no esenciales.",
   "settings.appearance.compact": "Compacto",
@@ -1135,6 +1137,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.vault.previous": "Anterior",
   "replays.vault.next": "Siguiente",
 
+  "replays.vault.pagesAria": "Páginas de repeticiones en línea",
   "replays.search.player": "Jugador",
   "replays.search.anyPlayer": "Cualquier jugador",
   "replays.search.map": "Mapa",

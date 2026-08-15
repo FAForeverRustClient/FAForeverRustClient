@@ -2,6 +2,8 @@ import type { MatchmakerPlayerProfile, PlayerCardStatus } from "../../ipc/bindin
 import { flagSrc } from "../../shared/countryFlags";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { MatchmakerFactionPicker } from "./MatchmakerFactionPicker";
+import { formatNumber } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 
 interface Props {
@@ -35,6 +37,7 @@ export function MatchmakerPlayerCard({
   disabled,
   onFactionsChange,
 }: Props) {
+  const { t } = useTranslation();
   const placement = profile?.leaguePlacements[0] ?? null;
   const displayName = profile?.login || playerName;
   const clan = profile?.clanTag ? `[${profile.clanTag}]` : "";
@@ -67,7 +70,7 @@ export function MatchmakerPlayerCard({
             className="matchmaker-player-name"
             id="matchmaker-player-name"
             disabled={playerId === null}
-            title="Open complete player profile"
+            title={t("lobby.matchmaker.openProfile")}
             onClick={() => { if (playerId !== null) void openPlayerCard(playerId, displayName); }}
           >
             {clan && <span>{clan}</span>}
@@ -96,11 +99,11 @@ export function MatchmakerPlayerCard({
                 height={14}
               />
             )}
-            <span>{placement?.division || (status === "loading" ? "Loading placement" : "Unlisted")}</span>
-            <span>{profile ? `${profile.gamesPlayed.toLocaleString("en-US")} games` : "Ratings loading"}</span>
+            <span>{placement?.division || t(status === "loading" ? "lobby.playerCard.loadingPlacement" : "lobby.playerCard.unlisted")}</span>
+            <span>{profile ? t("lobby.playerCard.games", { count: formatNumber(profile.gamesPlayed) }) : t("lobby.playerCard.ratingsLoading")}</span>
           </div>
-          {status === "failed" && <small className="matchmaker-profile-warning" title={error}>{profile ? "Could not refresh competitive details" : "Profile unavailable"}</small>}
-          {profile && profile.warnings.length > 0 && <small className="matchmaker-profile-warning" title={profile.warnings.join("\n")}>Some competitive details are unavailable</small>}
+          {status === "failed" && <small className="matchmaker-profile-warning" title={error}>{t(profile ? "lobby.playerCard.refreshFailed" : "lobby.playerCard.unavailable")}</small>}
+          {profile && profile.warnings.length > 0 && <small className="matchmaker-profile-warning" title={profile.warnings.join("\n")}>{t("lobby.matchmaker.detailsUnavailable")}</small>}
         </div>
       </div>
 

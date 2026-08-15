@@ -840,7 +840,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.section.general.keywords": "page de démarrage destination actualités discussion jouer replays cartes mods classement tournois tutoriels langue",
   "settings.section.account.title": "Compte et assistance",
   "settings.section.account.description": "Ouvrir les ressources officielles de gestion de compte et d'aide FAF.",
-  "settings.section.account.keywords": "compte pseudo mot de passe steam assistance aide communauté règles navigateur site web",
+  "settings.section.account.keywords": "compte deconnexion se déconnecter session pseudo mot de passe steam assistance aide communauté règles navigateur site web",
   "settings.section.appearance.title": "Apparence",
   "settings.section.appearance.description": "Ajustez l'espace de travail sans changer son organisation.",
   "settings.section.appearance.keywords": "thème couleur densité compact confortable réduire mouvement animation transition",
@@ -984,6 +984,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "settings.appearance.interfaceDensity": "Densité de l'interface",
   "settings.appearance.interfaceDensityHint": "Confortable aère l'affichage ; compact en montre davantage.",
+  "settings.appearance.interfaceScale": "Échelle de l’interface",
+  "settings.appearance.interfaceScaleHint": "Met à l’échelle tout le client. Utile sur un écran haute résolution avec une mise à l’échelle du bureau à 100 %, où la taille par défaut est physiquement petite.",
   "settings.appearance.reduceMotion": "Réduire les animations",
   "settings.appearance.reduceMotionHint": "Limiter les animations et transitions non essentielles.",
   "settings.appearance.compact": "Compact",
@@ -1136,6 +1138,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.vault.previous": "Précédente",
   "replays.vault.next": "Suivante",
 
+  "replays.vault.pagesAria": "Pages des parties enregistrées en ligne",
   "replays.search.player": "Joueur",
   "replays.search.anyPlayer": "Tout joueur",
   "replays.search.map": "Carte",

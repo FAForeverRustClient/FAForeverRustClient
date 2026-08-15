@@ -1,6 +1,7 @@
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { prettyGameType, type LiveFilters } from "./liveReplayModel";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface Props {
   filters: LiveFilters;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function LiveReplayControls(props: Props) {
+  const { t } = useTranslation();
   const { filters, onFilter } = props;
   return (
     <>
@@ -25,8 +27,8 @@ export function LiveReplayControls(props: Props) {
           <input
             value={filters.search}
             onChange={(event) => onFilter("search", event.target.value)}
-            placeholder="Search games, maps, hosts, or players"
-            aria-label="Search live replays"
+            placeholder={t("replays.live.searchPlaceholder")}
+            aria-label={t("replays.live.searchAria")}
           />
         </label>
         <label className="toolbar-check">
@@ -61,39 +63,39 @@ export function LiveReplayControls(props: Props) {
           <Icon name="filter" size={15} />
           Filters{props.activeFilterCount > 0 ? ` (${props.activeFilterCount})` : ""}
         </Button>
-        {props.activeFilterCount > 0 && <Button onClick={props.onClear}>Clear</Button>}
+        {props.activeFilterCount > 0 && <Button onClick={props.onClear}>{t("replays.live.clear")}</Button>}
         <span className="live-replay-stream-status">
-          <i aria-hidden="true" /> Live updates
+          <i aria-hidden="true" /> {t("replays.live.updates")}
         </span>
       </div>
 
       {props.filtersOpen && (
         <div className="live-replay-filters surface-panel">
           <label>
-            <span>Game type</span>
+            <span>{t("replays.live.gameType")}</span>
             <select value={filters.gameType} onChange={(event) => onFilter("gameType", event.target.value)}>
-              <option value="">Any type</option>
+              <option value="">{t("replays.live.anyType")}</option>
               {props.gameTypes.map((type) => <option key={type} value={type}>{prettyGameType(type)}</option>)}
             </select>
           </label>
           <label>
-            <span>Featured mod</span>
+            <span>{t("replays.live.featuredMod")}</span>
             <select value={filters.featuredMod} onChange={(event) => onFilter("featuredMod", event.target.value)}>
-              <option value="">Any mod</option>
+              <option value="">{t("replays.live.anyMod")}</option>
               {props.featuredMods.map((mod) => <option key={mod} value={mod}>{mod}</option>)}
             </select>
           </label>
           <label>
-            <span>Active players</span>
+            <span>{t("replays.live.activePlayers")}</span>
             <select value={filters.activePlayers} onChange={(event) => onFilter("activePlayers", event.target.value)}>
-              <option value="">Any count</option>
+              <option value="">{t("replays.live.anyCount")}</option>
               {props.activePlayerOptions.map((count) => <option key={count} value={count}>{count}</option>)}
             </select>
           </label>
           <label>
-            <span>Game size</span>
+            <span>{t("replays.live.gameSize")}</span>
             <select value={filters.maxPlayers} onChange={(event) => onFilter("maxPlayers", event.target.value)}>
-              <option value="">Any size</option>
+              <option value="">{t("replays.live.anySize")}</option>
               {props.maxPlayerOptions.map((count) => <option key={count} value={count}>{count} slots</option>)}
             </select>
           </label>
