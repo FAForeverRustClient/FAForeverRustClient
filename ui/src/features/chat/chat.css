@@ -420,6 +420,7 @@ html.is-resizing-chat-roster * {
   padding: 2px 7px;
   border-radius: var(--radius-sm);
   line-height: 1.45;
+  flex-shrink: 0;
 }
 
 .chat-message:hover {

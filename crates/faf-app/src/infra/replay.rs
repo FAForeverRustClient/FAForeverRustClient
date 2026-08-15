@@ -659,7 +659,7 @@ const MAX_LOCAL_REPLAYS: usize = 100;
 /// client's `APPDATA_DIR` (`%ALLUSERSPROFILE%\FAForever` on Windows, falling
 /// back to `~/FAForever` elsewhere) plus `/replays`. `FAF_REPLAYS_DIR`
 /// overrides it (tests, alternate installs).
-fn local_replays_dir() -> PathBuf {
+pub(crate) fn local_replays_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("FAF_REPLAYS_DIR") {
         if !dir.is_empty() {
             return PathBuf::from(dir);

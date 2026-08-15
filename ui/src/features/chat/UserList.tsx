@@ -18,6 +18,7 @@ import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { isModerator } from "../../store/reducer";
+import { useTranslation } from "../../i18n/useTranslation";
 import {
   USER_CATEGORY_LABELS,
   USER_CATEGORY_ORDER,
@@ -53,6 +54,7 @@ export const UserList = memo(function UserList({
   onOpenConversation,
   onContextMenu,
 }: Props) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState("");
   const presences = useMemo(
     () => gamePresenceIndex(openGames, liveGames),
@@ -148,7 +150,7 @@ export const UserList = memo(function UserList({
                   type="button"
                   className="chat-roster-heading"
                   aria-expanded={!collapsed}
-                  title={collapsed ? `Show ${USER_CATEGORY_LABELS[category]}` : `Hide ${USER_CATEGORY_LABELS[category]}`}
+                  title={collapsed ? `Show ${t(USER_CATEGORY_LABELS[category])}` : `Hide ${t(USER_CATEGORY_LABELS[category])}`}
                   onClick={() => toggleCategory(category)}
                 >
                   {/* One glyph, rotated: expanded points down, collapsed
@@ -158,7 +160,7 @@ export const UserList = memo(function UserList({
                     size={15}
                     className={collapsed ? "chat-roster-chevron" : "chat-roster-chevron is-open"}
                   />
-                  <span className="chat-roster-heading-label">{USER_CATEGORY_LABELS[category]}</span>
+                  <span className="chat-roster-heading-label">{t(USER_CATEGORY_LABELS[category])}</span>
                   <span className="chat-roster-count">{bucket.length}</span>
                 </button>
               </h3>

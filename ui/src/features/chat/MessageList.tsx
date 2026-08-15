@@ -333,7 +333,7 @@ const Line = memo(function Line({
           {body}
         </span>
       ) : message.kind === "action" ? (
-        <span className="chat-message-body">
+        <span className="chat-message-body" style={nameStyle}>
           <span className="chat-action-star">*</span> {nick} {body}
         </span>
       ) : (
@@ -353,7 +353,7 @@ const Line = memo(function Line({
             )}
           </span>
           {nick}
-          <span className="chat-message-body">{body}</span>
+          <span className="chat-message-body" style={nameStyle}>{body}</span>
         </>
       )}
       <span className="chat-message-time">{time}</span>

@@ -98,8 +98,10 @@ fn resolve_jar_from_roots(roots: &[PathBuf]) -> Option<PathBuf> {
 }
 
 fn default_log_dir() -> String {
+    // Temp only, so this needs no migration: the old folder is disposable and
+    // the OS clears it.
     std::env::temp_dir()
-        .join("forge-client")
+        .join(crate::infra::APP_SLUG)
         .join("iceAdapterLogs")
         .to_string_lossy()
         .into_owned()

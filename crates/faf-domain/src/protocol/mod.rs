@@ -10,6 +10,7 @@ pub mod discord;
 pub mod galactic_war;
 pub mod gpgnet;
 pub mod irc;
+pub mod log_analysis;
 pub mod map_generator;
 pub mod replay_query;
 pub mod tournaments;

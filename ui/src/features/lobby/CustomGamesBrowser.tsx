@@ -4,8 +4,9 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import type { Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
+import { ipc } from "../../ipc/client";
 import { GameMapImage } from "./GameMapImage";
-import { findVaultMap, mapPresentation } from "../../shared/mapPresentation";
+import { findVaultMap, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { flagSrc } from "../../shared/countryFlags";
 import { findPlayer } from "../../store/reducer";
@@ -413,6 +414,18 @@ function GamePreviewDialog({
 }) {
   const presentation = mapPresentation(vault, game.map);
   const vaultMap = findVaultMap(vault, game.map);
+  const maps = useAppStore((state) => state.state.maps);
+  const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
+  const isGenerated = isGeneratedMap(game.map);
+  const installed = maps.installed.some(
+    (map) =>
+      map.folderName.toLowerCase() === game.map.toLowerCase() ||
+      map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`),
+  );
+  const isGeneratingThisMap =
+    mapGenStatus.type === "generating" ||
+    mapGenStatus.type === "downloading" ||
+    mapGenStatus.type === "resolvingVersion";
   const players = playingCount(game);
   const simMods = Object.values(game.simMods);
   const ratingRange = game.ratingMin !== null || game.ratingMax !== null
@@ -466,12 +479,49 @@ function GamePreviewDialog({
         </section>
       </div>
       <footer className="game-preview-dialog-actions play-dialog-actions">
+        {!installed && isGenerated && (
+          <Button
+            disabled={isGeneratingThisMap}
+            onClick={() =>
+              ipc.send({
+                kind: "MapGenerator",
+                command: {
+                  type: "generateNamed",
+                  payload: {
+                    mapName: game.map,
+                  },
+                },
+              })
+            }
+          >
+            <Icon name="plus" size={13} />
+            {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
+          </Button>
+        )}
+        {!installed && !isGenerated && vaultMap && (
+          <Button
+            onClick={() =>
+              ipc.send({
+                kind: "Maps",
+                command: {
+                  type: "installMap",
+                  payload: {
+                    folderName: vaultMap.folderName,
+                    downloadUrl: vaultMap.downloadUrl,
+                  },
+                },
+              })
+            }
+          >
+            {t("lobby.browser.downloadMap")}
+          </Button>
+        )}
         <Button onClick={onClose}>{t("lobby.browser.close")}</Button>
         <Button variant="primary" onClick={onJoin}>{t("lobby.browser.joinGame")}</Button>
       </footer>
     </div>
   );
-}
+};
 
 export function CustomGamesBrowser({
   games,

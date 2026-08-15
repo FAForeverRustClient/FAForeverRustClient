@@ -45,6 +45,12 @@ struct Core(Arc<App>);
 struct LogPreview {
     file_name: String,
     content: String,
+    /// Known problems recognised in this log (see
+    /// [`faf_domain::protocol::log_analysis`]). Analysed here rather than in the
+    /// frontend so the whole file is scanned: the preview below is truncated to
+    /// the newest 512 KiB, and the trace that explains a crash is routinely
+    /// older than that.
+    issues: Vec<faf_domain::protocol::log_analysis::LogIssue>,
 }
 
 fn restore_main_window(app: &tauri::AppHandle) {
@@ -74,6 +80,29 @@ fn open_log_folder(kind: String, app: tauri::AppHandle) -> Result<(), String> {
     app.opener()
         .open_path(directory.to_string_lossy().into_owned(), None::<String>)
         .map_err(|error| format!("could not open diagnostics folder: {error}"))
+}
+
+/// Open one of the client's own folders in the system file manager.
+///
+/// `gamePrefs` resolves to a file, so it is revealed in its parent rather than
+/// handed to `open_path`, which would ask the OS to *launch* it.
+#[tauri::command]
+fn open_client_folder(kind: String, app: tauri::AppHandle) -> Result<(), String> {
+    let path = faf_app::infra::client_folder(&kind)?;
+    if kind == "gamePrefs" {
+        return app
+            .opener()
+            .reveal_item_in_dir(&path)
+            .map_err(|error| format!("could not reveal {}: {error}", path.display()));
+    }
+    // Created on demand: several of these only exist once the client has
+    // written something, and "the folder is missing" is a worse answer than an
+    // empty folder.
+    std::fs::create_dir_all(&path)
+        .map_err(|error| format!("could not create {}: {error}", path.display()))?;
+    app.opener()
+        .open_path(path.to_string_lossy().into_owned(), None::<String>)
+        .map_err(|error| format!("could not open {}: {error}", path.display()))
 }
 
 #[tauri::command]
@@ -106,6 +135,11 @@ fn read_latest_log(kind: String, app: tauri::AppHandle) -> Result<Option<LogPrev
     };
     let bytes =
         std::fs::read(&path).map_err(|error| format!("could not read latest log: {error}"))?;
+    // Analyse the whole file, then truncate for display. The other way round
+    // would miss any trace older than the preview window, which is most of them
+    // in a long game.
+    let whole = String::from_utf8_lossy(&bytes);
+    let issues = faf_domain::protocol::log_analysis::analyze_game_log(&whole);
     let start = bytes.len().saturating_sub(MAX_PREVIEW_BYTES as usize);
     let content = String::from_utf8_lossy(&bytes[start..]).into_owned();
     Ok(Some(LogPreview {
@@ -115,6 +149,7 @@ fn read_latest_log(kind: String, app: tauri::AppHandle) -> Result<Option<LogPrev
             .unwrap_or("diagnostic.log")
             .to_string(),
         content,
+        issues,
     }))
 }
 
@@ -143,14 +178,43 @@ fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
     core.0.versioned_snapshot()
 }
 
+/// Terminate the application process cleanly.
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if let Some(core) = window.try_state::<Core>() {
+                    let snapshot = core.0.versioned_snapshot();
+                    let is_in_game = matches!(
+                        snapshot.state.lobby.join,
+                        faf_domain::state::JoinState::InGame { .. }
+                    );
+                    if is_in_game {
+                        api.prevent_close();
+                        let _ = window.emit("app://request-exit-confirm", ());
+                        return;
+                    }
+                }
+                window.app_handle().exit(0);
+            }
+        })
         .setup(|app| {
             let log_dir = app.path().app_log_dir()?;
             app.manage(diagnostics::init(&log_dir)?);
+            // Before anything resolves a path: the client used to store its
+            // cache, data and settings under "forgeclient/forge-client", and
+            // this moves them to the current name once. Best effort, and a
+            // no-op after the first run. Placed after diagnostics so the
+            // outcome is actually logged.
+            faf_app::infra::migrate_legacy_directories();
             let ice_log_dir = log_dir.join("iceAdapterLogs");
             std::fs::create_dir_all(&ice_log_dir)?;
             std::env::set_var("FAF_ICE_LOG_DIR", &ice_log_dir);
@@ -329,8 +393,10 @@ pub fn run() {
             dispatch_and_wait,
             snapshot,
             open_log_folder,
+            open_client_folder,
             reveal_replay,
-            read_latest_log
+            read_latest_log,
+            exit_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

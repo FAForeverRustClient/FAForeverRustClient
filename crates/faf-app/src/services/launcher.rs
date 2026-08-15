@@ -13,7 +13,9 @@
 //! relay messages arriving on the same socket. On any setup failure we stop the
 //! adapter and emit `LaunchFailed`.
 
-use faf_domain::state::{Game, GameLaunch, LobbyEvent, NotificationKind, PlayerProfile};
+use faf_domain::state::{
+    Game, GameLaunch, LobbyEvent, NotificationKind, PlayerProfile, ReplayEvent,
+};
 use serde_json::Value;
 use tokio::sync::mpsc;
 
@@ -163,6 +165,17 @@ pub async fn start(
         tracing::debug!("stopping ICE adapter");
         exit_ports.ice.stop();
         exit_sink.emit(LobbyEvent::GameTerminated);
+
+        // The replay the game just streamed to the local recorder is on disk
+        // now. Re-listing here is what makes it appear in the Local tab without
+        // the user knowing to press refresh: the scan is a directory read, and
+        // it only happens once per game.
+        match exit_ports.replay.list_local().await {
+            Ok(replays) => exit_sink.emit(ReplayEvent::LocalLoaded { replays }),
+            Err(reason) => {
+                tracing::warn!(%reason, "could not refresh the local replay list after the game")
+            }
+        }
         tracing::info!("launcher: game exit cleanup complete");
     });
 

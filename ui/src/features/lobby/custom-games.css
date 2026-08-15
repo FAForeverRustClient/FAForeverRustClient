@@ -31,9 +31,26 @@
   overflow: hidden;
 }
 
+/* Flex, not a fixed row template. The column head is only rendered in list
+   mode, so `auto minmax(0, 1fr) auto` mis-assigned every row in tile mode: the
+   tile grid landed in the content-sized first row and the footer was stretched
+   across the `1fr` one. That put the footer text immediately under the last
+   card with the rest of the panel empty below it, and left the tile grid unable
+   to scroll once there were more games than fit. Flex tracks whichever children
+   are actually present. */
 .game-browser-panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.game-browser-panel > .game-browser-head,
+.game-browser-panel > .game-browser-footer {
+  flex: none;
+}
+
+.game-browser-panel > .game-browser-list,
+.game-browser-panel > .game-tile-grid {
+  flex: 1 1 auto;
 }
 
 .game-browser-head,

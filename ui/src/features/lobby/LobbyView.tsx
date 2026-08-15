@@ -15,7 +15,7 @@ import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
 import { GameMapImage } from "./GameMapImage";
 import { PlayModeTabs } from "./PlayModeTabs";
 import { PrivateGameDialog } from "./PrivateGameDialog";
-import { findVaultMap, mapPresentation } from "../../shared/mapPresentation";
+import { findVaultMap, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
 import "./custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
@@ -61,9 +61,15 @@ function compareGames(sort: SortMode, left: Game, right: Game): number {
 function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; onJoin: () => void }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
+  const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const vaultMap = findVaultMap(maps.vault, game.map);
   const presentation = mapPresentation(maps.vault, game.map);
-  const installed = maps.installed.some((map) => map.folderName === game.map || map.folderName.startsWith(`${game.map}.`));
+  const isGenerated = isGeneratedMap(game.map);
+  const installed = maps.installed.some((map) => map.folderName.toLowerCase() === game.map.toLowerCase() || map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`));
+  const isGeneratingThisMap =
+    mapGenStatus.type === "generating" ||
+    mapGenStatus.type === "downloading" ||
+    mapGenStatus.type === "resolvingVersion";
   const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
   const simMods = Object.values(game.simMods);
 
@@ -92,7 +98,26 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
           <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} – ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
           <div><dt>{t("lobby.details.visibility")}</dt><dd>{game.visibility || t("lobby.details.public")}</dd></div>
         </dl>
-        {!installed && vaultMap && (
+        {!installed && isGenerated && (
+          <Button
+            disabled={isGeneratingThisMap}
+            onClick={() =>
+              ipc.send({
+                kind: "MapGenerator",
+                command: {
+                  type: "generateNamed",
+                  payload: {
+                    mapName: game.map,
+                  },
+                },
+              })
+            }
+          >
+            <Icon name="plus" size={13} />
+            {isGeneratingThisMap ? t("lobby.details.generatingMap") : t("lobby.details.generateMap")}
+          </Button>
+        )}
+        {!installed && !isGenerated && vaultMap && (
           <Button
             onClick={() =>
               ipc.send({
@@ -118,7 +143,6 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
         )}
         {teams.length > 0 && (
           <div className="game-detail-section">
-            <h3>{t("lobby.details.teams")}</h3>
             {teams.map(([team, players]) => (
               <div className="game-team" key={team}>
                 <span>{team === "-1" || team === "null" ? t("lobby.details.observers") : t("lobby.details.team", { id: team })}</span>

@@ -121,7 +121,7 @@ fn generator_dir() -> PathBuf {
             return PathBuf::from(dir);
         }
     }
-    directories::ProjectDirs::from("com", "forgeclient", "forge-client")
+    crate::infra::project_dirs()
         .map(|dirs| dirs.data_dir().join("map_generator"))
         .unwrap_or_else(|| PathBuf::from("map_generator"))
 }
@@ -473,11 +473,19 @@ impl NeroxisMapGenerator {
 
     async fn read_map_preview(&self, map_name: &str) -> Option<String> {
         use base64::Engine as _;
+        let normalized = map_name.to_lowercase();
         let folder = self.config.maps_dir.join(map_name);
+        let folder_lower = self.config.maps_dir.join(&normalized);
         let candidates = [
-            folder.join(format!("{map_name}.png")),
             folder.join(format!("{map_name}_preview.png")),
+            folder.join(format!("{map_name}.png")),
+            folder.join(format!("{normalized}_preview.png")),
+            folder.join(format!("{normalized}.png")),
             folder.join("preview.png"),
+            folder_lower.join(format!("{normalized}_preview.png")),
+            folder_lower.join(format!("{normalized}.png")),
+            folder_lower.join(format!("{map_name}_preview.png")),
+            folder_lower.join("preview.png"),
         ];
         for path in candidates {
             if let Ok(bytes) = tokio::fs::read(&path).await {
@@ -489,6 +497,36 @@ impl NeroxisMapGenerator {
                 }
             }
         }
+
+        let target_folder = if folder.is_dir() {
+            folder
+        } else if folder_lower.is_dir() {
+            folder_lower
+        } else {
+            return None;
+        };
+
+        if let Ok(mut entries) = tokio::fs::read_dir(&target_folder).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let name = entry.file_name().to_string_lossy().to_lowercase();
+                if name.ends_with(".png") || name.ends_with(".jpg") || name.ends_with(".jpeg") {
+                    if let Ok(bytes) = tokio::fs::read(entry.path()).await {
+                        if !bytes.is_empty() {
+                            let mime = if name.ends_with(".png") {
+                                "image/png"
+                            } else {
+                                "image/jpeg"
+                            };
+                            return Some(format!(
+                                "data:{mime};base64,{}",
+                                base64::engine::general_purpose::STANDARD.encode(&bytes)
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
         None
     }
 

@@ -441,7 +441,7 @@ pub(crate) fn mods_dir() -> PathBuf {
 /// Commander Forged Alliance\game.prefs` (confirmed via the Python
 /// client's `util.LOCALFOLDER`/`PREFSFILENAME`). `FAF_GAME_PREFS_PATH`
 /// overrides it (tests, alternate installs).
-fn game_prefs_path() -> PathBuf {
+pub(crate) fn game_prefs_path() -> PathBuf {
     if let Ok(path) = std::env::var("FAF_GAME_PREFS_PATH") {
         if !path.is_empty() {
             return PathBuf::from(path);
