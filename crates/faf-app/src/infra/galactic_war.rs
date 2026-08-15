@@ -78,10 +78,7 @@ pub struct GalacticWarConfig {
 impl GalacticWarConfig {
     pub fn faf() -> Result<Self, String> {
         Ok(Self {
-            api_base: env_or(
-                "FAF_GW_API_BASE",
-                "https://galactic-war-test.spidarna.com",
-            ),
+            api_base: env_or("FAF_GW_API_BASE", "https://galactic-war-test.spidarna.com"),
             download_base: env_or("FAF_GW_DOWNLOAD_BASE", "https://downloads.faforever.com"),
             install_dir: data_dir()?.join("galactic-war"),
         })
@@ -389,8 +386,9 @@ fn finish_install(staged: &Path) -> Result<(), String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
-        std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755))
-            .map_err(|error| format!("could not make the Galactic War client executable: {error}"))?;
+        std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755)).map_err(
+            |error| format!("could not make the Galactic War client executable: {error}"),
+        )?;
     }
 
     Ok(())
@@ -407,7 +405,9 @@ fn clamp_u32(value: u64) -> u32 {
 #[async_trait]
 impl GalacticWarPort for GalacticWarGateway {
     async fn statistics(&self) -> Result<GalacticWarStatistics, String> {
-        let body = self.get_text(&self.api_url("statistics"), "statistics").await?;
+        let body = self
+            .get_text(&self.api_url("statistics"), "statistics")
+            .await?;
         parse_statistics(&body)
     }
 
@@ -535,7 +535,10 @@ mod tests {
             download_base: "https://downloads.faforever.com".into(),
             install_dir: PathBuf::from("."),
         });
-        assert_eq!(gateway.api_url("statistics"), "https://gw.example/statistics");
+        assert_eq!(
+            gateway.api_url("statistics"),
+            "https://gw.example/statistics"
+        );
         assert_eq!(
             gateway.api_url(&version_path()),
             "https://gw.example/client/faf-gw-client/version"

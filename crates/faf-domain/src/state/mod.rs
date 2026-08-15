@@ -46,7 +46,8 @@ pub use coop::{
 pub use failure::RequestFailureKind;
 pub use galactic_war::{
     ClientVersions, GalacticWarAlltime, GalacticWarCommand, GalacticWarEvent, GalacticWarFaction,
-    GalacticWarSeason, GalacticWarState, GalacticWarStatistics, GalacticWarStatus, StatisticsStatus,
+    GalacticWarSeason, GalacticWarState, GalacticWarStatistics, GalacticWarStatus,
+    StatisticsStatus,
 };
 pub use install::{InstallEvent, InstallState};
 pub use leaderboard::{

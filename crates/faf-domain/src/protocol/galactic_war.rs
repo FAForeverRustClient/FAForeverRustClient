@@ -320,7 +320,10 @@ mod tests {
 
     #[test]
     fn an_empty_document_is_still_a_document() {
-        assert_eq!(parse_statistics("{}").unwrap(), GalacticWarStatistics::default());
+        assert_eq!(
+            parse_statistics("{}").unwrap(),
+            GalacticWarStatistics::default()
+        );
     }
 
     #[test]
@@ -347,10 +350,9 @@ mod tests {
 
     #[test]
     fn an_empty_latest_falls_back_instead_of_installing_nothing() {
-        let versions = parse_client_versions(
-            r#"{"requiredVersion":"v2026.03.01.1","latestVersion":""}"#,
-        )
-        .unwrap();
+        let versions =
+            parse_client_versions(r#"{"requiredVersion":"v2026.03.01.1","latestVersion":""}"#)
+                .unwrap();
         assert_eq!(versions.install_target(), Some("v2026.03.01.1"));
     }
 

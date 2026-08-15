@@ -74,12 +74,16 @@ pub enum GalacticWarStatus {
     /// Unpacking. A separate stage because the archive expands to well over a
     /// hundred megabytes, which is long enough that a silent gap reads as a
     /// hang.
-    Installing { version: String },
+    Installing {
+        version: String,
+    },
     /// The process has been asked to start but has not been observed running.
     Launching,
     /// The Galactic War client is running. Re-entry is refused while it is.
     Running,
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
 }
 
 impl GalacticWarStatus {
@@ -108,7 +112,9 @@ pub enum StatisticsStatus {
     Idle,
     Loading,
     Loaded,
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -147,7 +153,9 @@ pub fn is_below_minimum(installed: &str, required: &str) -> bool {
 impl GalacticWarState {
     /// The version that *should* be installed, per the gateway.
     pub fn install_target(&self) -> Option<&str> {
-        self.versions.as_ref().and_then(ClientVersions::install_target)
+        self.versions
+            .as_ref()
+            .and_then(ClientVersions::install_target)
     }
 
     pub fn is_installed(&self) -> bool {
@@ -464,7 +472,10 @@ mod tests {
     #[test]
     fn a_discovery_run_finding_nothing_clears_the_installation() {
         let mut s = installed("v1", "v1", None);
-        reduce(&mut s, &GalacticWarEvent::InstallationChanged { version: None });
+        reduce(
+            &mut s,
+            &GalacticWarEvent::InstallationChanged { version: None },
+        );
         assert!(!s.is_installed());
     }
 
