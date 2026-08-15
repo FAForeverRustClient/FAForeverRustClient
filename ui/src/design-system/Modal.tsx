@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import "./modal.css";
+import { useTranslation } from "../i18n/useTranslation";
 
 interface ModalProps {
   onClose: () => void;
@@ -21,7 +22,10 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
-export function Modal({ onClose, children, className, ariaLabel = "Dialog" }: ModalProps) {
+export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
+  const { t } = useTranslation();
+  // Most callers rely on this default for the dialog's accessible name.
+  const label = ariaLabel ?? t("designSystem.modal.dialog");
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -75,11 +79,11 @@ export function Modal({ onClose, children, className, ariaLabel = "Dialog" }: Mo
         className={className ? `modal-panel ${className}` : "modal-panel"}
         role="dialog"
         aria-modal="true"
-        aria-label={ariaLabel}
+        aria-label={label}
         tabIndex={-1}
         onKeyDown={trapFocus}
       >
-        <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
+        <button type="button" className="modal-close" onClick={onClose} aria-label={t("common.close")}>
           ×
         </button>
         {children}

@@ -1,4 +1,6 @@
 import { Button } from "./Button";
+import { t } from "../i18n";
+import { useTranslation } from "../i18n/useTranslation";
 import "./pagination.css";
 
 export interface PaginationProps {
@@ -68,7 +70,7 @@ export function getPageItems(
   const jump = (to: number): PageItem => ({
     type: "ellipsis",
     jumpTo: to,
-    label: `Jump to page ${to}`,
+    label: t("designSystem.pagination.jumpTo", { page: to }),
   });
 
   const items: PageItem[] = [page(1)];
@@ -99,8 +101,9 @@ export function Pagination({
   hasMore = false,
   maxVisiblePages = 9,
   className = "",
-  ariaLabel = "Pagination",
+  ariaLabel,
 }: PaginationProps) {
+  const { t } = useTranslation();
   const unknownTotal = totalPages === null;
   if (!unknownTotal && totalPages <= 1) return null;
   if (unknownTotal && currentPage <= 1 && !hasMore) return null;
@@ -109,19 +112,19 @@ export function Pagination({
   const atEnd = unknownTotal ? !hasMore : currentPage >= totalPages;
 
   return (
-    <nav className={`pagination ${className}`.trim()} aria-label={ariaLabel}>
+    <nav className={`pagination ${className}`.trim()} aria-label={ariaLabel ?? t("designSystem.pagination.aria")}>
       <Button
         className="pagination-nav"
         disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
-        aria-label="Previous page"
+        aria-label={t("designSystem.pagination.previousPage")}
       >
-        Previous
+        {t("designSystem.pagination.previous")}
       </Button>
 
       {unknownTotal && (
         <span className="pagination-position" aria-current="page">
-          Page {currentPage}
+          {t("designSystem.pagination.page", { page: currentPage })}
         </span>
       )}
 
@@ -147,7 +150,7 @@ export function Pagination({
             type="button"
             className={`pagination-btn${item.current ? " active" : ""}`}
             onClick={() => onPageChange(item.page)}
-            aria-label={`Page ${item.page}`}
+            aria-label={t("designSystem.pagination.page", { page: item.page })}
             aria-current={item.current ? "page" : undefined}
           >
             {item.page}
@@ -159,9 +162,9 @@ export function Pagination({
         className="pagination-nav"
         disabled={atEnd}
         onClick={() => onPageChange(currentPage + 1)}
-        aria-label="Next page"
+        aria-label={t("designSystem.pagination.nextPage")}
       >
-        Next
+        {t("designSystem.pagination.next")}
       </Button>
     </nav>
   );

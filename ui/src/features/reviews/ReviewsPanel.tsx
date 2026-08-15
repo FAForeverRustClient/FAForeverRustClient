@@ -12,6 +12,7 @@ import type { Review, ReviewSummary } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import "./reviews.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const SCORES = [5, 4, 3, 2, 1];
 
@@ -40,6 +41,7 @@ function Stars({ score, of = 5 }: { score: number; of?: number }) {
 }
 
 export function ReviewsPanel() {
+  const { t } = useTranslation();
   const state = useAppStore((store) => store.state.reviews);
   const player = useAppStore((store) => store.state.auth.player);
 
@@ -53,7 +55,7 @@ export function ReviewsPanel() {
       <header className="reviews-head">
         <div>
           <span className="reviews-eyebrow">
-            {state.target.kind === "map" ? "Map reviews" : "Mod reviews"}
+            {t(state.target.kind === "map" ? "reviews.mapReviews" : "reviews.modReviews")}
           </span>
           <h2>{state.target.name}</h2>
         </div>
@@ -71,19 +73,19 @@ export function ReviewsPanel() {
           {player ? (
             <OwnReview mine={mine} />
           ) : (
-            <p className="muted">Sign in to write a review.</p>
+            <p className="muted">{t("reviews.signIn")}</p>
           )}
 
           <section className="reviews-list">
             <h3>
               {others.length === 0
-                ? "No other reviews yet"
+                ? t("reviews.noOthers")
                 : `${others.length} other review${others.length === 1 ? "" : "s"}`}
             </h3>
             {others.map((review) => (
               <article className="surface review-row" key={review.id}>
                 <header>
-                  <strong>{review.player || "Unknown player"}</strong>
+                  <strong>{review.player || t("reviews.unknownPlayer")}</strong>
                   <Stars score={review.score} />
                   {review.version && <small className="muted">version {review.version}</small>}
                 </header>
@@ -129,6 +131,7 @@ function Distribution({ summary }: { summary: ReviewSummary }) {
 }
 
 function OwnReview({ mine }: { mine: Review | null }) {
+  const { t } = useTranslation();
   const submitStatus = useAppStore((store) => store.state.reviews.submit);
   const [score, setScore] = useState(mine?.score ?? 5);
   const [text, setText] = useState(mine?.text ?? "");
@@ -145,9 +148,9 @@ function OwnReview({ mine }: { mine: Review | null }) {
 
   return (
     <section className="surface reviews-own">
-      <h3>{mine ? "Your review" : "Write a review"}</h3>
+      <h3>{t(mine ? "reviews.yours" : "reviews.write")}</h3>
 
-      <div className="reviews-score-picker" role="group" aria-label="Your score">
+      <div className="reviews-score-picker" role="group" aria-label={t("reviews.yourScore")}>
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             type="button"
@@ -167,17 +170,17 @@ function OwnReview({ mine }: { mine: Review | null }) {
         value={text}
         maxLength={2000}
         rows={4}
-        placeholder="What should other players know?"
+        placeholder={t("reviews.placeholder")}
         onChange={(event) => setText(event.target.value)}
       />
 
       <div className="reviews-own-actions">
         <Button variant="primary" disabled={saving} onClick={() => void submit(score, text)}>
-          {saving ? "Saving…" : mine ? "Update review" : "Post review"}
+          {t(saving ? "reviews.saving" : mine ? "reviews.update" : "reviews.post")}
         </Button>
         {mine && (
           <Button disabled={saving} onClick={() => void remove()}>
-            <Icon name="close" size={14} /> Withdraw
+            <Icon name="close" size={14} /> {t("reviews.withdraw")}
           </Button>
         )}
       </div>
@@ -185,7 +188,7 @@ function OwnReview({ mine }: { mine: Review | null }) {
       {submitStatus.type === "failed" && (
         <p className="reviews-submit is-error">{submitStatus.payload.reason}</p>
       )}
-      {submitStatus.type === "saved" && <p className="reviews-submit is-ok">Saved.</p>}
+      {submitStatus.type === "saved" && <p className="reviews-submit is-ok">{t("reviews.saved")}</p>}
     </section>
   );
 }

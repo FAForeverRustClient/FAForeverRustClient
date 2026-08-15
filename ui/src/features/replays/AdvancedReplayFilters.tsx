@@ -2,16 +2,18 @@ import type { ReplayQuery } from "../../ipc/bindings";
 import { MultiSelect, type MultiSelectOption } from "../../design-system/MultiSelect";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import { FACTION_OPTIONS } from "../../shared/factions";
+import type { MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const MAX_DURATION_MINUTES = 60;
 const MAX_MAP_SIZE_KM = 40;
 const MAX_MAP_PLAYERS = 16;
 
-const VICTORY_OPTIONS: MultiSelectOption[] = [
-  { value: "DEMORALIZATION", label: "Assassination" },
-  { value: "DOMINATION", label: "Supremacy" },
-  { value: "ERADICATION", label: "Annihilation" },
-  { value: "SANDBOX", label: "Sandbox" },
+const VICTORY_OPTION_KEYS: { value: string; label: MessageKey }[] = [
+  { value: "DEMORALIZATION", label: "replays.filters.victory.assassination" },
+  { value: "DOMINATION", label: "replays.filters.victory.supremacy" },
+  { value: "ERADICATION", label: "replays.filters.victory.annihilation" },
+  { value: "SANDBOX", label: "replays.filters.victory.sandbox" },
 ];
 
 interface Props {
@@ -26,11 +28,16 @@ interface Props {
 }
 
 export function AdvancedReplayFilters({ form, set, setRange }: Props) {
+  const { t } = useTranslation();
+  // Built per render so the captions follow the selected language.
+  const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
+    (option) => ({ value: option.value, label: t(option.label) }),
+  );
   return (
     <div className="vault-search-advanced search-panel-advanced">
       <div className="vault-search-sliders">
         <RangeSlider
-          label="Duration"
+          label={t("replays.filters.duration")}
           min={0}
           max={MAX_DURATION_MINUTES}
           step={1}
@@ -42,7 +49,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
           }
         />
         <RangeSlider
-          label="Review score"
+          label={t("replays.filters.reviewScore")}
           min={0}
           max={5}
           step={0.5}
@@ -52,7 +59,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
           onChange={(lo, hi) => setRange("minReviewScore", "maxReviewScore", lo, hi)}
         />
         <RangeSlider
-          label="Map slots"
+          label={t("replays.filters.mapSlots")}
           min={2}
           max={MAX_MAP_PLAYERS}
           step={1}
@@ -61,7 +68,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
           onChange={(lo, hi) => setRange("mapMinPlayers", "mapMaxPlayers", lo, hi)}
         />
         <RangeSlider
-          label="Map size"
+          label={t("replays.filters.mapSize")}
           min={0}
           max={MAX_MAP_SIZE_KM}
           step={1}
@@ -74,7 +81,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
 
       <div className="vault-search-fields">
         <label className="vault-field">
-          <span className="vault-field-label">Host</span>
+          <span className="vault-field-label">{t("replays.filters.host")}</span>
           <input
             className="vault-input"
             type="search"
@@ -84,7 +91,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
         </label>
 
         <label className="vault-field">
-          <span className="vault-field-label">Map author</span>
+          <span className="vault-field-label">{t("replays.filters.mapAuthor")}</span>
           <input
             className="vault-input"
             type="search"
@@ -94,7 +101,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
         </label>
 
         <label className="vault-field">
-          <span className="vault-field-label">Game title</span>
+          <span className="vault-field-label">{t("replays.filters.gameTitle")}</span>
           <input
             className="vault-input"
             type="search"
@@ -105,7 +112,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
 
         <div className="vault-field">
           <MultiSelect
-            label="Faction"
+            label={t("replays.filters.faction")}
             options={FACTION_OPTIONS}
             selected={form.factions.map(String)}
             onChange={(v) => set("factions", v.map(Number))}
@@ -114,7 +121,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
 
         <div className="vault-field">
           <MultiSelect
-            label="Victory condition"
+            label={t("replays.filters.victoryCondition")}
             options={VICTORY_OPTIONS}
             selected={form.victoryConditions}
             onChange={(v) => set("victoryConditions", v)}
@@ -122,7 +129,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
         </div>
 
         <label className="vault-field">
-          <span className="vault-field-label">Played after</span>
+          <span className="vault-field-label">{t("replays.filters.playedAfter")}</span>
           <input
             className="vault-input"
             type="date"
@@ -132,7 +139,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
         </label>
 
         <label className="vault-field">
-          <span className="vault-field-label">Played before</span>
+          <span className="vault-field-label">{t("replays.filters.playedBefore")}</span>
           <input
             className="vault-input"
             type="date"
@@ -142,7 +149,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
         </label>
 
         <label className="vault-field">
-          <span className="vault-field-label">Results per page</span>
+          <span className="vault-field-label">{t("replays.filters.resultsPerPage")}</span>
           <select
             className="vault-input"
             value={form.pageSize}
@@ -164,7 +171,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
             checked={form.exactPlayer}
             onChange={(e) => set("exactPlayer", e.target.checked)}
           />
-          Exact player name
+          {t("replays.filters.exactPlayerName")}
         </label>
         <label className="option-check">
           <input
@@ -172,7 +179,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
             checked={form.onlyRanked}
             onChange={(e) => set("onlyRanked", e.target.checked)}
           />
-          Ranked games only
+          {t("replays.filters.rankedGamesOnly")}
         </label>
         <label className="option-check">
           <input
@@ -180,7 +187,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
             checked={form.rankedMapOnly}
             onChange={(e) => set("rankedMapOnly", e.target.checked)}
           />
-          Ranked maps only
+          {t("replays.filters.rankedMapsOnly")}
         </label>
       </div>
 

@@ -19,6 +19,8 @@ import { ipc } from "../../ipc/client";
 import { isGeneratedMap } from "../../shared/mapPresentation";
 import { recordEntries } from "../../shared/records";
 import { useAppStore } from "../../store/store";
+import type { MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 import "./generate-map.css";
 
 /** Map sizes the generator accepts, in 1.25 km increments (256 units = 5 km). */
@@ -35,12 +37,12 @@ const MAP_SIZES: { value: number; label: string }[] = [
 ];
 
 /** Labels from the Java client's `game.generateMap.*` strings. */
-const GENERATION_TYPES: Record<GenerationType, { label: string; hint: string }> = {
-  casual: { label: "Casual", hint: "Honours every style option below." },
-  tournament: { label: "Tournament", hint: "No preview until the game starts." },
-  blind: { label: "Blind", hint: "No preview at all." },
-  unexplored: { label: "Unexplored", hint: "The map starts under fog." },
-};
+const GENERATION_TYPES = {
+  casual: { label: "maps.generate.kind.casual", hint: "maps.generate.kind.casualHint" },
+  tournament: { label: "maps.generate.kind.tournament", hint: "maps.generate.kind.tournamentHint" },
+  blind: { label: "maps.generate.kind.blind", hint: "maps.generate.kind.blindHint" },
+  unexplored: { label: "maps.generate.kind.unexplored", hint: "maps.generate.kind.unexploredHint" },
+} as const satisfies Record<GenerationType, { label: MessageKey; hint: MessageKey }>;
 
 const generate = (options: GeneratorOptions) =>
   ipc.send({ kind: "MapGenerator", command: { type: "generate", payload: { options } } });
@@ -61,6 +63,7 @@ interface Props {
 }
 
 export function GenerateMapModal({ onClose, onGenerated }: Props) {
+  const { t } = useTranslation();
   const state = useAppStore((s) => s.state.mapGenerator);
   const [form, setForm] = useState<GeneratorOptions>(state.options);
   const [advanced, setAdvanced] = useState(false);
@@ -129,9 +132,9 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   if (choices.length > 0) {
     return (
       <Modal onClose={onClose}>
-        <h2 className="generate-map-title">Choose a map</h2>
+        <h2 className="generate-map-title">{t("maps.generate.chooseMap")}</h2>
         <p className="muted generate-map-note">
-          {choices.length} maps were generated. They are all installed; pick the one to use now.
+          {t("maps.generate.choicesNote", { count: choices.length })}
         </p>
         <div className="generate-map-choices-grid">
           {choices.map((map) => {
@@ -163,7 +166,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
         </div>
         <div className="generate-map-actions">
           <Button type="button" onClick={() => setChoices([])}>
-            Back to options
+            {t("maps.generate.backToOptions")}
           </Button>
         </div>
       </Modal>
@@ -172,10 +175,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
   return (
     <Modal onClose={onClose}>
-      <h2 className="generate-map-title">Generate a map</h2>
+      <h2 className="generate-map-title">{t("maps.generate.title")}</h2>
       <form className="generate-map" onSubmit={submit}>
         <label className="field">
-          <span>Reproduce a generated map</span>
+          <span>{t("maps.generate.reproduceTitle")}</span>
           <input
             value={reproduceName}
             placeholder="neroxis_map_generator_1.7.7_..."
@@ -186,7 +189,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             <small className="generate-map-error">{reproduceError}</small>
           ) : (
             <small className="muted">
-              Paste a name to rebuild that exact map. Everything below is ignored while it is set.
+              {t("maps.generate.reproduceHint")}
             </small>
           )}
         </label>
@@ -194,7 +197,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
         <fieldset className="generate-map-fieldset" disabled={reproducing}>
           <div className="generate-map-grid">
             <label className="field">
-              <span>Generator version</span>
+              <span>{t("maps.generate.generatorVersion")}</span>
               <select
                 value={form.version ?? ""}
                 onChange={(e) => {
@@ -217,7 +220,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             </label>
 
             <label className="field">
-              <span>Map size</span>
+              <span>{t("maps.generate.mapSize")}</span>
               <select
                 value={form.mapSize ?? 512}
                 onChange={(e) => set("mapSize", Number(e.target.value))}
@@ -231,7 +234,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             </label>
 
             <label className="field">
-              <span>Spawns</span>
+              <span>{t("maps.generate.spawns")}</span>
               <input
                 type="number"
                 min={2}
@@ -242,7 +245,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             </label>
 
             <label className="field">
-              <span>Teams</span>
+              <span>{t("maps.generate.teams")}</span>
               <input
                 type="number"
                 min={2}
@@ -253,7 +256,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             </label>
 
             <label className="field">
-              <span>Maps to generate</span>
+              <span>{t("maps.generate.count")}</span>
               <input
                 type="number"
                 min={1}
@@ -262,12 +265,12 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 value={seedPinsOneMap ? 1 : form.numToGenerate ?? 1}
                 onChange={(e) => set("numToGenerate", Number(e.target.value))}
               />
-              {seedPinsOneMap && <small className="muted">A fixed seed always makes one map.</small>}
+              {seedPinsOneMap && <small className="muted">{t("maps.generate.seedPinsOneMap")}</small>}
             </label>
           </div>
 
           <fieldset className="generate-map-types surface">
-            <legend>Style of game</legend>
+            <legend>{t("maps.generate.styleOfGame")}</legend>
             {recordEntries(GENERATION_TYPES).map(([value, generationType]) => (
               <label key={value} className="generate-map-type">
                 <input
@@ -277,8 +280,8 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   onChange={() => set("generationType", value)}
                 />
                 <span>
-                  <strong>{generationType.label}</strong>
-                  <small className="muted">{generationType.hint}</small>
+                  <strong>{t(generationType.label)}</strong>
+                  <small className="muted">{t(generationType.hint)}</small>
                 </span>
               </label>
             ))}
@@ -290,31 +293,30 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             aria-expanded={advanced}
             onClick={() => setAdvanced((a) => !a)}
           >
-            {advanced ? "Fewer options" : "More options"}
+            {advanced ? t("maps.generate.fewerOptions") : t("maps.generate.moreOptions")}
           </button>
 
           {advanced && (
             <div className="generate-map-advanced">
               {typeOverrides && (
                 <p className="muted generate-map-note">
-                  "{GENERATION_TYPES[form.generationType].label}" sets the
-                  whole map: the options below are ignored while it is selected.
+                  {t("maps.generate.typeOverridesNote", { type: t(GENERATION_TYPES[form.generationType].label) })}
                 </p>
               )}
 
               <div className="generate-map-grid">
                 <label className="field">
-                  <span>Seed</span>
+                  <span>{t("maps.generate.seed")}</span>
                   <span className="generate-map-seed">
                     <input
                       value={form.seed}
-                      placeholder="Random"
+                      placeholder={t("maps.generate.random")}
                       onChange={(e) => set("seed", e.target.value)}
                     />
                     <button
                       type="button"
-                      aria-label="Reroll seed"
-                      title="Reroll seed"
+                      aria-label={t("maps.generate.rerollSeed")}
+                      title={t("maps.generate.rerollSeed")}
                       onClick={() =>
                         set("seed", String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
                       }
@@ -325,62 +327,62 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </label>
 
                 <MultiSelect
-                  label="Symmetries"
+                  label={t("maps.generate.symmetries")}
                   options={lists.symmetries.map((s) => ({ value: s, label: s }))}
                   selected={form.symmetries ?? []}
                   onChange={(symmetries) => set("symmetries", symmetries)}
-                  anyLabel="Random (Any)"
+                  anyLabel={t("maps.generate.randomAny")}
                 />
 
                 <MultiSelect
-                  label="Map styles"
+                  label={t("maps.generate.mapStyles")}
                   options={lists.styles.map((s) => ({ value: s, label: s }))}
                   selected={form.styles ?? []}
                   onChange={(styles) => set("styles", styles)}
-                  anyLabel="Random (Any)"
+                  anyLabel={t("maps.generate.randomAny")}
                 />
               </div>
 
               {styleOverrides && (
                 <p className="muted generate-map-note">
-                  A map style replaces the individual terrain, texture, resource and prop styles.
+                  {t("maps.generate.mapStyleHint")}
                 </p>
               )}
 
               <div className="generate-map-grid">
                 <MultiSelect
-                  label="Terrain styles"
+                  label={t("maps.generate.terrainStyles")}
                   options={lists.terrainStyles.map((s) => ({ value: s, label: s }))}
                   selected={form.terrainStyles ?? []}
                   onChange={(terrainStyles) => set("terrainStyles", terrainStyles)}
-                  anyLabel="Random (Any)"
+                  anyLabel={t("maps.generate.randomAny")}
                 />
                 <MultiSelect
-                  label="Texture styles"
+                  label={t("maps.generate.textureStyles")}
                   options={lists.textureStyles.map((s) => ({ value: s, label: s }))}
                   selected={form.textureStyles ?? []}
                   onChange={(textureStyles) => set("textureStyles", textureStyles)}
-                  anyLabel="Random (Any)"
+                  anyLabel={t("maps.generate.randomAny")}
                 />
                 <MultiSelect
-                  label="Resource styles"
+                  label={t("maps.generate.resourceStyles")}
                   options={lists.resourceStyles.map((s) => ({ value: s, label: s }))}
                   selected={form.resourceStyles ?? []}
                   onChange={(resourceStyles) => set("resourceStyles", resourceStyles)}
-                  anyLabel="Random (Any)"
+                  anyLabel={t("maps.generate.randomAny")}
                 />
                 <MultiSelect
-                  label="Prop styles"
+                  label={t("maps.generate.propStyles")}
                   options={lists.propStyles.map((s) => ({ value: s, label: s }))}
                   selected={form.propStyles ?? []}
                   onChange={(propStyles) => set("propStyles", propStyles)}
-                  anyLabel="Random (Any)"
+                  anyLabel={t("maps.generate.randomAny")}
                 />
               </div>
 
               <div className="generate-map-sliders">
                 <RangeSlider
-                  label="Reclaim density"
+                  label={t("maps.generate.reclaimDensity")}
                   min={0}
                   max={127}
                   low={form.reclaimDensityMin ?? null}
@@ -391,7 +393,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   }}
                 />
                 <RangeSlider
-                  label="Resource density"
+                  label={t("maps.generate.resourceDensity")}
                   min={0}
                   max={127}
                   low={form.resourceDensityMin ?? null}
@@ -404,10 +406,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               </div>
 
               <label className="field">
-                <span>Raw generator arguments</span>
+                <span>{t("maps.generate.rawArguments")}</span>
                 <input
                   value={form.commandLineArgs}
-                  placeholder="Overrides every option above"
+                  placeholder={t("maps.generate.overridesEveryOption")}
                   onChange={(e) => set("commandLineArgs", e.target.value)}
                 />
               </label>
@@ -419,7 +421,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
         <div className="generate-map-actions">
           <Button type="button" onClick={onClose}>
-            Close
+            {t("maps.generate.close")}
           </Button>
           <Button
             type="button"
@@ -428,10 +430,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               void setOptions(form);
             }}
           >
-            Save settings
+            {t("maps.generate.saveSettings")}
           </Button>
           <Button type="submit" variant="primary" disabled={busy || Boolean(reproduceError)}>
-            {busy ? "Working..." : reproducing ? "Reproduce" : "Generate"}
+            {busy ? t("maps.generate.working") : reproducing ? t("maps.generate.reproduce") : t("maps.generate.generate")}
           </Button>
         </div>
       </form>
@@ -441,33 +443,35 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
 /** The three slow stages, narrated. Generation routinely takes 30-120 seconds. */
 export function GeneratorProgress() {
+  const { t } = useTranslation();
   const status = useAppStore((s) => s.state.mapGenerator.status);
 
   switch (status.type) {
     case "idle":
       return null;
     case "resolvingVersion":
-      return <p className="muted generate-map-progress">Looking up the newest map generator...</p>;
+      return <p className="muted generate-map-progress">{t("maps.generate.lookingUp")}</p>;
     case "downloading": {
       const { downloadedBytes, totalBytes, version } = status.payload;
       const percent = totalBytes ? Math.round((downloadedBytes / totalBytes) * 100) : null;
       return (
         <p className="muted generate-map-progress">
-          Downloading map generator {version}
-          {percent === null ? "..." : `: ${percent}%`}
+          {percent === null
+            ? t("maps.generate.downloading", { version })
+            : t("maps.generate.downloadingPercent", { version, percent })}
         </p>
       );
     }
     case "generating":
       return (
         <p className="muted generate-map-progress">
-          Generating with {status.payload.version}... {status.payload.detail}
+          {t("maps.generate.generatingWith", { version: status.payload.version, detail: status.payload.detail })}
         </p>
       );
     case "generated":
       return (
         <p className="generate-map-progress is-ok">
-          Ready: {status.payload.maps.join(", ")}
+          {t("maps.generate.ready", { maps: status.payload.maps.join(", ") })}
         </p>
       );
     case "failed":

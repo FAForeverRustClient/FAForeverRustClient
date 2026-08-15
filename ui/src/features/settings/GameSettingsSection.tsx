@@ -4,12 +4,14 @@ import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { GamePathsSection } from "./GamePathsSection";
+import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 
 const save = (preferences: GamePreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
 
 export function GameSettingsSection() {
+  const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.game);
   const rawArguments = preferences.additionalArguments ?? [];
   const [argumentsText, setArgumentsText] = useState(rawArguments.join("\n"));
@@ -33,19 +35,19 @@ export function GameSettingsSection() {
     <>
       <GamePathsSection />
       <SettingRow
-        label="Automatically generate missing maps"
-        hint="Download the Neroxis generator and create required generated maps automatically when joining a lobby."
+        label={t("settings.game.autoGenerateMaps")}
+        hint={t("settings.game.autoGenerateMapsHint")}
       >
         <SettingsSwitch
           checked={preferences.autoGenerateMaps ?? true}
           onChange={setAutoGenerate}
-          label="Automatically generate missing maps"
+          label={t("settings.game.autoGenerateMaps")}
         />
       </SettingRow>
       <div className="setting-block">
-        <span className="setting-label">Additional launch arguments</span>
+        <span className="setting-label">{t("settings.game.argumentsLabel")}</span>
         <span className="muted">
-          One literal process argument per line. Applied to live games and replay playback without invoking a shell.
+          {t("settings.game.argumentsHint")}
         </span>
         <textarea
           className="settings-textarea"
@@ -54,11 +56,11 @@ export function GameSettingsSection() {
           onBlur={commitArguments}
           rows={4}
           placeholder={"/windowed\n/size\n1920\n1080"}
-          aria-label="Additional game launch arguments"
+          aria-label={t("settings.game.additionalGameLaunch")}
         />
         <div className="settings-save-line">
-          <span className="muted">Protocol-required arguments are managed by the client.</span>
-          <Button onClick={commitArguments} disabled={argumentsText === persistedText}>Save arguments</Button>
+          <span className="muted">{t("settings.game.argumentsNote")}</span>
+          <Button onClick={commitArguments} disabled={argumentsText === persistedText}>{t("settings.game.saveArguments")}</Button>
         </div>
       </div>
     </>

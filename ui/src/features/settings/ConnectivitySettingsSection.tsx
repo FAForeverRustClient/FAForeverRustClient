@@ -3,6 +3,8 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { recordEntries } from "../../shared/records";
 import { SettingRow } from "./SettingControls";
+import type { MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (preferences: ConnectivityPreferences) =>
   ipc.send({
@@ -10,18 +12,19 @@ const save = (preferences: ConnectivityPreferences) =>
     command: { type: "setConnectivity", payload: { preferences } },
   });
 
-const ADAPTERS: Record<IceAdapter, string> = {
-  java: "Java (faf-ice-adapter, recommended)",
-  go: "Go (faf-pioneer, experimental)",
+const ADAPTERS: Record<IceAdapter, MessageKey> = {
+  java: "settings.connectivity.java",
+  go: "settings.connectivity.go",
 };
 
 export function ConnectivitySettingsSection() {
+  const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.connectivity);
 
   return (
     <SettingRow
-      label="Connectivity adapter"
-      hint="Java is the established adapter used by the reference clients. Pioneer is experimental. The choice takes effect on your next game."
+      label={t("settings.connectivity.connectivityAdapter")}
+      hint={t("settings.connectivity.connectivityAdapterHint")}
     >
       <select
         className="settings-select"
@@ -33,11 +36,11 @@ export function ConnectivitySettingsSection() {
             selectionVersion: 1,
           })
         }
-        aria-label="Connectivity adapter"
+        aria-label={t("settings.connectivity.connectivityAdapter")}
       >
         {recordEntries(ADAPTERS).map(([value, label]) => (
           <option key={value} value={value}>
-            {label}
+            {t(label)}
           </option>
         ))}
       </select>

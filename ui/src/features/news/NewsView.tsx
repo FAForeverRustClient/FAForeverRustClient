@@ -4,16 +4,18 @@
 // is presentation-only, an `<iframe>` and nothing else.
 
 import { TRUSTED_EMBED_SANDBOX } from "../../shared/embedSecurity";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const NEWS_HUB_URL = "https://www.faforever.com/newshub";
 
 export function NewsView() {
+  const { t } = useTranslation();
   return (
     <div className="news-embed">
       <iframe
         className="news-embed-frame"
         src={NEWS_HUB_URL}
-        title="FAF News Hub"
+        title={t("news.frameTitle")}
         referrerPolicy="no-referrer"
         sandbox={TRUSTED_EMBED_SANDBOX}
       />

@@ -6,9 +6,11 @@ import { StatusBar } from "../status/StatusBar";
 import { ipc } from "../../ipc/client";
 import { Icon } from "../../design-system/Icon";
 import type { Tab } from "../../ipc/bindings";
+import { useTranslation } from "../../i18n/useTranslation";
 import "./home.css";
 
 export function HomeScreen() {
+  const { t } = useTranslation();
   const player = useAppStore((s) => s.state.auth.player);
   const games = useAppStore((s) => s.state.lobby.games.length);
   // "Players online" is the roster of the main channel: the closest thing the
@@ -24,34 +26,34 @@ export function HomeScreen() {
   return (
     <div className="home">
       <section className="home-hero">
-        <div className="eyebrow">Command center</div>
-        <h2>Welcome back{player ? `, ${player.name}` : ""}.</h2>
-        <p>Find a match, catch up with the community, or continue exploring Forged Alliance.</p>
+        <div className="eyebrow">{t("home.eyebrow")}</div>
+        <h2>{player ? t("home.welcomeBack", { name: player.name }) : t("home.welcome")}</h2>
+        <p>{t("home.subtitle")}</p>
         <button className="home-primary-action" onClick={() => open("play")}>
-          Browse open games <Icon name="arrowRight" size={17} />
+          {t("home.browseGames")} <Icon name="arrowRight" size={17} />
         </button>
       </section>
 
       <div className="home-metrics">
         <button className="metric-card surface-panel surface-interactive" onClick={() => open("play")}>
           <span className="metric-icon"><Icon name="play" size={18} /></span>
-          <span><strong>{games}</strong><small>Open games</small></span>
+          <span><strong>{games}</strong><small>{t("home.openGames")}</small></span>
         </button>
         <button className="metric-card surface-panel surface-interactive" onClick={() => open("chat")}>
           <span className="metric-icon"><Icon name="chat" size={18} /></span>
-          <span><strong>{users}</strong><small>Players online</small></span>
+          <span><strong>{users}</strong><small>{t("home.playersOnline")}</small></span>
         </button>
         <button className="metric-card surface-panel surface-interactive" onClick={() => open("replays")}>
           <span className="metric-icon"><Icon name="replays" size={18} /></span>
-          <span><strong>{replays}</strong><small>Vault replays</small></span>
+          <span><strong>{replays}</strong><small>{t("home.vaultReplays")}</small></span>
         </button>
       </div>
 
       <section className="home-system-card surface-panel">
         <div className="home-system-icon"><Icon name="activity" size={19} /></div>
         <div>
-          <h3>Client status</h3>
-          <p>Backend connection and local client version.</p>
+          <h3>{t("home.clientStatus")}</h3>
+          <p>{t("home.clientStatusHint")}</p>
         </div>
         <StatusBar />
       </section>

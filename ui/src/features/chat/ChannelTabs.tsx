@@ -20,6 +20,7 @@ import type { ChatChannel } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
 import { Icon } from "../../design-system/Icon";
 import "../../design-system/section-tabs.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface Props {
   channels: ChatChannel[];
@@ -38,6 +39,7 @@ export function ChannelTabs({
   onJoin,
   onLeave,
 }: Props) {
+  const { t } = useTranslation();
   const [joining, setJoining] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +64,7 @@ export function ChannelTabs({
   };
 
   return (
-    <nav className="section-tabs chat-tabs" role="tablist" aria-label="Channels">
+    <nav className="section-tabs chat-tabs" role="tablist" aria-label={t("chat.channels.aria")}>
       {channels.map((channel) => {
         const isActive = channel.name === active;
         const closable = channel.name !== defaultChannel;
@@ -115,9 +117,9 @@ export function ChannelTabs({
       <button
         type="button"
         className={`chat-tab-add${joining ? " is-active" : ""}`}
-        aria-label={joining ? "Close channel join field" : "Join a channel"}
+        aria-label={joining ? t("chat.channels.closeJoinField") : t("chat.channels.join")}
         aria-expanded={joining}
-        title={joining ? "Close" : "Join a channel"}
+        title={joining ? t("chat.channels.close") : t("chat.channels.join")}
         onClick={() => (joining ? close() : setJoining(true))}
       >
         <Icon name={joining ? "close" : "plus"} size={16} />
@@ -130,8 +132,8 @@ export function ChannelTabs({
             className="chat-input"
             type="text"
             value={draft}
-            placeholder="channel name, then Enter"
-            aria-label="Channel to join"
+            placeholder={t("chat.channels.placeholder")}
+            aria-label={t("chat.channels.inputAria")}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && close()}
           />

@@ -32,15 +32,17 @@ import { UserMenu, type UserMenuTarget } from "./UserMenu";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
 import "./chat.css";
+import { t, type MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 /** Mirrors `faf_domain::state::chat::DEFAULT_CHANNEL`. */
 const DEFAULT_CHANNEL = "#aeolus";
 
-const STATUS_LABEL: Record<ChatStatus, string> = {
-  disconnected: "Disconnected",
-  connecting: "Connecting…",
-  connected: "Connected",
-};
+const STATUS_LABEL = {
+  disconnected: "chat.status.disconnected",
+  connecting: "chat.status.connecting",
+  connected: "chat.status.connected",
+} as const satisfies Record<ChatStatus, MessageKey>;
 
 /**
  * What the header line says about the open conversation.
@@ -51,11 +53,11 @@ const STATUS_LABEL: Record<ChatStatus, string> = {
  * without a topic are the minority.
  */
 function channelContext(channel: ChatChannel | undefined, status: ChatStatus): string {
-  if (!channel) return STATUS_LABEL[status];
+  if (!channel) return t(STATUS_LABEL[status]);
   if (channel.topic) return channel.topic;
-  if (isPrivateChannel(channel.name)) return `Private conversation with ${channel.name}`;
+  if (isPrivateChannel(channel.name)) return t("chat.header.privateWith", { name: channel.name });
   const count = channel.users.length;
-  return `${count} ${count === 1 ? "person" : "people"} online`;
+  return t("chat.header.online", { count });
 }
 
 const connect = (username: string) =>
@@ -93,6 +95,7 @@ const openTab = (tab: "replays") =>
   ipc.send({ kind: "Nav", command: { type: "select", payload: { tab } } });
 
 export function ChatView() {
+  const { t } = useTranslation();
   const state = useAppStore((s) => s.state.chat);
   const social = useAppStore((s) => s.state.social);
   const player = useAppStore((s) => s.state.auth.player);
@@ -243,13 +246,15 @@ export function ChatView() {
     const game = (link.kind === "openGame" ? games : liveGames)
       .find((candidate) => candidate.id === link.uid);
     if (!game) {
-      setGameLinkNotice("That game is no longer available.");
+      setGameLinkNotice(t("chat.gameLink.unavailable"));
       return;
     }
     setGameLinkNotice("");
     if (link.kind === "openGame") void joinGame(game);
     else void watchGame(game);
-  }, [games, liveGames]);
+    // `t` is part of the identity: switching language must rebuild this so a
+    // later click reports the failure in the language now selected.
+  }, [games, liveGames, t]);
 
   const userMenu = menu && (
         <UserMenu
@@ -314,7 +319,7 @@ export function ChatView() {
           <span className="spacer" />
           {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
           <button type="button" className="chat-head-action" onClick={() => setSearchRequest((request) => request + 1)}>
-            <Icon name="search" size={14} /> Search
+            <Icon name="search" size={14} /> {t("chat.search.open")}
           </button>
           <label className="chat-toggle">
             <input
@@ -341,8 +346,8 @@ export function ChatView() {
             self={self}
             emptyLabel={
               isLive
-                ? "No messages yet."
-                : "Not connected: messages will appear once you're online."
+                ? t("chat.empty.live")
+                : t("chat.empty.offline")
             }
             onNickClick={openConversation}
             onNickContextMenu={openMenu}
@@ -357,7 +362,7 @@ export function ChatView() {
         ) : (
           <div className="chat-scroll-wrap">
             <p className="muted chat-empty">
-              <Icon name="chat" size={18} /> {STATUS_LABEL[state.status]}
+              <Icon name="chat" size={18} /> {t(STATUS_LABEL[state.status])}
             </p>
           </div>
         )}

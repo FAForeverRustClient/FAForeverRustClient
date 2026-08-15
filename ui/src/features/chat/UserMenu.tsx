@@ -25,6 +25,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Game, PlayerProfile } from "../../ipc/bindings";
 import { DEFAULT_COLOR_PICKER_VALUE } from "../../shared/nameColors";
+import { useTranslation } from "../../i18n/useTranslation";
 
 /** Gap kept between the menu and the viewport edge when it has to flip. */
 const VIEWPORT_MARGIN = 8;
@@ -90,6 +91,7 @@ export function UserMenu({
   actions,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: target.x, y: target.y });
 
@@ -105,32 +107,36 @@ export function UserMenu({
     }
   };
 
-  if (!isSelf) item("Private message", () => actions.privateMessage(nickname));
-  item("View profile", () => actions.viewProfile(profile?.id ?? null, nickname));
-  if (profile) item("Edit private note", () => actions.editNote(profile));
-  item("Copy username", () => actions.copyUsername(nickname));
-  if (!isSelf) item(isMuted ? "Unmute player" : "Mute player", () => actions.setMuted(nickname, !isMuted));
+  if (!isSelf) item(t("chat.menu.privateMessage"), () => actions.privateMessage(nickname));
+  item(t("chat.menu.viewProfile"), () => actions.viewProfile(profile?.id ?? null, nickname));
+  if (profile) item(t("chat.menu.editNote"), () => actions.editNote(profile));
+  item(t("chat.menu.copyUsername"), () => actions.copyUsername(nickname));
+  if (!isSelf) {
+    item(t(isMuted ? "chat.menu.unmute" : "chat.menu.mute"), () => actions.setMuted(nickname, !isMuted));
+  }
 
   if (profile) {
     separator();
-    if (hostedGame) item("Join game", () => actions.joinGame(hostedGame));
-    if (liveGame) item("Watch live replay", () => actions.watchGame(liveGame));
-    item("View replays", actions.viewReplays);
+    if (hostedGame) item(t("chat.menu.joinGame"), () => actions.joinGame(hostedGame));
+    if (liveGame) item(t("chat.menu.watchLive"), () => actions.watchGame(liveGame));
+    item(t("chat.menu.viewReplays"), actions.viewReplays);
   }
 
   if (profile && !isSelf) {
     separator();
-    if (canInvite) item("Invite to party", () => actions.inviteToParty(profile.id));
-    item(isFriend ? "Remove friend" : "Add friend", () =>
+    if (canInvite) item(t("chat.menu.inviteToParty"), () => actions.inviteToParty(profile.id));
+    item(t(isFriend ? "chat.menu.removeFriend" : "chat.menu.addFriend"), () =>
       actions.setRelation(profile, "friend", !isFriend),
     );
-    item(isFoe ? "Remove foe" : "Add foe", () => actions.setRelation(profile, "foe", !isFoe));
+    item(t(isFoe ? "chat.menu.removeFoe" : "chat.menu.addFoe"), () =>
+      actions.setRelation(profile, "foe", !isFoe),
+    );
     if (canKickFromParty) {
       separator();
-      item("Kick from party", () => actions.kickFromParty(profile.id), true);
+      item(t("chat.menu.kickFromParty"), () => actions.kickFromParty(profile.id), true);
     }
     separator();
-    item("Report player", () => actions.reportPlayer(profile), true);
+    item(t("chat.menu.reportPlayer"), () => actions.reportPlayer(profile), true);
   }
 
   // Keep the menu on screen: flip rather than clip when it would overflow.
@@ -167,7 +173,7 @@ export function UserMenu({
       ref={menuRef}
       className="chat-user-menu"
       role="menu"
-      aria-label={`Actions for ${nickname}`}
+      aria-label={t("chat.menu.aria", { nickname })}
       style={{ left: position.x, top: position.y }}
       // A right-click inside the menu must not open the webview's own menu.
       onContextMenu={(e) => e.preventDefault()}
@@ -176,13 +182,13 @@ export function UserMenu({
         {nickname}
         {profile?.clan && <span className="chat-user-menu-clan">[{profile.clan}]</span>}
       </div>
-      <div className="chat-user-menu-color" role="group" aria-label={`Name color for ${nickname}`}>
+      <div className="chat-user-menu-color" role="group" aria-label={t("chat.menu.nameColorGroup", { nickname })}>
         <label>
-          <span>Custom color</span>
+          <span>{t("chat.menu.customColor")}</span>
           <input
             type="color"
             value={nameColor ?? DEFAULT_COLOR_PICKER_VALUE}
-            aria-label={`Choose a name color for ${nickname}`}
+            aria-label={t("chat.menu.chooseColor", { nickname })}
             onChange={(event) => actions.setNameColor(nickname, event.target.value)}
           />
         </label>
@@ -191,7 +197,7 @@ export function UserMenu({
           disabled={!nameColor}
           onClick={() => actions.setNameColor(nickname, null)}
         >
-          Clear
+          {t("chat.menu.clear")}
         </button>
       </div>
       {entries.map((entry, i) =>

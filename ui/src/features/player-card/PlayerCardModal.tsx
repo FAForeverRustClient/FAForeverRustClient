@@ -19,24 +19,30 @@ import { RatingHistoryChart } from "./RatingHistoryChart";
 import { closePlayerCard, openPlayerCard } from "./playerCardActions";
 import { PlayerName } from "../../shared/nameColors";
 import "./player-card.css";
+import { formatNumber, type MessageKey } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
+import { formatDateTime } from "../../shared/dates";
 
 type PlayerCardTab = "overview" | "ratings" | "statistics" | "achievements" | "names" | "clan";
 
-const TABS: Array<{ id: PlayerCardTab; label: string }> = [
-  { id: "overview", label: "Overview" },
-  { id: "ratings", label: "Rating history" },
-  { id: "statistics", label: "Statistics" },
-  { id: "achievements", label: "Achievements" },
-  { id: "names", label: "Previous names" },
-  { id: "clan", label: "Clan" },
+// Message *keys*, not text: these registries are module-level constants, so a
+// literal would be captured once at import time and would not follow a language
+// change. Callers resolve them with `t()` at render.
+const TABS: Array<{ id: PlayerCardTab; label: MessageKey }> = [
+  { id: "overview", label: "playerCard.tab.overview" },
+  { id: "ratings", label: "playerCard.tab.ratings" },
+  { id: "statistics", label: "playerCard.tab.statistics" },
+  { id: "achievements", label: "playerCard.tab.achievements" },
+  { id: "names", label: "playerCard.tab.names" },
+  { id: "clan", label: "playerCard.tab.clan" },
 ];
 
-const PERIODS: Array<{ value: RatingHistoryPeriod; label: string }> = [
-  { value: "day", label: "Last day" },
-  { value: "week", label: "Last week" },
-  { value: "month", label: "Last month" },
-  { value: "year", label: "Last year" },
-  { value: "all", label: "All time" },
+const PERIODS: Array<{ value: RatingHistoryPeriod; label: MessageKey }> = [
+  { value: "day", label: "playerCard.period.day" },
+  { value: "week", label: "playerCard.period.week" },
+  { value: "month", label: "playerCard.period.month" },
+  { value: "year", label: "playerCard.period.year" },
+  { value: "all", label: "playerCard.period.all" },
 ];
 
 function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
@@ -45,6 +51,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
   ratings: PlayerRatingSummary[];
 }) {
   const state = useAppStore((store) => store.state.playerCard);
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<RatingHistoryPeriod>("all");
   const [showMaximum, setShowMaximum] = useState(true);
   const playerId = state.profile?.playerId ?? 0;
@@ -97,11 +104,11 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
   return (
     <div className="player-history-view">
       <div className="player-history-toolbar">
-        <label><span>Rating queue</span><select value={rating.leaderboardId} onChange={(event) => {
+        <label><span>{t("playerCard.history.queue")}</span><select value={rating.leaderboardId} onChange={(event) => {
           const next = ratings.find((candidate) => candidate.leaderboardId === Number(event.target.value));
           if (next) onRatingChange(next);
         }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{candidate.name}</option>)}</select></label>
-        <label><span>Period</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+        <label><span>{t("playerCard.history.period")}</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
       </div>
 
       {/* Four facts about the player. The old strip spent one of its four
@@ -110,24 +117,26 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
           to. */}
       <div className="player-history-summary surface-panel">
         <div>
-          <span>Current</span>
+          <span>{t("playerCard.history.current")}</span>
           <strong>{rating.rating}</strong>
           <small>{rating.name}</small>
         </div>
         <div>
-          <span>{peakIsAuthoritative ? "All-time peak" : "Peak in loaded history"}</span>
+          <span>{t(peakIsAuthoritative ? "playerCard.history.peakAllTime" : "playerCard.history.peakLoaded")}</span>
           <strong>{peak?.toFixed(0) ?? "N/A"}</strong>
-          {peak != null && <small>{peak - rating.rating >= 0 ? `${(peak - rating.rating).toFixed(0)} above current` : "current is a record"}</small>}
+          {peak != null && <small>{peak - rating.rating >= 0
+            ? t("playerCard.history.aboveCurrent", { amount: (peak - rating.rating).toFixed(0) })
+            : t("playerCard.history.isRecord")}</small>}
         </div>
         <div>
-          <span>Games</span>
-          <strong>{rating.gamesPlayed.toLocaleString("en-US")}</strong>
-          <small>in this queue</small>
+          <span>{t("playerCard.history.games")}</span>
+          <strong>{formatNumber(rating.gamesPlayed)}</strong>
+          <small>{t("playerCard.history.inThisQueue")}</small>
         </div>
         <div>
-          <span>Deviation</span>
+          <span>{t("playerCard.history.deviation")}</span>
           <strong>±{rating.deviation?.toFixed(0) ?? "N/A"}</strong>
-          <small>skill estimate {rating.mean?.toFixed(0) ?? "N/A"}</small>
+          <small>{t("playerCard.history.skillEstimate", { mean: rating.mean?.toFixed(0) ?? "N/A" })}</small>
         </div>
       </div>
 
@@ -137,38 +146,38 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         // when the load actually failed.
         <div className="player-card-error">
           <p>{state.historyError}</p>
-          <Button onClick={() => load()}><Icon name="refresh" size={15} /> Try again</Button>
+          <Button onClick={() => load()}><Icon name="refresh" size={15} /> {t("playerCard.history.tryAgain")}</Button>
         </div>
       )}
 
       <div className="player-history-chart">
         <div className="player-history-chart-head">
-          <span className="muted">Drag across the plot to measure a stretch of games.</span>
+          <span className="muted">{t("playerCard.history.dragHint")}</span>
           <label className="player-card-toggle">
             <input type="checkbox" checked={showMaximum} onChange={(event) => setShowMaximum(event.target.checked)} />
-            Peak line
+            {t("playerCard.history.peakLine")}
           </label>
         </div>
         {busy && state.history.length === 0
-          ? <div className="player-card-loading muted">Loading rating history…</div>
+          ? <div className="player-card-loading muted">{t("playerCard.history.loading")}</div>
           : <RatingHistoryChart points={state.history} maximum={state.historyMaximum} showMaximum={showMaximum} />}
       </div>
 
       <div className="player-history-paging">
         <span className="muted">
-          {busy && "Loading… "}
-          {state.history.length.toLocaleString("en-US")} entries loaded
-          {!complete && ` · page ${state.historyPage} of ${state.historyTotalPages}`}
+          {busy && `${t("playerCard.history.loadingShort")} `}
+          {t("playerCard.history.entriesLoaded", { count: formatNumber(state.history.length) })}
+          {!complete && ` · ${t("playerCard.history.pageOf", { page: state.historyPage, total: state.historyTotalPages })}`}
         </span>
         {!complete && (
           <>
-            <Button disabled={busy} onClick={() => load(state.historyPage + 1, true)}>Load next page</Button>
+            <Button disabled={busy} onClick={() => load(state.historyPage + 1, true)}>{t("playerCard.history.loadNextPage")}</Button>
             <Button
               variant="primary"
               disabled={busy}
               onClick={() => ipc.send({ kind: "PlayerCard", command: { type: "loadAllHistory", payload: { query: query(state.historyPage + 1) } } })}
             >
-              Load complete history
+              {t("playerCard.history.loadComplete")}
             </Button>
           </>
         )}
@@ -179,6 +188,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
 
 export function PlayerCardModal() {
   const state = useAppStore((store) => store.state.playerCard);
+  const { t } = useTranslation();
   const me = useAppStore((store) => store.state.auth.player);
   const social = useAppStore((store) => store.state.social);
   const playerNotes = useAppStore((store) => store.state.settings.social.playerNotes);
@@ -237,19 +247,19 @@ export function PlayerCardModal() {
               draggable={false}
             />
           )}
-          <div><span className="player-card-eyebrow">Player profile</span><h2><PlayerName name={profile?.login || state.requestedLogin || "Player"} /></h2></div>
+          <div><span className="player-card-eyebrow">{t("playerCard.eyebrow")}</span><h2><PlayerName name={profile?.login || state.requestedLogin || t("playerCard.fallbackName")} /></h2></div>
         </div>
         <form className="player-card-lookup" onSubmit={(event) => { event.preventDefault(); if (lookup.trim()) void openPlayerCard(null, lookup.trim()); }}>
-          <input value={lookup} onChange={(event) => setLookup(event.target.value)} placeholder="Investigate another player…" aria-label="Investigate another player" />
-          <Button type="submit" disabled={!lookup.trim()}><Icon name="search" size={15} /> Search</Button>
+          <input value={lookup} onChange={(event) => setLookup(event.target.value)} placeholder={t("playerCard.lookup.placeholder")} aria-label={t("playerCard.lookup.label")} />
+          <Button type="submit" disabled={!lookup.trim()}><Icon name="search" size={15} /> {t("playerCard.lookup.submit")}</Button>
         </form>
         {profile && <div className="player-card-actions">
-          <Button onClick={() => void navigator.clipboard.writeText(profile.login)}>Copy name</Button>
-          <Button onClick={browseReplays}>Replays</Button>
-          {isMe && <Button onClick={() => setAvatarPickerOpen((open) => !open)}>Choose avatar</Button>}
-          {!isMe && <Button onClick={() => void messagePlayer(profile.login)}>Message</Button>}
-          {!isMe && <Button onClick={() => setRelation("friend", !isFriend)}>{isFriend ? "Remove friend" : "Add friend"}</Button>}
-          {!isMe && <Button onClick={() => setRelation("foe", !isFoe)}>{isFoe ? "Remove foe" : "Mark foe"}</Button>}
+          <Button onClick={() => void navigator.clipboard.writeText(profile.login)}>{t("playerCard.action.copyName")}</Button>
+          <Button onClick={browseReplays}>{t("playerCard.action.replays")}</Button>
+          {isMe && <Button onClick={() => setAvatarPickerOpen((open) => !open)}>{t("playerCard.action.chooseAvatar")}</Button>}
+          {!isMe && <Button onClick={() => void messagePlayer(profile.login)}>{t("playerCard.action.message")}</Button>}
+          {!isMe && <Button onClick={() => setRelation("friend", !isFriend)}>{t(isFriend ? "playerCard.action.removeFriend" : "playerCard.action.addFriend")}</Button>}
+          {!isMe && <Button onClick={() => setRelation("foe", !isFoe)}>{t(isFoe ? "playerCard.action.removeFoe" : "playerCard.action.markFoe")}</Button>}
         </div>}
       </div>
 
@@ -271,8 +281,8 @@ export function PlayerCardModal() {
         />
       )}
 
-      {state.profileStatus === "loading" && <div className="player-card-loading muted">Loading complete player profile…</div>}
-      {state.profileStatus === "failed" && <div className="player-card-error"><p>{state.profileError}</p><Button onClick={() => void openPlayerCard(null, state.requestedLogin)}>Retry</Button></div>}
+      {state.profileStatus === "loading" && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
+      {state.profileStatus === "failed" && <div className="player-card-error"><p>{state.profileError}</p><Button onClick={() => void openPlayerCard(null, state.requestedLogin)}>{t("playerCard.retry")}</Button></div>}
       {profile && (
         <>
           {/* Same underline strip as the Play and Chat tabs, rather than a row
@@ -280,18 +290,18 @@ export function PlayerCardModal() {
               action. */}
           <SectionTabs
             active={tab}
-            ariaLabel="Player profile sections"
+            ariaLabel={t("playerCard.sections.aria")}
             className="player-card-tabs"
-            items={TABS.map((item) => ({ id: item.id, label: item.label }))}
+            items={TABS.map((item) => ({ id: item.id, label: t(item.label) }))}
             onChange={setTab}
           />
           <div className="player-card-content">
             {tab === "overview" && <PlayerOverview profile={profile} note={playerNote} onEditNote={() => setNoteEditorOpen(true)} onOpenHistory={openHistory} />}
             {tab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
-            {tab === "ratings" && !rating && <div className="player-card-empty muted">This player has no rating history.</div>}
+            {tab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
             {tab === "statistics" && <PlayerStatistics profile={profile} />}
             {tab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
-            {tab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>Name</th><th>Used until</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{new Date(record.changeTime).toLocaleString("en-US")}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">No previous names.</p>}</div>}
+            {tab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
             {tab === "clan" && <PlayerClanView clan={profile.clan} selfLogin={me?.name ?? ""} onMessageLeader={messagePlayer} />}
           </div>
         </>
