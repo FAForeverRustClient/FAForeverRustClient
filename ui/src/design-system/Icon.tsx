@@ -32,6 +32,7 @@ export type IconName =
   | "bell"
   | "eye"
   | "star"
+  | "smile"
   | "calendar"
   // Wall-clock elapsed time: Java's `world-duration-icon`.
   | "clock"
@@ -78,6 +79,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
     eye: <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></>,
     star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
+    smile: <><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0" /><path d="M9 9.5h.01M15 9.5h.01" /></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5.2l3.4 2" /></>,
     hourglass: <><path d="M7 3h10M7 21h10" /><path d="M7 3v3.5c0 2 2.5 3.6 5 5.5 2.5-1.9 5-3.5 5-5.5V3" /><path d="M7 21v-3.5c0-2 2.5-3.6 5-5.5 2.5 1.9 5 3.5 5 5.5V21" /></>,

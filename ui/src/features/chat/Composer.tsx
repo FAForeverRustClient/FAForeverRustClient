@@ -16,6 +16,7 @@
 import { useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { useTranslation } from "../../i18n/useTranslation";
+import { EmojiPicker } from "./EmojiPicker";
 
 /** How many sent lines to keep for Up/Down recall. */
 const MAX_HISTORY = 50;
@@ -83,6 +84,32 @@ export function Composer({ channel, nicknames, disabled, onSend }: Props) {
     setDraft(prefix + suffixed(matches[0], prefix));
   };
 
+  /**
+   * Insert at the caret rather than appending.
+   *
+   * Appending would be simpler and wrong: people reach for the picker while
+   * fixing the middle of a half-written line as often as at the end. The caret
+   * is restored after the inserted characters so typing continues where the
+   * emoji left off, which also survives picking several in a row.
+   */
+  const insert = (text: string) => {
+    const input = inputRef.current;
+    const at = input?.selectionStart ?? draft.length;
+    const to = input?.selectionEnd ?? at;
+    const next = draft.slice(0, at) + text + draft.slice(to);
+    completion.current = null;
+    historyIndex.current = null;
+    setDraft(next);
+
+    const caret = at + text.length;
+    // After React has written the new value, or the browser puts the caret at
+    // the end of it.
+    requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(caret, caret);
+    });
+  };
+
   const recall = (delta: -1 | 1) => {
     const entries = history.current;
     if (entries.length === 0) return;
@@ -127,6 +154,7 @@ export function Composer({ channel, nicknames, disabled, onSend }: Props) {
         onChange={(e) => edit(e.target.value)}
         onKeyDown={onKeyDown}
       />
+      <EmojiPicker disabled={disabled} onPick={insert} />
       <Button type="submit" variant="primary" disabled={disabled || !draft.trim()}>
         {t("chat.send")}
       </Button>

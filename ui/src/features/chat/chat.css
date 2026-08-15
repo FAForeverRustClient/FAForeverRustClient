@@ -615,6 +615,107 @@ html.is-resizing-chat-roster * {
   border-radius: var(--radius-lg);
 }
 
+/* ── Emoji picker ─────────────────────────────────────────────────────── */
+.emoji-picker {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.emoji-trigger {
+  display: grid;
+  width: 34px;
+  height: 100%;
+  place-items: center;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.emoji-trigger:hover:not(:disabled),
+.emoji-trigger[aria-expanded="true"] {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.emoji-trigger:disabled {
+  color: var(--color-subtle);
+  cursor: default;
+}
+
+.emoji-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  z-index: 20;
+  display: flex;
+  width: 320px;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+
+.emoji-search {
+  width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
+
+.emoji-scroll {
+  display: flex;
+  max-height: 260px;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+
+.emoji-group-title {
+  margin: 0 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Eight columns, matching the step the arrow keys take through the grid. */
+.emoji-grid {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(8, 1fr);
+}
+
+.emoji-tile {
+  display: grid;
+  aspect-ratio: 1;
+  place-items: center;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.emoji-tile.is-active,
+.emoji-tile:hover {
+  background: var(--color-surface-hover);
+}
+
+.emoji-empty {
+  margin: 0;
+  padding: var(--space-3) 0;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-align: center;
+}
+
 /* ── Roster ───────────────────────────────────────────────────────────── */
 .chat-roster-search {
   padding: var(--space-2) 6px;
