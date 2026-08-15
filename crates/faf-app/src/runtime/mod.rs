@@ -44,6 +44,9 @@ pub struct ServiceCtx {
     /// temporary file or whose state machine only represents one operation.
     pub uploads_active: SingleFlight,
     pub client_update_active: SingleFlight,
+    /// One Galactic War install at a time: concurrent runs would share a
+    /// staging directory and race to write the same manifest.
+    pub galactic_war_active: SingleFlight,
     /// Settings commands run concurrently. Serializing the snapshot + write
     /// prevents an older command from reaching disk after a newer one.
     pub settings_persist: SerialMutation,
@@ -209,6 +212,7 @@ impl App {
             player_card_history_generation: LatestRequest::default(),
             uploads_active: SingleFlight::default(),
             client_update_active: SingleFlight::default(),
+            galactic_war_active: SingleFlight::default(),
             settings_persist: SerialMutation::default(),
             chat_read_marker_persist_generation: LatestRequest::default(),
             leaderboard_catalog_generation: LatestRequest::default(),
@@ -384,6 +388,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Tournaments(c) => services::tournaments::handle(c, ctx, sink).await,
         AppCommand::Tutorials(c) => services::tutorials::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,
+        AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,
         AppCommand::ClientUpdate(c) => services::client_update::handle(c, ctx, sink).await,
         AppCommand::Social(c) => services::social::handle(c, ctx, sink).await,
         AppCommand::Settings(c) => services::settings::handle(c, ctx, sink).await,

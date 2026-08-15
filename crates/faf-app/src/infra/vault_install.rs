@@ -1,8 +1,19 @@
-//! Bounded, transactional installation of map and mod vault archives.
+//! Bounded, transactional installation of downloaded archives.
 //!
 //! Vault URLs cross the IPC boundary and zip metadata is remote input. Keep
 //! the trust checks, body bound, path validation, expansion bound, and staging
 //! rename in one place so maps and mods cannot drift apart.
+//!
+//! Two layouts are installed from here, sharing one safety envelope:
+//!
+//! * [`install_archive`] for the vault, where the archive's single top-level
+//!   folder *is* the installed identity (a map or mod folder name).
+//! * [`install_flat_archive`] for a publisher who ships loose files and lets
+//!   the caller name the directory: the Galactic War client is exported this
+//!   way, two files at the archive root.
+//!
+//! The per-entry checks live in [`check_entry`] so a second layout cannot be
+//! added with a weaker envelope than the first.
 
 use std::ffi::OsString;
 use std::io::Write as _;
@@ -113,7 +124,7 @@ where
     std::fs::create_dir(&staging)
         .map_err(|error| format!("could not create install staging folder: {error}"))?;
     let outcome = (|| {
-        extract_archive(bytes, &staging)?;
+        extract_archive(bytes, &staging, "vault archive")?;
         let staged_root = staging.join(&root_name);
         validate_contents(&staged_root)?;
         std::fs::rename(&staged_root, &target).map_err(|error| {
@@ -122,6 +133,53 @@ where
         Ok(target.clone())
     })();
     let _ = std::fs::remove_dir_all(&staging);
+    outcome
+}
+
+/// Install an archive that has no wrapping folder into a directory the caller
+/// names.
+///
+/// Same envelope as [`install_archive`]: bounded expansion, no symbolic links,
+/// no path escaping the destination, and an extraction into staging that is
+/// renamed into place, so a failure leaves nothing half-installed. The
+/// difference is only the layout: here the archive's entries land directly in
+/// `target`, which must not already exist.
+///
+/// `validate_contents` is handed the staged directory before it is renamed, so
+/// a caller can insist the files it expects are actually in there.
+pub fn install_flat_archive<F>(
+    bytes: &[u8],
+    target: &Path,
+    subject: &str,
+    validate_contents: F,
+) -> Result<(), String>
+where
+    F: FnOnce(&Path) -> Result<(), String>,
+{
+    inspect_flat_archive(bytes, subject)?;
+
+    let parent = target
+        .parent()
+        .ok_or_else(|| format!("{} is not a usable install location", target.display()))?;
+    std::fs::create_dir_all(parent)
+        .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
+    if target.exists() {
+        return Err(format!("{} is already installed", target.display()));
+    }
+
+    // Staged beside the target so the rename stays on one filesystem.
+    let staging = unique_staging_path(parent);
+    std::fs::create_dir(&staging)
+        .map_err(|error| format!("could not create install staging folder: {error}"))?;
+    let outcome = (|| {
+        extract_archive(bytes, &staging, subject)?;
+        validate_contents(&staging)?;
+        std::fs::rename(&staging, target)
+            .map_err(|error| format!("could not finish installing {}: {error}", target.display()))
+    })();
+    if outcome.is_err() {
+        let _ = std::fs::remove_dir_all(&staging);
+    }
     outcome
 }
 
@@ -134,15 +192,69 @@ fn unique_staging_path(destination: &Path) -> PathBuf {
     }
 }
 
-fn inspect_archive(bytes: &[u8], expected_root: Option<&str>) -> Result<OsString, String> {
+/// Bounds every archive must respect before a single entry is read.
+fn check_archive_shape(len: usize, subject: &str) -> Result<(), String> {
+    if len == 0 {
+        return Err(format!("{subject} is empty"));
+    }
+    if len > MAX_ARCHIVE_ENTRIES {
+        return Err(format!("{subject} contains too many entries"));
+    }
+    Ok(())
+}
+
+/// The per-entry checks every layout shares: no symbolic links, a bounded
+/// total expansion, and a path that cannot escape the destination.
+///
+/// Takes the entry's properties rather than the entry, so both callers can use
+/// it without either naming the zip crate's borrow-bound reader type.
+fn check_entry(
+    unix_mode: Option<u32>,
+    size: u64,
+    enclosed_name: Option<PathBuf>,
+    expanded: &mut u64,
+    subject: &str,
+) -> Result<PathBuf, String> {
+    if unix_mode.is_some_and(|mode| mode & 0o170000 == 0o120000) {
+        return Err(format!("{subject} contains a symbolic link"));
+    }
+    *expanded = expanded
+        .checked_add(size)
+        .ok_or_else(|| format!("{subject} expands beyond the allowed size"))?;
+    if *expanded > MAX_EXPANDED_BYTES {
+        return Err(format!("{subject} expands beyond the allowed size"));
+    }
+    enclosed_name.ok_or_else(|| format!("{subject} contains an unsafe path"))
+}
+
+/// Validate an archive whose entries sit at the top level, with no wrapping
+/// folder. The caller owns the destination directory name.
+fn inspect_flat_archive(bytes: &[u8], subject: &str) -> Result<(), String> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
         .map_err(|error| format!("not a valid zip archive: {error}"))?;
-    if archive.is_empty() {
-        return Err("vault archive is empty".into());
+    check_archive_shape(archive.len(), subject)?;
+
+    let mut expanded = 0_u64;
+    for index in 0..archive.len() {
+        let entry = archive
+            .by_index(index)
+            .map_err(|error| format!("could not inspect archive entry: {error}"))?;
+        check_entry(
+            entry.unix_mode(),
+            entry.size(),
+            entry.enclosed_name(),
+            &mut expanded,
+            subject,
+        )?;
     }
-    if archive.len() > MAX_ARCHIVE_ENTRIES {
-        return Err("vault archive contains too many entries".into());
-    }
+    Ok(())
+}
+
+fn inspect_archive(bytes: &[u8], expected_root: Option<&str>) -> Result<OsString, String> {
+    const SUBJECT: &str = "vault archive";
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
+        .map_err(|error| format!("not a valid zip archive: {error}"))?;
+    check_archive_shape(archive.len(), SUBJECT)?;
 
     let mut root: Option<OsString> = None;
     let mut expanded = 0_u64;
@@ -150,22 +262,13 @@ fn inspect_archive(bytes: &[u8], expected_root: Option<&str>) -> Result<OsString
         let entry = archive
             .by_index(index)
             .map_err(|error| format!("could not inspect archive entry: {error}"))?;
-        if entry
-            .unix_mode()
-            .is_some_and(|mode| mode & 0o170000 == 0o120000)
-        {
-            return Err("vault archive contains a symbolic link".into());
-        }
-        expanded = expanded
-            .checked_add(entry.size())
-            .ok_or_else(|| "vault archive expands beyond the allowed size".to_string())?;
-        if expanded > MAX_EXPANDED_BYTES {
-            return Err("vault archive expands beyond the allowed size".into());
-        }
-
-        let relative = entry
-            .enclosed_name()
-            .ok_or_else(|| "vault archive contains an unsafe path".to_string())?;
+        let relative = check_entry(
+            entry.unix_mode(),
+            entry.size(),
+            entry.enclosed_name(),
+            &mut expanded,
+            SUBJECT,
+        )?;
         let mut components = relative.components();
         let Some(Component::Normal(first)) = components.next() else {
             return Err("vault archive contains an unsafe path".into());
@@ -194,7 +297,7 @@ fn inspect_archive(bytes: &[u8], expected_root: Option<&str>) -> Result<OsString
     Ok(root)
 }
 
-fn extract_archive(bytes: &[u8], destination: &Path) -> Result<(), String> {
+fn extract_archive(bytes: &[u8], destination: &Path, subject: &str) -> Result<(), String> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
         .map_err(|error| format!("not a valid zip archive: {error}"))?;
     for index in 0..archive.len() {
@@ -203,7 +306,7 @@ fn extract_archive(bytes: &[u8], destination: &Path) -> Result<(), String> {
             .map_err(|error| format!("could not read archive entry: {error}"))?;
         let relative = entry
             .enclosed_name()
-            .ok_or_else(|| "vault archive contains an unsafe path".to_string())?;
+            .ok_or_else(|| format!("{subject} contains an unsafe path"))?;
         let output = destination.join(relative);
         if entry.is_dir() {
             std::fs::create_dir_all(&output)
@@ -275,6 +378,73 @@ mod tests {
 
         let multiple = zip(&[("one/a", b"a"), ("two/b", b"b")]);
         assert!(inspect_archive(&multiple, None).is_err());
+    }
+
+    fn temp_dir(tag: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("faf-{tag}-test-{}", rand::random::<u64>()))
+    }
+
+    #[test]
+    fn a_flat_archive_installs_into_the_directory_the_caller_names() {
+        // The shape the Galactic War client ships in: loose files, no root.
+        let bytes = zip(&[
+            ("faf_galactic_war_client.exe", b"binary"),
+            ("faf_galactic_war_client.pck", b"content"),
+        ]);
+        let root = temp_dir("flat");
+        let target = root.join("v2026.04.04.1");
+
+        install_flat_archive(&bytes, &target, "the Galactic War archive", |_| Ok(())).unwrap();
+
+        assert!(target.join("faf_galactic_war_client.exe").is_file());
+        assert!(target.join("faf_galactic_war_client.pck").is_file());
+        // The staging directory is gone, not left beside the install.
+        let entries = std::fs::read_dir(&root).unwrap().count();
+        assert_eq!(entries, 1);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn the_vault_installer_still_refuses_what_the_flat_one_accepts() {
+        let flat = zip(&[("faf_galactic_war_client.exe", b"binary")]);
+        assert!(inspect_archive(&flat, None).is_err());
+        assert!(inspect_flat_archive(&flat, "archive").is_ok());
+    }
+
+    #[test]
+    fn a_flat_archive_cannot_escape_its_directory() {
+        let escaping = zip(&[("../escaped.txt", b"nope")]);
+        assert!(inspect_flat_archive(&escaping, "archive").is_err());
+    }
+
+    #[test]
+    fn a_flat_install_refuses_to_overwrite_an_existing_version() {
+        let bytes = zip(&[("faf_galactic_war_client.exe", b"binary")]);
+        let root = temp_dir("flat-existing");
+        let target = root.join("v1");
+        std::fs::create_dir_all(&target).unwrap();
+
+        let result = install_flat_archive(&bytes, &target, "archive", |_| Ok(()));
+
+        assert!(result.is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_flat_validation_leaves_nothing_behind() {
+        let bytes = zip(&[("faf_galactic_war_client.exe", b"binary")]);
+        let root = temp_dir("flat-invalid");
+        let target = root.join("v1");
+
+        let result = install_flat_archive(&bytes, &target, "archive", |_| {
+            Err("the content pack is missing".into())
+        });
+
+        assert!(result.is_err());
+        assert!(!target.exists());
+        let entries = std::fs::read_dir(&root).unwrap().count();
+        assert_eq!(entries, 0, "no staging folder is left behind");
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

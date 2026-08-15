@@ -9,6 +9,7 @@ import { GameFiltersModal, type GameFilterRule } from "./GameFiltersModal";
 import { HostGameModal } from "./HostGameModal";
 import { MatchmakingPanel } from "./MatchmakingPanel";
 import { CoopPanel } from "./CoopPanel";
+import { GalacticWarPanel } from "./GalacticWarPanel";
 import { CustomGamesBrowser, type GameViewMode } from "./CustomGamesBrowser";
 import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
 import { GameMapImage } from "./GameMapImage";
@@ -140,6 +141,7 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
 export function LobbyView() {
   const lobby = useAppStore((state) => state.state.lobby);
   const maps = useAppStore((state) => state.state.maps);
+  const galacticWar = useAppStore((state) => state.state.galacticWar);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const gameBrowser = browsing.customGamesBrowser;
   const [search, setSearch] = useState("");
@@ -178,6 +180,7 @@ export function LobbyView() {
   const joining = lobby.join.type === "joining" || lobby.join.type === "launched" || lobby.join.type === "preparing" || lobby.join.type === "inGame";
   const inMatchmaker = lobby.playMode === "matchmaking";
   const inCoop = lobby.playMode === "coop";
+  const inGalacticWar = lobby.playMode === "galacticWar";
   const customGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() !== "coop" && game.gameType.toLocaleLowerCase() !== "coop"), [lobby.games]);
   const coopGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() === "coop" || game.gameType.toLocaleLowerCase() === "coop"), [lobby.games]);
 
@@ -230,6 +233,7 @@ export function LobbyView() {
         customGames={customGames.length}
         queues={lobby.matchmakerQueues.length}
         coopGames={coopGames.length}
+        galacticWarOnline={galacticWar.statistics?.season?.numOnlinePlayers ?? 0}
         onChange={(mode) =>
           ipc.send({
             kind: "Lobby",
@@ -246,6 +250,8 @@ export function LobbyView() {
         />
       ) : inCoop ? (
         <CoopPanel games={coopGames} onJoin={requestJoin} onHost={handleHostCoop} />
+      ) : inGalacticWar ? (
+        <GalacticWarPanel />
       ) : (
         <div className="custom-games-layout">
           <CustomGamesToolbar

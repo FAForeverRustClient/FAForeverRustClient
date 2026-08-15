@@ -10,6 +10,7 @@ pub mod client_update;
 pub mod coop;
 pub mod discord;
 pub mod error;
+pub mod galactic_war;
 pub mod ice;
 pub mod leaderboard;
 pub mod lobby;
@@ -33,6 +34,7 @@ pub use client_update::{ClientUpdatePort, DownloadProgress};
 pub use coop::CoopPort;
 pub use discord::{DiscordPort, DiscordRequest};
 pub use error::RequestError;
+pub use galactic_war::{GalacticWarPort, InstallProgress};
 pub use ice::{ConnectivitySession, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
 pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
@@ -86,6 +88,10 @@ pub struct Ports {
     /// Replaces the *client*, not the game. Distinct from `updater` above,
     /// which patches the Forged Alliance install.
     pub client_update: Arc<dyn ClientUpdatePort>,
+    /// Installs and starts the separate Galactic War application. Unrelated to
+    /// `process` and `updater`: Galactic War is not Forged Alliance and does
+    /// not go through the lobby.
+    pub galactic_war: Arc<dyn GalacticWarPort>,
     /// True when `auth` is the offline stub rather than real FAF OAuth.
     ///
     /// A property of the bundle rather than of any one port: it is how the

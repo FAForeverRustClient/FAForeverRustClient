@@ -58,6 +58,7 @@ struct HelperFixture {
     review_summaries: Vec<ReviewSummaryCase>,
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
+    galactic_war_actions: Vec<GalacticWarActionCase>,
 }
 
 #[derive(Serialize)]
@@ -78,6 +79,38 @@ struct PlayerNoteLookupCase {
     notes: Vec<PlayerNote>,
     player_id: i32,
     expected: String,
+}
+
+/// What the Galactic War panel derives from its slice.
+///
+/// The panel decides between "install", "update", "play" and "already
+/// running" from these three answers, so a twin that drifts silently offers
+/// the wrong button rather than failing visibly.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GalacticWarActionCase {
+    state: GalacticWarState,
+    install_target: String,
+    update_available: bool,
+    can_launch: bool,
+}
+
+fn galactic_war_state(
+    installed: Option<&str>,
+    versions: Option<(&str, Option<&str>)>,
+    status: GalacticWarStatus,
+    below_minimum: bool,
+) -> GalacticWarState {
+    GalacticWarState {
+        status,
+        installed_version: installed.map(Into::into),
+        versions: versions.map(|(required, latest)| ClientVersions {
+            required_version: required.into(),
+            latest_version: latest.map(Into::into),
+        }),
+        below_minimum,
+        ..Default::default()
+    }
 }
 
 fn review(id: i32, score: i32, player: &str) -> Review {
@@ -132,6 +165,71 @@ fn helper_fixture() -> HelperFixture {
         ),
         (Vec::new(), 99),
     ];
+    let galactic_war_states = vec![
+        // Nothing known at all.
+        galactic_war_state(None, None, GalacticWarStatus::Idle, false),
+        // Never installed, the gateway has answered: a first install.
+        galactic_war_state(
+            None,
+            Some(("v2026.04.04.1", None)),
+            GalacticWarStatus::Idle,
+            false,
+        ),
+        // Current, and startable.
+        galactic_war_state(
+            Some("v2026.04.04.1"),
+            Some(("v2026.03.01.1", Some("v2026.04.04.1"))),
+            GalacticWarStatus::Idle,
+            false,
+        ),
+        // The gateway's pointer moved.
+        galactic_war_state(
+            Some("v2026.03.01.1"),
+            Some(("v2026.03.01.1", Some("v2026.04.04.1"))),
+            GalacticWarStatus::Idle,
+            false,
+        ),
+        // Below the minimum: startable only after an update.
+        galactic_war_state(
+            Some("v2026.03.01.1"),
+            Some(("v2026.04.04.1", None)),
+            GalacticWarStatus::Idle,
+            true,
+        ),
+        // A scheme neither side can order: the pointer still moved.
+        galactic_war_state(
+            Some("build-41"),
+            Some(("build-42", None)),
+            GalacticWarStatus::Idle,
+            false,
+        ),
+        // In flight, and already running: both refuse a launch.
+        galactic_war_state(
+            Some("v1"),
+            Some(("v1", None)),
+            GalacticWarStatus::Downloading {
+                version: "v1".into(),
+                downloaded_bytes: 1,
+                total_bytes: 2,
+            },
+            false,
+        ),
+        galactic_war_state(
+            Some("v1"),
+            Some(("v1", None)),
+            GalacticWarStatus::Running,
+            false,
+        ),
+        // A failed run must not lock the panel.
+        galactic_war_state(
+            Some("v1"),
+            Some(("v1", None)),
+            GalacticWarStatus::Failed {
+                reason: "network".into(),
+            },
+            false,
+        ),
+    ];
 
     HelperFixture {
         review_summaries: review_sets
@@ -158,6 +256,15 @@ fn helper_fixture() -> HelperFixture {
                 .map_or_else(String::new, |entry| entry.note.clone()),
                 notes,
                 player_id,
+            })
+            .collect(),
+        galactic_war_actions: galactic_war_states
+            .into_iter()
+            .map(|state| GalacticWarActionCase {
+                install_target: state.install_target().unwrap_or_default().to_string(),
+                update_available: state.update_available(),
+                can_launch: state.can_launch(),
+                state,
             })
             .collect(),
     }
@@ -986,6 +1093,92 @@ fn cases() -> Vec<Case> {
                 ReportingEvent::Submitting.into(),
                 ReportingEvent::Submitted.into(),
                 ReportingEvent::Closed.into(),
+            ],
+        ),
+        // ── galactic war ─────────────────────────────────────────────────
+        case(
+            "galactic war is checked, updated, started, and reports its season",
+            vec![
+                GalacticWarEvent::InstallationChanged {
+                    version: Some("v2026.03.01.1".into()),
+                }
+                .into(),
+                GalacticWarEvent::StatusChanged {
+                    status: GalacticWarStatus::CheckingVersion,
+                }
+                .into(),
+                GalacticWarEvent::VersionsLoaded {
+                    versions: ClientVersions {
+                        required_version: "v2026.04.04.1".into(),
+                        latest_version: None,
+                    },
+                }
+                .into(),
+                // The installed build turns out to be below the minimum.
+                GalacticWarEvent::MinimumCheckChanged {
+                    below_minimum: true,
+                }
+                .into(),
+                GalacticWarEvent::StatusChanged {
+                    status: GalacticWarStatus::Downloading {
+                        version: "v2026.04.04.1".into(),
+                        downloaded_bytes: 12_000_000,
+                        total_bytes: 46_340_472,
+                    },
+                }
+                .into(),
+                GalacticWarEvent::StatusChanged {
+                    status: GalacticWarStatus::Installing {
+                        version: "v2026.04.04.1".into(),
+                    },
+                }
+                .into(),
+                GalacticWarEvent::InstallationChanged {
+                    version: Some("v2026.04.04.1".into()),
+                }
+                .into(),
+                GalacticWarEvent::MinimumCheckChanged {
+                    below_minimum: false,
+                }
+                .into(),
+                GalacticWarEvent::StatusChanged {
+                    status: GalacticWarStatus::Running,
+                }
+                .into(),
+                GalacticWarEvent::StatisticsStatusChanged {
+                    status: StatisticsStatus::Loading,
+                }
+                .into(),
+                GalacticWarEvent::StatisticsLoaded {
+                    statistics: GalacticWarStatistics {
+                        alltime: GalacticWarAlltime { num_players: 82 },
+                        season: GalacticWarSeason {
+                            started_at: "2026-03-15 22:55:15".into(),
+                            name: "Testing Season 4".into(),
+                            num_players: 16,
+                            num_online_players: 4,
+                            num_battles: 28,
+                            num_planets: 1000,
+                            num_factions: 4,
+                            ..Default::default()
+                        },
+                        factions: vec![GalacticWarFaction {
+                            id: 0,
+                            name: "UEF".into(),
+                            long_name: "United Earth Federation".into(),
+                            num_planets: 254,
+                            ..Default::default()
+                        }],
+                    },
+                }
+                .into(),
+                // A later failure keeps the season that was already read.
+                GalacticWarEvent::StatisticsStatusChanged {
+                    status: StatisticsStatus::Failed {
+                        reason: "gateway unreachable".into(),
+                    },
+                }
+                .into(),
             ],
         ),
         // ── settings ─────────────────────────────────────────────────────

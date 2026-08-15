@@ -7,6 +7,7 @@
 
 pub mod chat_input;
 pub mod discord;
+pub mod galactic_war;
 pub mod gpgnet;
 pub mod irc;
 pub mod map_generator;

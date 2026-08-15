@@ -235,6 +235,11 @@ pub enum PlayMode {
     Custom,
     Coop,
     Matchmaking,
+    /// Galactic War, which is played in its own application: this surface only
+    /// explains it, shows the season, and installs and starts it. It sits here
+    /// rather than in a top-level tab because it is a way to play, and the tab
+    /// bar is not the place to advertise a second client.
+    GalacticWar,
 }
 
 /// The server's `game_launch` order: everything the connectivity + launch chain

@@ -21,6 +21,7 @@ pub mod chat;
 pub mod client_update;
 pub mod coop;
 pub mod discord;
+pub mod galactic_war;
 pub mod launcher;
 pub mod leaderboard;
 pub mod lobby;

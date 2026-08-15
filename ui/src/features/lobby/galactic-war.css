@@ -1,0 +1,475 @@
+/* Galactic War: info column, the cycle and faction boards with the launch
+   button straddling their seam, and the explainer column. */
+.gw-layout {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-3);
+  grid-template-columns: minmax(220px, 1fr) minmax(360px, 1.6fr) minmax(220px, 1fr);
+}
+
+/* Below three comfortable columns the side panels stack under the boards
+   rather than squeezing the faction cards into unreadable slivers. */
+@media (max-width: 1100px) {
+  .gw-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+}
+
+.gw-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--space-2);
+}
+
+.gw-column-info,
+.gw-column-how {
+  padding: 20px 22px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.gw-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 22px;
+  overflow-y: auto;
+}
+
+.gw-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gw-section p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gw-section-title {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gw-muted {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 13px;
+}
+
+.gw-facts {
+  display: grid;
+  margin: 0;
+  gap: var(--space-1) var(--space-3);
+  grid-template-columns: auto 1fr;
+}
+
+.gw-facts dt {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.gw-facts dd {
+  margin: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.gw-notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.gw-notice-error {
+  color: var(--color-error);
+}
+
+.gw-notice-warn {
+  color: var(--color-warn);
+}
+
+.gw-links {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.gw-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-muted);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.gw-link:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+/* ── centre column ─────────────────────────────────────────────────────── */
+.gw-column-center {
+  position: relative;
+  gap: var(--space-3);
+}
+
+.gw-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 20px 22px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* Both boards keep a clear band at the seam for the launch button. The ring is
+   taller than the row the button occupies, so it reaches a little into each
+   board: these paddings are what it reaches into, never content. */
+.gw-world {
+  flex: 0 0 auto;
+  padding-bottom: 68px;
+}
+
+.gw-factions-board {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 68px;
+  overflow-y: auto;
+}
+
+.gw-board-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.gw-board-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.gw-offline {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.gw-counters {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.gw-counter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-md);
+}
+
+.gw-counter-value {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.gw-counter-label {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+/* ── the launch button and its territory ring ──────────────────────────── */
+.gw-launch {
+  position: relative;
+  /* The row is deliberately far shorter than the 230px ring, so the ring
+     overhangs it by ~75px at each end and genuinely covers the edge of both
+     boards. A row as tall as the ring would leave it floating in a gap
+     instead of straddling the seam, which is the whole point of the shape.
+     The boards' seam padding (below) is what keeps figures out from under it. */
+  height: 80px;
+  flex: 0 0 auto;
+  z-index: 1;
+}
+
+/* Three concentric layers stacked on one centre point, so the control reads as
+   a dial rather than a flat disc: the territory ring outermost, an unlit bezel
+   band under it, then the raised button face.
+ *
+ * Centred by half-size negative margins rather than a translate, because both
+ * the ring and the button already own their `transform` (a rotation and the
+ * hover lift). Deliberately not grid stacking: a track holding an item taller
+ * than the container keeps its automatic minimum and grows back to the item's
+ * height, which silently drops the whole control below the seam. */
+.gw-launch > * {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+
+.gw-ring {
+  width: 230px;
+  height: 230px;
+  margin: -115px 0 0 -115px;
+  /* Arcs are measured from twelve o'clock, not three. */
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.gw-ring-track {
+  stroke: var(--color-border);
+}
+
+/* The dark band between the coloured arcs and the button. Painted in the page
+   background so the arcs read as floating clear of the control. */
+/* Sized against the rendered ring, not by eye: at 230px the arc band spans
+   radius 84.5 to 94.9, so a 78px bezel leaves a ~6px unlit gap under it. */
+.gw-launch-bezel {
+  width: 156px;
+  height: 156px;
+  margin: -78px 0 0 -78px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.gw-launch-button {
+  display: flex;
+  width: 136px;
+  height: 136px;
+  margin: -68px 0 0 -68px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: var(--space-2);
+  color: var(--color-text);
+  font-family: inherit;
+  text-align: center;
+  /* Lit from above, so the face has a curve to it instead of one flat fill. */
+  background: radial-gradient(
+    circle at 50% 24%,
+    var(--color-surface-hover),
+    var(--color-surface-raised) 58%,
+    var(--color-surface) 100%
+  );
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  box-shadow: var(--shadow-popover);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.gw-launch-button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-popover), 0 0 0 4px var(--color-accent-glow);
+  transform: translateY(-1px);
+}
+
+.gw-launch-button:active:not(:disabled) {
+  box-shadow: var(--shadow-popover);
+  transform: translateY(0);
+}
+
+.gw-launch-button:disabled {
+  color: var(--color-subtle);
+  background: var(--color-surface);
+  box-shadow: none;
+  cursor: default;
+}
+
+.gw-launch-verb {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.gw-launch-name {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+/* Indeterminate stages (checking a version, unpacking) have no fraction to
+   show, so the ring turns instead of standing still and looking stalled. */
+.gw-ring-busy {
+  stroke: var(--color-accent);
+  transform-origin: 50% 50%;
+  animation: gw-ring-spin 1.4s linear infinite;
+}
+
+@keyframes gw-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw-ring-busy {
+    animation: none;
+  }
+
+  .gw-launch-button {
+    transition: none;
+  }
+}
+
+:root[data-reduced-motion="true"] .gw-ring-busy {
+  animation: none;
+}
+
+:root[data-reduced-motion="true"] .gw-launch-button {
+  transition: none;
+}
+
+/* ── faction board ─────────────────────────────────────────────────────── */
+.gw-factions {
+  display: grid;
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  /* Equal rows so the four cards fill the board rather than leaving most of
+     it empty, which is what a 1080p screen made obvious. */
+  grid-auto-rows: minmax(0, 1fr);
+  /* Two by two, as in the mockup: on a wide screen four across would leave the
+     cards nearly empty and the board a thin strip. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  list-style: none;
+}
+
+@media (max-width: 560px) {
+  .gw-factions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gw-faction {
+  display: flex;
+  flex-direction: column;
+  /* Head, territory, figures: three groups pushed apart, so a card that is
+     taller than its content spreads its own structure instead of parking a
+     block in the middle with a void above and below it. */
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-md);
+}
+
+.gw-faction-territory {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gw-faction-share {
+  display: flex;
+  margin: 0;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.gw-faction-share-value {
+  font-size: 34px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.gw-faction-share-label {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.gw-faction-bar {
+  display: block;
+  height: 6px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.gw-faction-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.gw-faction-figures {
+  display: grid;
+  margin: 0;
+  gap: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Value above label, while the markup keeps the term before its definition. */
+.gw-faction-figures > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gw-faction-figures dt {
+  color: var(--color-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.gw-faction-figures dd {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.gw-faction-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--color-border-strong);
+}
+
+.gw-faction-name {
+  font-size: 15px;
+  font-weight: 600;
+}

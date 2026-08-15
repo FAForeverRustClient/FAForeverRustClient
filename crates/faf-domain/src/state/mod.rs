@@ -9,6 +9,7 @@ pub mod chat;
 pub mod client_update;
 pub mod coop;
 pub mod failure;
+pub mod galactic_war;
 pub mod install;
 pub mod leaderboard;
 pub mod lobby;
@@ -43,6 +44,10 @@ pub use coop::{
     CoopResult, CoopScenario, CoopState, CoopStatus, ANY_PLAYER_COUNT, PLAYER_COUNT_OPTIONS,
 };
 pub use failure::RequestFailureKind;
+pub use galactic_war::{
+    ClientVersions, GalacticWarAlltime, GalacticWarCommand, GalacticWarEvent, GalacticWarFaction,
+    GalacticWarSeason, GalacticWarState, GalacticWarStatistics, GalacticWarStatus, StatisticsStatus,
+};
 pub use install::{InstallEvent, InstallState};
 pub use leaderboard::{
     LeaderboardCommand, LeaderboardEntry, LeaderboardEvent, LeaderboardMode, LeaderboardState,
@@ -144,6 +149,7 @@ pub struct AppState {
     pub tournaments: TournamentsState,
     pub tutorials: TutorialsState,
     pub uploads: UploadsState,
+    pub galactic_war: GalacticWarState,
     pub client_update: ClientUpdateState,
     pub settings: SettingsState,
 }

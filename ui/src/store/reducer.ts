@@ -7,6 +7,7 @@ import { reduceChat } from "./reducers/chat";
 import { reduceClientUpdate } from "./reducers/clientUpdate";
 import { reduceCoop } from "./reducers/coop";
 import { reduceAuth, reduceInstall, reduceNav, reduceSession, reduceSettings } from "./reducers/core";
+import { reduceGalacticWar } from "./reducers/galacticWar";
 import { reduceLeaderboard } from "./reducers/leaderboard";
 import { reduceLobby } from "./reducers/lobby";
 import { reduceMapGenerator } from "./reducers/mapGenerator";
@@ -67,6 +68,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, tutorials: reduceTutorials(state.tutorials, event.event) };
     case "Uploads":
       return { ...state, uploads: reduceUploads(state.uploads, event.event) };
+    case "GalacticWar":
+      return { ...state, galacticWar: reduceGalacticWar(state.galacticWar, event.event) };
     case "ClientUpdate":
       return { ...state, clientUpdate: reduceClientUpdate(state.clientUpdate, event.event) };
     case "Settings":

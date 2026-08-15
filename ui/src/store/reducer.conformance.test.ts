@@ -19,11 +19,13 @@ import { describe, expect, it } from "vitest";
 import type {
   AppEvent,
   AppState,
+  GalacticWarState,
   Review,
   ReviewSummary,
   UploadsState,
 } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
+import { canLaunch, installTarget, updateAvailable } from "../shared/galacticWarActions";
 import { noteForPlayer } from "../shared/playerNotes";
 import { applyEvent } from "./reducer";
 import { summarize } from "./reducers/reviews";
@@ -47,6 +49,12 @@ interface HelperFixture {
     notes: AppState["settings"]["social"]["playerNotes"];
     playerId: number;
     expected: string;
+  }>;
+  galacticWarActions: Array<{
+    state: GalacticWarState;
+    installTarget: string;
+    updateAvailable: boolean;
+    canLaunch: boolean;
   }>;
 }
 
@@ -105,4 +113,15 @@ describe("derived helper twins match Rust", () => {
   it.each(helpers.playerNoteLookups)("finds player note $playerId", ({ notes, playerId, expected }) => {
     expect(noteForPlayer(notes, playerId)).toBe(expected);
   });
+
+  it.each(helpers.galacticWarActions)(
+    "decides the galactic war action for $state.installedVersion / $state.status.type",
+    ({ state, ...expected }) => {
+      expect({
+        installTarget: installTarget(state),
+        updateAvailable: updateAvailable(state),
+        canLaunch: canLaunch(state),
+      }).toEqual(expected);
+    },
+  );
 });

@@ -195,6 +195,14 @@ const INITIAL: AppState = {
     launch: { type: "idle" },
   },
   uploads: { request: null, status: { type: "idle" } },
+  galacticWar: {
+    status: { type: "idle" },
+    installedVersion: null,
+    versions: null,
+    belowMinimum: false,
+    statistics: null,
+    statisticsStatus: { type: "idle" },
+  },
   clientUpdate: {
     status: { type: "idle" },
     currentVersion: "",

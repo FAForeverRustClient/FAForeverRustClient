@@ -315,6 +315,18 @@
         "type": "idle"
       }
     },
+    "galacticWar": {
+      "status": {
+        "type": "idle"
+      },
+      "installedVersion": null,
+      "versions": null,
+      "belowMinimum": false,
+      "statistics": null,
+      "statisticsStatus": {
+        "type": "idle"
+      }
+    },
     "clientUpdate": {
       "status": {
         "type": "idle"
@@ -5666,6 +5678,444 @@
       ]
     },
     {
+      "name": "galactic war is checked, updated, started, and reports its season",
+      "steps": [
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "installationChanged",
+              "payload": {
+                "version": "v2026.03.01.1"
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.03.01.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "versions": null
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "statusChanged",
+              "payload": {
+                "status": {
+                  "type": "checkingVersion"
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.03.01.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "checkingVersion"
+            },
+            "versions": null
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "versionsLoaded",
+              "payload": {
+                "versions": {
+                  "requiredVersion": "v2026.04.04.1",
+                  "latestVersion": null
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.03.01.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "checkingVersion"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "minimumCheckChanged",
+              "payload": {
+                "belowMinimum": true
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": true,
+            "installedVersion": "v2026.03.01.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "checkingVersion"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "statusChanged",
+              "payload": {
+                "status": {
+                  "type": "downloading",
+                  "payload": {
+                    "version": "v2026.04.04.1",
+                    "downloadedBytes": 12000000,
+                    "totalBytes": 46340472
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": true,
+            "installedVersion": "v2026.03.01.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "downloadedBytes": 12000000,
+                "totalBytes": 46340472,
+                "version": "v2026.04.04.1"
+              },
+              "type": "downloading"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "statusChanged",
+              "payload": {
+                "status": {
+                  "type": "installing",
+                  "payload": {
+                    "version": "v2026.04.04.1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": true,
+            "installedVersion": "v2026.03.01.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "version": "v2026.04.04.1"
+              },
+              "type": "installing"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "installationChanged",
+              "payload": {
+                "version": "v2026.04.04.1"
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": true,
+            "installedVersion": "v2026.04.04.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "version": "v2026.04.04.1"
+              },
+              "type": "installing"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "minimumCheckChanged",
+              "payload": {
+                "belowMinimum": false
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.04.04.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "version": "v2026.04.04.1"
+              },
+              "type": "installing"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "statusChanged",
+              "payload": {
+                "status": {
+                  "type": "running"
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.04.04.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "running"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "statisticsStatusChanged",
+              "payload": {
+                "status": {
+                  "type": "loading"
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.04.04.1",
+            "statistics": null,
+            "statisticsStatus": {
+              "type": "loading"
+            },
+            "status": {
+              "type": "running"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "statisticsLoaded",
+              "payload": {
+                "statistics": {
+                  "alltime": {
+                    "numPlayers": 82
+                  },
+                  "season": {
+                    "startedAt": "2026-03-15 22:55:15",
+                    "name": "Testing Season 4",
+                    "numPlayers": 16,
+                    "numOnlinePlayers": 4,
+                    "numBattles": 28,
+                    "numPlanets": 1000,
+                    "numFactions": 4,
+                    "numActiveAttacks": 0,
+                    "numActiveBattles": 0,
+                    "numAvatars": 0,
+                    "numAliveAvatars": 0
+                  },
+                  "factions": [
+                    {
+                      "id": 0,
+                      "name": "UEF",
+                      "longName": "United Earth Federation",
+                      "numAvatars": 0,
+                      "numAliveAvatars": 0,
+                      "numOnlineAvatars": 0,
+                      "numPlanets": 254
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.04.04.1",
+            "statistics": {
+              "alltime": {
+                "numPlayers": 82
+              },
+              "factions": [
+                {
+                  "id": 0,
+                  "longName": "United Earth Federation",
+                  "name": "UEF",
+                  "numAliveAvatars": 0,
+                  "numAvatars": 0,
+                  "numOnlineAvatars": 0,
+                  "numPlanets": 254
+                }
+              ],
+              "season": {
+                "name": "Testing Season 4",
+                "numActiveAttacks": 0,
+                "numActiveBattles": 0,
+                "numAliveAvatars": 0,
+                "numAvatars": 0,
+                "numBattles": 28,
+                "numFactions": 4,
+                "numOnlinePlayers": 4,
+                "numPlanets": 1000,
+                "numPlayers": 16,
+                "startedAt": "2026-03-15 22:55:15"
+              }
+            },
+            "statisticsStatus": {
+              "type": "loaded"
+            },
+            "status": {
+              "type": "running"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "GalacticWar",
+            "event": {
+              "type": "statisticsStatusChanged",
+              "payload": {
+                "status": {
+                  "type": "failed",
+                  "payload": {
+                    "reason": "gateway unreachable"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "belowMinimum": false,
+            "installedVersion": "v2026.04.04.1",
+            "statistics": {
+              "alltime": {
+                "numPlayers": 82
+              },
+              "factions": [
+                {
+                  "id": 0,
+                  "longName": "United Earth Federation",
+                  "name": "UEF",
+                  "numAliveAvatars": 0,
+                  "numAvatars": 0,
+                  "numOnlineAvatars": 0,
+                  "numPlanets": 254
+                }
+              ],
+              "season": {
+                "name": "Testing Season 4",
+                "numActiveAttacks": 0,
+                "numActiveBattles": 0,
+                "numAliveAvatars": 0,
+                "numAvatars": 0,
+                "numBattles": 28,
+                "numFactions": 4,
+                "numOnlinePlayers": 4,
+                "numPlanets": 1000,
+                "numPlayers": 16,
+                "startedAt": "2026-03-15 22:55:15"
+              }
+            },
+            "statisticsStatus": {
+              "payload": {
+                "reason": "gateway unreachable"
+              },
+              "type": "failed"
+            },
+            "status": {
+              "type": "running"
+            },
+            "versions": {
+              "latestVersion": null,
+              "requiredVersion": "v2026.04.04.1"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "settings apply each group",
       "steps": [
         {
@@ -6642,6 +7092,193 @@
         "notes": [],
         "playerId": 99,
         "expected": ""
+      }
+    ],
+    "galacticWarActions": [
+      {
+        "state": {
+          "status": {
+            "type": "idle"
+          },
+          "installedVersion": null,
+          "versions": null,
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "",
+        "updateAvailable": false,
+        "canLaunch": false
+      },
+      {
+        "state": {
+          "status": {
+            "type": "idle"
+          },
+          "installedVersion": null,
+          "versions": {
+            "requiredVersion": "v2026.04.04.1",
+            "latestVersion": null
+          },
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "v2026.04.04.1",
+        "updateAvailable": false,
+        "canLaunch": false
+      },
+      {
+        "state": {
+          "status": {
+            "type": "idle"
+          },
+          "installedVersion": "v2026.04.04.1",
+          "versions": {
+            "requiredVersion": "v2026.03.01.1",
+            "latestVersion": "v2026.04.04.1"
+          },
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "v2026.04.04.1",
+        "updateAvailable": false,
+        "canLaunch": true
+      },
+      {
+        "state": {
+          "status": {
+            "type": "idle"
+          },
+          "installedVersion": "v2026.03.01.1",
+          "versions": {
+            "requiredVersion": "v2026.03.01.1",
+            "latestVersion": "v2026.04.04.1"
+          },
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "v2026.04.04.1",
+        "updateAvailable": true,
+        "canLaunch": true
+      },
+      {
+        "state": {
+          "status": {
+            "type": "idle"
+          },
+          "installedVersion": "v2026.03.01.1",
+          "versions": {
+            "requiredVersion": "v2026.04.04.1",
+            "latestVersion": null
+          },
+          "belowMinimum": true,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "v2026.04.04.1",
+        "updateAvailable": true,
+        "canLaunch": false
+      },
+      {
+        "state": {
+          "status": {
+            "type": "idle"
+          },
+          "installedVersion": "build-41",
+          "versions": {
+            "requiredVersion": "build-42",
+            "latestVersion": null
+          },
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "build-42",
+        "updateAvailable": true,
+        "canLaunch": true
+      },
+      {
+        "state": {
+          "status": {
+            "type": "downloading",
+            "payload": {
+              "version": "v1",
+              "downloadedBytes": 1,
+              "totalBytes": 2
+            }
+          },
+          "installedVersion": "v1",
+          "versions": {
+            "requiredVersion": "v1",
+            "latestVersion": null
+          },
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "v1",
+        "updateAvailable": false,
+        "canLaunch": false
+      },
+      {
+        "state": {
+          "status": {
+            "type": "running"
+          },
+          "installedVersion": "v1",
+          "versions": {
+            "requiredVersion": "v1",
+            "latestVersion": null
+          },
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "v1",
+        "updateAvailable": false,
+        "canLaunch": false
+      },
+      {
+        "state": {
+          "status": {
+            "type": "failed",
+            "payload": {
+              "reason": "network"
+            }
+          },
+          "installedVersion": "v1",
+          "versions": {
+            "requiredVersion": "v1",
+            "latestVersion": null
+          },
+          "belowMinimum": false,
+          "statistics": null,
+          "statisticsStatus": {
+            "type": "idle"
+          }
+        },
+        "installTarget": "v1",
+        "updateAvailable": false,
+        "canLaunch": true
       }
     ]
   }

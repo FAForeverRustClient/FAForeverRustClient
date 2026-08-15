@@ -14,6 +14,7 @@ pub mod client_update;
 pub mod coop;
 pub mod discord;
 pub(crate) mod faf_content;
+pub mod galactic_war;
 pub mod game;
 pub mod game_logs;
 pub mod game_updater;
@@ -52,6 +53,7 @@ pub use chat::FakeChat;
 pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
 pub use coop::{CoopClient, CoopConfig, FakeCoop};
 pub use discord::{DiscordClient, DiscordConfig, FakeDiscord};
+pub use galactic_war::{FakeGalacticWar, GalacticWarConfig, GalacticWarGateway};
 pub use game::{FakeGame, GameConfig, GameProcess};
 pub use ice_java::{JavaAdapter, JavaConfig};
 pub use ice_pioneer::{FakeIce, IceConfig, PioneerAdapter};
@@ -107,6 +109,17 @@ pub(crate) fn cache_dir() -> Result<std::path::PathBuf, String> {
     directories::ProjectDirs::from("com", "forgeclient", "forge-client")
         .map(|dirs| dirs.cache_dir().to_path_buf())
         .ok_or_else(|| "could not resolve a cache directory".to_string())
+}
+
+/// The client's data root: things the user would be annoyed to lose.
+///
+/// Distinct from [`cache_dir`] on purpose. A cache is disposable by
+/// definition, and an installed application that a cache cleaner may delete
+/// under the user is not an installation.
+pub(crate) fn data_dir() -> Result<std::path::PathBuf, String> {
+    directories::ProjectDirs::from("com", "forgeclient", "forge-client")
+        .map(|dirs| dirs.data_dir().to_path_buf())
+        .ok_or_else(|| "could not resolve a data directory".to_string())
 }
 
 /// Read an env var, falling back to `fallback` if unset or empty. Shared by the
@@ -243,6 +256,7 @@ pub fn fake_ports() -> Ports {
         tutorials: Arc::new(FakeTutorials),
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
+        galactic_war: Arc::new(FakeGalacticWar),
         offline_auth: true,
         // Deliberately not read from the environment: a test must not depend on
         // the locale of the machine running it.
@@ -342,6 +356,15 @@ pub fn real_ports() -> Ports {
     // offline-ish session, which is when a broken client most needs replacing.
     let client_update: Arc<dyn crate::ports::ClientUpdatePort> = Arc::new(GitHubUpdates::faf());
 
+    // Also never gated and never authenticated: Galactic War has its own
+    // login, so downloading and starting it needs nothing from this session.
+    // Falls back to the inert port only when no data directory can be
+    // resolved, which is the one case where installing anywhere is wrong.
+    let galactic_war: Arc<dyn crate::ports::GalacticWarPort> = match GalacticWarGateway::faf() {
+        Ok(gateway) => Arc::new(gateway),
+        Err(_) => Arc::new(FakeGalacticWar),
+    };
+
     // Always real, and never gated: Rich Presence needs no account, no install
     // and no subprocess: just a local socket that is usually not there. When
     // Discord is not running it is a reconnect timer and nothing else, and the
@@ -371,6 +394,7 @@ pub fn real_ports() -> Ports {
         tutorials,
         uploads,
         client_update,
+        galactic_war,
         offline_auth: false,
         os_language: os_language(),
     }
