@@ -311,6 +311,7 @@ export const en = {
 
   // Custom-game detail panel.
   "lobby.details.host": "Host: {name}",
+  "lobby.details.hostLabel": "Host:",
   "lobby.details.map": "Map",
   "lobby.details.players": "Players",
   "lobby.details.averageRating": "Average rating",
@@ -580,6 +581,7 @@ export const en = {
   "lobby.party.invited": "Invited",
   "lobby.party.invite": "Invite",
   "lobby.party.leader": "Party leader",
+  "lobby.party.youSuffix": " (you)",
   "lobby.party.randomFaction": "Random faction",
   "lobby.party.noMessages": "No party messages yet.",
   "lobby.party.joiningChannel": "Joining the party channel…",
@@ -720,6 +722,10 @@ export const en = {
   "settings.chat.autoJoinChannels": "Auto-join channels",
   "settings.account.fafAccount": "FAF account",
   "settings.account.fafAccountHint": "These actions open the canonical FAF website in your browser.",
+  "settings.account.session": "Account session",
+  "settings.account.sessionHint": "Sign out of your active session on this device.",
+  "settings.account.signedInAs": "Currently signed in as {name} (ID: {id}).",
+  "settings.account.logOut": "Log out",
   "settings.account.helpCommunityRules": "Help and community rules",
   "settings.account.helpCommunityRulesHint": "Find account/client support or review the rules before reporting an incident.",
   "settings.diagnostics.gameLogs": "Game logs",

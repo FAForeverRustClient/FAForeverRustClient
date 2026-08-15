@@ -951,6 +951,10 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "settings.account.fafAccount": "Compte FAF",
   "settings.account.fafAccountHint": "Ces actions ouvrent le site officiel de FAF dans votre navigateur.",
+  "settings.account.session": "Session du compte",
+  "settings.account.sessionHint": "Déconnectez-vous de votre session active sur cet appareil.",
+  "settings.account.signedInAs": "Connecté en tant que {name} (ID : {id}).",
+  "settings.account.logOut": "Se déconnecter",
   "settings.account.helpCommunityRules": "Aide et règles de la communauté",
   "settings.account.helpCommunityRulesHint": "Trouver de l'aide sur le compte ou le client, ou relire les règles avant de signaler un incident.",
   "settings.account.changeUsername": "Changer de pseudo",
@@ -1330,6 +1334,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.party.invited": "Invité",
   "lobby.party.invite": "Inviter",
   "lobby.party.leader": "Chef de groupe",
+  "lobby.party.youSuffix": " (vous)",
   "lobby.party.randomFaction": "Faction aléatoire",
   "lobby.party.noMessages": "Aucun message de groupe pour l'instant.",
   "lobby.party.joiningChannel": "Connexion au salon du groupe…",
@@ -1348,6 +1353,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.private.join": "Rejoindre la partie",
 
   "lobby.details.host": "Hôte : {name}",
+  "lobby.details.hostLabel": "Hôte :",
   "lobby.details.map": "Carte",
   "lobby.details.players": "Joueurs",
   "lobby.details.averageRating": "Classement moyen",

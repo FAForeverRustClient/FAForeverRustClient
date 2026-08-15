@@ -967,6 +967,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "settings.account.fafAccount": "Учётная запись FAF",
   "settings.account.fafAccountHint": "Эти действия открывают официальный сайт FAF в браузере.",
+  "settings.account.session": "Сеанс учётной записи",
+  "settings.account.sessionHint": "Выйдите из активного сеанса на этом устройстве.",
+  "settings.account.signedInAs": "Выполнен вход как {name} (ID: {id}).",
+  "settings.account.logOut": "Выйти",
   "settings.account.helpCommunityRules": "Помощь и правила сообщества",
   "settings.account.helpCommunityRulesHint": "Найти помощь по учётной записи или клиенту, либо прочитать правила перед жалобой.",
   "settings.account.changeUsername": "Сменить имя",
@@ -1381,6 +1385,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.party.invited": "Приглашён",
   "lobby.party.invite": "Пригласить",
   "lobby.party.leader": "Лидер группы",
+  "lobby.party.youSuffix": " (вы)",
   "lobby.party.randomFaction": "Случайная фракция",
   "lobby.party.noMessages": "Сообщений в группе пока нет.",
   "lobby.party.joiningChannel": "Вход в канал группы…",
@@ -1399,6 +1404,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.private.join": "Войти в игру",
 
   "lobby.details.host": "Хост: {name}",
+  "lobby.details.hostLabel": "Хост:",
   "lobby.details.map": "Карта",
   "lobby.details.players": "Игроки",
   "lobby.details.averageRating": "Средний рейтинг",

@@ -950,6 +950,10 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "settings.account.fafAccount": "Cuenta de FAF",
   "settings.account.fafAccountHint": "Estas acciones abren el sitio web oficial de FAF en tu navegador.",
+  "settings.account.session": "Sesión de la cuenta",
+  "settings.account.sessionHint": "Cierra tu sesión activa en este dispositivo.",
+  "settings.account.signedInAs": "Sesión iniciada como {name} (ID: {id}).",
+  "settings.account.logOut": "Cerrar sesión",
   "settings.account.helpCommunityRules": "Ayuda y reglas de la comunidad",
   "settings.account.helpCommunityRulesHint": "Encuentra soporte para la cuenta o el cliente, o repasa las reglas antes de denunciar un incidente.",
   "settings.account.changeUsername": "Cambiar el nombre de usuario",
@@ -1329,6 +1333,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.party.invited": "Invitado",
   "lobby.party.invite": "Invitar",
   "lobby.party.leader": "Líder del grupo",
+  "lobby.party.youSuffix": " (tú)",
   "lobby.party.randomFaction": "Facción aleatoria",
   "lobby.party.noMessages": "Todavía no hay mensajes en el grupo.",
   "lobby.party.joiningChannel": "Entrando en el canal del grupo…",
@@ -1347,6 +1352,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.private.join": "Unirse a la partida",
 
   "lobby.details.host": "Anfitrión: {name}",
+  "lobby.details.hostLabel": "Anfitrión:",
   "lobby.details.map": "Mapa",
   "lobby.details.players": "Jugadores",
   "lobby.details.averageRating": "Puntuación media",
