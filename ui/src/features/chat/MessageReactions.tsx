@@ -25,18 +25,34 @@ interface Props {
   reactions: readonly Reaction[];
   /** Our own nick, to mark reactions we are already part of. */
   self: string;
+  pickerOpen?: boolean;
+  onTogglePicker?: () => void;
+  onClosePicker?: () => void;
   onReact: (emoji: string) => void;
   onUnreact: (emoji: string) => void;
 }
 
-export function MessageReactions({ msgid, reactions, self, onReact, onUnreact }: Props) {
+export function MessageReactions({
+  msgid,
+  reactions,
+  self,
+  pickerOpen = false,
+  onTogglePicker,
+  onClosePicker,
+  onReact,
+  onUnreact,
+}: Props) {
   const { t } = useTranslation();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = onTogglePicker ? pickerOpen : internalOpen;
+  const toggle = onTogglePicker ?? (() => setInternalOpen((o) => !o));
+  const close = onClosePicker ?? (() => setInternalOpen(false));
 
   if (msgid === "") return null;
+  if (reactions.length === 0 && !isOpen) return null;
 
   const react = (emoji: string) => {
-    setPickerOpen(false);
+    close();
     onReact(emoji);
   };
 
@@ -70,14 +86,14 @@ export function MessageReactions({ msgid, reactions, self, onReact, onUnreact }:
         <button
           type="button"
           className="chat-reaction-trigger"
-          aria-expanded={pickerOpen}
+          aria-expanded={isOpen}
           aria-label={t("chat.reaction.add")}
           title={t("chat.reaction.add")}
-          onClick={() => setPickerOpen((open) => !open)}
+          onClick={toggle}
         >
           +
         </button>
-        {pickerOpen ? (
+        {isOpen ? (
           <div className="chat-reaction-menu" role="menu">
             {QUICK_REACTIONS.map((emoji) => (
               <button

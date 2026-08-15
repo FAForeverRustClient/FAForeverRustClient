@@ -247,16 +247,22 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
 
   const filteredMods = useMemo(() => {
     const query = modSearch.trim().toLowerCase();
-    return installedMods.filter((mod) => {
-      if (modTab === "sim" && mod.modType !== "sim") return false;
-      if (modTab === "ui" && mod.modType !== "ui") return false;
-      if (!query) return true;
-      return (
-        mod.displayName.toLowerCase().includes(query) ||
-        (mod.modType === "ui" && query === "ui") ||
-        (mod.modType === "sim" && query === "sim")
+    return installedMods
+      .filter((mod) => {
+        if (modTab === "sim" && mod.modType !== "sim") return false;
+        if (modTab === "ui" && mod.modType !== "ui") return false;
+        if (!query) return true;
+        return (
+          mod.displayName.toLowerCase().includes(query) ||
+          (mod.modType === "ui" && query === "ui") ||
+          (mod.modType === "sim" && query === "sim")
+        );
+      })
+      .sort(
+        (a, b) =>
+          Number(b.enabled) - Number(a.enabled) ||
+          a.displayName.localeCompare(b.displayName),
       );
-    });
   }, [installedMods, modSearch, modTab]);
 
   const deselectAllMods = () => {
@@ -653,13 +659,13 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
             </div>
 
             {chosen && (
-              <div className="host-preview-details-card">
-                <div className="host-preview-stat-row">
-                  <div className="host-preview-stat-item" title="Player capacity">
+              <div className="host-map-info-section">
+                <div className="host-map-info-row">
+                  <div className="host-map-info-item" title="Player capacity">
                     <Icon name="users" size={13} />
                     <span>{chosen.maxPlayers > 0 ? `${chosen.maxPlayers} players` : "Players: N/A"}</span>
                   </div>
-                  <div className="host-preview-stat-item" title="Map dimensions">
+                  <div className="host-map-info-item" title="Map dimensions">
                     <Icon name="maps" size={13} />
                     <span>
                       {chosen.width > 0
@@ -669,9 +675,9 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
                   </div>
                 </div>
                 {(chosen.version || chosen.author) && (
-                  <div className="host-preview-extra-row">
-                    {chosen.version && <span className="host-preview-chip">v{chosen.version}</span>}
-                    {chosen.author && <span className="host-preview-author">by {chosen.author}</span>}
+                  <div className="host-map-info-footer">
+                    {chosen.version && <span className="host-map-version-badge">v{chosen.version}</span>}
+                    {chosen.author && <span className="host-map-author-label">by {chosen.author}</span>}
                   </div>
                 )}
               </div>

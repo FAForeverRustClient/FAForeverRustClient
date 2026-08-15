@@ -287,8 +287,7 @@ const Line = memo(function Line({
   registerRow: (id: string, node: HTMLDivElement | null) => void;
   onGameLink: ((link: ChatGameLink) => void) | undefined;
 }) {
-  // Bound to this row's id here rather than in the parent, so the parent can
-  // pass one stable callback to every row.
+  const [pickerOpen, setPickerOpen] = useState(false);
   const rowRef = useCallback(
     (node: HTMLDivElement | null) => registerRow(message.id, node),
     [registerRow, message.id],
@@ -357,25 +356,46 @@ const Line = memo(function Line({
         </>
       )}
       <span className="chat-message-time">{time}</span>
-      {message.kind === "info" || message.kind === "error" ? null : (
-        <MessageReactions
-          msgid={message.msgid ?? ""}
-          reactions={reactions}
-          self={self}
-          onReact={(emoji) => onReact(message.msgid ?? "", emoji)}
-          onUnreact={(emoji) => onUnreact(message.msgid ?? "", emoji)}
-        />
-      )}
-      {onReply && message.msgid && message.kind !== "info" && message.kind !== "error" ? (
-        <button
-          type="button"
-          className="chat-reply-trigger"
-          aria-label={t("chat.reply.start")}
-          title={t("chat.reply.start")}
-          onClick={() => onReply(message)}
-        >
-          <Icon name="arrowRight" size={13} />
-        </button>
+      {message.kind !== "info" && message.kind !== "error" ? (
+        <>
+          <div className="chat-message-actions">
+            {message.msgid && (
+              <button
+                type="button"
+                className="chat-action-btn"
+                aria-label={t("chat.reaction.add")}
+                title={t("chat.reaction.add")}
+                onClick={() => setPickerOpen((open) => !open)}
+              >
+                <Icon name="smile" size={13} />
+              </button>
+            )}
+            {onReply && message.msgid && (
+              <button
+                type="button"
+                className="chat-action-btn"
+                aria-label={t("chat.reply.start")}
+                title={t("chat.reply.start")}
+                onClick={() => onReply(message)}
+              >
+                <Icon name="arrowRight" size={13} />
+              </button>
+            )}
+          </div>
+          <MessageReactions
+            msgid={message.msgid ?? ""}
+            reactions={reactions}
+            self={self}
+            pickerOpen={pickerOpen}
+            onTogglePicker={() => setPickerOpen((open) => !open)}
+            onClosePicker={() => setPickerOpen(false)}
+            onReact={(emoji) => {
+              setPickerOpen(false);
+              onReact(message.msgid ?? "", emoji);
+            }}
+            onUnreact={(emoji) => onUnreact(message.msgid ?? "", emoji)}
+          />
+        </>
       ) : null}
     </div>
   );
