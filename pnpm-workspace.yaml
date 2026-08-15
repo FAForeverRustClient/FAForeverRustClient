@@ -1,0 +1,20 @@
+# pnpm settings that used to live under the `pnpm` key in package.json; pnpm 11
+# no longer reads that field and warns when it is present.
+
+# Transitive dependencies pulled in below their patched version, pinned forward.
+# Both arrive through vite's PostCSS pipeline and are build-time only: nothing
+# here ships in the client. They are pinned anyway so `pnpm audit` and the
+# repository's advisory alerts stay at zero, which is what makes a real finding
+# visible when one appears.
+#
+#   postcss <=8.5.22  GHSA-fxqj-rqcc-2cmp  reads arbitrary .map files via an
+#                                          attacker-controlled sourceMappingURL
+#                                          when `from` is unset
+#   nanoid  <3.3.16   non-secure generators loop forever on a negative size
+#
+# Remove an entry once the dependency that pulls it in requires the fixed
+# version by itself; an override that no longer changes anything is a stale
+# claim about the tree.
+overrides:
+  postcss@<8.5.23: ">=8.5.23"
+  nanoid@<3.3.16: ">=3.3.16"
