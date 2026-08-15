@@ -624,7 +624,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
 
           <div className="host-column-footer">
             <Button className="host-col-action-btn" onClick={chooseRandom} title={t("lobby.host.randomTitle")}>
-              <Icon name="refresh" size={13} />
+              <Icon name="refresh" size={14} />
               {t("lobby.host.randomMap")}
             </Button>
           </div>
@@ -690,8 +690,10 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
               onClick={() => setGenerating(true)}
               title={t("lobby.host.generateTitle")}
             >
-              <Icon name="plus" size={13} />
-              <span>{t("lobby.host.generateMap")}</span>
+              <span className="host-generate-btn-label">
+                <Icon name="plus" size={14} />
+                <span>{t("lobby.host.generateMap")}</span>
+              </span>
               <span className="host-badge-neroxis">Neroxis</span>
             </Button>
           </div>

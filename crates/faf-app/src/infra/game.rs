@@ -206,7 +206,7 @@ impl ProcessPort for GameProcess {
         // replay behind, which is what happened on every launch before this.
         let recorder = match crate::infra::replay_recorder::ReplayRecorder::start(
             crate::infra::replay::local_replays_dir(),
-            params.game_id,
+            params.replay.clone(),
         )
         .await
         {
@@ -544,6 +544,7 @@ mod tests {
             player_id: 1,
             player_login: "me".into(),
             args: vec!["/numgames".into(), "5".into()],
+            replay: Default::default(),
         }
     }
 

@@ -563,7 +563,7 @@ export const en = {
   "lobby.host.mod.fafDesc": "Standard competitive & casual balance",
   "lobby.host.mod.fafbetaDesc": "Upcoming balance testing",
   "lobby.host.mod.fafdevelopDesc": "Bleeding-edge engine & mod development",
-  "lobby.host.mod.nomadsDesc": "Adds the 4th Nomads faction",
+  "lobby.host.mod.nomadsDesc": "Adds the 5th Nomads faction",
   "lobby.host.mod.coopDesc": "Cooperative campaign missions",
   "lobby.host.mod.ladder1v1Desc": "1v1 ranked competitive balance",
   "lobby.host.cancel": "Cancel",

@@ -269,18 +269,18 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  height: 30px;
+  height: 35px;
   margin-top: auto;
 }
 
 .host-col-action-btn {
   width: 100%;
-  height: 30px;
+  height: 35px;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  gap: 6px;
-  padding: 0 8px;
+  font-size: 12.5px;
+  font-weight: 550;
+  gap: 7px;
+  padding: 0 10px;
 }
 
 /* Column 1: Game Type */
@@ -632,12 +632,23 @@
 }
 
 .host-generate-btn {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+}
+
+.host-generate-btn-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transform: translateX(-14px);
 }
 
 .host-badge-neroxis {
+  position: absolute;
+  right: 8px;
   font-size: 11px;
   font-weight: 600;
   padding: 1px 6px;

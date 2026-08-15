@@ -23,6 +23,40 @@ pub struct GameLaunchParams {
     /// Server-provided `game_launch` args (e.g. `/numgames N`). Client-derived
     /// rating args are a later phase (see the plan's known gap).
     pub args: Vec<String>,
+    /// What the recorded replay's header should say about this game.
+    pub replay: ReplayMetadata,
+}
+
+/// The game description written into a locally recorded replay's header.
+///
+/// A `.fafreplay` is a JSON header line plus a compressed replay body; the
+/// header is the *only* place the map, title, players and date come from, since
+/// the body is a raw engine command stream that names none of them. Without it a
+/// recorded game lists as an untitled legacy file, which is what happened while
+/// this client wrote bare `.scfareplay` streams.
+///
+/// The fields mirror the Python client's `fa.instance._info`, which is what both
+/// reference clients write and read.
+#[derive(Debug, Clone, Default)]
+pub struct ReplayMetadata {
+    pub uid: i32,
+    /// The local player: names the file and identifies whose view was recorded.
+    pub recorder: String,
+    pub featured_mod: String,
+    pub title: String,
+    pub map_name: String,
+    pub game_type: String,
+    pub host: String,
+    /// Unix seconds. Falls back to the recording's start when the lobby never
+    /// reported a launch time (the matchmaker path, where the game is not in the
+    /// public listing yet).
+    pub launched_at: Option<u32>,
+    pub num_players: i32,
+    /// Team number to player names, straight from the lobby's game listing.
+    /// Observer teams keep the server's `-1`/`null` keys.
+    pub teams: std::collections::BTreeMap<String, Vec<String>>,
+    /// SIM mod UID to display name.
+    pub sim_mods: std::collections::BTreeMap<String, String>,
 }
 
 /// Which of the configured executables actually exist on disk right now.
