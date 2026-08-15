@@ -8,6 +8,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { openHttpsUrl, validateHttpsUrl } from "../../shared/externalLinks";
 import { findPlayer, isModerator } from "../../store/reducer";
+import { t, type MessageKey } from "../../i18n";
 
 import { assignedPlayerColor, nickHue, nickStyle, resolvePlayerStyle } from "../../shared/nameColors";
 export { nickHue, nickStyle };
@@ -48,13 +49,13 @@ export function resolvedNickStyle(
  */
 export type UserCategory = "self" | "moderators" | "friends" | "players" | "ircOnly";
 
-export const USER_CATEGORY_LABELS: Record<UserCategory, string> = {
-  self: "You",
-  moderators: "Moderators & admins",
-  friends: "Friends",
-  players: "Players",
-  ircOnly: "IRC only",
-};
+export const USER_CATEGORY_LABELS = {
+  self: "chat.category.self",
+  moderators: "chat.category.moderators",
+  friends: "chat.category.friends",
+  players: "chat.category.players",
+  ircOnly: "chat.category.ircOnly",
+} as const satisfies Record<UserCategory, MessageKey>;
 
 export const USER_CATEGORY_ORDER: UserCategory[] = [
   "self",
@@ -176,7 +177,7 @@ export function renderBody(
             key={i}
             type="button"
             className="chat-link chat-game-link"
-            title={gameLink.kind === "openGame" ? "Join game" : "Watch live replay"}
+            title={gameLink.kind === "openGame" ? t("chat.link.joinGame") : t("chat.link.watchLive")}
             onClick={() => onGameLink(gameLink)}
           >
             {part}
