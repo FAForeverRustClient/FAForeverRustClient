@@ -191,6 +191,7 @@ export function mapThumbnailCandidates(
   mapName: string,
   large = false,
   missions?: CoopMission[],
+  customGeneratedPreview?: string,
 ): string[] {
   const vaultMap = findVaultMap(vault, mapName);
   const coopMission = findCoopMission(mapName, missions);
@@ -201,15 +202,18 @@ export function mapThumbnailCandidates(
     : OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
   const size = large ? "large" : "small";
 
-  const generatedPreview = isGeneratedMap(mapName)
-    ? (typeof window !== "undefined"
-        ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName]
-        : undefined)
-    : undefined;
+  const isGen = isGeneratedMap(mapName);
+  const generatedPreview =
+    customGeneratedPreview ??
+    (isGen
+      ? typeof window !== "undefined"
+        ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName] ||
+          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[normalized]
+        : undefined
+      : undefined);
 
   return uniqueUrls([
     generatedPreview,
-    isGeneratedMap(mapName) ? "/generated-map.svg" : undefined,
     large ? coopMission?.thumbnailUrlLarge : coopMission?.thumbnailUrlSmall,
     large ? coopMission?.thumbnailUrlSmall : coopMission?.thumbnailUrlLarge,
     large ? vaultMap?.thumbnailUrlLarge : vaultMap?.thumbnailUrl,
@@ -223,6 +227,7 @@ export function mapThumbnailCandidates(
     baseName !== normalized && !baseName.includes(" ")
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
       : undefined,
+    isGen ? "/generated-map.svg" : undefined,
   ]);
 }
 

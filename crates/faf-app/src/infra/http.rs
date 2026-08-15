@@ -34,5 +34,8 @@ pub(crate) fn no_redirect_http_client() -> reqwest::Client {
 fn client_builder() -> reqwest::ClientBuilder {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(15))
-        .user_agent(concat!("ForgeClient/", env!("CARGO_PKG_VERSION")))
+        // FAF's own services see this, so it is the most visible place the old
+        // name was still showing. A User-Agent product token cannot contain a
+        // space, hence the slug rather than the display name.
+        .user_agent(concat!("FAForeverClient/", env!("CARGO_PKG_VERSION")))
 }

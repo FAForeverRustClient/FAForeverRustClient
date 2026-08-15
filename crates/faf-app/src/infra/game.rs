@@ -66,6 +66,10 @@ pub struct GameProcess {
     child: Arc<Mutex<Option<Child>>>,
     /// Woken when the tracked child exits; see [`GameProcess::watch_for_exit`].
     exited: Arc<Notify>,
+    /// Kept alive for the duration of a live game so FA has somewhere to stream
+    /// its replay. Replaced on the next launch, which drops and stops the
+    /// previous one.
+    replay_recorder: Mutex<Option<crate::infra::replay_recorder::ReplayRecorder>>,
 }
 
 impl GameProcess {
@@ -74,6 +78,7 @@ impl GameProcess {
             config: Mutex::new(config),
             child: Arc::new(Mutex::new(None)),
             exited: Arc::new(Notify::new()),
+            replay_recorder: Mutex::new(None),
         }
     }
 
@@ -194,7 +199,39 @@ impl ProcessPort for GameProcess {
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
         let path = self.config.lock().unwrap().game_path.clone();
         let log_path = crate::infra::game_logs::next_path("game", Some(params.game_id))?;
-        self.spawn(&path, &build_arguments(&params, &log_path), "game")
+
+        // Started before the game, so the port in `/savereplay` is already
+        // listening when FA connects to it. A recorder that cannot bind is not
+        // a reason to refuse the launch: the game is playable, it just leaves no
+        // replay behind, which is what happened on every launch before this.
+        let recorder = match crate::infra::replay_recorder::ReplayRecorder::start(
+            crate::infra::replay::local_replays_dir(),
+            params.replay.clone(),
+        )
+        .await
+        {
+            Ok(recorder) => Some(recorder),
+            Err(error) => {
+                tracing::warn!(%error, "starting without replay recording");
+                None
+            }
+        };
+        let savereplay = recorder
+            .as_ref()
+            .map(|recorder| recorder.savereplay_url(params.game_id, &params.player_login));
+
+        let result = self.spawn(
+            &path,
+            &build_arguments(&params, &log_path, savereplay.as_deref()),
+            "game",
+        );
+
+        // Held for the game's lifetime: dropping the recorder aborts its
+        // listener, and FA connects seconds after launch.
+        if let Some(recorder) = recorder {
+            *self.replay_recorder.lock().unwrap() = Some(recorder);
+        }
+        result
     }
 
     async fn launch_offline(&self, featured_mod: String, map: String) -> Result<(), String> {
@@ -416,13 +453,24 @@ fn is_original_game_executable(exe: &Path) -> bool {
 }
 
 /// Build the FA argument list: server args first, then init/bugreport/gpgnet.
-/// Mirrors `fa/play.py:build_argument_list` (replay `/savereplay` omitted until we
-/// run a replay server).
-fn build_arguments(params: &GameLaunchParams, log_path: &Path) -> Vec<String> {
+///
+/// Mirrors `fa/play.py:build_argument_list`. `savereplay` is the address of the
+/// local [`crate::infra::replay_recorder::ReplayRecorder`]; without it FA writes
+/// no replay for a networked game at all, which is why played games used to
+/// leave nothing in the local library.
+fn build_arguments(
+    params: &GameLaunchParams,
+    log_path: &Path,
+    savereplay: Option<&str>,
+) -> Vec<String> {
     let mut args = params.args.clone();
     args.push("/init".into());
     args.push(format!("init_{}.lua", params.featured_mod));
     args.push("/nobugreport".into());
+    if let Some(url) = savereplay {
+        args.push("/savereplay".into());
+        args.push(url.to_string());
+    }
     args.push("/gpgnet".into());
     args.push(format!("127.0.0.1:{}", params.game_port));
     args.push("/log".into());
@@ -496,12 +544,13 @@ mod tests {
             player_id: 1,
             player_login: "me".into(),
             args: vec!["/numgames".into(), "5".into()],
+            replay: Default::default(),
         }
     }
 
     #[test]
     fn builds_fa_command_line_in_order() {
-        let args = build_arguments(&params(), Path::new("diagnostics/game-99.log"));
+        let args = build_arguments(&params(), Path::new("diagnostics/game-99.log"), None);
         assert_eq!(
             &args[..7],
             vec![
@@ -516,6 +565,26 @@ mod tests {
         );
         assert_eq!(args[7], "/log");
         assert!(args[8].ends_with("game-99.log"));
+    }
+
+    #[test]
+    fn savereplay_precedes_gpgnet_when_a_recorder_is_listening() {
+        // Ordering matches `fa/play.py`, and the flag is what makes FA emit a
+        // replay for a networked game at all: without it a played game leaves
+        // nothing on disk, which is the bug this fixes.
+        let url = "gpgnet://127.0.0.1:5000/99/me.SCFAreplay";
+        let args = build_arguments(&params(), Path::new("diagnostics/game-99.log"), Some(url));
+        let save = args.iter().position(|a| a == "/savereplay").unwrap();
+        assert_eq!(args[save + 1], url);
+        assert!(save < args.iter().position(|a| a == "/gpgnet").unwrap());
+    }
+
+    #[test]
+    fn no_recorder_means_no_savereplay_flag() {
+        // A recorder that could not bind must not leave FA streaming at a dead
+        // port: the game is still perfectly playable without a replay.
+        let args = build_arguments(&params(), Path::new("diagnostics/game-99.log"), None);
+        assert!(!args.iter().any(|a| a == "/savereplay"));
     }
 
     #[test]

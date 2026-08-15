@@ -44,8 +44,8 @@
 }
 
 .host-game-modal {
-  width: min(1000px, calc(100vw - 48px));
-  max-width: 1000px;
+  width: min(1360px, calc(100vw - 32px));
+  max-width: 1360px;
 }
 
 .play-dialog-head {
@@ -99,89 +99,81 @@
 .filter-rule button { display: grid; width: 26px; height: 26px; place-items: center; padding: 0; color: var(--color-muted); background: transparent; border: 0; cursor: pointer; }
 .play-empty { margin: 0; padding: 18px; color: var(--color-subtle); font-size: 12px; text-align: center; }
 
-/* Unified Game Setup Configuration Card */
-.host-config-card {
+/* Top Game Configuration Row */
+.host-top-config {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 14px 0 12px;
-  padding: 14px 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 10px 0 12px;
+  padding: 8px 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
 
-.host-config-primary-row {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 12px;
-  align-items: start;
-}
-
-.field {
+.host-top-title-wrap {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  gap: 2px;
+  flex: 1 1 200px;
+  min-width: 160px;
 }
 
-.field input,
-.field select {
-  height: 36px;
-  padding: 0 12px;
+.host-title-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
   color: var(--color-text);
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   font-size: 13px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
+  font-weight: 550;
+  outline: none;
+  transition: border-color 120ms ease;
 }
 
-.field input:focus-visible,
-.field select:focus-visible {
+.host-title-input:focus-visible {
   border-color: var(--color-accent);
   outline: 2px solid var(--color-accent-glow);
 }
 
-.host-config-secondary-row {
+.host-option-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
+  gap: 8px;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
-.host-option-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+.host-password-input {
+  width: 120px;
+  height: 28px;
+  padding: 0 8px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
 }
 
-.host-inline-field {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.host-rating-inputs {
+.host-rating-option {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.compact-input {
-  width: 150px;
-  height: 32px;
-  padding: 0 8px;
+.host-rating-inputs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.number-input {
+  width: 58px;
+  height: 28px;
+  padding: 0 6px;
   color: var(--color-text);
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);
@@ -201,17 +193,6 @@
   outline: 2px solid var(--color-accent-glow);
 }
 
-.number-input {
-  width: 80px;
-  height: 32px;
-  padding: 0 8px;
-  color: var(--color-text);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-}
-
 .host-field-error {
   color: var(--color-error);
   font-size: 11px;
@@ -219,152 +200,61 @@
 }
 
 .host-rating-error {
-  margin-left: 6px;
+  margin-left: 4px;
 }
 
 .host-game-modal input[aria-invalid="true"] {
   border-color: var(--color-error);
 }
 
-/* 2-Column Master Workspace */
-.host-2col-grid {
+/* 4-Column Grid Layout (Game Type | Mods | Map | Preview) */
+.host-game-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 14px;
-  height: 450px;
+  grid-template-columns: 225px 285px minmax(340px, 1fr) 330px;
+  gap: 12px;
+  height: 550px;
 }
 
-.host-map-column,
-.host-mods-column {
+.host-column {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   min-height: 0;
-  padding: 12px;
+  height: 100%;
+  padding: 10px;
   overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  box-sizing: border-box;
 }
 
-/* Hero Map Preview Card */
-.host-map-hero {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  flex-shrink: 0;
-}
-
-.host-hero-thumb {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  flex-shrink: 0;
-  background: var(--color-surface);
-}
-
-.host-hero-thumb .host-hero-image,
-.host-hero-thumb .map-preview-placeholder {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-muted);
-}
-
-.host-hero-details {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-  justify-content: center;
-  gap: 4px;
-}
-
-.host-hero-meta-top {
+.host-column-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 22px;
 }
 
-.host-hero-eyebrow {
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
+.host-column-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.host-hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.host-hero-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 650;
-  color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.host-hero-chips {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.host-hero-chips span {
-  padding: 2px 8px;
   color: var(--color-muted);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
+}
+
+.host-count-badge {
+  color: var(--color-muted);
   font-size: 11px;
-  font-weight: 550;
+  font-weight: 500;
 }
 
-.host-map-filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.host-map-filters .host-map-search {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 32px;
-  height: 32px;
-}
-
-.host-map-filters .host-map-search input {
-  font-size: 12px;
-}
-
-.host-map-filters select {
-  max-width: 140px;
-  height: 32px;
-  padding: 0 8px;
-  font-size: 12px;
-}
-
-.host-map-list,
-.host-mod-list {
+.host-column-body {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -375,97 +265,141 @@
   background: var(--color-bg);
 }
 
-.host-map-row {
+.host-column-footer {
   display: flex;
-  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+  height: 35px;
+  margin-top: auto;
+}
+
+.host-col-action-btn {
+  width: 100%;
+  height: 35px;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 550;
+  gap: 7px;
+  padding: 0 10px;
+}
+
+/* Column 1: Game Type */
+.host-gametype-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+}
+
+.host-gametype-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.host-gametype-row:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.host-gametype-row.active,
+.host-gametype-row.active:hover:not(:disabled) {
+  background: var(--color-surface-raised);
+  border-color: var(--color-accent);
+}
+
+.host-gametype-row:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.host-gametype-title-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  min-height: 38px;
-  padding: 7px 12px;
+  gap: 6px;
+}
+
+.host-gametype-name {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--color-text);
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--color-border);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-  gap: 10px;
 }
 
-.host-map-row:last-child {
-  border-bottom: 0;
-}
-
-.host-map-row:hover {
-  background: var(--color-surface-hover);
-}
-
-.host-map-row.active {
-  background: var(--color-surface-raised);
-  box-shadow: inset 3px 0 var(--color-accent);
-}
-
-.host-map-name {
-  font-size: 13px;
-  font-weight: 550;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-
-.host-map-meta {
+.host-gametype-desc {
   font-size: 11px;
   color: var(--color-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
 }
 
-/* Mods Manager Column */
-.host-mods-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.host-mods-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.host-count-badge {
-  display: inline-block;
-  margin-left: 8px;
-  color: var(--color-muted);
+.host-badge-default {
   font-size: 11px;
   font-weight: 500;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  color: var(--color-subtle);
 }
 
-.host-mod-search {
-  flex: 0 0 32px;
-  height: 32px;
-  min-height: 32px;
-  max-height: 32px;
+/* Column 2: Mods */
+.host-mod-tabs {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  background: var(--color-bg);
+  padding: 2px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
 }
 
-.host-mod-search input {
-  font-size: 12px;
+.host-mod-tab {
+  flex: 1;
+  height: 24px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: center;
+  transition: all 120ms ease;
+}
+
+.host-mod-tab.active {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.host-column-search {
+  flex-shrink: 0;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+}
+
+.host-column-search input {
+  font-size: 11px;
 }
 
 .host-mod-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--color-border);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   transition: background-color 120ms ease;
 }
@@ -490,7 +424,7 @@
 }
 
 .mod-badge {
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
@@ -508,31 +442,252 @@
   background: var(--color-accent);
 }
 
+/* Column 3: Maps */
+.host-map-search-row {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.host-map-search-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.host-players-select {
+  width: 125px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  outline: none;
+  flex-shrink: 0;
+}
+
+.host-map-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  gap: 8px;
+}
+
+.host-map-row:last-child {
+  border-bottom: 0;
+}
+
+.host-map-row:hover {
+  background: var(--color-surface-hover);
+}
+
+.host-map-row.active {
+  background: var(--color-surface-raised);
+  box-shadow: inset 3px 0 var(--color-accent);
+}
+
+.host-map-name {
+  font-size: 12px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.host-map-meta {
+  font-size: 11px;
+  color: var(--color-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Column 4: Map Preview */
+.host-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 10px 10px;
+  overflow-y: auto;
+}
+
+.host-preview-thumb-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  flex-shrink: 0;
+}
+
+.host-preview-thumb-wrap .host-preview-img,
+.host-preview-thumb-wrap .host-preview-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+}
+
+.host-preview-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 10px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  display: flex;
+  align-items: flex-end;
+}
+
+.host-preview-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--color-text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.host-map-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 6px;
+}
+
+.host-map-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.host-map-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--color-text);
+}
+
+.host-map-info-item svg {
+  color: var(--color-subtle);
+  flex-shrink: 0;
+}
+
+.host-map-info-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  font-size: 11px;
+}
+
+.host-map-version-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--color-subtle);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.host-map-author-label {
+  color: var(--color-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.host-preview-spacer {
+  flex: 1 1 auto;
+  min-height: 8px;
+}
+
+.host-generate-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.host-generate-btn-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transform: translateX(-14px);
+}
+
+.host-badge-neroxis {
+  position: absolute;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent);
+}
+
 .password-dialog { text-align: center; }
 .password-dialog .metric-icon { margin: 0 auto 12px; }
 .password-dialog h2 { font-size: 19px; }
 .password-dialog p { margin: 5px auto 16px; max-width: 400px; color: var(--color-muted); font-size: 11px; }
 .password-dialog > input { width: min(100%, 360px); }
 
-@media (max-width: 900px) {
-  .host-2col-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 960px) {
+  .host-game-grid {
+    grid-template-columns: 1fr 1fr;
     height: auto;
     max-height: 60vh;
-    overflow: auto;
+    overflow-y: auto;
   }
 
-  .host-map-column,
-  .host-mods-column {
-    min-height: 320px;
+  .host-column {
+    min-height: 280px;
   }
 }
 
-@media (max-width: 700px) {
-  .filter-rule-builder,
-  .host-config-primary-row {
+@media (max-width: 680px) {
+  .host-game-grid {
     grid-template-columns: 1fr;
   }
+
+  .filter-rule-builder,
+  .host-top-options-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
+
 
 

@@ -3,6 +3,7 @@
 // and gives architecture checks one explicit native boundary to enforce.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, type OpenDialogOptions } from "@tauri-apps/plugin-dialog";
@@ -15,14 +16,31 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 
 export type LogKind = "game" | "client";
 
+/** Mirrors the arms of `faf_app::infra::client_folder`. */
+export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gamePrefs";
+
+/** Mirrors `faf_domain::protocol::log_analysis::LogIssue`. */
+export type LogIssue = "gameMinimized" | "soundDriver";
+
 export interface LogPreview {
   fileName: string;
   content: string;
+  /**
+   * Known problems found in the log. Detected in the backend over the *whole*
+   * file; `content` is only the newest 512 KiB, so an issue can be reported
+   * that the visible excerpt does not contain.
+   */
+  issues: LogIssue[];
 }
 
 export const native = {
   openLogFolder(kind: LogKind): Promise<void> {
     return invoke("open_log_folder", { kind });
+  },
+
+  /** Reveal one of the client's own directories (or `game.prefs`). */
+  openClientFolder(kind: ClientFolder): Promise<void> {
+    return invoke("open_client_folder", { kind });
   },
 
   readLatestLog(kind: LogKind): Promise<LogPreview | null> {
@@ -66,5 +84,21 @@ export const native = {
    */
   setZoom(factor: number): Promise<void> {
     return getCurrentWebview().setZoom(factor);
+  },
+
+  /**
+   * Listen for window close confirmation requests when Forged Alliance is running.
+   */
+  onRequestExitConfirm(handler: () => void): Promise<() => void> {
+    return listen("app://request-exit-confirm", () => handler());
+  },
+
+  /** Terminate the application process cleanly. */
+  exitApp(): Promise<void> {
+    return invoke("exit_app");
+  },
+
+  closeWindow(): Promise<void> {
+    return invoke("exit_app");
   },
 };

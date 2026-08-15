@@ -412,6 +412,7 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message {
+  position: relative;
   display: grid;
   grid-template-columns: 40px minmax(76px, 101px) minmax(0, 1fr) 44px;
   gap: 7px;
@@ -420,6 +421,7 @@ html.is-resizing-chat-roster * {
   padding: 2px 7px;
   border-radius: var(--radius-sm);
   line-height: 1.45;
+  flex-shrink: 0;
 }
 
 .chat-message:hover {
@@ -656,21 +658,45 @@ html.is-resizing-chat-roster * {
   white-space: nowrap;
 }
 
-/* Same reveal-on-hover treatment as the reaction trigger, so a busy channel is
-   not a column of buttons. */
-.chat-reply-trigger {
-  padding: 0 var(--space-1);
-  color: var(--color-subtle);
-  background: none;
-  border: none;
-  cursor: pointer;
-  opacity: 0;
+/* Floating action toolbar revealed on hover / focus. */
+.chat-message-actions {
+  position: absolute;
+  right: 6px;
+  top: -8px;
+  z-index: 10;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
-.chat-message:hover .chat-reply-trigger,
-.chat-reply-trigger:focus-visible {
+.chat-message:hover .chat-message-actions,
+.chat-message-actions:focus-within {
+  display: flex;
+}
+
+.chat-action-btn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-action-btn:hover,
+.chat-action-btn:focus-visible {
   color: var(--color-text);
-  opacity: 1;
+  background: var(--color-surface-hover);
+  outline: none;
 }
 
 .chat-compose-shell {

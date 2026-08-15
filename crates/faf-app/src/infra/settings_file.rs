@@ -9,7 +9,6 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
-use directories::ProjectDirs;
 use faf_domain::state::SettingsState;
 
 use crate::ports::SettingsPort;
@@ -20,8 +19,9 @@ pub struct FileSettings {
 }
 
 impl FileSettings {
-    /// Use the standard per-app config directory (e.g. `%APPDATA%/forge-client`
-    /// on Windows, `~/.config/forge-client` on Linux). Falls back to the current
+    /// Use the standard per-app config directory (e.g.
+    /// `%APPDATA%/FAForever/FAForever Client` on Windows,
+    /// `~/.config/FAForever Client` on Linux). Falls back to the current
     /// directory if no config dir can be resolved.
     pub fn faf() -> Self {
         Self {
@@ -39,7 +39,7 @@ impl FileSettings {
 /// [`load_sync`]) before the async runtime: and therefore the [`SettingsPort`]
 ///: exists yet.
 pub fn resolve_path() -> PathBuf {
-    ProjectDirs::from("com", "forgeclient", "forge-client")
+    crate::infra::project_dirs()
         .map(|dirs| dirs.config_dir().join("settings.json"))
         .unwrap_or_else(|| PathBuf::from("settings.json"))
 }

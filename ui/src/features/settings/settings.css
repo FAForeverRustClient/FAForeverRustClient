@@ -640,6 +640,67 @@
 }
 
 .diagnostic-log-modal { max-width: 900px; }
+
+/* Automatic findings, above the log they came from. Warn-toned rather than
+   error-toned: these are explanations for a crash that already happened, not a
+   fault occurring now. */
+.log-analysis {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-warn);
+  border-radius: var(--radius-md);
+}
+
+.log-analysis-heading {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.log-analysis ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.log-analysis li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.log-analysis-link {
+  flex: none;
+  padding: 0;
+  color: var(--color-accent);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.log-analysis-link:hover {
+  color: var(--color-text);
+}
+
+.log-analysis-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
 .diagnostic-log-modal textarea {
   width: 100%;
   height: min(52vh, 520px);

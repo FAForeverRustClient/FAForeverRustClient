@@ -1,75 +1,238 @@
 /* Generate-a-map dialog: see GenerateMapModal.tsx. */
+
+.generate-map-modal {
+  width: min(740px, calc(100vw - 32px));
+  max-width: 740px;
+}
+
+.generate-map-head {
+  margin-bottom: var(--space-3);
+}
+
 .generate-map-title {
-  margin: 0 0 var(--space-3);
-  font-size: 16px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.generate-map-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.4;
 }
 
 .generate-map {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  min-width: min(560px, 78vw);
 }
 
-.generate-map-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-2) var(--space-3);
-}
-
-.generate-map-types {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-3);
-}
-
-.generate-map-types legend {
-  padding: 0 var(--space-2);
-  color: var(--color-muted);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.generate-map-type {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  cursor: pointer;
-}
-
-.generate-map-type span {
+/* Reproduce section */
+.generate-map-reproduce-section {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.generate-map-reproduce-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.generate-map-hint {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.generate-map-error {
+  color: var(--color-error);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Common form fields and controls */
+.generate-map-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
 
-.generate-map-type small {
+.generate-map-label {
+  display: block;
+  color: var(--color-muted);
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.generate-map-advanced-toggle {
+.generate-map-field-hint {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.generate-map-control {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  color: var(--color-text);
   font: inherit;
-  align-self: flex-start;
-  padding: 6px var(--space-2);
+  font-size: 13px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.generate-map-control:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.generate-map-control:focus-visible {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent-glow);
+  outline-offset: 0;
+}
+
+/* Custom styled selects */
+.generate-map-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.generate-map-select-wrap select.generate-map-control {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.generate-map-select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--color-muted);
+}
+
+/* Primary options grid */
+.generate-map-primary-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1.3fr 0.8fr 0.8fr 1.2fr;
+  gap: 10px;
+  align-items: end;
+}
+
+/* Style of Game card selector */
+.generate-map-styles-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.generate-map-styles-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.generate-map-style-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.generate-map-style-card:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.generate-map-style-card.active,
+.generate-map-style-card.active:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-accent);
+}
+
+.generate-map-style-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.generate-map-style-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.generate-map-style-hint {
+  font-size: 11px;
+  color: var(--color-muted);
+  line-height: 1.35;
+}
+
+/* Advanced options toggle & accordion */
+.generate-map-advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  padding: 6px 10px;
   background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   color: var(--color-muted);
   cursor: pointer;
+  align-self: flex-start;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 .generate-map-advanced-toggle:hover {
   background: var(--color-surface-hover);
   color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
-.generate-map-advanced-toggle:focus-visible,
-.density-slider button:focus-visible {
+.generate-map-advanced-toggle:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
+}
+
+.generate-map-toggle-icon {
+  transition: transform 150ms ease;
+}
+
+.generate-map-advanced-toggle[aria-expanded="true"] .generate-map-toggle-icon {
+  transform: rotate(180deg);
 }
 
 .generate-map-advanced {
@@ -80,55 +243,71 @@
   border-top: 1px solid var(--color-border);
 }
 
-/* Explains when one option silently overrides others: the generator ignores
-   the overridden flags, so saying so beats letting the user set them. */
 .generate-map-note {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
+  color: var(--color-warn);
+  line-height: 1.4;
 }
 
-.generate-map-sliders {
+.generate-map-advanced-grid-3 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  align-items: end;
 }
 
-.density-slider {
+.generate-map-advanced-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+/* Seed input group */
+.generate-map-seed {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+}
+
+.generate-map-seed input {
+  flex: 1;
   min-width: 0;
 }
 
-.density-slider-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 12px;
-}
-
-.density-slider input[type="range"] {
-  width: 100%;
-}
-
-.density-slider button {
-  font: inherit;
-  align-self: flex-start;
-  padding: 2px var(--space-2);
-  font-size: 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+.generate-map-seed-btn {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   color: var(--color-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
-.density-slider button:disabled {
-  opacity: 0.5;
-  cursor: default;
+.generate-map-seed-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
 }
 
+/* Density sliders */
+.generate-map-sliders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* Progress feedback */
 .generate-map-progress {
   margin: 0;
   font-size: 12px;
@@ -142,15 +321,16 @@
   color: var(--color-error);
 }
 
+/* Actions footer */
 .generate-map-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
 }
 
-/* A `fieldset` carries the disabled state for the whole options block while a
-   map name is being reproduced, so every control inside it greys out together
-   rather than each one repeating the condition. It is layout-neutral. */
 .generate-map-fieldset {
   display: contents;
   margin: 0;
@@ -158,43 +338,7 @@
   border: 0;
 }
 
-.generate-map-error {
-  color: var(--color-error);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-/* Seed field plus its reroll button. */
-.generate-map-seed {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.generate-map-seed input {
-  flex: 1;
-  min-width: 0;
-}
-
-.generate-map-seed button {
-  flex: none;
-  display: inline-flex;
-  width: 32px;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.generate-map-seed button:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
-/* Which of several generated maps to carry back to the host form. */
+/* Choices grid for multi-generation selection */
 .generate-map-choices-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -232,7 +376,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: var(--color-surface-sunken);
+  background: var(--color-surface-raised);
   border-radius: var(--radius-sm);
   overflow: hidden;
   display: flex;
@@ -264,4 +408,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 680px) {
+  .generate-map-primary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .generate-map-styles-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .generate-map-advanced-grid-3,
+  .generate-map-advanced-grid-4 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .generate-map-sliders {
+    grid-template-columns: 1fr;
+  }
 }

@@ -37,6 +37,7 @@ pub mod oauth;
 pub mod player_card;
 pub mod relay;
 pub mod replay;
+pub(crate) mod replay_recorder;
 pub mod reporting;
 pub mod reviews;
 pub mod session;
@@ -101,12 +102,38 @@ pub(crate) fn free_port() -> Option<u16> {
         .map(|addr| addr.port())
 }
 
+/// On-disk identity. One definition, because these were duplicated across six
+/// files and the product had already been renamed out from under them: the
+/// bundle is `FAForever Client` / `com.faforever.rustclient` while every path
+/// still said `forgeclient`/`forge-client`.
+pub(crate) const APP_QUALIFIER: &str = "com";
+pub(crate) const APP_ORGANIZATION: &str = "FAForever";
+pub(crate) const APP_NAME: &str = "FAForever Client";
+
+/// Short, space-free form for places that cannot take a display name: temp
+/// directories, the keyring service, and the HTTP user agent.
+pub(crate) const APP_SLUG: &str = "faforever-client";
+
+/// What the client called itself before the rename. Only
+/// [`migrate_legacy_directories`] and the keyring fallback read these.
+const LEGACY_ORGANIZATION: &str = "forgeclient";
+const LEGACY_NAME: &str = "forge-client";
+pub(crate) const LEGACY_APP_SLUG: &str = "forge-client";
+
+pub(crate) fn project_dirs() -> Option<directories::ProjectDirs> {
+    directories::ProjectDirs::from(APP_QUALIFIER, APP_ORGANIZATION, APP_NAME)
+}
+
+fn legacy_project_dirs() -> Option<directories::ProjectDirs> {
+    directories::ProjectDirs::from(APP_QUALIFIER, LEGACY_ORGANIZATION, LEGACY_NAME)
+}
+
 /// The client's cache root. Holds downloaded replays, game logs, and the
 /// content-addressed featured-mod file cache: which the replay and live-game
 /// updaters deliberately share, so patching for a live game also satisfies the
 /// next replay at that version without re-downloading.
 pub(crate) fn cache_dir() -> Result<std::path::PathBuf, String> {
-    directories::ProjectDirs::from("com", "forgeclient", "forge-client")
+    project_dirs()
         .map(|dirs| dirs.cache_dir().to_path_buf())
         .ok_or_else(|| "could not resolve a cache directory".to_string())
 }
@@ -117,9 +144,40 @@ pub(crate) fn cache_dir() -> Result<std::path::PathBuf, String> {
 /// definition, and an installed application that a cache cleaner may delete
 /// under the user is not an installation.
 pub(crate) fn data_dir() -> Result<std::path::PathBuf, String> {
-    directories::ProjectDirs::from("com", "forgeclient", "forge-client")
+    project_dirs()
         .map(|dirs| dirs.data_dir().to_path_buf())
         .ok_or_else(|| "could not resolve a data directory".to_string())
+}
+
+/// Move the pre-rename directories into place, once, at startup.
+///
+/// A *move*, not a copy: the cache holds the content-addressed featured-mod
+/// store, which is routinely hundreds of megabytes, and duplicating it to keep
+/// a downgrade working is not worth the disk. The old client is not expected to
+/// run again.
+///
+/// Every step is best effort and skipped when the new location already exists,
+/// so this can never overwrite live data, and a failure leaves the old
+/// directory untouched for a manual move. Running it a second time is a no-op.
+pub fn migrate_legacy_directories() {
+    let (Some(new), Some(old)) = (project_dirs(), legacy_project_dirs()) else {
+        return;
+    };
+    for (from, to, what) in [
+        (old.cache_dir(), new.cache_dir(), "cache"),
+        (old.data_dir(), new.data_dir(), "data"),
+        (old.config_dir(), new.config_dir(), "config"),
+    ] {
+        if migrate_directory(from, to) {
+            tracing::info!(?from, ?to, "migrated the {what} directory");
+        } else if from.exists() && !to.exists() {
+            tracing::warn!(
+                ?from,
+                ?to,
+                "could not migrate the {what} directory; it was left in place"
+            );
+        }
+    }
 }
 
 /// Read an env var, falling back to `fallback` if unset or empty. Shared by the
@@ -129,6 +187,44 @@ pub(crate) fn env_or(key: &str, fallback: impl Into<String>) -> String {
         .ok()
         .filter(|v| !v.is_empty())
         .unwrap_or_else(|| fallback.into())
+}
+
+/// A folder (or file) the client writes to and the user may want to open.
+///
+/// The Java client reveals six such locations from its main menu
+/// (`menu.revealMapFolder` and friends). It matters more here: this client
+/// stages maps into a vault path, writes mods beside them, keeps replays in a
+/// shared FAF directory and patches a `game.prefs` none of which a user would
+/// guess. Resolution lives here rather than in the shell so the paths cannot
+/// drift from the ones the adapters actually use.
+pub fn client_folder(kind: &str) -> Result<std::path::PathBuf, String> {
+    let path = match kind {
+        "maps" => faf_content::vault_dir().join("maps"),
+        "mods" => faf_content::vault_dir().join("mods"),
+        "replays" => replay::local_replays_dir(),
+        "vault" => faf_content::vault_dir(),
+        // A file, not a directory: the shell reveals it in its parent.
+        "gamePrefs" => mods::game_prefs_path(),
+        other => return Err(format!("unknown folder '{other}'")),
+    };
+    Ok(path)
+}
+
+/// Move `from` to `to` only when `to` does not exist yet.
+///
+/// Split out from [`migrate_legacy_directories`] so the "never overwrite live
+/// data, never fail loudly" rule is testable without touching the real
+/// per-user directories.
+fn migrate_directory(from: &std::path::Path, to: &std::path::Path) -> bool {
+    if !from.exists() || to.exists() {
+        return false;
+    }
+    if let Some(parent) = to.parent() {
+        if std::fs::create_dir_all(parent).is_err() {
+            return false;
+        }
+    }
+    std::fs::rename(from, to).is_ok()
 }
 
 /// The user's language, as the OS reports it, or empty when it cannot be read.
@@ -433,5 +529,63 @@ pub fn ports_from_env() -> Ports {
         ports
     } else {
         real_ports()
+    }
+}
+
+#[cfg(test)]
+mod identity_tests {
+    use super::*;
+
+    #[test]
+    fn the_migration_never_overwrites_an_existing_directory() {
+        let root = std::env::temp_dir().join(format!("faf-migrate-{}", std::process::id()));
+        let old = root.join("old");
+        let new = root.join("new");
+        std::fs::create_dir_all(old.join("inner")).unwrap();
+        std::fs::write(old.join("inner/keep.txt"), b"old").unwrap();
+        std::fs::create_dir_all(&new).unwrap();
+        std::fs::write(new.join("live.txt"), b"new").unwrap();
+
+        assert!(
+            !migrate_directory(&old, &new),
+            "a populated target is left alone"
+        );
+        assert!(
+            old.join("inner/keep.txt").exists(),
+            "the source is untouched"
+        );
+        assert_eq!(std::fs::read(new.join("live.txt")).unwrap(), b"new");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_migration_moves_the_tree_when_the_target_is_absent() {
+        let root = std::env::temp_dir().join(format!("faf-migrate-move-{}", std::process::id()));
+        let old = root.join("old");
+        let new = root.join("new");
+        std::fs::create_dir_all(old.join("inner")).unwrap();
+        std::fs::write(old.join("inner/keep.txt"), b"payload").unwrap();
+
+        assert!(migrate_directory(&old, &new));
+        assert_eq!(
+            std::fs::read(new.join("inner/keep.txt")).unwrap(),
+            b"payload"
+        );
+        assert!(!old.exists(), "a move, not a copy: the cache can be large");
+        // Idempotent: a second launch finds nothing to do.
+        assert!(!migrate_directory(&old, &new));
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_new_identity_differs_from_the_old_one_everywhere() {
+        assert_ne!(APP_ORGANIZATION, LEGACY_ORGANIZATION);
+        assert_ne!(APP_NAME, LEGACY_NAME);
+        assert_ne!(APP_SLUG, LEGACY_APP_SLUG);
+        // The slug goes into a User-Agent product token and a keyring service
+        // name; neither tolerates a space.
+        assert!(!APP_SLUG.contains(' '));
     }
 }

@@ -96,8 +96,9 @@ fn resolve_adapter_path(
 }
 
 fn default_log_path() -> String {
+    // Temp only; see the note on the Java adapter's log dir.
     std::env::temp_dir()
-        .join("forge-client")
+        .join(crate::infra::APP_SLUG)
         .join("iceAdapterLogs")
         .to_string_lossy()
         .into_owned()

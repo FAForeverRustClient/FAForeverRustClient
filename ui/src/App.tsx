@@ -10,6 +10,7 @@ import { useAppStore } from "./store/store";
 import { LoginView } from "./features/auth/LoginView";
 import { AppShell } from "./features/shell/AppShell";
 import { CommandErrorBanner } from "./features/shell/CommandErrorBanner";
+import { ExitGuard } from "./features/shell/ExitGuard";
 import { StartupView } from "./features/shell/StartupView";
 import {
   clearLegacyBrowsingPreferences,
@@ -161,6 +162,7 @@ export function App() {
   return (
     <>
       {content}
+      <ExitGuard />
       {commandError && (
         <CommandErrorBanner message={commandError} onDismiss={() => setCommandError(null)} />
       )}

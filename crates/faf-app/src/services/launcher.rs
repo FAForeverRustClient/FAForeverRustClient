@@ -13,11 +13,15 @@
 //! relay messages arriving on the same socket. On any setup failure we stop the
 //! adapter and emit `LaunchFailed`.
 
-use faf_domain::state::{Game, GameLaunch, LobbyEvent, NotificationKind, PlayerProfile};
+use faf_domain::state::{
+    Game, GameLaunch, LobbyEvent, NotificationKind, PlayerProfile, ReplayEvent,
+};
 use serde_json::Value;
 use tokio::sync::mpsc;
 
-use crate::ports::{GameLaunchParams, GamePreparation, IceParams, RelayMsg, UpdateProgress};
+use crate::ports::{
+    GameLaunchParams, GamePreparation, IceParams, RelayMsg, ReplayMetadata, UpdateProgress,
+};
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::notifications;
 
@@ -118,6 +122,7 @@ pub async fn start(
         player_id: player.id,
         player_login: player.name.clone(),
         args: launch_arguments(launch, player_profile.as_ref()),
+        replay: replay_metadata(launch, &player.name, out),
     };
     if let Err(e) = ctx.ports.process.launch_game(game_params).await {
         ctx.ports.ice.stop();
@@ -163,6 +168,17 @@ pub async fn start(
         tracing::debug!("stopping ICE adapter");
         exit_ports.ice.stop();
         exit_sink.emit(LobbyEvent::GameTerminated);
+
+        // The replay the game just streamed to the local recorder is on disk
+        // now. Re-listing here is what makes it appear in the Local tab without
+        // the user knowing to press refresh: the scan is a directory read, and
+        // it only happens once per game.
+        match exit_ports.replay.list_local().await {
+            Ok(replays) => exit_sink.emit(ReplayEvent::LocalLoaded { replays }),
+            Err(reason) => {
+                tracing::warn!(%reason, "could not refresh the local replay list after the game")
+            }
+        }
         tracing::info!("launcher: game exit cleanup complete");
     });
 
@@ -352,6 +368,50 @@ fn init_mode_for(game_type: &str) -> i32 {
         1
     } else {
         0
+    }
+}
+
+/// Describe the game for the header of the replay this launch will record.
+///
+/// `game_launch` carries the identity of the game (uid, title, map, mod) but not
+/// who is in it, so the lobby's own listing is consulted for the teams, the host
+/// and the launch time. It is legitimately absent on the matchmaker path, where
+/// the game exists before it is ever listed publicly; the recording still gets a
+/// correct map, title and mod, and falls back to its own start time for the
+/// date. Nothing here is worth failing a launch over.
+fn replay_metadata(launch: &GameLaunch, player: &str, out: &EventSink) -> ReplayMetadata {
+    let game = out.with_state(|state| {
+        state
+            .lobby
+            .games
+            .iter()
+            .find(|game| game.id == launch.uid)
+            .cloned()
+    });
+    ReplayMetadata {
+        uid: launch.uid,
+        recorder: player.to_string(),
+        featured_mod: launch.mod_name.clone(),
+        title: if launch.name.is_empty() {
+            game.as_ref()
+                .map(|game| game.title.clone())
+                .unwrap_or_default()
+        } else {
+            launch.name.clone()
+        },
+        map_name: launch.mapname.clone(),
+        game_type: launch.game_type.clone(),
+        host: game
+            .as_ref()
+            .map(|game| game.host.clone())
+            .unwrap_or_default(),
+        launched_at: game.as_ref().and_then(|game| game.launched_at),
+        num_players: game.as_ref().map(|game| game.players).unwrap_or_default(),
+        teams: game
+            .as_ref()
+            .map(|game| game.teams.clone())
+            .unwrap_or_default(),
+        sim_mods: game.map(|game| game.sim_mods).unwrap_or_default(),
     }
 }
 

@@ -1008,6 +1008,11 @@ fn cases() -> Vec<Case> {
                     maps: vec![InstalledMap {
                         folder_name: "scmp_009".into(),
                         display_name: "Open Palms".into(),
+                        max_players: 6,
+                        width: 512,
+                        height: 512,
+                        version: Some("1.0".into()),
+                        description: None,
                     }],
                 }
                 .into(),

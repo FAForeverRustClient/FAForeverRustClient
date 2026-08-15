@@ -1205,6 +1205,11 @@ export type InstallState = {
 export type InstalledMap = {
 	folderName: string,
 	displayName: string,
+	maxPlayers?: number,
+	width?: number,
+	height?: number,
+	version?: string | null,
+	description?: string | null,
 };
 
 /**

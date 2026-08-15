@@ -174,69 +174,83 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   }
 
   return (
-    <Modal onClose={onClose}>
-      <h2 className="generate-map-title">{t("maps.generate.title")}</h2>
+    <Modal onClose={onClose} className="generate-map-modal">
+      <div className="generate-map-head">
+        <h2 className="generate-map-title">{t("maps.generate.title")}</h2>
+        <p className="generate-map-subtitle">Configure Neroxis procedural map generator options or rebuild an exact recipe.</p>
+      </div>
+
       <form className="generate-map" onSubmit={submit}>
-        <label className="field">
-          <span>{t("maps.generate.reproduceTitle")}</span>
+        <div className="generate-map-reproduce-section">
+          <div className="generate-map-reproduce-header">
+            <label htmlFor="reproduce-name" className="generate-map-label">
+              {t("maps.generate.reproduceTitle")}
+            </label>
+            <span className="generate-map-hint">{t("maps.generate.reproduceHint")}</span>
+          </div>
           <input
+            id="reproduce-name"
+            className="generate-map-control generate-map-reproduce-input"
             value={reproduceName}
             placeholder="neroxis_map_generator_1.7.7_..."
             aria-invalid={Boolean(reproduceError)}
             onChange={(e) => setReproduceName(e.target.value)}
           />
-          {reproduceError ? (
-            <small className="generate-map-error">{reproduceError}</small>
-          ) : (
-            <small className="muted">
-              {t("maps.generate.reproduceHint")}
-            </small>
-          )}
-        </label>
+          {reproduceError && <small className="generate-map-error">{reproduceError}</small>}
+        </div>
 
         <fieldset className="generate-map-fieldset" disabled={reproducing}>
-          <div className="generate-map-grid">
-            <label className="field">
-              <span>{t("maps.generate.generatorVersion")}</span>
-              <select
-                value={form.version ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value || null;
-                  set("version", v);
-                  void loadOptions(v);
-                }}
-              >
-                <option value="">
-                  Latest ({state.latestVersion ? state.latestVersion : "auto"})
-                </option>
-                {availableVersions
-                  .filter((v) => v !== state.latestVersion)
-                  .map((v) => (
-                    <option key={v} value={v}>
-                      {v}
+          <div className="generate-map-primary-grid">
+            <label className="generate-map-field">
+              <span className="generate-map-label">{t("maps.generate.generatorVersion")}</span>
+              <div className="generate-map-select-wrap">
+                <select
+                  className="generate-map-control generate-map-select"
+                  value={form.version ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    set("version", v);
+                    void loadOptions(v);
+                  }}
+                >
+                  <option value="">
+                    Latest ({state.latestVersion ? state.latestVersion : "auto"})
+                  </option>
+                  {availableVersions
+                    .filter((v) => v !== state.latestVersion)
+                    .map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                </select>
+                <Icon name="chevronDown" size={13} className="generate-map-select-arrow" />
+              </div>
+            </label>
+
+            <label className="generate-map-field">
+              <span className="generate-map-label">{t("maps.generate.mapSize")}</span>
+              <div className="generate-map-select-wrap">
+                <select
+                  className="generate-map-control generate-map-select"
+                  value={form.mapSize ?? 512}
+                  onChange={(e) => set("mapSize", Number(e.target.value))}
+                >
+                  {MAP_SIZES.map((size) => (
+                    <option key={size.value} value={size.value}>
+                      {size.label}
                     </option>
                   ))}
-              </select>
+                </select>
+                <Icon name="chevronDown" size={13} className="generate-map-select-arrow" />
+              </div>
             </label>
 
-            <label className="field">
-              <span>{t("maps.generate.mapSize")}</span>
-              <select
-                value={form.mapSize ?? 512}
-                onChange={(e) => set("mapSize", Number(e.target.value))}
-              >
-                {MAP_SIZES.map((size) => (
-                  <option key={size.value} value={size.value}>
-                    {size.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>{t("maps.generate.spawns")}</span>
+            <label className="generate-map-field">
+              <span className="generate-map-label">{t("maps.generate.spawns")}</span>
               <input
                 type="number"
+                className="generate-map-control"
                 min={2}
                 max={16}
                 value={form.spawnCount ?? 6}
@@ -244,10 +258,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               />
             </label>
 
-            <label className="field">
-              <span>{t("maps.generate.teams")}</span>
+            <label className="generate-map-field">
+              <span className="generate-map-label">{t("maps.generate.teams")}</span>
               <input
                 type="number"
+                className="generate-map-control"
                 min={2}
                 max={8}
                 value={form.numTeams ?? 2}
@@ -255,37 +270,44 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               />
             </label>
 
-            <label className="field">
-              <span>{t("maps.generate.count")}</span>
+            <label className="generate-map-field">
+              <span className="generate-map-label">{t("maps.generate.count")}</span>
               <input
                 type="number"
+                className="generate-map-control"
                 min={1}
                 max={10}
                 disabled={seedPinsOneMap}
                 value={seedPinsOneMap ? 1 : form.numToGenerate ?? 1}
                 onChange={(e) => set("numToGenerate", Number(e.target.value))}
               />
-              {seedPinsOneMap && <small className="muted">{t("maps.generate.seedPinsOneMap")}</small>}
+              {seedPinsOneMap && <small className="generate-map-field-hint">{t("maps.generate.seedPinsOneMap")}</small>}
             </label>
           </div>
 
-          <fieldset className="generate-map-types surface">
-            <legend>{t("maps.generate.styleOfGame")}</legend>
-            {recordEntries(GENERATION_TYPES).map(([value, generationType]) => (
-              <label key={value} className="generate-map-type">
-                <input
-                  type="radio"
-                  name="generation-type"
-                  checked={form.generationType === value}
-                  onChange={() => set("generationType", value)}
-                />
-                <span>
-                  <strong>{t(generationType.label)}</strong>
-                  <small className="muted">{t(generationType.hint)}</small>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+          <div className="generate-map-styles-group">
+            <span className="generate-map-label">{t("maps.generate.styleOfGame")}</span>
+            <div className="generate-map-styles-grid" role="radiogroup">
+              {recordEntries(GENERATION_TYPES).map(([value, generationType]) => {
+                const active = form.generationType === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    className={`generate-map-style-card${active ? " active" : ""}`}
+                    onClick={() => set("generationType", value)}
+                  >
+                    <div className="generate-map-style-card-header">
+                      <span className="generate-map-style-title">{t(generationType.label)}</span>
+                    </div>
+                    <span className="generate-map-style-hint">{t(generationType.hint)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <button
             type="button"
@@ -293,35 +315,38 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             aria-expanded={advanced}
             onClick={() => setAdvanced((a) => !a)}
           >
-            {advanced ? t("maps.generate.fewerOptions") : t("maps.generate.moreOptions")}
+            <Icon name="chevronDown" size={13} className="generate-map-toggle-icon" />
+            <span>{advanced ? t("maps.generate.fewerOptions") : t("maps.generate.moreOptions")}</span>
           </button>
 
           {advanced && (
             <div className="generate-map-advanced">
               {typeOverrides && (
-                <p className="muted generate-map-note">
+                <p className="generate-map-note">
                   {t("maps.generate.typeOverridesNote", { type: t(GENERATION_TYPES[form.generationType].label) })}
                 </p>
               )}
 
-              <div className="generate-map-grid">
-                <label className="field">
-                  <span>{t("maps.generate.seed")}</span>
+              <div className="generate-map-advanced-grid-3">
+                <label className="generate-map-field">
+                  <span className="generate-map-label">{t("maps.generate.seed")}</span>
                   <span className="generate-map-seed">
                     <input
+                      className="generate-map-control"
                       value={form.seed}
                       placeholder={t("maps.generate.random")}
                       onChange={(e) => set("seed", e.target.value)}
                     />
                     <button
                       type="button"
+                      className="generate-map-seed-btn"
                       aria-label={t("maps.generate.rerollSeed")}
                       title={t("maps.generate.rerollSeed")}
                       onClick={() =>
                         set("seed", String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
                       }
                     >
-                      <Icon name="refresh" size={14} />
+                      <Icon name="refresh" size={13} />
                     </button>
                   </span>
                 </label>
@@ -344,12 +369,12 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               </div>
 
               {styleOverrides && (
-                <p className="muted generate-map-note">
+                <p className="generate-map-note">
                   {t("maps.generate.mapStyleHint")}
                 </p>
               )}
 
-              <div className="generate-map-grid">
+              <div className="generate-map-advanced-grid-4">
                 <MultiSelect
                   label={t("maps.generate.terrainStyles")}
                   options={lists.terrainStyles.map((s) => ({ value: s, label: s }))}
@@ -405,9 +430,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 />
               </div>
 
-              <label className="field">
-                <span>{t("maps.generate.rawArguments")}</span>
+              <label className="generate-map-field">
+                <span className="generate-map-label">{t("maps.generate.rawArguments")}</span>
                 <input
+                  className="generate-map-control"
                   value={form.commandLineArgs}
                   placeholder={t("maps.generate.overridesEveryOption")}
                   onChange={(e) => set("commandLineArgs", e.target.value)}

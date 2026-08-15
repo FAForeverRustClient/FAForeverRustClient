@@ -659,7 +659,7 @@ const MAX_LOCAL_REPLAYS: usize = 100;
 /// client's `APPDATA_DIR` (`%ALLUSERSPROFILE%\FAForever` on Windows, falling
 /// back to `~/FAForever` elsewhere) plus `/replays`. `FAF_REPLAYS_DIR`
 /// overrides it (tests, alternate installs).
-fn local_replays_dir() -> PathBuf {
+pub(crate) fn local_replays_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("FAF_REPLAYS_DIR") {
         if !dir.is_empty() {
             return PathBuf::from(dir);
@@ -1986,6 +1986,56 @@ mod tests {
             .await
             .expect("missing dir is not an error");
         assert!(replays.is_empty());
+    }
+
+    /// The contract between the two halves of "record a game locally": what
+    /// [`crate::infra::replay_recorder`] writes has to be what this module's
+    /// archive listing can read. They were written against the same format and
+    /// were still incompatible, because the recorder emitted the bare stream and
+    /// everything the list shows comes from the JSON header the stream has none
+    /// of. Asserting the pair together is the only thing that catches that.
+    #[tokio::test]
+    async fn a_recorded_replay_lists_with_its_game_details() {
+        let dir = std::env::temp_dir().join(format!("forge-recorded-{}", std::process::id()));
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+
+        let metadata = crate::ports::ReplayMetadata {
+            uid: 27_619_486,
+            recorder: "Nory".into(),
+            featured_mod: "faf".into(),
+            title: "Turtle bowl".into(),
+            map_name: "scmp_009".into(),
+            game_type: "custom".into(),
+            host: "Nory".into(),
+            launched_at: Some(1_700_000_000),
+            num_players: 2,
+            teams: [
+                ("1".to_string(), vec!["Nory".to_string()]),
+                ("2".to_string(), vec!["Someone".to_string()]),
+            ]
+            .into_iter()
+            .collect(),
+            sim_mods: Default::default(),
+        };
+        let file =
+            crate::infra::replay_recorder::build_fafreplay(&metadata, b"body".to_vec(), true)
+                .unwrap();
+        let path = dir.join("27619486-Nory.fafreplay");
+        tokio::fs::write(&path, &file).await.unwrap();
+
+        let replays = list_local_dir(&dir).await.unwrap();
+        let replay = replays.first().expect("the recording should be listed");
+        assert_eq!(replay.uid, Some(27_619_486));
+        assert_eq!(replay.title, "Turtle bowl");
+        assert_eq!(replay.map, "scmp_009");
+        assert_eq!(replay.mod_name, "faf");
+        assert_eq!(replay.recorder, "Nory");
+        assert_eq!(replay.start_time, Some(1_700_000_000));
+        assert_eq!(replay.num_players, 2);
+        assert_eq!(replay.teams.len(), 2);
+        assert_eq!(replay.status, LocalReplayStatus::Complete);
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 
     #[tokio::test]

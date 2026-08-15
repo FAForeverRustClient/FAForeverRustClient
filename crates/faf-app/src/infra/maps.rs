@@ -233,14 +233,184 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
         if !is_dir {
             continue;
         }
+        let folder_path = entry.path();
         let folder_name = entry.file_name().to_string_lossy().to_lowercase();
+
+        let scenario_info = find_and_parse_scenario_lua(&folder_path).await;
+        let display_name = scenario_info
+            .as_ref()
+            .and_then(|s| s.name.clone())
+            .filter(|n| !n.trim().is_empty())
+            .unwrap_or_else(|| display_name_from_folder(&folder_name));
+
+        let version = scenario_info
+            .as_ref()
+            .and_then(|s| s.version.clone())
+            .or_else(|| version_from_folder(&folder_name));
+
+        let (max_players, width, height) = if let Some(ref s) = scenario_info {
+            (s.max_players, s.width, s.height)
+        } else {
+            (0, 0, 0)
+        };
+
+        let description = scenario_info.and_then(|s| s.description);
+
         installed.push(InstalledMap {
-            display_name: display_name_from_folder(&folder_name),
             folder_name,
+            display_name,
+            max_players,
+            width,
+            height,
+            version,
+            description,
         });
     }
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));
     Ok(installed)
+}
+
+async fn find_and_parse_scenario_lua(folder_path: &std::path::Path) -> Option<ScenarioInfo> {
+    let mut rd = tokio::fs::read_dir(folder_path).await.ok()?;
+    while let Ok(Some(entry)) = rd.next_entry().await {
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        if name.ends_with("_scenario.lua") || name == "scenario.lua" {
+            if let Ok(contents) = tokio::fs::read_to_string(entry.path()).await {
+                return Some(parse_scenario_lua(&contents));
+            }
+        }
+    }
+    None
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(crate) struct ScenarioInfo {
+    pub name: Option<String>,
+    pub width: i32,
+    pub height: i32,
+    pub max_players: i32,
+    pub version: Option<String>,
+    pub description: Option<String>,
+}
+
+pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
+    let mut info = ScenarioInfo::default();
+
+    // 1. Name: name = '...' or name = "..."
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("name =") || trimmed.starts_with("name=") {
+            if let Some(val) = extract_quoted_string(trimmed) {
+                if !val.is_empty() {
+                    info.name = Some(val);
+                    break;
+                }
+            }
+        }
+    }
+
+    // 2. Size: size = { width, height }
+    if let Some(size_idx) = content.find("size =").or_else(|| content.find("size=")) {
+        let slice = &content[size_idx..];
+        if let (Some(start), Some(end)) = (slice.find('{'), slice.find('}')) {
+            let inner = &slice[start + 1..end];
+            let dims = inner
+                .split(',')
+                .filter_map(|s| s.trim().parse::<i32>().ok())
+                .collect::<Vec<_>>();
+            if dims.len() >= 2 {
+                info.width = dims[0];
+                info.height = dims[1];
+            }
+        }
+    }
+
+    // 3. Map version: map_version = 1 or map_version = '1' or map_version = 1.0
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("map_version =") || trimmed.starts_with("map_version=") {
+            let after = if let Some(a) = trimmed.strip_prefix("map_version =") {
+                a.trim()
+            } else if let Some(a) = trimmed.strip_prefix("map_version=") {
+                a.trim()
+            } else {
+                ""
+            };
+            let cleaned = after
+                .trim_matches(|c: char| c == '\'' || c == '"' || c == ',' || c.is_whitespace());
+            if !cleaned.is_empty() {
+                info.version = Some(cleaned.to_string());
+                break;
+            }
+        }
+    }
+
+    // 4. Armies count / max players: count unique ARMY_N entries
+    let mut army_numbers = std::collections::BTreeSet::new();
+    for token in content.split(|c: char| !c.is_alphanumeric() && c != '_') {
+        if let Some(num_str) = token.strip_prefix("ARMY_") {
+            if let Ok(num) = num_str.parse::<u32>() {
+                if (1..=16).contains(&num) {
+                    army_numbers.insert(num);
+                }
+            }
+        }
+    }
+    if !army_numbers.is_empty() {
+        info.max_players = army_numbers.len() as i32;
+    }
+
+    // 5. Description
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("description =") || trimmed.starts_with("description=") {
+            if let Some(val) = extract_quoted_string(trimmed) {
+                let cleaned = if let Some(loc_end) = val.find('>') {
+                    if val.starts_with("<LOC") {
+                        val[loc_end + 1..].trim().to_string()
+                    } else {
+                        val
+                    }
+                } else {
+                    val
+                };
+                if !cleaned.is_empty() {
+                    info.description = Some(cleaned);
+                    break;
+                }
+            }
+        }
+    }
+
+    info
+}
+
+fn extract_quoted_string(line: &str) -> Option<String> {
+    let single = extract_between(line, '\'');
+    if single.is_some() {
+        return single;
+    }
+    extract_between(line, '"')
+}
+
+fn extract_between(s: &str, quote: char) -> Option<String> {
+    let first = s.find(quote)?;
+    let rest = &s[first + 1..];
+    let second = rest.find(quote)?;
+    Some(rest[..second].to_string())
+}
+
+fn version_from_folder(folder_name: &str) -> Option<String> {
+    if let Some((_, ver)) = folder_name.rsplit_once(".v") {
+        let digits = ver.trim_start_matches('0');
+        if digits.is_empty() {
+            Some("0".to_string())
+        } else {
+            Some(digits.to_string())
+        }
+    } else {
+        None
+    }
 }
 
 /// Mirrors the non-official-map fallback branch of the Python client's
@@ -733,6 +903,38 @@ mod tests {
         assert_eq!(pools[0].veto_tokens_per_player, 3);
         assert_eq!(pools[0].maps[0].assignment_id, 91);
         assert_eq!(pools[0].maps[0].display_name, "Open Palms");
+    }
+
+    #[test]
+    fn parses_scenario_lua_fields() {
+        let content = r#"
+ScenarioInfo = {
+    name = 'Adaptive Metir',
+    description = '<LOC map_adaptive_metir_desc>A balanced battleground for 4 players.',
+    type = 'skirmish',
+    starts = true,
+    size = {512, 512},
+    map_version = 1,
+    map = '/maps/adaptive_metir.v0001/adaptive_metir.scmap',
+    Configurations = {
+        ['standard'] = {
+            ['teams'] = {
+                { name = 'FFA', armies = {'ARMY_1','ARMY_2','ARMY_3','ARMY_4'} },
+            },
+        },
+    }
+}
+"#;
+        let info = parse_scenario_lua(content);
+        assert_eq!(info.name.as_deref(), Some("Adaptive Metir"));
+        assert_eq!(info.width, 512);
+        assert_eq!(info.height, 512);
+        assert_eq!(info.max_players, 4);
+        assert_eq!(info.version.as_deref(), Some("1"));
+        assert_eq!(
+            info.description.as_deref(),
+            Some("A balanced battleground for 4 players.")
+        );
     }
 
     #[tokio::test]

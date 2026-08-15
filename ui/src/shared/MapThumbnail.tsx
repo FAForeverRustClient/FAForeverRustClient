@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../design-system/Icon";
 import type { VaultMap } from "../ipc/bindings";
+import { useAppStore } from "../store/store";
 import { FactionIcon } from "./FactionIcon";
-import { mapPresentation, mapThumbnailCandidates } from "./mapPresentation";
+import { isGeneratedMap, mapPresentation, mapThumbnailCandidates } from "./mapPresentation";
 
 const COOP_FACTION_IDS: Record<string, number> = {
   uef: 1,
@@ -29,9 +30,16 @@ export function MapThumbnail({
   large = false,
 }: Props) {
   const presentation = mapPresentation(vault, mapName);
+  const isGenerated = isGeneratedMap(mapName);
+  const generatedPreview = useAppStore((state) =>
+    isGenerated
+      ? state.state.mapGenerator.previews?.[mapName] ||
+        state.state.mapGenerator.previews?.[mapName.toLowerCase()]
+      : undefined,
+  );
   const candidates = useMemo(
-    () => mapThumbnailCandidates(vault, mapName, large),
-    [large, mapName, vault],
+    () => mapThumbnailCandidates(vault, mapName, large, undefined, generatedPreview),
+    [generatedPreview, large, mapName, vault],
   );
   const [candidateIndex, setCandidateIndex] = useState(0);
 

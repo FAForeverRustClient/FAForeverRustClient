@@ -60,6 +60,16 @@ pub struct VaultMap {
 pub struct InstalledMap {
     pub folder_name: String,
     pub display_name: String,
+    #[serde(default)]
+    pub max_players: i32,
+    #[serde(default)]
+    pub width: i32,
+    #[serde(default)]
+    pub height: i32,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -297,6 +307,11 @@ mod tests {
         InstalledMap {
             folder_name: folder_name.into(),
             display_name: "Setons Clutch".into(),
+            max_players: 8,
+            width: 1024,
+            height: 1024,
+            version: Some("1".into()),
+            description: None,
         }
     }
 

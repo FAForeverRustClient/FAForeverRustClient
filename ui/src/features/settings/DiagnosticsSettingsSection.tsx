@@ -1,7 +1,22 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
-import { native, type LogKind, type LogPreview } from "../../ipc/native";
+import { native, type ClientFolder, type LogIssue, type LogKind, type LogPreview } from "../../ipc/native";
+import { openExternalUrl } from "../../shared/externalLinks";
+
+/**
+ * Where an issue's "More information" goes, empty when there is nothing useful
+ * to link to. The URL is data about the issue, but it lives here rather than in
+ * the domain because `externalLinks` owns the host allowlist that vets it: this
+ * thread is on `forum.faforever.com`, which that allowlist already covers.
+ *
+ * Same target as the Java client's `helpLinks.soundIssues`.
+ */
+const LOG_ISSUE_HELP: Record<LogIssue, string> = {
+  gameMinimized: "",
+  soundDriver:
+    "https://forum.faforever.com/topic/4084/solutions-for-snd-error-xact-invalid-arg-xact3dapply-failed",
+};
 import { SettingRow } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -20,8 +35,26 @@ export function DiagnosticsSettingsSection() {
       .catch((reason) => setError(String(reason)));
   };
 
+  // The Java client reveals these from its main menu. They matter more here:
+  // this client stages maps into a vault path and patches a `game.prefs` that
+  // no user would think to go looking for.
+  const CLIENT_FOLDERS: ClientFolder[] = ["maps", "mods", "replays", "vault", "gamePrefs"];
+  const openClientFolder = (kind: ClientFolder) => {
+    setError("");
+    void native.openClientFolder(kind).catch((reason) => setError(String(reason)));
+  };
+
   return (
     <>
+      <SettingRow label={t("settings.folders.label")} hint={t("settings.folders.hint")}>
+        <div className="settings-diagnostic-actions">
+          {CLIENT_FOLDERS.map((kind) => (
+            <Button key={kind} onClick={() => openClientFolder(kind)}>
+              {t(`settings.folders.${kind}`)}
+            </Button>
+          ))}
+        </div>
+      </SettingRow>
       <SettingRow label={t("settings.diagnostics.gameLogs")} hint={t("settings.diagnostics.gameLogsHint")}>
         <div className="settings-diagnostic-actions">
           <Button onClick={() => viewLatest("game")}>{t("settings.diagnostics.viewLatest")}</Button>
@@ -38,6 +71,30 @@ export function DiagnosticsSettingsSection() {
       {preview && (
         <Modal className="diagnostic-log-modal" onClose={() => setPreview(null)}>
           <h2>{preview.fileName}</h2>
+          {/* Above the log, not buried under it: the whole point is that these
+              traces are invisible in thousands of lines unless you already know
+              the string to search for. */}
+          {preview.issues.length > 0 && (
+            <section className="log-analysis" role="status">
+              <p className="log-analysis-heading">{t("log.analysis.heading")}</p>
+              <ul>
+                {preview.issues.map((issue) => (
+                  <li key={issue}>
+                    <span>{t(`log.analysis.${issue}`)}</span>
+                    {LOG_ISSUE_HELP[issue] && (
+                      <button
+                        type="button"
+                        className="log-analysis-link"
+                        onClick={() => void openExternalUrl(LOG_ISSUE_HELP[issue])}
+                      >
+                        {t("log.analysis.moreInfo")}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <p className="muted">{t("settings.diagnostics.truncated")}</p>
           <textarea readOnly value={preview.content} aria-label={`Contents of ${preview.fileName}`} />
           <div className="settings-diagnostic-actions">
