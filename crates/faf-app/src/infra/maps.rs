@@ -336,7 +336,8 @@ pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
             } else {
                 ""
             };
-            let cleaned = after.trim_matches(|c: char| c == '\'' || c == '"' || c == ',' || c.is_whitespace());
+            let cleaned = after
+                .trim_matches(|c: char| c == '\'' || c == '"' || c == ',' || c.is_whitespace());
             if !cleaned.is_empty() {
                 info.version = Some(cleaned.to_string());
                 break;

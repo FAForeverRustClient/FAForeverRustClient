@@ -195,7 +195,7 @@ pub fn run() {
                     let snapshot = core.0.versioned_snapshot();
                     let is_in_game = matches!(
                         snapshot.state.lobby.join,
-                        faf_domain::state::JoinState::InGame { .. }
+                        faf_domain::state::JoinState::InGame
                     );
                     if is_in_game {
                         api.prevent_close();

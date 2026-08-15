@@ -4679,7 +4679,12 @@
                 "maps": [
                   {
                     "folderName": "scmp_009",
-                    "displayName": "Open Palms"
+                    "displayName": "Open Palms",
+                    "maxPlayers": 6,
+                    "width": 512,
+                    "height": 512,
+                    "version": "1.0",
+                    "description": null
                   }
                 ]
               }
@@ -4691,8 +4696,13 @@
             },
             "installed": [
               {
+                "description": null,
                 "displayName": "Open Palms",
-                "folderName": "scmp_009"
+                "folderName": "scmp_009",
+                "height": 512,
+                "maxPlayers": 6,
+                "version": "1.0",
+                "width": 512
               }
             ],
             "installedStatus": {
