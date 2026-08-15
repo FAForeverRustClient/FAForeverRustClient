@@ -17,6 +17,8 @@ import { native } from "../../ipc/native";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useAppStore } from "../../store/store";
+import { t } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const openSettings = () =>
   ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
@@ -24,10 +26,16 @@ const openSettings = () =>
 const checkAgain = () =>
   ipc.send({ kind: "Settings", command: { type: "checkInstalls" } });
 
-/** Set both installs at once: the common case is one FA folder for both. */
+/**
+ * Set both installs at once: the common case is one FA folder for both.
+ *
+ * Not a component, so it uses the standalone `t` rather than the hook: the
+ * dialog title is produced once, at click time, and needs the language that is
+ * current then.
+ */
 async function pickInstall() {
   const path = await native.selectFile({
-    title: "Select FAF-managed ForgedAlliance.exe",
+    title: t("shell.install.pickTitle"),
     filters: [{ name: "ForgedAlliance.exe", extensions: ["exe"] }],
   });
   if (!path) return;
@@ -39,6 +47,7 @@ async function pickInstall() {
 }
 
 export function InstallBanner() {
+  const { t } = useTranslation();
   const install = useAppStore((s) => s.state.install);
   const [dismissed, setDismissed] = useState(false);
 
@@ -60,28 +69,28 @@ export function InstallBanner() {
       <div className="install-banner-copy">
         <strong>
           {replayOnly
-            ? "No game install configured"
-            : "Forged Alliance install not found"}
+            ? t("shell.install.noGameConfigured")
+            : t("shell.install.notFound")}
         </strong>
         <span className="muted">
           {replayOnly
-            ? "Replays can play, but joining and hosting games needs the game install."
-            : "Chat, the vault and the leaderboard work without it: playing and watching replays do not."}
+            ? t("shell.install.replayOnlyHint")
+            : t("shell.install.missingHint")}
         </span>
       </div>
       <div className="install-banner-actions">
         <Button variant="primary" onClick={() => void pickInstall()}>
-          Locate FAF executable
+          {t("shell.install.locate")}
         </Button>
-        <Button onClick={() => void openSettings()}>Settings</Button>
-        <Button onClick={() => void checkAgain()} title="Re-check the configured paths">
-          Check again
+        <Button onClick={() => void openSettings()}>{t("shell.install.settings")}</Button>
+        <Button onClick={() => void checkAgain()} title={t("shell.install.checkAgainTitle")}>
+          {t("shell.install.checkAgain")}
         </Button>
         <button
           type="button"
           className="install-banner-close"
-          aria-label="Dismiss"
-          title="Dismiss until the next launch"
+          aria-label={t("shell.install.dismiss")}
+          title={t("shell.install.dismissTitle")}
           onClick={() => setDismissed(true)}
         >
           <Icon name="close" size={14} />

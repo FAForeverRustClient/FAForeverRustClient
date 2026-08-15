@@ -3,6 +3,7 @@ import {
   DEFAULT_LIVE_REPLAY_FILTERS,
   parseLiveReplayFilters,
 } from "../../shared/browsingPreferences";
+import { t } from "../../i18n";
 
 export const DEFAULT_LIVE_FILTERS = DEFAULT_LIVE_REPLAY_FILTERS;
 export const parseLiveFilters = parseLiveReplayFilters;
@@ -55,9 +56,13 @@ export function liveSortValue(game: Game, key: LiveSortKey): string | number {
   }
 }
 
+/**
+ * The three known game types are copy; anything else is a server-supplied
+ * technical name and is only capitalised, never translated.
+ */
 export function prettyGameType(gameType: string): string {
-  if (!gameType) return "Custom";
-  if (gameType.toLocaleLowerCase() === "matchmaker") return "Matchmaker";
-  if (gameType.toLocaleLowerCase() === "coop") return "Co-op";
+  if (!gameType) return t("replays.gameType.custom");
+  if (gameType.toLocaleLowerCase() === "matchmaker") return t("replays.gameType.matchmaker");
+  if (gameType.toLocaleLowerCase() === "coop") return t("replays.gameType.coop");
   return gameType.charAt(0).toLocaleUpperCase() + gameType.slice(1);
 }

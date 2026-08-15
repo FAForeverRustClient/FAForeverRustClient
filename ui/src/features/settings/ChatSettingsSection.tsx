@@ -6,11 +6,13 @@ import { Icon } from "../../design-system/Icon";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { ChatNameColorSettings } from "./ChatNameColorSettings";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (preferences: ChatPreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setChat", payload: { preferences } } });
 
 export function ChatSettingsSection() {
+  const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.chat);
   const [channel, setChannel] = useState("");
 
@@ -24,60 +26,60 @@ export function ChatSettingsSection() {
 
   return (
     <>
-      <SettingRow label="Message timestamps" hint="Show a timestamp when the minute changes.">
+      <SettingRow label={t("settings.chat.messageTimestamps")} hint={t("settings.chat.messageTimestampsHint")}>
         <SettingsSwitch
           checked={preferences.showTimestamps}
           onChange={(showTimestamps) => void save({ ...preferences, showTimestamps })}
-          label="Message timestamps"
+          label={t("settings.chat.messageTimestamps")}
         />
       </SettingRow>
-      <SettingRow label="24-hour time" hint="Use 18:30 instead of 6:30 PM.">
+      <SettingRow label={t("settings.chat.24HourTime")} hint={t("settings.chat.24HourTimeHint")}>
         <SettingsSwitch
           checked={preferences.use24HourTime}
           disabled={!preferences.showTimestamps}
           onChange={(use24HourTime) => void save({ ...preferences, use24HourTime })}
-          label="24-hour time"
+          label={t("settings.chat.24HourTime")}
         />
       </SettingRow>
-      <SettingRow label="Color every name" hint="Give otherwise unassigned players a stable generated color.">
+      <SettingRow label={t("settings.chat.colorEveryName")} hint={t("settings.chat.colorEveryNameHint")}>
         <SettingsSwitch
           checked={preferences.coloredNames}
           onChange={(coloredNames) => void save({ ...preferences, coloredNames })}
-          label="Color every name"
+          label={t("settings.chat.colorEveryName")}
         />
       </SettingRow>
       <ChatNameColorSettings preferences={preferences} onSave={(next) => void save(next)} />
-      <SettingRow label="Show joins and parts" hint="Include channel join, leave, quit, and topic commentary.">
+      <SettingRow label={t("settings.chat.showJoinsParts")} hint={t("settings.chat.showJoinsPartsHint")}>
         <SettingsSwitch
           checked={preferences.showJoinsParts}
           onChange={(showJoinsParts) => void save({ ...preferences, showJoinsParts })}
-          label="Show joins and parts"
+          label={t("settings.chat.showJoinsParts")}
         />
       </SettingRow>
-      <SettingRow label="Hide foe messages" hint="Keep messages from players on your foe list out of the conversation.">
+      <SettingRow label={t("settings.chat.hideFoeMessages")} hint={t("settings.chat.hideFoeMessagesHint")}>
         <SettingsSwitch
           checked={preferences.hideFoeMessages}
           onChange={(hideFoeMessages) => void save({ ...preferences, hideFoeMessages })}
-          label="Hide foe messages"
+          label={t("settings.chat.hideFoeMessages")}
         />
       </SettingRow>
       <SettingRow
-        label="Join my language channel"
-        hint="Join FAF's channel for your language when there is one (#german, #french, #russian). Chosen from your system language, or your account's country flag."
+        label={t("settings.chat.joinMyLanguage")}
+        hint={t("settings.chat.joinMyLanguageHint")}
       >
         <SettingsSwitch
           checked={preferences.autoJoinLanguageChannel}
           onChange={(autoJoinLanguageChannel) =>
             void save({ ...preferences, autoJoinLanguageChannel })
           }
-          label="Join my language channel"
+          label={t("settings.chat.joinMyLanguage")}
         />
       </SettingRow>
       <div className="setting-block settings-muted-players">
-        <span className="setting-label">Muted players</span>
-        <span className="muted">Messages and notifications from these players are suppressed.</span>
+        <span className="setting-label">{t("settings.chat.mutedLabel")}</span>
+        <span className="muted">{t("settings.chat.mutedHint")}</span>
         {preferences.mutedPlayers.length > 0 ? (
-          <div className="settings-chip-list" aria-label="Muted players">
+          <div className="settings-chip-list" aria-label={t("settings.chat.mutedPlayers")}>
             {preferences.mutedPlayers.map((player) => (
               <span className="settings-chip surface" key={player.toLocaleLowerCase()}>
                 {player}
@@ -97,14 +99,14 @@ export function ChatSettingsSection() {
               </span>
             ))}
           </div>
-        ) : <span className="settings-empty muted">No muted players.</span>}
+        ) : <span className="settings-empty muted">{t("settings.chat.mutedEmpty")}</span>}
       </div>
-      <SettingRow label="Visible history" hint="Limit rendered messages per conversation for a responsive long-running chat.">
+      <SettingRow label={t("settings.chat.visibleHistory")} hint={t("settings.chat.visibleHistoryHint")}>
         <select
           className="settings-select"
           value={preferences.visibleMessageLimit}
           onChange={(event) => void save({ ...preferences, visibleMessageLimit: Number(event.target.value) })}
-          aria-label="Visible chat history"
+          aria-label={t("settings.chat.visibleChatHistory")}
         >
           <option value={100}>100 messages</option>
           <option value={250}>250 messages</option>
@@ -112,8 +114,8 @@ export function ChatSettingsSection() {
         </select>
       </SettingRow>
       <div className="setting-block settings-channels">
-        <span className="setting-label">Auto-join channels</span>
-        <span className="muted">Join these additional IRC channels after connecting.</span>
+        <span className="setting-label">{t("settings.chat.autoJoinLabel")}</span>
+        <span className="muted">{t("settings.chat.autoJoinHint")}</span>
         <div className="settings-inline-form">
           <input
             className="settings-input"
@@ -125,13 +127,13 @@ export function ChatSettingsSection() {
                 addChannel();
               }
             }}
-            placeholder="#channel"
-            aria-label="Channel to auto-join"
+            placeholder={t("settings.chat.channel")}
+            aria-label={t("settings.chat.channelAutoJoin")}
           />
-          <Button onClick={addChannel} disabled={!channel.trim()}>Add</Button>
+          <Button onClick={addChannel} disabled={!channel.trim()}>{t("settings.chat.add")}</Button>
         </div>
         {preferences.autoJoinChannels.length > 0 ? (
-          <div className="settings-chip-list" aria-label="Auto-join channels">
+          <div className="settings-chip-list" aria-label={t("settings.chat.autoJoinChannels")}>
             {preferences.autoJoinChannels.map((item) => (
               <span className="settings-chip surface" key={item}>
                 {item}
@@ -149,7 +151,7 @@ export function ChatSettingsSection() {
               </span>
             ))}
           </div>
-        ) : <span className="settings-empty muted">No additional channels.</span>}
+        ) : <span className="settings-empty muted">{t("settings.chat.autoJoinEmpty")}</span>}
       </div>
     </>
   );

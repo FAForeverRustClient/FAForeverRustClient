@@ -20,6 +20,8 @@ import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import { updateBannerRelease, updatePercent } from "../../store/reducers/clientUpdate";
 import "./updates.css";
+import { t } from "../../i18n";
+import { useLocale } from "../../i18n/useTranslation";
 
 const send = (type: "check" | "download" | "install" | "dismiss") =>
   ipc.send({ kind: "ClientUpdate", command: { type } });
@@ -32,6 +34,7 @@ export function formatSize(bytes: number): string {
 }
 
 export function UpdateBanner() {
+  useLocale();
   const update = useAppStore((s) => s.state.clientUpdate);
   const release = updateBannerRelease(update);
   if (release === null) return null;
@@ -49,15 +52,15 @@ export function UpdateBanner() {
       <div className="update-banner-copy">
         <strong>
           {release.preRelease
-            ? `Pre-release ${release.version} is available`
-            : `Version ${release.version} is available`}
+            ? t("updates.available.prerelease", { version: release.version })
+            : t("updates.available.stable", { version: release.version })}
         </strong>
         <span className="muted">{describe(status, release, update.currentVersion, size, percent)}</span>
       </div>
       <div className="update-banner-actions">
         {status.type === "ready" ? (
           <Button variant="primary" onClick={() => void send("install")}>
-            Run installer
+            {t("updates.runInstaller")}
           </Button>
         ) : (
           <Button
@@ -66,25 +69,25 @@ export function UpdateBanner() {
             title={
               release.downloadUrl
                 ? undefined
-                : "This release has no installer for your platform: see the release notes"
+                : t("updates.noInstaller")
             }
             onClick={() => void send("download")}
           >
-            {status.type === "downloading" ? "Downloading…" : "Download update"}
+            {status.type === "downloading" ? t("updates.downloading") : t("updates.download")}
           </Button>
         )}
         {/* A release can be published without notes; an empty href would just
             open a blank tab. */}
         {notesUrl && (
           <Button onClick={() => void openHttpsUrl(notesUrl)}>
-            What&apos;s new
+            {t("updates.whatsNew")}
           </Button>
         )}
         <button
           type="button"
           className="update-banner-close"
-          aria-label="Dismiss"
-          title={`Hide until a version newer than ${release.version}`}
+          aria-label={t("updates.dismiss")}
+          title={t("updates.dismissTitle", { version: release.version })}
           onClick={() => void send("dismiss")}
         >
           <Icon name="close" size={14} />
@@ -106,18 +109,18 @@ function describe(
   size: string,
   percent: number | null,
 ): string {
-  const running = currentVersion ? `You are on ${currentVersion}.` : "";
+  const running = currentVersion ? t("updates.running", { version: currentVersion }) : "";
   switch (status.type) {
     case "downloading":
       return percent === null
-        ? "Downloading the installer…"
-        : `Downloading the installer: ${percent}%`;
+        ? t("updates.progress.indeterminate")
+        : t("updates.progress.percent", { percent });
     case "ready":
       // The client cannot replace its own running executable, so the copy says
       // so rather than letting the installer fail halfway through.
-      return "The installer is ready. Close the client once it starts.";
+      return t("updates.ready");
     case "installing":
-      return "The installer has started. Close the client to let it finish.";
+      return t("updates.started");
     case "failed":
       return status.payload.reason;
     default:

@@ -5,6 +5,8 @@ import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import type { MapListStatus, MatchmakerMapPool, PlayerVeto, VaultMap } from "../../ipc/bindings";
 import { GameMapImage } from "./GameMapImage";
+import { t } from "../../i18n";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function formatMapSize(width: number, height: number) {
   const normalize = (value: number) => value > 64 ? value / 51.2 : value;
@@ -12,7 +14,7 @@ function formatMapSize(width: number, height: number) {
 }
 
 function bracketTitle(pool: MatchmakerMapPool) {
-  if (pool.minRating === null && pool.maxRating === null) return "Any rating";
+  if (pool.minRating === null && pool.maxRating === null) return t("lobby.mapPool.anyRating");
   if (pool.minRating === null) return `Rating < ${Math.ceil(pool.maxRating ?? 0)}`;
   if (pool.maxRating === null) return `Rating > ${Math.floor(pool.minRating)}`;
   return `Rating ${Math.round(pool.minRating)}–${Math.round(pool.maxRating)}`;
@@ -28,6 +30,7 @@ interface Props {
 }
 
 export function MatchmakerMapPoolModal({ queueTitle, pools, status, vault, serverVetoes, onClose }: Props) {
+  const { t } = useTranslation();
   const sortedPools = useMemo(() => [...pools].sort((left, right) => (left.minRating ?? Number.NEGATIVE_INFINITY) - (right.minRating ?? Number.NEGATIVE_INFINITY)), [pools]);
   const [activePoolId, setActivePoolId] = useState<number | null>(null);
   const [vetoMode, setVetoMode] = useState(false);
@@ -76,39 +79,39 @@ export function MatchmakerMapPoolModal({ queueTitle, pools, status, vault, serve
   return (
     <Modal onClose={onClose}>
       <div className="play-dialog-head matchmaker-map-pool-head">
-        <div><h2>{queueTitle} map pool</h2><p>Inspect every rating bracket and use veto tokens on maps you prefer not to play.</p></div>
+        <div><h2>{t("lobby.mapPool.title", { queue: queueTitle })}</h2><p>{t("lobby.mapPool.subtitle")}</p></div>
         <Button disabled={!activePool || tokenLimit === 0} onClick={() => setVetoMode((current) => !current)}>
-          <Icon name="filter" size={15} /> {vetoMode ? "Finish editing" : tokenLimit === 0 ? "No vetoes" : "Apply vetoes"}
+          <Icon name="filter" size={15} /> {t(vetoMode ? "lobby.mapPool.finishEditing" : tokenLimit === 0 ? "lobby.mapPool.noVetoes" : "lobby.mapPool.applyVetoes")}
         </Button>
       </div>
 
       {sortedPools.length > 1 && (
-        <div className="map-pool-tabs" role="tablist" aria-label="Rating brackets">
+        <div className="map-pool-tabs" role="tablist" aria-label={t("lobby.mapPool.brackets")}>
           {sortedPools.map((pool) => <button type="button" role="tab" aria-selected={pool.id === activePool?.id} key={pool.id} className={pool.id === activePool?.id ? "active" : ""} onClick={() => { setActivePoolId(pool.id); setPreviewAssignmentId(null); }}>{bracketTitle(pool)}</button>)}
         </div>
       )}
 
       <div className="matchmaker-veto-toolbar">
-        <span>{activePool ? bracketTitle(activePool) : "No rating bracket"}</span>
+        <span>{activePool ? bracketTitle(activePool) : t("lobby.mapPool.noBracket")}</span>
         <div className="matchmaker-token-wallet" aria-label={`${tokensUsed} of ${tokenLimit} veto tokens used`}>
           {Array.from({ length: tokenLimit }, (_, index) => <i key={index} className={index < tokensUsed ? "used" : ""} />)}
           <small>{tokensUsed} / {tokenLimit} vetoes</small>
         </div>
-        {vetoMode && <Button onClick={resetPool}>Reset bracket</Button>}
+        {vetoMode && <Button onClick={resetPool}>{t("lobby.mapPool.reset")}</Button>}
       </div>
 
       {previewMap && !vetoMode && (
         <div className="matchmaker-map-preview surface">
           <GameMapImage mapName={previewMap.folderName} vault={vault} placeholderClassName="map-preview-placeholder" />
           <span><strong>{previewMap.displayName}</strong><small>{formatMapSize(previewMap.width, previewMap.height)} · {previewMap.maxPlayers} players · {previewMap.folderName}</small></span>
-          <button type="button" aria-label="Close map preview" onClick={() => setPreviewAssignmentId(null)}><Icon name="close" size={15} /></button>
+          <button type="button" aria-label={t("lobby.mapPool.closePreview")} onClick={() => setPreviewAssignmentId(null)}><Icon name="close" size={15} /></button>
         </div>
       )}
 
       <div className="map-pool-grid">
         {status.type === "loading" && pools.length === 0 ? <p className="play-empty">Loading the current map pools…</p>
           : status.type === "failed" ? <p className="play-empty">Could not load map pools: {status.payload.reason}</p>
-            : !activePool || activePool.maps.length === 0 ? <p className="play-empty">No map pool is available for this queue.</p>
+            : !activePool || activePool.maps.length === 0 ? <p className="play-empty">{t("lobby.mapPool.empty")}</p>
               : activePool.maps.map((map) => {
                 const tokens = draftVetoes[`${activePool.id}:${map.assignmentId}`] ?? 0;
                 const previewed = map.assignmentId === previewAssignmentId;
@@ -129,9 +132,9 @@ export function MatchmakerMapPoolModal({ queueTitle, pools, status, vault, serve
       </div>
 
       <div className="play-dialog-actions">
-        <span className="muted">{vetoMode ? "Click a map to add or remove veto tokens." : "Select a map for details, or enter veto mode to edit."}</span>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="primary" disabled={!activePool} onClick={save}>Save vetoes</Button>
+        <span className="muted">{t(vetoMode ? "lobby.mapPool.vetoHint" : "lobby.mapPool.selectHint")}</span>
+        <Button onClick={onClose}>{t("lobby.mapPool.cancel")}</Button>
+        <Button variant="primary" disabled={!activePool} onClick={save}>{t("lobby.mapPool.save")}</Button>
       </div>
     </Modal>
   );

@@ -8,6 +8,7 @@ import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function pickExe(onPicked: (path: string) => void): void {
   ipc.run(native.selectFile({
@@ -37,14 +38,15 @@ function PathRow({
   ready: boolean;
   onPick: () => void;
 }) {
+  const { t } = useTranslation();
   // Three distinct states worth telling apart: unset, set-but-gone, and fine.
   // "Set but gone" is what a user hits after moving or reinstalling the game,
   // and it looks identical to "unset" unless we say so.
   const status = !path ? "unset" : ready ? "ok" : "missing";
   const STATUS_LABEL = {
-    unset: "Not set",
-    missing: "Not usable",
-    ok: "Found",
+    unset: t("settings.paths.unset"),
+    missing: t("settings.paths.missing"),
+    ok: t("settings.paths.ok"),
   } as const;
 
   return (
@@ -52,7 +54,7 @@ function PathRow({
       <div className="settings-path-info">
         <span className="settings-path-label">{label}</span>
         <span className="muted">{hint}</span>
-        <span className="settings-path-value">{path || "Not set"}</span>
+        <span className="settings-path-value">{path || t("settings.paths.unset")}</span>
         <span className={`settings-path-status is-${status}`}>{STATUS_LABEL[status]}</span>
       </div>
       <Button onClick={onPick}>Browse…</Button>
@@ -61,6 +63,7 @@ function PathRow({
 }
 
 export function GamePathsSection() {
+  const { t } = useTranslation();
   const gamePath = useAppStore((s) => s.state.settings.gamePath);
   const replayGamePath = useAppStore((s) => s.state.settings.replayGamePath);
   const install = useAppStore((s) => s.state.install);
@@ -68,15 +71,15 @@ export function GamePathsSection() {
   return (
     <div>
       <PathRow
-        label="Game install"
-        hint="ForgedAlliance.exe used to join and play live games."
+        label={t("settings.paths.gameInstall")}
+        hint={t("settings.paths.gameInstallHint")}
         path={gamePath}
         ready={install.gameReady}
         onPick={() => pickExe(setGamePath)}
       />
       <PathRow
-        label="Replay install"
-        hint="ForgedAlliance.exe used for replay playback: can be a different build/version than the game install."
+        label={t("settings.paths.replayInstall")}
+        hint={t("settings.paths.replayInstallHint")}
         path={replayGamePath}
         ready={install.replayReady}
         onPick={() => pickExe(setReplayGamePath)}
