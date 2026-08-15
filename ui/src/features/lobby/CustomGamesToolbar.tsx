@@ -29,7 +29,7 @@ export function CustomGamesToolbar(props: Props) {
   return (
     <div className="play-toolbar">
       <Button variant="primary" disabled={!props.connected} onClick={props.onHost}>
-        <Icon name="plus" size={16} /> Host game
+        <Icon name="plus" size={16} /> {t("lobby.toolbar.hostGame")}
       </Button>
       <label className="search-field">
         <Icon name="search" size={15} />

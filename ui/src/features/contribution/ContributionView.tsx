@@ -63,7 +63,7 @@ export function ContributionView() {
       </section>
 
       <section className="contribution-section" aria-labelledby="contribution-thanks">
-        <h3 id="contribution-thanks" className="contribution-section-title">Special thanks</h3>
+        <h3 id="contribution-thanks" className="contribution-section-title">{t("contribution.specialThanks")}</h3>
         <ul className="contribution-thanks-list">
           {ACKNOWLEDGMENTS.map((person) => (
             <li key={person.name} className="contribution-thanks-item">

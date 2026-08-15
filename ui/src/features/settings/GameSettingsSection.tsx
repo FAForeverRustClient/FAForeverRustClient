@@ -35,13 +35,13 @@ export function GameSettingsSection() {
     <>
       <GamePathsSection />
       <SettingRow
-        label="Automatically generate missing maps"
-        hint="Download the Neroxis generator and create required generated maps automatically when joining a lobby."
+        label={t("settings.game.autoGenerateMaps")}
+        hint={t("settings.game.autoGenerateMapsHint")}
       >
         <SettingsSwitch
           checked={preferences.autoGenerateMaps ?? true}
           onChange={setAutoGenerate}
-          label="Automatically generate missing maps"
+          label={t("settings.game.autoGenerateMaps")}
         />
       </SettingRow>
       <div className="setting-block">

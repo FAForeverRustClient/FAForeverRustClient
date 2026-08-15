@@ -236,7 +236,7 @@ export function ClientStatusBar() {
             : null}
       <div className="client-status-connections">
         {renderConnectionMenu("faf", lobbyStatus, "FAF")}
-        {renderConnectionMenu("chat", chatStatus, "Chat")}
+        {renderConnectionMenu("chat", chatStatus, t("status.service.chat"))}
       </div>
     </footer>
   );

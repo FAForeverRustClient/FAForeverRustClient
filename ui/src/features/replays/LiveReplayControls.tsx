@@ -37,7 +37,7 @@ export function LiveReplayControls(props: Props) {
             checked={filters.hideModded}
             onChange={(event) => onFilter("hideModded", event.target.checked)}
           />
-          Hide SIM-modded games
+          {t("replays.live.hideModded")}
         </label>
         <label className="toolbar-check">
           <input
@@ -45,7 +45,7 @@ export function LiveReplayControls(props: Props) {
             checked={filters.hideSinglePlayer}
             onChange={(event) => onFilter("hideSinglePlayer", event.target.checked)}
           />
-          Hide single-player games
+          {t("replays.live.hideSinglePlayer")}
         </label>
         <label className="toolbar-check">
           <input
@@ -53,7 +53,7 @@ export function LiveReplayControls(props: Props) {
             checked={filters.friendsOnly}
             onChange={(event) => onFilter("friendsOnly", event.target.checked)}
           />
-          Games with friends
+          {t("replays.live.friendsOnly")}
         </label>
         <Button
           className={props.filtersOpen ? "live-filter-button active" : "live-filter-button"}
