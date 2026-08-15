@@ -3,6 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { PLAYER_NOTE_CHARACTER_LIMIT } from "../../shared/playerNotes";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function clampNote(value: string): string {
   return Array.from(value).slice(0, PLAYER_NOTE_CHARACTER_LIMIT).join("");
@@ -19,6 +20,7 @@ export function PlayerNoteEditor({
   initialNote: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [note, setNote] = useState(initialNote);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -46,12 +48,12 @@ export function PlayerNoteEditor({
 
   return (
     <form className="player-note-editor" onSubmit={(event) => { event.preventDefault(); void save(); }}>
-      <label htmlFor={`player-note-${playerId}`}>Private note about {login}</label>
+      <label htmlFor={`player-note-${playerId}`}>{t("playerCard.note.label", { login })}</label>
       <textarea
         id={`player-note-${playerId}`}
         value={note}
         rows={4}
-        placeholder="Add a reminder visible only in this client…"
+        placeholder={t("playerCard.note.placeholder")}
         onChange={(event) => setNote(clampNote(event.target.value))}
       />
       <div className="player-note-editor-footer">
@@ -59,14 +61,14 @@ export function PlayerNoteEditor({
           {characterCount} / {PLAYER_NOTE_CHARACTER_LIMIT}
         </span>
         <div className="player-note-editor-actions">
-          {initialNote && <Button disabled={saving} onClick={() => setNote("")}>Clear</Button>}
-          <Button disabled={saving} onClick={onClose}>Cancel</Button>
+          {initialNote && <Button disabled={saving} onClick={() => setNote("")}>{t("playerCard.note.clear")}</Button>}
+          <Button disabled={saving} onClick={onClose}>{t("playerCard.note.cancel")}</Button>
           <Button type="submit" variant="primary" disabled={saving}>
-            {saving ? "Saving…" : note.trim() ? "Save note" : "Remove note"}
+            {t(saving ? "playerCard.note.saving" : note.trim() ? "playerCard.note.save" : "playerCard.note.remove")}
           </Button>
         </div>
       </div>
-      {error && <p className="player-note-error" role="alert">Could not save note: {error}</p>}
+      {error && <p className="player-note-error" role="alert">{t("playerCard.note.saveFailed", { error })}</p>}
     </form>
   );
 }
@@ -77,12 +79,13 @@ export function PlayerNoteModal(props: {
   initialNote: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
-    <Modal className="player-note-modal" ariaLabel={`Private note about ${props.login}`} onClose={props.onClose}>
+    <Modal className="player-note-modal" ariaLabel={t("playerCard.note.label", { login: props.login })} onClose={props.onClose}>
       <div className="player-note-modal-head">
-        <span className="player-card-eyebrow">Private player note</span>
+        <span className="player-card-eyebrow">{t("playerCard.note.modalEyebrow")}</span>
         <h2>{props.login}</h2>
-        <p className="muted">Stored locally by player ID. Other players cannot see it.</p>
+        <p className="muted">{t("playerCard.note.modalHint")}</p>
       </div>
       <PlayerNoteEditor {...props} />
     </Modal>
@@ -90,13 +93,14 @@ export function PlayerNoteModal(props: {
 }
 
 export function PlayerNoteCard({ note, onEdit }: { note: string; onEdit: () => void }) {
+  const { t } = useTranslation();
   return (
     <section className="player-note-card surface">
       <div>
-        <span className="player-card-eyebrow">Private note</span>
-        <p className={note ? undefined : "muted"}>{note || "No note saved for this player."}</p>
+        <span className="player-card-eyebrow">{t("playerCard.note.cardEyebrow")}</span>
+        <p className={note ? undefined : "muted"}>{note || t("playerCard.note.cardEmpty")}</p>
       </div>
-      <Button onClick={onEdit}>{note ? "Edit note" : "Add note"}</Button>
+      <Button onClick={onEdit}>{t(note ? "playerCard.note.edit" : "playerCard.note.add")}</Button>
     </section>
   );
 }

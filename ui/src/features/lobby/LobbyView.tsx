@@ -19,6 +19,7 @@ import { findVaultMap, mapPresentation } from "../../shared/mapPresentation";
 import "./custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const connect = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
 const join = (id: number, password: string | null = null) => ipc.send({ kind: "Lobby", command: { type: "join", payload: { id, password } } });
@@ -58,6 +59,7 @@ function compareGames(sort: SortMode, left: Game, right: Game): number {
 }
 
 function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; onJoin: () => void }) {
+  const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
   const vaultMap = findVaultMap(maps.vault, game.map);
   const presentation = mapPresentation(maps.vault, game.map);
@@ -76,19 +78,19 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
           large
         />
         {game.passwordProtected && (
-          <span className="private-badge" role="img" aria-label="Private game" title="Private game">
+          <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>
             <Icon name="lock" size={13} />
           </span>
         )}
       </div>
       <div className="game-detail-content">
-        <div className="game-detail-title"><span>{game.modName || "faf"}</span><h2>{game.title}</h2><p>Host: <PlayerName name={game.host} /></p></div>
+        <div className="game-detail-title"><span>{game.modName || "faf"}</span><h2>{game.title}</h2><p>{t("lobby.details.hostLabel")} <PlayerName name={game.host} /></p></div>
         <dl className="game-summary-list">
-          <div><dt>Map</dt><dd>{presentation.displayName}</dd></div>
-          <div><dt>Players</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
-          <div><dt>Average rating</dt><dd>{game.averageRating || "Unrated"}</dd></div>
-          <div><dt>Rating range</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? "Any"} – ${game.ratingMax ?? "Any"}` : "Open"}</dd></div>
-          <div><dt>Visibility</dt><dd>{game.visibility || "Public"}</dd></div>
+          <div><dt>{t("lobby.details.map")}</dt><dd>{presentation.displayName}</dd></div>
+          <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
+          <div><dt>{t("lobby.details.averageRating")}</dt><dd>{game.averageRating || t("lobby.details.unrated")}</dd></div>
+          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} – ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
+          <div><dt>{t("lobby.details.visibility")}</dt><dd>{game.visibility || t("lobby.details.public")}</dd></div>
         </dl>
         {!installed && vaultMap && (
           <Button
@@ -105,21 +107,21 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
               })
             }
           >
-            Download map
+            {t("lobby.details.downloadMap")}
           </Button>
         )}
         {simMods.length > 0 && (
           <div className="game-detail-section">
-            <h3>Simulation mods</h3>
+            <h3>{t("lobby.details.simMods")}</h3>
             {simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}
           </div>
         )}
         {teams.length > 0 && (
           <div className="game-detail-section">
-            <h3>Teams</h3>
+            <h3>{t("lobby.details.teams")}</h3>
             {teams.map(([team, players]) => (
               <div className="game-team" key={team}>
-                <span>{team === "-1" || team === "null" ? "Observers" : `Team ${team}`}</span>
+                <span>{team === "-1" || team === "null" ? t("lobby.details.observers") : t("lobby.details.team", { id: team })}</span>
                 <small>
                   {players.map((p, i) => (
                     <Fragment key={p}>
@@ -132,13 +134,14 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
             ))}
           </div>
         )}
-        <Button className="game-detail-join" variant="primary" disabled={joining} onClick={onJoin}>{joining ? "Joining…" : "Join game"}</Button>
+        <Button className="game-detail-join" variant="primary" disabled={joining} onClick={onJoin}>{t(joining ? "lobby.details.joining" : "lobby.details.joinGame")}</Button>
       </div>
     </aside>
   );
 }
 
 export function LobbyView() {
+  const { t } = useTranslation();
   const lobby = useAppStore((state) => state.state.lobby);
   const maps = useAppStore((state) => state.state.maps);
   const galacticWar = useAppStore((state) => state.state.galacticWar);
@@ -290,7 +293,7 @@ export function LobbyView() {
           ) : (
             <aside className="game-detail-panel surface-panel empty">
               <Icon name="play" size={24} />
-              <p>Select a game to see its details.</p>
+              <p>{t("lobby.details.selectGame")}</p>
             </aside>
           )}
         </div>

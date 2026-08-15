@@ -11,6 +11,8 @@ import { ipc } from "../../ipc/client";
 import { isUploadBusy } from "../../store/reducers/uploads";
 import { useAppStore } from "../../store/store";
 import "./uploads.css";
+import { t } from "../../i18n";
+import { useLocale } from "../../i18n/useTranslation";
 
 export const openUpload = (kind: UploadKind, folderName: string, displayName: string) =>
   ipc.send({
@@ -28,16 +30,16 @@ function statusLine(status: UploadsState["status"]): string | null {
     case "idle":
       return null;
     case "compressing":
-      return "Compressing the folder…";
+      return t("uploads.compressing");
     case "uploading": {
       const { sentBytes, totalBytes } = status.payload;
       const mb = (totalBytes / (1024 * 1024)).toFixed(1);
       return sentBytes >= totalBytes && totalBytes > 0
-        ? `Uploaded ${mb} MB.`
-        : `Uploading ${mb} MB…`;
+        ? t("uploads.uploaded", { mb })
+        : t("uploads.uploading", { mb });
     }
     case "finishing":
-      return "Registering it with the vault…";
+      return t("uploads.registering");
     case "succeeded":
       return null;
     case "failed":
@@ -46,6 +48,7 @@ function statusLine(status: UploadsState["status"]): string | null {
 }
 
 export function UploadDialog() {
+  useLocale();
   const { request, status } = useAppStore((store) => store.state.uploads);
   if (request === null) return null;
 
@@ -55,10 +58,9 @@ export function UploadDialog() {
 
   return (
     <Modal className="upload-dialog" onClose={close}>
-      <h2>Publish {request.kind === "map" ? "map" : "mod"}</h2>
+      <h2>{t(request.kind === "map" ? "uploads.title.map" : "uploads.title.mod")}</h2>
       <p className="muted">
-        “{request.displayName}” will be compressed and uploaded to the FAF vault under your
-        account, where everyone can download it.
+        {t("uploads.description", { name: request.displayName })}
       </p>
       <p className="upload-folder muted">{request.folderName}</p>
 
@@ -72,11 +74,11 @@ export function UploadDialog() {
             disabled={busy || done}
             onChange={(event) => setRanked(event.target.checked)}
           />
-          Allow ranked games on this map
+          {t("uploads.allowRanked")}
         </label>
       )}
 
-      {done && <p className="upload-status is-ok">Published. It may take a moment to appear.</p>}
+      {done && <p className="upload-status is-ok">{t("uploads.published")}</p>}
       {line && (
         <p className={status.type === "failed" ? "upload-status is-error" : "upload-status muted"}>
           {line}
@@ -84,10 +86,10 @@ export function UploadDialog() {
       )}
 
       <div className="upload-actions">
-        <Button onClick={close}>{done ? "Close" : "Cancel"}</Button>
+        <Button onClick={close}>{t(done ? "uploads.close" : "uploads.cancel")}</Button>
         {!done && (
           <Button variant="primary" disabled={busy} onClick={start}>
-            {busy ? "Publishing…" : "Publish"}
+            {t(busy ? "uploads.publishing" : "uploads.publish")}
           </Button>
         )}
       </div>

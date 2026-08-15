@@ -21,6 +21,7 @@ import { FactionIcon } from "../../shared/FactionIcon";
 import { GameTile } from "./CustomGamesBrowser";
 import { coopFailureAction } from "./coopFailure";
 import "./custom-games.css";
+import { useTranslation } from "../../i18n/useTranslation";
 import "./coop.css";
 
 /** `0` means "any team size": matches `ANY_PLAYER_COUNT` in the domain. */
@@ -82,6 +83,7 @@ function CoopMissionPreview({
   scenario?: CoopScenario;
   vault: VaultMap[];
 }) {
+  const { t } = useTranslation();
   const candidates = useMemo(
     () => coopPreviewCandidates(mission, vault),
     [mission, vault],
@@ -107,7 +109,7 @@ function CoopMissionPreview({
             <FactionIcon faction={factionId} size={42} />
           </div>
           <div className="coop-detail-art-meta">
-            <span className="coop-detail-art-scenario">{scenario?.name ?? "Campaign Mission"}</span>
+            <span className="coop-detail-art-scenario">{scenario?.name ?? t("lobby.coop.campaignMission")}</span>
             <strong className="coop-detail-art-mission">{mission.name}</strong>
             <small className="muted">{mission.mapFolderName}</small>
           </div>
@@ -135,6 +137,7 @@ interface Props {
 }
 
 export function CoopPanel({ games, onJoin, onHost }: Props) {
+  const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
   const [search, setSearch] = useState("");
@@ -194,35 +197,35 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
 
   const catalogNote = loadStatusNote(
     coop.catalogStatus,
-    "Loading co-op missions…",
-    "Could not load co-op missions",
+    t("lobby.coop.loadingMissions"),
+    t("lobby.coop.loadFailed"),
   );
 
   return (
     <div className="coop-panel">
       <div className="coop-toolbar">
         <Button variant="primary" onClick={() => onHost(selected ?? undefined)}>
-          <Icon name="play" size={14} /> Host co-op game
+          <Icon name="play" size={14} /> {t("lobby.coop.hostCoopGame")}
         </Button>
         <div className="search-field">
           <Icon name="search" size={15} />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search open co-op games…"
-            aria-label="Search open co-op games"
+            placeholder={t("lobby.coop.searchOpenPlaceholder")}
+            aria-label={t("lobby.coop.searchOpenAria")}
           />
         </div>
         <span className="muted">{games.length} games available</span>
         <Button onClick={() => void loadCatalog()}>
-          <Icon name="refresh" size={14} /> Refresh
+          <Icon name="refresh" size={14} /> {t("lobby.coop.refresh")}
         </Button>
       </div>
 
       {coop.catalogStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.catalogStatus}
-          title="Could not load co-op missions"
+          title={t("lobby.coop.loadFailed")}
           onRetry={() => void loadCatalog()}
         />
       ) : (
@@ -235,10 +238,10 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
           {filteredGames.length === 0 ? (
             <div className="coop-games-empty">
               <Icon name="users" size={32} />
-              <h4>No open co-op games right now</h4>
-              <p>Host a campaign mission to start playing with friends.</p>
+              <h4>{t("lobby.coop.noOpenGames")}</h4>
+              <p>{t("lobby.coop.hostToPlay")}</p>
               <Button variant="primary" onClick={() => onHost(selected ?? undefined)}>
-                <Icon name="play" size={14} /> Host a Co-op Game
+                <Icon name="play" size={14} /> {t("lobby.coop.hostACoopGame")}
               </Button>
             </div>
           ) : (
@@ -262,14 +265,14 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
         <aside className="coop-detail surface-panel">
           <div className="section-heading">
             <div>
-              <h3>Campaigns & Records</h3>
-              <span>Mission briefing and leaderboard</span>
+              <h3>{t("lobby.coop.campaignsAndRecords")}</h3>
+              <span>{t("lobby.coop.briefingAndLeaderboard")}</span>
             </div>
           </div>
 
           <div className="coop-mission-picker">
             <div className="coop-picker-field">
-              <label htmlFor="coop-scenario-select">Campaign</label>
+              <label htmlFor="coop-scenario-select">{t("lobby.coop.campaign")}</label>
               <select
                 id="coop-scenario-select"
                 className="search-panel-control"
@@ -288,7 +291,7 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
             </div>
 
             <div className="coop-picker-field">
-              <label htmlFor="coop-mission-select">Mission</label>
+              <label htmlFor="coop-mission-select">{t("lobby.coop.mission")}</label>
               <select
                 id="coop-mission-select"
                 className="search-panel-control"
@@ -310,7 +313,7 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
           {selected ? (
             <MissionDetail mission={selected} />
           ) : (
-            <p className="muted">Select a mission above to inspect records.</p>
+            <p className="muted">{t("lobby.coop.selectAbove")}</p>
           )}
         </aside>
       </div>
@@ -319,13 +322,14 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
 }
 
 function MissionDetail({ mission }: { mission: CoopMission }) {
+  const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
   const scenario = coop.scenarios.find((s) => s.id === mission.scenarioId);
   const note = loadStatusNote(
     coop.leaderboardStatus,
-    "Loading records…",
-    "Could not load the leaderboard",
+    t("lobby.coop.loadingRecords"),
+    t("lobby.coop.leaderboardFailed"),
   );
 
   return (
@@ -342,17 +346,17 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
       {mission.description && <p className="coop-detail-brief">{mission.description}</p>}
 
       <div className="coop-board-head">
-        <h4>Fastest completions</h4>
+        <h4>{t("lobby.coop.fastest")}</h4>
         <label className="coop-board-filter">
-          <span className="muted">Players</span>
+          <span className="muted">{t("lobby.coop.column.players")}</span>
           <select
             value={coop.playerCount}
             onChange={(event) => void setPlayerCount(Number(event.target.value))}
-            aria-label="Filter records by team size"
+            aria-label={t("lobby.coop.teamSizeAria")}
           >
             {PLAYER_COUNTS.map((count) => (
               <option key={count} value={count}>
-                {count === 0 ? "Any" : count}
+                {count === 0 ? t("lobby.coop.anyCount") : count}
               </option>
             ))}
           </select>
@@ -362,7 +366,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
       {coop.leaderboardStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.leaderboardStatus}
-          title="Could not load mission records"
+          title={t("lobby.coop.recordsFailed")}
           onRetry={() => void setPlayerCount(coop.playerCount)}
         />
       ) : (
@@ -371,7 +375,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
       {coop.leaderboardStatus.type === "ready" && coop.leaderboard.length === 0 && (
         <p className="muted">
-          Nobody has finished this mission with that team size yet. Be the first.
+          {t("lobby.coop.noRecords")}
         </p>
       )}
 
@@ -381,11 +385,11 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">Time</th>
-                <th scope="col">Players</th>
-                <th scope="col">Team</th>
-                <th scope="col">Secondary</th>
-                <th scope="col">Replay</th>
+                <th scope="col">{t("lobby.coop.column.time")}</th>
+                <th scope="col">{t("lobby.coop.column.players")}</th>
+                <th scope="col">{t("lobby.coop.column.team")}</th>
+                <th scope="col">{t("lobby.coop.column.secondary")}</th>
+                <th scope="col">{t("lobby.coop.column.replay")}</th>
               </tr>
             </thead>
             <tbody>
@@ -409,6 +413,7 @@ function CoopLoadFailure({
   title: string;
   onRetry: () => void;
 }) {
+  const { t } = useTranslation();
   if (status.type !== "failed") return null;
 
   const { kind, reason } = status.payload;
@@ -424,12 +429,12 @@ function CoopLoadFailure({
       </div>
       {action === "signOut" && (
         <Button onClick={() => void signOut()}>
-          <Icon name="logout" size={14} /> Sign out
+          <Icon name="logout" size={14} /> {t("lobby.coop.signOut")}
         </Button>
       )}
       {action === "retry" && (
         <Button onClick={onRetry}>
-          <Icon name="refresh" size={14} /> Retry
+          <Icon name="refresh" size={14} /> {t("lobby.coop.retry")}
         </Button>
       )}
     </div>
@@ -437,15 +442,16 @@ function CoopLoadFailure({
 }
 
 function LeaderboardRow({ result }: { result: CoopResult }) {
+  const { t } = useTranslation();
   return (
     <tr>
       <td>{result.ranking}</td>
       <td className="coop-board-time">{formatDuration(result.durationSeconds)}</td>
       <td>{result.playerCount}</td>
-      <td>{result.players.join(", ") || <span className="muted">unknown</span>}</td>
+      <td>{result.players.join(", ") || <span className="muted">{t("lobby.coop.unknownPlayers")}</span>}</td>
       {/* Completing the optional objectives is the harder run, so it is worth
           distinguishing rather than hiding in a tooltip. */}
-      <td>{result.secondaryObjectives ? "Yes" : "N/A"}</td>
+      <td>{result.secondaryObjectives ? t("lobby.coop.yes") : "N/A"}</td>
       <td>
         {result.replayId === null ? (
           <span className="muted">, </span>
@@ -460,7 +466,7 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
               })
             }
           >
-            Watch
+            {t("lobby.coop.watch")}
           </button>
         )}
       </td>

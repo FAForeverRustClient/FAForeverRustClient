@@ -28,6 +28,7 @@ import {
 } from "./ModVaultComponents";
 import { InstalledModsView } from "./InstalledModsView";
 import "./mods.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type SubView = "vault" | "installed";
 type ModSort = "rating" | "newest" | "updated" | "name";
@@ -39,11 +40,11 @@ type DateField = "updated" | "uploaded";
 
 const PAGE_SIZE = 36;
 const MOD_PRESETS: Array<[ModPreset, string]> = [
-  ["recommended", "Featured"],
-  ["rating", "Highest rated"],
-  ["ui", "Recommended UI"],
-  ["newest", "Most recent"],
-  ["all", "All mods"],
+  ["recommended", "mods.view.preset.recommended"],
+  ["rating", "mods.view.preset.rating"],
+  ["ui", "mods.view.preset.ui"],
+  ["newest", "mods.view.preset.newest"],
+  ["all", "mods.view.preset.all"],
 ];
 
 const loadVault = () => ipc.send({ kind: "Mods", command: { type: "loadVault" } });
@@ -53,6 +54,7 @@ const uninstallMod = (folderName: string, uid: string) => ipc.send({ kind: "Mods
 const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
 
 function VaultView({ busy }: { busy: boolean }) {
+  const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.mods.vault);
   const vaultStatus = useAppStore((state) => state.state.mods.vaultStatus);
   const installed = useAppStore((state) => state.state.mods.installed);
@@ -80,7 +82,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const [page, setPage] = useState(1);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
-  const note = loadStatusNote(vaultStatus, "Loading mod vault…", "Could not load mod vault");
+  const note = loadStatusNote(vaultStatus, t("mods.view.loadingVault"), t("mods.view.vaultFailed"));
   const installedByUid = useMemo(() => new Map(installed.map((mod) => [mod.uid, mod])), [installed]);
 
   useEffect(() => {
@@ -179,29 +181,29 @@ function VaultView({ busy }: { busy: boolean }) {
             ))}
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
-            <Button onClick={clearSearch}>Clear</Button>
-            <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> Refresh</Button>
+            <Button onClick={clearSearch}>{t("mods.view.clear")}</Button>
+            <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("mods.view.refresh")}</Button>
           </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">
             <div className="search-panel-advanced-grid">
-              <SearchField label="Installation"><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">Any</option><option value="installed">Installed</option><option value="available">Not installed</option><option value="updates">Updates available</option></select></SearchField>
-              <SearchField label="Date field"><select className="search-panel-control" value={dateField} onChange={(event) => setDateField(event.target.value as DateField)}><option value="updated">Last updated</option><option value="uploaded">Uploaded</option></select></SearchField>
-              <SearchField label="After"><input className="search-panel-control" type="date" value={dateAfter} onChange={(event) => setDateAfter(event.target.value)} /></SearchField>
-              <SearchField label="Before"><input className="search-panel-control" type="date" value={dateBefore} onChange={(event) => setDateBefore(event.target.value)} /></SearchField>
+              <SearchField label={t("mods.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("mods.view.any")}</option><option value="installed">{t("mods.view.installed")}</option><option value="available">{t("mods.view.notInstalled")}</option><option value="updates">{t("mods.view.updatesAvailable")}</option></select></SearchField>
+              <SearchField label={t("mods.view.dateField")}><select className="search-panel-control" value={dateField} onChange={(event) => setDateField(event.target.value as DateField)}><option value="updated">{t("mods.view.lastUpdated")}</option><option value="uploaded">{t("mods.view.uploaded")}</option></select></SearchField>
+              <SearchField label={t("mods.view.after")}><input className="search-panel-control" type="date" value={dateAfter} onChange={(event) => setDateAfter(event.target.value)} /></SearchField>
+              <SearchField label={t("mods.view.before")}><input className="search-panel-control" type="date" value={dateBefore} onChange={(event) => setDateBefore(event.target.value)} /></SearchField>
             </div>
           </div>
         ) : undefined}
       >
-        <SearchField label="Mod" className="search-panel-field-grow">
-          <input className="search-panel-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, description, or UID" />
+        <SearchField label={t("mods.view.mod")} className="search-panel-field-grow">
+          <input className="search-panel-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("mods.view.nameDescriptionUid")} />
         </SearchField>
-        <SearchField label="Creator" className="search-panel-field-grow">
-          <input className="search-panel-control" value={creator} onChange={(event) => setCreator(event.target.value)} placeholder="Any creator or uploader" />
+        <SearchField label={t("mods.view.creator")} className="search-panel-field-grow">
+          <input className="search-panel-control" value={creator} onChange={(event) => setCreator(event.target.value)} placeholder={t("mods.view.anyCreatorUploader")} />
         </SearchField>
         <RangeSlider
-          label="Review score"
+          label={t("mods.view.reviewScore")}
           min={0}
           max={5}
           step={0.5}
@@ -210,28 +212,28 @@ function VaultView({ busy }: { busy: boolean }) {
           format={(value) => `${value}★`}
           onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); }}
         />
-        <SearchField label="Type" className="search-panel-field-compact">
-          <select className="search-panel-control" value={modType} onChange={(event) => { setModType(event.target.value as ModTypeFilter); choosePreset("all"); }}><option value="all">Any</option><option value="ui">UI mods</option><option value="sim">Simulation mods</option></select>
+        <SearchField label={t("mods.view.type")} className="search-panel-field-compact">
+          <select className="search-panel-control" value={modType} onChange={(event) => { setModType(event.target.value as ModTypeFilter); choosePreset("all"); }}><option value="all">{t("mods.view.any")}</option><option value="ui">{t("mods.view.uiMods")}</option><option value="sim">{t("mods.view.simMods")}</option></select>
         </SearchField>
-        <SearchField label="Ranking" className="search-panel-field-compact">
-          <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">Any</option><option value="ranked">Ranked-safe</option><option value="unranked">Unranked</option></select>
+        <SearchField label={t("mods.view.ranking")} className="search-panel-field-compact">
+          <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("mods.view.any")}</option><option value="ranked">{t("mods.view.rankedSafe")}</option><option value="unranked">{t("mods.view.unranked")}</option></select>
         </SearchField>
-        <SearchField label="Sort by" className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => { setSort(event.target.value as ModSort); choosePreset("all"); }}><option value="rating">Highest rated</option><option value="newest">Most recent</option><option value="updated">Recently updated</option><option value="name">Name</option></select>
+        <SearchField label={t("mods.view.sortBy")} className="search-panel-field-compact">
+          <select className="search-panel-control" value={sort} onChange={(event) => { setSort(event.target.value as ModSort); choosePreset("all"); }}><option value="rating">{t("mods.view.preset.rating")}</option><option value="newest">{t("mods.view.preset.newest")}</option><option value="updated">{t("mods.view.recentlyUpdated")}</option><option value="name">{t("mods.view.name")}</option></select>
         </SearchField>
         <SearchPanelSubmit />
       </SearchPanel>
 
       {note && <p className="vault-note muted">{note}</p>}
-      {installedStatus.type === "failed" && <p className="vault-note muted">Installed-state detection is unavailable.</p>}
+      {installedStatus.type === "failed" && <p className="vault-note muted">{t("mods.view.detectionUnavailable")}</p>}
       {vaultStatus.type === "ready" && filtered.length === 0 ? (
         <div className="vault-empty">
           <Icon name={vault.length === 0 ? "mods" : "search"} size={24} />
-          <h3>{vault.length === 0 ? "No mods available" : "No mods match"}</h3>
+          <h3>{t(vault.length === 0 ? "mods.view.emptyVault" : "mods.view.noMatch")}</h3>
           <p>
             {vault.length === 0
-              ? "Refresh the vault when the FAF API is available."
-              : "Try a broader search or reset the filters."}
+              ? t("mods.view.emptyVaultHint")
+              : t("mods.view.noMatchHint")}
           </p>
         </div>
       ) : pageMods.length > 0 ? (
@@ -305,11 +307,12 @@ const SUB_VIEWS: Record<
   SubView,
   { label: string; Component: (props: { busy: boolean }) => JSX.Element }
 > = {
-  vault: { label: "Vault", Component: VaultView },
-  installed: { label: "Installed & active", Component: InstalledModsView },
+  vault: { label: "mods.view.tab.vault", Component: VaultView },
+  installed: { label: "mods.view.tab.installed", Component: InstalledModsView },
 };
 
 export function ModsView() {
+  const { t } = useTranslation();
   const [subView, setSubView] = useState<SubView>("vault");
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
@@ -322,7 +325,7 @@ export function ModsView() {
       <div className="vault-subnav">
         <SectionTabs
           active={subView}
-          ariaLabel="Mod library views"
+          ariaLabel={t("mods.view.modLibraryViews")}
           items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: SUB_VIEWS[key].label }))}
           onChange={setSubView}
         />

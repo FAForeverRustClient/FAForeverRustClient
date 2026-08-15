@@ -6,16 +6,18 @@
 // this tab is presentation-only, an `<iframe>` and nothing else.
 
 import { TRUSTED_EMBED_SANDBOX } from "../../shared/embedSecurity";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const ETFREEMAN_URL = "https://faforever.github.io/etfreeman-db/#/";
 
 export function UnitsView() {
+  const { t } = useTranslation();
   return (
     <div className="units-embed">
       <iframe
         className="units-embed-frame"
         src={ETFREEMAN_URL}
-        title="ETFreeman Unit Database"
+        title={t("units.frameTitle")}
         referrerPolicy="no-referrer"
         sandbox={TRUSTED_EMBED_SANDBOX}
       />

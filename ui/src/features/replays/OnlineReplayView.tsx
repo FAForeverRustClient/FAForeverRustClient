@@ -10,6 +10,7 @@ import { OnlineReplayList, ReplayCard, ReplayDetailPanel } from "./OnlineReplayP
 import { ReplayViewSwitch, type ReplayViewMode } from "./ReplayViewSwitch";
 import { VaultSearch } from "./VaultSearch";
 import "./online-replays.css";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const WATCHED_STORAGE_KEY = "faf-watched-replay-uids";
 
@@ -25,6 +26,7 @@ const downloadVault = (uid: number) =>
   ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid } } });
 
 export function OnlineReplayView({ busy }: { busy: boolean }) {
+  const { t } = useTranslation();
   const vault = useAppStore((s) => s.state.replays.vault);
   const vaultStatus = useAppStore((s) => s.state.replays.vaultStatus);
   const downloadStatus = useAppStore((s) => s.state.replays.downloadStatus);
@@ -33,7 +35,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const featuredMods = useAppStore((s) => s.state.replays.featuredMods);
   const leagues = useAppStore((s) => s.state.leaderboard.leagues);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
-  const note = loadStatusNote(vaultStatus, "Searching replays…", "Could not load vault");
+  const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
   const setViewMode = (mode: ReplayViewMode) => {
@@ -108,7 +110,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
       {vaultStatus.type === "ready" && vault.length === 0 && (
-        <p className="muted">No replays match this search.</p>
+        <p className="muted">{t("replays.vault.noMatch")}</p>
       )}
       {vault.length > 0 && viewMode === "tiles" && (
         <div className="replay-grid">
@@ -146,7 +148,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           totalPages={totalPages}
           hasMore={hasMore}
           onPageChange={goToPage}
-          ariaLabel="Online replay pages"
+          ariaLabel={t("replays.vault.pagesAria")}
         />
       </div>
       {openReplay && (
