@@ -50,7 +50,7 @@
 //! echo (mirrors `infra::chat::FakeChat`).
 
 use std::collections::BTreeSet;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -121,6 +121,10 @@ pub struct IrcClient {
     /// Our current nick: updated if the server renames us, so local echoes
     /// stay attributed correctly.
     username: Arc<Mutex<String>>,
+    /// Whether the live connection negotiated `message-tags`. Typing notices
+    /// and reactions are silently skipped without it rather than sent as
+    /// lines the server will reject.
+    tags_enabled: Arc<AtomicBool>,
     /// Public channels we want to be in. Shared with the session task, which
     /// rejoins all of them after a reconnect.
     wanted_channels: Arc<Mutex<BTreeSet<String>>>,
@@ -137,6 +141,7 @@ impl IrcClient {
             outgoing: Arc::new(Mutex::new(None)),
             updates: Arc::new(Mutex::new(None)),
             username: Arc::new(Mutex::new(String::new())),
+            tags_enabled: Arc::new(AtomicBool::new(false)),
             wanted_channels: Arc::new(Mutex::new(BTreeSet::new())),
             next_id: Arc::new(AtomicU64::new(0)),
         }
@@ -166,6 +171,26 @@ impl IrcClient {
             .unwrap_or(false)
     }
 
+    /// Send a `TAGMSG` carrying client tags, if the server granted
+    /// `message-tags`.
+    ///
+    /// Silent when it did not: a `TAGMSG` stripped of its tags says nothing,
+    /// and this is called on the typing path, which would otherwise log a
+    /// warning every few seconds for the whole session.
+    /// Returns whether the line actually went out, so a caller that owes a
+    /// local echo does not fake one for a message nobody else received.
+    fn send_client_tags(&self, tags: &[(&str, &str)], channel: &str) -> bool {
+        if !self.tags_enabled.load(Ordering::SeqCst) {
+            // Deliberately `debug`, not `warn`: the typing path calls this
+            // every few seconds, and a warning per keystroke-burst would bury
+            // the log. It is here at all because the alternative is a control
+            // that silently does nothing with no way to find out why.
+            tracing::debug!("client tags dropped: the server did not grant message-tags");
+            return false;
+        }
+        self.send_line(irc::format_tagged_line(tags, "TAGMSG", &[channel]))
+    }
+
     /// Send `PRIVMSG` and echo it back locally, since we don't negotiate
     /// `echo-message`. `content` is already in wire form (CTCP-wrapped for an
     /// action), while `display` is what the user should see.
@@ -175,8 +200,24 @@ impl IrcClient {
         content: String,
         display: String,
         kind: ChatMessageKind,
+        reply_to: &str,
     ) {
-        if !self.send_line(irc::format_line("PRIVMSG", &[&channel, &content])) {
+        // The reply anchor rides as a client tag on the message itself, unlike
+        // a reaction, which is a bare `TAGMSG`. Dropped when the server did not
+        // grant `message-tags`: the line must still go out, just without the
+        // anchor, because losing a message over a decoration is the worse
+        // outcome.
+        let tagged = !reply_to.is_empty() && self.tags_enabled.load(Ordering::SeqCst);
+        let line = if tagged {
+            irc::format_tagged_line(
+                &[("+draft/reply", reply_to)],
+                "PRIVMSG",
+                &[&channel, &content],
+            )
+        } else {
+            irc::format_line("PRIVMSG", &[&channel, &content])
+        };
+        if !self.send_line(line) {
             tracing::warn!("chat send ignored because there is no active connection");
             return;
         }
@@ -186,6 +227,18 @@ impl IrcClient {
             content: display,
             timestamp: chrono::Utc::now().to_rfc3339(),
             kind,
+            // The server mints the msgid and only tells the *other* members:
+            // without `echo-message` our own line never comes back to us. Our
+            // own messages therefore cannot carry reactions, which is a real
+            // limitation of not negotiating that capability.
+            msgid: String::new(),
+            // Kept only when the anchor actually went out, so the echo cannot
+            // show a quote the recipients never received.
+            reply_to: if tagged {
+                reply_to.to_string()
+            } else {
+                String::new()
+            },
         };
         self.push(ChatUpdate::Message { channel, message });
     }
@@ -216,6 +269,7 @@ impl ChatPort for IrcClient {
             username,
             wanted_channels: self.wanted_channels.clone(),
             current_nick: self.username.clone(),
+            tags_enabled: self.tags_enabled.clone(),
             emitter: ChatEmitter {
                 tx,
                 next_id: self.next_id.clone(),
@@ -225,8 +279,14 @@ impl ChatPort for IrcClient {
         rx
     }
 
-    fn send_message(&self, channel: String, content: String) {
-        self.send_privmsg(channel, content.clone(), content, ChatMessageKind::Message);
+    fn send_message(&self, channel: String, content: String, reply_to: String) {
+        self.send_privmsg(
+            channel,
+            content.clone(),
+            content,
+            ChatMessageKind::Message,
+            &reply_to,
+        );
     }
 
     fn send_action(&self, channel: String, content: String) {
@@ -235,6 +295,7 @@ impl ChatPort for IrcClient {
             irc::ctcp_action(&content),
             content,
             ChatMessageKind::Action,
+            "",
         );
     }
 
@@ -272,6 +333,54 @@ impl ChatPort for IrcClient {
         if !self.send_line(irc::format_line("TOPIC", &[&channel, &topic])) {
             tracing::warn!("chat topic change ignored because there is no active connection");
         }
+    }
+
+    fn set_typing(&self, channel: String, composing: bool) {
+        // The draft spec's `paused` is deliberately unused: it exists to say
+        // "stopped, but the draft is still there", and no reader here treats
+        // that differently from `done`.
+        let state = if composing { "active" } else { "done" };
+        self.send_client_tags(&[("+typing", state)], &channel);
+    }
+
+    fn react(&self, channel: String, msgid: String, emoji: String) {
+        if msgid.is_empty() || emoji.is_empty() {
+            return;
+        }
+        if !self.send_client_tags(
+            &[("+draft/reply", &msgid), ("+draft/react", &emoji)],
+            &channel,
+        ) {
+            return;
+        }
+        // Echo it back to ourselves, for the same reason `send_privmsg` does:
+        // without `echo-message` the server relays this to the *other* channel
+        // members and never to us, so our own reaction would be invisible in
+        // the client that sent it.
+        self.push(ChatUpdate::Reaction {
+            channel,
+            msgid,
+            emoji,
+            sender: self.username.lock().unwrap().clone(),
+        });
+    }
+
+    fn unreact(&self, channel: String, msgid: String, emoji: String) {
+        if msgid.is_empty() || emoji.is_empty() {
+            return;
+        }
+        if !self.send_client_tags(
+            &[("+draft/reply", &msgid), ("+draft/unreact", &emoji)],
+            &channel,
+        ) {
+            return;
+        }
+        self.push(ChatUpdate::ReactionRemoved {
+            channel,
+            msgid,
+            emoji,
+            sender: self.username.lock().unwrap().clone(),
+        });
     }
 
     fn disconnect(&self) {
@@ -327,6 +436,7 @@ impl ChatEmitter {
             .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn message(
         &self,
         channel: &str,
@@ -334,6 +444,8 @@ impl ChatEmitter {
         content: &str,
         kind: ChatMessageKind,
         timestamp: Option<&str>,
+        msgid: &str,
+        reply_to: &str,
     ) -> bool {
         let message = ChatMessage {
             id: self.next_id.fetch_add(1, Ordering::SeqCst).to_string(),
@@ -343,6 +455,8 @@ impl ChatEmitter {
                 .map(str::to_string)
                 .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
             kind,
+            msgid: msgid.to_string(),
+            reply_to: reply_to.to_string(),
         };
         self.send(ChatUpdate::Message {
             channel: channel.to_string(),
@@ -362,6 +476,7 @@ struct Supervisor {
     /// Shared with [`IrcClient::username`] so a server-side rename is visible
     /// to the send methods.
     current_nick: Arc<Mutex<String>>,
+    tags_enabled: Arc<AtomicBool>,
     emitter: ChatEmitter,
 }
 
@@ -448,6 +563,7 @@ impl Supervisor {
                 sasl_token,
                 wanted_channels: self.wanted_channels.clone(),
                 current_nick: self.current_nick.clone(),
+                tags_enabled: self.tags_enabled.clone(),
                 emitter: self.emitter.clone(),
             },
             outgoing,
@@ -462,6 +578,7 @@ struct SessionParams {
     sasl_token: String,
     wanted_channels: Arc<Mutex<BTreeSet<String>>>,
     current_nick: Arc<Mutex<String>>,
+    tags_enabled: Arc<AtomicBool>,
     emitter: ChatEmitter,
 }
 
@@ -550,11 +667,25 @@ where
             content,
             kind,
             timestamp,
+            msgid,
+            reply_to,
         } => (!params
             .emitter
-            .message(&channel, &sender, &content, kind, timestamp.as_deref())
+            .message(
+                &channel,
+                &sender,
+                &content,
+                kind,
+                timestamp.as_deref(),
+                &msgid,
+                &reply_to,
+            )
             .await)
             .then_some(SessionEnd::Cancelled),
+        Effect::TagsEnabled(enabled) => {
+            params.tags_enabled.store(enabled, Ordering::SeqCst);
+            None
+        }
         Effect::NickChanged(nick) => {
             *params.current_nick.lock().unwrap() = nick;
             None

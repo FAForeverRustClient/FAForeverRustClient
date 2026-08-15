@@ -728,7 +728,9 @@
               {
                 "messages": [],
                 "name": "#aeolus",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -757,7 +759,9 @@
               {
                 "messages": [],
                 "name": "#aeolus",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -765,7 +769,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -790,7 +796,9 @@
                   "sender": "Bob",
                   "content": "hello Ada",
                   "timestamp": "2026-01-01T00:00:00Z",
-                  "kind": "message"
+                  "kind": "message",
+                  "msgid": "srv-Bob-hello Ada",
+                  "replyTo": ""
                 }
               }
             }
@@ -801,7 +809,9 @@
               {
                 "messages": [],
                 "name": "#aeolus",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -812,12 +822,16 @@
                     "content": "hello Ada",
                     "id": "m-Bob-hello Ada",
                     "kind": "message",
+                    "msgid": "srv-Bob-hello Ada",
+                    "replyTo": "",
                     "sender": "Bob",
                     "timestamp": "2026-01-01T00:00:00Z"
                   }
                 ],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 1,
                 "unreadMentions": 1,
                 "users": []
@@ -846,7 +860,9 @@
               {
                 "messages": [],
                 "name": "#aeolus",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -857,12 +873,16 @@
                     "content": "hello Ada",
                     "id": "m-Bob-hello Ada",
                     "kind": "message",
+                    "msgid": "srv-Bob-hello Ada",
+                    "replyTo": "",
                     "sender": "Bob",
                     "timestamp": "2026-01-01T00:00:00Z"
                   }
                 ],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -896,7 +916,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -921,7 +943,9 @@
                   "sender": "Bob",
                   "content": "remember this",
                   "timestamp": "2026-01-01T00:00:00Z",
-                  "kind": "message"
+                  "kind": "message",
+                  "msgid": "srv-Bob-remember this",
+                  "replyTo": ""
                 }
               }
             }
@@ -935,12 +959,16 @@
                     "content": "remember this",
                     "id": "m-Bob-remember this",
                     "kind": "message",
+                    "msgid": "srv-Bob-remember this",
+                    "replyTo": "",
                     "sender": "Bob",
                     "timestamp": "2026-01-01T00:00:00Z"
                   }
                 ],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -974,6 +1002,8 @@
                     "content": "remember this",
                     "id": "m-Bob-remember this",
                     "kind": "message",
+                    "msgid": "srv-Bob-remember this",
+                    "replyTo": "",
                     "sender": "Bob",
                     "timestamp": "2026-01-01T00:00:00Z"
                   }
@@ -998,7 +1028,9 @@
                   "sender": "Carol",
                   "content": "new line",
                   "timestamp": "2026-01-01T00:00:00Z",
-                  "kind": "message"
+                  "kind": "message",
+                  "msgid": "srv-Carol-new line",
+                  "replyTo": ""
                 }
               }
             }
@@ -1012,6 +1044,8 @@
                     "content": "remember this",
                     "id": "m-Bob-remember this",
                     "kind": "message",
+                    "msgid": "srv-Bob-remember this",
+                    "replyTo": "",
                     "sender": "Bob",
                     "timestamp": "2026-01-01T00:00:00Z"
                   },
@@ -1019,12 +1053,16 @@
                     "content": "new line",
                     "id": "m-Carol-new line",
                     "kind": "message",
+                    "msgid": "srv-Carol-new line",
+                    "replyTo": "",
                     "sender": "Carol",
                     "timestamp": "2026-01-01T00:00:00Z"
                   }
                 ],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 1,
                 "unreadMentions": 0,
                 "users": []
@@ -1058,7 +1096,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -1088,7 +1128,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -1119,7 +1161,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -1173,7 +1217,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -1206,7 +1252,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": [
@@ -1241,7 +1289,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": [
@@ -1272,7 +1322,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -1402,7 +1454,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -1432,7 +1486,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "Build orders",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": []
@@ -1471,7 +1527,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "Build orders",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": [
@@ -1509,7 +1567,9 @@
               {
                 "messages": [],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "Build orders",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": [
@@ -1543,7 +1603,9 @@
                   "sender": "Bob",
                   "content": "restored history",
                   "timestamp": "2026-01-01T00:00:00Z",
-                  "kind": "message"
+                  "kind": "message",
+                  "msgid": "srv-Bob-restored history",
+                  "replyTo": ""
                 }
               }
             }
@@ -1557,12 +1619,16 @@
                     "content": "restored history",
                     "id": "m-Bob-restored history",
                     "kind": "message",
+                    "msgid": "srv-Bob-restored history",
+                    "replyTo": "",
                     "sender": "Bob",
                     "timestamp": "2026-01-01T00:00:00Z"
                   }
                 ],
                 "name": "#uef",
+                "reactions": [],
                 "topic": "Build orders",
+                "typing": [],
                 "unread": 0,
                 "unreadMentions": 0,
                 "users": [
@@ -1582,6 +1648,610 @@
             "showJoinsParts": true,
             "status": "connected",
             "username": "Ada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "someone composes, reacts, and their message clears the indicator",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "connected",
+              "payload": {
+                "username": "Aurora"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#aeolus"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "typingChanged",
+              "payload": {
+                "channel": "#aeolus",
+                "nickname": "Bob",
+                "composing": true,
+                "atSeconds": 1000
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [
+                  {
+                    "atSeconds": 1000,
+                    "nickname": "Bob"
+                  }
+                ],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "typingChanged",
+              "payload": {
+                "channel": "#aeolus",
+                "nickname": "Bob",
+                "composing": true,
+                "atSeconds": 1003
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [
+                  {
+                    "atSeconds": 1003,
+                    "nickname": "Bob"
+                  }
+                ],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "messageReceived",
+              "payload": {
+                "channel": "#aeolus",
+                "message": {
+                  "id": "m-Bob-hello",
+                  "sender": "Bob",
+                  "content": "hello",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "kind": "message",
+                  "msgid": "srv-Bob-hello",
+                  "replyTo": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "reactionReceived",
+              "payload": {
+                "channel": "#aeolus",
+                "msgid": "srv-Bob-hello",
+                "emoji": "👍",
+                "sender": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [
+                  {
+                    "entries": [
+                      {
+                        "emoji": "👍",
+                        "senders": [
+                          "Ada"
+                        ]
+                      }
+                    ],
+                    "msgid": "srv-Bob-hello"
+                  }
+                ],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "reactionReceived",
+              "payload": {
+                "channel": "#aeolus",
+                "msgid": "srv-Bob-hello",
+                "emoji": "👍",
+                "sender": "Cid"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [
+                  {
+                    "entries": [
+                      {
+                        "emoji": "👍",
+                        "senders": [
+                          "Ada",
+                          "Cid"
+                        ]
+                      }
+                    ],
+                    "msgid": "srv-Bob-hello"
+                  }
+                ],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "reactionReceived",
+              "payload": {
+                "channel": "#aeolus",
+                "msgid": "srv-Bob-hello",
+                "emoji": "👍",
+                "sender": "ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [
+                  {
+                    "entries": [
+                      {
+                        "emoji": "👍",
+                        "senders": [
+                          "Ada",
+                          "Cid"
+                        ]
+                      }
+                    ],
+                    "msgid": "srv-Bob-hello"
+                  }
+                ],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "reactionReceived",
+              "payload": {
+                "channel": "#aeolus",
+                "msgid": "",
+                "emoji": "🔥",
+                "sender": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [
+                  {
+                    "entries": [
+                      {
+                        "emoji": "👍",
+                        "senders": [
+                          "Ada",
+                          "Cid"
+                        ]
+                      }
+                    ],
+                    "msgid": "srv-Bob-hello"
+                  }
+                ],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "reactionRemoved",
+              "payload": {
+                "channel": "#aeolus",
+                "msgid": "srv-Bob-hello",
+                "emoji": "👍",
+                "sender": "Cid"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [
+                  {
+                    "entries": [
+                      {
+                        "emoji": "👍",
+                        "senders": [
+                          "Ada"
+                        ]
+                      }
+                    ],
+                    "msgid": "srv-Bob-hello"
+                  }
+                ],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "reactionRemoved",
+              "payload": {
+                "channel": "#aeolus",
+                "msgid": "srv-Bob-hello",
+                "emoji": "👍",
+                "sender": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "typingChanged",
+              "payload": {
+                "channel": "#aeolus",
+                "nickname": "Cid",
+                "composing": true,
+                "atSeconds": 1010
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [
+                  {
+                    "atSeconds": 1010,
+                    "nickname": "Cid"
+                  }
+                ],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "typingChanged",
+              "payload": {
+                "channel": "#aeolus",
+                "nickname": "Cid",
+                "composing": false,
+                "atSeconds": 1011
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "hello",
+                    "id": "m-Bob-hello",
+                    "kind": "message",
+                    "msgid": "srv-Bob-hello",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
           }
         }
       ]

@@ -126,7 +126,11 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             ctx.chat_active.finish();
             out.emit(ChatEvent::Disconnected);
         }
-        ChatCommand::SendMessage { channel, content } => send(ctx, out, channel, content),
+        ChatCommand::SendMessage {
+            channel,
+            content,
+            reply_to,
+        } => send(ctx, out, channel, content, reply_to),
         ChatCommand::JoinChannel { channel } => ctx.ports.chat.join_channel(channel),
         ChatCommand::LeaveChannel { channel } => {
             ctx.ports.chat.leave_channel(channel, String::new())
@@ -163,12 +167,67 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
         ChatCommand::SetShowJoinsParts { enabled } => {
             out.emit(ChatEvent::JoinsPartsToggled { enabled })
         }
+        ChatCommand::SetTyping { channel, composing } => set_typing(ctx, channel, composing),
+        ChatCommand::React {
+            channel,
+            msgid,
+            emoji,
+        } => {
+            // A message the server never tagged has nothing to anchor to. The
+            // UI hides the affordance in that case; this is the backstop.
+            if msgid.is_empty() {
+                return;
+            }
+            ctx.ports.chat.react(channel, msgid, emoji);
+        }
+        ChatCommand::Unreact {
+            channel,
+            msgid,
+            emoji,
+        } => {
+            if msgid.is_empty() {
+                return;
+            }
+            ctx.ports.chat.unreact(channel, msgid, emoji);
+        }
         ChatCommand::Disconnect => {
             ctx.chat_read_marker_persist_generation.invalidate();
             ctx.ports.chat.disconnect();
             crate::services::settings::persist(ctx, out).await;
         }
     }
+}
+
+/// How often a still-composing notice is refreshed.
+///
+/// The IRCv3 draft names three seconds, and the receiving side's timeout is
+/// built around that number (see `TYPING_TIMEOUT_SECONDS`). Sending on every
+/// keystroke instead would put a line on the wire per character typed, which
+/// is a lot of traffic to say one thing.
+const TYPING_REFRESH_SECONDS: u32 = 3;
+
+/// Announce composing state, throttled.
+///
+/// Only the repeats are throttled. A `done` always goes out immediately: it is
+/// the message that *removes* an indicator, and delaying it is exactly the
+/// failure everyone has seen in other clients.
+fn set_typing(ctx: &ServiceCtx, channel: String, composing: bool) {
+    let now = super::now_seconds();
+    {
+        let mut sent = ctx.chat_typing_sent.lock().expect("typing lock poisoned");
+        if composing {
+            let last = sent.get(&channel).copied().unwrap_or(0);
+            if now.saturating_sub(last) < TYPING_REFRESH_SECONDS {
+                return;
+            }
+            sent.insert(channel.clone(), now);
+        } else {
+            // Forgetting the timestamp means the next `active` is sent at once
+            // rather than waiting out a window that started before the pause.
+            sent.remove(&channel);
+        }
+    }
+    ctx.ports.chat.set_typing(channel, composing);
 }
 
 const READ_MARKER_PERSIST_DELAY: std::time::Duration = std::time::Duration::from_millis(400);
@@ -199,17 +258,19 @@ fn summarize(content: &str) -> String {
 }
 
 /// Interpret one line of composer input and act on it.
-fn send(ctx: &ServiceCtx, out: &EventSink, channel: String, content: String) {
+fn send(ctx: &ServiceCtx, out: &EventSink, channel: String, content: String, reply_to: String) {
     let chat = &ctx.ports.chat;
     match chat_input::parse(&content) {
         ChatInput::Message(text) if text.is_empty() => {}
-        ChatInput::Message(text) => chat.send_message(channel, text),
+        ChatInput::Message(text) => chat.send_message(channel, text, reply_to),
         ChatInput::Action(text) => chat.send_action(channel, text),
         ChatInput::PrivateMessage { target, content } => {
             // Opening the conversation first means the echoed message lands in
             // a channel the UI already knows about, rather than creating one.
             chat.join_channel(target.clone());
-            chat.send_message(target, content);
+            // A `/msg` opens a fresh conversation, so there is nothing in it
+            // that an anchor could point at.
+            chat.send_message(target, content, String::new());
         }
         ChatInput::Join(target) => chat.join_channel(target),
         ChatInput::Leave { reason } => chat.leave_channel(channel, reason),
@@ -228,6 +289,8 @@ fn send(ctx: &ServiceCtx, out: &EventSink, channel: String, content: String) {
                     ),
                     timestamp,
                     kind: ChatMessageKind::Error,
+                    msgid: String::new(),
+                    reply_to: String::new(),
                 },
             });
         }
@@ -261,6 +324,41 @@ fn to_event(update: ChatUpdate, quiet_history: bool) -> ChatEvent {
         ChatUpdate::UserRenamed { old_name, new_name } => {
             ChatEvent::UserRenamed { old_name, new_name }
         }
+        ChatUpdate::Typing {
+            channel,
+            nickname,
+            composing,
+        } => ChatEvent::TypingChanged {
+            channel,
+            nickname,
+            composing,
+            // Stamped on arrival rather than taken from `server-time`: the
+            // reader compares it against its own clock to expire the notice,
+            // and the server's clock is not the one that matters for that.
+            at_seconds: super::now_seconds(),
+        },
+        ChatUpdate::Reaction {
+            channel,
+            msgid,
+            emoji,
+            sender,
+        } => ChatEvent::ReactionReceived {
+            channel,
+            msgid,
+            emoji,
+            sender,
+        },
+        ChatUpdate::ReactionRemoved {
+            channel,
+            msgid,
+            emoji,
+            sender,
+        } => ChatEvent::ReactionRemoved {
+            channel,
+            msgid,
+            emoji,
+            sender,
+        },
     }
 }
 

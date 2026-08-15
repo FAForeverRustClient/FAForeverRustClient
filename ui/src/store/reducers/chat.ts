@@ -1,4 +1,4 @@
-import type { ChatChannel, ChatEvent, ChatState, ChatUser } from "../../ipc/bindings";
+import type { ChatChannel, ChatEvent, ChatState, ChatUser, Reaction } from "../../ipc/bindings";
 
 const DEFAULT_CHANNEL = "#aeolus";
 const MAX_MESSAGES = 500;
@@ -74,7 +74,32 @@ const emptyChannel = (name: string): ChatChannel => ({
   users: [],
   unread: 0,
   unreadMentions: 0,
+  typing: [],
+  reactions: [],
 });
+
+/** Mirrors `TYPING_TIMEOUT_SECONDS` in crates/faf-domain/src/state/chat.rs. */
+export const TYPING_TIMEOUT_SECONDS = 6;
+
+/**
+ * Who is still composing in `channel` as of `now` (Unix seconds), excluding
+ * `viewer`. Twin of `ChatChannel::typists_at`.
+ *
+ * Filtering at read time rather than expiring on a timer: the state records
+ * what the server said and when, and only the reader's clock can say whether
+ * that is still true.
+ */
+export function typistsAt(channel: ChatChannel, now: number, viewer: string): string[] {
+  return (channel.typing ?? [])
+    .filter((notice) => now - notice.atSeconds < TYPING_TIMEOUT_SECONDS)
+    .filter((notice) => asciiLower(notice.nickname) !== asciiLower(viewer))
+    .map((notice) => notice.nickname);
+}
+
+/** The reactions on one message. Twin of `ChatChannel::reactions_for`. */
+export function reactionsFor(channel: ChatChannel, msgid: string): Reaction[] {
+  return (channel.reactions ?? []).find((entry) => entry.msgid === msgid)?.entries ?? [];
+}
 
 function withChannel(state: ChatState, name: string): ChatState {
   if (state.channels.some((channel) => channel.name === name)) return state;
@@ -179,16 +204,23 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
       const isActive = state.activeChannel === channel;
       return mapChannel(state, channel, (current) => {
         const messages = [...current.messages, message].slice(-MAX_MESSAGES);
+        // Sending is the loudest possible "done typing". Waiting for the
+        // sender's own `done` would leave the indicator up for every client
+        // that never sends one, which is most of them.
+        const typing = (current.typing ?? []).filter(
+          (notice) => asciiLower(notice.nickname) !== asciiLower(message.sender),
+        );
         const counts =
           !isActive &&
           message.sender !== state.username &&
           message.kind !== "info" &&
           message.kind !== "error";
-        if (!counts) return { ...current, messages };
+        if (!counts) return { ...current, messages, typing };
         const loud = isPrivateChannel(current.name) || mentions(message.content, state.username);
         return {
           ...current,
           messages,
+          typing,
           unread: current.unread + 1,
           unreadMentions: current.unreadMentions + (loud ? 1 : 0),
         };
@@ -254,6 +286,80 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
       return { ...state, showJoinsParts: event.payload.enabled };
     case "autoJoinAnnounced":
       return { ...state, serverAutoJoin: normalizeChannels(event.payload.channels) };
+    case "typingChanged": {
+      const { channel, nickname, composing, atSeconds } = event.payload;
+      // Only an existing channel: a notice for one we are not in has nowhere
+      // to live, and creating a channel from it would invent membership.
+      if (!state.channels.some((c) => c.name === channel)) return state;
+      return mapChannel(state, channel, (current) => {
+        const kept = (current.typing ?? [])
+          .filter((notice) => asciiLower(notice.nickname) !== asciiLower(nickname))
+          // Anything already aged out goes while we are here, so an abandoned
+          // notice cannot outlive the next event in the channel.
+          .filter((notice) => atSeconds - notice.atSeconds < TYPING_TIMEOUT_SECONDS);
+        return {
+          ...current,
+          typing: composing ? [...kept, { nickname, atSeconds }] : kept,
+        };
+      });
+    }
+    case "reactionRemoved": {
+      const { channel, msgid, emoji, sender } = event.payload;
+      if (!state.channels.some((c) => c.name === channel)) return state;
+      return mapChannel(state, channel, (current) => {
+        const reactions = (current.reactions ?? [])
+          .map((entry) => {
+            if (entry.msgid !== msgid) return entry;
+            return {
+              ...entry,
+              entries: entry.entries
+                .map((reaction) =>
+                  reaction.emoji === emoji
+                    ? {
+                        ...reaction,
+                        senders: reaction.senders.filter(
+                          (s) => asciiLower(s) !== asciiLower(sender),
+                        ),
+                      }
+                    : reaction,
+                )
+                // An emoji nobody stands behind is not a zero, it is gone.
+                .filter((reaction) => reaction.senders.length > 0),
+            };
+          })
+          .filter((entry) => entry.entries.length > 0);
+        return { ...current, reactions };
+      });
+    }
+    case "reactionReceived": {
+      const { channel, msgid, emoji, sender } = event.payload;
+      // A reaction with no anchor cannot be placed against a message.
+      if (msgid === "") return state;
+      if (!state.channels.some((c) => c.name === channel)) return state;
+      return mapChannel(state, channel, (current) => {
+        const reactions = current.reactions ?? [];
+        const existing = reactions.find((entry) => entry.msgid === msgid);
+        const entries = existing ? existing.entries : [];
+        const reaction = entries.find((entry) => entry.emoji === emoji);
+        // The draft spec defines no retraction, so a repeat is a duplicate to
+        // swallow rather than a toggle to honour.
+        const alreadyReacted = reaction?.senders.some((s) => asciiLower(s) === asciiLower(sender));
+        const nextEntries = reaction
+          ? entries.map((entry) =>
+              entry.emoji === emoji && !alreadyReacted
+                ? { ...entry, senders: [...entry.senders, sender] }
+                : entry,
+            )
+          : [...entries, { emoji, senders: [sender] }];
+        const next = { msgid, entries: nextEntries };
+        return {
+          ...current,
+          reactions: existing
+            ? reactions.map((entry) => (entry.msgid === msgid ? next : entry))
+            : [...reactions, next],
+        };
+      });
+    }
     case "disconnected":
       return {
         ...state,

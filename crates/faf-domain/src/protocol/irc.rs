@@ -162,6 +162,56 @@ pub fn format_line(command: &str, params: &[&str]) -> String {
     out
 }
 
+/// Format one IRC line carrying outgoing IRCv3 message tags.
+///
+/// Only *client* tags are ever sent from here, so every key is expected to
+/// arrive already prefixed with `+`: a client that sends a server tag is
+/// making a claim it has no standing to make, and Ergochat drops the line.
+///
+/// An empty tag list falls back to [`format_line`] rather than emitting a bare
+/// `@ `, which is not a legal line.
+pub fn format_tagged_line(tags: &[(&str, &str)], command: &str, params: &[&str]) -> String {
+    if tags.is_empty() {
+        return format_line(command, params);
+    }
+    let mut out = String::from("@");
+    for (index, (key, value)) in tags.iter().enumerate() {
+        if index > 0 {
+            out.push(';');
+        }
+        out.push_str(key);
+        // A valueless tag is written bare: `=` with nothing after it is legal
+        // but means "empty value", which is a different thing to a receiver.
+        if !value.is_empty() {
+            out.push('=');
+            out.push_str(&escape_tag_value(value));
+        }
+    }
+    out.push(' ');
+    out.push_str(&format_line(command, params));
+    out
+}
+
+/// Apply the IRCv3 message-tags escape sequences to a tag value.
+///
+/// The exact inverse of [`unescape_tag_value`]. Without it a value containing
+/// a space or a semicolon would terminate the tag or the tag list early, and
+/// the rest of it would be reparsed as a command.
+pub fn escape_tag_value(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for c in value.chars() {
+        match c {
+            ';' => out.push_str("\\:"),
+            ' ' => out.push_str("\\s"),
+            '\r' => out.push_str("\\r"),
+            '\n' => out.push_str("\\n"),
+            '\\' => out.push_str("\\\\"),
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 /// Build a SASL PLAIN payload: base64 of `authzid\0authcid\0password`.
 pub fn sasl_plain_payload(authzid: &str, authcid: &str, password: &str) -> String {
     use base64::Engine as _;
@@ -425,5 +475,52 @@ mod tests {
     fn mode_result_is_ordered_strongest_first_and_deduplicated() {
         assert_eq!(apply_mode("+", "+q"), "~+");
         assert_eq!(apply_mode("@", "+o"), "@");
+    }
+
+    #[test]
+    fn tagged_lines_carry_their_client_tags() {
+        assert_eq!(
+            format_tagged_line(&[("+typing", "active")], "TAGMSG", &["#aeolus"]),
+            "@+typing=active TAGMSG #aeolus"
+        );
+    }
+
+    #[test]
+    fn several_tags_are_semicolon_separated() {
+        assert_eq!(
+            format_tagged_line(
+                &[("+draft/reply", "abc123"), ("+draft/react", "\u{1f44d}")],
+                "TAGMSG",
+                &["#aeolus"],
+            ),
+            "@+draft/reply=abc123;+draft/react=\u{1f44d} TAGMSG #aeolus"
+        );
+    }
+
+    #[test]
+    fn a_valueless_tag_is_written_bare() {
+        // `key=` means "empty value", which is not the same claim as `key`.
+        assert_eq!(
+            format_tagged_line(&[("+typing", "")], "TAGMSG", &["#x"]),
+            "@+typing TAGMSG #x"
+        );
+    }
+
+    #[test]
+    fn no_tags_produces_an_ordinary_line_rather_than_a_bare_at() {
+        assert_eq!(format_tagged_line(&[], "TAGMSG", &["#x"]), "TAGMSG #x");
+    }
+
+    #[test]
+    fn escaping_survives_a_round_trip() {
+        // A value carrying a space or a semicolon would otherwise end the tag
+        // list early, and the remainder would be reparsed as a command.
+        for raw in ["a b", "a;b", "a\\b", "a\rb", "a\nb", ";; ", "plain"] {
+            let line = format_tagged_line(&[("+x", raw)], "TAGMSG", &["#c"]);
+            let parsed = parse_line(&line).expect("an escaped line must still parse");
+            assert_eq!(parsed.tag("+x"), Some(raw), "round trip failed for {raw:?}");
+            assert_eq!(parsed.command, "TAGMSG");
+            assert_eq!(parsed.params, vec!["#c"]);
+        }
     }
 }

@@ -71,7 +71,21 @@ pub(crate) enum Effect {
         /// `server-time` when the server sent one; otherwise the caller
         /// stamps it.
         timestamp: Option<String>,
+        /// The server's IRCv3 `msgid`, empty when it tagged none. This is the
+        /// only handle a reaction can be anchored to, so a message without one
+        /// can never carry any.
+        msgid: String,
+        /// The `msgid` this line answers (`+draft/reply`), empty when it
+        /// answers nothing.
+        reply_to: String,
     },
+    /// Whether the server granted `message-tags`.
+    ///
+    /// Published because the send methods live outside this state machine and
+    /// must not emit a tagged line the server will reject: an untagged
+    /// `TAGMSG` carries nothing, and a rejected one is a wasted round trip on
+    /// every keystroke.
+    TagsEnabled(bool),
     /// Our nick changed. Published so the rest of the client can see it.
     NickChanged(String),
     /// Stop trying to rejoin a channel: we were kicked from it.
@@ -93,6 +107,10 @@ impl Effect {
             content: content.into(),
             kind: ChatMessageKind::Info,
             timestamp: timestamp.map(str::to_string),
+            // Client-side commentary is not a server message and has no id,
+            // so nothing can react to it. That is the correct outcome.
+            msgid: String::new(),
+            reply_to: String::new(),
         }
     }
 }
@@ -210,6 +228,7 @@ pub(crate) fn handle_line(
                 if let Some(caps) = line.params.last() {
                     state.caps.extend(capability_names(caps));
                 }
+                effects.push(Effect::TagsEnabled(state.caps.contains("message-tags")));
                 effects.push(Effect::Send("AUTHENTICATE PLAIN".to_string()));
             }
             Some("NAK") => {
@@ -519,7 +538,63 @@ pub(crate) fn handle_line(
                 content: text,
                 kind,
                 timestamp: line.server_time().map(str::to_string),
+                msgid: line.tag("msgid").unwrap_or_default().to_string(),
+                reply_to: line.tag("+draft/reply").unwrap_or_default().to_string(),
             });
+        }
+        // A message that is nothing but tags. Two client tags matter here:
+        // `+typing` and `+draft/react`. Anything else is another client's
+        // feature we do not implement, and is dropped rather than guessed at.
+        "TAGMSG" => {
+            let (Some(sender), Some(target)) = (line.prefix_nick(), line.params.first()) else {
+                return effects;
+            };
+            let channel = if target.starts_with('#') {
+                target.clone()
+            } else {
+                // A TAGMSG sent to us personally belongs to the conversation
+                // with its sender, exactly as a private PRIVMSG does.
+                sender.to_string()
+            };
+
+            if let Some(state) = line.tag("+typing") {
+                effects.push(Effect::Emit(ChatUpdate::Typing {
+                    channel: channel.clone(),
+                    nickname: sender.to_string(),
+                    // `paused` and `done` both mean "take it down"; only
+                    // `active` means someone is still composing.
+                    composing: state.eq_ignore_ascii_case("active"),
+                }));
+            }
+
+            if let Some(emoji) = line.tag("+draft/unreact") {
+                let msgid = line.tag("+draft/reply").unwrap_or_default();
+                if !msgid.is_empty() && !emoji.is_empty() {
+                    effects.push(Effect::Emit(ChatUpdate::ReactionRemoved {
+                        channel: channel.clone(),
+                        msgid: msgid.to_string(),
+                        emoji: emoji.to_string(),
+                        sender: sender.to_string(),
+                    }));
+                }
+            }
+
+            if let Some(emoji) = line.tag("+draft/react") {
+                // Without a reply tag the reaction has nothing to attach to.
+                // Ergochat relays the tags verbatim, so a client that omits it
+                // produces exactly this, and dropping is the only honest
+                // response: guessing "the newest message" would put the emoji
+                // on whatever happened to arrive last.
+                let msgid = line.tag("+draft/reply").unwrap_or_default();
+                if !msgid.is_empty() && !emoji.is_empty() {
+                    effects.push(Effect::Emit(ChatUpdate::Reaction {
+                        channel,
+                        msgid: msgid.to_string(),
+                        emoji: emoji.to_string(),
+                        sender: sender.to_string(),
+                    }));
+                }
+            }
         }
         _ => {} // numeric replies we don't need yet
     }
@@ -958,8 +1033,134 @@ mod tests {
                 content: "hello".into(),
                 kind: ChatMessageKind::Message,
                 timestamp: None,
+                msgid: String::new(),
+                reply_to: String::new(),
             }]
         );
+    }
+
+    // ── tag messages ─────────────────────────────────────────────────────
+    #[test]
+    fn a_typing_tag_becomes_a_typing_update() {
+        let mut state = registered();
+        let effects = run(&mut state, "@+typing=active :Bob!u@h TAGMSG #a");
+        assert_eq!(
+            effects,
+            vec![Effect::Emit(ChatUpdate::Typing {
+                channel: "#a".into(),
+                nickname: "Bob".into(),
+                composing: true,
+            })]
+        );
+    }
+
+    #[test]
+    fn paused_and_done_both_take_the_indicator_down() {
+        // Only `active` means someone is still composing; the distinction
+        // between the other two is not one any reader here acts on.
+        for value in ["done", "paused"] {
+            let mut state = registered();
+            let effects = run(&mut state, &format!("@+typing={value} :Bob!u@h TAGMSG #a"));
+            assert_eq!(
+                effects,
+                vec![Effect::Emit(ChatUpdate::Typing {
+                    channel: "#a".into(),
+                    nickname: "Bob".into(),
+                    composing: false,
+                })]
+            );
+        }
+    }
+
+    #[test]
+    fn a_typing_tag_sent_to_us_belongs_to_that_conversation() {
+        let mut state = registered();
+        let effects = run(&mut state, "@+typing=active :Bob!u@h TAGMSG Ada");
+        assert_eq!(
+            effects,
+            vec![Effect::Emit(ChatUpdate::Typing {
+                channel: "Bob".into(),
+                nickname: "Bob".into(),
+                composing: true,
+            })]
+        );
+    }
+
+    #[test]
+    fn a_react_tag_becomes_a_reaction_anchored_by_its_reply_tag() {
+        let mut state = registered();
+        let effects = run(
+            &mut state,
+            "@+draft/reply=abc123;+draft/react=\u{1f44d} :Bob!u@h TAGMSG #a",
+        );
+        assert_eq!(
+            effects,
+            vec![Effect::Emit(ChatUpdate::Reaction {
+                channel: "#a".into(),
+                msgid: "abc123".into(),
+                emoji: "\u{1f44d}".into(),
+                sender: "Bob".into(),
+            })]
+        );
+    }
+
+    #[test]
+    fn a_reaction_without_a_reply_tag_is_dropped() {
+        // Guessing "the newest message" would put the emoji on whatever
+        // happened to arrive last, which is worse than showing nothing.
+        let mut state = registered();
+        assert!(run(&mut state, "@+draft/react=\u{1f44d} :Bob!u@h TAGMSG #a").is_empty());
+        assert!(run(
+            &mut state,
+            "@+draft/reply=abc;+draft/react= :Bob!u@h TAGMSG #a"
+        )
+        .is_empty());
+    }
+
+    #[test]
+    fn a_tag_message_we_implement_nothing_for_is_ignored() {
+        let mut state = registered();
+        assert!(run(&mut state, "@+draft/unknown=1 :Bob!u@h TAGMSG #a").is_empty());
+        assert!(run(&mut state, ":Bob!u@h TAGMSG #a").is_empty());
+    }
+
+    #[test]
+    fn one_tag_message_can_carry_both_a_typing_state_and_a_reaction() {
+        let mut state = registered();
+        let effects = run(
+            &mut state,
+            "@+typing=done;+draft/reply=abc;+draft/react=\u{1f525} :Bob!u@h TAGMSG #a",
+        );
+        assert_eq!(effects.len(), 2);
+    }
+
+    #[test]
+    fn a_server_message_id_is_carried_onto_the_message() {
+        let mut state = registered();
+        let effects = run(&mut state, "@msgid=srv-1 :Bob!u@h PRIVMSG #a :hello");
+        assert_eq!(
+            effects,
+            vec![Effect::Message {
+                channel: "#a".into(),
+                sender: "Bob".into(),
+                content: "hello".into(),
+                kind: ChatMessageKind::Message,
+                timestamp: None,
+                msgid: "srv-1".into(),
+                reply_to: String::new(),
+            }]
+        );
+    }
+
+    #[test]
+    fn message_tags_support_is_published_after_the_capability_ack() {
+        let mut state = SessionState::new("Ada".into());
+        let effects = run(&mut state, ":srv CAP * ACK :sasl message-tags");
+        assert!(effects.contains(&Effect::TagsEnabled(true)));
+
+        let mut without = SessionState::new("Ada".into());
+        let effects = run(&mut without, ":srv CAP * ACK :sasl");
+        assert!(effects.contains(&Effect::TagsEnabled(false)));
     }
 
     #[test]

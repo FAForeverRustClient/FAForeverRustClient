@@ -38,6 +38,8 @@ function channel(name: string, overrides: Partial<ChatChannel> = {}): ChatChanne
     users: [],
     unread: 0,
     unreadMentions: 0,
+    typing: [],
+    reactions: [],
     ...overrides,
   };
 }

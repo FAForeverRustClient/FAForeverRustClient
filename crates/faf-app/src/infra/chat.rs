@@ -52,6 +52,11 @@ impl FakeChat {
             content: content.to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
             kind,
+            // The fake has no server to mint one, so nothing in an offline
+            // session can be reacted to. Deliberate: a fabricated msgid would
+            // make the affordance appear and then do nothing.
+            msgid: String::new(),
+            reply_to: String::new(),
         }
     }
 
@@ -100,7 +105,9 @@ impl ChatPort for FakeChat {
         rx
     }
 
-    fn send_message(&self, channel: String, content: String) {
+    fn send_message(&self, channel: String, content: String, _reply_to: String) {
+        // The fake mints no message ids, so nothing here can be answered and
+        // the anchor would have nowhere to point.
         self.echo(channel, content, ChatMessageKind::Message);
     }
 

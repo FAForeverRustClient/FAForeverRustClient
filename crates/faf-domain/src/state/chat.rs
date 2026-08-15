@@ -76,6 +76,22 @@ pub struct ChatMessage {
     pub content: String,
     pub timestamp: String,
     pub kind: ChatMessageKind,
+    /// The server's IRCv3 `msgid`, empty when it sent none.
+    ///
+    /// Distinct from `id`, which is a local counter minted on receipt: that
+    /// one is unique in this session and meaningless to anyone else, while
+    /// this is the handle every participant agrees on. Reactions and replies
+    /// are anchored to it, which is why a message without one can carry
+    /// neither.
+    #[serde(default)]
+    pub msgid: String,
+    /// The `msgid` this message answers, empty when it answers nothing.
+    ///
+    /// Only the id is carried, never a copy of the quoted text: the original
+    /// is already in the scrollback, and duplicating it would let the two
+    /// drift apart after an edit or a redaction.
+    #[serde(default)]
+    pub reply_to: String,
 }
 
 /// One member of a channel's roster.
@@ -122,7 +138,56 @@ pub struct ChatChannel {
     /// Of those, how many named us (or arrived in a private conversation),
     /// the Python client's "important" tab state, which deserves a louder badge.
     pub unread_mentions: u32,
+    /// Who the server last told us is composing here, newest last.
+    ///
+    /// Carries the instant each notice arrived rather than a bare list,
+    /// because a typing notice has to *expire*: the sender promises to send
+    /// `done`, and a client that is killed mid-sentence never does. Readers
+    /// filter with [`ChatChannel::typists_at`]; the reducer prunes on the
+    /// events it already sees, so a stale entry cannot outlive the next thing
+    /// that happens in the channel.
+    #[serde(default)]
+    pub typing: Vec<TypingNotice>,
+    /// Reactions to messages in this channel, keyed by the server's message id.
+    #[serde(default)]
+    pub reactions: Vec<MessageReactions>,
 }
+
+/// Someone composing a message, and when we last heard so.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TypingNotice {
+    pub nickname: String,
+    /// Unix seconds. `u32` because specta rejects 64-bit integers on this
+    /// boundary; it overflows in 2106, which is not this decade's problem.
+    pub at_seconds: u32,
+}
+
+/// Every reaction carried by one message.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageReactions {
+    /// The server's `msgid` for the message being reacted to.
+    pub msgid: String,
+    pub entries: Vec<Reaction>,
+}
+
+/// One emoji on one message, and who put it there.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Reaction {
+    pub emoji: String,
+    /// Reactors in arrival order. A nickname appears at most once: the draft
+    /// spec has no retraction, so a repeat is a duplicate, not a toggle.
+    pub senders: Vec<String>,
+}
+
+/// How long a typing notice is worth showing.
+///
+/// The IRCv3 draft puts the refresh interval at three seconds; six gives a
+/// slow or briefly stalled sender one missed refresh before the indicator
+/// disappears, without leaving it up long enough to be a lie.
+pub const TYPING_TIMEOUT_SECONDS: u32 = 6;
 
 /// Scrollback detached from a channel that is no longer joined. Deliberately
 /// excludes topic, roster and unread state: those are live server facts and
@@ -145,6 +210,92 @@ impl ChatChannel {
     /// A private conversation with a single user, not a server-side channel.
     pub fn is_private(&self) -> bool {
         !self.name.starts_with('#')
+    }
+
+    /// Who is still composing as of `now` (Unix seconds), excluding `viewer`.
+    ///
+    /// Filtering at read time rather than expiring with a timer is deliberate:
+    /// nothing in the domain can run a clock, and an expiry event per second
+    /// per typist would be a stream of deltas that says nothing new. The state
+    /// records what the server said and when; how long that stays true is a
+    /// question only the reader's clock can answer.
+    ///
+    /// `viewer` is dropped because the server echoes our own `TAGMSG` back to
+    /// us, and "you are typing" is not news.
+    pub fn typists_at(&self, now: u32, viewer: &str) -> Vec<&str> {
+        self.typing
+            .iter()
+            .filter(|notice| now.saturating_sub(notice.at_seconds) < TYPING_TIMEOUT_SECONDS)
+            .filter(|notice| !notice.nickname.eq_ignore_ascii_case(viewer))
+            .map(|notice| notice.nickname.as_str())
+            .collect()
+    }
+
+    /// The reactions on one message, or an empty slice when it has none.
+    pub fn reactions_for(&self, msgid: &str) -> &[Reaction] {
+        self.reactions
+            .iter()
+            .find(|entry| entry.msgid == msgid)
+            .map_or(&[], |entry| entry.entries.as_slice())
+    }
+
+    fn note_typing(&mut self, nickname: &str, at_seconds: u32, composing: bool) {
+        self.typing
+            .retain(|notice| !notice.nickname.eq_ignore_ascii_case(nickname));
+        // Anything that has aged out is dropped while we are here, so an
+        // abandoned entry cannot outlive the next event in the channel.
+        self.typing
+            .retain(|notice| at_seconds.saturating_sub(notice.at_seconds) < TYPING_TIMEOUT_SECONDS);
+        if composing {
+            self.typing.push(TypingNotice {
+                nickname: nickname.to_string(),
+                at_seconds,
+            });
+        }
+    }
+
+    fn add_reaction(&mut self, msgid: &str, emoji: &str, sender: &str) {
+        let message = match self.reactions.iter_mut().find(|entry| entry.msgid == msgid) {
+            Some(existing) => existing,
+            None => {
+                self.reactions.push(MessageReactions {
+                    msgid: msgid.to_string(),
+                    entries: Vec::new(),
+                });
+                self.reactions.last_mut().expect("just pushed")
+            }
+        };
+        let reaction = match message.entries.iter_mut().find(|r| r.emoji == emoji) {
+            Some(existing) => existing,
+            None => {
+                message.entries.push(Reaction {
+                    emoji: emoji.to_string(),
+                    senders: Vec::new(),
+                });
+                message.entries.last_mut().expect("just pushed")
+            }
+        };
+        // A repeat from the same person is a duplicate to swallow. Removal is
+        // an explicit message (see `remove_reaction`), never a second add.
+        if !reaction
+            .senders
+            .iter()
+            .any(|s| s.eq_ignore_ascii_case(sender))
+        {
+            reaction.senders.push(sender.to_string());
+        }
+    }
+
+    fn remove_reaction(&mut self, msgid: &str, emoji: &str, sender: &str) {
+        let Some(message) = self.reactions.iter_mut().find(|entry| entry.msgid == msgid) else {
+            return;
+        };
+        if let Some(reaction) = message.entries.iter_mut().find(|r| r.emoji == emoji) {
+            reaction.senders.retain(|s| !s.eq_ignore_ascii_case(sender));
+        }
+        // An emoji nobody stands behind any more is not a zero, it is gone.
+        message.entries.retain(|entry| !entry.senders.is_empty());
+        self.reactions.retain(|entry| !entry.entries.is_empty());
     }
 }
 
@@ -491,11 +642,50 @@ pub enum ChatEvent {
     AutoJoinAnnounced {
         channels: Vec<String>,
     },
+    /// Someone started or stopped composing. `composing` is false for the
+    /// draft spec's `done` and `paused`: both mean "stop showing this", and
+    /// the difference between them is not worth a second indicator.
+    TypingChanged {
+        channel: String,
+        nickname: String,
+        composing: bool,
+        /// Unix seconds at which this was observed; the reducer stores it so
+        /// readers can expire the notice without a timer in the domain.
+        at_seconds: u32,
+    },
+    /// Someone reacted to a message.
+    ReactionReceived {
+        channel: String,
+        msgid: String,
+        emoji: String,
+        sender: String,
+    },
+    /// Someone took their reaction back.
+    ///
+    /// The IRCv3 draft defines no retraction at all, so this rides on a client
+    /// tag of this client's own (`+draft/unreact`). Between two of these
+    /// clients it works; a client that does not know the tag keeps showing the
+    /// reaction, and there is no way to make it not.
+    ReactionRemoved {
+        channel: String,
+        msgid: String,
+        emoji: String,
+        sender: String,
+    },
     Disconnected,
 }
 
+// `rename_all_fields` matches `ChatEvent` above. Every field this enum had
+// until now was a single word, so the omission was invisible; the first
+// two-word field would have crossed the boundary as `reply_to` while every
+// other payload in the client is camelCase.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum ChatCommand {
     /// Carries the username because IRC needs an explicit NICK/SASL authzid;
     /// the frontend already knows it (`auth.player.name`), so no new backend
@@ -511,6 +701,9 @@ pub enum ChatCommand {
     SendMessage {
         channel: String,
         content: String,
+        /// The `msgid` being answered, empty for an ordinary line.
+        #[serde(default)]
+        reply_to: String,
     },
     JoinChannel {
         channel: String,
@@ -523,6 +716,26 @@ pub enum ChatCommand {
     },
     SetShowJoinsParts {
         enabled: bool,
+    },
+    /// Tell the channel whether we are composing. Sent as the composer is
+    /// used, not on every keystroke: the service throttles it.
+    SetTyping {
+        channel: String,
+        composing: bool,
+    },
+    /// React to a message with an emoji. `msgid` is the server's, so a message
+    /// the server never tagged cannot be reacted to.
+    React {
+        channel: String,
+        msgid: String,
+        emoji: String,
+    },
+    /// Take our own reaction back. Only ever our own: the tag carries no
+    /// authority to remove anybody else's, and neither does this.
+    Unreact {
+        channel: String,
+        msgid: String,
+        emoji: String,
     },
     Disconnect,
 }
@@ -592,6 +805,12 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                 c.messages.drain(0..excess);
             }
 
+            // Sending is the loudest possible "done typing". Relying on the
+            // sender's own `done` would leave the indicator up for anyone
+            // whose client does not send one, which is most of them.
+            c.typing
+                .retain(|notice| !notice.nickname.eq_ignore_ascii_case(&message.sender));
+
             // Our own lines and client-side commentary never count as unread.
             let from_self = message.sender == username;
             let counts = matches!(event, ChatEvent::MessageReceived { .. })
@@ -651,6 +870,41 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
         ChatEvent::AutoJoinAnnounced { channels } => {
             state.server_auto_join = normalize_channels(channels.clone());
         }
+        ChatEvent::TypingChanged {
+            channel,
+            nickname,
+            composing,
+            at_seconds,
+        } => {
+            if let Some(c) = state.channel_mut(channel) {
+                c.note_typing(nickname, *at_seconds, *composing);
+            }
+        }
+        ChatEvent::ReactionRemoved {
+            channel,
+            msgid,
+            emoji,
+            sender,
+        } => {
+            if let Some(c) = state.channel_mut(channel) {
+                c.remove_reaction(msgid, emoji, sender);
+            }
+        }
+        ChatEvent::ReactionReceived {
+            channel,
+            msgid,
+            emoji,
+            sender,
+        } => {
+            // A reaction with no anchor cannot be placed, and storing it would
+            // grow the slice with entries nothing can ever render.
+            if msgid.is_empty() {
+                return;
+            }
+            if let Some(c) = state.channel_mut(channel) {
+                c.add_reaction(msgid, emoji, sender);
+            }
+        }
         ChatEvent::Disconnected => {
             state.status = ChatStatus::Disconnected;
             for c in &mut state.channels {
@@ -673,6 +927,26 @@ mod tests {
             content: format!("hello {id}"),
             timestamp: "2024-01-01T00:00:00Z".into(),
             kind: ChatMessageKind::Message,
+            msgid: format!("srv-{id}"),
+            reply_to: String::new(),
+        }
+    }
+
+    fn typing(channel: &str, nickname: &str, composing: bool, at_seconds: u32) -> ChatEvent {
+        ChatEvent::TypingChanged {
+            channel: channel.into(),
+            nickname: nickname.into(),
+            composing,
+            at_seconds,
+        }
+    }
+
+    fn reaction(channel: &str, msgid: &str, emoji: &str, sender: &str) -> ChatEvent {
+        ChatEvent::ReactionReceived {
+            channel: channel.into(),
+            msgid: msgid.into(),
+            emoji: emoji.into(),
+            sender: sender.into(),
         }
     }
 
@@ -1220,5 +1494,338 @@ mod tests {
     fn mentions_scans_past_a_non_boundary_hit() {
         // First occurrence is embedded; the second one is a real mention.
         assert!(mentions("xaurora and later aurora", "Aurora"));
+    }
+
+    // ── typing ───────────────────────────────────────────────────────────
+    #[test]
+    fn a_typing_notice_shows_until_it_ages_out() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &typing("#a", "Stormlord", true, 100));
+
+        let c = s.channel("#a").unwrap();
+        assert_eq!(c.typists_at(100, "Aurora"), vec!["Stormlord"]);
+        // Still inside the window: one missed refresh must not blank it.
+        assert_eq!(c.typists_at(105, "Aurora"), vec!["Stormlord"]);
+        // Past it: the sender promised a `done` and never sent one.
+        assert!(c.typists_at(106, "Aurora").is_empty());
+        assert!(c.typists_at(10_000, "Aurora").is_empty());
+    }
+
+    #[test]
+    fn our_own_typing_is_never_shown_back_to_us() {
+        // The server echoes our TAGMSG to the channel, ourselves included.
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &typing("#a", "aurora", true, 100));
+
+        assert!(s
+            .channel("#a")
+            .unwrap()
+            .typists_at(100, "Aurora")
+            .is_empty());
+    }
+
+    #[test]
+    fn stopping_removes_the_notice_immediately() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &typing("#a", "Stormlord", true, 100));
+        reduce(&mut s, &typing("#a", "Stormlord", false, 101));
+
+        assert!(s
+            .channel("#a")
+            .unwrap()
+            .typists_at(101, "Aurora")
+            .is_empty());
+    }
+
+    #[test]
+    fn refreshing_extends_the_same_person_rather_than_duplicating_them() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &typing("#a", "Stormlord", true, 100));
+        reduce(&mut s, &typing("#a", "Stormlord", true, 104));
+
+        let c = s.channel("#a").unwrap();
+        assert_eq!(c.typing.len(), 1);
+        assert_eq!(c.typists_at(108, "Aurora"), vec!["Stormlord"]);
+    }
+
+    #[test]
+    fn sending_a_message_is_the_loudest_possible_done() {
+        // Most clients never send `done`; the message itself is the signal.
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &typing("#a", "Stormlord", true, 100));
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: "#a".into(),
+                message: message("m1"),
+            },
+        );
+
+        assert!(s
+            .channel("#a")
+            .unwrap()
+            .typists_at(100, "Aurora")
+            .is_empty());
+    }
+
+    #[test]
+    fn an_abandoned_notice_is_pruned_by_the_next_event() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &typing("#a", "Ghost", true, 100));
+        reduce(&mut s, &typing("#a", "Stormlord", true, 200));
+
+        // Ghost never sent `done` and never will; nothing should still carry it.
+        let c = s.channel("#a").unwrap();
+        assert_eq!(c.typing.len(), 1);
+        assert_eq!(c.typing[0].nickname, "Stormlord");
+    }
+
+    #[test]
+    fn several_people_can_compose_at_once() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &typing("#a", "Stormlord", true, 100));
+        reduce(&mut s, &typing("#a", "Zock", true, 101));
+
+        assert_eq!(
+            s.channel("#a").unwrap().typists_at(102, "Aurora"),
+            vec!["Stormlord", "Zock"]
+        );
+    }
+
+    // ── reactions ────────────────────────────────────────────────────────
+    #[test]
+    fn a_reaction_lands_on_its_message() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+
+        let c = s.channel("#a").unwrap();
+        assert_eq!(c.reactions_for("srv-m1").len(), 1);
+        assert_eq!(c.reactions_for("srv-m1")[0].emoji, "\u{1f44d}");
+        assert_eq!(c.reactions_for("srv-m1")[0].senders, vec!["Stormlord"]);
+    }
+
+    #[test]
+    fn the_same_emoji_from_two_people_is_one_entry_with_two_senders() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Zock"));
+
+        let entries = s.channel("#a").unwrap().reactions_for("srv-m1");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].senders, vec!["Stormlord", "Zock"]);
+    }
+
+    #[test]
+    fn reacting_twice_is_swallowed_rather_than_counted_or_toggled() {
+        // The draft spec defines no retraction, so a repeat cannot mean "undo"
+        // and must not inflate the count either.
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "stormlord"));
+
+        let entries = s.channel("#a").unwrap().reactions_for("srv-m1");
+        assert_eq!(entries[0].senders, vec!["Stormlord"]);
+    }
+
+    #[test]
+    fn different_emoji_on_one_message_are_separate_entries() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f525}", "Zock"));
+
+        let entries = s.channel("#a").unwrap().reactions_for("srv-m1");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[1].emoji, "\u{1f525}");
+    }
+
+    #[test]
+    fn a_reaction_without_an_anchor_is_dropped() {
+        // A message the server never tagged has no handle to react to; storing
+        // it would grow the slice with entries nothing can render.
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "", "\u{1f44d}", "Stormlord"));
+
+        assert!(s.channel("#a").unwrap().reactions.is_empty());
+    }
+
+    fn removed(channel: &str, msgid: &str, emoji: &str, sender: &str) -> ChatEvent {
+        ChatEvent::ReactionRemoved {
+            channel: channel.into(),
+            msgid: msgid.into(),
+            emoji: emoji.into(),
+            sender: sender.into(),
+        }
+    }
+
+    #[test]
+    fn taking_a_reaction_back_removes_only_that_person() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Zock"));
+        reduce(&mut s, &removed("#a", "srv-m1", "\u{1f44d}", "stormlord"));
+
+        let entries = s.channel("#a").unwrap().reactions_for("srv-m1");
+        assert_eq!(entries[0].senders, vec!["Zock"]);
+    }
+
+    #[test]
+    fn an_emoji_nobody_stands_behind_disappears_rather_than_showing_zero() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+        reduce(&mut s, &removed("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+
+        assert!(s.channel("#a").unwrap().reactions_for("srv-m1").is_empty());
+        // The message's own entry goes too, not just its contents.
+        assert!(s.channel("#a").unwrap().reactions.is_empty());
+    }
+
+    #[test]
+    fn removing_a_reaction_that_was_never_there_changes_nothing() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        reduce(&mut s, &reaction("#a", "srv-m1", "\u{1f44d}", "Stormlord"));
+        for (msgid, emoji, sender) in [
+            ("srv-nope", "\u{1f44d}", "Stormlord"),
+            ("srv-m1", "\u{1f525}", "Stormlord"),
+            ("srv-m1", "\u{1f44d}", "Nobody"),
+        ] {
+            reduce(&mut s, &removed("#a", msgid, emoji, sender));
+        }
+
+        assert_eq!(
+            s.channel("#a").unwrap().reactions_for("srv-m1")[0].senders,
+            vec!["Stormlord"]
+        );
+    }
+
+    #[test]
+    fn a_reply_carries_only_the_id_it_answers() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        let mut answer = message("m2");
+        answer.reply_to = "srv-m1".into();
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: "#a".into(),
+                message: answer,
+            },
+        );
+
+        let stored = &s.channel("#a").unwrap().messages[0];
+        assert_eq!(stored.reply_to, "srv-m1");
+        // The quoted text is never copied: the original is already in the
+        // scrollback, and a copy would drift from it.
+        assert_eq!(stored.content, "hello m2");
+    }
+
+    #[test]
+    fn a_message_with_no_reactions_reports_none() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "#a".into(),
+            },
+        );
+        assert!(s
+            .channel("#a")
+            .unwrap()
+            .reactions_for("srv-nope")
+            .is_empty());
     }
 }

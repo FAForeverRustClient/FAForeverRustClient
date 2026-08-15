@@ -605,14 +605,200 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-compose {
+  /* Nested inside `.chat-compose-shell`, which owns the reply banner above it
+     and the outer spacing. */
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-3);
 }
 
 .chat-compose-input {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
+}
+
+/* Reserves its line whether or not anyone is composing, so the composer does
+   not jump up and down as people start and stop typing. */
+.chat-typing {
+  min-height: 15px;
+  margin: var(--space-1) 0 0;
+  padding: 0 var(--space-1);
+  color: var(--color-subtle);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Replies ──────────────────────────────────────────────────────────── */
+/* The quoted line above an answer. Resolved from the scrollback at render
+   time, so it simply does not appear once the original has scrolled out of
+   the retained window. */
+.chat-quote {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--color-border-strong);
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.chat-quote-sender {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.chat-quote-body {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same reveal-on-hover treatment as the reaction trigger, so a busy channel is
+   not a column of buttons. */
+.chat-reply-trigger {
+  padding: 0 var(--space-1);
+  color: var(--color-subtle);
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.chat-message:hover .chat-reply-trigger,
+.chat-reply-trigger:focus-visible {
+  color: var(--color-text);
+  opacity: 1;
+}
+
+.chat-compose-shell {
+  display: flex;
+  margin-top: var(--space-3);
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.chat-reply-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-muted);
+  font-size: 11px;
+  background: var(--color-surface);
+  border-left: 2px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+.chat-reply-banner button {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-reply-banner button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+/* ── Reactions ────────────────────────────────────────────────────────── */
+.chat-reactions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+.chat-reaction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 1px var(--space-2);
+  color: var(--color-muted);
+  font-family: inherit;
+  font-size: 12px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.chat-reaction:hover {
+  background: var(--color-surface-hover);
+}
+
+/* Ours: the protocol has no retraction, so this marks participation rather
+   than offering a toggle. */
+.chat-reaction.is-mine {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.chat-reaction-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-reaction-add {
+  position: relative;
+}
+
+/* Revealed on hover or focus so a busy channel is not a wall of "+" buttons. */
+.chat-reaction-trigger {
+  padding: 0 var(--space-2);
+  color: var(--color-subtle);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.chat-message:hover .chat-reaction-trigger,
+.chat-reaction-trigger:focus-visible,
+.chat-reaction-trigger[aria-expanded="true"] {
+  border-color: var(--color-border);
+  opacity: 1;
+}
+
+.chat-reaction-menu {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  padding: var(--space-1);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.chat-reaction-option {
+  padding: var(--space-1);
+  font-size: 16px;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-reaction-option:hover {
+  background: var(--color-surface-hover);
 }
 
 /* ── Emoji picker ─────────────────────────────────────────────────────── */

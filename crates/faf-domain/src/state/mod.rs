@@ -33,7 +33,7 @@ pub use auth::{AuthCommand, AuthEvent, AuthMode, AuthState, AuthStatus, Player};
 pub use chat::{
     auto_join_channels, language_channel, mentions, normalize_channels, read_marker_key,
     ChatChannel, ChatCommand, ChatEvent, ChatMessage, ChatMessageKind, ChatState, ChatStatus,
-    ChatUser, DEFAULT_CHANNEL,
+    ChatUser, MessageReactions, Reaction, TypingNotice, DEFAULT_CHANNEL, TYPING_TIMEOUT_SECONDS,
 };
 pub use client_update::{
     compare_versions, is_release_version, should_update, strip_version_prefix, ClientRelease,

@@ -97,6 +97,7 @@ async fn a_plain_line_is_echoed_into_its_channel() {
         ChatCommand::SendMessage {
             channel: DEFAULT_CHANNEL.into(),
             content: "hello everyone".into(),
+            reply_to: String::new(),
         }
         .into(),
     )
@@ -128,6 +129,7 @@ async fn me_becomes_an_action_line() {
         ChatCommand::SendMessage {
             channel: DEFAULT_CHANNEL.into(),
             content: "/me waves".into(),
+            reply_to: String::new(),
         }
         .into(),
     )
@@ -158,6 +160,7 @@ async fn join_opens_a_second_channel_without_stealing_focus() {
         ChatCommand::SendMessage {
             channel: DEFAULT_CHANNEL.into(),
             content: "/join newbie".into(),
+            reply_to: String::new(),
         }
         .into(),
     )
@@ -178,6 +181,7 @@ async fn msg_opens_a_private_conversation_and_sends_into_it() {
         ChatCommand::SendMessage {
             channel: DEFAULT_CHANNEL.into(),
             content: "/msg Stormlord good game".into(),
+            reply_to: String::new(),
         }
         .into(),
     )
@@ -204,6 +208,7 @@ async fn an_unknown_command_reports_locally_instead_of_being_sent() {
         ChatCommand::SendMessage {
             channel: DEFAULT_CHANNEL.into(),
             content: "/kick Stormlord".into(),
+            reply_to: String::new(),
         }
         .into(),
     )
@@ -288,6 +293,7 @@ async fn rapid_channel_selection_batches_read_marker_persistence() {
         ChatCommand::SendMessage {
             channel: "#newbie".into(),
             content: "hello newbie".into(),
+            reply_to: String::new(),
         }
         .into(),
     )

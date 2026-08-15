@@ -11,7 +11,8 @@
 //    latest" affordance appears instead.
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../ipc/bindings";
+import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, Reaction, SocialState } from "../../ipc/bindings";
+import { MessageReactions } from "./MessageReactions";
 import { Icon } from "../../design-system/Icon";
 import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
 import type { ChatGameLink } from "./chatFormat";
@@ -33,7 +34,28 @@ interface Props {
   preferences: ChatPreferences;
   searchRequest?: number;
   onGameLink?: (link: ChatGameLink) => void;
+  /**
+   * Reactions per server message id, for the channel being rendered. Optional
+   * because not every surface that reuses this list has them: party chat runs
+   * over the lobby protocol, which carries no reactions at all.
+   */
+  reactions?: MessageReactionsMap;
+  onReact?: (msgid: string, emoji: string) => void;
+  onUnreact?: (msgid: string, emoji: string) => void;
+  /** Start answering this message. Absent where replying is not offered. */
+  onReply?: (message: ChatMessage) => void;
+  /** Resolve a `msgid` to the message it names, for the quoted line. */
+  findByMsgid?: (msgid: string) => ChatMessage | undefined;
 }
+
+/** `msgid -> reactions`, so a row looks its own up without scanning a list. */
+export type MessageReactionsMap = Readonly<Record<string, readonly Reaction[]>>;
+
+/** Shared empty list, so a message without reactions keeps a stable identity
+ *  across renders and does not defeat `Line`'s memoization. */
+const EMPTY_REACTIONS: readonly Reaction[] = [];
+const EMPTY_REACTION_MAP: MessageReactionsMap = {};
+const noReact = () => {};
 
 export const MessageList = memo(function MessageList({
   messages,
@@ -48,6 +70,11 @@ export const MessageList = memo(function MessageList({
   preferences,
   searchRequest = 0,
   onGameLink,
+  reactions = EMPTY_REACTION_MAP,
+  onReact = noReact,
+  onUnreact = noReact,
+  onReply,
+  findByMsgid,
 }: Props) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -199,6 +226,11 @@ export const MessageList = memo(function MessageList({
               onNickClick={onNickClick}
               onNickContextMenu={onNickContextMenu}
               onGameLink={onGameLink}
+              reactions={reactions[message.msgid ?? ""] ?? EMPTY_REACTIONS}
+              onReact={onReact}
+              onUnreact={onUnreact}
+              onReply={onReply}
+              quoted={message.replyTo ? findByMsgid?.(message.replyTo) : undefined}
             />
           ))
         )}
@@ -228,10 +260,21 @@ const Line = memo(function Line({
   activeSearchMatch,
   registerRow,
   onGameLink,
+  reactions,
+  onReact,
+  onUnreact,
+  onReply,
+  quoted,
 }: {
   message: ChatMessage;
   self: string;
   withTime: boolean;
+  reactions: readonly Reaction[];
+  onReact: (msgid: string, emoji: string) => void;
+  onUnreact: (msgid: string, emoji: string) => void;
+  onReply?: (message: ChatMessage) => void;
+  /** The message this one answers, when it is still in the scrollback. */
+  quoted?: ChatMessage;
   onNickClick: (nick: string) => void;
   onNickContextMenu: (nick: string, event: React.MouseEvent) => void;
   use24HourTime: boolean;
@@ -250,6 +293,7 @@ const Line = memo(function Line({
     (node: HTMLDivElement | null) => registerRow(message.id, node),
     [registerRow, message.id],
   );
+  const { t } = useTranslation();
   const body = renderBody(message.content, self, search, onGameLink);
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
@@ -270,6 +314,16 @@ const Line = memo(function Line({
 
   return (
     <div ref={rowRef} className={`chat-message is-${message.kind}${fromSelf ? " is-self" : ""}${activeSearchMatch ? " is-search-active" : ""}`}>
+      {/* The answered line, quoted from the scrollback rather than copied into
+          the reply: an answer to something scrolled out of the retained window
+          shows nothing, which is honest, where a stored copy would keep
+          claiming text the channel no longer has. */}
+      {quoted ? (
+        <p className="chat-quote">
+          <span className="chat-quote-sender">{quoted.sender}</span>
+          <span className="chat-quote-body">{quoted.content}</span>
+        </p>
+      ) : null}
       {/* Info and error lines are client commentary, not somebody talking, so
           they get no nickname column: the way the Python client renders its
           INFO type. Actions fold the nick into the sentence. */}
@@ -303,6 +357,26 @@ const Line = memo(function Line({
         </>
       )}
       <span className="chat-message-time">{time}</span>
+      {message.kind === "info" || message.kind === "error" ? null : (
+        <MessageReactions
+          msgid={message.msgid ?? ""}
+          reactions={reactions}
+          self={self}
+          onReact={(emoji) => onReact(message.msgid ?? "", emoji)}
+          onUnreact={(emoji) => onUnreact(message.msgid ?? "", emoji)}
+        />
+      )}
+      {onReply && message.msgid && message.kind !== "info" && message.kind !== "error" ? (
+        <button
+          type="button"
+          className="chat-reply-trigger"
+          aria-label={t("chat.reply.start")}
+          title={t("chat.reply.start")}
+          onClick={() => onReply(message)}
+        >
+          <Icon name="arrowRight" size={13} />
+        </button>
+      ) : null}
     </div>
   );
 });

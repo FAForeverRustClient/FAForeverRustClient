@@ -315,6 +315,8 @@ fn chat_message(sender: &str, content: &str) -> ChatMessage {
         content: content.into(),
         timestamp: "2026-01-01T00:00:00Z".into(),
         kind: ChatMessageKind::Message,
+        msgid: format!("srv-{sender}-{content}"),
+        reply_to: String::new(),
     }
 }
 
@@ -550,6 +552,103 @@ fn cases() -> Vec<Case> {
                 ChatEvent::MessageReceivedQuietly {
                     channel: "#uef".into(),
                     message: chat_message("Bob", "restored history"),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "someone composes, reacts, and their message clears the indicator",
+            vec![
+                ChatEvent::Connected {
+                    username: "Aurora".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#aeolus".into(),
+                }
+                .into(),
+                ChatEvent::TypingChanged {
+                    channel: "#aeolus".into(),
+                    nickname: "Bob".into(),
+                    composing: true,
+                    at_seconds: 1_000,
+                }
+                .into(),
+                // A refresh extends the same person rather than listing them twice.
+                ChatEvent::TypingChanged {
+                    channel: "#aeolus".into(),
+                    nickname: "Bob".into(),
+                    composing: true,
+                    at_seconds: 1_003,
+                }
+                .into(),
+                // The message itself is the loudest possible "done".
+                ChatEvent::MessageReceived {
+                    channel: "#aeolus".into(),
+                    message: chat_message("Bob", "hello"),
+                }
+                .into(),
+                ChatEvent::ReactionReceived {
+                    channel: "#aeolus".into(),
+                    msgid: "srv-Bob-hello".into(),
+                    emoji: "\u{1f44d}".into(),
+                    sender: "Ada".into(),
+                }
+                .into(),
+                // Same emoji, second person: one entry, two senders.
+                ChatEvent::ReactionReceived {
+                    channel: "#aeolus".into(),
+                    msgid: "srv-Bob-hello".into(),
+                    emoji: "\u{1f44d}".into(),
+                    sender: "Cid".into(),
+                }
+                .into(),
+                // A repeat from someone already counted is swallowed.
+                ChatEvent::ReactionReceived {
+                    channel: "#aeolus".into(),
+                    msgid: "srv-Bob-hello".into(),
+                    emoji: "\u{1f44d}".into(),
+                    sender: "ada".into(),
+                }
+                .into(),
+                // A reaction with no anchor is dropped entirely.
+                ChatEvent::ReactionReceived {
+                    channel: "#aeolus".into(),
+                    msgid: String::new(),
+                    emoji: "\u{1f525}".into(),
+                    sender: "Ada".into(),
+                }
+                .into(),
+                // Taking one back removes that person and nobody else.
+                ChatEvent::ReactionRemoved {
+                    channel: "#aeolus".into(),
+                    msgid: "srv-Bob-hello".into(),
+                    emoji: "\u{1f44d}".into(),
+                    sender: "Cid".into(),
+                }
+                .into(),
+                // The last holder leaving takes the whole entry with it,
+                // rather than leaving an emoji showing zero.
+                ChatEvent::ReactionRemoved {
+                    channel: "#aeolus".into(),
+                    msgid: "srv-Bob-hello".into(),
+                    emoji: "\u{1f44d}".into(),
+                    sender: "Ada".into(),
+                }
+                .into(),
+                // Stopping removes the notice at once.
+                ChatEvent::TypingChanged {
+                    channel: "#aeolus".into(),
+                    nickname: "Cid".into(),
+                    composing: true,
+                    at_seconds: 1_010,
+                }
+                .into(),
+                ChatEvent::TypingChanged {
+                    channel: "#aeolus".into(),
+                    nickname: "Cid".into(),
+                    composing: false,
+                    at_seconds: 1_011,
                 }
                 .into(),
             ],

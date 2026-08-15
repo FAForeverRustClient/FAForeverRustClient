@@ -13,8 +13,9 @@
 // Slash commands are *not* interpreted here: the backend owns that grammar
 // (`faf-domain::protocol::chat_input`). This component only sends raw text.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import { EmojiPicker } from "./EmojiPicker";
 
@@ -26,6 +27,19 @@ interface Props {
   nicknames: string[];
   disabled: boolean;
   onSend: (content: string) => void;
+  /** The message being answered, or `null` for an ordinary line. */
+  replyTo?: { msgid: string; sender: string } | null;
+  onCancelReply?: () => void;
+  /**
+   * Report composing state for a named channel. The channel is explicit rather
+   * than implied by `props.channel`, because the one case that matters is
+   * retracting in the channel being *left*, by which time `props.channel` is
+   * already the new one. The backend throttles the wire traffic.
+   *
+   * Optional: party chat reuses this composer over the lobby protocol, which
+   * has no typing notices to send.
+   */
+  onTyping?: (composing: boolean, channel: string) => void;
 }
 
 interface Completion {
@@ -35,7 +49,15 @@ interface Completion {
   index: number;
 }
 
-export function Composer({ channel, nicknames, disabled, onSend }: Props) {
+export function Composer({
+  channel,
+  nicknames,
+  disabled,
+  onSend,
+  onTyping = () => {},
+  replyTo = null,
+  onCancelReply,
+}: Props) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +70,9 @@ export function Composer({ channel, nicknames, disabled, onSend }: Props) {
     setDraft(value);
     completion.current = null;
     historyIndex.current = null;
+    // Emptying the box is a retraction, not a pause: whoever was waiting for
+    // the line should stop being told one is coming.
+    onTyping(value.trim() !== "", channel);
   };
 
   const submit = (e: React.FormEvent) => {
@@ -55,6 +80,10 @@ export function Composer({ channel, nicknames, disabled, onSend }: Props) {
     const content = draft.trim();
     if (!content) return;
     onSend(content);
+    // The message itself already tells everyone we stopped, but saying so
+    // explicitly means a client that ignores the message still takes the
+    // indicator down.
+    onTyping(false, channel);
     history.current = [...history.current, content].slice(-MAX_HISTORY);
     historyIndex.current = null;
     completion.current = null;
@@ -132,14 +161,51 @@ export function Composer({ channel, nicknames, disabled, onSend }: Props) {
       recall(e.key === "ArrowUp" ? -1 : 1);
       return;
     }
+    // Escape drops the answer rather than the draft: the text is the
+    // expensive part, the anchor is one click to restore.
+    if (e.key === "Escape" && replyTo) {
+      e.preventDefault();
+      onCancelReply?.();
+      return;
+    }
     // Any other key ends the completion run, so the next Tab starts fresh.
     if (e.key.length === 1 || e.key === "Backspace" || e.key === "Delete") {
       completion.current = null;
     }
   };
 
+  // Leaving a channel mid-draft retracts *there* rather than leaving the
+  // notice to age out in a conversation nobody is watching any more.
+  const previousChannel = useRef(channel);
+  useEffect(() => {
+    const left = previousChannel.current;
+    if (left === channel) return;
+    previousChannel.current = channel;
+    onTyping(false, left);
+    setDraft("");
+    completion.current = null;
+    historyIndex.current = null;
+    // `onTyping` is intentionally not a dependency: it is a fresh closure on
+    // every render, and re-running this on each one would retract constantly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel]);
+
   return (
-    <form className="chat-compose" onSubmit={submit}>
+    <form className="chat-compose-shell" onSubmit={submit}>
+      {replyTo ? (
+        <div className="chat-reply-banner">
+          <span>{t("chat.reply.banner", { name: replyTo.sender })}</span>
+          <button
+            type="button"
+            aria-label={t("chat.reply.cancel")}
+            title={t("chat.reply.cancel")}
+            onClick={onCancelReply}
+          >
+            <Icon name="close" size={13} />
+          </button>
+        </div>
+      ) : null}
+      <div className="chat-compose">
       <input
         ref={inputRef}
         className="chat-input chat-compose-input"
@@ -158,6 +224,7 @@ export function Composer({ channel, nicknames, disabled, onSend }: Props) {
       <Button type="submit" variant="primary" disabled={disabled || !draft.trim()}>
         {t("chat.send")}
       </Button>
+      </div>
     </form>
   );
 }

@@ -145,6 +145,19 @@ export type ChatChannel = {
 	 *  the Python client's "important" tab state, which deserves a louder badge.
 	 */
 	unreadMentions: number,
+	/**
+	 *  Who the server last told us is composing here, newest last.
+	 *
+	 *  Carries the instant each notice arrived rather than a bare list,
+	 *  because a typing notice has to *expire*: the sender promises to send
+	 *  `done`, and a client that is killed mid-sentence never does. Readers
+	 *  filter with [`ChatChannel::typists_at`]; the reducer prunes on the
+	 *  events it already sees, so a stale entry cannot outlive the next thing
+	 *  that happens in the channel.
+	 */
+	typing?: TypingNotice[],
+	/**  Reactions to messages in this channel, keyed by the server's message id. */
+	reactions?: MessageReactions[],
 };
 
 export type ChatCommand =
@@ -166,6 +179,8 @@ export type ChatCommand =
 { type: "sendMessage"; payload: {
 	channel: string,
 	content: string,
+	/**  The `msgid` being answered, empty for an ordinary line. */
+	replyTo?: string,
 } } | { type: "joinChannel"; payload: {
 	channel: string,
 } } | { type: "leaveChannel"; payload: {
@@ -174,6 +189,32 @@ export type ChatCommand =
 	channel: string,
 } } | { type: "setShowJoinsParts"; payload: {
 	enabled: boolean,
+} } |
+/**
+ *  Tell the channel whether we are composing. Sent as the composer is
+ *  used, not on every keystroke: the service throttles it.
+ */
+{ type: "setTyping"; payload: {
+	channel: string,
+	composing: boolean,
+} } |
+/**
+ *  React to a message with an emoji. `msgid` is the server's, so a message
+ *  the server never tagged cannot be reacted to.
+ */
+{ type: "react"; payload: {
+	channel: string,
+	msgid: string,
+	emoji: string,
+} } |
+/**
+ *  Take our own reaction back. Only ever our own: the tag carries no
+ *  authority to remove anybody else's, and neither does this.
+ */
+{ type: "unreact"; payload: {
+	channel: string,
+	msgid: string,
+	emoji: string,
 } } | { type: "disconnect" };
 
 export type ChatEvent = { type: "connecting" } |
@@ -235,6 +276,42 @@ export type ChatEvent = { type: "connecting" } |
  */
 { type: "autoJoinAnnounced"; payload: {
 	channels: string[],
+} } |
+/**
+ *  Someone started or stopped composing. `composing` is false for the
+ *  draft spec's `done` and `paused`: both mean "stop showing this", and
+ *  the difference between them is not worth a second indicator.
+ */
+{ type: "typingChanged"; payload: {
+	channel: string,
+	nickname: string,
+	composing: boolean,
+	/**
+	 *  Unix seconds at which this was observed; the reducer stores it so
+	 *  readers can expire the notice without a timer in the domain.
+	 */
+	atSeconds: number,
+} } |
+/**  Someone reacted to a message. */
+{ type: "reactionReceived"; payload: {
+	channel: string,
+	msgid: string,
+	emoji: string,
+	sender: string,
+} } |
+/**
+ *  Someone took their reaction back.
+ *
+ *  The IRCv3 draft defines no retraction at all, so this rides on a client
+ *  tag of this client's own (`+draft/unreact`). Between two of these
+ *  clients it works; a client that does not know the tag keeps showing the
+ *  reaction, and there is no way to make it not.
+ */
+{ type: "reactionRemoved"; payload: {
+	channel: string,
+	msgid: string,
+	emoji: string,
+	sender: string,
 } } | { type: "disconnected" };
 
 /**
@@ -251,6 +328,24 @@ export type ChatMessage = {
 	content: string,
 	timestamp: string,
 	kind: ChatMessageKind,
+	/**
+	 *  The server's IRCv3 `msgid`, empty when it sent none.
+	 *
+	 *  Distinct from `id`, which is a local counter minted on receipt: that
+	 *  one is unique in this session and meaningless to anyone else, while
+	 *  this is the handle every participant agrees on. Reactions and replies
+	 *  are anchored to it, which is why a message without one can carry
+	 *  neither.
+	 */
+	msgid?: string,
+	/**
+	 *  The `msgid` this message answers, empty when it answers nothing.
+	 *
+	 *  Only the id is carried, never a copy of the quoted text: the original
+	 *  is already in the scrollback, and duplicating it would let the two
+	 *  drift apart after an edit or a redaction.
+	 */
+	replyTo?: string,
 };
 
 /**
@@ -1690,6 +1785,13 @@ export type MatchmakingState = { type: "idle" } | { type: "searching"; payload: 
 	queueName: string | null,
 } };
 
+/**  Every reaction carried by one message. */
+export type MessageReactions = {
+	/**  The server's `msgid` for the message being reacted to. */
+	msgid: string,
+	entries: Reaction[],
+};
+
 /**
  *  Status of an install/uninstall action for one mod. Mirrors
  *  [`crate::state::MapInstallStatus`].
@@ -2180,6 +2282,16 @@ export type RatingQuery = {
 	updatedAfter: string | null,
 	updatedBefore: string | null,
 	player: string,
+};
+
+/**  One emoji on one message, and who put it there. */
+export type Reaction = {
+	emoji: string,
+	/**
+	 *  Reactors in arrival order. A nickname appears at most once: the draft
+	 *  spec has no retraction, so a repeat is a duplicate, not a toggle.
+	 */
+	senders: string[],
 };
 
 /**
@@ -2948,6 +3060,16 @@ export type TutorialsState = {
 export type TutorialsStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+/**  Someone composing a message, and when we last heard so. */
+export type TypingNotice = {
+	nickname: string,
+	/**
+	 *  Unix seconds. `u32` because specta rejects 64-bit integers on this
+	 *  boundary; it overflows in 2106, which is not this decade's problem.
+	 */
+	atSeconds: number,
+};
 
 export type UiDensity = "compact" | "comfortable";
 

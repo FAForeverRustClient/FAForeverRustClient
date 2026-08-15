@@ -19,12 +19,13 @@ import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameCol
 import { noteForPlayer } from "../../shared/playerNotes";
 import { useAppStore } from "../../store/store";
 import { Icon } from "../../design-system/Icon";
-import type { ChatChannel, ChatStatus, Game, PlayerProfile } from "../../ipc/bindings";
+import type { ChatChannel, ChatStatus, Game, PlayerProfile, Reaction } from "../../ipc/bindings";
 import { findPlayer, isPrivateChannel } from "../../store/reducer";
+import { typistsAt } from "../../store/reducers/chat";
 import { ChannelTabs } from "./ChannelTabs";
 import type { ChatGameLink } from "./chatFormat";
 import { Composer } from "./Composer";
-import { MessageList } from "./MessageList";
+import { MessageList, type MessageReactionsMap } from "./MessageList";
 import { visibleChatMessages } from "./messageFilters";
 import { RosterResizeHandle, clampRosterWidth } from "./RosterResizeHandle";
 import { UserList } from "./UserList";
@@ -62,8 +63,17 @@ function channelContext(channel: ChatChannel | undefined, status: ChatStatus): s
 
 const connect = (username: string) =>
   ipc.send({ kind: "Chat", command: { type: "connect", payload: { username } } });
-const sendMessage = (channel: string, content: string) =>
-  ipc.send({ kind: "Chat", command: { type: "sendMessage", payload: { channel, content } } });
+const sendMessage = (channel: string, content: string, replyTo = "") =>
+  ipc.send({
+    kind: "Chat",
+    command: { type: "sendMessage", payload: { channel, content, replyTo } },
+  });
+const setTyping = (channel: string, composing: boolean) =>
+  ipc.send({ kind: "Chat", command: { type: "setTyping", payload: { channel, composing } } });
+const react = (channel: string, msgid: string, emoji: string) =>
+  ipc.send({ kind: "Chat", command: { type: "react", payload: { channel, msgid, emoji } } });
+const unreact = (channel: string, msgid: string, emoji: string) =>
+  ipc.send({ kind: "Chat", command: { type: "unreact", payload: { channel, msgid, emoji } } });
 const selectChannel = (channel: string) =>
   ipc.send({ kind: "Chat", command: { type: "selectChannel", payload: { channel } } });
 const joinChannel = (channel: string) =>
@@ -163,6 +173,34 @@ export function ChatView() {
   }, [active, chatPreferences, foes]);
 
   const nicknames = useMemo(() => active?.users.map((u) => u.name) ?? [], [active]);
+
+  // Cleared on every channel switch: an anchor points at a message in one
+  // conversation and means nothing in the next.
+  const [replyTo, setReplyTo] = useState<{ msgid: string; sender: string } | null>(null);
+  useEffect(() => setReplyTo(null), [active?.name]);
+
+  const findByMsgid = useCallback(
+    (msgid: string) => active?.messages.find((message) => message.msgid === msgid),
+    [active],
+  );
+
+  const reactionsByMessage = useMemo<MessageReactionsMap>(() => {
+    const map: Record<string, readonly Reaction[]> = {};
+    for (const entry of active?.reactions ?? []) map[entry.msgid] = entry.entries;
+    return map;
+  }, [active]);
+
+  // A typing notice expires on the reader's clock, so the view needs its own
+  // tick: nothing arrives from the backend to say "that is no longer true".
+  // One second is the coarsest interval that still retires a notice promptly.
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const typists = active ? typistsAt(active, now, self) : [];
+  const anyTyping = (active?.typing?.length ?? 0) > 0;
+  useEffect(() => {
+    if (!anyTyping) return;
+    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [anyTyping]);
 
   const openConversation = useCallback((nick: string) => {
     if (!nick || nick === self) return;
@@ -356,6 +394,11 @@ export function ChatView() {
             users={active.users}
             social={social}
             preferences={chatPreferences}
+            reactions={reactionsByMessage}
+            onReact={(msgid, emoji) => void react(active.name, msgid, emoji)}
+            onUnreact={(msgid, emoji) => void unreact(active.name, msgid, emoji)}
+            onReply={(message) => setReplyTo({ msgid: message.msgid ?? "", sender: message.sender })}
+            findByMsgid={findByMsgid}
             searchRequest={searchRequest}
             onGameLink={activateGameLink}
           />
@@ -367,11 +410,27 @@ export function ChatView() {
           </div>
         )}
 
+        <p className="chat-typing" aria-live="polite">
+          {typists.length === 0
+            ? ""
+            : typists.length === 1
+              ? t("chat.typing.one", { name: typists[0] })
+              : typists.length === 2
+                ? t("chat.typing.two", { first: typists[0], second: typists[1] })
+                : t("chat.typing.many", { count: typists.length })}
+        </p>
+
         <Composer
           channel={active?.name ?? DEFAULT_CHANNEL}
           nicknames={nicknames}
           disabled={!isLive || !active}
-          onSend={(content) => void sendMessage(active?.name ?? DEFAULT_CHANNEL, content)}
+          onSend={(content) => {
+            void sendMessage(active?.name ?? DEFAULT_CHANNEL, content, replyTo?.msgid ?? "");
+            setReplyTo(null);
+          }}
+          onTyping={(composing, channel) => void setTyping(channel, composing)}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
         />
       </section>
 

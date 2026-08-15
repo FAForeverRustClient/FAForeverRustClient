@@ -50,6 +50,10 @@ pub struct ServiceCtx {
     /// Settings commands run concurrently. Serializing the snapshot + write
     /// prevents an older command from reaching disk after a newer one.
     pub settings_persist: SerialMutation,
+    /// When a composing notice was last sent per channel, so the composer can
+    /// report on every keystroke while the wire sees one line every few
+    /// seconds.
+    pub chat_typing_sent: std::sync::Mutex<std::collections::HashMap<String, u32>>,
     /// Read markers can change on every channel click. Only the last click in
     /// a short burst writes settings, while state updates remain immediate.
     pub chat_read_marker_persist_generation: LatestRequest,
@@ -214,6 +218,7 @@ impl App {
             client_update_active: SingleFlight::default(),
             galactic_war_active: SingleFlight::default(),
             settings_persist: SerialMutation::default(),
+            chat_typing_sent: std::sync::Mutex::new(std::collections::HashMap::new()),
             chat_read_marker_persist_generation: LatestRequest::default(),
             leaderboard_catalog_generation: LatestRequest::default(),
             leaderboard_ratings_generation: LatestRequest::default(),
