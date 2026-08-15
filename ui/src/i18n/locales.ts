@@ -19,6 +19,7 @@ export const LOCALES = {
   fr: { name: "Français", intlTag: "fr-FR" },
   ru: { name: "Русский", intlTag: "ru-RU" },
   es: { name: "Español", intlTag: "es-ES" },
+  pl: { name: "Polski", intlTag: "pl-PL" },
 } as const satisfies Record<string, LocaleDefinition>;
 
 export type Locale = keyof typeof LOCALES;
