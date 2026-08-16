@@ -163,6 +163,7 @@ export const en = {
   "chat.search.previous": "Previous match",
   "chat.search.next": "Next match",
   "chat.search.close": "Close search",
+  "chat.loadOlder": "Load earlier messages ({count} remaining)",
   "chat.presence.hosting": "Hosting",
   "chat.presence.lobbying": "In lobby",
   "chat.presence.playing": "Playing",

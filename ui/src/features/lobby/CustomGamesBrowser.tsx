@@ -55,16 +55,18 @@ function useGameLineupPosition() {
 
   const showLineup = (target: HTMLElement) => {
     const bounds = target.getBoundingClientRect();
-    const tooltipWidth = Math.min(430, window.innerWidth - 32);
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    const tooltipWidth = Math.min(430, viewportWidth - 32);
     const halfWidth = tooltipWidth / 2;
     const left = Math.min(
-      window.innerWidth - 16 - halfWidth,
+      viewportWidth - 16 - halfWidth,
       Math.max(16 + halfWidth, bounds.left + bounds.width / 2),
     );
-    const hasRoomBelow = window.innerHeight - bounds.bottom >= 260;
+    const hasRoomBelow = viewportHeight - bounds.bottom >= 260;
     setTooltipPosition(hasRoomBelow
       ? { left, top: bounds.bottom + 6 }
-      : { left, bottom: window.innerHeight - bounds.top + 6 });
+      : { left, bottom: viewportHeight - bounds.top + 6 });
   };
 
   return {

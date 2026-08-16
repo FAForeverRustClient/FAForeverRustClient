@@ -184,12 +184,36 @@ fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+#[cfg(windows)]
+fn trim_working_set() {
+    unsafe {
+        extern "system" {
+            fn GetCurrentProcess() -> isize;
+            fn SetProcessWorkingSetSize(process: isize, min: usize, max: usize) -> i32;
+        }
+        SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
+    }
+}
+
 pub fn run() {
+    #[cfg(windows)]
+    if std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_err() {
+        std::env::set_var(
+            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+            "--enable-features=msLowMemoryMode --renderer-process-limit=1 --js-flags=\"--max-old-space-size=256 --scavenger_max_new_space_capacity_mb=8\" --disable-features=Translate,OptimizationHints,MediaRouter",
+        );
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .on_window_event(|window, event| {
+            #[cfg(windows)]
+            if matches!(event, tauri::WindowEvent::Focused(false)) {
+                trim_working_set();
+            }
+
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if let Some(core) = window.try_state::<Core>() {
                     let snapshot = core.0.versioned_snapshot();

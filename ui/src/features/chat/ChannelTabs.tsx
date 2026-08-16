@@ -75,6 +75,17 @@ export function ChannelTabs({
             key={channel.name}
             role="presentation"
             className={`chat-tab${closable ? " is-closable" : ""}`}
+            onMouseDown={(e) => {
+              if (closable && e.button === 1) {
+                e.preventDefault();
+              }
+            }}
+            onAuxClick={(e) => {
+              if (closable && e.button === 1) {
+                e.preventDefault();
+                onLeave(channel.name);
+              }
+            }}
           >
             <button
               type="button"
@@ -83,6 +94,18 @@ export function ChannelTabs({
               className={`chat-tab-button${isActive ? " active" : ""}`}
               title={channel.name}
               onClick={() => onSelect(channel.name)}
+              onMouseDown={(e) => {
+                if (closable && e.button === 1) {
+                  e.preventDefault();
+                }
+              }}
+              onAuxClick={(e) => {
+                if (closable && e.button === 1) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onLeave(channel.name);
+                }
+              }}
             >
               <Icon name={isPrivateChannel(channel.name) ? "users" : "chat"} size={15} />
               <span className="section-tab-label chat-tab-name">{channel.name}</span>

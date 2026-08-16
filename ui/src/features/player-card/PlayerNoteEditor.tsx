@@ -92,15 +92,38 @@ export function PlayerNoteModal(props: {
   );
 }
 
-export function PlayerNoteCard({ note, onEdit }: { note: string; onEdit: () => void }) {
+export function PlayerNoteCard({
+  playerId,
+  login,
+  note,
+}: {
+  playerId: number;
+  login: string;
+  note: string;
+}) {
   const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <section className="player-note-card surface is-editing">
+        <PlayerNoteEditor
+          playerId={playerId}
+          login={login}
+          initialNote={note}
+          onClose={() => setEditing(false)}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="player-note-card surface">
       <div>
         <span className="player-card-eyebrow">{t("playerCard.note.cardEyebrow")}</span>
         <p className={note ? undefined : "muted"}>{note || t("playerCard.note.cardEmpty")}</p>
       </div>
-      <Button onClick={onEdit}>{t(note ? "playerCard.note.edit" : "playerCard.note.add")}</Button>
+      <Button onClick={() => setEditing(true)}>{t(note ? "playerCard.note.edit" : "playerCard.note.add")}</Button>
     </section>
   );
 }
