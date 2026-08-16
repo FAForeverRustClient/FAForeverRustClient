@@ -29,6 +29,7 @@ import {
 import { InstalledModsView } from "./InstalledModsView";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import type { MessageKey } from "../../i18n";
 
 type SubView = "vault" | "installed";
 type ModSort = "rating" | "newest" | "updated" | "name";
@@ -39,7 +40,7 @@ type ModPreset = "recommended" | "rating" | "ui" | "newest" | "all";
 type DateField = "updated" | "uploaded";
 
 const PAGE_SIZE = 36;
-const MOD_PRESETS: Array<[ModPreset, string]> = [
+const MOD_PRESETS: Array<[ModPreset, MessageKey]> = [
   ["recommended", "mods.view.preset.recommended"],
   ["rating", "mods.view.preset.rating"],
   ["ui", "mods.view.preset.ui"],
@@ -177,7 +178,7 @@ function VaultView({ busy }: { busy: boolean }) {
         secondary={(
           <>
             {MOD_PRESETS.map(([key, label]) => (
-              <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)}>{label}</Button>
+              <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)}>{t(label)}</Button>
             ))}
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
@@ -237,57 +238,59 @@ function VaultView({ busy }: { busy: boolean }) {
           </p>
         </div>
       ) : pageMods.length > 0 ? (
-        <div className="vault-layout">
-          <section className="vault-browser">
-            <div className="vault-results-head">
-              <span>{filtered.length} {filtered.length === 1 ? "mod" : "mods"}</span>
-              <span>Page {currentPage} of {totalPages}</span>
-            </div>
-            <div className="mod-vault-grid">
-              {pageMods.map((mod) => {
-                const installedMod = installedByUid.get(mod.uid);
-                const isBusy = busy && (
-                  (installStatus.type === "installing" && installStatus.payload.uid === mod.uid)
-                  || (toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid)
-                );
-                return (
-                  <ModCard
-                    key={`${mod.uid}:${mod.versionId}`}
-                    mod={mod}
-                    installed={installedMod}
-                    active={selected?.uid === mod.uid}
-                    busy={busy}
-                    working={isBusy}
-                    onSelect={() => setSelectedUid(mod.uid)}
-                    onInstall={() => installMod(mod.uid, mod.downloadUrl)}
-                  />
-                );
-              })}
-            </div>
-            {totalPages > 1 && (
-              <div className="vault-pagination">
-                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+        <>
+          <div className="vault-results-head">
+            <span>{filtered.length} {filtered.length === 1 ? "mod" : "mods"}</span>
+            <span>Page {currentPage} of {totalPages}</span>
+          </div>
+          <div className="vault-layout">
+            <section className="vault-browser">
+              <div className="mod-vault-grid">
+                {pageMods.map((mod) => {
+                  const installedMod = installedByUid.get(mod.uid);
+                  const isBusy = busy && (
+                    (installStatus.type === "installing" && installStatus.payload.uid === mod.uid)
+                    || (toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid)
+                  );
+                  return (
+                    <ModCard
+                      key={`${mod.uid}:${mod.versionId}`}
+                      mod={mod}
+                      installed={installedMod}
+                      active={selected?.uid === mod.uid}
+                      busy={busy}
+                      working={isBusy}
+                      onSelect={() => setSelectedUid(mod.uid)}
+                      onInstall={() => installMod(mod.uid, mod.downloadUrl)}
+                    />
+                  );
+                })}
               </div>
-            )}
-          </section>
-          {selected && (() => {
-            const installedMod = installedByUid.get(selected.uid);
-            const installing = installStatus.type === "installing" && installStatus.payload.uid === selected.uid;
-            const toggling = toggleStatus.type === "toggling" && toggleStatus.payload.uid === selected.uid;
-            return (
-              <ModDetailPanel
-                mod={selected}
-                installed={installedMod}
-                busy={busy}
-                installing={installing}
-                toggling={toggling}
-                onInstall={() => installMod(selected.uid, selected.downloadUrl)}
-                onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
-                onUninstall={() => installedMod && setPendingUninstall(installedMod)}
-              />
-            );
-          })()}
-        </div>
+              {totalPages > 1 && (
+                <div className="vault-pagination">
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+                </div>
+              )}
+            </section>
+            {selected && (() => {
+              const installedMod = installedByUid.get(selected.uid);
+              const installing = installStatus.type === "installing" && installStatus.payload.uid === selected.uid;
+              const toggling = toggleStatus.type === "toggling" && toggleStatus.payload.uid === selected.uid;
+              return (
+                <ModDetailPanel
+                  mod={selected}
+                  installed={installedMod}
+                  busy={busy}
+                  installing={installing}
+                  toggling={toggling}
+                  onInstall={() => installMod(selected.uid, selected.downloadUrl)}
+                  onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
+                  onUninstall={() => installedMod && setPendingUninstall(installedMod)}
+                />
+              );
+            })()}
+          </div>
+        </>
       ) : null}
       {pendingUninstall && (
         <UninstallDialog
@@ -305,7 +308,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
 const SUB_VIEWS: Record<
   SubView,
-  { label: string; Component: (props: { busy: boolean }) => JSX.Element }
+  { label: MessageKey; Component: (props: { busy: boolean }) => JSX.Element }
 > = {
   vault: { label: "mods.view.tab.vault", Component: VaultView },
   installed: { label: "mods.view.tab.installed", Component: InstalledModsView },
@@ -326,7 +329,7 @@ export function ModsView() {
         <SectionTabs
           active={subView}
           ariaLabel={t("mods.view.modLibraryViews")}
-          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: SUB_VIEWS[key].label }))}
+          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
           onChange={setSubView}
         />
       </div>

@@ -349,7 +349,7 @@ export const GameTile = memo(function GameTile({
   );
 });
 
-const GameBrowserRow = memo(function GameBrowserRow({
+export const GameBrowserRow = memo(function GameBrowserRow({
   game,
   vault,
   selected,
@@ -362,7 +362,7 @@ const GameBrowserRow = memo(function GameBrowserRow({
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
-  onContextMenu: (event: React.MouseEvent) => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
 }) {
   const presentation = mapPresentation(vault, game.map);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition();
