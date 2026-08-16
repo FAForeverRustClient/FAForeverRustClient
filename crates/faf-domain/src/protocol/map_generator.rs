@@ -418,11 +418,7 @@ impl std::fmt::Display for CommandError {
 /// nothing fits, hand back the original list and let the generator (or
 /// [`validate_options`]) have the final word.
 fn retain_or_keep(values: &[String], keep: impl Fn(&str) -> bool) -> Vec<String> {
-    let filtered: Vec<String> = values
-        .iter()
-        .filter(|value| keep(value))
-        .cloned()
-        .collect();
+    let filtered: Vec<String> = values.iter().filter(|value| keep(value)).cloned().collect();
     if filtered.is_empty() {
         values.to_vec()
     } else {
@@ -920,7 +916,10 @@ impl std::fmt::Display for ValidationIssue {
                 value,
                 min,
                 max,
-            } => write!(f, "{field} {value} is outside the allowed range {min}-{max}"),
+            } => write!(
+                f,
+                "{field} {value} is outside the allowed range {min}-{max}"
+            ),
             ValidationIssue::StyleOutsideItsRange { style, constraints } => write!(
                 f,
                 "{style} is designed for maps of {}-{} units with {}-{} teams",
@@ -969,10 +968,12 @@ pub fn validate_options(options: &GeneratorOptions) -> Vec<ValidationIssue> {
     range("team count", num_teams, 0, MAX_NUM_TEAMS);
     range("map size", map_size, MAP_SIZE_STEP, MAX_MAP_SIZE);
 
-    if map_size % MAP_SIZE_STEP != 0 {
+    if !map_size.is_multiple_of(MAP_SIZE_STEP) {
         issues.push(ValidationIssue::MapSizeNotAMultiple { map_size });
     }
-    if num_teams != ASYMMETRIC_TEAMS && spawn_count % num_teams != 0 {
+    // `is_multiple_of` rather than `%`: the range check above records an issue
+    // without returning, so a zero team count reaches here, and `% 0` panics.
+    if num_teams != ASYMMETRIC_TEAMS && !spawn_count.is_multiple_of(num_teams) {
         issues.push(ValidationIssue::SpawnsNotDivisibleByTeams {
             spawn_count,
             num_teams,
@@ -1438,8 +1439,8 @@ mod tests {
                 resource_density: Some(bin),
                 ..Default::default()
             };
-            let args =
-                build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+            let args = build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default())
+                .unwrap();
             let emitted: Vec<f32> = args
                 .windows(2)
                 .filter(|w| w[0] == "--reclaim-density" || w[0] == "--resource-density")
@@ -1464,8 +1465,9 @@ mod tests {
         };
         let args =
             build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
-        assert!(args.windows(2).any(|w| w[0] == "--reclaim-density"
-            && w[1].parse::<f32>().unwrap() == 1.0));
+        assert!(args
+            .windows(2)
+            .any(|w| w[0] == "--reclaim-density" && w[1].parse::<f32>().unwrap() == 1.0));
     }
 
     #[test]
@@ -1478,10 +1480,7 @@ mod tests {
         );
         // Backslashes are path separators here, not escapes.
         assert_eq!(split_command_line(r"C:\maps"), vec![r"C:\maps"]);
-        assert_eq!(
-            split_command_line("  --a   'b c'  "),
-            vec!["--a", "b c"]
-        );
+        assert_eq!(split_command_line("  --a   'b c'  "), vec!["--a", "b c"]);
         assert_eq!(split_command_line(""), Vec::<String>::new());
         assert_eq!(split_command_line("--empty \"\""), vec!["--empty", ""]);
     }

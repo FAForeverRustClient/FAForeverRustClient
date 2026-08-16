@@ -1056,10 +1056,12 @@ fn cases() -> Vec<Case> {
                 // list has to be replaced wholesale rather than appended to:
                 // a fixed problem must disappear.
                 MapGeneratorEvent::ValidationChanged {
-                    issues: vec![faf_domain::state::ValidationIssue::SpawnsNotDivisibleByTeams {
-                        spawn_count: 5,
-                        num_teams: 2,
-                    }],
+                    issues: vec![
+                        faf_domain::state::ValidationIssue::SpawnsNotDivisibleByTeams {
+                            spawn_count: 5,
+                            num_teams: 2,
+                        },
+                    ],
                 }
                 .into(),
                 MapGeneratorEvent::ValidationChanged { issues: vec![] }.into(),
@@ -1089,6 +1091,31 @@ fn cases() -> Vec<Case> {
                 .into(),
                 MapGeneratorEvent::HelpLoaded {
                     text: "Usage: generate [-hV]".into(),
+                }
+                .into(),
+                // The preset library is replaced wholesale on every change, so
+                // a deleted preset has to disappear rather than linger.
+                MapGeneratorEvent::PresetsLoaded {
+                    presets: vec![
+                        faf_domain::state::GeneratorPreset {
+                            name: "Team Ladder".into(),
+                            saved_at: "2026-08-16T00:00:00+00:00".into(),
+                            options: GeneratorOptions::default(),
+                        },
+                        faf_domain::state::GeneratorPreset {
+                            name: "Blind 1v1".into(),
+                            saved_at: "2026-08-15T00:00:00+00:00".into(),
+                            options: GeneratorOptions::default(),
+                        },
+                    ],
+                }
+                .into(),
+                MapGeneratorEvent::PresetsLoaded {
+                    presets: vec![faf_domain::state::GeneratorPreset {
+                        name: "Team Ladder".into(),
+                        saved_at: "2026-08-16T00:00:00+00:00".into(),
+                        options: GeneratorOptions::default(),
+                    }],
                 }
                 .into(),
             ],
@@ -1625,6 +1652,7 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Settings:gameChanged",
     "Settings:generalChanged",
     "Settings:loaded",
+    "Settings:mapGeneratorChanged",
     "Settings:notificationsChanged",
     "Settings:replayGamePathChanged",
     "Settings:updatesChanged",

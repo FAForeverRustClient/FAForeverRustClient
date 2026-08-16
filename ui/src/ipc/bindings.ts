@@ -1163,8 +1163,38 @@ export type GeneratorOptions = {
 	commandLineArgs: string,
 };
 
+/**
+ *  A named, saved set of generator options.
+ *
+ *  Kept as one file each rather than as a list inside the client's settings,
+ *  because a preset is a thing you want to *have*: to copy, to send to someone
+ *  setting up a tournament, to keep after a reinstall. A blob buried in
+ *  `settings.json` is none of those.
+ */
+export type GeneratorPreset = {
+	/**  What the user called it. Shown as-is; the file name is derived. */
+	name: string,
+	/**
+	 *  RFC 3339. A string because specta refuses 64-bit numbers, and because a
+	 *  formatted instant is what the list wants anyway.
+	 */
+	savedAt?: string,
+	options: GeneratorOptions,
+};
+
 /**  Where a generation run currently is. */
 export type GeneratorStatus = { type: "idle" } |
+/**
+ *  A run has been accepted and is being set up: checking the options with
+ *  the generator, resolving a release.
+ *
+ *  Emitted synchronously when the command is received, before any IO. That
+ *  matters twice over: it is the only feedback during the `--parse`
+ *  preflight, which costs a JVM start; and it guarantees the status leaves
+ *  `Generated` at the *start* of every run, so a UI watching for a result
+ *  cannot mistake the previous run's maps for this one's.
+ */
+{ type: "preparing" } |
 /**
  *  Asking GitHub which generator release to use. Only happens for an
  *  options-driven run: reproducing a map takes its version from the name.
@@ -1721,6 +1751,18 @@ export type MapGeneratorCommand =
 /**  Stop the run in flight. Does nothing when none is. */
 { type: "cancel" } |
 /**
+ *  Write the current options to the preset library under `name`,
+ *  overwriting a preset of the same name.
+ */
+{ type: "savePreset"; payload: {
+	name: string,
+	options: GeneratorOptions,
+} } |
+/**  Re-read the preset library from disk. */
+{ type: "loadPresets" } | { type: "deletePreset"; payload: {
+	name: string,
+} } |
+/**
  *  Delete generated maps except stable folder names explicitly protected
  *  by the user's favorites.
  *
@@ -1757,6 +1799,13 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
 	decoded: { [key in string]: DecodedMapName },
 } } | { type: "helpLoaded"; payload: {
 	text: string,
+} } |
+/**
+ *  The whole library, re-read after every change. Small enough that
+ *  sending the list beats sending deltas and keeping two copies in step.
+ */
+{ type: "presetsLoaded"; payload: {
+	presets: GeneratorPreset[],
 } };
 
 export type MapGeneratorState = {
@@ -1802,6 +1851,8 @@ export type MapGeneratorState = {
 	 *  write raw arguments. The Python client offers the same button.
 	 */
 	helpText?: string,
+	/**  The saved preset library, newest first. Empty until loaded. */
+	presets?: GeneratorPreset[],
 };
 
 /**  Status of an install/uninstall action for one map folder. */
@@ -2937,6 +2988,8 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	preferences: ConnectivityPreferences,
 } } | { type: "setUpdates"; payload: {
 	preferences: UpdatePreferences,
+} } | { type: "setMapGenerator"; payload: {
+	preferences: GeneratorOptions,
 } } | { type: "setBrowsing"; payload: {
 	preferences: BrowsingPreferences,
 } } | { type: "checkInstalls" };
@@ -2969,6 +3022,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: UpdatePreferences,
 } } | { type: "browsingChanged"; payload: {
 	preferences: BrowsingPreferences,
+} } | { type: "mapGeneratorChanged"; payload: {
+	preferences: GeneratorOptions,
 } };
 
 /**
@@ -2990,6 +3045,15 @@ export type SettingsState = {
 	connectivity: ConnectivityPreferences,
 	updates: UpdatePreferences,
 	browsing: BrowsingPreferences,
+	/**
+	 *  The map generator dialog's last settings.
+	 *
+	 *  Persisted for the same reason the Java client keeps `GeneratorPrefs`:
+	 *  choosing a size, spawn count and half a dozen styles is real work, and
+	 *  having it survive a restart is the difference between the dialog being
+	 *  configured once and being configured every time.
+	 */
+	mapGenerator: GeneratorOptions,
 };
 
 export type SocialCommand =

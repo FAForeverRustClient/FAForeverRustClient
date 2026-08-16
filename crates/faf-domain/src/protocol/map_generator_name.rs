@@ -292,9 +292,8 @@ pub fn decode(map_name: &str) -> Option<DecodedMapName> {
         return None;
     }
     let version = segments[3];
-    if super::map_generator::GeneratorVersion::parse(version).is_none() {
-        return None;
-    }
+    // Parsed for the check alone: the segment is carried through as written.
+    super::map_generator::GeneratorVersion::parse(version)?;
     let seed = read_long(&decode_base32(segments[4])?)?;
 
     let mut decoded = DecodedMapName {
@@ -427,8 +426,14 @@ mod tests {
         assert_eq!(resource_style.as_deref(), Some("LOW_MEX"));
         assert_eq!(prop_style.as_deref(), Some("ROCK_FIELD"));
         // The generator reported 0.7480315 and 0.2519685: 95/127 and 32/127.
-        assert!((reclaim_density - 0.748_031_5).abs() < 1e-6, "{reclaim_density}");
-        assert!((resource_density - 0.251_968_5).abs() < 1e-6, "{resource_density}");
+        assert!(
+            (reclaim_density - 0.748_031_5).abs() < 1e-6,
+            "{reclaim_density}"
+        );
+        assert!(
+            (resource_density - 0.251_968_5).abs() < 1e-6,
+            "{resource_density}"
+        );
     }
 
     #[test]
@@ -487,7 +492,10 @@ mod tests {
         else {
             panic!("expected a custom style");
         };
-        assert!((reclaim_density - 0.503_937).abs() < 1e-6, "{reclaim_density}");
+        assert!(
+            (reclaim_density - 0.503_937).abs() < 1e-6,
+            "{reclaim_density}"
+        );
         assert!((resource_density - 1.0).abs() < 1e-6, "{resource_density}");
         assert_eq!(bin_percentage(reclaim_density), 64);
     }

@@ -34,7 +34,7 @@ use async_trait::async_trait;
 use faf_domain::protocol::map_generator::{
     self, GeneratorVersion, VersionPolicy, GENERATION_TIMEOUT_SECONDS,
 };
-use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorStatus};
+use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -83,8 +83,7 @@ struct CancelSignal {
 
 impl CancelSignal {
     fn raise(&self) {
-        self.raised
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.raised.store(true, std::sync::atomic::Ordering::SeqCst);
         self.changed.notify_waiters();
     }
 
@@ -428,11 +427,8 @@ impl NeroxisMapGenerator {
             let _ = tokio::fs::create_dir_all(self.preview_dir()).await;
         }
 
-        self.log_line(&format!(
-            "--- run {version} {}",
-            shell_quote_all(&args)
-        ))
-        .await;
+        self.log_line(&format!("--- run {version} {}", shell_quote_all(&args)))
+            .await;
 
         let mut child = match Command::new(&self.config.java_path)
             .arg("-jar")
@@ -447,9 +443,9 @@ impl NeroxisMapGenerator {
             Ok(child) => child,
             Err(e) => {
                 return RunOutcome::Failed(format!(
-                    "could not start the map generator ({}): {e}. Java is required to generate maps.",
-                    self.config.java_path
-                ))
+                "could not start the map generator ({}): {e}. Java is required to generate maps.",
+                self.config.java_path
+            ))
             }
         };
 
@@ -824,14 +820,10 @@ impl NeroxisMapGenerator {
         // Reproducing a map takes its version from the name; a fresh map uses
         // either the explicitly selected version or resolves the newest supported release.
         let version = match &map_name {
-            Some(name) => {
-                match map_generator::parse_generated_map_name(name) {
-                    Some(parsed) => parsed.version,
-                    None => {
-                        return RunOutcome::Failed(format!("{name} is not a generated map"))
-                    }
-                }
-            }
+            Some(name) => match map_generator::parse_generated_map_name(name) {
+                Some(parsed) => parsed.version,
+                None => return RunOutcome::Failed(format!("{name} is not a generated map")),
+            },
             None => {
                 if let Some(explicit) = &options.version {
                     fail!(self.resolve_version(Some(explicit)).await)
@@ -884,13 +876,9 @@ impl NeroxisMapGenerator {
         let (tx, _rx) = mpsc::channel(8);
         let jar = self.ensure_jar(version, &tx).await?;
 
-        let mut args = map_generator::build_arguments(
-            version,
-            None,
-            options,
-            self.config.version_policy,
-        )
-        .map_err(|e| e.to_string())?;
+        let mut args =
+            map_generator::build_arguments(version, None, options, self.config.version_policy)
+                .map_err(|e| e.to_string())?;
         // `--parse` prints and exits, so a viewer window would never open and
         // the debug dump would never be written: both only confuse the output.
         args.retain(|arg| arg != "--visualize" && arg != "--debug");
@@ -908,7 +896,9 @@ impl NeroxisMapGenerator {
     /// every time the dialog opens is pure waste. The Python client caches the
     /// same thing in `mapgen_options.json`; the Java client re-runs them.
     async fn cached_options(&self, version: &str) -> Option<HashMap<String, Vec<String>>> {
-        let raw = tokio::fs::read_to_string(self.options_cache_path()).await.ok()?;
+        let raw = tokio::fs::read_to_string(self.options_cache_path())
+            .await
+            .ok()?;
         let mut all: HashMap<String, HashMap<String, Vec<String>>> =
             serde_json::from_str(&raw).ok()?;
         all.remove(version)
@@ -943,6 +933,23 @@ impl NeroxisMapGenerator {
     /// directory so a "delete generated maps" sweep does not take it out.
     fn preview_dir(&self) -> PathBuf {
         self.config.generator_dir.join("previews")
+    }
+
+    /// Where saved option sets live, one JSON file each.
+    ///
+    /// A folder of plain files rather than a list inside the client's
+    /// settings, so a preset can be copied, backed up or sent to someone else
+    /// without exporting anything.
+    fn presets_dir(&self) -> PathBuf {
+        self.config.generator_dir.join("presets")
+    }
+
+    /// Resolve a preset name to its file, refusing anything that could point
+    /// outside the presets folder.
+    fn preset_path(&self, name: &str) -> Result<PathBuf, String> {
+        let file = faf_domain::state::preset_file_name(name)
+            .ok_or_else(|| "that preset name cannot be used".to_string())?;
+        Ok(self.presets_dir().join(file))
     }
 }
 
@@ -990,10 +997,7 @@ fn strip_ansi(line: &str) -> String {
 
 /// [`strip_ansi`] over a whole multi-line block.
 fn strip_ansi_block(text: &str) -> String {
-    text.lines()
-        .map(strip_ansi)
-        .collect::<Vec<_>>()
-        .join("\n")
+    text.lines().map(strip_ansi).collect::<Vec<_>>().join("\n")
 }
 
 /// Render an argument list for the log, quoting anything with spaces so a
@@ -1083,7 +1087,10 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         let jar = self.ensure_jar(ver, &tx).await?;
         // `--help` exits non-zero on some picocli versions, so the stderr path
         // of `run_query` is a legitimate success here too.
-        match self.run_query(&jar, &["--help"], OPTION_QUERY_TIMEOUT).await {
+        match self
+            .run_query(&jar, &["--help"], OPTION_QUERY_TIMEOUT)
+            .await
+        {
             Ok(text) => Ok(strip_ansi_block(&text)),
             Err(text) => Ok(strip_ansi_block(&text)),
         }
@@ -1091,6 +1098,63 @@ impl MapGeneratorPort for NeroxisMapGenerator {
 
     fn cancel(&self) {
         self.cancel.raise();
+    }
+
+    async fn save_preset(&self, name: &str, options: &GeneratorOptions) -> Result<(), String> {
+        let path = self.preset_path(name)?;
+        let preset = GeneratorPreset {
+            // The typed name is kept verbatim; only the file name is derived,
+            // so "Team Ladder" stays capitalised in the list.
+            name: name.trim().to_string(),
+            saved_at: chrono::Utc::now().to_rfc3339(),
+            options: options.clone(),
+        };
+        let json = serde_json::to_string_pretty(&preset)
+            .map_err(|e| format!("could not encode the preset: {e}"))?;
+        tokio::fs::create_dir_all(self.presets_dir())
+            .await
+            .map_err(|e| format!("could not create the presets folder: {e}"))?;
+        tokio::fs::write(&path, json)
+            .await
+            .map_err(|e| format!("could not save the preset: {e}"))
+    }
+
+    async fn list_presets(&self) -> Vec<GeneratorPreset> {
+        let mut presets = Vec::new();
+        let Ok(mut entries) = tokio::fs::read_dir(self.presets_dir()).await else {
+            // No folder yet simply means no presets, not a failure.
+            return presets;
+        };
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            if path.extension().is_none_or(|ext| ext != "json") {
+                continue;
+            }
+            // A preset that will not parse is skipped, not fatal: one
+            // hand-edited file must not hide the rest of the library.
+            match tokio::fs::read_to_string(&path).await {
+                Ok(raw) => match serde_json::from_str::<GeneratorPreset>(&raw) {
+                    Ok(preset) => presets.push(preset),
+                    Err(error) => {
+                        tracing::warn!(%error, ?path, "skipping an unreadable generator preset")
+                    }
+                },
+                Err(error) => tracing::warn!(%error, ?path, "could not read a generator preset"),
+            }
+        }
+        // Newest first: the one you just saved is the one you are looking for.
+        presets.sort_by(|a, b| b.saved_at.cmp(&a.saved_at));
+        presets
+    }
+
+    async fn delete_preset(&self, name: &str) -> Result<(), String> {
+        let path = self.preset_path(name)?;
+        match tokio::fs::remove_file(&path).await {
+            Ok(()) => Ok(()),
+            // Already gone is the state the caller wanted.
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(format!("could not delete the preset: {error}")),
+        }
     }
 
     async fn latest_version(&self) -> Result<String, String> {
@@ -1207,6 +1271,18 @@ impl MapGeneratorPort for FakeMapGenerator {
     }
 
     fn cancel(&self) {}
+
+    async fn save_preset(&self, _name: &str, _options: &GeneratorOptions) -> Result<(), String> {
+        Ok(())
+    }
+
+    async fn list_presets(&self) -> Vec<GeneratorPreset> {
+        Vec::new()
+    }
+
+    async fn delete_preset(&self, _name: &str) -> Result<(), String> {
+        Ok(())
+    }
 
     async fn latest_version(&self) -> Result<String, String> {
         Ok("1.7.7".into())
@@ -1480,12 +1556,111 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn presets_round_trip_through_the_folder() {
+        let dir = temp_dir("presets");
+        let generator = NeroxisMapGenerator::new(config(&dir));
+        assert!(generator.list_presets().await.is_empty());
+
+        let options = GeneratorOptions {
+            spawn_count: Some(8),
+            num_teams: Some(4),
+            ..Default::default()
+        };
+        generator
+            .save_preset("Team Ladder", &options)
+            .await
+            .unwrap();
+
+        let presets = generator.list_presets().await;
+        assert_eq!(presets.len(), 1);
+        // The typed name survives verbatim; only the file name is derived.
+        assert_eq!(presets[0].name, "Team Ladder");
+        assert_eq!(presets[0].options.spawn_count, Some(8));
+        assert!(!presets[0].saved_at.is_empty());
+        assert!(dir.join("generators/presets/team-ladder.json").is_file());
+    }
+
+    #[tokio::test]
+    async fn saving_the_same_name_replaces_rather_than_duplicates() {
+        let dir = temp_dir("presets-replace");
+        let generator = NeroxisMapGenerator::new(config(&dir));
+        let first = GeneratorOptions {
+            spawn_count: Some(2),
+            ..Default::default()
+        };
+        let second = GeneratorOptions {
+            spawn_count: Some(16),
+            ..Default::default()
+        };
+        generator.save_preset("Ladder", &first).await.unwrap();
+        // Case and spacing differ, but it is the same preset to a reader.
+        generator.save_preset("  ladder ", &second).await.unwrap();
+
+        let presets = generator.list_presets().await;
+        assert_eq!(presets.len(), 1, "{presets:?}");
+        assert_eq!(presets[0].options.spawn_count, Some(16));
+    }
+
+    #[tokio::test]
+    async fn a_preset_name_cannot_escape_the_presets_folder() {
+        // The name reaches the file system, so this is the boundary that stops
+        // a crafted preset name writing anywhere it likes.
+        let dir = temp_dir("presets-escape");
+        let generator = NeroxisMapGenerator::new(config(&dir));
+        for name in ["../evil", "..", ".hidden", "a/b"] {
+            assert!(
+                generator
+                    .save_preset(name, &GeneratorOptions::default())
+                    .await
+                    .is_err(),
+                "{name:?} should be refused"
+            );
+        }
+        assert!(generator.list_presets().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn an_unreadable_preset_does_not_hide_the_rest() {
+        let dir = temp_dir("presets-corrupt");
+        let generator = NeroxisMapGenerator::new(config(&dir));
+        generator
+            .save_preset("Good", &GeneratorOptions::default())
+            .await
+            .unwrap();
+        tokio::fs::write(dir.join("generators/presets/broken.json"), "{ not json")
+            .await
+            .unwrap();
+
+        let presets = generator.list_presets().await;
+        assert_eq!(presets.len(), 1);
+        assert_eq!(presets[0].name, "Good");
+    }
+
+    #[tokio::test]
+    async fn deleting_a_preset_that_is_already_gone_is_not_an_error() {
+        // The caller wanted it absent, and it is.
+        let dir = temp_dir("presets-delete");
+        let generator = NeroxisMapGenerator::new(config(&dir));
+        assert!(generator.delete_preset("never existed").await.is_ok());
+
+        generator
+            .save_preset("Gone", &GeneratorOptions::default())
+            .await
+            .unwrap();
+        assert!(generator.delete_preset("Gone").await.is_ok());
+        assert!(generator.list_presets().await.is_empty());
+    }
+
+    #[tokio::test]
     async fn the_generator_log_rotates_instead_of_growing_without_limit() {
         let dir = temp_dir("generator-log");
         let generator = NeroxisMapGenerator::new(config(&dir));
         generator.log_line("first line").await;
         let path = generator.log_path();
-        assert!(tokio::fs::read_to_string(&path).await.unwrap().contains("first line"));
+        assert!(tokio::fs::read_to_string(&path)
+            .await
+            .unwrap()
+            .contains("first line"));
 
         // Push it past the cap, then write again: the old file is kept aside
         // rather than deleted, since it holds the run that just failed.

@@ -52,5 +52,7 @@ export function reduceMapGenerator(
       return { ...state, decoded: { ...state.decoded, ...event.payload.decoded } };
     case "helpLoaded":
       return { ...state, helpText: event.payload.text };
+    case "presetsLoaded":
+      return { ...state, presets: event.payload.presets };
   }
 }

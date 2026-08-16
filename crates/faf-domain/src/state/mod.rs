@@ -61,9 +61,10 @@ pub use lobby::{
     PartyState, PlayMode, PlayerVeto,
 };
 pub use map_generator::{
-    DecodedMapName, DecodedStyle, GenerationType, GeneratorOptionLists, GeneratorOptionQuery,
-    GeneratorOptions, GeneratorStatus, GeneratorVersion, MapGeneratorCommand, MapGeneratorEvent,
-    MapGeneratorState, StyleConstraints, ValidationIssue,
+    is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
+    GeneratorOptionLists, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
+    GeneratorVersion, MapGeneratorCommand, MapGeneratorEvent, MapGeneratorState, StyleConstraints,
+    ValidationIssue, MAX_PRESET_NAME,
 };
 pub use maps::{
     InstalledMap, MapInstallStatus, MapListStatus, MapsCommand, MapsEvent, MapsState,

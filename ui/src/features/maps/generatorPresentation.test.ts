@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { DecodedMapName, GeneratorOptions, ValidationIssue } from "../../ipc/bindings";
+import type {
+  DecodedMapName,
+  GeneratorOptions,
+  GeneratorStatus,
+  ValidationIssue,
+} from "../../ipc/bindings";
 import { translateIn } from "../../i18n";
 import {
   MAP_SIZES,
@@ -11,6 +16,7 @@ import {
   formatMapSize,
   isFatal,
   nearestLegalSpawnCount,
+  outcomeOfRun,
   sizeInKm,
   spawnCountsFor,
   summariseDecodedName,
@@ -218,6 +224,70 @@ describe("decoded map names", () => {
     // would be worse than saying nothing.
     const parts = summariseDecodedName(decoded({ style: { kind: "predefined", style: null } }));
     expect(parts).toEqual(["10 km (512×512)", "6 spawns", "2 teams"]);
+  });
+});
+
+describe("recognising our own run's outcome", () => {
+  // The generator status is sticky: it keeps reporting the last run's maps
+  // until something replaces it. These cases pin the reported bug shut.
+  const generated = (maps: string[]): GeneratorStatus => ({
+    type: "generated",
+    payload: { maps },
+  });
+
+  it("ignores the status that was already showing when the run was asked for", () => {
+    // The bug: clicking Generate a second time used to report the previous
+    // run's maps immediately, before the new run had produced anything.
+    const previous = generated(["map_a", "map_b"]);
+    expect(outcomeOfRun(previous, previous)).toEqual({ kind: "waiting" });
+  });
+
+  it("reports the new result once it actually arrives", () => {
+    const previous = generated(["map_a", "map_b"]);
+    const fresh = generated(["map_c"]);
+    expect(outcomeOfRun(fresh, previous)).toEqual({ kind: "generated", maps: ["map_c"] });
+  });
+
+  it("keeps waiting through every intermediate stage", () => {
+    const previous = generated(["map_a"]);
+    const stages: GeneratorStatus[] = [
+      { type: "preparing" },
+      { type: "resolvingVersion" },
+      { type: "downloading", payload: { version: "1.22.1", downloadedBytes: 1, totalBytes: 2 } },
+      { type: "generating", payload: { version: "1.22.1", detail: "…" } },
+    ];
+    for (const stage of stages) {
+      expect(outcomeOfRun(stage, previous)).toEqual({ kind: "waiting" });
+    }
+  });
+
+  it("ends the wait on a failure or a cancellation without reporting maps", () => {
+    const previous = generated(["map_a"]);
+    expect(outcomeOfRun({ type: "failed", payload: { reason: "nope" } }, previous)).toEqual({
+      kind: "stopped",
+    });
+    expect(outcomeOfRun({ type: "cancelled" }, previous)).toEqual({ kind: "stopped" });
+  });
+
+  it("does nothing at all when no run of ours is outstanding", () => {
+    // Another part of the client generating a map must not open our overview.
+    expect(outcomeOfRun(generated(["map_a"]), null)).toEqual({ kind: "waiting" });
+  });
+
+  it("reports a single-map run just like a multi-map one", () => {
+    // The other half of the bug: one map used to skip the overview entirely.
+    const previous: GeneratorStatus = { type: "idle" };
+    expect(outcomeOfRun(generated(["only_one"]), previous)).toEqual({
+      kind: "generated",
+      maps: ["only_one"],
+    });
+  });
+
+  it("reports an empty result as generated rather than as still waiting", () => {
+    // A run that reports success with no folders is a backend problem, but the
+    // dialog must stop spinning either way.
+    const previous: GeneratorStatus = { type: "idle" };
+    expect(outcomeOfRun(generated([]), previous)).toEqual({ kind: "generated", maps: [] });
   });
 });
 

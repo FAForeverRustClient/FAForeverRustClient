@@ -9,7 +9,7 @@
 //! grammar, version policy and command-line construction.
 
 use async_trait::async_trait;
-use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorStatus};
+use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
 use tokio::sync::mpsc;
 
 /// One step of a generation run.
@@ -57,6 +57,17 @@ pub trait MapGeneratorPort: Send + Sync {
     /// observes, so it can be called from a command handler without awaiting
     /// the process it is stopping.
     fn cancel(&self);
+
+    /// Write a named preset, replacing any preset of the same name.
+    async fn save_preset(&self, name: &str, options: &GeneratorOptions) -> Result<(), String>;
+
+    /// Every readable preset, newest first.
+    ///
+    /// Unreadable files are skipped rather than failing the whole listing: one
+    /// hand-edited preset must not hide the rest of the library.
+    async fn list_presets(&self) -> Vec<GeneratorPreset>;
+
+    async fn delete_preset(&self, name: &str) -> Result<(), String>;
 
     /// The newest generator release this client supports, as `x.y.z`.
     async fn latest_version(&self) -> Result<String, String>;

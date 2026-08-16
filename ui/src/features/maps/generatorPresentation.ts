@@ -3,7 +3,12 @@
 // Kept out of the dialog so the arithmetic (unit conversions, which options are
 // legal, what a decoded map name says) can be tested without rendering React.
 
-import type { DecodedMapName, GeneratorOptions, ValidationIssue } from "../../ipc/bindings";
+import type {
+  DecodedMapName,
+  GeneratorOptions,
+  GeneratorStatus,
+  ValidationIssue,
+} from "../../ipc/bindings";
 import type { Translation } from "../../i18n/useTranslation";
 
 /** Generator units per kilometre, the generator's own `MultipleMapSizeConverter`. */
@@ -176,4 +181,47 @@ export function densityPercent(bin: number): number {
 export function canGenerate(options: GeneratorOptions, issues: ValidationIssue[]): boolean {
   if (options.commandLineArgs.trim() !== "") return true;
   return !issues.some(isFatal);
+}
+
+/** How a run this dialog started ended, once it has. */
+export type RunOutcome =
+  /** Still going, or the status on screen is not ours to act on. */
+  | { kind: "waiting" }
+  /** Finished; these are the folders now on disk. */
+  | { kind: "generated"; maps: string[] }
+  /** Failed or cancelled. Nothing to show, but the wait is over. */
+  | { kind: "stopped" };
+
+/**
+ * Decide whether the status on screen is the outcome of *our* run.
+ *
+ * The subtlety this exists for: the generator status is sticky. After a run it
+ * stays `generated` with that run's maps until something else replaces it. A
+ * dialog that simply reacts to "status is generated" therefore fires the
+ * instant the user starts a *second* run, reports the previous run's maps as
+ * if they were new, and then ignores the real result because it has already
+ * stopped listening. That produced both halves of the reported bug: sometimes
+ * a map too many, sometimes nothing at all.
+ *
+ * The fix is to compare against the status that was showing at the moment the
+ * run was requested. Anything identical to it is the past, not the present.
+ * Each event from the backend produces a fresh status object, so reference
+ * inequality is exactly the question "has anything happened since I asked?".
+ *
+ * `since` being null means no run of ours is outstanding.
+ */
+export function outcomeOfRun(
+  current: GeneratorStatus,
+  since: GeneratorStatus | null,
+): RunOutcome {
+  if (since === null || current === since) return { kind: "waiting" };
+  switch (current.type) {
+    case "generated":
+      return { kind: "generated", maps: current.payload.maps };
+    case "failed":
+    case "cancelled":
+      return { kind: "stopped" };
+    default:
+      return { kind: "waiting" };
+  }
 }
