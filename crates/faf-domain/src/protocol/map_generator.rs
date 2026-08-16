@@ -20,6 +20,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::map_generator_name::{MAP_SIZE_STEP, NUM_BINS, SYMMETRIES};
+
 /// The map-name template. Lower case throughout because the server rejects
 /// mixed-case map names (the Java client's `GENERATED_MAP_NAME` carries the
 /// same warning).
@@ -299,7 +301,14 @@ pub struct GeneratorOptions {
     pub prop_style: String,
     #[serde(default)]
     pub prop_styles: Vec<String>,
-    /// 0–127 in the generator's units; the Java client's sliders use the same.
+    /// Reclaim density as a *bin index*, 0–127.
+    ///
+    /// The generator's flag takes 0.0–1.0 and rejects anything above it
+    /// ("Must be between 0 and 1"). 127 is its `NUM_BINS`, the resolution it
+    /// discretises to, not the scale. Both reference clients keep a coarser
+    /// unit in the UI and convert on the way out (Java divides by 127, Python
+    /// by 100); [`build_arguments`] does the same, so this field stays in the
+    /// bin units the sliders speak.
     pub reclaim_density: Option<f32>,
     #[serde(default)]
     pub reclaim_density_min: Option<f32>,
@@ -312,6 +321,25 @@ pub struct GeneratorOptions {
     pub resource_density_max: Option<f32>,
     /// Generate several maps in one run (`--num-to-generate`).
     pub num_to_generate: Option<u32>,
+    /// `--debug`: writes `debug/pipelineMaskHashes.txt` and prints the resolved
+    /// parameters. The generator ignores it for tournament and blind maps,
+    /// which is why it is not offered alongside those.
+    #[serde(default)]
+    pub debug: bool,
+    /// `--visualize`: opens the generator's mask viewer. The run then stays
+    /// alive on purpose, so it is exempt from the generation timeout: see
+    /// [`runs_without_timeout`].
+    #[serde(default)]
+    pub visualize: bool,
+    /// `--preview-path`: where to drop preview PNGs, separately from the map
+    /// folder. Saves guessing at preview filenames on the way back out.
+    /// Casual maps only; tournament and blind maps have no preview by design.
+    #[serde(default)]
+    pub preview_path: String,
+    /// `--out-path`: where the map folder is written. Empty means "the working
+    /// directory", which is how all three clients drive it by default.
+    #[serde(default)]
+    pub output_path: String,
     /// Raw passthrough. When set it replaces every other option: the escape
     /// hatch both clients keep for generator flags newer than the client.
     pub command_line_args: String,
@@ -346,6 +374,10 @@ impl Default for GeneratorOptions {
             resource_density_min: None,
             resource_density_max: None,
             num_to_generate: None,
+            debug: false,
+            visualize: false,
+            preview_path: String::new(),
+            output_path: String::new(),
             command_line_args: String::new(),
         }
     }
@@ -376,6 +408,21 @@ impl std::fmt::Display for CommandError {
                 "this map needs a newer map generator than this client supports: update the client"
             ),
         }
+    }
+}
+
+/// Keep only the entries that pass, unless that would leave nothing.
+///
+/// Filtering a user's selection down to zero and then silently generating
+/// something unrelated would be worse than honouring an imperfect choice: if
+/// nothing fits, hand back the original list and let the generator (or
+/// [`validate_options`]) have the final word.
+fn retain_or_keep(values: &[String], keep: impl Fn(&str) -> bool) -> Vec<String> {
+    let filtered: Vec<String> = values.iter().filter(|value| keep(value)).cloned().collect();
+    if filtered.is_empty() {
+        values.to_vec()
+    } else {
+        filtered
     }
 }
 
@@ -462,11 +509,7 @@ pub fn build_arguments(
 
     // Raw passthrough wins over everything.
     if !options.command_line_args.is_empty() {
-        return Ok(options
-            .command_line_args
-            .split_whitespace()
-            .map(str::to_string)
-            .collect());
+        return Ok(split_command_line(&options.command_line_args));
     }
 
     // Reproducing a known map: the name alone determines the terrain.
@@ -489,6 +532,20 @@ pub fn build_arguments(
         teams.to_string(),
     ];
 
+    // Paths and diagnostics sit outside the style/visibility exclusivity, so
+    // they are emitted before the early returns below rather than after: a
+    // tournament map still gets written where the caller asked for it.
+    if !options.output_path.is_empty() {
+        args.push("--out-path".to_string());
+        args.push(options.output_path.clone());
+    }
+    if options.debug {
+        args.push("--debug".to_string());
+    }
+    if options.visualize {
+        args.push("--visualize".to_string());
+    }
+
     // A fixed seed pins the terrain, so asking for several maps would produce
     // several *identical* ones. The Java client resolves the same conflict in
     // `GenerateMapController.onGenerateMap`, which forces its map count to 1
@@ -507,6 +564,14 @@ pub fn build_arguments(
         return Ok(args);
     }
 
+    // Only reachable for casual maps, which is the only kind that has a
+    // preview: tournament, blind and unexplored maps deliberately have none,
+    // and the generator skips the export for them anyway.
+    if !options.preview_path.is_empty() {
+        args.push("--preview-path".to_string());
+        args.push(options.preview_path.clone());
+    }
+
     let mut push_flag = |flag: &str, value: &str| {
         if !value.is_empty() {
             args.push(flag.to_string());
@@ -515,12 +580,24 @@ pub fn build_arguments(
     };
     push_flag("--seed", &options.seed);
 
-    if let Some(symmetry) = pick_choice(&options.symmetry, &options.symmetries, &options.seed) {
+    // Narrow the candidates to those that can actually make this many teams
+    // before picking. Both reference clients pick uniformly from everything the
+    // user checked, so a `POINT3` sitting in a list alongside `POINT4` makes a
+    // two-team run fail at random, roughly half the time, with no clue why.
+    let symmetries = retain_or_keep(&options.symmetries, |symmetry| {
+        symmetry_fits_teams(symmetry, teams)
+    });
+    if let Some(symmetry) = pick_choice(&options.symmetry, &symmetries, &options.seed) {
         push_flag("--terrain-symmetry", &symmetry);
     }
 
-    // A whole-map style likewise supersedes the four component styles.
-    if let Some(style) = pick_choice(&options.style, &options.styles, &options.seed) {
+    // A whole-map style likewise supersedes the four component styles. Styles
+    // designed for a different map shape are deprioritised the same way, so a
+    // mixed selection lands on one that suits the size actually chosen.
+    let styles = retain_or_keep(&options.styles, |style| {
+        style_constraints(style).matches(size, spawns, teams)
+    });
+    if let Some(style) = pick_choice(&options.style, &styles, &options.seed) {
         args.push("--style".to_string());
         args.push(style);
         return Ok(args);
@@ -558,7 +635,7 @@ pub fn build_arguments(
         &options.seed,
     ) {
         args.push("--resource-density".to_string());
-        args.push(density.to_string());
+        args.push(format_density(density));
     }
     if let Some(density) = pick_density(
         options.reclaim_density,
@@ -567,10 +644,393 @@ pub fn build_arguments(
         &options.seed,
     ) {
         args.push("--reclaim-density".to_string());
-        args.push(density.to_string());
+        args.push(format_density(density));
     }
 
     Ok(args)
+}
+
+/// Render a bin-index density (0–127) as the 0.0–1.0 fraction the generator's
+/// flag actually takes.
+///
+/// The generator's own help is explicit: "Reclaim density for the generated
+/// map. Min: 0 Max: 1", and its converter throws `Must be between 0 and 1` for
+/// anything larger. Passing the bin index straight through makes every
+/// custom-style run fail the moment a user touches a density slider, which is
+/// exactly the bug this function exists to prevent. Both reference clients do
+/// the same conversion at the same point: Java divides by 127, Python by 100.
+fn format_density(bin: f32) -> String {
+    let fraction = (bin / NUM_BINS as f32).clamp(0.0, 1.0);
+    // Trimmed to the generator's own resolution: more digits would survive the
+    // round trip through the map name as noise, since it re-bins on the way in.
+    format!("{fraction:.6}")
+}
+
+/// Split a raw command line the way a shell would.
+///
+/// Honours single and double quotes so a path with spaces survives, which
+/// `split_whitespace` does not: `--out-path "C:\Users\Max Mustermann\maps"`
+/// would otherwise arrive as four arguments and the generator would write the
+/// map somewhere unexpected. The Python client reaches the same place with
+/// `shlex.split`; the Java client has the naive `split(" ")` and the bug.
+///
+/// Backslashes are left alone rather than treated as escapes: the users of this
+/// field are on Windows, typing Windows paths, and `C:\maps` must not become
+/// `C:maps`.
+pub fn split_command_line(input: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut quote: Option<char> = None;
+    let mut has_token = false;
+
+    for ch in input.chars() {
+        match quote {
+            Some(open) if ch == open => quote = None,
+            Some(_) => current.push(ch),
+            None if ch == '"' || ch == '\'' => {
+                quote = Some(ch);
+                // An empty quoted string is still an argument.
+                has_token = true;
+            }
+            None if ch.is_whitespace() => {
+                if has_token {
+                    args.push(std::mem::take(&mut current));
+                    has_token = false;
+                }
+            }
+            None => {
+                current.push(ch);
+                has_token = true;
+            }
+        }
+    }
+    if has_token {
+        args.push(current);
+    }
+    args
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+//
+// The generator refuses several parameter combinations outright, and it does so
+// *after* the client has resolved a release, downloaded a JAR and started a
+// JVM. Catching them here turns a minute-long round trip ending in a stack
+// trace into an inline message. Every rule below mirrors one the generator
+// enforces in `MapGeneratorCommand.checkParameters`, `GeneratorParameters` or
+// `MapNameParameters`, and each is covered by a test naming the exact message
+// the real JAR produces.
+//
+// This is a fast pre-check, not the authority. `--parse` asks the generator
+// itself and stays correct across releases; see `MapGeneratorPort::parse`.
+// ---------------------------------------------------------------------------
+
+/// Widest values the generator accepts, from its `ParameterConstraints`.
+pub const MAX_SPAWN_COUNT: u32 = 16;
+pub const MAX_NUM_TEAMS: u32 = 16;
+pub const MAX_MAP_SIZE: u32 = 2048;
+
+/// Team count meaning "no teams at all": an asymmetric map.
+///
+/// Not a placeholder for "unset". The generator documents it as
+/// "0 is no teams asymmetric" and switches off every team-related rule for it,
+/// which is why each check below is guarded on it.
+pub const ASYMMETRIC_TEAMS: u32 = 0;
+
+/// How many symmetry points a named terrain symmetry has, or `None` if this
+/// client has never heard of it.
+///
+/// Unknown symmetries return `None` and are then treated as acceptable: a
+/// generator release that adds one must not make it unselectable here.
+pub fn symmetry_points(symmetry: &str) -> Option<u32> {
+    SYMMETRIES
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case(symmetry))
+        .map(|(_, points)| *points)
+}
+
+/// Whether a terrain symmetry can produce the requested number of teams.
+///
+/// `POINT3` has three symmetry points and so cannot make two teams; `XZ` has
+/// two and cannot make four. Unknown symmetries pass.
+pub fn symmetry_fits_teams(symmetry: &str, num_teams: u32) -> bool {
+    if num_teams == ASYMMETRIC_TEAMS {
+        return true;
+    }
+    symmetry_points(symmetry).is_none_or(|points| points % num_teams == 0)
+}
+
+/// The size, spawn and team window a whole-map style is designed for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct StyleConstraints {
+    pub min_map_size: u32,
+    pub max_map_size: u32,
+    pub min_spawn_count: u32,
+    pub max_spawn_count: u32,
+    pub min_num_teams: u32,
+    pub max_num_teams: u32,
+}
+
+impl Default for StyleConstraints {
+    /// `ParameterConstraints.ANY`: the generator's own unconstrained default.
+    fn default() -> Self {
+        Self {
+            min_map_size: 0,
+            max_map_size: MAX_MAP_SIZE,
+            min_spawn_count: 0,
+            max_spawn_count: MAX_SPAWN_COUNT,
+            min_num_teams: 0,
+            max_num_teams: MAX_NUM_TEAMS,
+        }
+    }
+}
+
+impl StyleConstraints {
+    const fn sizes(min: u32, max: u32) -> Self {
+        Self {
+            min_map_size: min,
+            max_map_size: max,
+            min_spawn_count: 0,
+            max_spawn_count: MAX_SPAWN_COUNT,
+            min_num_teams: 0,
+            max_num_teams: MAX_NUM_TEAMS,
+        }
+    }
+
+    const fn with_teams(mut self, min: u32, max: u32) -> Self {
+        self.min_num_teams = min;
+        self.max_num_teams = max;
+        self
+    }
+
+    const fn with_spawns(mut self, min: u32, max: u32) -> Self {
+        self.min_spawn_count = min;
+        self.max_spawn_count = max;
+        self
+    }
+
+    /// Whether this style is designed for the given shape of map.
+    pub fn matches(&self, map_size: u32, spawn_count: u32, num_teams: u32) -> bool {
+        (self.min_map_size..=self.max_map_size).contains(&map_size)
+            && (self.min_spawn_count..=self.max_spawn_count).contains(&spawn_count)
+            && (self.min_num_teams..=self.max_num_teams).contains(&num_teams)
+    }
+}
+
+/// Per-style parameter windows, from each `MapStyle.Predefined` constant.
+///
+/// The generator applies these only when it picks a style *at random*: an
+/// explicitly requested style is used whatever the map shape, which is how you
+/// end up asking for `BIG_ISLANDS` on a 5 km map and getting something that is
+/// neither big nor islands. Surfacing the window is therefore genuinely new;
+/// no reference client shows it.
+///
+/// Styles absent from this table are unconstrained. That also makes the table
+/// safe to be out of date: a new style simply has no advice attached.
+pub fn style_constraints(style: &str) -> StyleConstraints {
+    match style.to_ascii_uppercase().as_str() {
+        "BIG_ISLANDS" | "SMALL_ISLANDS" => StyleConstraints::sizes(768, 1024),
+        "LAND_BRIDGE" => StyleConstraints::sizes(768, 1024).with_teams(2, 4),
+        "CENTER_LAKE" | "FLOODED" | "ONE_ISLAND" | "VALLEY" => StyleConstraints::sizes(384, 1024),
+        "MOUNTAIN_RANGE" => StyleConstraints::sizes(256, 640),
+        "LOW_MEX" => StyleConstraints::sizes(256, 640)
+            .with_spawns(0, 4)
+            .with_teams(2, 2),
+        "SETONISH" => StyleConstraints::sizes(512, 1024).with_teams(2, 2),
+        _ => StyleConstraints::default(),
+    }
+}
+
+/// A parameter combination the generator will reject, or advise against.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "kind", content = "payload", rename_all = "camelCase")]
+pub enum ValidationIssue {
+    /// The generator aborts: spawns must divide evenly among teams.
+    #[serde(rename_all = "camelCase")]
+    SpawnsNotDivisibleByTeams { spawn_count: u32, num_teams: u32 },
+    /// The generator aborts: map size is stored as 64-unit steps.
+    #[serde(rename_all = "camelCase")]
+    MapSizeNotAMultiple { map_size: u32 },
+    /// The generator aborts: no selected symmetry can make this many teams.
+    #[serde(rename_all = "camelCase")]
+    SymmetryIncompatible {
+        symmetries: Vec<String>,
+        num_teams: u32,
+    },
+    /// Outside the generator's accepted range.
+    #[serde(rename_all = "camelCase")]
+    OutOfRange {
+        field: String,
+        value: u32,
+        min: u32,
+        max: u32,
+    },
+    /// Accepted, but the style was not designed for this map shape, so the
+    /// result will not look like its name. A warning, not a refusal.
+    #[serde(rename_all = "camelCase")]
+    StyleOutsideItsRange {
+        style: String,
+        constraints: StyleConstraints,
+    },
+    /// The generator's `--seed` is a signed 64-bit integer; anything else is a
+    /// type-conversion failure before generation starts.
+    #[serde(rename_all = "camelCase")]
+    SeedNotAnInteger { seed: String },
+}
+
+impl ValidationIssue {
+    /// Whether the generator would refuse outright, as opposed to producing
+    /// something disappointing. The UI blocks on the former only.
+    pub fn is_fatal(&self) -> bool {
+        !matches!(self, ValidationIssue::StyleOutsideItsRange { .. })
+    }
+}
+
+impl std::fmt::Display for ValidationIssue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            // Worded as the generator words it, so a user who sees both
+            // recognises them as the same complaint.
+            ValidationIssue::SpawnsNotDivisibleByTeams {
+                spawn_count,
+                num_teams,
+            } => write!(
+                f,
+                "spawn count {spawn_count} is not a multiple of {num_teams} teams"
+            ),
+            ValidationIssue::MapSizeNotAMultiple { map_size } => write!(
+                f,
+                "map size {map_size} is not a multiple of {MAP_SIZE_STEP}"
+            ),
+            ValidationIssue::SymmetryIncompatible {
+                symmetries,
+                num_teams,
+            } => write!(
+                f,
+                "terrain symmetry {} is not compatible with {num_teams} teams",
+                symmetries.join(", ")
+            ),
+            ValidationIssue::OutOfRange {
+                field,
+                value,
+                min,
+                max,
+            } => write!(
+                f,
+                "{field} {value} is outside the allowed range {min}-{max}"
+            ),
+            ValidationIssue::StyleOutsideItsRange { style, constraints } => write!(
+                f,
+                "{style} is designed for maps of {}-{} units with {}-{} teams",
+                constraints.min_map_size,
+                constraints.max_map_size,
+                constraints.min_num_teams,
+                constraints.max_num_teams
+            ),
+            ValidationIssue::SeedNotAnInteger { seed } => {
+                write!(f, "the seed {seed} is not a whole number")
+            }
+        }
+    }
+}
+
+/// Check an options set against every rule the generator enforces.
+///
+/// Returns all issues rather than the first, so the dialog can show everything
+/// wrong at once instead of making the user fix one thing to discover the next.
+/// An empty result does not *guarantee* the generator will accept the run: it
+/// guarantees only that none of the known rules are broken.
+///
+/// Raw command-line arguments bypass every option, so they bypass this too:
+/// somebody typing flags by hand has opted out of our help.
+pub fn validate_options(options: &GeneratorOptions) -> Vec<ValidationIssue> {
+    let mut issues = Vec::new();
+    if !options.command_line_args.is_empty() {
+        return issues;
+    }
+
+    let spawn_count = options.spawn_count.unwrap_or(0);
+    let num_teams = options.num_teams.unwrap_or(0);
+    let map_size = options.map_size.unwrap_or(0);
+
+    let mut range = |field: &str, value: u32, min: u32, max: u32| {
+        if !(min..=max).contains(&value) {
+            issues.push(ValidationIssue::OutOfRange {
+                field: field.to_string(),
+                value,
+                min,
+                max,
+            });
+        }
+    };
+    range("spawn count", spawn_count, 0, MAX_SPAWN_COUNT);
+    range("team count", num_teams, 0, MAX_NUM_TEAMS);
+    range("map size", map_size, MAP_SIZE_STEP, MAX_MAP_SIZE);
+
+    if !map_size.is_multiple_of(MAP_SIZE_STEP) {
+        issues.push(ValidationIssue::MapSizeNotAMultiple { map_size });
+    }
+    // `is_multiple_of` rather than `%`: the range check above records an issue
+    // without returning, so a zero team count reaches here, and `% 0` panics.
+    if num_teams != ASYMMETRIC_TEAMS && !spawn_count.is_multiple_of(num_teams) {
+        issues.push(ValidationIssue::SpawnsNotDivisibleByTeams {
+            spawn_count,
+            num_teams,
+        });
+    }
+
+    // A visibility preset replaces the whole casual branch, so none of the
+    // style, seed or symmetry rules below apply to it.
+    if options.generation_type != GenerationType::Casual {
+        return issues;
+    }
+
+    let seed = options.seed.trim();
+    if !seed.is_empty() && seed.parse::<i64>().is_err() {
+        issues.push(ValidationIssue::SeedNotAnInteger {
+            seed: seed.to_string(),
+        });
+    }
+
+    // Several symmetries may be selected, and the command builder picks a
+    // compatible one. Only complain when *none* of them can work.
+    let selected: Vec<String> = if !options.symmetry.is_empty() {
+        vec![options.symmetry.clone()]
+    } else {
+        options.symmetries.clone()
+    };
+    if !selected.is_empty()
+        && !selected
+            .iter()
+            .any(|symmetry| symmetry_fits_teams(symmetry, num_teams))
+    {
+        issues.push(ValidationIssue::SymmetryIncompatible {
+            symmetries: selected,
+            num_teams,
+        });
+    }
+
+    // Style advice is per selected style; with several selected, warn only if
+    // every one of them is a poor fit, since the builder picks among them.
+    let styles: Vec<String> = if !options.style.is_empty() {
+        vec![options.style.clone()]
+    } else {
+        options.styles.clone()
+    };
+    if !styles.is_empty()
+        && !styles
+            .iter()
+            .any(|style| style_constraints(style).matches(map_size, spawn_count, num_teams))
+    {
+        let style = styles[0].clone();
+        issues.push(ValidationIssue::StyleOutsideItsRange {
+            constraints: style_constraints(&style),
+            style,
+        });
+    }
+
+    issues
 }
 
 /// Which option list to ask the generator for. The Java client runs the JAR
@@ -934,8 +1394,9 @@ mod tests {
             texture_style: "X".into(),
             resource_style: "R".into(),
             prop_style: "P".into(),
-            reclaim_density: Some(0.5),
-            resource_density: Some(0.25),
+            // Bin units, the same scale the sliders use.
+            reclaim_density: Some(127.0),
+            resource_density: Some(0.0),
             ..Default::default()
         };
         let args =
@@ -953,16 +1414,352 @@ mod tests {
             "R",
             "--prop-style",
             "P",
+            // Converted to the 0..1 fraction the flag actually accepts.
             "--resource-density",
-            "0.25",
+            "0.000000",
             "--reclaim-density",
-            "0.5",
+            "1.000000",
         ] {
             assert!(
                 args.contains(&expected.to_string()),
                 "missing {expected} in {args:?}"
             );
         }
+    }
+
+    /// Every density the sliders can produce has to land inside the range the
+    /// generator's converter accepts, or the run dies with
+    /// "Must be between 0 and 1" the moment anyone touches a slider.
+    #[test]
+    fn densities_are_always_emitted_inside_the_generators_accepted_range() {
+        for bin in [0.0, 1.0, 63.5, 100.0, 127.0] {
+            let options = GeneratorOptions {
+                terrain_style: "T".into(),
+                reclaim_density: Some(bin),
+                resource_density: Some(bin),
+                ..Default::default()
+            };
+            let args = build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default())
+                .unwrap();
+            let emitted: Vec<f32> = args
+                .windows(2)
+                .filter(|w| w[0] == "--reclaim-density" || w[0] == "--resource-density")
+                .map(|w| w[1].parse().expect("a density must parse as a number"))
+                .collect();
+            assert_eq!(emitted.len(), 2, "{args:?}");
+            for value in emitted {
+                assert!(
+                    (0.0..=1.0).contains(&value),
+                    "bin {bin} emitted {value}, outside the generator's 0..1"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_full_slider_is_the_generators_maximum_not_a_hundred_and_twenty_seven() {
+        let options = GeneratorOptions {
+            terrain_style: "T".into(),
+            reclaim_density: Some(NUM_BINS as f32),
+            ..Default::default()
+        };
+        let args =
+            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        assert!(args
+            .windows(2)
+            .any(|w| w[0] == "--reclaim-density" && w[1].parse::<f32>().unwrap() == 1.0));
+    }
+
+    #[test]
+    fn raw_arguments_keep_quoted_paths_in_one_piece() {
+        // The whole reason for shell-style splitting: a Windows path with a
+        // space must not become four arguments.
+        assert_eq!(
+            split_command_line(r#"--out-path "C:\Users\Max Mustermann\maps" --debug"#),
+            vec![r"--out-path", r"C:\Users\Max Mustermann\maps", "--debug"]
+        );
+        // Backslashes are path separators here, not escapes.
+        assert_eq!(split_command_line(r"C:\maps"), vec![r"C:\maps"]);
+        assert_eq!(split_command_line("  --a   'b c'  "), vec!["--a", "b c"]);
+        assert_eq!(split_command_line(""), Vec::<String>::new());
+        assert_eq!(split_command_line("--empty \"\""), vec!["--empty", ""]);
+    }
+
+    #[test]
+    fn the_paths_and_diagnostics_reach_the_command_line() {
+        let options = GeneratorOptions {
+            output_path: "D:/maps".into(),
+            preview_path: "D:/previews".into(),
+            debug: true,
+            visualize: true,
+            ..Default::default()
+        };
+        let args =
+            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        assert!(args.windows(2).any(|w| w == ["--out-path", "D:/maps"]));
+        assert!(args
+            .windows(2)
+            .any(|w| w == ["--preview-path", "D:/previews"]));
+        assert!(args.contains(&"--debug".to_string()));
+        // And the viewer run must still be exempt from the timeout.
+        assert!(runs_without_timeout(&args));
+    }
+
+    #[test]
+    fn a_visibility_preset_gets_no_preview_path() {
+        // Tournament and blind maps have no preview by design, so asking for
+        // one would be a flag the generator quietly ignores.
+        let options = GeneratorOptions {
+            generation_type: GenerationType::Tournament,
+            preview_path: "D:/previews".into(),
+            output_path: "D:/maps".into(),
+            ..Default::default()
+        };
+        let args =
+            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        assert!(!args.contains(&"--preview-path".to_string()), "{args:?}");
+        // The output path is not style-dependent and must survive.
+        assert!(args.windows(2).any(|w| w == ["--out-path", "D:/maps"]));
+    }
+
+    #[test]
+    fn an_incompatible_symmetry_is_never_picked_when_a_workable_one_is_offered() {
+        // POINT3 cannot make two teams. The Java client picks uniformly from
+        // the checked items and fails roughly half the time; we filter first.
+        let options = GeneratorOptions {
+            num_teams: Some(2),
+            spawn_count: Some(6),
+            symmetries: vec!["POINT3".into(), "POINT4".into()],
+            ..Default::default()
+        };
+        for seed in ["1", "2", "3", "4", "5", "6", "7"] {
+            let args = build_arguments(
+                version(1, 7, 7),
+                None,
+                &GeneratorOptions {
+                    seed: seed.to_string(),
+                    ..options.clone()
+                },
+                VersionPolicy::default(),
+            )
+            .unwrap();
+            assert!(
+                args.windows(2)
+                    .any(|w| w == ["--terrain-symmetry", "POINT4"]),
+                "seed {seed} picked an incompatible symmetry: {args:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_all_incompatible_selection_is_still_honoured() {
+        // Filtering to nothing and silently generating something unrelated
+        // would be worse than letting the generator refuse with a clear reason.
+        let options = GeneratorOptions {
+            num_teams: Some(2),
+            symmetries: vec!["POINT3".into()],
+            ..Default::default()
+        };
+        let args =
+            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        assert!(args
+            .windows(2)
+            .any(|w| w == ["--terrain-symmetry", "POINT3"]));
+    }
+
+    #[test]
+    fn a_style_that_suits_the_map_size_is_preferred() {
+        // BIG_ISLANDS needs 768+; on a 256 map the other choice is the sane one.
+        let options = GeneratorOptions {
+            map_size: Some(256),
+            styles: vec!["BIG_ISLANDS".into(), "MOUNTAIN_RANGE".into()],
+            ..Default::default()
+        };
+        for seed in ["1", "2", "3", "4", "5"] {
+            let args = build_arguments(
+                version(1, 7, 7),
+                None,
+                &GeneratorOptions {
+                    seed: seed.to_string(),
+                    ..options.clone()
+                },
+                VersionPolicy::default(),
+            )
+            .unwrap();
+            assert!(args.windows(2).any(|w| w == ["--style", "MOUNTAIN_RANGE"]));
+        }
+    }
+
+    // --- validation -------------------------------------------------------
+
+    fn options(spawns: u32, teams: u32, size: u32) -> GeneratorOptions {
+        GeneratorOptions {
+            spawn_count: Some(spawns),
+            num_teams: Some(teams),
+            map_size: Some(size),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_workable_combination_reports_nothing() {
+        assert!(validate_options(&options(6, 2, 512)).is_empty());
+        assert!(validate_options(&GeneratorOptions::default()).is_empty());
+    }
+
+    #[test]
+    fn spawns_that_do_not_divide_among_teams_are_caught() {
+        // The generator's own words: "Spawn Count `5` not a multiple of Num
+        // Teams `2`". Verified against NeroxisGen_1.22.1.jar.
+        let issues = validate_options(&options(5, 2, 512));
+        assert_eq!(
+            issues,
+            vec![ValidationIssue::SpawnsNotDivisibleByTeams {
+                spawn_count: 5,
+                num_teams: 2
+            }]
+        );
+        assert!(issues[0].is_fatal());
+    }
+
+    #[test]
+    fn an_asymmetric_map_switches_off_every_team_rule() {
+        // "0 is no teams asymmetric": 5 spawns is then perfectly legal.
+        assert!(validate_options(&options(5, 0, 512)).is_empty());
+        let odd = GeneratorOptions {
+            symmetries: vec!["POINT3".into()],
+            ..options(5, 0, 512)
+        };
+        assert!(validate_options(&odd).is_empty());
+    }
+
+    #[test]
+    fn a_map_size_off_the_sixty_four_grid_is_caught() {
+        let issues = validate_options(&options(6, 2, 500));
+        assert!(issues.contains(&ValidationIssue::MapSizeNotAMultiple { map_size: 500 }));
+    }
+
+    #[test]
+    fn an_incompatible_symmetry_is_caught_only_when_nothing_else_fits() {
+        // Verified message: "Terrain symmetry `POINT3` not compatible with Num
+        // Teams `2`".
+        let bad = GeneratorOptions {
+            symmetries: vec!["POINT3".into()],
+            ..options(6, 2, 512)
+        };
+        assert!(validate_options(&bad)
+            .iter()
+            .any(|i| matches!(i, ValidationIssue::SymmetryIncompatible { .. })));
+
+        // One workable option among several is enough, because the builder
+        // filters to it.
+        let mixed = GeneratorOptions {
+            symmetries: vec!["POINT3".into(), "POINT2".into()],
+            ..options(6, 2, 512)
+        };
+        assert!(validate_options(&mixed).is_empty());
+    }
+
+    #[test]
+    fn symmetry_point_counts_match_the_generators_table() {
+        assert_eq!(symmetry_points("POINT3"), Some(3));
+        assert_eq!(symmetry_points("point4"), Some(4));
+        assert_eq!(symmetry_points("XZ"), Some(2));
+        assert_eq!(symmetry_points("QUAD"), Some(4));
+        assert_eq!(symmetry_points("NONE"), Some(1));
+        // A symmetry from a future release must not become unselectable.
+        assert_eq!(symmetry_points("POINT99"), None);
+        assert!(symmetry_fits_teams("POINT99", 3));
+    }
+
+    #[test]
+    fn out_of_range_values_are_reported_with_their_bounds() {
+        let issues = validate_options(&options(20, 2, 512));
+        assert!(issues.iter().any(|i| matches!(
+            i,
+            ValidationIssue::OutOfRange { field, value: 20, .. } if field == "spawn count"
+        )));
+    }
+
+    #[test]
+    fn a_style_outside_its_range_warns_without_blocking() {
+        let bad = GeneratorOptions {
+            style: "BIG_ISLANDS".into(),
+            ..options(6, 2, 256)
+        };
+        let issues = validate_options(&bad);
+        let issue = issues
+            .iter()
+            .find(|i| matches!(i, ValidationIssue::StyleOutsideItsRange { .. }))
+            .expect("expected a style warning");
+        // The generator accepts it, it just will not look like its name.
+        assert!(!issue.is_fatal());
+        assert!(issue.to_string().contains("768"), "{issue}");
+    }
+
+    #[test]
+    fn style_constraints_match_the_generators_table() {
+        assert!(style_constraints("BIG_ISLANDS").matches(1024, 6, 2));
+        assert!(!style_constraints("BIG_ISLANDS").matches(256, 6, 2));
+        // LOW_MEX is the narrowest: 256-640, at most 4 spawns, exactly 2 teams.
+        assert!(style_constraints("LOW_MEX").matches(512, 4, 2));
+        assert!(!style_constraints("LOW_MEX").matches(512, 6, 2));
+        assert!(!style_constraints("LOW_MEX").matches(512, 4, 4));
+        assert!(style_constraints("SETONISH").matches(512, 8, 2));
+        assert!(!style_constraints("SETONISH").matches(256, 8, 2));
+        // Unknown and unconstrained styles both accept anything.
+        assert!(style_constraints("BASIC").matches(256, 16, 8));
+        assert!(style_constraints("A_STYLE_FROM_2030").matches(256, 16, 8));
+    }
+
+    #[test]
+    fn a_visibility_preset_skips_the_style_and_symmetry_rules() {
+        // Those options are not sent at all for tournament maps, so warning
+        // about them would be noise.
+        let tournament = GeneratorOptions {
+            generation_type: GenerationType::Tournament,
+            symmetries: vec!["POINT3".into()],
+            style: "BIG_ISLANDS".into(),
+            ..options(6, 2, 256)
+        };
+        assert!(validate_options(&tournament).is_empty());
+        // But the arithmetic rules still hold: they are checked before the split.
+        let broken = GeneratorOptions {
+            generation_type: GenerationType::Blind,
+            ..options(5, 2, 512)
+        };
+        assert!(!validate_options(&broken).is_empty());
+    }
+
+    #[test]
+    fn a_seed_that_is_not_a_number_is_caught() {
+        // The generator's `--seed` is a Long; "abc" fails type conversion
+        // before generation begins.
+        let bad = GeneratorOptions {
+            seed: "not-a-number".into(),
+            ..options(6, 2, 512)
+        };
+        assert!(validate_options(&bad)
+            .iter()
+            .any(|i| matches!(i, ValidationIssue::SeedNotAnInteger { .. })));
+
+        // Negative seeds are legal: the generator reports them itself.
+        let negative = GeneratorOptions {
+            seed: "-5386725883509321122".into(),
+            ..options(6, 2, 512)
+        };
+        assert!(validate_options(&negative).is_empty());
+        // As is no seed at all, which means "pick one".
+        assert!(validate_options(&options(6, 2, 512)).is_empty());
+    }
+
+    #[test]
+    fn raw_arguments_opt_out_of_validation_entirely() {
+        let raw = GeneratorOptions {
+            command_line_args: "--map-size 500 --spawn-count 5 --num-teams 2".into(),
+            ..options(5, 2, 500)
+        };
+        assert!(validate_options(&raw).is_empty());
     }
 
     #[test]

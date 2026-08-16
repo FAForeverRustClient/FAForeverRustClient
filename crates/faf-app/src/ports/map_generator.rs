@@ -9,7 +9,7 @@
 //! grammar, version policy and command-line construction.
 
 use async_trait::async_trait;
-use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorStatus};
+use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
 use tokio::sync::mpsc;
 
 /// One step of a generation run.
@@ -39,6 +39,35 @@ pub trait MapGeneratorPort: Send + Sync {
         query: GeneratorOptionQuery,
         version: Option<String>,
     ) -> Result<Vec<String>, String>;
+
+    /// Resolve options through the generator's `--parse`, yielding the map name
+    /// they would produce, or the generator's own complaint about them.
+    ///
+    /// No map is written. This is the authoritative validation: it runs the
+    /// rules of the installed release rather than a copy of them, so it does
+    /// not drift when the generator adds a constraint.
+    async fn preflight(&self, options: GeneratorOptions) -> Result<String, String>;
+
+    /// The generator's `--help` text, for users writing raw arguments.
+    async fn help(&self, version: Option<String>) -> Result<String, String>;
+
+    /// Stop the run in flight, if any.
+    ///
+    /// Synchronous and infallible: it only raises a flag that the running task
+    /// observes, so it can be called from a command handler without awaiting
+    /// the process it is stopping.
+    fn cancel(&self);
+
+    /// Write a named preset, replacing any preset of the same name.
+    async fn save_preset(&self, name: &str, options: &GeneratorOptions) -> Result<(), String>;
+
+    /// Every readable preset, newest first.
+    ///
+    /// Unreadable files are skipped rather than failing the whole listing: one
+    /// hand-edited preset must not hide the rest of the library.
+    async fn list_presets(&self) -> Vec<GeneratorPreset>;
+
+    async fn delete_preset(&self, name: &str) -> Result<(), String>;
 
     /// The newest generator release this client supports, as `x.y.z`.
     async fn latest_version(&self) -> Result<String, String>;

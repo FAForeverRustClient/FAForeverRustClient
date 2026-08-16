@@ -13,7 +13,9 @@
 //! here rather than behind a separate command means there is no way to change a
 //! path without the check running.
 
-use faf_domain::state::{ChatEvent, InstallEvent, NavEvent, SettingsCommand, SettingsEvent};
+use faf_domain::state::{
+    ChatEvent, InstallEvent, MapGeneratorEvent, NavEvent, SettingsCommand, SettingsEvent,
+};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
@@ -50,8 +52,16 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             let start_page = settings.general.start_page;
             let show_joins_parts = settings.chat.show_joins_parts;
+            // The map generator keeps its own working copy of these options,
+            // so a persisted set has to be handed over explicitly: without
+            // this the dialog would open on defaults every session and "save
+            // settings" would look like it had done nothing.
+            let generator_options = settings.map_generator.clone();
             out.emit(SettingsEvent::Loaded {
                 settings: Box::new(settings),
+            });
+            out.emit(MapGeneratorEvent::OptionsChanged {
+                options: generator_options,
             });
             out.emit(ChatEvent::JoinsPartsToggled {
                 enabled: show_joins_parts,
@@ -141,6 +151,10 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // any other and republishes (or clears) from the new state, so
             // turning presence off takes the status down immediately.
             out.emit(SettingsEvent::DiscordChanged { preferences });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::SetMapGenerator { preferences } => {
+            out.emit(SettingsEvent::MapGeneratorChanged { preferences });
             persist(ctx, out).await;
         }
         SettingsCommand::SetGame { preferences } => {

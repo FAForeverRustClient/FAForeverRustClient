@@ -178,9 +178,18 @@
         "resourceDensityMin": null,
         "resourceDensityMax": null,
         "numToGenerate": null,
+        "debug": false,
+        "visualize": false,
+        "previewPath": "",
+        "outputPath": "",
         "commandLineArgs": ""
       },
-      "previews": {}
+      "previews": {},
+      "validation": [],
+      "predictedName": "",
+      "decoded": {},
+      "helpText": "",
+      "presets": []
     },
     "mods": {
       "vault": [],
@@ -455,6 +464,38 @@
           "updated"
         ],
         "legacyStorageMigrated": false
+      },
+      "mapGenerator": {
+        "version": null,
+        "spawnCount": 6,
+        "numTeams": 2,
+        "mapSize": 512,
+        "seed": "",
+        "generationType": "casual",
+        "symmetry": "",
+        "symmetries": [],
+        "style": "",
+        "styles": [],
+        "terrainStyle": "",
+        "terrainStyles": [],
+        "textureStyle": "",
+        "textureStyles": [],
+        "resourceStyle": "",
+        "resourceStyles": [],
+        "propStyle": "",
+        "propStyles": [],
+        "reclaimDensity": null,
+        "reclaimDensityMin": null,
+        "reclaimDensityMax": null,
+        "resourceDensity": null,
+        "resourceDensityMin": null,
+        "resourceDensityMax": null,
+        "numToGenerate": null,
+        "debug": false,
+        "visualize": false,
+        "previewPath": "",
+        "outputPath": "",
+        "commandLineArgs": ""
       }
     }
   },
@@ -4799,6 +4840,8 @@
           },
           "expected": {
             "availableVersions": [],
+            "decoded": {},
+            "helpText": "",
             "latestVersion": "",
             "optionLists": {
               "propStyles": [],
@@ -4810,10 +4853,13 @@
             },
             "options": {
               "commandLineArgs": "",
+              "debug": false,
               "generationType": "casual",
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
               "propStyle": "",
               "propStyles": [],
               "reclaimDensity": null,
@@ -4834,13 +4880,17 @@
               "terrainStyles": [],
               "textureStyle": "",
               "textureStyles": [],
-              "version": null
+              "version": null,
+              "visualize": false
             },
+            "predictedName": "",
+            "presets": [],
             "previews": {},
             "selectedVersion": null,
             "status": {
               "type": "resolvingVersion"
-            }
+            },
+            "validation": []
           }
         },
         {
@@ -4859,6 +4909,8 @@
           },
           "expected": {
             "availableVersions": [],
+            "decoded": {},
+            "helpText": "",
             "latestVersion": "",
             "optionLists": {
               "propStyles": [],
@@ -4873,10 +4925,13 @@
             },
             "options": {
               "commandLineArgs": "",
+              "debug": false,
               "generationType": "casual",
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
               "propStyle": "",
               "propStyles": [],
               "reclaimDensity": null,
@@ -4897,13 +4952,17 @@
               "terrainStyles": [],
               "textureStyle": "",
               "textureStyles": [],
-              "version": null
+              "version": null,
+              "visualize": false
             },
+            "predictedName": "",
+            "presets": [],
             "previews": {},
             "selectedVersion": null,
             "status": {
               "type": "resolvingVersion"
-            }
+            },
+            "validation": []
           }
         },
         {
@@ -4925,6 +4984,8 @@
           },
           "expected": {
             "availableVersions": [],
+            "decoded": {},
+            "helpText": "",
             "latestVersion": "",
             "optionLists": {
               "propStyles": [],
@@ -4939,10 +5000,13 @@
             },
             "options": {
               "commandLineArgs": "",
+              "debug": false,
               "generationType": "casual",
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
               "propStyle": "",
               "propStyles": [],
               "reclaimDensity": null,
@@ -4963,8 +5027,11 @@
               "terrainStyles": [],
               "textureStyle": "",
               "textureStyles": [],
-              "version": null
+              "version": null,
+              "visualize": false
             },
+            "predictedName": "",
+            "presets": [],
             "previews": {},
             "selectedVersion": null,
             "status": {
@@ -4974,7 +5041,851 @@
                 ]
               },
               "type": "generated"
+            },
+            "validation": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "the map generator reports bad options, then a name it would produce",
+      "steps": [
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "validationChanged",
+              "payload": {
+                "issues": [
+                  {
+                    "kind": "spawnsNotDivisibleByTeams",
+                    "payload": {
+                      "spawnCount": 5,
+                      "numTeams": 2
+                    }
+                  }
+                ]
+              }
             }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {},
+            "helpText": "",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presets": [],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": [
+              {
+                "kind": "spawnsNotDivisibleByTeams",
+                "payload": {
+                  "numTeams": 2,
+                  "spawnCount": 5
+                }
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "validationChanged",
+              "payload": {
+                "issues": []
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {},
+            "helpText": "",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presets": [],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "namePredicted",
+              "payload": {
+                "mapName": "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj"
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {},
+            "helpText": "",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj",
+            "presets": [],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "statusChanged",
+              "payload": {
+                "status": {
+                  "type": "cancelled"
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {},
+            "helpText": "",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj",
+            "presets": [],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "cancelled"
+            },
+            "validation": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "decoded map names accumulate while help text replaces itself",
+      "steps": [
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "namesDecoded",
+              "payload": {
+                "decoded": {
+                  "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj": {
+                    "version": "1.22.1",
+                    "seed": "12345",
+                    "spawnCount": 6,
+                    "mapSize": 512,
+                    "numTeams": 2,
+                    "symmetry": "POINT2",
+                    "style": {
+                      "kind": "predefined",
+                      "style": "MOUNTAIN_RANGE"
+                    },
+                    "visibility": null,
+                    "generatedAt": null
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {
+              "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj": {
+                "generatedAt": null,
+                "mapSize": 512,
+                "numTeams": 2,
+                "seed": "12345",
+                "spawnCount": 6,
+                "style": {
+                  "kind": "predefined",
+                  "style": "MOUNTAIN_RANGE"
+                },
+                "symmetry": "POINT2",
+                "version": "1.22.1",
+                "visibility": null
+              }
+            },
+            "helpText": "",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presets": [],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "helpLoaded",
+              "payload": {
+                "text": "Usage: generate [-hV]"
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {
+              "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj": {
+                "generatedAt": null,
+                "mapSize": 512,
+                "numTeams": 2,
+                "seed": "12345",
+                "spawnCount": 6,
+                "style": {
+                  "kind": "predefined",
+                  "style": "MOUNTAIN_RANGE"
+                },
+                "symmetry": "POINT2",
+                "version": "1.22.1",
+                "visibility": null
+              }
+            },
+            "helpText": "Usage: generate [-hV]",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presets": [],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "presetsLoaded",
+              "payload": {
+                "presets": [
+                  {
+                    "name": "Team Ladder",
+                    "savedAt": "2026-08-16T00:00:00+00:00",
+                    "options": {
+                      "version": null,
+                      "spawnCount": 6,
+                      "numTeams": 2,
+                      "mapSize": 512,
+                      "seed": "",
+                      "generationType": "casual",
+                      "symmetry": "",
+                      "symmetries": [],
+                      "style": "",
+                      "styles": [],
+                      "terrainStyle": "",
+                      "terrainStyles": [],
+                      "textureStyle": "",
+                      "textureStyles": [],
+                      "resourceStyle": "",
+                      "resourceStyles": [],
+                      "propStyle": "",
+                      "propStyles": [],
+                      "reclaimDensity": null,
+                      "reclaimDensityMin": null,
+                      "reclaimDensityMax": null,
+                      "resourceDensity": null,
+                      "resourceDensityMin": null,
+                      "resourceDensityMax": null,
+                      "numToGenerate": null,
+                      "debug": false,
+                      "visualize": false,
+                      "previewPath": "",
+                      "outputPath": "",
+                      "commandLineArgs": ""
+                    }
+                  },
+                  {
+                    "name": "Blind 1v1",
+                    "savedAt": "2026-08-15T00:00:00+00:00",
+                    "options": {
+                      "version": null,
+                      "spawnCount": 6,
+                      "numTeams": 2,
+                      "mapSize": 512,
+                      "seed": "",
+                      "generationType": "casual",
+                      "symmetry": "",
+                      "symmetries": [],
+                      "style": "",
+                      "styles": [],
+                      "terrainStyle": "",
+                      "terrainStyles": [],
+                      "textureStyle": "",
+                      "textureStyles": [],
+                      "resourceStyle": "",
+                      "resourceStyles": [],
+                      "propStyle": "",
+                      "propStyles": [],
+                      "reclaimDensity": null,
+                      "reclaimDensityMin": null,
+                      "reclaimDensityMax": null,
+                      "resourceDensity": null,
+                      "resourceDensityMin": null,
+                      "resourceDensityMax": null,
+                      "numToGenerate": null,
+                      "debug": false,
+                      "visualize": false,
+                      "previewPath": "",
+                      "outputPath": "",
+                      "commandLineArgs": ""
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {
+              "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj": {
+                "generatedAt": null,
+                "mapSize": 512,
+                "numTeams": 2,
+                "seed": "12345",
+                "spawnCount": 6,
+                "style": {
+                  "kind": "predefined",
+                  "style": "MOUNTAIN_RANGE"
+                },
+                "symmetry": "POINT2",
+                "version": "1.22.1",
+                "visibility": null
+              }
+            },
+            "helpText": "Usage: generate [-hV]",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presets": [
+              {
+                "name": "Team Ladder",
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [],
+                  "symmetries": [],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
+                "savedAt": "2026-08-16T00:00:00+00:00"
+              },
+              {
+                "name": "Blind 1v1",
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [],
+                  "symmetries": [],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
+                "savedAt": "2026-08-15T00:00:00+00:00"
+              }
+            ],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "presetsLoaded",
+              "payload": {
+                "presets": [
+                  {
+                    "name": "Team Ladder",
+                    "savedAt": "2026-08-16T00:00:00+00:00",
+                    "options": {
+                      "version": null,
+                      "spawnCount": 6,
+                      "numTeams": 2,
+                      "mapSize": 512,
+                      "seed": "",
+                      "generationType": "casual",
+                      "symmetry": "",
+                      "symmetries": [],
+                      "style": "",
+                      "styles": [],
+                      "terrainStyle": "",
+                      "terrainStyles": [],
+                      "textureStyle": "",
+                      "textureStyles": [],
+                      "resourceStyle": "",
+                      "resourceStyles": [],
+                      "propStyle": "",
+                      "propStyles": [],
+                      "reclaimDensity": null,
+                      "reclaimDensityMin": null,
+                      "reclaimDensityMax": null,
+                      "resourceDensity": null,
+                      "resourceDensityMin": null,
+                      "resourceDensityMax": null,
+                      "numToGenerate": null,
+                      "debug": false,
+                      "visualize": false,
+                      "previewPath": "",
+                      "outputPath": "",
+                      "commandLineArgs": ""
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {
+              "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj": {
+                "generatedAt": null,
+                "mapSize": 512,
+                "numTeams": 2,
+                "seed": "12345",
+                "spawnCount": 6,
+                "style": {
+                  "kind": "predefined",
+                  "style": "MOUNTAIN_RANGE"
+                },
+                "symmetry": "POINT2",
+                "version": "1.22.1",
+                "visibility": null
+              }
+            },
+            "helpText": "Usage: generate [-hV]",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [],
+              "resourceStyles": [],
+              "styles": [],
+              "symmetries": [],
+              "terrainStyles": [],
+              "textureStyles": []
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presets": [
+              {
+                "name": "Team Ladder",
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [],
+                  "symmetries": [],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
+                "savedAt": "2026-08-16T00:00:00+00:00"
+              }
+            ],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
           }
         }
       ]
@@ -6901,6 +7812,38 @@
             "general": {
               "startPage": "news"
             },
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
             "notifications": {
               "desktop": true,
               "enabled": true,
@@ -7033,6 +7976,38 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "startPage": "news"
+            },
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
             },
             "notifications": {
               "desktop": true,
@@ -7190,6 +8165,38 @@
             "general": {
               "startPage": "news"
             },
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
             "notifications": {
               "desktop": true,
               "enabled": true,
@@ -7336,6 +8343,38 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "startPage": "news"
+            },
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
             },
             "notifications": {
               "desktop": true,
@@ -7550,6 +8589,38 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "startPage": "news"
+            },
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
             },
             "notifications": {
               "desktop": true,

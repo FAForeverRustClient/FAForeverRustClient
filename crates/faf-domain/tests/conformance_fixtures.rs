@@ -1049,6 +1049,77 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "the map generator reports bad options, then a name it would produce",
+            vec![
+                // The dialog checks options as they are edited, so the issue
+                // list has to be replaced wholesale rather than appended to:
+                // a fixed problem must disappear.
+                MapGeneratorEvent::ValidationChanged {
+                    issues: vec![
+                        faf_domain::state::ValidationIssue::SpawnsNotDivisibleByTeams {
+                            spawn_count: 5,
+                            num_teams: 2,
+                        },
+                    ],
+                }
+                .into(),
+                MapGeneratorEvent::ValidationChanged { issues: vec![] }.into(),
+                MapGeneratorEvent::NamePredicted {
+                    map_name: "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj".into(),
+                }
+                .into(),
+                // A cancellation is its own terminal status: not a failure.
+                MapGeneratorEvent::StatusChanged {
+                    status: GeneratorStatus::Cancelled,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "decoded map names accumulate while help text replaces itself",
+            vec![
+                MapGeneratorEvent::NamesDecoded {
+                    decoded: std::collections::HashMap::from([(
+                        "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj".to_string(),
+                        faf_domain::protocol::map_generator_name::decode(
+                            "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj",
+                        )
+                        .expect("a known-good name must decode"),
+                    )]),
+                }
+                .into(),
+                MapGeneratorEvent::HelpLoaded {
+                    text: "Usage: generate [-hV]".into(),
+                }
+                .into(),
+                // The preset library is replaced wholesale on every change, so
+                // a deleted preset has to disappear rather than linger.
+                MapGeneratorEvent::PresetsLoaded {
+                    presets: vec![
+                        faf_domain::state::GeneratorPreset {
+                            name: "Team Ladder".into(),
+                            saved_at: "2026-08-16T00:00:00+00:00".into(),
+                            options: GeneratorOptions::default(),
+                        },
+                        faf_domain::state::GeneratorPreset {
+                            name: "Blind 1v1".into(),
+                            saved_at: "2026-08-15T00:00:00+00:00".into(),
+                            options: GeneratorOptions::default(),
+                        },
+                    ],
+                }
+                .into(),
+                MapGeneratorEvent::PresetsLoaded {
+                    presets: vec![faf_domain::state::GeneratorPreset {
+                        name: "Team Ladder".into(),
+                        saved_at: "2026-08-16T00:00:00+00:00".into(),
+                        options: GeneratorOptions::default(),
+                    }],
+                }
+                .into(),
+            ],
+        ),
         // ── leaderboard ──────────────────────────────────────────────────
         case(
             "changing league clears stale season data",
@@ -1581,6 +1652,7 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Settings:gameChanged",
     "Settings:generalChanged",
     "Settings:loaded",
+    "Settings:mapGeneratorChanged",
     "Settings:notificationsChanged",
     "Settings:replayGamePathChanged",
     "Settings:updatesChanged",

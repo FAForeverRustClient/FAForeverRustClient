@@ -21,8 +21,10 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 pub use crate::protocol::map_generator::{
-    GenerationType, GeneratorOptionQuery, GeneratorOptions, GeneratorVersion,
+    GenerationType, GeneratorOptionQuery, GeneratorOptions, GeneratorVersion, StyleConstraints,
+    ValidationIssue,
 };
+pub use crate::protocol::map_generator_name::{DecodedMapName, DecodedStyle};
 
 /// Where a generation run currently is.
 // No `Eq`: `Failed` is compared alongside options carrying `f32` densities in
@@ -33,6 +35,15 @@ pub use crate::protocol::map_generator::{
 pub enum GeneratorStatus {
     #[default]
     Idle,
+    /// A run has been accepted and is being set up: checking the options with
+    /// the generator, resolving a release.
+    ///
+    /// Emitted synchronously when the command is received, before any IO. That
+    /// matters twice over: it is the only feedback during the `--parse`
+    /// preflight, which costs a JVM start; and it guarantees the status leaves
+    /// `Generated` at the *start* of every run, so a UI watching for a result
+    /// cannot mistake the previous run's maps for this one's.
+    Preparing,
     /// Asking GitHub which generator release to use. Only happens for an
     /// options-driven run: reproducing a map takes its version from the name.
     ResolvingVersion,
@@ -62,6 +73,10 @@ pub enum GeneratorStatus {
     Failed {
         reason: String,
     },
+    /// The user stopped the run. Distinct from `Failed` because nothing went
+    /// wrong: presenting a deliberate cancellation as an error trains people to
+    /// ignore error messages.
+    Cancelled,
 }
 
 impl GeneratorStatus {
@@ -69,11 +84,77 @@ impl GeneratorStatus {
     pub fn is_busy(&self) -> bool {
         matches!(
             self,
-            GeneratorStatus::ResolvingVersion
+            GeneratorStatus::Preparing
+                | GeneratorStatus::ResolvingVersion
                 | GeneratorStatus::Downloading { .. }
                 | GeneratorStatus::Generating { .. }
         )
     }
+}
+
+/// A named, saved set of generator options.
+///
+/// Kept as one file each rather than as a list inside the client's settings,
+/// because a preset is a thing you want to *have*: to copy, to send to someone
+/// setting up a tournament, to keep after a reinstall. A blob buried in
+/// `settings.json` is none of those.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GeneratorPreset {
+    /// What the user called it. Shown as-is; the file name is derived.
+    pub name: String,
+    /// RFC 3339. A string because specta refuses 64-bit numbers, and because a
+    /// formatted instant is what the list wants anyway.
+    #[serde(default)]
+    pub saved_at: String,
+    pub options: GeneratorOptions,
+}
+
+/// Longest preset name accepted. Generous, but bounded: the name becomes a
+/// file name, and file systems have limits that a silent truncation would hit
+/// in confusing ways.
+pub const MAX_PRESET_NAME: usize = 80;
+
+/// Whether a name can be saved as a preset.
+///
+/// The name has to survive becoming a file name, so the same constraints as
+/// [`crate::state::is_safe_folder_name`] apply: nothing that could climb out
+/// of the presets folder, nothing hidden, nothing empty.
+pub fn is_valid_preset_name(name: &str) -> bool {
+    let trimmed = name.trim();
+    !trimmed.is_empty()
+        && trimmed.len() <= MAX_PRESET_NAME
+        && !trimmed.starts_with('.')
+        && !trimmed.contains("..")
+        && trimmed
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | ' '))
+}
+
+/// The file a preset is stored in, or `None` if the name is unusable.
+///
+/// Lower-cased and space-collapsed so "Team Ladder" and "team ladder" are the
+/// same preset rather than two files that look identical in the list.
+pub fn preset_file_name(name: &str) -> Option<String> {
+    if !is_valid_preset_name(name) {
+        return None;
+    }
+    let slug: String = name
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .map(|c| if c == ' ' { '-' } else { c })
+        .collect();
+    // Collapse runs of separators left by consecutive spaces.
+    let mut collapsed = String::with_capacity(slug.len());
+    for c in slug.chars() {
+        if c == '-' && collapsed.ends_with('-') {
+            continue;
+        }
+        collapsed.push(c);
+    }
+    let trimmed = collapsed.trim_matches('-');
+    (!trimmed.is_empty()).then(|| format!("{trimmed}.json"))
 }
 
 /// The option lists the generator itself reports (`--styles`, `--symmetries`, …).
@@ -136,6 +217,31 @@ pub struct MapGeneratorState {
     /// Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`).
     #[serde(default)]
     pub previews: std::collections::HashMap<String, String>,
+    /// Problems with the current options, from the pure rule checks. Refreshed
+    /// as the dialog is edited so the user is told *before* a JAR is fetched
+    /// and a JVM started, which is when the generator would otherwise object.
+    #[serde(default)]
+    pub validation: Vec<ValidationIssue>,
+    /// The map name the current options would produce, as reported by the
+    /// generator's own `--parse`. Empty until a preflight has run.
+    ///
+    /// Worth showing on its own: it is shareable before the map exists, and it
+    /// is the authoritative confirmation that the options are acceptable.
+    #[serde(default)]
+    pub predicted_name: String,
+    /// Parameters decoded out of generated map names, keyed by name.
+    ///
+    /// Filled by [`MapGeneratorCommand::DecodeNames`], which is pure
+    /// arithmetic: a lobby list can afford to decode every row.
+    #[serde(default)]
+    pub decoded: std::collections::HashMap<String, DecodedMapName>,
+    /// The generator's own `--help` output, for the escape hatch users who
+    /// write raw arguments. The Python client offers the same button.
+    #[serde(default)]
+    pub help_text: String,
+    /// The saved preset library, newest first. Empty until loaded.
+    #[serde(default)]
+    pub presets: Vec<GeneratorPreset>,
 }
 
 // No `Eq`: `OptionsChanged` carries `GeneratorOptions`.
@@ -167,6 +273,25 @@ pub enum MapGeneratorEvent {
     PreviewsLoaded {
         previews: std::collections::HashMap<String, String>,
     },
+    ValidationChanged {
+        issues: Vec<ValidationIssue>,
+    },
+    /// A `--parse` preflight resolved the options to a map name. An empty name
+    /// clears a stale prediction when the options change.
+    NamePredicted {
+        map_name: String,
+    },
+    NamesDecoded {
+        decoded: std::collections::HashMap<String, DecodedMapName>,
+    },
+    HelpLoaded {
+        text: String,
+    },
+    /// The whole library, re-read after every change. Small enough that
+    /// sending the list beats sending deltas and keeping two copies in step.
+    PresetsLoaded {
+        presets: Vec<GeneratorPreset>,
+    },
 }
 
 // No `Eq`: `Generate` carries `GeneratorOptions`.
@@ -181,9 +306,13 @@ pub enum MapGeneratorEvent {
 pub enum MapGeneratorCommand {
     /// Reproduce a specific generated map, downloading the matching generator
     /// version first. The join path calls this when the map is missing.
-    GenerateNamed { map_name: String },
+    GenerateNamed {
+        map_name: String,
+    },
     /// Generate one or more fresh maps from options (the host flow).
-    Generate { options: GeneratorOptions },
+    Generate {
+        options: GeneratorOptions,
+    },
     /// Fetch every option list from the generator, downloading the specified
     /// (or newest supported) release first if needed.
     LoadOptions {
@@ -191,7 +320,46 @@ pub enum MapGeneratorCommand {
         version: Option<String>,
     },
     /// Remember the host dialog's current options without generating.
-    SetOptions { options: GeneratorOptions },
+    SetOptions {
+        options: GeneratorOptions,
+    },
+    /// Check options against the generator's rules without running anything.
+    ///
+    /// Pure and instant, so the dialog can call it on every edit. It is a fast
+    /// approximation of what [`MapGeneratorCommand::Preflight`] confirms.
+    Validate {
+        options: GeneratorOptions,
+    },
+    /// Ask the generator itself to resolve the options, via `--parse`.
+    ///
+    /// Authoritative where [`MapGeneratorCommand::Validate`] is merely quick:
+    /// it applies the rules of the *actual* release rather than our copy of
+    /// them, and it yields the resulting map name. Costs a JVM start, no map.
+    Preflight {
+        options: GeneratorOptions,
+    },
+    /// Decode generated map names into their parameters, without any IO.
+    DecodeNames {
+        map_names: Vec<String>,
+    },
+    /// Fetch the generator's `--help` text.
+    LoadHelp {
+        #[serde(default)]
+        version: Option<String>,
+    },
+    /// Stop the run in flight. Does nothing when none is.
+    Cancel,
+    /// Write the current options to the preset library under `name`,
+    /// overwriting a preset of the same name.
+    SavePreset {
+        name: String,
+        options: GeneratorOptions,
+    },
+    /// Re-read the preset library from disk.
+    LoadPresets,
+    DeletePreset {
+        name: String,
+    },
     /// Delete generated maps except stable folder names explicitly protected
     /// by the user's favorites.
     ///
@@ -224,6 +392,11 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
         MapGeneratorEvent::PreviewsLoaded { previews } => {
             state.previews.extend(previews.clone());
         }
+        MapGeneratorEvent::ValidationChanged { issues } => state.validation = issues.clone(),
+        MapGeneratorEvent::NamePredicted { map_name } => state.predicted_name = map_name.clone(),
+        MapGeneratorEvent::NamesDecoded { decoded } => state.decoded.extend(decoded.clone()),
+        MapGeneratorEvent::HelpLoaded { text } => state.help_text = text.clone(),
+        MapGeneratorEvent::PresetsLoaded { presets } => state.presets = presets.clone(),
     }
 }
 
@@ -243,6 +416,7 @@ mod tests {
     #[test]
     fn every_in_flight_status_reads_as_busy() {
         for status in [
+            GeneratorStatus::Preparing,
             GeneratorStatus::ResolvingVersion,
             GeneratorStatus::Downloading {
                 version: "1.7.7".into(),
@@ -259,6 +433,7 @@ mod tests {
         for status in [
             GeneratorStatus::Idle,
             GeneratorStatus::Generated { maps: vec![] },
+            GeneratorStatus::Cancelled,
             GeneratorStatus::Failed { reason: "x".into() },
         ] {
             assert!(!status.is_busy(), "{status:?} should not be busy");
@@ -328,6 +503,76 @@ mod tests {
             },
         );
         assert_eq!(s.options, options);
+    }
+
+    #[test]
+    fn preset_names_become_predictable_file_names() {
+        assert_eq!(
+            preset_file_name("Team Ladder").as_deref(),
+            Some("team-ladder.json")
+        );
+        // Case and spacing must not create two files that look identical in
+        // the list and then shadow each other.
+        assert_eq!(
+            preset_file_name("team   ladder").as_deref(),
+            Some("team-ladder.json")
+        );
+        assert_eq!(
+            preset_file_name("  Team Ladder  ").as_deref(),
+            Some("team-ladder.json")
+        );
+        assert_eq!(preset_file_name("1v1").as_deref(), Some("1v1.json"));
+    }
+
+    #[test]
+    fn a_preset_name_can_never_escape_its_folder() {
+        // The name becomes a path component, so this is a security boundary,
+        // not a tidiness rule.
+        for name in [
+            "../../etc/passwd",
+            "..",
+            ".hidden",
+            "with/slash",
+            "with\\backslash",
+            "",
+            "   ",
+            "nul\0byte",
+        ] {
+            assert!(!is_valid_preset_name(name), "{name:?} should be refused");
+            assert_eq!(preset_file_name(name), None, "{name:?} should have no file");
+        }
+    }
+
+    #[test]
+    fn an_over_long_preset_name_is_refused() {
+        assert!(is_valid_preset_name(&"a".repeat(MAX_PRESET_NAME)));
+        assert!(!is_valid_preset_name(&"a".repeat(MAX_PRESET_NAME + 1)));
+    }
+
+    #[test]
+    fn the_preset_library_is_replaced_wholesale() {
+        // Re-read after every change: a delta protocol would need two copies
+        // of the library to stay in step for no benefit at this size.
+        let mut s = MapGeneratorState::default();
+        let preset = |name: &str| GeneratorPreset {
+            name: name.into(),
+            saved_at: "2026-08-16T00:00:00+00:00".into(),
+            options: GeneratorOptions::default(),
+        };
+        reduce(
+            &mut s,
+            &MapGeneratorEvent::PresetsLoaded {
+                presets: vec![preset("one"), preset("two")],
+            },
+        );
+        assert_eq!(s.presets.len(), 2);
+        reduce(
+            &mut s,
+            &MapGeneratorEvent::PresetsLoaded {
+                presets: vec![preset("one")],
+            },
+        );
+        assert_eq!(s.presets.len(), 1, "a deleted preset must disappear");
     }
 
     #[test]

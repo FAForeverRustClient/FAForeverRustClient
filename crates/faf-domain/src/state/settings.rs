@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::BTreeMap;
 
+use crate::protocol::map_generator::GeneratorOptions;
+
 use super::chat::normalize_channels;
 use super::Tab;
 
@@ -1196,7 +1198,8 @@ impl BrowsingPreferences {
 /// Persisted preferences. `#[serde(default)]` is essential for forward
 /// compatibility: settings files written by older builds only contain the
 /// original theme/path fields and must retain them while new groups default.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Type)]
+// No `Eq`: the map generator's density preferences are `f32`.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsState {
     pub theme: Theme,
@@ -1212,6 +1215,13 @@ pub struct SettingsState {
     pub connectivity: ConnectivityPreferences,
     pub updates: UpdatePreferences,
     pub browsing: BrowsingPreferences,
+    /// The map generator dialog's last settings.
+    ///
+    /// Persisted for the same reason the Java client keeps `GeneratorPrefs`:
+    /// choosing a size, spawn count and half a dozen styles is real work, and
+    /// having it survive a restart is the difference between the dialog being
+    /// configured once and being configured every time.
+    pub map_generator: GeneratorOptions,
 }
 
 impl<'de> Deserialize<'de> for SettingsState {
@@ -1239,6 +1249,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             connectivity: ConnectivityPreferences,
             updates: UpdatePreferences,
             browsing: BrowsingPreferences,
+            map_generator: GeneratorOptions,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -1256,6 +1267,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             connectivity: wire.connectivity,
             updates: wire.updates,
             browsing: wire.browsing,
+            map_generator: wire.map_generator,
         })
     }
 }
@@ -1275,7 +1287,8 @@ impl SettingsState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+// No `Eq`: the map generator's density preferences are `f32`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum SettingsEvent {
     Loaded {
@@ -1320,9 +1333,12 @@ pub enum SettingsEvent {
     BrowsingChanged {
         preferences: Box<BrowsingPreferences>,
     },
+    MapGeneratorChanged {
+        preferences: Box<GeneratorOptions>,
+    },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum SettingsCommand {
     Load,
@@ -1364,6 +1380,9 @@ pub enum SettingsCommand {
     SetUpdates {
         preferences: UpdatePreferences,
     },
+    SetMapGenerator {
+        preferences: Box<GeneratorOptions>,
+    },
     SetBrowsing {
         preferences: Box<BrowsingPreferences>,
     },
@@ -1391,6 +1410,9 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::UpdatesChanged { preferences } => state.updates = *preferences,
         SettingsEvent::BrowsingChanged { preferences } => {
             state.browsing = preferences.as_ref().clone().normalized()
+        }
+        SettingsEvent::MapGeneratorChanged { preferences } => {
+            state.map_generator = preferences.as_ref().clone()
         }
     }
 }

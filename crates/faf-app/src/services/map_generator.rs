@@ -13,9 +13,10 @@
 //!   the maps directory, so the maps slice is stale until it re-scans: without
 //!   this the map you just generated wouldn't appear as installed.
 
+use faf_domain::protocol::{map_generator, map_generator_name};
 use faf_domain::state::{
     GeneratorOptionQuery, GeneratorStatus, MapGeneratorCommand, MapGeneratorEvent, MapsCommand,
-    NotificationKind,
+    NotificationKind, SettingsEvent,
 };
 
 use crate::ports::GeneratorUpdate;
@@ -28,6 +29,12 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             let Some(_guard) = ctx.map_generator_active.try_acquire() else {
                 return;
             };
+            // Announce the run before doing anything, so the status can never
+            // still be reporting the *previous* run's result while this one is
+            // under way. See `GeneratorStatus::Preparing`.
+            out.emit(MapGeneratorEvent::StatusChanged {
+                status: GeneratorStatus::Preparing,
+            });
             if ctx.ports.map_generator.is_installed(&map_name) {
                 // Already reproduced: report success without spawning Java.
                 let previews = ctx
@@ -52,14 +59,141 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             let Some(_guard) = ctx.map_generator_active.try_acquire() else {
                 return;
             };
+            out.emit(MapGeneratorEvent::StatusChanged {
+                status: GeneratorStatus::Preparing,
+            });
             out.emit(MapGeneratorEvent::OptionsChanged {
                 options: options.clone(),
             });
+            // Ask the generator to resolve the options before committing to a
+            // run. It costs one JVM start and turns "the map generator failed"
+            // after three minutes into the generator's own precise complaint
+            // before anything has begun. Raw arguments skip it: they are the
+            // documented escape hatch, and `--parse` would reject flags we
+            // deliberately do not understand.
+            if options.command_line_args.is_empty() {
+                match ctx.ports.map_generator.preflight(options.clone()).await {
+                    Ok(map_name) => out.emit(MapGeneratorEvent::NamePredicted { map_name }),
+                    Err(reason) => {
+                        out.emit(MapGeneratorEvent::StatusChanged {
+                            status: GeneratorStatus::Failed {
+                                reason: reason.clone(),
+                            },
+                        });
+                        services::notifications::add(
+                            out,
+                            NotificationKind::Error,
+                            "Those options will not generate",
+                            reason,
+                            None,
+                        );
+                        return;
+                    }
+                }
+            }
             let updates = ctx.ports.map_generator.generate(options).await;
             drain(updates, ctx, out).await;
         }
         MapGeneratorCommand::SetOptions { options } => {
-            out.emit(MapGeneratorEvent::OptionsChanged { options })
+            out.emit(MapGeneratorEvent::ValidationChanged {
+                issues: map_generator::validate_options(&options),
+            });
+            // Written through to the settings file, not just to the in-memory
+            // slice: "save settings" that lasts until the next restart is
+            // indistinguishable from a button that does nothing.
+            out.emit(SettingsEvent::MapGeneratorChanged {
+                preferences: Box::new(options.clone()),
+            });
+            out.emit(MapGeneratorEvent::OptionsChanged { options });
+            services::settings::persist(ctx, out).await;
+        }
+        MapGeneratorCommand::Validate { options } => {
+            // Pure arithmetic, so the dialog can call this on every keystroke.
+            out.emit(MapGeneratorEvent::ValidationChanged {
+                issues: map_generator::validate_options(&options),
+            });
+        }
+        MapGeneratorCommand::Preflight { options } => {
+            match ctx.ports.map_generator.preflight(options).await {
+                Ok(map_name) => out.emit(MapGeneratorEvent::NamePredicted { map_name }),
+                Err(reason) => {
+                    // Not a generation failure: nothing was started. Clearing
+                    // the prediction and reporting the reason keeps a stale
+                    // name from looking like it still applies.
+                    out.emit(MapGeneratorEvent::NamePredicted {
+                        map_name: String::new(),
+                    });
+                    services::notifications::add(
+                        out,
+                        NotificationKind::Error,
+                        "Those options will not generate",
+                        reason,
+                        None,
+                    );
+                }
+            }
+        }
+        MapGeneratorCommand::DecodeNames { map_names } => {
+            // No IO at all: a generated map name carries its own parameters,
+            // so a whole lobby list can be expanded in one pass.
+            let decoded: std::collections::HashMap<_, _> = map_names
+                .iter()
+                .filter_map(|name| {
+                    map_generator_name::decode(name).map(|parsed| (name.clone(), parsed))
+                })
+                .collect();
+            if !decoded.is_empty() {
+                out.emit(MapGeneratorEvent::NamesDecoded { decoded });
+            }
+        }
+        MapGeneratorCommand::LoadHelp { version } => {
+            match ctx.ports.map_generator.help(version).await {
+                Ok(text) => out.emit(MapGeneratorEvent::HelpLoaded { text }),
+                Err(reason) => services::notifications::add(
+                    out,
+                    NotificationKind::Error,
+                    "Could not read the generator help",
+                    reason,
+                    None,
+                ),
+            }
+        }
+        MapGeneratorCommand::Cancel => ctx.ports.map_generator.cancel(),
+        MapGeneratorCommand::SavePreset { name, options } => {
+            match ctx.ports.map_generator.save_preset(&name, &options).await {
+                Ok(()) => {
+                    // Saving a preset is also "these are my current options",
+                    // so the dialog reopens on them without a second click.
+                    out.emit(MapGeneratorEvent::OptionsChanged {
+                        options: options.clone(),
+                    });
+                    out.emit(SettingsEvent::MapGeneratorChanged {
+                        preferences: Box::new(options),
+                    });
+                    services::settings::persist(ctx, out).await;
+                    reload_presets(ctx, out).await;
+                }
+                Err(reason) => services::notifications::add(
+                    out,
+                    NotificationKind::Error,
+                    "Could not save the preset",
+                    reason,
+                    None,
+                ),
+            }
+        }
+        MapGeneratorCommand::LoadPresets => reload_presets(ctx, out).await,
+        MapGeneratorCommand::DeletePreset { name } => {
+            if let Err(reason) = ctx.ports.map_generator.delete_preset(&name).await {
+                services::notifications::add(
+                    out,
+                    NotificationKind::Error,
+                    "Could not delete the preset",
+                    reason,
+                    None,
+                );
+            }
+            reload_presets(ctx, out).await;
         }
         MapGeneratorCommand::LoadOptions { version } => load_options(version, ctx, out).await,
         MapGeneratorCommand::CleanUp => {
@@ -128,6 +262,8 @@ async fn drain(
                 reason.clone(),
                 None,
             ),
+            // A cancellation is the user's own doing; telling them about it
+            // would be reporting their own click back to them.
             _ => {}
         }
         out.emit(MapGeneratorEvent::StatusChanged { status });
@@ -139,6 +275,15 @@ async fn drain(
         }
         refresh_installed_maps(ctx, out).await;
     }
+}
+
+/// Re-read the whole preset library and publish it.
+///
+/// Called after every change rather than mutating a cached list, so the state
+/// always reflects the folder, including presets added or removed by hand.
+async fn reload_presets(ctx: &ServiceCtx, out: &EventSink) {
+    let presets = ctx.ports.map_generator.list_presets().await;
+    out.emit(MapGeneratorEvent::PresetsLoaded { presets });
 }
 
 /// A generated map is a new folder on disk; the maps slice has to re-scan for

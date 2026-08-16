@@ -744,6 +744,49 @@ export type CustomGameSort = "players" | "rating" | "map" | "host" | "age";
 
 export type CustomGameView = "tiles" | "list";
 
+/**  Everything a generated map name reveals about how it was made. */
+export type DecodedMapName = {
+	/**  Generator release that produced it, e.g. `1.22.1`. */
+	version: string,
+	/**  The 64-bit seed. Rendered as a string because JS cannot hold it exactly. */
+	seed: string,
+	spawnCount: number,
+	/**  In generator units; divide by 51.2 for km. */
+	mapSize: number,
+	numTeams: number,
+	/**
+	 *  `None` means the generator chose freely rather than "no symmetry":
+	 *  the latter is the `NONE` symmetry, which is a value of its own.
+	 */
+	symmetry: string | null,
+	/**  Absent when the name carries only the basic triple. */
+	style: DecodedStyle | null,
+	/**
+	 *  Set for tournament/blind/unexplored maps, which carry a generation
+	 *  timestamp instead of style information: that is the whole point of them.
+	 */
+	visibility: string | null,
+	/**
+	 *  When the map was originally generated, RFC 3339, present exactly when
+	 *  `visibility` is.
+	 *
+	 *  A string rather than an integer because specta refuses to carry 64-bit
+	 *  numbers across the JS boundary, and because a formatted instant is what
+	 *  the caller wants anyway.
+	 */
+	generatedAt: string | null,
+};
+
+/**  The style half of a decoded name. */
+export type DecodedStyle =
+/**
+ *  A whole-map preset. `None` when the ordinal is newer than this client's
+ *  table; the map still decodes, we just cannot name its style.
+ */
+{ kind: "predefined"; style: string | null } |
+/**  The four component styles plus both densities. */
+{ kind: "custom"; terrainStyle: string | null; textureStyle: string | null; resourceStyle: string | null; propStyle: string | null; reclaimDensity: number | null; resourceDensity: number | null };
+
 /**  Discord Rich Presence: what the client tells Discord you are doing. */
 export type DiscordPreferences = {
 	/**
@@ -1072,7 +1115,16 @@ export type GeneratorOptions = {
 	resourceStyles?: string[],
 	propStyle?: string,
 	propStyles?: string[],
-	/**  0–127 in the generator's units; the Java client's sliders use the same. */
+	/**
+	 *  Reclaim density as a *bin index*, 0–127.
+	 *
+	 *  The generator's flag takes 0.0–1.0 and rejects anything above it
+	 *  ("Must be between 0 and 1"). 127 is its `NUM_BINS`, the resolution it
+	 *  discretises to, not the scale. Both reference clients keep a coarser
+	 *  unit in the UI and convert on the way out (Java divides by 127, Python
+	 *  by 100); [`build_arguments`] does the same, so this field stays in the
+	 *  bin units the sliders speak.
+	 */
 	reclaimDensity: number | null,
 	reclaimDensityMin?: number | null,
 	reclaimDensityMax?: number | null,
@@ -1082,14 +1134,67 @@ export type GeneratorOptions = {
 	/**  Generate several maps in one run (`--num-to-generate`). */
 	numToGenerate: number | null,
 	/**
+	 *  `--debug`: writes `debug/pipelineMaskHashes.txt` and prints the resolved
+	 *  parameters. The generator ignores it for tournament and blind maps,
+	 *  which is why it is not offered alongside those.
+	 */
+	debug?: boolean,
+	/**
+	 *  `--visualize`: opens the generator's mask viewer. The run then stays
+	 *  alive on purpose, so it is exempt from the generation timeout: see
+	 *  [`runs_without_timeout`].
+	 */
+	visualize?: boolean,
+	/**
+	 *  `--preview-path`: where to drop preview PNGs, separately from the map
+	 *  folder. Saves guessing at preview filenames on the way back out.
+	 *  Casual maps only; tournament and blind maps have no preview by design.
+	 */
+	previewPath?: string,
+	/**
+	 *  `--out-path`: where the map folder is written. Empty means "the working
+	 *  directory", which is how all three clients drive it by default.
+	 */
+	outputPath?: string,
+	/**
 	 *  Raw passthrough. When set it replaces every other option: the escape
 	 *  hatch both clients keep for generator flags newer than the client.
 	 */
 	commandLineArgs: string,
 };
 
+/**
+ *  A named, saved set of generator options.
+ *
+ *  Kept as one file each rather than as a list inside the client's settings,
+ *  because a preset is a thing you want to *have*: to copy, to send to someone
+ *  setting up a tournament, to keep after a reinstall. A blob buried in
+ *  `settings.json` is none of those.
+ */
+export type GeneratorPreset = {
+	/**  What the user called it. Shown as-is; the file name is derived. */
+	name: string,
+	/**
+	 *  RFC 3339. A string because specta refuses 64-bit numbers, and because a
+	 *  formatted instant is what the list wants anyway.
+	 */
+	savedAt?: string,
+	options: GeneratorOptions,
+};
+
 /**  Where a generation run currently is. */
 export type GeneratorStatus = { type: "idle" } |
+/**
+ *  A run has been accepted and is being set up: checking the options with
+ *  the generator, resolving a release.
+ *
+ *  Emitted synchronously when the command is received, before any IO. That
+ *  matters twice over: it is the only feedback during the `--parse`
+ *  preflight, which costs a JVM start; and it guarantees the status leaves
+ *  `Generated` at the *start* of every run, so a UI watching for a result
+ *  cannot mistake the previous run's maps for this one's.
+ */
+{ type: "preparing" } |
 /**
  *  Asking GitHub which generator release to use. Only happens for an
  *  options-driven run: reproducing a map takes its version from the name.
@@ -1121,7 +1226,13 @@ export type GeneratorStatus = { type: "idle" } |
 	maps: string[],
 } } | { type: "failed"; payload: {
 	reason: string,
-} };
+} } |
+/**
+ *  The user stopped the run. Distinct from `Failed` because nothing went
+ *  wrong: presenting a deliberate cancellation as an error trains people to
+ *  ignore error messages.
+ */
+{ type: "cancelled" };
 
 /**
  *  Configuration sent with `game_host`. This mirrors the reference client's host
@@ -1611,6 +1722,47 @@ export type MapGeneratorCommand =
 	options: GeneratorOptions,
 } } |
 /**
+ *  Check options against the generator's rules without running anything.
+ *
+ *  Pure and instant, so the dialog can call it on every edit. It is a fast
+ *  approximation of what [`MapGeneratorCommand::Preflight`] confirms.
+ */
+{ type: "validate"; payload: {
+	options: GeneratorOptions,
+} } |
+/**
+ *  Ask the generator itself to resolve the options, via `--parse`.
+ *
+ *  Authoritative where [`MapGeneratorCommand::Validate`] is merely quick:
+ *  it applies the rules of the *actual* release rather than our copy of
+ *  them, and it yields the resulting map name. Costs a JVM start, no map.
+ */
+{ type: "preflight"; payload: {
+	options: GeneratorOptions,
+} } |
+/**  Decode generated map names into their parameters, without any IO. */
+{ type: "decodeNames"; payload: {
+	mapNames: string[],
+} } |
+/**  Fetch the generator's `--help` text. */
+{ type: "loadHelp"; payload: {
+	version?: string | null,
+} } |
+/**  Stop the run in flight. Does nothing when none is. */
+{ type: "cancel" } |
+/**
+ *  Write the current options to the preset library under `name`,
+ *  overwriting a preset of the same name.
+ */
+{ type: "savePreset"; payload: {
+	name: string,
+	options: GeneratorOptions,
+} } |
+/**  Re-read the preset library from disk. */
+{ type: "loadPresets" } | { type: "deletePreset"; payload: {
+	name: string,
+} } |
+/**
  *  Delete generated maps except stable folder names explicitly protected
  *  by the user's favorites.
  *
@@ -1634,6 +1786,26 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
 	options: GeneratorOptions,
 } } | { type: "previewsLoaded"; payload: {
 	previews: { [key in string]: string },
+} } | { type: "validationChanged"; payload: {
+	issues: ValidationIssue[],
+} } |
+/**
+ *  A `--parse` preflight resolved the options to a map name. An empty name
+ *  clears a stale prediction when the options change.
+ */
+{ type: "namePredicted"; payload: {
+	mapName: string,
+} } | { type: "namesDecoded"; payload: {
+	decoded: { [key in string]: DecodedMapName },
+} } | { type: "helpLoaded"; payload: {
+	text: string,
+} } |
+/**
+ *  The whole library, re-read after every change. Small enough that
+ *  sending the list beats sending deltas and keeping two copies in step.
+ */
+{ type: "presetsLoaded"; payload: {
+	presets: GeneratorPreset[],
 } };
 
 export type MapGeneratorState = {
@@ -1653,6 +1825,34 @@ export type MapGeneratorState = {
 	options: GeneratorOptions,
 	/**  Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`). */
 	previews?: { [key in string]: string },
+	/**
+	 *  Problems with the current options, from the pure rule checks. Refreshed
+	 *  as the dialog is edited so the user is told *before* a JAR is fetched
+	 *  and a JVM started, which is when the generator would otherwise object.
+	 */
+	validation?: ValidationIssue[],
+	/**
+	 *  The map name the current options would produce, as reported by the
+	 *  generator's own `--parse`. Empty until a preflight has run.
+	 *
+	 *  Worth showing on its own: it is shareable before the map exists, and it
+	 *  is the authoritative confirmation that the options are acceptable.
+	 */
+	predictedName?: string,
+	/**
+	 *  Parameters decoded out of generated map names, keyed by name.
+	 *
+	 *  Filled by [`MapGeneratorCommand::DecodeNames`], which is pure
+	 *  arithmetic: a lobby list can afford to decode every row.
+	 */
+	decoded?: { [key in string]: DecodedMapName },
+	/**
+	 *  The generator's own `--help` output, for the escape hatch users who
+	 *  write raw arguments. The Python client offers the same button.
+	 */
+	helpText?: string,
+	/**  The saved preset library, newest first. Empty until loaded. */
+	presets?: GeneratorPreset[],
 };
 
 /**  Status of an install/uninstall action for one map folder. */
@@ -2788,6 +2988,8 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	preferences: ConnectivityPreferences,
 } } | { type: "setUpdates"; payload: {
 	preferences: UpdatePreferences,
+} } | { type: "setMapGenerator"; payload: {
+	preferences: GeneratorOptions,
 } } | { type: "setBrowsing"; payload: {
 	preferences: BrowsingPreferences,
 } } | { type: "checkInstalls" };
@@ -2820,6 +3022,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: UpdatePreferences,
 } } | { type: "browsingChanged"; payload: {
 	preferences: BrowsingPreferences,
+} } | { type: "mapGeneratorChanged"; payload: {
+	preferences: GeneratorOptions,
 } };
 
 /**
@@ -2841,6 +3045,15 @@ export type SettingsState = {
 	connectivity: ConnectivityPreferences,
 	updates: UpdatePreferences,
 	browsing: BrowsingPreferences,
+	/**
+	 *  The map generator dialog's last settings.
+	 *
+	 *  Persisted for the same reason the Java client keeps `GeneratorPrefs`:
+	 *  choosing a size, spawn count and half a dozen styles is real work, and
+	 *  having it survive a restart is the difference between the dialog being
+	 *  configured once and being configured every time.
+	 */
+	mapGenerator: GeneratorOptions,
 };
 
 export type SocialCommand =
@@ -2917,6 +3130,16 @@ export type SocialState = {
 export type StatisticsStatus = { type: "idle" } | { type: "loading" } | { type: "loaded" } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+/**  The size, spawn and team window a whole-map style is designed for. */
+export type StyleConstraints = {
+	minMapSize: number,
+	maxMapSize: number,
+	minSpawnCount: number,
+	maxSpawnCount: number,
+	minNumTeams: number,
+	maxNumTeams: number,
+};
 
 /**
  *  A top-level destination. Most are placeholders today; each gets its feature
@@ -3151,6 +3374,45 @@ export type UploadsState = {
 	request: UploadRequest | null,
 	status: UploadStatus,
 };
+
+/**  A parameter combination the generator will reject, or advise against. */
+export type ValidationIssue =
+/**  The generator aborts: spawns must divide evenly among teams. */
+{ kind: "spawnsNotDivisibleByTeams"; payload: {
+	spawnCount: number,
+	numTeams: number,
+} } |
+/**  The generator aborts: map size is stored as 64-unit steps. */
+{ kind: "mapSizeNotAMultiple"; payload: {
+	mapSize: number,
+} } |
+/**  The generator aborts: no selected symmetry can make this many teams. */
+{ kind: "symmetryIncompatible"; payload: {
+	symmetries: string[],
+	numTeams: number,
+} } |
+/**  Outside the generator's accepted range. */
+{ kind: "outOfRange"; payload: {
+	field: string,
+	value: number,
+	min: number,
+	max: number,
+} } |
+/**
+ *  Accepted, but the style was not designed for this map shape, so the
+ *  result will not look like its name. A warning, not a refusal.
+ */
+{ kind: "styleOutsideItsRange"; payload: {
+	style: string,
+	constraints: StyleConstraints,
+} } |
+/**
+ *  The generator's `--seed` is a signed 64-bit integer; anything else is a
+ *  type-conversion failure before generation starts.
+ */
+{ kind: "seedNotAnInteger"; payload: {
+	seed: string,
+} };
 
 /**
  *  One map version, as listed from the FAF Data API (`GET /data/map`,
