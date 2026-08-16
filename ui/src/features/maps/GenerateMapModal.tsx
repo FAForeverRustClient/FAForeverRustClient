@@ -365,7 +365,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
         )}
 
         <fieldset className="generate-map-fieldset" disabled={reproducing}>
-          <div className="generate-map-rows">
+          <div className="generate-map-grid-2col">
             <Row label={t("maps.generate.generatorVersion")}>
               <Select
                 value={form.version ?? ""}
@@ -492,7 +492,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </p>
               )}
 
-              <div className="generate-map-rows">
+              <div className="generate-map-grid-2col">
                 <Row label={t("maps.generate.symmetries")}>
                   <MultiSelect
                     label={t("maps.generate.symmetries")}
@@ -556,18 +556,14 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   />
                 </Row>
 
-                <Row
-                  label={t("maps.generate.reclaimDensity")}
-                  hint={`${densityPercent(form.reclaimDensityMin ?? 0)}–${densityPercent(
-                    form.reclaimDensityMax ?? DENSITY_BINS,
-                  )}%`}
-                >
+                <Row label={t("maps.generate.reclaimDensity")}>
                   <RangeSlider
                     label={t("maps.generate.reclaimDensity")}
                     min={0}
                     max={DENSITY_BINS}
                     low={form.reclaimDensityMin ?? null}
                     high={form.reclaimDensityMax ?? null}
+                    format={(v) => `${densityPercent(v)}%`}
                     onChange={(low, high) => {
                       set("reclaimDensityMin", low);
                       set("reclaimDensityMax", high);
@@ -575,18 +571,14 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   />
                 </Row>
 
-                <Row
-                  label={t("maps.generate.resourceDensity")}
-                  hint={`${densityPercent(form.resourceDensityMin ?? 0)}–${densityPercent(
-                    form.resourceDensityMax ?? DENSITY_BINS,
-                  )}%`}
-                >
+                <Row label={t("maps.generate.resourceDensity")}>
                   <RangeSlider
                     label={t("maps.generate.resourceDensity")}
                     min={0}
                     max={DENSITY_BINS}
                     low={form.resourceDensityMin ?? null}
                     high={form.resourceDensityMax ?? null}
+                    format={(v) => `${densityPercent(v)}%`}
                     onChange={(low, high) => {
                       set("resourceDensityMin", low);
                       set("resourceDensityMax", high);
@@ -594,22 +586,36 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   />
                 </Row>
               </div>
-            </fieldset>
 
-            {/* The seed row is outside the fieldset: its second field is the
-                one control that must stay usable while a map name is set,
-                because it is what sets it. */}
-            <div className="generate-map-rows">
-              <Row label={t("maps.generate.seed")} hint={t("maps.generate.seedHint")}>
-                <div className="generate-map-seed-row">
-                  <input
-                    className="generate-map-control"
-                    value={form.seed}
-                    disabled={reproducing}
-                    placeholder={t("maps.generate.random")}
-                    aria-label={t("maps.generate.seed")}
-                    onChange={(e) => set("seed", e.target.value.replace(/[^\d-]/g, ""))}
-                  />
+              <hr className="generate-map-divider" />
+
+              <div className="generate-map-grid-2col">
+                <Row label={t("maps.generate.seed")}>
+                  <div className="generate-map-seed" title={t("maps.generate.seedHint")}>
+                    <input
+                      className="generate-map-control"
+                      value={form.seed}
+                      disabled={reproducing}
+                      placeholder={t("maps.generate.random")}
+                      aria-label={t("maps.generate.seed")}
+                      onChange={(e) => set("seed", e.target.value.replace(/[^\d-]/g, ""))}
+                    />
+                    <button
+                      type="button"
+                      className="generate-map-seed-btn"
+                      disabled={reproducing}
+                      aria-label={t("maps.generate.rerollSeed")}
+                      title={t("maps.generate.rerollSeed")}
+                      onClick={() =>
+                        set("seed", String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
+                      }
+                    >
+                      <Icon name="refresh" size={13} />
+                    </button>
+                  </div>
+                </Row>
+
+                <Row label={t("maps.generate.reproduceTitle")}>
                   <input
                     className="generate-map-control"
                     value={reproduceName}
@@ -618,54 +624,78 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                     placeholder={t("maps.generate.mapNameSeedPlaceholder")}
                     onChange={(e) => setReproduceName(e.target.value)}
                   />
-                  <button
-                    type="button"
-                    className="generate-map-seed-btn"
-                    disabled={reproducing}
-                    aria-label={t("maps.generate.rerollSeed")}
-                    title={t("maps.generate.rerollSeed")}
-                    onClick={() =>
-                      set("seed", String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
-                    }
-                  >
-                    <Icon name="refresh" size={13} />
-                  </button>
-                </div>
-              </Row>
-            </div>
-
-            <fieldset className="generate-map-fieldset" disabled={reproducing}>
-              <div className="generate-map-rows">
-                <Row label={t("maps.generate.outputPath")}>
-                  <div className="generate-map-trio">
-                    <input
-                      className="generate-map-control"
-                      value={form.outputPath}
-                      aria-label={t("maps.generate.outputPath")}
-                      placeholder={t("maps.generate.outputPathHint")}
-                      onChange={(e) => set("outputPath", e.target.value)}
-                    />
-                    <input
-                      className="generate-map-control"
-                      value={form.commandLineArgs}
-                      aria-label={t("maps.generate.rawArguments")}
-                      placeholder={t("maps.generate.rawArguments")}
-                      onChange={(e) => set("commandLineArgs", e.target.value)}
-                    />
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        setShowHelp((open) => !open);
-                        if (!state.helpText) void loadHelp(form.version);
-                      }}
-                    >
-                      {showHelp ? t("maps.generate.hideHelp") : t("maps.generate.showHelp")}
-                    </Button>
-                  </div>
                 </Row>
 
+                <Row label={t("maps.generate.outputPath")}>
+                  <input
+                    className="generate-map-control"
+                    value={form.outputPath}
+                    aria-label={t("maps.generate.outputPath")}
+                    placeholder={t("maps.generate.outputPathHint")}
+                    onChange={(e) => set("outputPath", e.target.value)}
+                  />
+                </Row>
+
+                <Row label={t("maps.generate.rawArguments")}>
+                  <input
+                    className="generate-map-control"
+                    value={form.commandLineArgs}
+                    aria-label={t("maps.generate.rawArguments")}
+                    placeholder={t("maps.generate.overridesEveryOption")}
+                    onChange={(e) => set("commandLineArgs", e.target.value)}
+                  />
+                </Row>
+              </div>
+
+              <hr className="generate-map-divider" />
+
+              <div className="generate-map-grid-2col">
+                <Row label={t("maps.generate.presets")}>
+                  <Select value="" onChange={applyPreset}>
+                    <option value="">
+                      {presets.length === 0
+                        ? t("maps.generate.presetsEmpty")
+                        : t("maps.generate.presetsLoad")}
+                    </option>
+                    {presets.map((preset) => (
+                      <option key={preset.name} value={preset.name}>
+                        {preset.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Row>
+
+                <Row label={t("maps.generate.presetName")}>
+                  <div className="generate-map-preset-save-group">
+                    <input
+                      className="generate-map-control"
+                      value={presetName}
+                      maxLength={80}
+                      aria-label={t("maps.generate.presetName")}
+                      placeholder={t("maps.generate.presetName")}
+                      onChange={(e) => setPresetName(e.target.value)}
+                    />
+                    <Button type="button" disabled={!presetNameUsable} onClick={save}>
+                      {saved
+                        ? t("maps.generate.settingsSaved")
+                        : existing
+                          ? t("maps.generate.presetReplace")
+                          : t("maps.generate.presetSave")}
+                    </Button>
+                    {existing && (
+                      <Button type="button" onClick={() => void deletePreset(existing.name)}>
+                        {t("maps.generate.presetDelete")}
+                      </Button>
+                    )}
+                  </div>
+                </Row>
+              </div>
+
+              <hr className="generate-map-divider" />
+
+              <div className="generate-map-grid-2col">
                 <Row label={t("maps.generate.diagnostics")}>
-                  <div className="generate-map-trio">
+                  <div className="generate-map-checks-group">
                     <label className="generate-map-check">
                       <input
                         type="checkbox"
@@ -684,8 +714,22 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                       <span title={t("maps.generate.debugHint")}>{t("maps.generate.debug")}</span>
                     </label>
+                  </div>
+                </Row>
+
+                <Row label={t("maps.generate.tools")}>
+                  <div className="generate-map-tools-group">
                     <Button type="button" onClick={() => void preflight(form)} disabled={busy}>
                       {t("maps.generate.checkOptions")}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setShowHelp((open) => !open);
+                        if (!state.helpText) void loadHelp(form.version);
+                      }}
+                    >
+                      {showHelp ? t("maps.generate.hideHelp") : t("maps.generate.showHelp")}
                     </Button>
                   </div>
                 </Row>
@@ -706,47 +750,6 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             <code>{state.predictedName}</code>
           </p>
         )}
-
-        <div className="generate-map-rows generate-map-presets">
-          <Row label={t("maps.generate.presets")} hint={t("maps.generate.presetsHint")}>
-            <div className="generate-map-trio">
-              <Select value="" onChange={applyPreset}>
-                <option value="">
-                  {presets.length === 0
-                    ? t("maps.generate.presetsEmpty")
-                    : t("maps.generate.presetsLoad")}
-                </option>
-                {presets.map((preset) => (
-                  <option key={preset.name} value={preset.name}>
-                    {preset.name}
-                  </option>
-                ))}
-              </Select>
-              <input
-                className="generate-map-control"
-                value={presetName}
-                maxLength={80}
-                aria-label={t("maps.generate.presetName")}
-                placeholder={t("maps.generate.presetName")}
-                onChange={(e) => setPresetName(e.target.value)}
-              />
-              <div className="generate-map-preset-actions">
-                <Button type="button" disabled={!presetNameUsable} onClick={save}>
-                  {saved
-                    ? t("maps.generate.settingsSaved")
-                    : existing
-                      ? t("maps.generate.presetReplace")
-                      : t("maps.generate.presetSave")}
-                </Button>
-                {existing && (
-                  <Button type="button" onClick={() => void deletePreset(existing.name)}>
-                    {t("maps.generate.presetDelete")}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </Row>
-        </div>
 
         <GeneratorProgress />
 
