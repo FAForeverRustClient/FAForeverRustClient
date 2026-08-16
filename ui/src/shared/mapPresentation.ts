@@ -131,15 +131,19 @@ function findCoopMission(mapName: string, missions?: CoopMission[]): CoopMission
   if (!coopMissions || coopMissions.length === 0) return undefined;
   const normalized = normalizeMapName(mapName);
   const baseName = baseMapName(mapName);
+  const cleanName = mapName.trim().toLocaleLowerCase();
   return coopMissions.find((m) => {
     const folder = normalizeMapName(m.mapFolderName);
     const missionBase = baseMapName(m.mapFolderName);
+    const missionName = m.name.trim().toLocaleLowerCase();
     return (
       folder === normalized ||
       folder === baseName ||
       missionBase === normalized ||
       missionBase === baseName ||
-      m.name.toLocaleLowerCase() === mapName.trim().toLocaleLowerCase()
+      missionName === cleanName ||
+      cleanName.includes(missionName) ||
+      missionName.includes(cleanName)
     );
   });
 }
@@ -233,10 +237,37 @@ export function mapThumbnailCandidates(
 
 export function inferCoopFaction(mapName: string): CoopFaction {
   const normalized = normalizeMapName(mapName);
-  if (normalized.includes("scca_coop_e") || normalized.includes("uef")) return "uef";
-  if (normalized.includes("scca_coop_c") || normalized.includes("cybran")) return "cybran";
-  if (normalized.includes("scca_coop_a") || normalized.includes("aeon")) return "aeon";
-  if (normalized.includes("x1ca_coop_") || normalized.includes("seraphim")) return "seraphim";
+  if (
+    normalized.includes("scca_coop_e") ||
+    normalized.includes("uef") ||
+    normalized.includes("theta") ||
+    normalized.includes("earth") ||
+    normalized.includes("black_day") ||
+    normalized.includes("black day") ||
+    normalized.includes("procyon")
+  ) return "uef";
+  if (
+    normalized.includes("scca_coop_c") ||
+    normalized.includes("cybran") ||
+    normalized.includes("symbiont") ||
+    normalized.includes("brackman") ||
+    normalized.includes("hex5") ||
+    normalized.includes("qai")
+  ) return "cybran";
+  if (
+    normalized.includes("scca_coop_a") ||
+    normalized.includes("aeon") ||
+    normalized.includes("holy") ||
+    normalized.includes("princess") ||
+    normalized.includes("crusade") ||
+    normalized.includes("illuminate")
+  ) return "aeon";
+  if (
+    normalized.includes("x1ca_coop_") ||
+    normalized.includes("seraphim") ||
+    normalized.includes("alien") ||
+    normalized.includes("ou-eatha")
+  ) return "seraphim";
   return "custom";
 }
 

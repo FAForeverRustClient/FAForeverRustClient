@@ -22,6 +22,7 @@ interface Props {
   onApplyFilters: (value: boolean) => void;
   onOpenFilters: () => void;
   onHost: () => void;
+  onRefresh?: () => void;
 }
 
 export function CustomGamesToolbar(props: Props) {
@@ -100,6 +101,11 @@ export function CustomGamesToolbar(props: Props) {
           <Icon name="list" size={15} />
         </button>
       </div>
+      {props.onRefresh && (
+        <Button onClick={props.onRefresh} title={t("lobby.coop.refresh")}>
+          <Icon name="refresh" size={15} />
+        </Button>
+      )}
     </div>
   );
 }

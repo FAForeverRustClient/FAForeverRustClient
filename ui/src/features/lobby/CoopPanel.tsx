@@ -9,6 +9,7 @@
 // "coop", "campaign", "operation" or "mission", which both missed missions
 // named none of those things and swept in ordinary maps that were.
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -18,7 +19,7 @@ import { useAppStore } from "../../store/store";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { inferCoopFaction, mapThumbnailCandidates } from "../../shared/mapPresentation";
 import { FactionIcon } from "../../shared/FactionIcon";
-import { GameTile } from "./CustomGamesBrowser";
+import { GameBrowserRow, GameTile, type GameViewMode } from "./CustomGamesBrowser";
 import { coopFailureAction } from "./coopFailure";
 import "./custom-games.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -78,69 +79,114 @@ function CoopMissionPreview({
   mission,
   scenario,
   vault,
+  onHost,
 }: {
   mission: CoopMission;
   scenario?: CoopScenario;
   vault: VaultMap[];
+  onHost?: () => void;
 }) {
   const { t } = useTranslation();
   const candidates = useMemo(
     () => coopPreviewCandidates(mission, vault),
     [mission, vault],
   );
-  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
 
-  useEffect(() => setCandidateIndex(0), [candidates]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoadedUrl(null);
 
-  const url = candidates[candidateIndex];
-  if (!url) {
-    const faction = scenario?.faction ?? inferCoopFaction(mission.mapFolderName);
-    const factionId = COOP_FACTION_NUMBERS[faction] ?? 1;
+    if (candidates.length === 0) return;
 
+    let index = 0;
+    const tryNext = () => {
+      if (cancelled || index >= candidates.length) return;
+      const src = candidates[index++];
+      const img = new window.Image();
+      img.onload = () => {
+        if (!cancelled) setLoadedUrl(src);
+      };
+      img.onerror = () => {
+        if (!cancelled) tryNext();
+      };
+      img.src = src;
+    };
+
+    tryNext();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [candidates]);
+
+  const faction = scenario?.faction ?? inferCoopFaction(mission.mapFolderName);
+  const factionId = COOP_FACTION_NUMBERS[faction] ?? 1;
+
+  if (loadedUrl) {
     return (
-      <div
-        className="coop-detail-art-card"
-        data-faction={faction}
-        role="img"
-        aria-label={`${mission.name} briefing`}
-      >
-        <div className="coop-detail-art-inner">
-          <div className="coop-detail-art-icon-wrap">
-            <FactionIcon faction={factionId} size={42} />
-          </div>
+      <div className="coop-detail-preview-wrap">
+        <img
+          className="coop-detail-art"
+          src={loadedUrl}
+          alt={`${mission.name} preview`}
+          loading="lazy"
+          decoding="async"
+        />
+        <div className="coop-detail-preview-info">
           <div className="coop-detail-art-meta">
             <span className="coop-detail-art-scenario">{scenario?.name ?? t("lobby.coop.campaignMission")}</span>
             <strong className="coop-detail-art-mission">{mission.name}</strong>
             <small className="muted">{mission.mapFolderName}</small>
           </div>
+          {onHost && (
+            <Button variant="primary" onClick={onHost} className="coop-detail-host-btn">
+              <Icon name="plus" size={14} /> {t("lobby.toolbar.hostGame")}
+            </Button>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <img
-      className="coop-detail-art"
-      src={url}
-      alt={`${mission.name} preview`}
-      loading="lazy"
-      decoding="async"
-      onError={() => setCandidateIndex((index) => index + 1)}
-    />
+    <div
+      className="coop-detail-art-card"
+      data-faction={faction}
+      role="img"
+      aria-label={`${mission.name} briefing`}
+    >
+      <div className="coop-detail-art-inner">
+        <div className="coop-detail-art-icon-wrap">
+          <FactionIcon faction={factionId} size={32} />
+        </div>
+        <div className="coop-detail-art-meta">
+          <span className="coop-detail-art-scenario">{scenario?.name ?? t("lobby.coop.campaignMission")}</span>
+          <strong className="coop-detail-art-mission">{mission.name}</strong>
+          <small className="muted">{mission.mapFolderName}</small>
+        </div>
+        {onHost && (
+          <Button variant="primary" onClick={onHost} className="coop-detail-host-btn">
+            <Icon name="plus" size={14} /> {t("lobby.toolbar.hostGame")}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
 interface Props {
   games: Game[];
+  viewMode?: GameViewMode;
+  toolbar?: ReactNode;
   onJoin: (game: Game) => void;
   onHost: (mission?: CoopMission) => void;
 }
 
-export function CoopPanel({ games, onJoin, onHost }: Props) {
+export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }: Props) {
   const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
-  const [search, setSearch] = useState("");
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
@@ -184,16 +230,7 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
     }
   }, [missionsInActiveScenario, coop.selectedMissionId]);
 
-  const filteredGames = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    if (!query) return games;
-    return games.filter(
-      (g) =>
-        g.title.toLocaleLowerCase().includes(query) ||
-        g.host.toLocaleLowerCase().includes(query) ||
-        g.map.toLocaleLowerCase().includes(query),
-    );
-  }, [games, search]);
+  const connected = useAppStore((state) => state.state.lobby.status === "connected");
 
   const catalogNote = loadStatusNote(
     coop.catalogStatus,
@@ -203,25 +240,6 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
 
   return (
     <div className="coop-panel">
-      <div className="coop-toolbar">
-        <Button variant="primary" onClick={() => onHost(selected ?? undefined)}>
-          <Icon name="play" size={14} /> {t("lobby.coop.hostCoopGame")}
-        </Button>
-        <div className="search-field">
-          <Icon name="search" size={15} />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("lobby.coop.searchOpenPlaceholder")}
-            aria-label={t("lobby.coop.searchOpenAria")}
-          />
-        </div>
-        <span className="muted">{games.length} games available</span>
-        <Button onClick={() => void loadCatalog()}>
-          <Icon name="refresh" size={14} /> {t("lobby.coop.refresh")}
-        </Button>
-      </div>
-
       {coop.catalogStatus.type === "failed" ? (
         <CoopLoadFailure
           status={coop.catalogStatus}
@@ -233,20 +251,41 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
       )}
 
       <div className="coop-layout">
+        {toolbar}
+
         {/* Left Column (Priority #1): Open Co-op Games Browser */}
-        <section className="coop-games-main surface-panel">
-          {filteredGames.length === 0 ? (
+        <section className={`coop-games-main surface-panel game-browser-${viewMode}`}>
+          {games.length === 0 ? (
             <div className="coop-games-empty">
               <Icon name="users" size={32} />
               <h4>{t("lobby.coop.noOpenGames")}</h4>
               <p>{t("lobby.coop.hostToPlay")}</p>
-              <Button variant="primary" onClick={() => onHost(selected ?? undefined)}>
-                <Icon name="play" size={14} /> {t("lobby.coop.hostACoopGame")}
+              <Button variant="primary" disabled={!connected} onClick={() => onHost(selected ?? undefined)}>
+                <Icon name="plus" size={16} /> {t("lobby.toolbar.hostGame")}
               </Button>
+            </div>
+          ) : viewMode === "list" ? (
+            <div className="game-browser-list">
+              <div className="game-browser-head">
+                <span>{t("lobby.browser.column.game")}</span>
+                <span>{t("lobby.browser.column.map")}</span>
+                <span>{t("lobby.browser.column.players")}</span>
+                <span>{t("lobby.browser.column.rating")}</span>
+              </div>
+              {games.map((game) => (
+                <GameBrowserRow
+                  key={game.id}
+                  game={game}
+                  vault={maps.vault}
+                  selected={selectedGameId === game.id}
+                  onSelect={() => setSelectedGameId(game.id)}
+                  onJoin={() => onJoin(game)}
+                />
+              ))}
             </div>
           ) : (
             <div className="game-tile-grid">
-              {filteredGames.map((game) => (
+              {games.map((game) => (
                 <GameTile
                   key={game.id}
                   game={game}
@@ -263,13 +302,6 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
 
         {/* Right Column (Priority #2): Campaign & Mission Leaderboard */}
         <aside className="coop-detail surface-panel">
-          <div className="section-heading">
-            <div>
-              <h3>{t("lobby.coop.campaignsAndRecords")}</h3>
-              <span>{t("lobby.coop.briefingAndLeaderboard")}</span>
-            </div>
-          </div>
-
           <div className="coop-mission-picker">
             <div className="coop-picker-field">
               <label htmlFor="coop-scenario-select">{t("lobby.coop.campaign")}</label>
@@ -311,7 +343,7 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
           </div>
 
           {selected ? (
-            <MissionDetail mission={selected} />
+            <MissionDetail mission={selected} onHost={onHost} />
           ) : (
             <p className="muted">{t("lobby.coop.selectAbove")}</p>
           )}
@@ -321,7 +353,13 @@ export function CoopPanel({ games, onJoin, onHost }: Props) {
   );
 }
 
-function MissionDetail({ mission }: { mission: CoopMission }) {
+function MissionDetail({
+  mission,
+  onHost,
+}: {
+  mission: CoopMission;
+  onHost: (mission?: CoopMission) => void;
+}) {
   const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
@@ -334,33 +372,36 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
   return (
     <>
-      <header className="coop-detail-head">
-        <div>
-          <h3>{mission.name}</h3>
-          <small className="muted">{mission.mapFolderName}</small>
-        </div>
-      </header>
-
-      <CoopMissionPreview mission={mission} scenario={scenario} vault={maps.vault} />
+      <CoopMissionPreview mission={mission} scenario={scenario} vault={maps.vault} onHost={() => onHost(mission)} />
 
       {mission.description && <p className="coop-detail-brief">{mission.description}</p>}
 
       <div className="coop-board-head">
         <h4>{t("lobby.coop.fastest")}</h4>
-        <label className="coop-board-filter">
-          <span className="muted">{t("lobby.coop.column.players")}</span>
-          <select
-            value={coop.playerCount}
-            onChange={(event) => void setPlayerCount(Number(event.target.value))}
-            aria-label={t("lobby.coop.teamSizeAria")}
-          >
-            {PLAYER_COUNTS.map((count) => (
-              <option key={count} value={count}>
-                {count === 0 ? t("lobby.coop.anyCount") : count}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="coop-board-filter">
+          <span className="coop-board-filter-label">
+            <Icon name="users" size={13} />
+            <span>{t("lobby.coop.column.players")}:</span>
+          </span>
+          <div className="coop-player-count-group" role="group" aria-label={t("lobby.coop.teamSizeAria")}>
+            {PLAYER_COUNTS.map((count) => {
+              const label = count === 0 ? t("lobby.coop.anyCount") : String(count);
+              const active = coop.playerCount === count;
+              return (
+                <button
+                  key={count}
+                  type="button"
+                  className={active ? "is-active" : ""}
+                  aria-pressed={active}
+                  title={count === 0 ? t("lobby.coop.anyCount") : `${count} ${t("lobby.coop.column.players").toLowerCase()}`}
+                  onClick={() => void setPlayerCount(count)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {coop.leaderboardStatus.type === "failed" ? (

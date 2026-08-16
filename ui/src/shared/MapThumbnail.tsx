@@ -48,14 +48,21 @@ export function MapThumbnail({
   const url = candidates[candidateIndex];
   if (!url) {
     if (presentation.isCoop) {
-      const factionId = COOP_FACTION_IDS[presentation.coopFaction ?? "uef"] ?? 1;
+      const faction = presentation.coopFaction ?? "uef";
+      const isCustomFaction = faction === "custom";
+      const factionId = COOP_FACTION_IDS[faction] ?? 1;
+
       return (
         <span
           className={`${placeholderClassName} coop-map-tile-badge`}
-          data-faction={presentation.coopFaction ?? "uef"}
+          data-faction={faction}
           aria-label={`${presentation.displayName} preview`}
         >
-          <FactionIcon faction={factionId} size={large ? 36 : 22} />
+          {isCustomFaction ? (
+            <Icon name="maps" size={large ? 34 : 20} />
+          ) : (
+            <FactionIcon faction={factionId} size={large ? 36 : 22} />
+          )}
         </span>
       );
     }
