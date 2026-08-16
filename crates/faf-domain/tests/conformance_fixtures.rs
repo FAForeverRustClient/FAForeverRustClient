@@ -1049,6 +1049,50 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "the map generator reports bad options, then a name it would produce",
+            vec![
+                // The dialog checks options as they are edited, so the issue
+                // list has to be replaced wholesale rather than appended to:
+                // a fixed problem must disappear.
+                MapGeneratorEvent::ValidationChanged {
+                    issues: vec![faf_domain::state::ValidationIssue::SpawnsNotDivisibleByTeams {
+                        spawn_count: 5,
+                        num_teams: 2,
+                    }],
+                }
+                .into(),
+                MapGeneratorEvent::ValidationChanged { issues: vec![] }.into(),
+                MapGeneratorEvent::NamePredicted {
+                    map_name: "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj".into(),
+                }
+                .into(),
+                // A cancellation is its own terminal status: not a failure.
+                MapGeneratorEvent::StatusChanged {
+                    status: GeneratorStatus::Cancelled,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "decoded map names accumulate while help text replaces itself",
+            vec![
+                MapGeneratorEvent::NamesDecoded {
+                    decoded: std::collections::HashMap::from([(
+                        "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj".to_string(),
+                        faf_domain::protocol::map_generator_name::decode(
+                            "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj",
+                        )
+                        .expect("a known-good name must decode"),
+                    )]),
+                }
+                .into(),
+                MapGeneratorEvent::HelpLoaded {
+                    text: "Usage: generate [-hV]".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── leaderboard ──────────────────────────────────────────────────
         case(
             "changing league clears stale season data",

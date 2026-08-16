@@ -428,3 +428,124 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Validation feedback ----------------------------------------------------- */
+
+/* Two weights on purpose: a blocking issue means the generator would refuse,
+   an advisory one means it would accept and disappoint. Only the first stops
+   the submit button, so they must not look alike. */
+.generate-map-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+
+.generate-map-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.generate-map-issue.is-blocking {
+  border: 1px solid var(--danger-border, rgb(220 80 80 / 45%));
+  background: var(--danger-bg, rgb(220 80 80 / 12%));
+  color: var(--danger-fg, rgb(255 180 180));
+}
+
+.generate-map-issue.is-advisory {
+  border: 1px solid var(--border);
+  background: var(--surface-2, rgb(255 255 255 / 4%));
+  color: var(--text-muted);
+}
+
+/* Facts decoded out of a pasted map name. Reads as a spec line, not prose. */
+.generate-map-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.generate-map-fact {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* The name the current options would produce, from the generator's --parse. */
+.generate-map-predicted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+}
+
+.generate-map-predicted code {
+  font-size: 11px;
+  word-break: break-all;
+  color: var(--text);
+}
+
+.generate-map-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.generate-map-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 240px;
+  cursor: pointer;
+}
+
+.generate-map-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.generate-map-toggle strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.generate-map-toggle small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.generate-map-help-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The generator's own --help output: preformatted, and long enough to need
+   its own scroll rather than stretching the dialog. */
+.generate-map-help {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2, rgb(0 0 0 / 20%));
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre;
+  color: var(--text-muted);
+}

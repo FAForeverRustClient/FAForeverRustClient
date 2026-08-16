@@ -1,15 +1,25 @@
-// Generate a Neroxis map: the Java client's `GenerateMapController`.
+// Generate a Neroxis map.
 //
 // FAF matchmaker maps are not files, they are recipes: a name encodes the
-// generator version and seed, and every client rebuilds identical terrain. This
-// dialog drives the other direction: choosing options to produce a fresh map
-// you can then host.
+// generator version, seed and options, and every client rebuilds identical
+// terrain. This dialog drives both directions: choosing options to produce a
+// fresh map, and rebuilding one from a name.
+//
+// Three things here go beyond both reference clients:
+//
+//   * Combinations the generator would refuse are caught before a JAR is
+//     downloaded and a JVM started, and the worst of them are unreachable in
+//     the controls at all (spawn counts are filtered to multiples of the team
+//     count, the way the Java client does it).
+//   * `--parse` resolves the options to the map name they would produce, so
+//     the name is shown, and confirmed valid, before anything is generated.
+//   * A pasted map name is decoded locally into what it actually is.
 //
 // The option lists (styles, symmetries, etc.) are read out of the generator JAR
 // itself, because they change between releases.
 
-import { useEffect, useState } from "react";
-import type { GenerationType, GeneratorOptions } from "../../ipc/bindings";
+import { useEffect, useMemo, useState } from "react";
+import type { GenerationType, GeneratorOptions, MapGeneratorCommand } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -21,20 +31,22 @@ import { recordEntries } from "../../shared/records";
 import { useAppStore } from "../../store/store";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import {
+  DENSITY_BINS,
+  MAP_SIZES,
+  MAX_MAPS_PER_RUN,
+  TEAM_COUNTS,
+  canGenerate,
+  densityPercent,
+  describeIssue,
+  formatMapSize,
+  isFatal,
+  issueKey,
+  nearestLegalSpawnCount,
+  spawnCountsFor,
+  summariseDecodedName,
+} from "./generatorPresentation";
 import "./generate-map.css";
-
-/** Map sizes the generator accepts, in 1.25 km increments (256 units = 5 km). */
-const MAP_SIZES: { value: number; label: string }[] = [
-  { value: 256, label: "5 km (256x256)" },
-  { value: 320, label: "6.25 km (320x320)" },
-  { value: 384, label: "7.5 km (384x384)" },
-  { value: 448, label: "8.75 km (448x448)" },
-  { value: 512, label: "10 km (512x512)" },
-  { value: 640, label: "12.5 km (640x640)" },
-  { value: 768, label: "15 km (768x768)" },
-  { value: 1024, label: "20 km (1024x1024)" },
-  { value: 2048, label: "40 km (2048x2048)" },
-];
 
 /** Labels from the Java client's `game.generateMap.*` strings. */
 const GENERATION_TYPES = {
@@ -44,17 +56,25 @@ const GENERATION_TYPES = {
   unexplored: { label: "maps.generate.kind.unexplored", hint: "maps.generate.kind.unexploredHint" },
 } as const satisfies Record<GenerationType, { label: MessageKey; hint: MessageKey }>;
 
+const send = (command: MapGeneratorCommand) => ipc.send({ kind: "MapGenerator", command });
+
 const generate = (options: GeneratorOptions) =>
-  ipc.send({ kind: "MapGenerator", command: { type: "generate", payload: { options } } });
+  send({ type: "generate", payload: { options } });
 const generateNamed = (mapName: string) =>
-  ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName } } });
+  send({ type: "generateNamed", payload: { mapName } });
 const loadOptions = (version?: string | null) =>
-  ipc.send({
-    kind: "MapGenerator",
-    command: { type: "loadOptions", payload: { version: version ?? null } },
-  });
+  send({ type: "loadOptions", payload: { version: version ?? null } });
 const setOptions = (options: GeneratorOptions) =>
-  ipc.send({ kind: "MapGenerator", command: { type: "setOptions", payload: { options } } });
+  send({ type: "setOptions", payload: { options } });
+const validate = (options: GeneratorOptions) =>
+  send({ type: "validate", payload: { options } });
+const preflight = (options: GeneratorOptions) =>
+  send({ type: "preflight", payload: { options } });
+const decodeNames = (mapNames: string[]) =>
+  send({ type: "decodeNames", payload: { mapNames } });
+const loadHelp = (version?: string | null) =>
+  send({ type: "loadHelp", payload: { version: version ?? null } });
+const cancel = () => send({ type: "cancel" });
 
 interface Props {
   onClose: () => void;
@@ -67,6 +87,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const state = useAppStore((s) => s.state.mapGenerator);
   const [form, setForm] = useState<GeneratorOptions>(state.options);
   const [advanced, setAdvanced] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // The option lists come from the generator itself, so they need a round trip
   // (and possibly a JAR download) before the pickers mean anything.
@@ -86,6 +107,9 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
       if (maps.length > 1) setChoices(maps);
       else onGenerated?.(maps);
     }
+    if (started && (state.status.type === "failed" || state.status.type === "cancelled")) {
+      setStarted(false);
+    }
   }, [started, state.status, onGenerated]);
 
   const choose = (map: string) => {
@@ -103,24 +127,61 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
   const [reproduceName, setReproduceName] = useState("");
   const reproducing = reproduceName.trim() !== "";
+  const trimmedName = reproduceName.trim();
+  const reproduceValid = reproducing && isGeneratedMap(trimmedName);
   const reproduceError =
-    reproducing && !isGeneratedMap(reproduceName.trim())
-      ? "That is not a generated map name. They look like neroxis_map_generator_1.7.7_<seed>."
+    reproducing && !reproduceValid
+      ? t("maps.generate.notAGeneratedName")
       : "";
+
+  // Decoding is pure arithmetic in the backend, so asking on every settled
+  // keystroke is cheap. It turns an opaque name into "10 km, 6 spawns, …".
+  useEffect(() => {
+    if (!reproduceValid) return;
+    const timer = setTimeout(() => void decodeNames([trimmedName]), 200);
+    return () => clearTimeout(timer);
+  }, [reproduceValid, trimmedName]);
+  const decoded = state.decoded?.[trimmedName];
+
+  // Re-check the options as they are edited. Pure and instant on the other
+  // side; the authoritative check happens with `--parse` on generate.
+  useEffect(() => {
+    if (reproducing) return;
+    const timer = setTimeout(() => void validate(form), 250);
+    return () => clearTimeout(timer);
+  }, [form, reproducing]);
+
+  const issues = state.validation ?? [];
+  const blocking = issues.filter(isFatal);
+  const advisory = issues.filter((issue) => !isFatal(issue));
+  const submittable = canGenerate(form, issues);
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (reproducing) {
-      if (reproduceError) return;
+      if (!reproduceValid) return;
       setStarted(true);
-      void generateNamed(reproduceName.trim());
+      void generateNamed(trimmedName);
       return;
     }
+    if (!submittable) return;
     setStarted(true);
     void generate(form);
   };
 
   const seedPinsOneMap = form.seed.trim() !== "";
+  const teams = form.numTeams ?? 2;
+  const spawnOptions = useMemo(() => spawnCountsFor(teams), [teams]);
+
+  // Changing the team count can strand the spawn count on an illegal value, so
+  // it moves with it. The Java client does the same by refiltering its spinner.
+  const changeTeams = (numTeams: number) => {
+    setForm((f) => ({
+      ...f,
+      numTeams,
+      spawnCount: nearestLegalSpawnCount(f.spawnCount ?? 6, numTeams),
+    }));
+  };
 
   const lists = state.optionLists;
   const availableVersions = state.availableVersions ?? [];
@@ -128,6 +189,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
   const styleOverrides = (form.styles?.length ?? 0) > 0 || Boolean(form.style);
   const typeOverrides = form.generationType !== "casual";
+  const rawOverrides = form.commandLineArgs.trim() !== "";
 
   if (choices.length > 0) {
     return (
@@ -177,7 +239,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
     <Modal onClose={onClose} className="generate-map-modal">
       <div className="generate-map-head">
         <h2 className="generate-map-title">{t("maps.generate.title")}</h2>
-        <p className="generate-map-subtitle">Configure Neroxis procedural map generator options or rebuild an exact recipe.</p>
+        <p className="generate-map-subtitle">{t("maps.generate.subtitle")}</p>
       </div>
 
       <form className="generate-map" onSubmit={submit}>
@@ -192,11 +254,20 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             id="reproduce-name"
             className="generate-map-control generate-map-reproduce-input"
             value={reproduceName}
-            placeholder="neroxis_map_generator_1.7.7_..."
+            placeholder="neroxis_map_generator_1.22.1_..."
             aria-invalid={Boolean(reproduceError)}
             onChange={(e) => setReproduceName(e.target.value)}
           />
           {reproduceError && <small className="generate-map-error">{reproduceError}</small>}
+          {decoded && (
+            <ul className="generate-map-facts">
+              {summariseDecodedName(decoded).map((fact) => (
+                <li key={fact} className="generate-map-fact">
+                  {fact}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <fieldset className="generate-map-fieldset" disabled={reproducing}>
@@ -214,7 +285,9 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   }}
                 >
                   <option value="">
-                    Latest ({state.latestVersion ? state.latestVersion : "auto"})
+                    {t("maps.generate.latestVersion", {
+                      version: state.latestVersion || t("maps.generate.auto"),
+                    })}
                   </option>
                   {availableVersions
                     .filter((v) => v !== state.latestVersion)
@@ -237,8 +310,26 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   onChange={(e) => set("mapSize", Number(e.target.value))}
                 >
                   {MAP_SIZES.map((size) => (
-                    <option key={size.value} value={size.value}>
-                      {size.label}
+                    <option key={size} value={size}>
+                      {formatMapSize(size)}
+                    </option>
+                  ))}
+                </select>
+                <Icon name="chevronDown" size={13} className="generate-map-select-arrow" />
+              </div>
+            </label>
+
+            <label className="generate-map-field">
+              <span className="generate-map-label">{t("maps.generate.teams")}</span>
+              <div className="generate-map-select-wrap">
+                <select
+                  className="generate-map-control generate-map-select"
+                  value={teams}
+                  onChange={(e) => changeTeams(Number(e.target.value))}
+                >
+                  {TEAM_COUNTS.map((count) => (
+                    <option key={count} value={count}>
+                      {count === 0 ? t("maps.generate.asymmetric") : count}
                     </option>
                   ))}
                 </select>
@@ -248,26 +339,25 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
             <label className="generate-map-field">
               <span className="generate-map-label">{t("maps.generate.spawns")}</span>
-              <input
-                type="number"
-                className="generate-map-control"
-                min={2}
-                max={16}
-                value={form.spawnCount ?? 6}
-                onChange={(e) => set("spawnCount", Number(e.target.value))}
-              />
-            </label>
-
-            <label className="generate-map-field">
-              <span className="generate-map-label">{t("maps.generate.teams")}</span>
-              <input
-                type="number"
-                className="generate-map-control"
-                min={2}
-                max={8}
-                value={form.numTeams ?? 2}
-                onChange={(e) => set("numTeams", Number(e.target.value))}
-              />
+              <div className="generate-map-select-wrap">
+                <select
+                  className="generate-map-control generate-map-select"
+                  value={form.spawnCount ?? 6}
+                  onChange={(e) => set("spawnCount", Number(e.target.value))}
+                >
+                  {spawnOptions.map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+                <Icon name="chevronDown" size={13} className="generate-map-select-arrow" />
+              </div>
+              {teams > 0 && (
+                <small className="generate-map-field-hint">
+                  {t("maps.generate.spawnsMultipleHint", { teams })}
+                </small>
+              )}
             </label>
 
             <label className="generate-map-field">
@@ -276,12 +366,16 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 type="number"
                 className="generate-map-control"
                 min={1}
-                max={10}
+                max={MAX_MAPS_PER_RUN}
                 disabled={seedPinsOneMap}
-                value={seedPinsOneMap ? 1 : form.numToGenerate ?? 1}
+                value={seedPinsOneMap ? 1 : (form.numToGenerate ?? 1)}
                 onChange={(e) => set("numToGenerate", Number(e.target.value))}
               />
-              {seedPinsOneMap && <small className="generate-map-field-hint">{t("maps.generate.seedPinsOneMap")}</small>}
+              {seedPinsOneMap && (
+                <small className="generate-map-field-hint">
+                  {t("maps.generate.seedPinsOneMap")}
+                </small>
+              )}
             </label>
           </div>
 
@@ -309,6 +403,21 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             </div>
           </div>
 
+          {(blocking.length > 0 || advisory.length > 0) && !rawOverrides && (
+            <div className="generate-map-issues">
+              {blocking.map((issue) => (
+                <p key={issueKey(issue)} className="generate-map-issue is-blocking">
+                  <span>{describeIssue(issue, t)}</span>
+                </p>
+              ))}
+              {advisory.map((issue) => (
+                <p key={issueKey(issue)} className="generate-map-issue is-advisory">
+                  <span>{describeIssue(issue, t)}</span>
+                </p>
+              ))}
+            </div>
+          )}
+
           <button
             type="button"
             className="generate-map-advanced-toggle"
@@ -316,14 +425,18 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             onClick={() => setAdvanced((a) => !a)}
           >
             <Icon name="chevronDown" size={13} className="generate-map-toggle-icon" />
-            <span>{advanced ? t("maps.generate.fewerOptions") : t("maps.generate.moreOptions")}</span>
+            <span>
+              {advanced ? t("maps.generate.fewerOptions") : t("maps.generate.moreOptions")}
+            </span>
           </button>
 
           {advanced && (
             <div className="generate-map-advanced">
               {typeOverrides && (
                 <p className="generate-map-note">
-                  {t("maps.generate.typeOverridesNote", { type: t(GENERATION_TYPES[form.generationType].label) })}
+                  {t("maps.generate.typeOverridesNote", {
+                    type: t(GENERATION_TYPES[form.generationType].label),
+                  })}
                 </p>
               )}
 
@@ -335,7 +448,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       className="generate-map-control"
                       value={form.seed}
                       placeholder={t("maps.generate.random")}
-                      onChange={(e) => set("seed", e.target.value)}
+                      onChange={(e) => set("seed", e.target.value.replace(/[^\d-]/g, ""))}
                     />
                     <button
                       type="button"
@@ -369,9 +482,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               </div>
 
               {styleOverrides && (
-                <p className="generate-map-note">
-                  {t("maps.generate.mapStyleHint")}
-                </p>
+                <p className="generate-map-note">{t("maps.generate.mapStyleHint")}</p>
               )}
 
               <div className="generate-map-advanced-grid-4">
@@ -407,9 +518,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
               <div className="generate-map-sliders">
                 <RangeSlider
-                  label={t("maps.generate.reclaimDensity")}
+                  label={`${t("maps.generate.reclaimDensity")} (${densityPercent(
+                    form.reclaimDensityMin ?? 0,
+                  )}–${densityPercent(form.reclaimDensityMax ?? DENSITY_BINS)}%)`}
                   min={0}
-                  max={127}
+                  max={DENSITY_BINS}
                   low={form.reclaimDensityMin ?? null}
                   high={form.reclaimDensityMax ?? null}
                   onChange={(low, high) => {
@@ -418,9 +531,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   }}
                 />
                 <RangeSlider
-                  label={t("maps.generate.resourceDensity")}
+                  label={`${t("maps.generate.resourceDensity")} (${densityPercent(
+                    form.resourceDensityMin ?? 0,
+                  )}–${densityPercent(form.resourceDensityMax ?? DENSITY_BINS)}%)`}
                   min={0}
-                  max={127}
+                  max={DENSITY_BINS}
                   low={form.resourceDensityMin ?? null}
                   high={form.resourceDensityMax ?? null}
                   onChange={(low, high) => {
@@ -429,6 +544,41 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   }}
                 />
               </div>
+
+              <div className="generate-map-toggles">
+                <label className="generate-map-toggle">
+                  <input
+                    type="checkbox"
+                    checked={form.visualize}
+                    onChange={(e) => set("visualize", e.target.checked)}
+                  />
+                  <span>
+                    <strong>{t("maps.generate.visualize")}</strong>
+                    <small>{t("maps.generate.visualizeHint")}</small>
+                  </span>
+                </label>
+                <label className="generate-map-toggle">
+                  <input
+                    type="checkbox"
+                    checked={form.debug}
+                    onChange={(e) => set("debug", e.target.checked)}
+                  />
+                  <span>
+                    <strong>{t("maps.generate.debug")}</strong>
+                    <small>{t("maps.generate.debugHint")}</small>
+                  </span>
+                </label>
+              </div>
+
+              <label className="generate-map-field">
+                <span className="generate-map-label">{t("maps.generate.outputPath")}</span>
+                <input
+                  className="generate-map-control"
+                  value={form.outputPath}
+                  placeholder={t("maps.generate.outputPathHint")}
+                  onChange={(e) => set("outputPath", e.target.value)}
+                />
+              </label>
 
               <label className="generate-map-field">
                 <span className="generate-map-label">{t("maps.generate.rawArguments")}</span>
@@ -439,9 +589,36 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   onChange={(e) => set("commandLineArgs", e.target.value)}
                 />
               </label>
+
+              <div className="generate-map-help-row">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowHelp((open) => !open);
+                    if (!state.helpText) void loadHelp(form.version);
+                  }}
+                >
+                  {showHelp ? t("maps.generate.hideHelp") : t("maps.generate.showHelp")}
+                </Button>
+                <Button type="button" onClick={() => void preflight(form)} disabled={busy}>
+                  {t("maps.generate.checkOptions")}
+                </Button>
+              </div>
+              {showHelp && (
+                <pre className="generate-map-help">
+                  {state.helpText || t("maps.generate.loadingHelp")}
+                </pre>
+              )}
             </div>
           )}
         </fieldset>
+
+        {state.predictedName && !reproducing && (
+          <p className="generate-map-predicted">
+            <span className="generate-map-label">{t("maps.generate.willBeCalled")}</span>
+            <code>{state.predictedName}</code>
+          </p>
+        )}
 
         <GeneratorProgress />
 
@@ -458,8 +635,21 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           >
             {t("maps.generate.saveSettings")}
           </Button>
-          <Button type="submit" variant="primary" disabled={busy || Boolean(reproduceError)}>
-            {busy ? t("maps.generate.working") : reproducing ? t("maps.generate.reproduce") : t("maps.generate.generate")}
+          {busy && (
+            <Button type="button" onClick={() => void cancel()}>
+              {t("maps.generate.cancel")}
+            </Button>
+          )}
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={busy || (reproducing ? !reproduceValid : !submittable)}
+          >
+            {busy
+              ? t("maps.generate.working")
+              : reproducing
+                ? t("maps.generate.reproduce")
+                : t("maps.generate.generate")}
           </Button>
         </div>
       </form>
@@ -467,7 +657,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   );
 }
 
-/** The three slow stages, narrated. Generation routinely takes 30-120 seconds. */
+/** The slow stages, narrated. Generation routinely takes 30-120 seconds. */
 export function GeneratorProgress() {
   const { t } = useTranslation();
   const status = useAppStore((s) => s.state.mapGenerator.status);
@@ -491,7 +681,10 @@ export function GeneratorProgress() {
     case "generating":
       return (
         <p className="muted generate-map-progress">
-          {t("maps.generate.generatingWith", { version: status.payload.version, detail: status.payload.detail })}
+          {t("maps.generate.generatingWith", {
+            version: status.payload.version,
+            detail: status.payload.detail,
+          })}
         </p>
       );
     case "generated":
@@ -500,6 +693,8 @@ export function GeneratorProgress() {
           {t("maps.generate.ready", { maps: status.payload.maps.join(", ") })}
         </p>
       );
+    case "cancelled":
+      return <p className="muted generate-map-progress">{t("maps.generate.cancelled")}</p>;
     case "failed":
       return <p className="generate-map-progress is-error">{status.payload.reason}</p>;
   }

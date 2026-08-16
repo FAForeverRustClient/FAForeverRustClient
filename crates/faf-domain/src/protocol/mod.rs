@@ -12,5 +12,6 @@ pub mod gpgnet;
 pub mod irc;
 pub mod log_analysis;
 pub mod map_generator;
+pub mod map_generator_name;
 pub mod replay_query;
 pub mod tournaments;

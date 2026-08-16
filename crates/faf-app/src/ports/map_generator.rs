@@ -40,6 +40,24 @@ pub trait MapGeneratorPort: Send + Sync {
         version: Option<String>,
     ) -> Result<Vec<String>, String>;
 
+    /// Resolve options through the generator's `--parse`, yielding the map name
+    /// they would produce, or the generator's own complaint about them.
+    ///
+    /// No map is written. This is the authoritative validation: it runs the
+    /// rules of the installed release rather than a copy of them, so it does
+    /// not drift when the generator adds a constraint.
+    async fn preflight(&self, options: GeneratorOptions) -> Result<String, String>;
+
+    /// The generator's `--help` text, for users writing raw arguments.
+    async fn help(&self, version: Option<String>) -> Result<String, String>;
+
+    /// Stop the run in flight, if any.
+    ///
+    /// Synchronous and infallible: it only raises a flag that the running task
+    /// observes, so it can be called from a command handler without awaiting
+    /// the process it is stopping.
+    fn cancel(&self);
+
     /// The newest generator release this client supports, as `x.y.z`.
     async fn latest_version(&self) -> Result<String, String>;
 

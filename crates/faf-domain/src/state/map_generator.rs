@@ -21,8 +21,10 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 pub use crate::protocol::map_generator::{
-    GenerationType, GeneratorOptionQuery, GeneratorOptions, GeneratorVersion,
+    GenerationType, GeneratorOptionQuery, GeneratorOptions, GeneratorVersion, StyleConstraints,
+    ValidationIssue,
 };
+pub use crate::protocol::map_generator_name::{DecodedMapName, DecodedStyle};
 
 /// Where a generation run currently is.
 // No `Eq`: `Failed` is compared alongside options carrying `f32` densities in
@@ -62,6 +64,10 @@ pub enum GeneratorStatus {
     Failed {
         reason: String,
     },
+    /// The user stopped the run. Distinct from `Failed` because nothing went
+    /// wrong: presenting a deliberate cancellation as an error trains people to
+    /// ignore error messages.
+    Cancelled,
 }
 
 impl GeneratorStatus {
@@ -136,6 +142,28 @@ pub struct MapGeneratorState {
     /// Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`).
     #[serde(default)]
     pub previews: std::collections::HashMap<String, String>,
+    /// Problems with the current options, from the pure rule checks. Refreshed
+    /// as the dialog is edited so the user is told *before* a JAR is fetched
+    /// and a JVM started, which is when the generator would otherwise object.
+    #[serde(default)]
+    pub validation: Vec<ValidationIssue>,
+    /// The map name the current options would produce, as reported by the
+    /// generator's own `--parse`. Empty until a preflight has run.
+    ///
+    /// Worth showing on its own: it is shareable before the map exists, and it
+    /// is the authoritative confirmation that the options are acceptable.
+    #[serde(default)]
+    pub predicted_name: String,
+    /// Parameters decoded out of generated map names, keyed by name.
+    ///
+    /// Filled by [`MapGeneratorCommand::DecodeNames`], which is pure
+    /// arithmetic: a lobby list can afford to decode every row.
+    #[serde(default)]
+    pub decoded: std::collections::HashMap<String, DecodedMapName>,
+    /// The generator's own `--help` output, for the escape hatch users who
+    /// write raw arguments. The Python client offers the same button.
+    #[serde(default)]
+    pub help_text: String,
 }
 
 // No `Eq`: `OptionsChanged` carries `GeneratorOptions`.
@@ -167,6 +195,20 @@ pub enum MapGeneratorEvent {
     PreviewsLoaded {
         previews: std::collections::HashMap<String, String>,
     },
+    ValidationChanged {
+        issues: Vec<ValidationIssue>,
+    },
+    /// A `--parse` preflight resolved the options to a map name. An empty name
+    /// clears a stale prediction when the options change.
+    NamePredicted {
+        map_name: String,
+    },
+    NamesDecoded {
+        decoded: std::collections::HashMap<String, DecodedMapName>,
+    },
+    HelpLoaded {
+        text: String,
+    },
 }
 
 // No `Eq`: `Generate` carries `GeneratorOptions`.
@@ -192,6 +234,26 @@ pub enum MapGeneratorCommand {
     },
     /// Remember the host dialog's current options without generating.
     SetOptions { options: GeneratorOptions },
+    /// Check options against the generator's rules without running anything.
+    ///
+    /// Pure and instant, so the dialog can call it on every edit. It is a fast
+    /// approximation of what [`MapGeneratorCommand::Preflight`] confirms.
+    Validate { options: GeneratorOptions },
+    /// Ask the generator itself to resolve the options, via `--parse`.
+    ///
+    /// Authoritative where [`MapGeneratorCommand::Validate`] is merely quick:
+    /// it applies the rules of the *actual* release rather than our copy of
+    /// them, and it yields the resulting map name. Costs a JVM start, no map.
+    Preflight { options: GeneratorOptions },
+    /// Decode generated map names into their parameters, without any IO.
+    DecodeNames { map_names: Vec<String> },
+    /// Fetch the generator's `--help` text.
+    LoadHelp {
+        #[serde(default)]
+        version: Option<String>,
+    },
+    /// Stop the run in flight. Does nothing when none is.
+    Cancel,
     /// Delete generated maps except stable folder names explicitly protected
     /// by the user's favorites.
     ///
@@ -224,6 +286,10 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
         MapGeneratorEvent::PreviewsLoaded { previews } => {
             state.previews.extend(previews.clone());
         }
+        MapGeneratorEvent::ValidationChanged { issues } => state.validation = issues.clone(),
+        MapGeneratorEvent::NamePredicted { map_name } => state.predicted_name = map_name.clone(),
+        MapGeneratorEvent::NamesDecoded { decoded } => state.decoded.extend(decoded.clone()),
+        MapGeneratorEvent::HelpLoaded { text } => state.help_text = text.clone(),
     }
 }
 

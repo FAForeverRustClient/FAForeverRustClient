@@ -44,5 +44,13 @@ export function reduceMapGenerator(
         ...state,
         previews: { ...state.previews, ...event.payload.previews },
       };
+    case "validationChanged":
+      return { ...state, validation: event.payload.issues };
+    case "namePredicted":
+      return { ...state, predictedName: event.payload.mapName };
+    case "namesDecoded":
+      return { ...state, decoded: { ...state.decoded, ...event.payload.decoded } };
+    case "helpLoaded":
+      return { ...state, helpText: event.payload.text };
   }
 }
