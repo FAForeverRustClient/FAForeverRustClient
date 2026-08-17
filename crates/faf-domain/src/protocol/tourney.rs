@@ -26,10 +26,9 @@ use serde_json::{json, Value};
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition, Formation, HostingStatus,
-    MapPool, MatchLink, MatchStatus, PendingReport, PoolAssignment, RatingGate, RoomUnread,
-    InviteStatus, NewsPost, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
-    TourneyInvite, TourneyMap, TourneyMatch, TourneyPlayer, TourneyStatus, TourneyTeam,
-    TourneyViewer,
+    InviteStatus, MapPool, MatchLink, MatchStatus, NewsPost, PendingReport, PoolAssignment,
+    RatingGate, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap,
+    TourneyMatch, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 
 /// A string field, empty when absent or not a string.
@@ -211,42 +210,30 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
     })
 }
 
-/// The `viewer` block: who the server thinks is asking, and what they are in
-/// this tournament.
+/// Who the service says is asking, and what they are in this tournament.
 ///
-/// Absent on the list endpoint, which is why the whole thing defaults rather
-/// than failing: a list row simply has no viewer-specific answer.
+/// `GET /api/t/{id}` sets this on the response *after* `publicView` builds the
+/// document, which is why reading `publicView` alone suggests it does not exist.
+/// It does, and it is authoritative: the same session check decides it and
+/// authorises every write, so a second opinion worked out client-side could only
+/// ever disagree with the one that counts.
+///
+/// Absent from the list endpoint, where it defaults — correctly, because a list
+/// row carries no viewer-specific answer and must offer no organiser control.
 fn parse_viewer(document: &Value) -> TourneyViewer {
     let Some(viewer) = document.get("viewer") else {
         return TourneyViewer::default();
     };
     TourneyViewer {
         logged_in: flag(viewer, "loggedIn"),
-        organiser: flag(viewer, "organizer"),
+        // Organiser rights *or* a held admin token: the service treats both as
+        // authorised for every organiser write, so the tab has to as well.
+        organiser: flag(viewer, "organizer") || flag(viewer, "admin"),
         faf_id: int(viewer, "fafId"),
         faf_name: text(viewer, "fafName"),
         signed_up_player_id: id(viewer, "signedUpPlayerId"),
         member_team_id: id(viewer, "memberTeamId"),
-        unread_by_room: parse_unread(document.get("unreadByRoom")),
     }
-}
-
-/// `unreadByRoom` is `{ roomId: count }`, flattened for the same reason
-/// `poolAssign` is.
-fn parse_unread(value: Option<&Value>) -> Vec<RoomUnread> {
-    let Some(Value::Object(entries)) = value else {
-        return Vec::new();
-    };
-    entries
-        .iter()
-        .filter_map(|(room_id, unread)| {
-            let unread = unread.as_i64().and_then(|count| i32::try_from(count).ok())?;
-            (unread > 0).then(|| RoomUnread {
-                room_id: room_id.clone(),
-                unread,
-            })
-        })
-        .collect()
 }
 
 /// The tournament list, from `GET /api/tournaments`.
@@ -291,6 +278,7 @@ fn parse_team(value: &Value) -> Option<TourneyTeam> {
         checked_in: flag(value, "checkedIn"),
         eliminated: flag(value, "eliminated"),
         final_rank: int(value, "finalRank"),
+        captain_renamed: flag(value, "captainRenamed"),
         join_requests: parse_requests(value, "joinRequests"),
         invites: parse_requests(value, "invites"),
     })
@@ -718,19 +706,47 @@ mod tests {
         assert_eq!(event.signup_closes_at, None);
     }
 
+    /// The viewer block, which the detail endpoint adds on top of `publicView`.
+    ///
+    /// Worth a test of its own because every gate in the tab hangs on it: the
+    /// entry button, the organiser controls, every team action. Read the document
+    /// wrongly and the whole tab is inert while nothing fails.
     #[test]
     fn the_viewer_block_says_who_is_asking() {
-        // Taken as given rather than matched on FAF id here: the server
-        // authorises every write against this same answer.
         let event = parse_tourney(&document()).unwrap();
         assert!(event.viewer.logged_in);
         assert!(!event.viewer.organiser);
         assert_eq!(event.viewer.signed_up_player_id.as_deref(), Some("p1"));
         assert_eq!(event.viewer.member_team_id.as_deref(), Some("t1"));
         assert!(event.viewer.is_signed_up());
-        assert_eq!(event.viewer.unread_in("global"), 3);
-        assert_eq!(event.viewer.unread_in("m1"), 0, "zero is not carried");
-        assert_eq!(event.viewer.unread_in("nowhere"), 0);
+    }
+
+    /// A held organiser token counts as organising.
+    ///
+    /// The service authorises every organiser write on `isAdmin(t, token) ||
+    /// isOrganizer(t, req)`, so reading only `organizer` would hide the controls
+    /// from somebody the service would obey.
+    #[test]
+    fn an_admin_token_counts_as_organising() {
+        let mut document = document();
+        document["viewer"] = json!({ "loggedIn": 1, "organizer": 0, "admin": 1 });
+        assert!(parse_tourney(&document).unwrap().viewer.organiser);
+    }
+
+    /// The list endpoint sends no viewer block, and must not gain one by accident:
+    /// a list row that claimed organiser rights would draw controls for every
+    /// tournament on screen.
+    #[test]
+    fn a_list_row_has_no_viewer() {
+        let mut document = document();
+        document
+            .as_object_mut()
+            .expect("the fixture is an object")
+            .remove("viewer");
+        assert_eq!(
+            parse_tourney(&document).unwrap().viewer,
+            TourneyViewer::default()
+        );
     }
 
     #[test]
@@ -791,11 +807,17 @@ mod tests {
         assert_eq!(entry.bracket, BracketSide::Winners);
         assert_eq!(
             entry.winner_to,
-            Some(MatchLink { match_id: "m3".into(), slot: 1 })
+            Some(MatchLink {
+                match_id: "m3".into(),
+                slot: 1
+            })
         );
         assert_eq!(
             entry.loser_to,
-            Some(MatchLink { match_id: "m2".into(), slot: 2 })
+            Some(MatchLink {
+                match_id: "m2".into(),
+                slot: 2
+            })
         );
         assert!(entry.is_playable());
     }
@@ -975,7 +997,13 @@ mod tests {
             name: "Weekend Cup".into(),
             ..TourneyDraft::new()
         });
-        for welded in ["teamSize", "category", "bracketType", "competition", "formation"] {
+        for welded in [
+            "teamSize",
+            "category",
+            "bracketType",
+            "competition",
+            "formation",
+        ] {
             assert!(body.get(welded).is_none(), "{welded} must not be sent");
         }
         assert_eq!(body["name"], "Weekend Cup");
@@ -983,10 +1011,12 @@ mod tests {
 
     #[test]
     fn the_hosting_answer_is_read_rather_than_assumed() {
-        let allowed = parse_hosting(&json!({ "oauth": 1, "allowed": 1, "pending": 0, "loggedIn": 1 }));
+        let allowed =
+            parse_hosting(&json!({ "oauth": 1, "allowed": 1, "pending": 0, "loggedIn": 1 }));
         assert!(allowed.allowed && allowed.logged_in && !allowed.pending);
 
-        let waiting = parse_hosting(&json!({ "oauth": 1, "allowed": 0, "pending": 1, "loggedIn": 1 }));
+        let waiting =
+            parse_hosting(&json!({ "oauth": 1, "allowed": 0, "pending": 1, "loggedIn": 1 }));
         assert!(!waiting.allowed && waiting.pending);
 
         // Nothing at all is "not allowed", which is the safe reading.

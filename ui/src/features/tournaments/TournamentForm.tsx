@@ -17,20 +17,7 @@ import { Modal } from "../../design-system/Modal";
 import type { Tourney, TourneyDraft } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-
-/**
- * Why the server would refuse a draft.
- *
- * Spelled out here rather than imported: `DraftRejection` never reaches
- * `AppState`, so specta does not put it in the generated bindings. The twin
- * below is held to the Rust one by its own test.
- */
-export type DraftRejection =
-  | "nameRequired"
-  | "teamSizeOutOfRange"
-  | "ratingRangeInverted"
-  | "ratingGateWithoutRating"
-  | "signupWindowInverted";
+import { type DraftRejection, rejectionOf } from "./tourneyPresentation";
 
 const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
   nameRequired: "tournaments.form.nameRequired",
@@ -39,24 +26,6 @@ const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
   ratingGateWithoutRating: "tournaments.form.ratingGateWithoutRating",
   signupWindowInverted: "tournaments.form.signupWindowInverted",
 };
-
-/** Twin of `TourneyDraft::rejection`: the reasons the server would refuse. */
-export function rejectionOf(draft: TourneyDraft): DraftRejection | null {
-  if (draft.name.trim() === "") return "nameRequired";
-  if (draft.teamSize < 1 || draft.teamSize > 6) return "teamSizeOutOfRange";
-  const { min, max } = draft.rating;
-  if (min !== null && max !== null && min > max) return "ratingRangeInverted";
-  // A gate needs a rating to compare against, and an unrated event never
-  // fetches one, so the two together can only refuse every signup.
-  if (draft.ratingKind === "none" && (min !== null || max !== null)) {
-    return "ratingGateWithoutRating";
-  }
-  const { signupOpensAt, signupClosesAt } = draft;
-  if (signupOpensAt !== null && signupClosesAt !== null && signupOpensAt >= signupClosesAt) {
-    return "signupWindowInverted";
-  }
-  return null;
-}
 
 /** A `datetime-local` value as Unix seconds, or null when the field is empty. */
 function secondsOf(value: string): number | null {

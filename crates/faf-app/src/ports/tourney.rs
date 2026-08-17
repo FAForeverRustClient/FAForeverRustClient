@@ -56,11 +56,7 @@ pub trait TourneyPort: Send + Sync {
     async fn publish(&self, tournament_id: &str) -> Result<(), RequestError>;
 
     /// Move the event along its own lifecycle.
-    async fn advance(
-        &self,
-        tournament_id: &str,
-        phase: TourneyPhase,
-    ) -> Result<(), RequestError>;
+    async fn advance(&self, tournament_id: &str, phase: TourneyPhase) -> Result<(), RequestError>;
 
     /// Hide the event. A site admin can restore it, which is why this is not
     /// called delete: for anyone else the server archives rather than removes.
@@ -92,7 +88,6 @@ pub trait TourneyPort: Send + Sync {
     /// server's own check is that the entry being removed belongs to the
     /// calling account.
     async fn withdraw(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError>;
-
 
     /// Start a team and captain it.
     ///
@@ -148,7 +143,6 @@ pub trait TourneyPort: Send + Sync {
         team_id: &str,
         name: &str,
     ) -> Result<(), RequestError>;
-
 
     /// Add an entrant by FAF name, as the organiser.
     ///

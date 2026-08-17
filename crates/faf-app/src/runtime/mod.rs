@@ -86,6 +86,9 @@ pub struct ServiceCtx {
     pub tourney_detail_generation: LatestRequest,
     /// The same, for reading a chat room.
     pub tourney_chat_generation: LatestRequest,
+    /// The same, for the organiser's account search: it fires per keystroke, so
+    /// answers overtaking each other is the normal case rather than the rare one.
+    pub tourney_account_search_generation: LatestRequest,
 }
 
 /// The sink a service emits events into.
@@ -249,6 +252,7 @@ impl App {
             tourney_mutation: SerialMutation::default(),
             tourney_detail_generation: LatestRequest::default(),
             tourney_chat_generation: LatestRequest::default(),
+            tourney_account_search_generation: LatestRequest::default(),
         };
 
         let app = Self {

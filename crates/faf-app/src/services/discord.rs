@@ -302,8 +302,6 @@ mod tests {
         assert!(affects_presence(&AppEvent::Lobby(
             faf_domain::state::LobbyEvent::InGame
         )));
-        assert!(!affects_presence(&AppEvent::Tourney(
-            TourneyEvent::Loading
-        )));
+        assert!(!affects_presence(&AppEvent::Tourney(TourneyEvent::Loading)));
     }
 }

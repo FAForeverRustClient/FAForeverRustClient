@@ -143,6 +143,16 @@ impl TourneyMatch {
             && self.team2.is_some()
     }
 
+    /// The side that gets the win when `team_id` forfeits.
+    ///
+    /// `None` when the forfeiting team is not in this match, or when the other
+    /// slot is still waiting on a feeder — the server refuses both, and it cannot
+    /// award a walkover to nobody.
+    pub fn forfeit_opponent(&self, team_id: &str) -> Option<&str> {
+        let other = self.opponent_of(team_id)?;
+        (other != "BYE").then_some(other)
+    }
+
     /// The other side of the match from `team_id`, if it is in it at all.
     pub fn opponent_of(&self, team_id: &str) -> Option<&str> {
         match (self.team1.as_deref(), self.team2.as_deref()) {
@@ -216,6 +226,11 @@ pub struct TourneyTeam {
     pub checked_in: bool,
     pub eliminated: bool,
     pub final_rank: Option<i32>,
+    /// Whether the captain has already used their one rename.
+    ///
+    /// The server counts it and refuses a second, so the control is withdrawn
+    /// rather than offered and then refused. An organiser is not limited.
+    pub captain_renamed: bool,
     /// Players who asked to join, awaiting the captain.
     ///
     /// The only way onto a team: the server retired instant self-joining and
@@ -453,13 +468,17 @@ impl TourneyCategory {
     }
 }
 
-/// What the server says about the account that asked.
+/// What the service says this account may do in one tournament.
 ///
-/// `GET /api/t/{id}` answers with a `viewer` block naming this account's player
-/// id and team in *this* tournament. Worth taking as given rather than matching
-/// on FAF id client-side: the server already resolved it, and every write is
-/// authorised against the same answer, so deriving a second opinion here could
+/// `GET /api/t/{id}` sets a `viewer` block on the response after `publicView`
+/// builds the document — which is why it is invisible when reading `publicView`
+/// alone. Taken as given rather than worked out client-side: the same session
+/// check produces it and authorises every write, so a second opinion here could
 /// only ever disagree with the one that counts.
+///
+/// None of it is an authorisation decision. The service re-checks every write;
+/// being wrong here shows a control that is then refused, which is a cosmetic
+/// fault, not a hole.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TourneyViewer {
@@ -470,32 +489,14 @@ pub struct TourneyViewer {
     /// This account's entry, when it has signed up. The handle every player
     /// action is addressed with.
     pub signed_up_player_id: Option<String>,
-    /// The team this account plays in, which is what reporting rights hang on.
+    /// The team this account plays in.
     pub member_team_id: Option<String>,
-    /// Unread chat messages, by room id.
-    pub unread_by_room: Vec<RoomUnread>,
 }
 
 impl TourneyViewer {
     pub fn is_signed_up(&self) -> bool {
         self.signed_up_player_id.is_some()
     }
-
-    pub fn unread_in(&self, room_id: &str) -> i32 {
-        self.unread_by_room
-            .iter()
-            .find(|room| room.room_id == room_id)
-            .map_or(0, |room| room.unread)
-    }
-}
-
-/// Unread count for one chat room, flattened from the server's keyed object for
-/// the same reason [`PoolAssignment`] is.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct RoomUnread {
-    pub room_id: String,
-    pub unread: i32,
 }
 
 /// Rating limits an organiser set on entry.
@@ -609,12 +610,13 @@ pub struct Article {
     pub parent_id: Option<String>,
 }
 
-/// What a player reports about a match they played.
+/// A result the organiser sets on a match.
 ///
-/// `replay_ids` is not optional in practice: the server wants exactly one FAF
-/// replay id per newly reported game and refuses the submission otherwise. That
-/// is what makes a bracket auditable after the fact, so the client asks for
-/// them rather than working around the rule.
+/// The replay id lists stay on the type because `report` accepts them and an
+/// archive is worth keeping, but nothing is required to fill them: they are
+/// mandatory only on `report_submit`, the *player* path, and that path is not
+/// used. `report` guards them with `if (Array.isArray(b.replayIds))`, so an
+/// empty list simply stores none.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchReport {
@@ -625,31 +627,80 @@ pub struct MatchReport {
     /// Replays of games that ended in a draw. They score nothing and were
     /// replayed, but the recordings are still worth keeping.
     pub draw_replay_ids: Vec<String>,
+    /// The team to declare the winner, whatever the score says.
+    ///
+    /// The organiser's override: it finalises a match even when neither side
+    /// reached the wins the series needs — a 1-1 that ended in a walkover, or any
+    /// inconclusive result that has to be resolved so the bracket can move.
+    pub winner: Option<String>,
+    /// The team that forfeited.
+    ///
+    /// On its own, with no score and no winner, this is the shorthand: the other
+    /// side is awarded the win and the forfeiting team is recorded at -1. Given
+    /// alongside a score, it marks *how* a played series ended.
+    pub forfeit: Option<String>,
 }
 
 impl MatchReport {
     /// How many games this report adds to what is already confirmed.
     ///
-    /// The number of replay ids the server will insist on, so the dialog can
-    /// ask for exactly that many instead of letting the player find out by
-    /// being refused.
+    /// Still worth knowing — an organiser correcting a series wants to see it —
+    /// but no longer a gate on submitting.
     pub fn new_games(&self, entry: &TourneyMatch) -> i32 {
-        let confirmed = entry.score1.unwrap_or(if entry.handicap > 0 { 1 } else { 0 })
+        let confirmed = entry
+            .score1
+            .unwrap_or(if entry.handicap > 0 { 1 } else { 0 })
             + entry.score2.unwrap_or(0);
         (self.score1 + self.score2 - confirmed).max(0)
     }
 
-    /// Whether the server will take this: scores only go up, they stay within
-    /// the series length, and both sides cannot win it.
+    /// Whether the server will take this.
+    ///
+    /// `report`'s own arithmetic, and nothing more: both scores between zero and
+    /// the wins the series needs, and not both sides reaching it. A handicapped
+    /// grand final starts the upper-bracket side at 1-0, so its first score
+    /// cannot be zero.
+    ///
+    /// Two conditions were removed here on purpose, because they belonged to the
+    /// player path this client no longer uses:
+    ///
+    /// - **One replay id per new game.** Only `report_submit` insists on that.
+    ///   Requiring it stopped an organiser entering a score they already knew.
+    /// - **That the score went up.** `report` is also the *correction* path: it
+    ///   undoes a finished match and sets it again, so a lower score is
+    ///   legitimate and refusing it blocked the only way a wrong result is fixed.
     pub fn is_submittable(&self, entry: &TourneyMatch) -> bool {
+        // A bare forfeit needs no score at all: the server derives the winner and
+        // records the forfeiting side at -1.
+        if self.is_bare_forfeit() {
+            return entry
+                .forfeit_opponent(self.forfeit.as_deref().unwrap_or_default())
+                .is_some();
+        }
         let needed = (entry.best_of + 1) / 2;
-        self.score1 >= 0
+        let scores_fit = self.score1 >= 0
             && self.score2 >= 0
             && self.score1 <= needed
             && self.score2 <= needed
             && !(self.score1 == needed && self.score2 == needed)
-            && self.new_games(entry) > 0
-            && i32::try_from(self.replay_ids.len()).unwrap_or(i32::MAX) == self.new_games(entry)
+            && !(entry.handicap > 0 && self.score1 < 1);
+        // A named winner has to be one of the two sides, or the server refuses it.
+        let winner_fits = match self.winner.as_deref() {
+            None => true,
+            Some(team) => {
+                entry.team1.as_deref() == Some(team) || entry.team2.as_deref() == Some(team)
+            }
+        };
+        scores_fit && winner_fits
+    }
+
+    /// Whether this is the forfeit shorthand: a forfeiting team and nothing else.
+    ///
+    /// The server takes that on its own (`{forfeit: loserId}` with no score and no
+    /// winner) and works the rest out, which is the fastest way to record a
+    /// no-show — the commonest reason a bracket stalls.
+    pub fn is_bare_forfeit(&self) -> bool {
+        self.forfeit.is_some() && self.winner.is_none() && self.score1 == 0 && self.score2 == 0
     }
 }
 
@@ -863,7 +914,10 @@ impl Tourney {
     /// The server shows a pending entry only to organisers and to the person
     /// who asked, so this is already the right list for whoever is looking.
     pub fn pending_signups(&self) -> Vec<&TourneyPlayer> {
-        self.players.iter().filter(|player| player.pending).collect()
+        self.players
+            .iter()
+            .filter(|player| player.pending)
+            .collect()
     }
 
     /// Whether seeds can still be changed.
@@ -913,22 +967,35 @@ impl Tourney {
             .collect()
     }
 
-    /// Whether this account may submit the result of `entry` itself.
+    /// Whether this account may record the result of `entry`.
     ///
-    /// Every condition the server checks, in the same order, because a control
-    /// offered here that the server refuses is worse than no control: the
-    /// player fills in a score and loses it. The organiser has to have allowed
-    /// player reporting; the bracket has to be running; the match has to be a
-    /// two-sided one still in play; and this account has to be in it.
+    /// The organiser, and nobody else. That is a decision about this client, not
+    /// a limit of the service: `report_submit` lets the two players agree a score
+    /// between them, but it insists on one FAF replay id per game, and this client
+    /// keeps result-entry with the person running the event.
+    ///
+    /// The server's own conditions for `report`, in its order: the bracket has to
+    /// be running or finished, the caller has to be an organiser, and the match
+    /// has to have two sides. A finished match stays reportable — `report` is also
+    /// the correction path, and it undoes the old result first.
     pub fn may_report(&self, entry: &TourneyMatch) -> bool {
-        let Some(mine) = self.viewer.member_team_id.as_deref() else {
-            return false;
-        };
-        self.player_reporting
+        self.viewer.organiser
             && self.status.has_bracket()
             && entry.bracket != BracketSide::FreeForAll
-            && entry.is_playable()
-            && entry.opponent_of(mine).is_some()
+            && entry.team1.is_some()
+            && entry.team2.is_some()
+    }
+
+    /// Whether this account may rename or take apart `team`.
+    ///
+    /// An organiser may rename any team as often as needed. A captain gets one
+    /// rename, and only where teams have more than one player — the server counts
+    /// it in `captainRenamed` and refuses the second.
+    pub fn may_rename(&self, team: &TourneyTeam) -> bool {
+        if self.viewer.organiser {
+            return true;
+        }
+        self.is_captain_of(team) && self.team_size > 1 && !team.captain_renamed
     }
 
     /// Whether this account is the side that has to agree to a pending result.
@@ -936,26 +1003,13 @@ impl Tourney {
     /// Only the *other* team confirms: the submitting team agreeing with itself
     /// would make the second signature worthless.
     pub fn may_confirm(&self, entry: &TourneyMatch) -> bool {
-        let (Some(mine), Some(pending)) =
-            (self.viewer.member_team_id.as_deref(), entry.pending_report.as_ref())
-        else {
+        let (Some(mine), Some(pending)) = (
+            self.viewer.member_team_id.as_deref(),
+            entry.pending_report.as_ref(),
+        ) else {
             return false;
         };
         self.status.has_bracket() && entry.opponent_of(mine).is_some() && pending.by_team != mine
-    }
-
-    /// The matches this account is playing in, in bracket order.
-    ///
-    /// What a player opens the tab for. An organiser sees the whole bracket
-    /// anyway, so this stays empty for them rather than guessing.
-    pub fn my_matches(&self) -> Vec<&TourneyMatch> {
-        let Some(mine) = self.viewer.member_team_id.as_deref() else {
-            return Vec::new();
-        };
-        self.matches
-            .iter()
-            .filter(|entry| entry.opponent_of(mine).is_some())
-            .collect()
     }
 
     /// Whether entering is worth offering: signups are open and this account is
@@ -967,9 +1021,7 @@ impl Tourney {
     /// is the answer a player needs, and they only get it by being allowed to
     /// try.
     pub fn may_sign_up(&self) -> bool {
-        self.viewer.logged_in
-            && !self.viewer.is_signed_up()
-            && self.status == TourneyStatus::Signup
+        self.viewer.logged_in && !self.viewer.is_signed_up() && self.status == TourneyStatus::Signup
     }
 
     /// Whether withdrawing is possible: signed up, and signups still open.
@@ -1375,6 +1427,37 @@ pub struct TourneyState {
     pub articles: Vec<Article>,
     /// Whether this account may host at all, asked for once.
     pub hosting: HostingStatus,
+    /// Accounts matching what the organiser is typing into an add or invite
+    /// field.
+    ///
+    /// Kept in the slice rather than in the component because it is the answer
+    /// to a request, and every other request's answer lives here too. It is also
+    /// what makes adding an entrant a *choice of a person* rather than a typed
+    /// string: the server matches names exactly and refuses anything it cannot
+    /// find, so guessing the spelling is the failure mode this removes.
+    pub account_search: AccountSearch,
+}
+
+/// A name-to-account search, as the organiser types.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountSearch {
+    /// The text the results belong to. Held so a slower answer for an older
+    /// query can be dropped rather than replacing a newer one's results.
+    pub query: String,
+    pub matches: Vec<PlayerSummary>,
+    pub status: TourneyLoadStatus,
+}
+
+impl AccountSearch {
+    /// Whether a result set for `query` is still the one being shown.
+    ///
+    /// Compared case-insensitively and trimmed, because that is how the query
+    /// was sent: the same word typed with a stray space must not look like a
+    /// different search.
+    pub fn is_current(&self, query: &str) -> bool {
+        self.query.trim().eq_ignore_ascii_case(query.trim())
+    }
 }
 
 impl TourneyState {
@@ -1404,18 +1487,29 @@ impl TourneyState {
         self.chat_rooms.iter().map(|room| room.unread).sum()
     }
 
+    /// The one match a write is in flight against, if the pending write names
+    /// one at all.
+    ///
+    /// Only the three reporting actions do; every other write is event-wide.
+    /// Answered as the single id rather than tested per match because that is
+    /// what a bracket needs: it reads this once and compares, instead of asking
+    /// the same question of every match it draws.
+    pub fn busy_match_id(&self) -> Option<&str> {
+        match &self.pending {
+            Some(
+                TourneyAction::SubmittingReport { match_id }
+                | TourneyAction::AnsweringReport { match_id }
+                | TourneyAction::DecidingReport { match_id },
+            ) => Some(match_id),
+            _ => None,
+        }
+    }
+
     /// Whether a write is in flight against this match.
     ///
     /// One match's spinner should not disable the rest of the bracket.
     pub fn is_busy_with(&self, match_id: &str) -> bool {
-        matches!(
-            &self.pending,
-            Some(
-                TourneyAction::SubmittingReport { match_id: busy }
-                    | TourneyAction::AnsweringReport { match_id: busy }
-                    | TourneyAction::DecidingReport { match_id: busy }
-            ) if busy == match_id
-        )
+        self.busy_match_id() == Some(match_id)
     }
 }
 
@@ -1612,6 +1706,17 @@ pub enum TourneyCommand {
     LoadArticles,
     /// Ask whether this account may host, which gates the create button.
     LoadHosting,
+    /// Find FAF accounts whose name starts with what has been typed.
+    ///
+    /// Reuses the same batch account lookup the player card and the leaderboard
+    /// read: an organiser adding an entrant is choosing a person, and the client
+    /// already knows how to show one. A blank or too-short query clears the list
+    /// instead of asking the API for everybody.
+    SearchAccounts {
+        query: String,
+    },
+    /// Drop the results: somebody was picked, or the field was left.
+    ClearAccountSearch,
     /// Create an event. It becomes the open one, so the organiser lands in it
     /// rather than back at an unchanged list.
     Create {
@@ -1721,6 +1826,21 @@ pub enum TourneyEvent {
     HostingLoaded {
         hosting: HostingStatus,
     },
+    /// An account search started; the field carries the query it is for.
+    AccountSearchStarted {
+        query: String,
+    },
+    AccountSearchLoaded {
+        query: String,
+        matches: Vec<PlayerSummary>,
+    },
+    AccountSearchFailed {
+        query: String,
+        reason: String,
+        kind: RequestFailureKind,
+    },
+    /// The organiser picked somebody, or left the field: drop the list.
+    AccountSearchCleared,
 }
 
 pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
@@ -1843,6 +1963,40 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::ArticlesLoaded { articles } => state.articles = articles.clone(),
         TourneyEvent::HostingLoaded { hosting } => state.hosting = hosting.clone(),
+
+        // A search's own query moves with it. Starting one claims the field, so
+        // the results already on screen belong to the older word and go: showing
+        // matches for what was typed three letters ago is worse than showing
+        // none, because they are clickable.
+        TourneyEvent::AccountSearchStarted { query } => {
+            state.account_search = AccountSearch {
+                query: query.clone(),
+                matches: Vec::new(),
+                status: TourneyLoadStatus::Loading,
+            };
+        }
+        // Answers can overtake each other, so one for an abandoned query is
+        // dropped rather than replacing the current one's.
+        TourneyEvent::AccountSearchLoaded { query, matches } => {
+            if state.account_search.is_current(query) {
+                state.account_search.matches = matches.clone();
+                state.account_search.status = TourneyLoadStatus::Ready;
+            }
+        }
+        TourneyEvent::AccountSearchFailed {
+            query,
+            reason,
+            kind,
+        } => {
+            if state.account_search.is_current(query) {
+                state.account_search.matches = Vec::new();
+                state.account_search.status = TourneyLoadStatus::Failed {
+                    reason: reason.clone(),
+                    kind: *kind,
+                };
+            }
+        }
+        TourneyEvent::AccountSearchCleared => state.account_search = AccountSearch::default(),
     }
 }
 
@@ -1891,6 +2045,7 @@ mod tests {
             checked_in: false,
             eliminated: false,
             final_rank: None,
+            captain_renamed: false,
             join_requests: Vec::new(),
             invites: Vec::new(),
         }
@@ -1972,42 +2127,49 @@ mod tests {
         assert_eq!(names, vec!["Nuggets", "Grace"]);
     }
 
-    #[test]
-    fn a_player_in_the_match_may_report_it() {
-        assert!(event_seen_by("t1").may_report(&playable_match()));
-        assert!(event_seen_by("t2").may_report(&playable_match()));
-    }
-
-    #[test]
-    fn someone_outside_the_match_may_not() {
-        // A spectator, and a player from another match in the same event.
-        assert!(!event_seen_by("t9").may_report(&playable_match()));
-        let watching = Tourney {
+    /// The same event as `event()`, seen by whoever runs it.
+    fn organised_event() -> Tourney {
+        Tourney {
             viewer: TourneyViewer {
                 logged_in: true,
+                organiser: true,
                 ..TourneyViewer::default()
             },
             ..event()
-        };
-        assert!(!watching.may_report(&playable_match()));
+        }
     }
 
     #[test]
-    fn nobody_may_report_when_the_organiser_turned_it_off() {
-        // The organiser's switch wins over being in the match; offering the
-        // control anyway would produce a request the server refuses.
+    fn the_organiser_may_record_a_result() {
+        assert!(organised_event().may_report(&playable_match()));
+    }
+
+    #[test]
+    fn a_player_in_the_match_may_not() {
+        // This client keeps result-entry with the organiser. The service does
+        // offer players their own path, but it insists on a FAF replay id per
+        // game, and that is not the flow here.
+        assert!(!event_seen_by("t1").may_report(&playable_match()));
+        assert!(!event_seen_by("t2").may_report(&playable_match()));
+        assert!(!event_seen_by("t9").may_report(&playable_match()));
+    }
+
+    #[test]
+    fn the_player_reporting_switch_does_not_gate_the_organiser() {
+        // It decides whether *players* may report. An organiser records results
+        // either way, which is the whole point of the flag existing.
         let event = Tourney {
             player_reporting: false,
-            ..event()
+            ..organised_event()
         };
-        assert!(!event.may_report(&event.matches[0]));
+        assert!(event.may_report(&event.matches[0]));
     }
 
     #[test]
     fn a_series_in_progress_is_still_reportable() {
         // The bug this guards: `live` means 1-1 with a game still to play, and
-        // reading it as "not ready" would take the report away mid-series.
-        let event = event();
+        // reading it as "not ready" would take the control away mid-series.
+        let event = organised_event();
         let live = TourneyMatch {
             status: MatchStatus::Live,
             score1: Some(1),
@@ -2016,6 +2178,22 @@ mod tests {
         };
         assert!(live.is_playable());
         assert!(event.may_report(&live));
+    }
+
+    #[test]
+    fn a_finished_match_stays_reportable_so_a_wrong_result_can_be_fixed() {
+        // `report` is the correction path too: it undoes the old result and sets
+        // the new one. Withdrawing the control once a match is done would leave a
+        // mistake permanent.
+        let event = organised_event();
+        let done = TourneyMatch {
+            status: MatchStatus::Done,
+            score1: Some(2),
+            score2: Some(0),
+            winner: event.matches[0].team1.clone(),
+            ..event.matches[0].clone()
+        };
+        assert!(event.may_report(&done));
     }
 
     #[test]
@@ -2091,21 +2269,19 @@ mod tests {
     }
 
     #[test]
-    fn a_player_sees_only_their_own_matches() {
-        let event = event_seen_by("t2");
-        let mine = event.my_matches();
-        assert_eq!(mine.len(), 1);
-        assert_eq!(mine[0].id, "m1");
-        // Nobody in the event: nothing rather than everything.
-        assert!(event_seen_by("t9").my_matches().is_empty());
-    }
-
-    #[test]
     fn a_pool_is_found_through_its_round_assignment() {
         let event = Tourney {
             map_db: vec![
-                TourneyMap { id: "m1".into(), name: "Setons".into(), image_url: String::new() },
-                TourneyMap { id: "m2".into(), name: "Astro".into(), image_url: String::new() },
+                TourneyMap {
+                    id: "m1".into(),
+                    name: "Setons".into(),
+                    image_url: String::new(),
+                },
+                TourneyMap {
+                    id: "m2".into(),
+                    name: "Astro".into(),
+                    image_url: String::new(),
+                },
             ],
             map_pools: vec![MapPool {
                 id: "pool1".into(),
@@ -2121,7 +2297,9 @@ mod tests {
             ..Tourney::default()
         };
 
-        let pool = event.pool_for_round("1").expect("a pool is bound to round 1");
+        let pool = event
+            .pool_for_round("1")
+            .expect("a pool is bound to round 1");
         assert_eq!(pool.name, "Round 1");
         // The pool's own order, not the map database's.
         let names: Vec<&str> = event
@@ -2140,8 +2318,14 @@ mod tests {
     }
 
     const VAULT: [Vault; 2] = [
-        Vault { display: "Seton's Clutch", folder: "scmp_009.v0001" },
-        Vault { display: "Astro Crater Battles", folder: "astro_crater.v0003" },
+        Vault {
+            display: "Seton's Clutch",
+            folder: "scmp_009.v0001",
+        },
+        Vault {
+            display: "Astro Crater Battles",
+            folder: "astro_crater.v0003",
+        },
     ];
 
     fn resolve(name: &str) -> Option<&'static str> {
@@ -2164,7 +2348,11 @@ mod tests {
             "Setons_Clutch",
             "seton''s  clutch",
         ] {
-            assert_eq!(resolve(spelling), Some("Seton's Clutch"), "for {spelling:?}");
+            assert_eq!(
+                resolve(spelling),
+                Some("Seton's Clutch"),
+                "for {spelling:?}"
+            );
         }
     }
 
@@ -2188,7 +2376,10 @@ mod tests {
     fn the_display_name_wins_over_a_coincidental_folder_match() {
         // Both lookups exist; the human-readable one is the one an organiser
         // meant, so it is tried first.
-        assert_eq!(resolve("Astro Crater Battles"), Some("Astro Crater Battles"));
+        assert_eq!(
+            resolve("Astro Crater Battles"),
+            Some("Astro Crater Battles")
+        );
     }
 
     // --- the slice ---------------------------------------------------------
@@ -2237,14 +2428,19 @@ mod tests {
                 TourneyEvent::Selected {
                     tournament_id: "e2".into(),
                 },
-                TourneyEvent::DetailLoaded { event: Box::new(row("e2")) },
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(row("e2")),
+                },
                 TourneyEvent::Loaded {
                     events: vec![row("e1"), row("e2")],
                 },
             ],
         );
         assert_eq!(state.selected_id.as_deref(), Some("e2"));
-        assert!(state.open_event().is_some(), "the detail survives a refresh");
+        assert!(
+            state.open_event().is_some(),
+            "the detail survives a refresh"
+        );
     }
 
     #[test]
@@ -2259,7 +2455,9 @@ mod tests {
                 TourneyEvent::Selected {
                     tournament_id: "e2".into(),
                 },
-                TourneyEvent::DetailLoaded { event: Box::new(row("e2")) },
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(row("e2")),
+                },
                 TourneyEvent::ChatRoomsLoaded {
                     rooms: vec![ChatRoom {
                         id: "global".into(),
@@ -2293,7 +2491,9 @@ mod tests {
                 TourneyEvent::Selected {
                     tournament_id: "e2".into(),
                 },
-                TourneyEvent::DetailLoaded { event: Box::new(row("e1")) },
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(row("e1")),
+                },
             ],
         );
         assert!(state.detail.is_none());
@@ -2309,7 +2509,9 @@ mod tests {
                 TourneyEvent::Loaded {
                     events: vec![row("e1"), row("e2")],
                 },
-                TourneyEvent::DetailLoaded { event: Box::new(row("e1")) },
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(row("e1")),
+                },
                 TourneyEvent::ChatRoomsLoaded {
                     rooms: vec![ChatRoom {
                         id: "global".into(),
@@ -2371,7 +2573,11 @@ mod tests {
                 },
             ],
         );
-        assert_eq!(state.unread_total(), 1, "only the room that was read clears");
+        assert_eq!(
+            state.unread_total(),
+            1,
+            "only the room that was read clears"
+        );
     }
 
     #[test]
@@ -2481,7 +2687,9 @@ mod tests {
             Some("Ada")
         );
         assert!(state.profile_of(&player("p9", "Walk-in", None)).is_none());
-        assert!(state.profile_of(&player("p3", "Grace", Some(999))).is_none());
+        assert!(state
+            .profile_of(&player("p3", "Grace", Some(999)))
+            .is_none());
     }
 
     #[test]
@@ -2493,7 +2701,10 @@ mod tests {
         assert_eq!(MatchStatus::from_wire("bye"), MatchStatus::Bye);
         // An unrecognised tournament status is admitted as unknown rather than
         // guessed at, because real actions are gated on it.
-        assert_eq!(TourneyStatus::from_wire("who knows"), TourneyStatus::Unknown);
+        assert_eq!(
+            TourneyStatus::from_wire("who knows"),
+            TourneyStatus::Unknown
+        );
         assert_eq!(TourneyStatus::from_wire("drafted"), TourneyStatus::Drafted);
         assert_eq!(BracketSide::from_wire(""), BracketSide::Winners);
         assert_eq!(BracketSide::from_wire("sw"), BracketSide::Swiss);

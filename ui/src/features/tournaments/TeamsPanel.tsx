@@ -17,28 +17,15 @@ import { Icon } from "../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerChip } from "./PlayerChip";
-
-/** Twin of `Tourney::team_rating`: what `maxTeamRating` is measured against. */
-export function teamRating(event: Tourney, team: TourneyTeam): number {
-  return team.playerIds
-    .map((id) => event.players.find((player) => player.id === id)?.rating ?? 0)
-    .reduce((total, rating) => total + rating, 0);
-}
-
-/** Twin of `Tourney::would_exceed_team_cap`. */
-export function wouldExceedCap(event: Tourney, team: TourneyTeam): boolean {
-  const cap = event.rating.maxTeam;
-  if (cap === null) return false;
-  const mine =
-    event.players.find((player) => player.id === event.viewer.signedUpPlayerId)?.rating ?? null;
-  if (mine === null) return false;
-  return teamRating(event, team) + mine > cap;
-}
-
-/** Twin of `Tourney::teams_are_self_organised`. */
-export function selfOrganised(event: Tourney): boolean {
-  return event.formation === "open" && event.teamSize > 1 && event.status === "signup";
-}
+import {
+  mayRename,
+  myInvites,
+  profileOf,
+  selfOrganised,
+  teamMembers,
+  teamRating,
+  wouldExceedCap,
+} from "./tourneyPresentation";
 
 interface TeamsPanelProps {
   event: Tourney;
@@ -67,13 +54,16 @@ export function TeamsPanel(props: TeamsPanelProps) {
   const isFull = (team: TourneyTeam) => team.playerIds.length >= event.teamSize;
   const askedFor = (team: TourneyTeam) =>
     myPlayerId !== null && team.joinRequests.some((ask) => ask.playerId === myPlayerId);
-  const invitedTo = (team: TourneyTeam) =>
-    myPlayerId !== null && team.invites.some((invite) => invite.playerId === myPlayerId);
-
   const unteamed = event.players.filter((player) => player.teamId === null && !player.pending);
-  const invites = event.teams.filter(invitedTo);
+  const invites = myInvites(event);
   const canForm = selfOrganised(event) && event.viewer.signedUpPlayerId !== null && mine === null;
 
+  // Like `TourneyTeam::display_name`, but deliberately not its twin: where the
+  // Rust falls back to an empty string, this falls back to the team id. A team
+  // that never named itself and whose first entrant cannot be resolved would
+  // otherwise render as a blank row with buttons beside it, which reads as a
+  // broken list. Not worth pinning to the Rust, and worth saying so: the id is
+  // the better answer here, not an oversight to be corrected into a blank.
   const nameOf = (team: TourneyTeam) => {
     const named = team.name.trim();
     if (named !== "") return named;
@@ -172,15 +162,13 @@ export function TeamsPanel(props: TeamsPanelProps) {
               </div>
 
               <ul className="tournament-entrant-list">
-                {team.playerIds.map((id) => {
-                  const member = event.players.find((player) => player.id === id);
-                  if (member === undefined) return null;
-                  const profile =
-                    member.fafId === null
-                      ? undefined
-                      : props.profiles.find((held) => held.id === member.fafId);
+                {teamMembers(event, team).map((member) => {
+                  // The entry's own name wins over the account's: the tournament
+                  // service owns the entry, FAF owns the player, and an
+                  // organiser's substitute label must survive the lookup.
+                  const profile = profileOf(props.profiles, member);
                   return (
-                    <li className="tournament-entrant" key={id}>
+                    <li className="tournament-entrant" key={member.id}>
                       <span className="tournament-entrant-name">
                         {profile ? (
                           <PlayerChip player={profile} overrideName={member.name} />
@@ -188,7 +176,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
                           member.name
                         )}
                       </span>
-                      {team.captainId === id && (
+                      {team.captainId === member.id && (
                         <span className="muted">{t("tournaments.teams.captain")}</span>
                       )}
                     </li>
@@ -278,33 +266,34 @@ export function TeamsPanel(props: TeamsPanelProps) {
                     {t("tournaments.teams.leave")}
                   </Button>
                 )}
-                {captain && (
-                  <>
-                    <Button
-                      disabled={busy}
-                      onClick={() => {
-                        const renamed = window.prompt(
-                          t("tournaments.teams.renamePrompt"),
-                          team.name,
-                        );
-                        if (renamed !== null && renamed.trim() !== "") {
-                          props.onRename(team.id, renamed);
-                        }
-                      }}
-                    >
-                      {t("tournaments.teams.rename")}
-                    </Button>
-                    <Button
-                      disabled={busy}
-                      onClick={() => {
-                        if (window.confirm(t("tournaments.teams.disbandConfirm"))) {
-                          props.onDisband(team.id);
-                        }
-                      }}
-                    >
-                      {t("tournaments.teams.disband")}
-                    </Button>
-                  </>
+                {/* An organiser may rename and disband any team; a captain only
+                    their own, and renaming only once. Gating both on captaincy
+                    alone left an organiser able to touch nothing but the team
+                    they happened to play in. */}
+                {mayRename(event, team) && (
+                  <Button
+                    disabled={busy}
+                    onClick={() => {
+                      const renamed = window.prompt(t("tournaments.teams.renamePrompt"), team.name);
+                      if (renamed !== null && renamed.trim() !== "") {
+                        props.onRename(team.id, renamed);
+                      }
+                    }}
+                  >
+                    {t("tournaments.teams.rename")}
+                  </Button>
+                )}
+                {(captain || event.viewer.organiser) && (
+                  <Button
+                    disabled={busy}
+                    onClick={() => {
+                      if (window.confirm(t("tournaments.teams.disbandConfirm"))) {
+                        props.onDisband(team.id);
+                      }
+                    }}
+                  >
+                    {t("tournaments.teams.disband")}
+                  </Button>
                 )}
               </div>
             </li>

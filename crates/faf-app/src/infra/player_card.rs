@@ -120,18 +120,68 @@ impl PlayerCardClient {
             .tokens
             .get()
             .ok_or_else(|| RequestError::unauthorized("Sign in to FAF to look up players."))?;
-        let mut url = self
-            .url("player")
-            .map_err(RequestError::unexpected)?;
+        let mut url = self.url("player").map_err(RequestError::unexpected)?;
         url.query_pairs_mut()
             .append_pair("filter", filter)
-            .append_pair(
-                "include",
-                "avatarAssignments.avatar,leaderboardRatings.leaderboard",
-            )
+            // Avatar only. `player` has no `leaderboardRatings` relationship, and
+            // asking for one is refused outright with
+            // "Invalid value: player does not contain the field leaderboardRatings".
+            // Ratings hang off `leaderboardRating` and are fetched below.
+            .append_pair("include", "avatarAssignments.avatar")
             .append_pair("page[size]", &limit.max(1).to_string());
         let doc = fetch_document_typed(&self.http, url, &token).await?;
-        Ok(parse_summaries(&doc))
+        let mut found = parse_summaries(&doc);
+        self.fill_ratings(&mut found, &token).await;
+        Ok(found)
+    }
+
+    /// Add the global and 1v1 ratings to accounts already resolved.
+    ///
+    /// A second request, because the relationship only runs one way: a
+    /// `leaderboardRating` names its player and its leaderboard, and the player
+    /// does not name its ratings. The same shape the leaderboard tab queries, so
+    /// this reuses a path that is known to work rather than inventing one.
+    ///
+    /// Failure is silent and leaves the ratings empty. A picker row without a
+    /// rating is still a person worth choosing, and an unrated newcomer has no
+    /// row here at all — which is exactly why this cannot be one request.
+    async fn fill_ratings(&self, players: &mut [PlayerSummary], token: &str) {
+        let ids: Vec<String> = players.iter().map(|player| player.id.to_string()).collect();
+        if ids.is_empty() {
+            return;
+        }
+        let Ok(mut url) = self.url("leaderboardRating") else {
+            return;
+        };
+        url.query_pairs_mut()
+            .append_pair("filter", &format!("player.id=in=({})", ids.join(",")))
+            .append_pair("include", "leaderboard")
+            // Two boards per account at most matter here, but the API pages by
+            // rows: every board every account sits on is a row.
+            .append_pair("page[size]", &(ids.len() * 12).to_string());
+        let Ok(doc) = self.get(url, token).await else {
+            return;
+        };
+        let index = index(&doc);
+        for entry in &doc.data {
+            let Some(player_id) =
+                rel_one(entry, "player").and_then(|key| key.1.parse::<i32>().ok())
+            else {
+                continue;
+            };
+            let Some(board) = related(entry, "leaderboard", &index) else {
+                continue;
+            };
+            let rating = number(entry, "rating").round() as i32;
+            let board = text(board, "technicalName");
+            for player in players.iter_mut().filter(|held| held.id == player_id) {
+                match board.as_str() {
+                    GLOBAL_BOARD => player.global_rating = Some(rating),
+                    LADDER_BOARD => player.ladder_rating = Some(rating),
+                    _ => {}
+                }
+            }
+        }
     }
 
     async fn ratings(&self, player_id: i32, token: &str) -> Result<JsonApiDoc, String> {
@@ -204,8 +254,12 @@ impl PlayerCardPort for PlayerCardClient {
         if trimmed.len() < MIN_SEARCH_LENGTH {
             return Ok(Vec::new());
         }
-        // RSQL treats `*` as a wildcard, so this is "login starts with".
-        let filter = format!("login=={}*", quote(trimmed));
+        // RSQL treats `*` as a wildcard, so this is "login starts with". The
+        // wildcard belongs *inside* the quoted literal: with it outside, the API
+        // answers `Filter expression is not in expected format` and the search
+        // never returns anything. It shipped that way because nothing called
+        // this and no test built the string.
+        let filter = format!("login=={}", quote_prefix(trimmed));
         let mut found = self.summaries(&filter, limit).await?;
         // Shortest first, so an exact name is not buried under everyone who
         // merely starts the same way.
@@ -242,10 +296,7 @@ impl PlayerCardPort for PlayerCardClient {
         }
         let filter = format!(
             "id=in=({})",
-            ids.iter()
-                .map(i32::to_string)
-                .collect::<Vec<_>>()
-                .join(",")
+            ids.iter().map(i32::to_string).collect::<Vec<_>>().join(",")
         );
         let limit = i32::try_from(ids.len()).unwrap_or(i32::MAX);
         self.summaries(&filter, limit).await
@@ -791,6 +842,16 @@ fn quote(value: &str) -> String {
     format!("\"{}\"", escape(value))
 }
 
+/// A value as an RSQL "starts with" literal: `"name*"`.
+///
+/// The wildcard has to sit inside the quotes. `"name"*` is a parse error the API
+/// reports as `Filter expression is not in expected format`, and it is not
+/// obvious from reading the line, which is why this is its own function with its
+/// own test rather than a `format!` at the call site.
+fn quote_prefix(value: &str) -> String {
+    format!("\"{}*\"", escape(value))
+}
+
 /// Shorter than this, a prefix search is not worth sending.
 const MIN_SEARCH_LENGTH: usize = 3;
 
@@ -809,8 +870,10 @@ fn parse_summaries(doc: &JsonApiDoc) -> Vec<PlayerSummary> {
                 login: text(player, "login"),
                 avatar_url: selected_avatar_url(player, &index),
                 country: text(player, "country"),
-                global_rating: board_rating(player, &index, GLOBAL_BOARD),
-                ladder_rating: board_rating(player, &index, LADDER_BOARD),
+                // Filled by `fill_ratings`: they are not on the player document
+                // and cannot be included from it.
+                global_rating: None,
+                ladder_rating: None,
             })
         })
         .collect()
@@ -834,18 +897,6 @@ fn selected_avatar_url(player: &Resource, index: &Index<'_>) -> String {
         .and_then(|assignment| related(assignment, "avatar", index))
         .map(|avatar| text(avatar, "url"))
         .unwrap_or_default()
-}
-
-/// This player's rating on one leaderboard, if the include carried it.
-fn board_rating(player: &Resource, index: &Index<'_>, technical_name: &str) -> Option<i32> {
-    rel_many(player, "leaderboardRatings")
-        .into_iter()
-        .filter_map(|key| index.get(&key).copied())
-        .find(|rating| {
-            related(rating, "leaderboard", index)
-                .is_some_and(|board| text(board, "technicalName") == technical_name)
-        })
-        .map(|rating| number(rating, "rating").round() as i32)
 }
 
 #[derive(Debug, Clone, Default)]
@@ -927,7 +978,10 @@ impl PlayerCardPort for FakePlayerCard {
         // to type. Searching for a real login and getting nothing looks exactly
         // like a broken search, so the query itself is always offered as a
         // match, with two invented neighbours to prove the list is a list.
-        if !found.iter().any(|player| player.login.eq_ignore_ascii_case(trimmed)) {
+        if !found
+            .iter()
+            .any(|player| player.login.eq_ignore_ascii_case(trimmed))
+        {
             found.insert(0, invented_player(trimmed, 0));
             found.push(invented_player(&format!("{trimmed}_2"), 1));
         }
@@ -1156,6 +1210,31 @@ fn fake_events() -> Vec<PlayerEventCount> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    /// The exact RSQL the API accepts for a prefix search.
+    ///
+    /// This shipped as `login=="Seraphim"*` — wildcard outside the literal — and
+    /// the API refuses it with `Filter expression is not in expected format`. It
+    /// went unnoticed because `search_players` had no caller and no test ever
+    /// built the string. Asserting the string is the only thing that would have
+    /// caught it short of a live request.
+    #[test]
+    fn a_prefix_search_puts_the_wildcard_inside_the_quotes() {
+        assert_eq!(quote_prefix("Seraphim"), "\"Seraphim*\"");
+        assert_eq!(format!("login=={}", quote_prefix("Ada")), "login==\"Ada*\"");
+        // Not the broken shape, spelled out so a future edit cannot drift back.
+        assert_ne!(
+            format!("login=={}*", quote("Ada")),
+            format!("login=={}", quote_prefix("Ada"))
+        );
+    }
+
+    /// A name with a quote or a backslash must not break out of the literal.
+    #[test]
+    fn a_prefix_search_escapes_what_would_end_the_literal() {
+        assert_eq!(quote_prefix("a\"b"), "\"a\\\"b*\"");
+        assert_eq!(quote_prefix("a\\b"), "\"a\\\\b*\"");
+    }
 
     #[test]
     fn rating_history_uses_conservative_displayed_rating() {

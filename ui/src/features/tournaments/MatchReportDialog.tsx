@@ -14,38 +14,7 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import type { MatchReport, Tourney, TourneyMatch } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-
-/**
- * How many games this report adds to what is already confirmed.
- *
- * Twin of `MatchReport::new_games`. A grand final with a handicap starts the
- * upper-bracket side at 1-0, so an absent score is not always zero.
- */
-export function newGames(entry: TourneyMatch, score1: number, score2: number): number {
-  const confirmed = (entry.score1 ?? (entry.handicap > 0 ? 1 : 0)) + (entry.score2 ?? 0);
-  return Math.max(0, score1 + score2 - confirmed);
-}
-
-/** Twin of `MatchReport::is_submittable`: every rule the server checks. */
-export function isSubmittable(
-  entry: TourneyMatch,
-  score1: number,
-  score2: number,
-  replayIds: string[],
-): boolean {
-  const needed = Math.ceil(entry.bestOf / 2);
-  const games = newGames(entry, score1, score2);
-  const usable = replayIds.filter((id) => id.trim() !== "");
-  return (
-    score1 >= 0 &&
-    score2 >= 0 &&
-    score1 <= needed &&
-    score2 <= needed &&
-    !(score1 === needed && score2 === needed) &&
-    games > 0 &&
-    usable.length === games
-  );
-}
+import { isSubmittable } from "./tourneyPresentation";
 
 interface MatchReportDialogProps {
   event: Tourney;
@@ -65,15 +34,16 @@ export function MatchReportDialog({
   const { t } = useTranslation();
   const [score1, setScore1] = useState(entry.score1 ?? (entry.handicap > 0 ? 1 : 0));
   const [score2, setScore2] = useState(entry.score2 ?? 0);
-  const [replayIds, setReplayIds] = useState<string[]>([]);
+  /** A team the organiser declares the winner regardless of the score. */
+  const [winner, setWinner] = useState<string | null>(null);
+  /** A team that did not turn up, or walked away. */
+  const [forfeit, setForfeit] = useState<string | null>(null);
 
   const needed = Math.ceil(entry.bestOf / 2);
-  const games = newGames(entry, score1, score2);
-  // The list is resized to the score rather than being a free-form textarea:
-  // one box per game is the shape of the rule, so an off-by-one is visible
-  // before the request rather than after it.
-  const rows = Array.from({ length: games }, (_, index) => replayIds[index] ?? "");
-  const ready = isSubmittable(entry, score1, score2, rows);
+  // The shorthand: a forfeit alone, no score. The server awards the win to the
+  // other side and records the forfeiting team at -1.
+  const bareForfeit = forfeit !== null && winner === null && score1 === 0 && score2 === 0;
+  const ready = bareForfeit || isSubmittable(entry, score1, score2, winner);
 
   const teamName = (teamId: string | null): string => {
     const team = event.teams.find((candidate) => candidate.id === teamId);
@@ -81,12 +51,6 @@ export function MatchReportDialog({
     const named = team.name.trim();
     if (named !== "") return named;
     return event.players.find((player) => player.id === team.playerIds[0])?.name ?? named;
-  };
-
-  const setRow = (index: number, value: string) => {
-    const next = [...rows];
-    next[index] = value;
-    setReplayIds(next);
   };
 
   const scoreBox = (teamId: string | null, value: number, set: (next: number) => void) => (
@@ -112,37 +76,68 @@ export function MatchReportDialog({
         {scoreBox(entry.team2, score2, setScore2)}
       </div>
 
+      {/* A no-show is the commonest reason a bracket stalls, and it needs no
+          score: naming the absent side is the whole report. */}
       <fieldset className="tournament-field">
-        <legend>{t("tournaments.report.replayIds")}</legend>
-        <small className="muted">{t("tournaments.report.replayHint")}</small>
-        {rows.map((id, index) => (
-          // The index is the identity here: these are positional slots in a
-          // list that only ever grows or shrinks at the end.
-          <input
-            key={index}
-            value={id}
-            inputMode="numeric"
-            placeholder={t("tournaments.report.replayPlaceholder")}
-            onChange={(changed) => setRow(index, changed.target.value)}
-            autoFocus={index === 0}
-          />
-        ))}
-        {games === 0 && <p className="muted">{t("tournaments.report.nothingNew")}</p>}
+        <legend>{t("tournaments.report.forfeit")}</legend>
+        <div className="tournament-detail-actions">
+          {[entry.team1, entry.team2].map((teamId) => (
+            <Button
+              key={teamId ?? "none"}
+              variant={forfeit === teamId ? "primary" : undefined}
+              disabled={teamId === null}
+              onClick={() => setForfeit(forfeit === teamId ? null : teamId)}
+            >
+              {teamName(teamId)}
+            </Button>
+          ))}
+        </div>
+        {bareForfeit && (
+          <small className="muted">{t("tournaments.report.forfeitHint")}</small>
+        )}
+      </fieldset>
+
+      {/* For a series nobody clinched that still has to send someone onward: a
+          1-1 one side walked away from. Only the organiser may do this, and only
+          `report` accepts it. */}
+      <fieldset className="tournament-field">
+        <legend>{t("tournaments.report.winner")}</legend>
+        <div className="tournament-detail-actions">
+          {[entry.team1, entry.team2].map((teamId) => (
+            <Button
+              key={teamId ?? "none"}
+              variant={winner === teamId ? "primary" : undefined}
+              disabled={teamId === null}
+              onClick={() => setWinner(winner === teamId ? null : teamId)}
+            >
+              {teamName(teamId)}
+            </Button>
+          ))}
+        </div>
+        <small className="muted">{t("tournaments.report.winnerHint")}</small>
       </fieldset>
 
       <div className="tournament-form-actions">
         <Button onClick={onClose} disabled={busy}>
           {t("common.cancel")}
         </Button>
-        <Button variant="primary" disabled={busy || !ready} onClick={() =>
-          onSubmit({
-            matchId: entry.id,
-            score1,
-            score2,
-            replayIds: rows.map((id) => id.trim()).filter((id) => id !== ""),
-            drawReplayIds: [],
-          })
-        }>
+        <Button
+          variant="primary"
+          disabled={busy || !ready}
+          // No replay ids: `report` treats them as optional, and only the
+          // organiser records results here.
+          onClick={() =>
+            onSubmit({
+              matchId: entry.id,
+              score1,
+              score2,
+              replayIds: [],
+              drawReplayIds: [],
+              winner,
+              forfeit,
+            })
+          }
+        >
           {t(busy ? "tournaments.match.reporting" : "tournaments.match.submit")}
         </Button>
       </div>

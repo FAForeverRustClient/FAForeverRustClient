@@ -158,6 +158,19 @@ come second: they are what Challonge could not do, and the reason for the move.
 - **Assumed**: the exact request bodies. Only `POST /api/tournaments` was read in full
   (`name`, `category`, `competition`, `teamSize`, `formation`, `bracketType`, `draftOrder`,
   `plan`). Everything else needs its handler read before the port method is written.
+- **Not settled: the rating type and `ratingDate`.** Both are server-side facts the client
+  never sees. `publicView` sends the *gates* (`minRating`, `maxRating`, `maxTeamRating`,
+  `ratingCap`) but not which rating they are measured in, and not the date ratings were
+  frozen at. Two client features are blocked on this and are deliberately absent rather
+  than guessed at:
+  - **Telling an unrated event from a rated one.** `org_add_player` accepts a `rating` for
+    an unrated tournament, but the client cannot tell when to ask for one, so it always
+    sends none (see `EntrantAdmin`). A form field offered unconditionally would ask every
+    organiser for a number the server then ignores.
+  - **Showing or setting `ratingDate`.** It is the mechanism against entering on a peak
+    rating and playing on a lower one, so it is worth surfacing. Nothing establishes that
+    creation accepts it: it is absent from the create body above, which is the one body
+    read in full. Read the `edit_format` / `set_category` handlers before adding it.
 - `playerReporting` decides whether players may report results themselves
   (`report_submit`/`report_confirm`) or only organisers (`report`). The client should honour
   it rather than always offering the organiser path.

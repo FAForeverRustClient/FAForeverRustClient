@@ -31,7 +31,7 @@ import { matchTitle } from "./matchTitle";
 import { MatchReportDialog } from "./MatchReportDialog";
 import { TournamentDetailPane } from "./TournamentDetailPane";
 import { TournamentForm } from "./TournamentForm";
-import { formatDay, STATUS_LABELS } from "./tourneyPresentation";
+import { busyMatchId, formatDay, openEvent, STATUS_LABELS } from "./tourneyPresentation";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -62,16 +62,12 @@ export function TournamentsView() {
 
   // Never show one tournament's bracket under another's name: the pane waits
   // for the detail that belongs to the row that is open.
-  const open =
-    state.detail !== null && state.detail.id === state.selectedId ? state.detail : null;
+  const open = openEvent(state.detail, state.selectedId);
   const loading = state.status.type === "loading";
   const busy = state.pending !== null;
-  const busyMatchId =
-    state.pending?.type === "submittingReport" ||
-    state.pending?.type === "answeringReport" ||
-    state.pending?.type === "decidingReport"
-      ? state.pending.payload.matchId
-      : null;
+  // One match's spinner must not disable the rest of the bracket, so the
+  // pending write is narrowed to the match it names, if it names one.
+  const busyMatch = busyMatchId(state.pending);
 
   const act = (command: TourneyCommand) => send(command);
 
@@ -197,7 +193,9 @@ export function TournamentsView() {
               chatPosts={state.chatPosts}
               chatStatus={state.chatStatus}
               busy={busy}
-              busyMatchId={busyMatchId}
+              busyMatchId={busyMatch}
+              accountSearch={state.accountSearch}
+              onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
               onSignUp={() => act({ type: "signUp", payload: { tournamentId: open.id } })}
               onWithdraw={() => act({ type: "withdraw", payload: { tournamentId: open.id } })}
               onCheckIn={() => act({ type: "checkIn", payload: { tournamentId: open.id } })}
@@ -262,9 +260,13 @@ export function TournamentsView() {
               onRenameTeam={(teamId, name) =>
                 act({ type: "renameTeam", payload: { tournamentId: open.id, teamId, name } })
               }
-              onAddPlayer={(name, rating) =>
-                act({ type: "addPlayer", payload: { tournamentId: open.id, name, rating } })
-              }
+              // Picking somebody ends the search: the field closed, and leaving
+              // a clickable list behind would invite adding the same person
+              // twice.
+              onAddPlayer={(name, rating) => {
+                act({ type: "addPlayer", payload: { tournamentId: open.id, name, rating } });
+                act({ type: "clearAccountSearch" });
+              }}
               onRespondSignup={(playerId, accept) =>
                 act({
                   type: "respondSignup",
@@ -274,9 +276,10 @@ export function TournamentsView() {
               onRemovePlayer={(playerId) =>
                 act({ type: "removePlayer", payload: { tournamentId: open.id, playerId } })
               }
-              onInvitePlayer={(name) =>
-                act({ type: "invitePlayer", payload: { tournamentId: open.id, name } })
-              }
+              onInvitePlayer={(name) => {
+                act({ type: "invitePlayer", payload: { tournamentId: open.id, name } });
+                act({ type: "clearAccountSearch" });
+              }}
               onUninvite={(fafId) =>
                 act({ type: "uninvite", payload: { tournamentId: open.id, fafId } })
               }
@@ -325,7 +328,10 @@ export function TournamentsView() {
           entry={reporting}
           busy={busy}
           onSubmit={(report: MatchReport) => {
-            act({ type: "submitReport", payload: { tournamentId: open.id, report } });
+            // `report`, the organiser path: it takes a forfeit and an explicit
+            // winner and does not demand a replay id per game. `report_submit` is
+            // the players' own path and is not used here.
+            act({ type: "decideReport", payload: { tournamentId: open.id, report } });
             setReporting(null);
           }}
           onClose={() => setReporting(null)}

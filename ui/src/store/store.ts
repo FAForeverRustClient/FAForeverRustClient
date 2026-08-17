@@ -211,6 +211,7 @@ const INITIAL: AppState = {
     chatStatus: { type: "idle" },
     articles: [],
     hosting: { loggedIn: false, allowed: false, pending: false },
+    accountSearch: { query: "", matches: [], status: { type: "idle" } },
   },
   tutorials: {
     categories: [],

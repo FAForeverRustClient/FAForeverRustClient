@@ -208,7 +208,9 @@ async fn write_response(path: &str, response: reqwest::Response) -> Result<JsonA
     serde_json::from_str(&body).map_err(|error| format!("invalid JSON: {error}"))
 }
 
-pub(crate) async fn bounded_document_body(response: reqwest::Response) -> Result<String, RequestError> {
+pub(crate) async fn bounded_document_body(
+    response: reqwest::Response,
+) -> Result<String, RequestError> {
     if response
         .content_length()
         .is_some_and(|length| length > MAX_DOCUMENT_BYTES)

@@ -98,9 +98,10 @@ impl TourneyClient {
         // Every route, read or write, is behind the session: the service shows
         // an anonymous caller nothing, so there is no useful unauthenticated
         // path to fall back to.
-        let token = self.tokens.get().ok_or_else(|| {
-            RequestError::unauthorized("Sign in to FAF to see tournaments.")
-        })?;
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| RequestError::unauthorized("Sign in to FAF to see tournaments."))?;
         let mut request = self
             .http
             .request(method, url)
@@ -110,7 +111,10 @@ impl TourneyClient {
             request = request.json(&body);
         }
 
-        let response = request.send().await.map_err(|error| self.unreachable(error))?;
+        let response = request
+            .send()
+            .await
+            .map_err(|error| self.unreachable(error))?;
         let status = response.status();
         let body = bounded_document_body(response).await?;
 
@@ -184,9 +188,9 @@ fn encode(segment: &str) -> String {
 fn tourney_error(status: reqwest::StatusCode, body: &str) -> RequestError {
     let detail = error_detail(body);
     match status {
-        reqwest::StatusCode::UNAUTHORIZED => RequestError::unauthorized(
-            "Your FAF session has expired. Sign out and sign in again.",
-        ),
+        reqwest::StatusCode::UNAUTHORIZED => {
+            RequestError::unauthorized("Your FAF session has expired. Sign out and sign in again.")
+        }
         reqwest::StatusCode::FORBIDDEN => RequestError::rejected(
             detail.unwrap_or_else(|| "You are not allowed to do that here.".to_string()),
         ),
@@ -260,11 +264,7 @@ impl TourneyPort for TourneyClient {
         self.act(tournament_id, "publish", json!({})).await
     }
 
-    async fn advance(
-        &self,
-        tournament_id: &str,
-        phase: TourneyPhase,
-    ) -> Result<(), RequestError> {
+    async fn advance(&self, tournament_id: &str, phase: TourneyPhase) -> Result<(), RequestError> {
         self.act(tournament_id, "phase", json!({ "action": phase.as_wire() }))
             .await
     }
@@ -281,7 +281,9 @@ impl TourneyPort for TourneyClient {
     }
 
     async fn detail(&self, tournament_id: &str) -> Result<Tourney, RequestError> {
-        let document = self.get(&format!("t/{}", encode(tournament_id)), &[]).await?;
+        let document = self
+            .get(&format!("t/{}", encode(tournament_id)), &[])
+            .await?;
         tourney::parse_tourney(&document)
             .ok_or_else(|| RequestError::not_found("That tournament no longer exists."))
     }
@@ -296,7 +298,6 @@ impl TourneyPort for TourneyClient {
         self.act(tournament_id, "remove", json!({ "playerId": player_id }))
             .await
     }
-
 
     async fn create_team(&self, tournament_id: &str, name: &str) -> Result<(), RequestError> {
         self.act(tournament_id, "create_team", json!({ "name": name }))
@@ -380,7 +381,6 @@ impl TourneyPort for TourneyClient {
         )
         .await
     }
-
 
     async fn add_player(
         &self,
@@ -525,17 +525,31 @@ impl TourneyPort for TourneyClient {
         tournament_id: &str,
         report: &MatchReport,
     ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "report",
-            json!({
-                "matchId": report.match_id,
-                "score1": report.score1,
-                "score2": report.score2,
-                "replayIds": report.replay_ids,
-            }),
-        )
-        .await
+        let mut body = json!({ "matchId": report.match_id });
+        // The bare forfeit is recognised by the *absence* of a score: sending
+        // `score1: 0, score2: 0` alongside it would put the server on its normal
+        // path and refuse a grand final that starts 1-0. So the shorthand sends
+        // the forfeiting team and nothing else.
+        if !report.is_bare_forfeit() {
+            body["score1"] = json!(report.score1);
+            body["score2"] = json!(report.score2);
+        }
+        if let Some(winner) = report.winner.as_deref() {
+            body["winner"] = json!(winner);
+        }
+        if let Some(forfeit) = report.forfeit.as_deref() {
+            body["forfeit"] = json!(forfeit);
+        }
+        // Only sent when there is something to store: the key's presence
+        // *replaces* the stored set, so an empty list would wipe an archive an
+        // organiser had already recorded elsewhere.
+        if !report.replay_ids.is_empty() {
+            body["replayIds"] = json!(report.replay_ids);
+        }
+        if !report.draw_replay_ids.is_empty() {
+            body["drawReplayIds"] = json!(report.draw_replay_ids);
+        }
+        self.act(tournament_id, "report", body).await
     }
 
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {

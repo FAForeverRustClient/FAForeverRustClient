@@ -1,10 +1,15 @@
 // `rejectionOf` is a hand-written twin of `TourneyDraft::rejection`, and it is
 // what stops an organiser filling in a long form only to be told the name was
-// missing. It has no generated fixture holding it to the Rust version, so it
-// gets the same cases.
+// missing.
+//
+// It *is* now held to the Rust version: `reducer.conformance.test.ts` replays
+// what `TourneyDraft::rejection` actually returns, including which refusal comes
+// first when a draft has two problems. These cases stay for what they say out
+// loud about each rule.
 
 import { describe, expect, it } from "vitest";
-import { draftOf, rejectionOf } from "./TournamentForm";
+import { draftOf } from "./TournamentForm";
+import { rejectionOf } from "./tourneyPresentation";
 import { tourney } from "./fixtures";
 import type { TourneyDraft } from "../../ipc/bindings";
 

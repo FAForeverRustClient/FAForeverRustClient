@@ -28,12 +28,10 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             load_detail(&tournament_id, ctx, out).await;
         }
 
-        TourneyCommand::LoadDetail { tournament_id } => {
-            load_detail(&tournament_id, ctx, out).await
-        }
+        TourneyCommand::LoadDetail { tournament_id } => load_detail(&tournament_id, ctx, out).await,
 
         TourneyCommand::SignUp { tournament_id } => {
-            write(TourneyAction::SigningUp, &tournament_id, ctx, out, {
+            write(TourneyAction::SigningUp, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.sign_up(&tournament_id).await }
             })
@@ -54,7 +52,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 });
                 return;
             };
-            write(TourneyAction::Withdrawing, &tournament_id, ctx, out, {
+            write(TourneyAction::Withdrawing, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.withdraw(&tournament_id, &player_id).await }
             })
@@ -62,7 +60,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
 
         TourneyCommand::CheckIn { tournament_id } => {
-            write(TourneyAction::CheckingIn, &tournament_id, ctx, out, {
+            write(TourneyAction::CheckingIn, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.check_in(&tournament_id).await }
             })
@@ -76,10 +74,15 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::SubmittingReport {
                 match_id: report.match_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let report = clean(report);
-                async move { ctx.ports.tourney.submit_report(&tournament_id, &report).await }
+                async move {
+                    ctx.ports
+                        .tourney
+                        .submit_report(&tournament_id, &report)
+                        .await
+                }
             })
             .await;
         }
@@ -92,7 +95,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AnsweringReport {
                 match_id: match_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -111,10 +114,15 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::DecidingReport {
                 match_id: report.match_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let report = clean(report);
-                async move { ctx.ports.tourney.decide_report(&tournament_id, &report).await }
+                async move {
+                    ctx.ports
+                        .tourney
+                        .decide_report(&tournament_id, &report)
+                        .await
+                }
             })
             .await;
         }
@@ -174,6 +182,16 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             Err(error) => tracing::warn!(%error, "could not read the hosting status"),
         },
 
+        TourneyCommand::SearchAccounts { query } => search_accounts(&query, ctx, out).await,
+
+        TourneyCommand::ClearAccountSearch => {
+            // Bump the generation as well as clearing: a request already in
+            // flight must not repopulate the list after the organiser picked
+            // somebody and the field closed.
+            ctx.tourney_account_search_generation.begin();
+            out.emit(TourneyEvent::AccountSearchCleared);
+        }
+
         TourneyCommand::Create { draft } => {
             write_selecting(TourneyAction::Creating, ctx, out, {
                 let draft = trimmed_draft(draft);
@@ -186,7 +204,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             draft,
         } => {
-            write(TourneyAction::Editing, &tournament_id, ctx, out, {
+            write(TourneyAction::Editing, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let draft = trimmed_draft(draft);
                 async move { ctx.ports.tourney.edit_info(&tournament_id, &draft).await }
@@ -195,7 +213,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
 
         TourneyCommand::Publish { tournament_id } => {
-            write(TourneyAction::Publishing, &tournament_id, ctx, out, {
+            write(TourneyAction::Publishing, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.publish(&tournament_id).await }
             })
@@ -206,7 +224,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             phase,
         } => {
-            write(TourneyAction::Advancing { phase }, &tournament_id, ctx, out, {
+            write(TourneyAction::Advancing { phase }, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.advance(&tournament_id, phase).await }
             })
@@ -214,7 +232,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
 
         TourneyCommand::Archive { tournament_id } => {
-            write(TourneyAction::Archiving, &tournament_id, ctx, out, {
+            write(TourneyAction::Archiving, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.archive(&tournament_id).await }
             })
@@ -232,7 +250,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             if name.trim().is_empty() {
                 return;
             }
-            write(TourneyAction::CreatingTeam, &tournament_id, ctx, out, {
+            write(TourneyAction::CreatingTeam, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -251,9 +269,14 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AnsweringTeam {
                 team_id: team_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.request_join(&tournament_id, &team_id).await }
+                async move {
+                    ctx.ports
+                        .tourney
+                        .request_join(&tournament_id, &team_id)
+                        .await
+                }
             })
             .await;
         }
@@ -265,9 +288,14 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AnsweringTeam {
                 team_id: team_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.cancel_join(&tournament_id, &team_id).await }
+                async move {
+                    ctx.ports
+                        .tourney
+                        .cancel_join(&tournament_id, &team_id)
+                        .await
+                }
             })
             .await;
         }
@@ -281,7 +309,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AnsweringTeam {
                 team_id: team_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -301,7 +329,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::InvitingToTeam {
                 player_id: player_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -321,7 +349,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AnsweringTeam {
                 team_id: team_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -334,7 +362,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
 
         TourneyCommand::LeaveTeam { tournament_id } => {
-            write(TourneyAction::LeavingTeam, &tournament_id, ctx, out, {
+            write(TourneyAction::LeavingTeam, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.leave_team(&tournament_id).await }
             })
@@ -348,9 +376,14 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AnsweringTeam {
                 team_id: team_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.disband_team(&tournament_id, &team_id).await }
+                async move {
+                    ctx.ports
+                        .tourney
+                        .disband_team(&tournament_id, &team_id)
+                        .await
+                }
             })
             .await;
         }
@@ -363,7 +396,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             if name.trim().is_empty() {
                 return;
             }
-            write(TourneyAction::RenamingTeam, &tournament_id, ctx, out, {
+            write(TourneyAction::RenamingTeam, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -387,7 +420,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             if name.trim().is_empty() {
                 return;
             }
-            write(TourneyAction::AddingPlayer, &tournament_id, ctx, out, {
+            write(TourneyAction::AddingPlayer, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -407,7 +440,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AnsweringSignup {
                 player_id: player_id.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -429,7 +462,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // The same endpoint self-withdrawal uses. The server decides which
             // it is from who is asking, so there is one route rather than two
             // that could disagree.
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.withdraw(&tournament_id, &player_id).await }
             })
@@ -443,7 +476,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             if name.trim().is_empty() {
                 return;
             }
-            write(TourneyAction::Inviting, &tournament_id, ctx, out, {
+            write(TourneyAction::Inviting, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -459,7 +492,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             faf_id,
         } => {
-            write(TourneyAction::Inviting, &tournament_id, ctx, out, {
+            write(TourneyAction::Inviting, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.uninvite(&tournament_id, faf_id).await }
             })
@@ -470,7 +503,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             order,
         } => {
-            write(TourneyAction::Reseeding, &tournament_id, ctx, out, {
+            write(TourneyAction::Reseeding, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let order = tidy_order(order);
                 async move { ctx.ports.tourney.reseed(&tournament_id, &order).await }
@@ -482,7 +515,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             divisions,
         } => {
-            write(TourneyAction::Dividing, &tournament_id, ctx, out, {
+            write(TourneyAction::Dividing, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -499,7 +532,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             team_id,
             division,
         } => {
-            write(TourneyAction::Dividing, &tournament_id, ctx, out, {
+            write(TourneyAction::Dividing, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -519,7 +552,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             if body.trim().is_empty() {
                 return;
             }
-            write(TourneyAction::PostingNews, &tournament_id, ctx, out, {
+            write(TourneyAction::PostingNews, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -535,9 +568,14 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             news_id,
         } => {
-            write(TourneyAction::PostingNews, &tournament_id, ctx, out, {
+            write(TourneyAction::PostingNews, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.delete_news(&tournament_id, &news_id).await }
+                async move {
+                    ctx.ports
+                        .tourney
+                        .delete_news(&tournament_id, &news_id)
+                        .await
+                }
             })
             .await;
         }
@@ -557,7 +595,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             let action = TourneyAction::AssigningPool {
                 round_key: round_key.clone(),
             };
-            write(action, &tournament_id, ctx, out, {
+            write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move {
                     ctx.ports
@@ -573,7 +611,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             pool,
         } => {
-            write(TourneyAction::SavingPool, &tournament_id, ctx, out, {
+            write(TourneyAction::SavingPool, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 let pool = trimmed(pool);
                 async move { ctx.ports.tourney.save_pool(&tournament_id, &pool).await }
@@ -594,6 +632,8 @@ fn clean(report: MatchReport) -> MatchReport {
     MatchReport {
         replay_ids: usable(report.replay_ids),
         draw_replay_ids: usable(report.draw_replay_ids),
+        winner: None,
+        forfeit: None,
         ..report
     }
 }
@@ -746,6 +786,62 @@ async fn load_entrant_profiles(
     }
 }
 
+/// The shortest query worth asking the API about.
+///
+/// One letter matches a large share of the player base, and the list it returns
+/// is useless to pick from while costing a full request per keystroke.
+const MIN_ACCOUNT_QUERY: usize = 2;
+
+/// FAF accounts whose name starts with what the organiser typed.
+///
+/// Deliberately the *same* lookup the player card's picker uses
+/// (`PlayerCardPort::search_players`), not a tournament-specific one: an entrant
+/// is a FAF account, and the client already knows how to find and show one. The
+/// tournament service has no player search of its own worth using — it matches
+/// names exactly and answers "no such player", which is the refusal this
+/// removes.
+async fn search_accounts(query: &str, ctx: &ServiceCtx, out: &EventSink) {
+    let trimmed = query.trim();
+    if trimmed.chars().count() < MIN_ACCOUNT_QUERY {
+        // Bump the generation too, so an answer for a longer query typed a
+        // moment ago cannot land on the now-cleared field.
+        ctx.tourney_account_search_generation.begin();
+        out.emit(TourneyEvent::AccountSearchCleared);
+        return;
+    }
+    let generation = ctx.tourney_account_search_generation.begin();
+    out.emit(TourneyEvent::AccountSearchStarted {
+        query: trimmed.to_string(),
+    });
+
+    let found = ctx
+        .ports
+        .player_card
+        .search_players(trimmed, ACCOUNT_SEARCH_LIMIT)
+        .await;
+    if !ctx.tourney_account_search_generation.is_current(generation) {
+        return;
+    }
+    match found {
+        Ok(matches) => out.emit(TourneyEvent::AccountSearchLoaded {
+            query: trimmed.to_string(),
+            matches,
+        }),
+        // Said out loud rather than swallowed: unlike the avatars, this one is
+        // the answer to something the organiser just did, and an empty list that
+        // means "your session expired" would send them hunting for a typo.
+        Err(error) => out.emit(TourneyEvent::AccountSearchFailed {
+            query: trimmed.to_string(),
+            reason: error.to_string(),
+            kind: error.kind(),
+        }),
+    }
+}
+
+/// Enough rows to recognise the right person among similar names, few enough to
+/// scan without scrolling.
+const ACCOUNT_SEARCH_LIMIT: i32 = 8;
+
 /// The rooms of the open event.
 ///
 /// Silent on failure for the same reason as the profiles: chat is beside the
@@ -784,20 +880,19 @@ async fn read_room(tournament_id: &str, room_id: &str, ctx: &ServiceCtx, out: &E
 /// the list and the open event. Reloading rather than patching is deliberate:
 /// entering changes the entrant count, confirming a score advances the winner
 /// and may finish the tournament, and none of that is in the response.
+///
+/// Which event to re-read is *not* a parameter: [`write_selecting`] reads it
+/// back from the selection, so a caller cannot reload one event while the pane
+/// shows another.
 async fn write(
     action: TourneyAction,
-    tournament_id: &str,
     ctx: &ServiceCtx,
     out: &EventSink,
     // A future rather than a closure: async blocks are lazy, so the operation
     // still does not begin until the guard below is held.
     operation: impl std::future::Future<Output = Result<(), RequestError>>,
 ) {
-    write_selecting(action, ctx, out, async {
-        operation.await.map(|()| None)
-    })
-    .await;
-    let _ = tournament_id;
+    write_selecting(action, ctx, out, async { operation.await.map(|()| None) }).await;
 }
 
 /// A write whose answer names the event to open afterwards.
@@ -913,6 +1008,8 @@ mod tests {
             score2: 0,
             replay_ids: vec!["  22334455 ".into(), String::new(), "   ".into()],
             draw_replay_ids: vec!["".into()],
+            winner: None,
+            forfeit: None,
         });
         assert_eq!(cleaned.replay_ids, vec!["22334455".to_string()]);
         assert!(cleaned.draw_replay_ids.is_empty());

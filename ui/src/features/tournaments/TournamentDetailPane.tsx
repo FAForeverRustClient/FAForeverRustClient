@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type {
+  AccountSearch,
   Article,
   ChatPost,
   ChatRoom,
@@ -27,10 +28,17 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { BracketView } from "./BracketView";
 import { ChatPanel } from "./ChatPanel";
 import { EntrantsPanel } from "./EntrantsPanel";
-import { selfOrganised, TeamsPanel } from "./TeamsPanel";
+import { TeamsPanel } from "./TeamsPanel";
 import { ManagePanel } from "./ManagePanel";
 import { NewsPanel } from "./NewsPanel";
-import { formatDay, formatMoment, formatOf, ratingGateOf } from "./tourneyPresentation";
+import {
+  formatDay,
+  formatMoment,
+  formatOf,
+  ratingGateOf,
+  selfOrganised,
+  unreadTotal,
+} from "./tourneyPresentation";
 
 type Section =
   | "overview"
@@ -65,6 +73,9 @@ interface TournamentDetailPaneProps {
   chatStatus: TourneyLoadStatus;
   busy: boolean;
   busyMatchId: string | null;
+  /** The organiser's name-search state, forwarded to the entrant pickers. */
+  accountSearch: AccountSearch;
+  onSearchAccounts: (query: string) => void;
   onSignUp: () => void;
   onWithdraw: () => void;
   onCheckIn: () => void;
@@ -121,7 +132,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     checkInOpen &&
     !event.teams.some((team) => team.id === event.viewer.memberTeamId && team.checkedIn);
 
-  const unread = props.chatRooms.reduce((total, room) => total + room.unread, 0);
+  const unread = unreadTotal(props.chatRooms);
 
   const openSection = (next: Section) => {
     setSection(next);
@@ -279,6 +290,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         <ManagePanel
           event={event}
           vault={props.vault}
+          profiles={props.profiles}
+          accountSearch={props.accountSearch}
+          onSearchAccounts={props.onSearchAccounts}
           busy={busy}
           onEdit={props.onEdit}
           onAdvance={props.onAdvance}

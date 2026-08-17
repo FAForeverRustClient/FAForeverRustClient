@@ -12,38 +12,9 @@
 // vault entry, so a preview appears without anyone maintaining a lookup table.
 
 import { Button } from "../../design-system/Button";
-import type { MapPool, Tourney, TourneyMap, VaultMap } from "../../ipc/bindings";
+import type { MapPool, Tourney, VaultMap } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { BRACKET_LABELS } from "./tourneyPresentation";
-
-/** Twin of `faf_domain::state::map_key`: letters and digits, folded. */
-export function mapKey(name: string): string {
-  return [...name].filter((character) => /\p{L}|\p{N}/u.test(character)).join("").toLowerCase();
-}
-
-/** Strip a version suffix like `.v0001` before comparing folder names. */
-function withoutVersion(folder: string): string {
-  return folder.split(".v")[0];
-}
-
-/**
- * The vault map a tournament map refers to, or null when it was never uploaded.
- *
- * Twin of `match_vault_map`: the display name first, the folder name second, so
- * both `Seton's Clutch` and `scmp_009` resolve to the same entry.
- */
-export function matchVaultMap(tourneyMap: TourneyMap, vault: VaultMap[]): VaultMap | null {
-  const wanted = mapKey(tourneyMap.name);
-  if (wanted === "") return null;
-  const byName = vault.find((candidate) => mapKey(candidate.displayName) === wanted);
-  if (byName !== undefined) return byName;
-  // The version has to come off both sides: an organiser who copied
-  // `scmp_009.v0001` out of their maps directory means the vault's v0002 too.
-  const wantedFolder = mapKey(withoutVersion(tourneyMap.name.trim()));
-  return (
-    vault.find((candidate) => mapKey(withoutVersion(candidate.folderName)) === wantedFolder) ?? null
-  );
-}
+import { BRACKET_LABELS, matchVaultMap } from "./tourneyPresentation";
 
 /**
  * Every round of the drawn bracket, as the keys the server assigns pools by.

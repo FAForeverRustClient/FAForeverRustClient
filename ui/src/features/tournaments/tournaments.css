@@ -793,6 +793,81 @@
   font-size: 12px;
 }
 
+.tournament-form-hint.is-error {
+  color: var(--color-danger-fg, var(--color-text));
+}
+
+/* -- The account picker ---------------------------------------------------
+   Adding an entrant is choosing a person, so the matches are rows that look
+   like the person: the same `PlayerChip` the entrant lists and the bracket
+   draw, made clickable. */
+
+.tournament-account-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-account-matches {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* Eight rows fit; beyond that the list scrolls rather than pushing the
+     sections below it off the pane. */
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.tournament-account-match {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tournament-account-match:hover:not(:disabled),
+.tournament-account-match:focus-visible {
+  border-color: var(--color-accent);
+  background: var(--color-surface-raised, var(--color-surface));
+}
+
+.tournament-account-match:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Only meaningful on the row being pointed at: on every row at once it reads
+   as eight buttons rather than a list of people. */
+.tournament-account-add {
+  opacity: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tournament-account-match:hover .tournament-account-add,
+.tournament-account-match:focus-visible .tournament-account-add {
+  opacity: 1;
+}
+
+.tournament-account-none {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
 .tournament-form textarea {
   width: 100%;
   resize: vertical;

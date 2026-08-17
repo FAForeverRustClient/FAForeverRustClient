@@ -7,6 +7,7 @@
 import type { PlayerSummary, Tourney, TourneyPlayer } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerChip } from "./PlayerChip";
+import { profileOf, teamMembers } from "./tourneyPresentation";
 
 interface EntrantsPanelProps {
   event: Tourney;
@@ -20,13 +21,8 @@ export function EntrantsPanel({ event, profiles }: EntrantsPanelProps) {
     return <p className="muted">{t("tournaments.entrants.none")}</p>;
   }
 
-  const profileOf = (player: TourneyPlayer): PlayerSummary | null =>
-    player.fafId === null
-      ? null
-      : (profiles.find((profile) => profile.id === player.fafId) ?? null);
-
   const row = (player: TourneyPlayer) => {
-    const profile = profileOf(player);
+    const profile = profileOf(profiles, player);
     return (
       <li className="tournament-entrant" key={player.id}>
         <span className="tournament-entrant-name">
@@ -68,9 +64,7 @@ export function EntrantsPanel({ event, profiles }: EntrantsPanelProps) {
         {[...event.teams]
           .sort((left, right) => left.seed - right.seed)
           .map((team) => {
-            const members = team.playerIds
-              .map((id) => event.players.find((player) => player.id === id))
-              .filter((player): player is TourneyPlayer => player !== undefined);
+            const members = teamMembers(event, team);
             const name =
               team.name.trim() !== "" ? team.name : (members[0]?.name ?? team.id);
             return (

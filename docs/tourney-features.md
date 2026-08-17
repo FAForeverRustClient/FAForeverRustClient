@@ -75,7 +75,8 @@ sections of it rather than places of their own.
 | `org_add_player` | **Done** |
 | `respond_signup` (request mode) | **Done** |
 | `invite_player`, `uninvite_player` | **Done** |
-| `edit_player`, `replace_player`, `faf_lookup`, `decline_invite` | **Todo** |
+| `faf_lookup` | **Done differently**: the organiser's add and invite fields search *FAF's* own player API (`PlayerCardPort::search_players`, the same lookup behind the player card) and send the chosen login. The tournament server's own lookup endpoint is not called, because the client already had a player search with avatars and ratings and a second one would only disagree with it |
+| `edit_player`, `replace_player`, `decline_invite` | **Todo** |
 | `signup_team` | **Out**: legacy whole-team registration, superseded by the team system |
 
 ### Teams
@@ -120,7 +121,8 @@ exercised without a server.
 | Endpoint | Status |
 |---|---|
 | `add_organizer`, `remove_organizer`, `claim_organizer`, `organizer_visibility` | **Todo** |
-| `news_*` | **Todo** |
+| `news_post`, `news_delete` | **Done**: posting with an important flag, and taking a post down |
+| `news_edit`, `news_read` | **Todo**: editing a post, and the per-reader read marker |
 | `chat_mute`, `chat_delete` | **Todo** |
 | `add_desc_image`, `remove_desc_image` | **Todo** |
 | `secrets` (admin, late-signup and streamer tokens) | **Todo** |

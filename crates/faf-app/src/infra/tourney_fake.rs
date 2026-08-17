@@ -19,18 +19,20 @@ use std::sync::Mutex;
 use async_trait::async_trait;
 use faf_domain::state::{
     Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition, Formation, HostingStatus,
-    MapPool, MatchLink, MatchReport, MatchStatus, PendingReport, PoolAssignment, PoolDraft,
-    InviteStatus, NewsPost, RatingGate, SeedOrder, TeamRequest, Tourney, TourneyCategory,
+    InviteStatus, MapPool, MatchLink, MatchReport, MatchStatus, NewsPost, PendingReport,
+    PoolAssignment, PoolDraft, RatingGate, SeedOrder, TeamRequest, Tourney, TourneyCategory,
     TourneyDraft, TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer,
     TourneyStatus, TourneyTeam, TourneyViewer,
 };
 
 use crate::ports::{RequestError, TourneyPort};
 
-/// Whoever is signed in offline. Fixed, because the fake stands in for the
-/// server's session and the client must not be able to claim another identity.
-const ME_FAF_ID: i32 = 101;
-const ME_NAME: &str = "Nuggets";
+/// Whoever is signed in offline. Taken from the bundle's one identity rather
+/// than declared here: the fake stands in for the server's *session*, and a
+/// session that disagreed with the login would hide exactly the bug that
+/// disagreement once hid.
+const ME_FAF_ID: i32 = super::OFFLINE_FAF_ID;
+const ME_NAME: &str = super::OFFLINE_FAF_NAME;
 
 /// One tournament plus the conversations hanging off it.
 struct FakeEvent {
@@ -61,6 +63,21 @@ impl FakeEvent {
     /// of the bracket being an explicit graph, and it means the fake advances
     /// entrants exactly the way the real server does.
     fn finalise(&mut self, match_id: &str, score1: i32, score2: i32) {
+        self.finalise_with_winner(match_id, score1, score2, None);
+    }
+
+    /// Settle a match, optionally with a winner the score does not imply.
+    ///
+    /// `override_winner` is the organiser's word: a forfeit, or a series nobody
+    /// clinched that still has to produce someone for the next round. With it
+    /// set, the match is done however the score reads.
+    fn finalise_with_winner(
+        &mut self,
+        match_id: &str,
+        score1: i32,
+        score2: i32,
+        override_winner: Option<String>,
+    ) {
         let Ok(entry) = self.entry_mut(match_id) else {
             return;
         };
@@ -69,17 +86,20 @@ impl FakeEvent {
         entry.pending_report = None;
 
         let needed = (entry.best_of + 1) / 2;
-        if score1 < needed && score2 < needed {
+        if override_winner.is_none() && score1 < needed && score2 < needed {
             // Still being played: a 1-1 in a best of three.
             entry.status = MatchStatus::Live;
             return;
         }
 
         entry.status = MatchStatus::Done;
-        let (winner, loser) = if score1 > score2 {
-            (entry.team1.clone(), entry.team2.clone())
-        } else {
-            (entry.team2.clone(), entry.team1.clone())
+        let (winner, loser) = match override_winner {
+            Some(named) if entry.team2.as_deref() == Some(named.as_str()) => {
+                (entry.team2.clone(), entry.team1.clone())
+            }
+            Some(_) => (entry.team1.clone(), entry.team2.clone()),
+            None if score1 > score2 => (entry.team1.clone(), entry.team2.clone()),
+            None => (entry.team2.clone(), entry.team1.clone()),
         };
         entry.winner = winner.clone();
         entry.loser = loser.clone();
@@ -108,14 +128,21 @@ impl FakeEvent {
         // Nowhere left to send the winner: that was the final.
         if let Ok(entry) = self.entry_mut(match_id) {
             if entry.winner_to.is_none() {
-                self.event.champion_team_id = self.event.matches
+                self.event.champion_team_id = self
+                    .event
+                    .matches
                     .iter()
                     .find(|m| m.id == match_id)
                     .and_then(|m| m.winner.clone());
                 self.event.status = TourneyStatus::Finished;
             }
         }
-        if let Some(team) = self.event.teams.iter_mut().find(|t| Some(&t.id) == loser.as_ref()) {
+        if let Some(team) = self
+            .event
+            .teams
+            .iter_mut()
+            .find(|t| Some(&t.id) == loser.as_ref())
+        {
             team.eliminated = true;
         }
     }
@@ -220,11 +247,7 @@ impl TourneyPort for FakeTourney {
         self.with_event(tournament_id, |_| Ok(()))
     }
 
-    async fn advance(
-        &self,
-        tournament_id: &str,
-        phase: TourneyPhase,
-    ) -> Result<(), RequestError> {
+    async fn advance(&self, tournament_id: &str, phase: TourneyPhase) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             if !phase.is_legal_from(held.event.status) {
                 return Err(RequestError::rejected(match phase {
@@ -390,6 +413,7 @@ impl TourneyPort for FakeTourney {
                 checked_in: false,
                 eliminated: false,
                 final_rank: None,
+                captain_renamed: false,
                 join_requests: Vec::new(),
                 invites: Vec::new(),
             });
@@ -432,7 +456,12 @@ impl TourneyPort for FakeTourney {
 
     async fn cancel_join(&self, tournament_id: &str, team_id: &str) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
-            let me = held.event.viewer.signed_up_player_id.clone().unwrap_or_default();
+            let me = held
+                .event
+                .viewer
+                .signed_up_player_id
+                .clone()
+                .unwrap_or_default();
             let Some(team) = held.event.teams.iter_mut().find(|team| team.id == team_id) else {
                 return Err(RequestError::rejected("Team not found"));
             };
@@ -489,7 +518,11 @@ impl TourneyPort for FakeTourney {
             let Some(team) = held.event.teams.iter_mut().find(|team| team.id == team_id) else {
                 return Err(RequestError::rejected("Team not found"));
             };
-            if team.invites.iter().any(|invite| invite.player_id == target.id) {
+            if team
+                .invites
+                .iter()
+                .any(|invite| invite.player_id == target.id)
+            {
                 return Ok(());
             }
             team.invites.push(TeamRequest {
@@ -515,7 +548,11 @@ impl TourneyPort for FakeTourney {
             let Some(team) = held.event.teams.iter_mut().find(|team| team.id == team_id) else {
                 return Err(RequestError::rejected("Team not found"));
             };
-            let Some(index) = team.invites.iter().position(|invite| invite.player_id == me) else {
+            let Some(index) = team
+                .invites
+                .iter()
+                .position(|invite| invite.player_id == me)
+            else {
                 return Err(RequestError::rejected("That invite is no longer available"));
             };
             team.invites.remove(index);
@@ -595,7 +632,6 @@ impl TourneyPort for FakeTourney {
         })
     }
 
-
     async fn add_player(
         &self,
         tournament_id: &str,
@@ -616,15 +652,23 @@ impl TourneyPort for FakeTourney {
                 .iter()
                 .any(|player| player.name.eq_ignore_ascii_case(name))
             {
-                return Err(RequestError::rejected(format!("{name} is already signed up")));
+                return Err(RequestError::rejected(format!(
+                    "{name} is already signed up"
+                )));
             }
             let id = held.handle("p");
             held.event.players.push(TourneyPlayer {
                 id,
                 name: name.to_string(),
-                // A real lookup would bring the account back; offline there is
-                // none, and an entry without one is a case the tab must handle.
-                faf_id: None,
+                // `org_add_player` resolves the name against FAF and stores the
+                // account, which is what lets the entry carry an avatar. Mirrored
+                // here, or the offline build would show every added entrant as a
+                // bare string and make a working feature look broken.
+                //
+                // A name the offline list does not know still resolves to none,
+                // because that case is real: the picker lets an organiser send a
+                // spelling FAF's search did not match.
+                faf_id: fake_faf_id(name),
                 rating: rating.or(Some(1_500)),
                 rating_actual: rating.or(Some(1_500)),
                 team_id: None,
@@ -843,7 +887,18 @@ impl TourneyPort for FakeTourney {
                 ));
             }
             let games = report.new_games(entry);
-            if !report.is_submittable(entry) {
+            // The player path's own rule, checked here rather than borrowed from
+            // `MatchReport::is_submittable`: that method now describes what
+            // `report` accepts, which is the organiser path and has no replay
+            // requirement. `report_submit` still insists on exactly one id per
+            // newly reported game (`server.js:4607`), and this fake stands in for
+            // the server, so it has to keep saying so.
+            let usable = report
+                .replay_ids
+                .iter()
+                .filter(|id| !id.trim().is_empty())
+                .count();
+            if games < 1 || !report.is_submittable(entry) || usable as i32 != games {
                 return Err(RequestError::rejected(format!(
                     "Provide exactly {games} replay ID{}, one for each newly reported game",
                     if games == 1 { "" } else { "s" }
@@ -887,8 +942,43 @@ impl TourneyPort for FakeTourney {
         report: &MatchReport,
     ) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
-            held.entry_mut(&report.match_id)?;
-            held.finalise(&report.match_id, report.score1, report.score2);
+            let entry = held.entry_mut(&report.match_id)?;
+            let needed = (entry.best_of + 1) / 2;
+
+            // The forfeit shorthand, as the server derives it: the other side
+            // takes the win at the series length, the forfeiting side is recorded
+            // at -1.
+            if report.is_bare_forfeit() {
+                let forfeiting = report.forfeit.clone().unwrap_or_default();
+                let Some(winner) = entry.forfeit_opponent(&forfeiting).map(str::to_string) else {
+                    return Err(RequestError::rejected(
+                        "Forfeiting team is not in this match",
+                    ));
+                };
+                let (score1, score2) = if entry.team1.as_deref() == Some(forfeiting.as_str()) {
+                    (-1, needed)
+                } else {
+                    (needed, -1)
+                };
+                held.finalise_with_winner(&report.match_id, score1, score2, Some(winner));
+                return Ok(());
+            }
+
+            if !report.is_submittable(entry) {
+                return Err(RequestError::rejected(format!(
+                    "Scores must be between 0 and {needed}"
+                )));
+            }
+            // An explicit winner finalises even a score that reached nobody's
+            // threshold: a 1-1 somebody walked away from.
+            let winner = report.winner.clone().or_else(|| {
+                report
+                    .forfeit
+                    .as_deref()
+                    .and_then(|team| entry.forfeit_opponent(team))
+                    .map(str::to_string)
+            });
+            held.finalise_with_winner(&report.match_id, report.score1, report.score2, winner);
             Ok(())
         })
     }
@@ -941,13 +1031,16 @@ impl TourneyPort for FakeTourney {
                 return Err(RequestError::rejected("Empty message"));
             }
             let id = held.handle("c");
-            held.chat.entry(room_id.to_string()).or_default().push(ChatPost {
-                id,
-                author: ME_NAME.into(),
-                body: body.trim().to_string(),
-                at: Some(1_785_400_000),
-                system: false,
-            });
+            held.chat
+                .entry(room_id.to_string())
+                .or_default()
+                .push(ChatPost {
+                    id,
+                    author: ME_NAME.into(),
+                    body: body.trim().to_string(),
+                    at: Some(1_785_400_000),
+                    system: false,
+                });
             Ok(())
         })
     }
@@ -1076,6 +1169,7 @@ fn form_teams(event: &mut Tourney) {
             checked_in: false,
             eliminated: false,
             final_rank: None,
+            captain_renamed: false,
             join_requests: Vec::new(),
             invites: Vec::new(),
         })
@@ -1134,6 +1228,27 @@ fn team_name(event: &Tourney, team_id: &str) -> String {
         .unwrap_or_else(|| team_id.to_string())
 }
 
+/// The FAF account behind a name, as the offline player lookup knows it.
+///
+/// Kept in step with `FakePlayerCard`'s own fixed list on purpose: the two fakes
+/// stand in for two services that agree about who exists, and an entrant the
+/// account lookup cannot resolve would show no avatar for a reason that has
+/// nothing to do with the client.
+fn fake_faf_id(name: &str) -> Option<i32> {
+    const KNOWN: [(&str, i32); 6] = [
+        ("Nuggets", 101),
+        ("Ada_Lovelace", 102),
+        ("Grace-Hopper", 103),
+        ("Newcomer", 104),
+        ("Nugget", 105),
+        ("TestCommander", 106),
+    ];
+    KNOWN
+        .iter()
+        .find(|(login, _)| login.eq_ignore_ascii_case(name.trim()))
+        .map(|(_, id)| *id)
+}
+
 /// An entrant who has not reached a team yet.
 fn unteamed(id: &str, name: &str, faf_id: i32, rating: i32) -> TourneyPlayer {
     TourneyPlayer {
@@ -1169,6 +1284,7 @@ fn team(id: &str, seed: i32, player_id: &str) -> TourneyTeam {
         checked_in: false,
         eliminated: false,
         final_rank: None,
+        captain_renamed: false,
         join_requests: Vec::new(),
         invites: Vec::new(),
     }
@@ -1215,6 +1331,11 @@ fn empty_event(id: &str, name: &str, status: TourneyStatus) -> Tourney {
         organisers: vec!["Nuggets".into()],
         viewer: TourneyViewer {
             logged_in: true,
+            // The offline account organises every fixture event, which is what
+            // `my_tournaments` above also says. The two have to agree: the
+            // organiser surface is the larger half of this tab, and a fake that
+            // withheld it would leave that half undevelopable.
+            organiser: true,
             faf_id: Some(ME_FAF_ID),
             faf_name: ME_NAME.into(),
             ..TourneyViewer::default()
@@ -1419,6 +1540,8 @@ mod tests {
             score2,
             replay_ids: replays.iter().map(|id| (*id).to_string()).collect(),
             draw_replay_ids: Vec::new(),
+            winner: None,
+            forfeit: None,
         }
     }
 
@@ -1467,8 +1590,15 @@ mod tests {
 
         let event = fake.detail("e9z9z").await.unwrap();
         let entry = &event.matches[0];
-        assert_eq!(entry.status, MatchStatus::Ready, "the bracket has not moved");
-        let pending = entry.pending_report.as_ref().expect("awaiting confirmation");
+        assert_eq!(
+            entry.status,
+            MatchStatus::Ready,
+            "the bracket has not moved"
+        );
+        let pending = entry
+            .pending_report
+            .as_ref()
+            .expect("awaiting confirmation");
         assert_eq!((pending.score1, pending.score2), (2, 0));
         assert_eq!(pending.by_team, "t1");
         // The submitting side does not get to confirm its own report.
@@ -1505,7 +1635,11 @@ mod tests {
             Some("t1"),
             "the winner lands in the final's first slot"
         );
-        assert_eq!(event.matches[2].status, MatchStatus::Waiting, "one side only");
+        assert_eq!(
+            event.matches[2].status,
+            MatchStatus::Waiting,
+            "one side only"
+        );
         assert!(event.team("t4").unwrap().eliminated);
     }
 
@@ -1528,7 +1662,9 @@ mod tests {
     #[tokio::test]
     async fn an_undecided_series_stays_live_rather_than_advancing() {
         let fake = FakeTourney::new();
-        fake.decide_report("e9z9z", &report("m1", 1, 1, &[])).await.unwrap();
+        fake.decide_report("e9z9z", &report("m1", 1, 1, &[]))
+            .await
+            .unwrap();
         let event = fake.detail("e9z9z").await.unwrap();
         assert_eq!(event.matches[0].status, MatchStatus::Live);
         assert!(event.matches[2].team1.is_none());
@@ -1538,9 +1674,15 @@ mod tests {
     #[tokio::test]
     async fn winning_the_last_match_crowns_a_champion() {
         let fake = FakeTourney::new();
-        fake.decide_report("e9z9z", &report("m1", 2, 0, &[])).await.unwrap();
-        fake.decide_report("e9z9z", &report("m2", 0, 2, &[])).await.unwrap();
-        fake.decide_report("e9z9z", &report("m3", 2, 1, &[])).await.unwrap();
+        fake.decide_report("e9z9z", &report("m1", 2, 0, &[]))
+            .await
+            .unwrap();
+        fake.decide_report("e9z9z", &report("m2", 0, 2, &[]))
+            .await
+            .unwrap();
+        fake.decide_report("e9z9z", &report("m3", 2, 1, &[]))
+            .await
+            .unwrap();
 
         let event = fake.detail("e9z9z").await.unwrap();
         assert_eq!(event.champion_team_id.as_deref(), Some("t1"));
@@ -1560,7 +1702,11 @@ mod tests {
         let fake = FakeTourney::new();
         let rooms = fake.chat_rooms("e9z9z").await.unwrap();
         let ids: Vec<&str> = rooms.iter().map(|room| room.id.as_str()).collect();
-        assert_eq!(ids, vec!["global", "m1", "m2"], "the final has no opponents yet");
+        assert_eq!(
+            ids,
+            vec!["global", "m1", "m2"],
+            "the final has no opponents yet"
+        );
         assert_eq!(rooms[1].name, "Nuggets vs Alan");
 
         fake.chat_post("e9z9z", "m1", "  gl hf  ").await.unwrap();
@@ -1590,9 +1736,13 @@ mod tests {
         let created = event.map_pools.last().unwrap();
         assert_eq!(created.name, "Semifinals");
 
-        fake.assign_pool("e1a2b", "wb:2", &created.id).await.unwrap();
+        fake.assign_pool("e1a2b", "wb:2", &created.id)
+            .await
+            .unwrap();
         let event = fake.detail("e1a2b").await.unwrap();
-        let bound = event.pool_for_round("wb:2").expect("bound to the semifinals");
+        let bound = event
+            .pool_for_round("wb:2")
+            .expect("bound to the semifinals");
         assert_eq!(bound.name, "Semifinals");
         assert_eq!(event.pool_maps(bound).len(), 2);
 

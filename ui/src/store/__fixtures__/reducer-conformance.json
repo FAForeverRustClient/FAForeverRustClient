@@ -325,6 +325,13 @@
         "loggedIn": false,
         "allowed": false,
         "pending": false
+      },
+      "accountSearch": {
+        "query": "",
+        "matches": [],
+        "status": {
+          "type": "idle"
+        }
       }
     },
     "tutorials": {
@@ -3685,7 +3692,8 @@
                   "kind": "map",
                   "folderName": "my_map.v0001",
                   "displayName": "My Map",
-                  "ranked": false
+                  "ranked": false,
+                  "sourcePath": null
                 }
               }
             }
@@ -3695,7 +3703,8 @@
               "displayName": "My Map",
               "folderName": "my_map.v0001",
               "kind": "map",
-              "ranked": false
+              "ranked": false,
+              "sourcePath": null
             },
             "status": {
               "type": "idle"
@@ -3717,7 +3726,8 @@
               "displayName": "My Map",
               "folderName": "my_map.v0001",
               "kind": "map",
-              "ranked": true
+              "ranked": true,
+              "sourcePath": null
             },
             "status": {
               "type": "idle"
@@ -3741,7 +3751,8 @@
               "displayName": "My Map",
               "folderName": "my_map.v0001",
               "kind": "map",
-              "ranked": true
+              "ranked": true,
+              "sourcePath": null
             },
             "status": {
               "type": "compressing"
@@ -3996,6 +4007,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -4073,8 +4091,7 @@
                       "fafId": null,
                       "fafName": "",
                       "signedUpPlayerId": null,
-                      "memberTeamId": null,
-                      "unreadByRoom": []
+                      "memberTeamId": null
                     }
                   },
                   {
@@ -4121,8 +4138,7 @@
                       "fafId": null,
                       "fafName": "",
                       "signedUpPlayerId": null,
-                      "memberTeamId": null,
-                      "unreadByRoom": []
+                      "memberTeamId": null
                     }
                   }
                 ]
@@ -4130,6 +4146,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -4187,8 +4210,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -4235,8 +4257,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -4264,6 +4285,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -4321,8 +4349,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -4369,8 +4396,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -4395,6 +4421,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -4452,8 +4485,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -4500,8 +4532,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -4568,14 +4599,20 @@
                     "fafId": null,
                     "fafName": "",
                     "signedUpPlayerId": null,
-                    "memberTeamId": null,
-                    "unreadByRoom": []
+                    "memberTeamId": null
                   }
                 }
               }
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -4627,8 +4664,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -4680,8 +4716,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -4728,8 +4763,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -4759,6 +4793,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -4810,8 +4851,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -4863,8 +4903,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -4911,8 +4950,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -4948,6 +4986,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": {
               "action": {
                 "type": "signingUp"
@@ -5005,8 +5050,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -5058,8 +5102,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -5106,8 +5149,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -5132,6 +5174,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -5183,8 +5232,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -5236,8 +5284,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -5284,8 +5331,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -5315,6 +5361,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -5366,8 +5419,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -5419,8 +5471,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -5467,8 +5518,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -5501,6 +5551,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -5552,8 +5609,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -5605,8 +5661,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -5653,8 +5708,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -5691,6 +5745,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -5742,8 +5803,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -5804,8 +5864,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -5852,8 +5911,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -5883,6 +5941,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -5934,8 +5999,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -5996,8 +6060,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -6044,8 +6107,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -6078,6 +6140,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -6135,8 +6204,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -6183,8 +6251,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -6216,6 +6283,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -6273,8 +6347,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -6321,8 +6394,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -6357,6 +6429,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [
               {
@@ -6421,8 +6500,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -6469,8 +6547,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -6537,14 +6614,20 @@
                     "fafId": null,
                     "fafName": "",
                     "signedUpPlayerId": null,
-                    "memberTeamId": null,
-                    "unreadByRoom": []
+                    "memberTeamId": null
                   }
                 }
               }
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [
               {
@@ -6609,8 +6692,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -6657,8 +6739,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -6726,8 +6807,7 @@
                       "fafId": null,
                       "fafName": "",
                       "signedUpPlayerId": null,
-                      "memberTeamId": null,
-                      "unreadByRoom": []
+                      "memberTeamId": null
                     }
                   }
                 ]
@@ -6735,6 +6815,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [
               {
@@ -6799,8 +6886,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -6814,6 +6900,430 @@
             "selectedId": "e1",
             "status": {
               "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "an organiser searches for an account while answers overtake each other",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchStarted",
+              "payload": {
+                "query": "nug"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "nug",
+              "status": {
+                "type": "loading"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchLoaded",
+              "payload": {
+                "query": "nug",
+                "matches": [
+                  {
+                    "id": 101,
+                    "login": "Nuggets",
+                    "avatarUrl": "",
+                    "country": "de",
+                    "globalRating": 1750,
+                    "ladderRating": null
+                  },
+                  {
+                    "id": 105,
+                    "login": "Nugget",
+                    "avatarUrl": "",
+                    "country": "de",
+                    "globalRating": 980,
+                    "ladderRating": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [
+                {
+                  "avatarUrl": "",
+                  "country": "de",
+                  "globalRating": 1750,
+                  "id": 101,
+                  "ladderRating": null,
+                  "login": "Nuggets"
+                },
+                {
+                  "avatarUrl": "",
+                  "country": "de",
+                  "globalRating": 980,
+                  "id": 105,
+                  "ladderRating": null,
+                  "login": "Nugget"
+                }
+              ],
+              "query": "nug",
+              "status": {
+                "type": "ready"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchStarted",
+              "payload": {
+                "query": "nugge"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "nugge",
+              "status": {
+                "type": "loading"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchLoaded",
+              "payload": {
+                "query": "nug",
+                "matches": [
+                  {
+                    "id": 101,
+                    "login": "Nuggets",
+                    "avatarUrl": "",
+                    "country": "de",
+                    "globalRating": 1750,
+                    "ladderRating": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "nugge",
+              "status": {
+                "type": "loading"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchLoaded",
+              "payload": {
+                "query": " NUGGE ",
+                "matches": [
+                  {
+                    "id": 101,
+                    "login": "Nuggets",
+                    "avatarUrl": "",
+                    "country": "de",
+                    "globalRating": 1750,
+                    "ladderRating": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [
+                {
+                  "avatarUrl": "",
+                  "country": "de",
+                  "globalRating": 1750,
+                  "id": 101,
+                  "ladderRating": null,
+                  "login": "Nuggets"
+                }
+              ],
+              "query": "nugge",
+              "status": {
+                "type": "ready"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchStarted",
+              "payload": {
+                "query": "ada"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "ada",
+              "status": {
+                "type": "loading"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchFailed",
+              "payload": {
+                "query": "ada",
+                "reason": "Sign in to FAF to look up players.",
+                "kind": "unauthorized"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "ada",
+              "status": {
+                "payload": {
+                  "kind": "unauthorized",
+                  "reason": "Sign in to FAF to look up players."
+                },
+                "type": "failed"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "accountSearchCleared"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": null,
+            "status": {
+              "type": "idle"
             }
           }
         }
@@ -6873,8 +7383,7 @@
                       "fafId": null,
                       "fafName": "",
                       "signedUpPlayerId": null,
-                      "memberTeamId": null,
-                      "unreadByRoom": []
+                      "memberTeamId": null
                     }
                   },
                   {
@@ -6921,8 +7430,7 @@
                       "fafId": null,
                       "fafName": "",
                       "signedUpPlayerId": null,
-                      "memberTeamId": null,
-                      "unreadByRoom": []
+                      "memberTeamId": null
                     }
                   }
                 ]
@@ -6930,6 +7438,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -6987,8 +7502,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -7035,8 +7549,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -7103,14 +7616,20 @@
                     "fafId": null,
                     "fafName": "",
                     "signedUpPlayerId": null,
-                    "memberTeamId": null,
-                    "unreadByRoom": []
+                    "memberTeamId": null
                   }
                 }
               }
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -7162,8 +7681,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -7215,8 +7733,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -7263,8 +7780,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -7303,6 +7819,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -7365,8 +7888,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -7418,8 +7940,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -7466,8 +7987,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -7495,6 +8015,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -7557,8 +8084,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -7610,8 +8136,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -7658,8 +8183,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -7684,6 +8208,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -7746,8 +8277,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -7799,8 +8329,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -7847,8 +8376,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -7885,6 +8413,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [
@@ -7955,8 +8490,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -8008,8 +8542,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -8056,8 +8589,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -8086,6 +8618,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [
@@ -8156,8 +8695,7 @@
                 "loggedIn": false,
                 "memberTeamId": null,
                 "organiser": false,
-                "signedUpPlayerId": null,
-                "unreadByRoom": []
+                "signedUpPlayerId": null
               }
             },
             "detailStatus": {
@@ -8209,8 +8747,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -8257,8 +8794,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -8286,6 +8822,13 @@
             }
           },
           "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "actionError": null,
             "articles": [],
             "chatPosts": [],
@@ -8343,8 +8886,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               },
               {
@@ -8391,8 +8933,7 @@
                   "loggedIn": false,
                   "memberTeamId": null,
                   "organiser": false,
-                  "signedUpPlayerId": null,
-                  "unreadByRoom": []
+                  "signedUpPlayerId": null
                 }
               }
             ],
@@ -13306,6 +13847,1294 @@
         "updateAvailable": false,
         "canLaunch": true
       }
-    ]
+    ],
+    "tourneyRules": [
+      {
+        "name": "an open 2v2 where joining would break the team cap",
+        "event": {
+          "id": "cap",
+          "name": "",
+          "description": "",
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "playerReporting": false,
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": 3000,
+            "cap": null
+          },
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "me",
+              "name": "ME",
+              "fafId": null,
+              "rating": 1600,
+              "ratingActual": 1600,
+              "teamId": null,
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1800,
+              "ratingActual": 1800,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p2",
+              "name": "P2",
+              "fafId": null,
+              "rating": 900,
+              "ratingActual": 900,
+              "teamId": "t2",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p3",
+              "name": "P3",
+              "fafId": null,
+              "rating": null,
+              "ratingActual": null,
+              "teamId": "t2",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p9",
+              "name": "P9",
+              "fafId": null,
+              "rating": 1000,
+              "ratingActual": 1000,
+              "teamId": null,
+              "manual": false,
+              "late": false,
+              "pending": true,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 0,
+              "captainId": "p2",
+              "playerIds": [
+                "p2",
+                "p3"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": [
+                {
+                  "playerId": "me",
+                  "name": "ME",
+                  "at": null
+                }
+              ]
+            }
+          ],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "championTeamId": null,
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": "me",
+            "memberTeamId": null
+          }
+        },
+        "teamId": "t1",
+        "teamRating": 1800,
+        "wouldExceedTeamCap": true,
+        "selfOrganised": true,
+        "mayReseed": false,
+        "pendingSignupIds": [
+          "p9"
+        ],
+        "memberIds": [
+          "p1"
+        ],
+        "myInviteTeamIds": [
+          "t2"
+        ],
+        "rooms": [
+          {
+            "id": "global",
+            "name": "Room global",
+            "unread": 3
+          },
+          {
+            "id": "m1",
+            "name": "Room m1",
+            "unread": 1
+          }
+        ],
+        "unreadTotal": 4
+      },
+      {
+        "name": "the same event, for a team there is still room under",
+        "event": {
+          "id": "under",
+          "name": "",
+          "description": "",
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "playerReporting": false,
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": 3000,
+            "cap": null
+          },
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "me",
+              "name": "ME",
+              "fafId": null,
+              "rating": 1600,
+              "ratingActual": 1600,
+              "teamId": null,
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1800,
+              "ratingActual": 1800,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p2",
+              "name": "P2",
+              "fafId": null,
+              "rating": 900,
+              "ratingActual": 900,
+              "teamId": "t2",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p3",
+              "name": "P3",
+              "fafId": null,
+              "rating": null,
+              "ratingActual": null,
+              "teamId": "t2",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            },
+            {
+              "id": "p9",
+              "name": "P9",
+              "fafId": null,
+              "rating": 1000,
+              "ratingActual": 1000,
+              "teamId": null,
+              "manual": false,
+              "late": false,
+              "pending": true,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 0,
+              "captainId": "p2",
+              "playerIds": [
+                "p2",
+                "p3"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": [
+                {
+                  "playerId": "me",
+                  "name": "ME",
+                  "at": null
+                }
+              ]
+            }
+          ],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "championTeamId": null,
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": "me",
+            "memberTeamId": null
+          }
+        },
+        "teamId": "t2",
+        "teamRating": 900,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": true,
+        "mayReseed": false,
+        "pendingSignupIds": [
+          "p9"
+        ],
+        "memberIds": [
+          "p2",
+          "p3"
+        ],
+        "myInviteTeamIds": [
+          "t2"
+        ],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "teams formed, bracket not drawn",
+        "event": {
+          "id": "drafted",
+          "name": "",
+          "description": "",
+          "status": "drafted",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "playerReporting": false,
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1500,
+              "ratingActual": 1500,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "championTeamId": null,
+          "viewer": {
+            "loggedIn": false,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null
+          }
+        },
+        "teamId": "t1",
+        "teamRating": 1500,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": true,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1"
+        ],
+        "myInviteTeamIds": [],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "a solo event with a signup waiting",
+        "event": {
+          "id": "solo",
+          "name": "",
+          "description": "",
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 1,
+          "divisions": 0,
+          "playerReporting": false,
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1500,
+              "ratingActual": 1500,
+              "teamId": null,
+              "manual": false,
+              "late": false,
+              "pending": true,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "championTeamId": null,
+          "viewer": {
+            "loggedIn": false,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null
+          }
+        },
+        "teamId": null,
+        "teamRating": 0,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "pendingSignupIds": [
+          "p1"
+        ],
+        "memberIds": [],
+        "myInviteTeamIds": [],
+        "rooms": [],
+        "unreadTotal": 0
+      }
+    ],
+    "tourneyOpenEvents": [
+      {
+        "detailId": "e1",
+        "selectedId": "e1",
+        "openId": "e1"
+      },
+      {
+        "detailId": "e1",
+        "selectedId": "e2",
+        "openId": null
+      },
+      {
+        "detailId": "e1",
+        "selectedId": null,
+        "openId": null
+      },
+      {
+        "detailId": null,
+        "selectedId": "e1",
+        "openId": null
+      },
+      {
+        "detailId": null,
+        "selectedId": null,
+        "openId": null
+      }
+    ],
+    "tourneyPhaseLegality": [
+      {
+        "phase": "formTeams",
+        "status": "draft",
+        "legal": false
+      },
+      {
+        "phase": "formTeams",
+        "status": "signup",
+        "legal": true
+      },
+      {
+        "phase": "formTeams",
+        "status": "drafted",
+        "legal": false
+      },
+      {
+        "phase": "formTeams",
+        "status": "running",
+        "legal": false
+      },
+      {
+        "phase": "formTeams",
+        "status": "finished",
+        "legal": false
+      },
+      {
+        "phase": "formTeams",
+        "status": "unknown",
+        "legal": false
+      },
+      {
+        "phase": "startBracket",
+        "status": "draft",
+        "legal": false
+      },
+      {
+        "phase": "startBracket",
+        "status": "signup",
+        "legal": false
+      },
+      {
+        "phase": "startBracket",
+        "status": "drafted",
+        "legal": true
+      },
+      {
+        "phase": "startBracket",
+        "status": "running",
+        "legal": false
+      },
+      {
+        "phase": "startBracket",
+        "status": "finished",
+        "legal": false
+      },
+      {
+        "phase": "startBracket",
+        "status": "unknown",
+        "legal": false
+      },
+      {
+        "phase": "reopenSignups",
+        "status": "draft",
+        "legal": true
+      },
+      {
+        "phase": "reopenSignups",
+        "status": "signup",
+        "legal": true
+      },
+      {
+        "phase": "reopenSignups",
+        "status": "drafted",
+        "legal": true
+      },
+      {
+        "phase": "reopenSignups",
+        "status": "running",
+        "legal": false
+      },
+      {
+        "phase": "reopenSignups",
+        "status": "finished",
+        "legal": false
+      },
+      {
+        "phase": "reopenSignups",
+        "status": "unknown",
+        "legal": false
+      }
+    ],
+    "tourneyBusyMatches": [
+      {
+        "pending": null,
+        "busyMatchId": null
+      },
+      {
+        "pending": {
+          "type": "submittingReport",
+          "payload": {
+            "matchId": "m1"
+          }
+        },
+        "busyMatchId": "m1"
+      },
+      {
+        "pending": {
+          "type": "answeringReport",
+          "payload": {
+            "matchId": "m2"
+          }
+        },
+        "busyMatchId": "m2"
+      },
+      {
+        "pending": {
+          "type": "decidingReport",
+          "payload": {
+            "matchId": "m3"
+          }
+        },
+        "busyMatchId": "m3"
+      },
+      {
+        "pending": {
+          "type": "signingUp"
+        },
+        "busyMatchId": null
+      },
+      {
+        "pending": {
+          "type": "reseeding"
+        },
+        "busyMatchId": null
+      },
+      {
+        "pending": {
+          "type": "postingChat",
+          "payload": {
+            "roomId": "m1"
+          }
+        },
+        "busyMatchId": null
+      },
+      {
+        "pending": {
+          "type": "answeringTeam",
+          "payload": {
+            "teamId": "m1"
+          }
+        },
+        "busyMatchId": null
+      }
+    ],
+    "tourneyDraftRejections": [
+      {
+        "name": "a plain valid draft",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": null,
+        "submittable": true
+      },
+      {
+        "name": "no name at all, which is the server's first complaint",
+        "draft": {
+          "name": "",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "nameRequired",
+        "submittable": false
+      },
+      {
+        "name": "a name of nothing but spaces still counts as none",
+        "draft": {
+          "name": "   ",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "nameRequired",
+        "submittable": false
+      },
+      {
+        "name": "a team of seven",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 7,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "teamSizeOutOfRange",
+        "submittable": false
+      },
+      {
+        "name": "a team of none",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 0,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "teamSizeOutOfRange",
+        "submittable": false
+      },
+      {
+        "name": "a rating floor above the ceiling",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": 1800,
+            "max": 1200,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "ratingRangeInverted",
+        "submittable": false
+      },
+      {
+        "name": "a gate on an unrated event, which could only refuse everybody",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "none",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": 1200,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "ratingGateWithoutRating",
+        "submittable": false
+      },
+      {
+        "name": "an unrated event with no gate is fine",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "none",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": null,
+        "submittable": true
+      },
+      {
+        "name": "signups closing before they open",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": 1800000000,
+          "signupClosesAt": 1700000000,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "signupWindowInverted",
+        "submittable": false
+      },
+      {
+        "name": "signups opening and closing at the same instant",
+        "draft": {
+          "name": "Weekend Cup",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": 1700000000,
+          "signupClosesAt": 1700000000,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "signupWindowInverted",
+        "submittable": false
+      },
+      {
+        "name": "a nameless draft that also has an inverted rating range",
+        "draft": {
+          "name": "",
+          "description": "",
+          "category": "community",
+          "competition": "team",
+          "teamSize": 2,
+          "formation": "solo",
+          "bracketKind": "single",
+          "seeding": "rating",
+          "ratingKind": "global",
+          "signupMode": "open",
+          "playerReporting": true,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "rating": {
+            "min": 1800,
+            "max": 1200,
+            "maxTeam": null,
+            "cap": null
+          },
+          "maxTeams": 0
+        },
+        "rejection": "nameRequired",
+        "submittable": false
+      }
+    ],
+    "tourneyReports": [
+      {
+        "name": "a fresh Bo3 taken 2-0",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 2,
+        "score2": 0,
+        "replayIds": [
+          "replay-0",
+          "replay-1"
+        ],
+        "newGames": 2,
+        "submittable": true
+      },
+      {
+        "name": "the same, one replay id short",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 2,
+        "score2": 0,
+        "replayIds": [
+          "replay-0"
+        ],
+        "newGames": 2,
+        "submittable": true
+      },
+      {
+        "name": "one id too many",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 2,
+        "score2": 0,
+        "replayIds": [
+          "replay-0",
+          "replay-1",
+          "replay-2"
+        ],
+        "newGames": 2,
+        "submittable": true
+      },
+      {
+        "name": "two boxes filled, one of them blank",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 2,
+        "score2": 0,
+        "replayIds": [
+          "replay-0",
+          "   "
+        ],
+        "newGames": 2,
+        "submittable": true
+      },
+      {
+        "name": "a Bo3 at 1-1 reported as 2-1: one new game",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": 1,
+          "score2": 1
+        },
+        "score1": 2,
+        "score2": 1,
+        "replayIds": [
+          "replay-0"
+        ],
+        "newGames": 1,
+        "submittable": true
+      },
+      {
+        "name": "re-reporting a score already confirmed adds nothing",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": 2,
+          "score2": 0
+        },
+        "score1": 2,
+        "score2": 0,
+        "replayIds": [],
+        "newGames": 0,
+        "submittable": true
+      },
+      {
+        "name": "scoring past the series length",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 3,
+        "score2": 0,
+        "replayIds": [
+          "replay-0",
+          "replay-1",
+          "replay-2"
+        ],
+        "newGames": 3,
+        "submittable": false
+      },
+      {
+        "name": "both sides winning it",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 2,
+        "score2": 2,
+        "replayIds": [
+          "replay-0",
+          "replay-1",
+          "replay-2",
+          "replay-3"
+        ],
+        "newGames": 4,
+        "submittable": false
+      },
+      {
+        "name": "a negative score",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": -1,
+        "score2": 2,
+        "replayIds": [
+          "replay-0"
+        ],
+        "newGames": 1,
+        "submittable": false
+      },
+      {
+        "name": "a handicapped grand final starting the favourite at 1-0",
+        "entry": {
+          "bestOf": 5,
+          "handicap": 1,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 3,
+        "score2": 1,
+        "replayIds": [
+          "replay-0",
+          "replay-1",
+          "replay-2"
+        ],
+        "newGames": 3,
+        "submittable": true
+      },
+      {
+        "name": "the same handicapped final, counted as if from 0-0",
+        "entry": {
+          "bestOf": 5,
+          "handicap": 1,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 3,
+        "score2": 1,
+        "replayIds": [
+          "replay-0",
+          "replay-1",
+          "replay-2",
+          "replay-3"
+        ],
+        "newGames": 3,
+        "submittable": true
+      },
+      {
+        "name": "an even Bo2, where one win is not yet enough",
+        "entry": {
+          "bestOf": 2,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 1,
+        "score2": 0,
+        "replayIds": [
+          "replay-0"
+        ],
+        "newGames": 1,
+        "submittable": true
+      }
+    ],
+    "tourneyMapMatches": {
+      "vault": [
+        {
+          "displayName": "Seton's Clutch",
+          "folderName": "scmp_009.v0002"
+        },
+        {
+          "displayName": "Open Palms",
+          "folderName": "scmp_001"
+        },
+        {
+          "displayName": "Adaptive Tabula",
+          "folderName": "adaptive_tabula.v0006"
+        }
+      ],
+      "cases": [
+        {
+          "typed": "Seton's Clutch",
+          "key": "setonsclutch",
+          "resolvedDisplayName": "Seton's Clutch"
+        },
+        {
+          "typed": "setons clutch",
+          "key": "setonsclutch",
+          "resolvedDisplayName": "Seton's Clutch"
+        },
+        {
+          "typed": "SCMP_009",
+          "key": "scmp009",
+          "resolvedDisplayName": "Seton's Clutch"
+        },
+        {
+          "typed": "scmp_009.v0001",
+          "key": "scmp009v0001",
+          "resolvedDisplayName": "Seton's Clutch"
+        },
+        {
+          "typed": "  adaptive-tabula  ",
+          "key": "adaptivetabula",
+          "resolvedDisplayName": "Adaptive Tabula"
+        },
+        {
+          "typed": "Adaptive Tabula.v0009",
+          "key": "adaptivetabulav0009",
+          "resolvedDisplayName": "Adaptive Tabula"
+        },
+        {
+          "typed": "",
+          "key": "",
+          "resolvedDisplayName": null
+        },
+        {
+          "typed": "!!!",
+          "key": "",
+          "resolvedDisplayName": null
+        },
+        {
+          "typed": "Some Private Map",
+          "key": "someprivatemap",
+          "resolvedDisplayName": null
+        }
+      ]
+    }
   }
 }

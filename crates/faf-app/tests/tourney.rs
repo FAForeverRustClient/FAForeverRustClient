@@ -152,14 +152,21 @@ impl TourneyPort for RefusingTourney {
     }
 }
 
-/// The offline bundle's writable fake: the default for these tests.
-fn app() -> App {
+/// The offline bundle's writable fake, signed in: the default for these tests.
+///
+/// Signing in is not ceremony. The service identifies the caller by session and
+/// sends no viewer block, so the client works out what this account may do from
+/// its own FAF login. A test that skipped the login would exercise a signed-out
+/// tab — which is exactly what the tab used to be against the real server, while
+/// these tests passed.
+async fn app() -> App {
     let (app, app_loop) = App::new("test", fake_ports());
     tokio::spawn(app_loop.run());
+    sign_in(&app).await;
     app
 }
 
-fn app_refusing(error: RequestError) -> App {
+async fn app_refusing(error: RequestError) -> App {
     let ports = Ports {
         tourney: Arc::new(RefusingTourney {
             inner: faf_app::infra::FakeTourney::new(),
@@ -169,7 +176,23 @@ fn app_refusing(error: RequestError) -> App {
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());
+    sign_in(&app).await;
     app
+}
+
+/// Log in as the offline bundle's account and wait for the state to hold it.
+async fn sign_in(app: &App) {
+    app.dispatch(faf_domain::state::AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    for _ in 0..400 {
+        if let Some(player) = app.snapshot().auth.player {
+            assert_eq!(player.id, faf_app::infra::OFFLINE_FAF_ID);
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+    }
+    panic!("the offline login never landed");
 }
 
 /// The next event belonging to this slice, skipping any others in flight.
@@ -215,7 +238,7 @@ async fn open(app: &App, tournament_id: &str) {
 
 #[tokio::test]
 async fn loading_announces_itself_then_lands_a_sorted_list() {
-    let app = app();
+    let app = app().await;
     let mut events = app.subscribe();
 
     app.dispatch(TourneyCommand::Load.into()).await.unwrap();
@@ -223,21 +246,33 @@ async fn loading_announces_itself_then_lands_a_sorted_list() {
     assert_eq!(next_event(&mut events).await, TourneyEvent::Loading);
     match next_event(&mut events).await {
         TourneyEvent::Loaded { events } => {
-            // Sorting is the service's job, not the view's, so every consumer
-            // of the state sees the same order: what a player can still enter
-            // comes first.
+            // Sorting is the service's job, not the view's, so every consumer of
+            // the state sees the same order: what a player can still enter comes
+            // first.
             assert_eq!(events.first().unwrap().status, TourneyStatus::Signup);
         }
         other => panic!("expected Loaded, got {other:?}"),
     }
     settle(&app).await;
     assert_eq!(app.snapshot().tourney.status, TourneyLoadStatus::Ready);
+
+    // A list row carries no viewer block, so it must claim no organiser rights:
+    // otherwise every row on screen would draw organiser controls.
+    let row = app
+        .snapshot()
+        .tourney
+        .events
+        .first()
+        .cloned()
+        .expect("a row");
+    assert!(!row.viewer.organiser);
+    assert!(!row.viewer.logged_in);
 }
 
 #[tokio::test]
 async fn the_list_carries_counts_and_the_detail_carries_the_people() {
     // The two endpoints answer differently, and the tab has to read both.
-    let app = app();
+    let app = app().await;
     app.dispatch(TourneyCommand::Load.into()).await.unwrap();
     settle(&app).await;
 
@@ -261,7 +296,7 @@ async fn the_list_carries_counts_and_the_detail_carries_the_people() {
 async fn entering_a_tournament_reloads_both_the_row_and_the_detail() {
     // The reason a write ends in a reload rather than a local patch: the row
     // and the pane must not disagree about who is in.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     assert!(app.snapshot().tourney.detail.unwrap().may_sign_up());
 
@@ -292,7 +327,7 @@ async fn entering_a_tournament_reloads_both_the_row_and_the_detail() {
 async fn withdrawing_uses_the_player_id_the_server_handed_out() {
     // The client never invents this id: the server issues it and authorises the
     // removal against the same answer.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
         TourneyCommand::SignUp {
@@ -321,7 +356,7 @@ async fn withdrawing_uses_the_player_id_the_server_handed_out() {
 
 #[tokio::test]
 async fn withdrawing_without_an_entry_is_refused_before_a_request_is_made() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
 
     app.dispatch(
@@ -345,7 +380,7 @@ async fn withdrawing_without_an_entry_is_refused_before_a_request_is_made() {
 
 #[tokio::test]
 async fn reporting_a_series_waits_for_the_opponent_before_the_bracket_moves() {
-    let app = app();
+    let app = app().await;
     open(&app, "e9z9z").await;
     let before = app.snapshot().tourney.detail.expect("the bracket");
     assert!(before.may_report(&before.matches[0]));
@@ -361,6 +396,8 @@ async fn reporting_a_series_waits_for_the_opponent_before_the_bracket_moves() {
                 // or the server would count it and refuse the whole report.
                 replay_ids: vec!["22334455".into(), "  ".into(), "22334456".into()],
                 draw_replay_ids: Vec::new(),
+                winner: None,
+                forfeit: None,
             },
         }
         .into(),
@@ -373,7 +410,11 @@ async fn reporting_a_series_waits_for_the_opponent_before_the_bracket_moves() {
     assert!(state.action_error.is_none(), "{:?}", state.action_error);
     let detail = state.detail.expect("still open");
     let entry = &detail.matches[0];
-    assert_eq!(entry.status, MatchStatus::Ready, "the bracket has not moved");
+    assert_eq!(
+        entry.status,
+        MatchStatus::Ready,
+        "the bracket has not moved"
+    );
     assert_eq!(
         entry.pending_report.as_ref().map(|pending| pending.score1),
         Some(2)
@@ -383,7 +424,7 @@ async fn reporting_a_series_waits_for_the_opponent_before_the_bracket_moves() {
 
 #[tokio::test]
 async fn a_confirmed_score_advances_the_winner_and_the_state_follows() {
-    let app = app();
+    let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
         TourneyCommand::SubmitReport {
@@ -394,6 +435,8 @@ async fn a_confirmed_score_advances_the_winner_and_the_state_follows() {
                 score2: 0,
                 replay_ids: vec!["22334455".into(), "22334456".into()],
                 draw_replay_ids: Vec::new(),
+                winner: None,
+                forfeit: None,
             },
         }
         .into(),
@@ -429,7 +472,8 @@ async fn a_refused_write_keeps_the_servers_sentence_and_clears_the_spinner() {
     // that tells the player which gate they missed.
     let app = app_refusing(RequestError::rejected(
         "You can’t sign up here: your rating (1420) is below this tournament’s minimum of 1500.",
-    ));
+    ))
+    .await;
     open(&app, "e1a2b").await;
 
     app.dispatch(
@@ -460,7 +504,7 @@ async fn a_refused_write_keeps_the_servers_sentence_and_clears_the_spinner() {
 
 #[tokio::test]
 async fn opening_a_room_reads_it_and_clears_its_badge() {
-    let app = app();
+    let app = app().await;
     open(&app, "e9z9z").await;
 
     app.dispatch(
@@ -494,7 +538,7 @@ async fn opening_a_room_reads_it_and_clears_its_badge() {
 
 #[tokio::test]
 async fn posting_reloads_the_room_and_not_the_whole_tournament() {
-    let app = app();
+    let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
         TourneyCommand::OpenRoom {
@@ -540,7 +584,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
 
 #[tokio::test]
 async fn switching_events_never_leaves_one_brackets_chat_under_another() {
-    let app = app();
+    let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
         TourneyCommand::OpenRoom {
@@ -562,24 +606,143 @@ async fn switching_events_never_leaves_one_brackets_chat_under_another() {
     assert_eq!(state.detail.map(|event| event.id), Some("e1a2b".into()));
 }
 
+/// Searching for a name, picking the account, and the entrant arriving with a
+/// face on it.
+///
+/// The whole point of the picker: the organiser chooses a *person*, so the entry
+/// carries the FAF account, and the account is what the avatar hangs on. Adding a
+/// typed string used to produce an entrant with no account at all, which is why
+/// the organiser's list showed bare names while the participant's showed faces.
+#[tokio::test]
+async fn adding_a_searched_account_gives_the_entrant_a_resolvable_profile() {
+    let app = app().await;
+    open(&app, "e1a2b").await;
+
+    app.dispatch(
+        TourneyCommand::SearchAccounts {
+            query: "Grace".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let search = app.snapshot().tourney.account_search;
+    assert_eq!(search.status, TourneyLoadStatus::Ready);
+    let picked = search
+        .matches
+        .iter()
+        .find(|account| account.login == "Grace-Hopper")
+        .expect("the offline lookup knows this account");
+
+    app.dispatch(
+        TourneyCommand::AddPlayer {
+            tournament_id: "e1a2b".into(),
+            name: picked.login.clone(),
+            rating: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    let detail = state.detail.as_ref().expect("the reloaded event");
+    let added = detail
+        .players
+        .iter()
+        .find(|player| player.name == "Grace-Hopper")
+        .expect("the entrant was added");
+    // The account came back with the entry, not as a separate guess.
+    assert_eq!(
+        added.faf_id,
+        Some(picked.id),
+        "the entry carries the account that was picked"
+    );
+    // And the profile behind it resolves, which is what puts an avatar on the row.
+    let profile = state
+        .profile_of(added)
+        .expect("the added entrant's account resolves to a profile");
+    assert_eq!(profile.login, "Grace-Hopper");
+}
+
+/// A query too short to be worth a request clears the list instead of asking FAF
+/// for the first page of everybody.
+#[tokio::test]
+async fn a_one_letter_query_is_not_sent_to_the_api() {
+    let app = app().await;
+    open(&app, "e1a2b").await;
+
+    app.dispatch(
+        TourneyCommand::SearchAccounts {
+            query: "Grace".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert!(!app.snapshot().tourney.account_search.matches.is_empty());
+
+    // Deleting back down to one letter must not leave the longer word's matches
+    // on screen: they are clickable, and clicking one would add somebody the
+    // organiser is no longer looking at.
+    app.dispatch(TourneyCommand::SearchAccounts { query: "G".into() }.into())
+        .await
+        .unwrap();
+    settle(&app).await;
+
+    let search = app.snapshot().tourney.account_search;
+    assert_eq!(search.query, "");
+    assert!(search.matches.is_empty());
+    assert_eq!(search.status, TourneyLoadStatus::Idle);
+}
+
 #[tokio::test]
 async fn entrant_profiles_arrive_beside_the_bracket_rather_than_inside_it() {
-    let app = app();
+    let app = app().await;
     open(&app, "e9z9z").await;
     let state = app.snapshot().tourney;
     let detail = state.detail.as_ref().expect("the bracket");
     // The bracket is complete whether or not FAF answered; the profiles are a
     // decoration on top of it.
     assert_eq!(detail.players.len(), 4);
-    assert!(
-        state.entrant_profiles.len() <= detail.players.len(),
-        "profiles never outnumber entrants"
-    );
+
+    // Every entrant carrying a FAF account must actually get one back. Asserting
+    // only "no more profiles than entrants" passes when the lookup returns
+    // nothing at all, which is how a batch resolve that never worked would look
+    // exactly like one that did: the bracket renders, the avatars are simply
+    // absent.
+    let wanted: Vec<i32> = detail
+        .players
+        .iter()
+        .filter_map(|player| player.faf_id)
+        .collect();
+    assert_eq!(wanted.len(), 4, "the fixture's entrants all have accounts");
+    for account in &wanted {
+        let profile = state
+            .entrant_profiles
+            .iter()
+            .find(|profile| profile.id == *account)
+            .unwrap_or_else(|| panic!("no FAF profile resolved for account {account}"));
+        assert!(!profile.login.is_empty(), "a resolved profile has a login");
+    }
+
+    // And the entry stays the source of truth for the name: the tournament
+    // service owns the entry, FAF owns the account, and an organiser's note or a
+    // rename must not be overwritten by the profile's login.
+    let entrant = detail.players.first().expect("an entrant");
+    let profile = state
+        .profile_of(entrant)
+        .expect("the first entrant's account resolves");
+    assert_eq!(profile.id, entrant.faf_id.expect("an account"));
 }
 
 #[tokio::test]
 async fn assigning_a_pool_to_a_round_survives_the_reload() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
 
     app.dispatch(
@@ -633,8 +796,10 @@ async fn assigning_a_pool_to_a_round_survives_the_reload() {
 #[tokio::test]
 async fn the_rules_pages_load_without_a_tournament_open() {
     // Site-wide, and fetched whole rather than by three hard-coded ids.
-    let app = app();
-    app.dispatch(TourneyCommand::LoadArticles.into()).await.unwrap();
+    let app = app().await;
+    app.dispatch(TourneyCommand::LoadArticles.into())
+        .await
+        .unwrap();
     settle(&app).await;
 
     let articles = app.snapshot().tourney.articles;
@@ -792,7 +957,7 @@ async fn entering_one_tournament_never_enters_another() {
     // and it says you are in that one too. Whether the entry belongs to *this*
     // tournament is the single fact every action in the pane hangs on, so it
     // gets its own test rather than being read off a fixture by eye.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
         TourneyCommand::SignUp {
@@ -832,7 +997,7 @@ async fn entering_one_tournament_never_enters_another() {
 async fn a_created_tournament_becomes_the_open_one() {
     // The organiser lands inside the event they just made, rather than back at
     // a list that looks unchanged.
-    let app = app();
+    let app = app().await;
     app.dispatch(TourneyCommand::Load.into()).await.unwrap();
     settle(&app).await;
     let before = app.snapshot().tourney.events.len();
@@ -865,9 +1030,12 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
     // The lifecycle spine: close signups, form teams, draw the bracket. Each
     // step is refused from the wrong status, which is why the UI only offers
     // the one that is legal now.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
-    assert_eq!(app.snapshot().tourney.detail.unwrap().status, TourneyStatus::Signup);
+    assert_eq!(
+        app.snapshot().tourney.detail.unwrap().status,
+        TourneyStatus::Signup
+    );
 
     // Drawing a bracket before teams exist is refused, and says why.
     app.dispatch(
@@ -914,7 +1082,7 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
 
 #[tokio::test]
 async fn reopening_signups_gives_the_teams_back_to_their_players() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
         TourneyCommand::Advance {
@@ -949,7 +1117,7 @@ async fn reopening_signups_gives_the_teams_back_to_their_players() {
 
 #[tokio::test]
 async fn editing_an_event_leaves_its_entrants_alone() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     let before = app.snapshot().tourney.detail.expect("open");
 
@@ -985,7 +1153,7 @@ async fn editing_an_event_leaves_its_entrants_alone() {
 
 #[tokio::test]
 async fn archiving_an_event_moves_the_selection_on() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
 
     app.dispatch(
@@ -1007,7 +1175,7 @@ async fn archiving_an_event_moves_the_selection_on() {
 
 #[tokio::test]
 async fn a_refused_lifecycle_write_leaves_the_event_untouched() {
-    let app = app_refusing(RequestError::rejected("Organizer rights required"));
+    let app = app_refusing(RequestError::rejected("Organizer rights required")).await;
     open(&app, "e1a2b").await;
 
     app.dispatch(
@@ -1036,10 +1204,15 @@ async fn a_refused_lifecycle_write_leaves_the_event_untouched() {
 
 #[tokio::test]
 async fn the_hosting_answer_gates_the_create_button() {
-    let app = app();
-    assert!(!app.snapshot().tourney.hosting.allowed, "unknown until asked");
+    let app = app().await;
+    assert!(
+        !app.snapshot().tourney.hosting.allowed,
+        "unknown until asked"
+    );
 
-    app.dispatch(TourneyCommand::LoadHosting.into()).await.unwrap();
+    app.dispatch(TourneyCommand::LoadHosting.into())
+        .await
+        .unwrap();
     settle(&app).await;
     assert!(app.snapshot().tourney.hosting.allowed);
 }
@@ -1060,7 +1233,11 @@ async fn team_event(app: &App) -> String {
     .await
     .unwrap();
     settle(app).await;
-    let id = app.snapshot().tourney.selected_id.expect("the new event is open");
+    let id = app
+        .snapshot()
+        .tourney
+        .selected_id
+        .expect("the new event is open");
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: id.clone(),
@@ -1077,7 +1254,7 @@ async fn team_event(app: &App) -> String {
 async fn a_team_event_offers_a_way_onto_a_team_after_signing_up() {
     // The dead end this whole step exists for: entering a 2v2 used to leave a
     // player with no team, no check-in and no match.
-    let app = app();
+    let app = app().await;
     let id = team_event(&app).await;
 
     let before = app.snapshot().tourney.detail.expect("open");
@@ -1107,7 +1284,7 @@ async fn a_team_event_offers_a_way_onto_a_team_after_signing_up() {
 async fn joining_a_team_is_a_request_the_captain_answers() {
     // There is no instant join: the server retired that path and answers
     // `join_team` with "send a join request". The client must not offer one.
-    let app = app();
+    let app = app().await;
     let id = team_event(&app).await;
     app.dispatch(
         TourneyCommand::CreateTeam {
@@ -1140,14 +1317,20 @@ async fn joining_a_team_is_a_request_the_captain_answers() {
     .unwrap();
     settle(&app).await;
     // The team was a team of one, so leaving dissolved it.
-    assert!(app.snapshot().tourney.detail.unwrap().team(&team_id).is_none());
+    assert!(app
+        .snapshot()
+        .tourney
+        .detail
+        .unwrap()
+        .team(&team_id)
+        .is_none());
 }
 
 #[tokio::test]
 async fn a_captain_can_invite_an_entrant_who_has_no_team() {
     // Driven against the seeded 2v2, because a freshly created event has only
     // this account in it and the invite conversation needs two sides.
-    let app = app();
+    let app = app().await;
     open(&app, "e2v2b").await;
     app.dispatch(
         TourneyCommand::SignUp {
@@ -1200,7 +1383,7 @@ async fn a_captain_can_invite_an_entrant_who_has_no_team() {
 async fn asking_a_team_for_a_place_shows_up_on_that_team() {
     // The only route onto a team: the server retired instant joining and
     // answers `join_team` with "send a join request".
-    let app = app();
+    let app = app().await;
     open(&app, "e2v2b").await;
     app.dispatch(
         TourneyCommand::SignUp {
@@ -1250,7 +1433,7 @@ async fn asking_a_team_for_a_place_shows_up_on_that_team() {
 
 #[tokio::test]
 async fn renaming_a_team_refuses_a_name_already_taken() {
-    let app = app();
+    let app = app().await;
     let id = team_event(&app).await;
     app.dispatch(
         TourneyCommand::CreateTeam {
@@ -1284,7 +1467,13 @@ async fn renaming_a_team_refuses_a_name_already_taken() {
     .unwrap();
     settle(&app).await;
     assert_eq!(
-        app.snapshot().tourney.detail.unwrap().team(&team_id).unwrap().name,
+        app.snapshot()
+            .tourney
+            .detail
+            .unwrap()
+            .team(&team_id)
+            .unwrap()
+            .name,
         "Red"
     );
 }
@@ -1293,7 +1482,7 @@ async fn renaming_a_team_refuses_a_name_already_taken() {
 async fn a_solo_event_never_offers_team_forming() {
     // A solo event's teams are made by the organiser at the phase change, so a
     // "create team" button there would be a trap.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     let event = app.snapshot().tourney.detail.expect("open");
     assert_eq!(event.team_size, 1);
@@ -1305,7 +1494,7 @@ async fn a_solo_event_never_offers_team_forming() {
 async fn an_organiser_adds_an_entrant_by_faf_name() {
     // There is no free-typed entrant: the server resolves the name against a
     // real account, which is what keeps avatars and ratings possible at all.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     let before = app.snapshot().tourney.detail.unwrap().player_count;
 
@@ -1336,13 +1525,16 @@ async fn an_organiser_adds_an_entrant_by_faf_name() {
     .await
     .unwrap();
     settle(&app).await;
-    assert_eq!(app.snapshot().tourney.detail.unwrap().player_count, before + 1);
+    assert_eq!(
+        app.snapshot().tourney.detail.unwrap().player_count,
+        before + 1
+    );
 }
 
 #[tokio::test]
 async fn an_organiser_removes_an_entrant_through_the_same_route_as_a_withdrawal() {
     // One endpoint, and the server decides which it is from who is asking.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     let victim = app
         .snapshot()
@@ -1371,7 +1563,7 @@ async fn an_organiser_removes_an_entrant_through_the_same_route_as_a_withdrawal(
 
 #[tokio::test]
 async fn inviting_and_uninviting_round_trips() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
 
     app.dispatch(
@@ -1403,7 +1595,7 @@ async fn inviting_and_uninviting_round_trips() {
 
 #[tokio::test]
 async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     // Too early: there are no teams to seed.
     assert!(!app.snapshot().tourney.detail.unwrap().may_reseed());
@@ -1420,7 +1612,12 @@ async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
     settle(&app).await;
     let drafted = app.snapshot().tourney.detail.expect("open");
     assert!(drafted.may_reseed());
-    let order: Vec<String> = drafted.teams.iter().rev().map(|team| team.id.clone()).collect();
+    let order: Vec<String> = drafted
+        .teams
+        .iter()
+        .rev()
+        .map(|team| team.id.clone())
+        .collect();
 
     app.dispatch(
         TourneyCommand::Reseed {
@@ -1458,7 +1655,7 @@ async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
 
 #[tokio::test]
 async fn splitting_into_divisions_and_back_again() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
         TourneyCommand::Advance {
@@ -1503,7 +1700,7 @@ async fn splitting_into_divisions_and_back_again() {
 
 #[tokio::test]
 async fn news_is_posted_newest_first_and_can_be_taken_down() {
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
 
     for body in ["Signups close Friday.", "  Start moved to 19:00 UTC.  "] {
@@ -1522,7 +1719,10 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
 
     let event = app.snapshot().tourney.detail.expect("open");
     assert_eq!(event.news.len(), 2);
-    assert_eq!(event.news[0].body, "Start moved to 19:00 UTC.", "newest first");
+    assert_eq!(
+        event.news[0].body, "Start moved to 19:00 UTC.",
+        "newest first"
+    );
     assert!(event.news[0].important);
 
     let id = event.news[0].id.clone();
@@ -1558,7 +1758,7 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
 #[tokio::test]
 async fn a_pending_signup_waits_for_the_organiser() {
     // Request mode: the entry exists but does not count until it is approved.
-    let app = app();
+    let app = app().await;
     open(&app, "e1a2b").await;
     let event = app.snapshot().tourney.detail.expect("open");
     // Nothing is pending in the seed, so the list is the empty case and the

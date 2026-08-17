@@ -647,7 +647,10 @@ pub(crate) fn roles_from_env() -> Vec<String> {
         .map(str::to_string)
         .collect();
     if !roles.is_empty() {
-        tracing::warn!(?roles, "using {FAKE_ROLES_ENV}; role-gated UI is shown regardless of the account's real roles");
+        tracing::warn!(
+            ?roles,
+            "using {FAKE_ROLES_ENV}; role-gated UI is shown regardless of the account's real roles"
+        );
     }
     roles
 }

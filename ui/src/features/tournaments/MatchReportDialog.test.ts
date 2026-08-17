@@ -1,9 +1,14 @@
 // The submit rules are the server's, mirrored so the player finds out about a
 // missing replay id from the form rather than from a refused request that
 // throws their score away.
+//
+// These cases are the readable ones, kept for what they say out loud. The
+// authority is now the conformance fixture: `reducer.conformance.test.ts` replays
+// what `MatchReport::is_submittable` actually returns, which is what caught the
+// two sides disagreeing about a blank replay row.
 
 import { describe, expect, it } from "vitest";
-import { isSubmittable, newGames } from "./MatchReportDialog";
+import { isSubmittable, newGames } from "./tourneyPresentation";
 import { match } from "./fixtures";
 
 describe("newGames", () => {
@@ -25,29 +30,34 @@ describe("newGames", () => {
 describe("isSubmittable", () => {
   const bo3 = match({ bestOf: 3 });
 
-  it("wants exactly one replay id per new game", () => {
-    expect(isSubmittable(bo3, 2, 0, ["22334455", "22334456"])).toBe(true);
-    expect(isSubmittable(bo3, 2, 0, ["22334455"])).toBe(false);
-    expect(isSubmittable(bo3, 2, 0, ["1", "2", "3"])).toBe(false);
-  });
-
-  it("ignores a blank row the player tabbed past", () => {
-    // The server counts them, so a blank one would cost the submission for a
-    // reason the form never showed.
-    expect(isSubmittable(bo3, 2, 0, ["22334455", "  ", "22334456"])).toBe(true);
+  it("takes a score the series can actually produce", () => {
+    expect(isSubmittable(bo3, 2, 0)).toBe(true);
+    expect(isSubmittable(bo3, 2, 1)).toBe(true);
+    expect(isSubmittable(match({ bestOf: 1 }), 1, 0)).toBe(true);
   });
 
   it("refuses a score that cannot happen in the series", () => {
-    expect(isSubmittable(bo3, 3, 0, ["a", "b", "c"])).toBe(false);
-    expect(isSubmittable(bo3, 2, 2, ["a", "b", "c", "d"])).toBe(false);
-    expect(isSubmittable(bo3, -1, 0, [])).toBe(false);
+    expect(isSubmittable(bo3, 3, 0)).toBe(false);
+    expect(isSubmittable(bo3, 2, 2)).toBe(false);
+    expect(isSubmittable(bo3, -1, 0)).toBe(false);
   });
 
-  it("refuses a report that adds nothing", () => {
-    expect(isSubmittable(match({ bestOf: 3, score1: 1, score2: 1 }), 1, 1, [])).toBe(false);
+  it("keeps the upper bracket's head start in a handicapped grand final", () => {
+    // The server refuses 0-x there: the match starts 1-0.
+    const gf = match({ bestOf: 5, handicap: 1 });
+    expect(isSubmittable(gf, 0, 2)).toBe(false);
+    expect(isSubmittable(gf, 1, 2)).toBe(true);
   });
 
-  it("handles a best of one", () => {
-    expect(isSubmittable(match({ bestOf: 1 }), 1, 0, ["22334455"])).toBe(true);
+  it("allows a lower score, because this is also the correction path", () => {
+    // `report` undoes a finished match and sets it again, so an organiser fixing
+    // a wrong 2-0 down to 1-2 must not be blocked by the form.
+    expect(isSubmittable(match({ bestOf: 3, score1: 2, score2: 0 }), 1, 2)).toBe(true);
+  });
+
+  it("no longer asks for replay ids", () => {
+    // Only `report_submit` requires them, and that path is not used: the
+    // organiser records every result.
+    expect(isSubmittable(bo3, 2, 0)).toBe(true);
   });
 });

@@ -7,23 +7,19 @@
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import type { SeedOrder, Tourney, TourneyPhase, VaultMap } from "../../ipc/bindings";
+import type {
+  AccountSearch,
+  PlayerSummary,
+  SeedOrder,
+  Tourney,
+  TourneyPhase,
+  VaultMap,
+} from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { EntrantAdmin } from "./EntrantAdmin";
 import { MapPoolPanel, ManageLink } from "./MapPoolPanel";
-
-/** Twin of `TourneyPhase::is_legal_from`. */
-export function isLegalFrom(phase: TourneyPhase, status: Tourney["status"]): boolean {
-  switch (phase) {
-    case "formTeams":
-      return status === "signup";
-    case "startBracket":
-      return status === "drafted";
-    case "reopenSignups":
-      return status === "signup" || status === "draft" || status === "drafted";
-  }
-}
+import { isLegalFrom } from "./tourneyPresentation";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -40,6 +36,11 @@ const PHASE_HINTS: Record<TourneyPhase, MessageKey> = {
 interface ManagePanelProps {
   event: Tourney;
   vault: VaultMap[];
+  /** Forwarded to `EntrantAdmin`, so the organiser's lists show people. */
+  profiles: PlayerSummary[];
+  /** Forwarded to `EntrantAdmin`'s name pickers. */
+  accountSearch: AccountSearch;
+  onSearchAccounts: (query: string) => void;
   busy: boolean;
   onEdit: () => void;
   onAdvance: (phase: TourneyPhase) => void;
@@ -58,6 +59,8 @@ interface ManagePanelProps {
 export function ManagePanel({
   event,
   vault,
+  profiles,
+  accountSearch,
   busy,
   onEdit,
   onAdvance,
@@ -121,6 +124,9 @@ export function ManagePanel({
         <h5>{t("tournaments.manage.entrants")}</h5>
         <EntrantAdmin
           event={event}
+          profiles={profiles}
+          accountSearch={accountSearch}
+          onSearchAccounts={rest.onSearchAccounts}
           busy={busy}
           onAdd={rest.onAddPlayer}
           onRespondSignup={rest.onRespondSignup}

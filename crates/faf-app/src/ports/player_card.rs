@@ -24,10 +24,8 @@ pub trait PlayerCardPort: Send + Sync {
     /// One request rather than one per name: a signup thread routinely holds
     /// thirty of them, and thirty round trips would be both slow and rude to
     /// the API. Names that match nothing are simply absent from the result.
-    async fn players_by_login(
-        &self,
-        logins: &[String],
-    ) -> Result<Vec<PlayerSummary>, RequestError>;
+    async fn players_by_login(&self, logins: &[String])
+        -> Result<Vec<PlayerSummary>, RequestError>;
 
     /// Resolve a batch of account ids in one request.
     async fn players_by_id(&self, ids: &[i32]) -> Result<Vec<PlayerSummary>, RequestError>;

@@ -134,5 +134,57 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       return { ...state, articles: event.payload.articles };
     case "hostingLoaded":
       return { ...state, hosting: event.payload.hosting };
+
+    // A search's own query moves with it. Starting one claims the field, so the
+    // results on screen belong to the older word and go: matches for what was
+    // typed three letters ago are worse than none, because they are clickable.
+    case "accountSearchStarted":
+      return {
+        ...state,
+        accountSearch: {
+          query: event.payload.query,
+          matches: [],
+          status: { type: "loading" },
+        },
+      };
+    // Answers can overtake each other, so one for an abandoned query is dropped
+    // rather than replacing the current one's.
+    case "accountSearchLoaded":
+      return isCurrentQuery(state, event.payload.query)
+        ? {
+            ...state,
+            accountSearch: {
+              ...state.accountSearch,
+              matches: event.payload.matches,
+              status: { type: "ready" },
+            },
+          }
+        : state;
+    case "accountSearchFailed":
+      return isCurrentQuery(state, event.payload.query)
+        ? {
+            ...state,
+            accountSearch: {
+              ...state.accountSearch,
+              matches: [],
+              status: {
+                type: "failed",
+                payload: { reason: event.payload.reason, kind: event.payload.kind },
+              },
+            },
+          }
+        : state;
+    case "accountSearchCleared":
+      return { ...state, accountSearch: { query: "", matches: [], status: { type: "idle" } } };
   }
+}
+
+/**
+ * Twin of `AccountSearch::is_current`.
+ *
+ * Trimmed and case-insensitive, because that is how the query was sent: the same
+ * word typed with a stray space must not look like a different search.
+ */
+function isCurrentQuery(state: TourneyState, query: string): boolean {
+  return state.accountSearch.query.trim().toLowerCase() === query.trim().toLowerCase();
 }

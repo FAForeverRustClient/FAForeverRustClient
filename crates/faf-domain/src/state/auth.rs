@@ -55,9 +55,9 @@ impl Player {
     /// this only decides whether a button is drawn, accepting both spellings is
     /// better than silently hiding a control from someone who holds the role.
     pub fn has_role(&self, role: &str) -> bool {
-        self.roles.iter().any(|held| {
-            normalise_role(held).eq_ignore_ascii_case(normalise_role(role))
-        })
+        self.roles
+            .iter()
+            .any(|held| normalise_role(held).eq_ignore_ascii_case(normalise_role(role)))
     }
 
     /// Whether this session may create and manage tournaments.

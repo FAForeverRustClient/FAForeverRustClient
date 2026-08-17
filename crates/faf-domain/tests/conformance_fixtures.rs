@@ -59,6 +59,13 @@ struct HelperFixture {
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
     galactic_war_actions: Vec<GalacticWarActionCase>,
+    tourney_rules: Vec<TourneyRuleCase>,
+    tourney_open_events: Vec<TourneyOpenEventCase>,
+    tourney_phase_legality: Vec<TourneyPhaseLegalityCase>,
+    tourney_busy_matches: Vec<TourneyBusyMatchCase>,
+    tourney_draft_rejections: Vec<TourneyDraftRejectionCase>,
+    tourney_reports: Vec<TourneyReportCase>,
+    tourney_map_matches: TourneyMapMatchFixture,
 }
 
 #[derive(Serialize)]
@@ -95,6 +102,143 @@ struct GalacticWarActionCase {
     can_launch: bool,
 }
 
+/// What the tournament panes gate their controls on.
+///
+/// These rules decide whether a "join this team" button is drawn, whether the
+/// seeding section exists, and how many entrants are waiting on the organiser.
+/// The frontend re-derives every one of them from the same event, so a twin that
+/// drifts offers a control the server then refuses: the player fills in a form
+/// and loses it. Recorded per event rather than per function so one fixture
+/// entry pins the whole rule set against the same input.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyRuleCase {
+    name: String,
+    event: Box<Tourney>,
+    /// Team id the team-scoped rules were asked about, when the event has one.
+    team_id: Option<String>,
+    team_rating: i32,
+    would_exceed_team_cap: bool,
+    self_organised: bool,
+    may_reseed: bool,
+    pending_signup_ids: Vec<String>,
+    /// `Tourney::members` of the team above, in the order it holds them: a twin
+    /// that iterated the entrant list instead would produce a different order.
+    member_ids: Vec<String>,
+    /// `Tourney::my_invites`: the teams waiting on *this* account's answer.
+    my_invite_team_ids: Vec<String>,
+    /// `TourneyState::unread_total` over the rooms below.
+    rooms: Vec<ChatRoom>,
+    unread_total: i32,
+}
+
+/// The stale-detail guard: a detail is only the open event's if the selection
+/// still names it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyOpenEventCase {
+    detail_id: Option<String>,
+    selected_id: Option<String>,
+    /// The id `TourneyState::open_event` yields, or `None` for no open event.
+    open_id: Option<String>,
+}
+
+/// Which match, if any, a pending write belongs to.
+///
+/// Only the three reporting actions name one; everything else is event-wide and
+/// must leave the rest of the bracket alone.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyBusyMatchCase {
+    pending: Option<TourneyAction>,
+    busy_match_id: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyPhaseLegalityCase {
+    phase: TourneyPhase,
+    status: TourneyStatus,
+    legal: bool,
+}
+
+/// Why the server would refuse a draft, and in which order.
+///
+/// The *first* refusal is the one the form shows, so the order matters as much
+/// as the rules: a draft with two problems must name the same one the server
+/// would. Held here because `DraftRejection` never reaches `AppState` and so is
+/// absent from the generated bindings — the frontend spells the union out by
+/// hand, which is exactly the kind of copy that drifts.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyDraftRejectionCase {
+    name: String,
+    draft: Box<TourneyDraft>,
+    /// `None` when the server would take it.
+    rejection: Option<DraftRejection>,
+    submittable: bool,
+}
+
+/// Whether the server will take a match report.
+///
+/// The highest-stakes rule in the tab: a twin that says yes where the Rust says
+/// no throws away a player's reported score, and one that says no where the Rust
+/// says yes blocks a result that would have been accepted.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyReportCase {
+    name: String,
+    /// Only the fields both rules read.
+    entry: TourneyReportEntry,
+    score1: i32,
+    score2: i32,
+    replay_ids: Vec<String>,
+    new_games: i32,
+    submittable: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyReportEntry {
+    best_of: i32,
+    handicap: i32,
+    score1: Option<i32>,
+    score2: Option<i32>,
+}
+
+/// Resolving an organiser's hand-typed map name against FAF's vault.
+///
+/// Pinned because the two sides fold the name differently by construction: Rust
+/// filters on `char::is_alphanumeric`, the frontend on a `\p{L}|\p{N}` regex.
+/// They agree today, and a divergence would not fail anything: it would silently
+/// drop the map preview for one spelling, which reads as a vault gap rather than
+/// as a bug.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyMapMatchFixture {
+    /// The vault both sides resolve against.
+    vault: Vec<TourneyMapVaultEntry>,
+    cases: Vec<TourneyMapMatchCase>,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct TourneyMapVaultEntry {
+    display_name: String,
+    folder_name: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyMapMatchCase {
+    /// The name as an organiser typed it into the tournament's map database.
+    typed: String,
+    /// `map_key` of that name.
+    key: String,
+    /// The vault entry it resolves to, or `None` for a map never uploaded.
+    resolved_display_name: Option<String>,
+}
+
 fn galactic_war_state(
     installed: Option<&str>,
     versions: Option<(&str, Option<&str>)>,
@@ -121,6 +265,559 @@ fn review(id: i32, score: i32, player: &str) -> Review {
         player: player.into(),
         version: "1".into(),
     }
+}
+
+fn tourney_player(
+    id: &str,
+    rating: Option<i32>,
+    team: Option<&str>,
+    pending: bool,
+) -> TourneyPlayer {
+    TourneyPlayer {
+        id: id.into(),
+        name: id.to_uppercase(),
+        faf_id: None,
+        rating,
+        rating_actual: rating,
+        team_id: team.map(Into::into),
+        manual: false,
+        late: false,
+        pending,
+        note: String::new(),
+        signed_at: None,
+    }
+}
+
+fn tourney_team(id: &str, players: &[&str]) -> TourneyTeam {
+    TourneyTeam {
+        id: id.into(),
+        name: id.to_uppercase(),
+        seed: 0,
+        captain_id: players.first().map(|first| (*first).to_string()),
+        player_ids: players.iter().map(|id| (*id).to_string()).collect(),
+        division: 0,
+        checked_in: false,
+        eliminated: false,
+        final_rank: None,
+        captain_renamed: false,
+        join_requests: Vec::new(),
+        invites: Vec::new(),
+    }
+}
+
+/// One rule case, with every rule read off the same event.
+fn tourney_rule_case(
+    name: &str,
+    event: Tourney,
+    team_id: Option<&str>,
+    rooms: Vec<ChatRoom>,
+) -> TourneyRuleCase {
+    let team = team_id.and_then(|id| event.team(id)).cloned();
+    let state = TourneyState {
+        chat_rooms: rooms.clone(),
+        ..TourneyState::default()
+    };
+    TourneyRuleCase {
+        name: name.to_string(),
+        team_id: team_id.map(Into::into),
+        team_rating: team.as_ref().map_or(0, |team| event.team_rating(team)),
+        would_exceed_team_cap: team
+            .as_ref()
+            .is_some_and(|team| event.would_exceed_team_cap(team)),
+        self_organised: event.teams_are_self_organised(),
+        may_reseed: event.may_reseed(),
+        pending_signup_ids: event
+            .pending_signups()
+            .into_iter()
+            .map(|player| player.id.clone())
+            .collect(),
+        member_ids: team.as_ref().map_or_else(Vec::new, |team| {
+            event
+                .members(team)
+                .into_iter()
+                .map(|player| player.id.clone())
+                .collect()
+        }),
+        my_invite_team_ids: event
+            .my_invites()
+            .into_iter()
+            .map(|team| team.id.clone())
+            .collect(),
+        unread_total: state.unread_total(),
+        rooms,
+        event: Box::new(event),
+    }
+}
+
+fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
+    // An open 2v2 taking signups, with a combined-rating ceiling that this
+    // account would push `t1` over but not `t2`.
+    let capped = Tourney {
+        id: "cap".into(),
+        status: TourneyStatus::Signup,
+        formation: Formation::Open,
+        team_size: 2,
+        rating: RatingGate {
+            max_team: Some(3_000),
+            ..RatingGate::default()
+        },
+        players: vec![
+            tourney_player("me", Some(1_600), None, false),
+            tourney_player("p1", Some(1_800), Some("t1"), false),
+            tourney_player("p2", Some(900), Some("t2"), false),
+            // No rating at all: must count as nothing rather than break the sum.
+            tourney_player("p3", None, Some("t2"), false),
+            tourney_player("p9", Some(1_000), None, true),
+        ],
+        teams: vec![
+            tourney_team("t1", &["p1"]),
+            // Has asked this account to join: the one thing in the teams pane
+            // that is waiting on the reader rather than on somebody else.
+            TourneyTeam {
+                invites: vec![TeamRequest {
+                    player_id: "me".into(),
+                    name: "ME".into(),
+                    at: None,
+                }],
+                ..tourney_team("t2", &["p2", "p3"])
+            },
+        ],
+        viewer: TourneyViewer {
+            logged_in: true,
+            signed_up_player_id: Some("me".into()),
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    let under_cap = Tourney {
+        id: "under".into(),
+        ..capped.clone()
+    };
+    // Teams formed, bracket not drawn: the one window seeds can change in.
+    let drafted = Tourney {
+        id: "drafted".into(),
+        status: TourneyStatus::Drafted,
+        formation: Formation::Open,
+        team_size: 2,
+        players: vec![tourney_player("p1", Some(1_500), Some("t1"), false)],
+        teams: vec![tourney_team("t1", &["p1"])],
+        ..Tourney::default()
+    };
+    // A solo event: nothing to form, so no team controls at all, and no seeding
+    // either until teams exist.
+    let solo = Tourney {
+        id: "solo".into(),
+        status: TourneyStatus::Signup,
+        formation: Formation::Solo,
+        team_size: 1,
+        players: vec![tourney_player("p1", Some(1_500), None, true)],
+        ..Tourney::default()
+    };
+
+    vec![
+        tourney_rule_case(
+            "an open 2v2 where joining would break the team cap",
+            capped,
+            Some("t1"),
+            vec![tourney_room("global", 3), tourney_room("m1", 1)],
+        ),
+        tourney_rule_case(
+            "the same event, for a team there is still room under",
+            under_cap,
+            Some("t2"),
+            Vec::new(),
+        ),
+        tourney_rule_case(
+            "teams formed, bracket not drawn",
+            drafted,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case("a solo event with a signup waiting", solo, None, vec![]),
+    ]
+}
+
+fn tourney_open_event_cases() -> Vec<TourneyOpenEventCase> {
+    [
+        (Some("e1"), Some("e1")),
+        // The window between selecting a row and its detail arriving: the
+        // previous event's bracket must not appear under the new name.
+        (Some("e1"), Some("e2")),
+        (Some("e1"), None),
+        (None, Some("e1")),
+        (None, None),
+    ]
+    .into_iter()
+    .map(|(detail_id, selected_id)| {
+        let state = TourneyState {
+            detail: detail_id.map(|id| Tourney {
+                id: id.into(),
+                ..Tourney::default()
+            }),
+            selected_id: selected_id.map(Into::into),
+            ..TourneyState::default()
+        };
+        TourneyOpenEventCase {
+            detail_id: detail_id.map(Into::into),
+            selected_id: selected_id.map(Into::into),
+            open_id: state.open_event().map(|event| event.id.clone()),
+        }
+    })
+    .collect()
+}
+
+fn tourney_busy_match_cases() -> Vec<TourneyBusyMatchCase> {
+    [
+        None,
+        Some(TourneyAction::SubmittingReport {
+            match_id: "m1".into(),
+        }),
+        Some(TourneyAction::AnsweringReport {
+            match_id: "m2".into(),
+        }),
+        Some(TourneyAction::DecidingReport {
+            match_id: "m3".into(),
+        }),
+        // Event-wide writes: the whole pane disables, no single match does.
+        Some(TourneyAction::SigningUp),
+        Some(TourneyAction::Reseeding),
+        // Names an id, but not a match's: must not be mistaken for one.
+        Some(TourneyAction::PostingChat {
+            room_id: "m1".into(),
+        }),
+        Some(TourneyAction::AnsweringTeam {
+            team_id: "m1".into(),
+        }),
+    ]
+    .into_iter()
+    .map(|pending| {
+        let state = TourneyState {
+            pending,
+            ..TourneyState::default()
+        };
+        TourneyBusyMatchCase {
+            busy_match_id: state.busy_match_id().map(Into::into),
+            pending: state.pending,
+        }
+    })
+    .collect()
+}
+
+fn tourney_phase_legality_cases() -> Vec<TourneyPhaseLegalityCase> {
+    let phases = [
+        TourneyPhase::FormTeams,
+        TourneyPhase::StartBracket,
+        TourneyPhase::ReopenSignups,
+    ];
+    let statuses = [
+        TourneyStatus::Draft,
+        TourneyStatus::Signup,
+        TourneyStatus::Drafted,
+        TourneyStatus::Running,
+        TourneyStatus::Finished,
+        TourneyStatus::Unknown,
+    ];
+    phases
+        .into_iter()
+        .flat_map(|phase| {
+            statuses
+                .into_iter()
+                .map(move |status| TourneyPhaseLegalityCase {
+                    phase,
+                    status,
+                    legal: phase.is_legal_from(status),
+                })
+        })
+        .collect()
+}
+
+fn tourney_draft_rejection_cases() -> Vec<TourneyDraftRejectionCase> {
+    let named = |over: TourneyDraft| TourneyDraft {
+        name: "Weekend Cup".into(),
+        ..over
+    };
+    let cases: Vec<(&str, TourneyDraft)> = vec![
+        ("a plain valid draft", named(TourneyDraft::new())),
+        (
+            "no name at all, which is the server's first complaint",
+            TourneyDraft::new(),
+        ),
+        (
+            "a name of nothing but spaces still counts as none",
+            TourneyDraft {
+                name: "   ".into(),
+                ..TourneyDraft::new()
+            },
+        ),
+        (
+            "a team of seven",
+            named(TourneyDraft {
+                team_size: 7,
+                ..TourneyDraft::new()
+            }),
+        ),
+        (
+            "a team of none",
+            named(TourneyDraft {
+                team_size: 0,
+                ..TourneyDraft::new()
+            }),
+        ),
+        (
+            "a rating floor above the ceiling",
+            named(TourneyDraft {
+                rating: RatingGate {
+                    min: Some(1_800),
+                    max: Some(1_200),
+                    ..RatingGate::default()
+                },
+                ..TourneyDraft::new()
+            }),
+        ),
+        (
+            "a gate on an unrated event, which could only refuse everybody",
+            named(TourneyDraft {
+                rating_kind: RatingKind::None,
+                rating: RatingGate {
+                    min: Some(1_200),
+                    ..RatingGate::default()
+                },
+                ..TourneyDraft::new()
+            }),
+        ),
+        (
+            "an unrated event with no gate is fine",
+            named(TourneyDraft {
+                rating_kind: RatingKind::None,
+                ..TourneyDraft::new()
+            }),
+        ),
+        (
+            "signups closing before they open",
+            named(TourneyDraft {
+                signup_opens_at: Some(1_800_000_000),
+                signup_closes_at: Some(1_700_000_000),
+                ..TourneyDraft::new()
+            }),
+        ),
+        (
+            "signups opening and closing at the same instant",
+            named(TourneyDraft {
+                signup_opens_at: Some(1_700_000_000),
+                signup_closes_at: Some(1_700_000_000),
+                ..TourneyDraft::new()
+            }),
+        ),
+        (
+            // Two problems at once: the order decides which is shown, and it has
+            // to be the server's order.
+            "a nameless draft that also has an inverted rating range",
+            TourneyDraft {
+                rating: RatingGate {
+                    min: Some(1_800),
+                    max: Some(1_200),
+                    ..RatingGate::default()
+                },
+                ..TourneyDraft::new()
+            },
+        ),
+    ];
+    cases
+        .into_iter()
+        .map(|(name, draft)| TourneyDraftRejectionCase {
+            name: name.to_string(),
+            rejection: draft.rejection(),
+            submittable: draft.is_submittable(),
+            draft: Box::new(draft),
+        })
+        .collect()
+}
+
+fn tourney_report_cases() -> Vec<TourneyReportCase> {
+    let entry =
+        |best_of: i32, handicap: i32, score1: Option<i32>, score2: Option<i32>| TourneyMatch {
+            id: "m1".into(),
+            bracket: BracketSide::Winners,
+            round: 1,
+            index: 0,
+            best_of,
+            handicap,
+            division: 0,
+            team1: Some("t1".into()),
+            team2: Some("t2".into()),
+            score1,
+            score2,
+            status: MatchStatus::Ready,
+            winner: None,
+            loser: None,
+            winner_to: None,
+            loser_to: None,
+            pending_report: None,
+            replay_ids: Vec::new(),
+        };
+    let ids = |count: usize| -> Vec<String> {
+        (0..count).map(|index| format!("replay-{index}")).collect()
+    };
+
+    let cases: Vec<(&str, TourneyMatch, i32, i32, Vec<String>)> = vec![
+        (
+            "a fresh Bo3 taken 2-0",
+            entry(3, 0, None, None),
+            2,
+            0,
+            ids(2),
+        ),
+        (
+            "the same, one replay id short",
+            entry(3, 0, None, None),
+            2,
+            0,
+            ids(1),
+        ),
+        ("one id too many", entry(3, 0, None, None), 2, 0, ids(3)),
+        (
+            // Blank fields are not ids, which is what the trimming is for.
+            "two boxes filled, one of them blank",
+            entry(3, 0, None, None),
+            2,
+            0,
+            vec!["replay-0".into(), "   ".into()],
+        ),
+        (
+            "a Bo3 at 1-1 reported as 2-1: one new game",
+            entry(3, 0, Some(1), Some(1)),
+            2,
+            1,
+            ids(1),
+        ),
+        (
+            "re-reporting a score already confirmed adds nothing",
+            entry(3, 0, Some(2), Some(0)),
+            2,
+            0,
+            Vec::new(),
+        ),
+        (
+            "scoring past the series length",
+            entry(3, 0, None, None),
+            3,
+            0,
+            ids(3),
+        ),
+        (
+            "both sides winning it",
+            entry(3, 0, None, None),
+            2,
+            2,
+            ids(4),
+        ),
+        ("a negative score", entry(3, 0, None, None), -1, 2, ids(1)),
+        (
+            // The handicap case: an absent score is not zero here, so a naive
+            // twin counts one game too many.
+            "a handicapped grand final starting the favourite at 1-0",
+            entry(5, 1, None, None),
+            3,
+            1,
+            ids(3),
+        ),
+        (
+            "the same handicapped final, counted as if from 0-0",
+            entry(5, 1, None, None),
+            3,
+            1,
+            ids(4),
+        ),
+        (
+            "an even Bo2, where one win is not yet enough",
+            entry(2, 0, None, None),
+            1,
+            0,
+            ids(1),
+        ),
+    ];
+
+    cases
+        .into_iter()
+        .map(|(name, held, score1, score2, replay_ids)| {
+            let report = MatchReport {
+                match_id: held.id.clone(),
+                score1,
+                score2,
+                replay_ids: replay_ids.clone(),
+                draw_replay_ids: Vec::new(),
+                winner: None,
+                forfeit: None,
+            };
+            TourneyReportCase {
+                name: name.to_string(),
+                entry: TourneyReportEntry {
+                    best_of: held.best_of,
+                    handicap: held.handicap,
+                    score1: held.score1,
+                    score2: held.score2,
+                },
+                new_games: report.new_games(&held),
+                submittable: report.is_submittable(&held),
+                score1,
+                score2,
+                replay_ids,
+            }
+        })
+        .collect()
+}
+
+fn tourney_map_match_fixture() -> TourneyMapMatchFixture {
+    let vault = vec![
+        TourneyMapVaultEntry {
+            display_name: "Seton's Clutch".into(),
+            folder_name: "scmp_009.v0002".into(),
+        },
+        TourneyMapVaultEntry {
+            display_name: "Open Palms".into(),
+            folder_name: "scmp_001".into(),
+        },
+        TourneyMapVaultEntry {
+            display_name: "Adaptive Tabula".into(),
+            folder_name: "adaptive_tabula.v0006".into(),
+        },
+    ];
+    let typed = [
+        // The four spellings the same map arrives as.
+        "Seton's Clutch",
+        "setons clutch",
+        "SCMP_009",
+        "scmp_009.v0001",
+        // Punctuation and spacing are noise; a version on both sides comes off.
+        "  adaptive-tabula  ",
+        "Adaptive Tabula.v0009",
+        // Nothing to compare on, and a map that was never uploaded.
+        "",
+        "!!!",
+        "Some Private Map",
+    ];
+    let cases = typed
+        .into_iter()
+        .map(|name| {
+            let tourney_map = TourneyMap {
+                id: "m".into(),
+                name: name.into(),
+                image_url: String::new(),
+            };
+            TourneyMapMatchCase {
+                typed: name.into(),
+                key: map_key(name),
+                resolved_display_name: match_vault_map(
+                    &tourney_map,
+                    &vault,
+                    |entry| &entry.display_name,
+                    |entry| &entry.folder_name,
+                )
+                .map(|entry| entry.display_name.clone()),
+            }
+        })
+        .collect();
+    TourneyMapMatchFixture { vault, cases }
 }
 
 fn helper_fixture() -> HelperFixture {
@@ -267,6 +964,13 @@ fn helper_fixture() -> HelperFixture {
                 state,
             })
             .collect(),
+        tourney_rules: tourney_rule_cases(),
+        tourney_open_events: tourney_open_event_cases(),
+        tourney_phase_legality: tourney_phase_legality_cases(),
+        tourney_busy_matches: tourney_busy_match_cases(),
+        tourney_draft_rejections: tourney_draft_rejection_cases(),
+        tourney_reports: tourney_report_cases(),
+        tourney_map_matches: tourney_map_match_fixture(),
     }
 }
 
@@ -853,6 +1557,7 @@ fn cases() -> Vec<Case> {
                         folder_name: "my_map.v0001".into(),
                         display_name: "My Map".into(),
                         ranked: false,
+                        source_path: None,
                     },
                 }
                 .into(),
@@ -922,7 +1627,10 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 TourneyEvent::DetailLoading.into(),
-                TourneyEvent::DetailLoaded { event: Box::new(tourney("e2")) }.into(),
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(tourney("e2")),
+                }
+                .into(),
                 TourneyEvent::ActionStarted {
                     action: TourneyAction::SigningUp,
                 }
@@ -986,7 +1694,10 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // A detail for the event nobody is looking at any more must not
                 // land under the open one's heading.
-                TourneyEvent::DetailLoaded { event: Box::new(tourney("e1")) }.into(),
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(tourney("e1")),
+                }
+                .into(),
                 // e2 was archived between refreshes: the selection falls back
                 // and takes the bracket with it.
                 TourneyEvent::Loaded {
@@ -996,13 +1707,67 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "an organiser searches for an account while answers overtake each other",
+            vec![
+                TourneyEvent::AccountSearchStarted {
+                    query: "nug".into(),
+                }
+                .into(),
+                TourneyEvent::AccountSearchLoaded {
+                    query: "nug".into(),
+                    matches: vec![
+                        player_summary(101, "Nuggets", Some(1750)),
+                        player_summary(105, "Nugget", Some(980)),
+                    ],
+                }
+                .into(),
+                // A fourth letter: the older results are clickable, so they go
+                // at once rather than when the new answer arrives.
+                TourneyEvent::AccountSearchStarted {
+                    query: "nugge".into(),
+                }
+                .into(),
+                // The slower answer for the abandoned query must be dropped, not
+                // shown under the newer one.
+                TourneyEvent::AccountSearchLoaded {
+                    query: "nug".into(),
+                    matches: vec![player_summary(101, "Nuggets", Some(1750))],
+                }
+                .into(),
+                // Trimming and case are how the query was sent, so this *is* the
+                // current one and it lands.
+                TourneyEvent::AccountSearchLoaded {
+                    query: " NUGGE ".into(),
+                    matches: vec![player_summary(101, "Nuggets", Some(1750))],
+                }
+                .into(),
+                // A refusal names its reason: an empty list that meant "your
+                // session expired" would send the organiser hunting for a typo.
+                TourneyEvent::AccountSearchStarted {
+                    query: "ada".into(),
+                }
+                .into(),
+                TourneyEvent::AccountSearchFailed {
+                    query: "ada".into(),
+                    reason: "Sign in to FAF to look up players.".into(),
+                    kind: RequestFailureKind::Unauthorized,
+                }
+                .into(),
+                // Picking somebody, or leaving the field, drops the list.
+                TourneyEvent::AccountSearchCleared.into(),
+            ],
+        ),
+        case(
             "a tournament chat room is opened, read and left behind",
             vec![
                 TourneyEvent::Loaded {
                     events: vec![tourney("e1"), tourney("e2")],
                 }
                 .into(),
-                TourneyEvent::DetailLoaded { event: Box::new(tourney("e1")) }.into(),
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(tourney("e1")),
+                }
+                .into(),
                 TourneyEvent::ChatRoomsLoaded {
                     rooms: vec![tourney_room("global", 3), tourney_room("m1", 1)],
                 }

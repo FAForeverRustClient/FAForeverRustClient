@@ -44,14 +44,15 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     news: [],
     invites: [],
     championTeamId: null,
+    // The service sets this on the detail response, after `publicView` builds the
+    // document. Spelled out here because a component fixture has no response.
     viewer: {
       loggedIn: true,
       organiser: false,
       fafId: 101,
-      fafName: "",
+      fafName: "Nuggets",
       signedUpPlayerId: null,
       memberTeamId: null,
-      unreadByRoom: [],
     },
     ...over,
   };
@@ -85,6 +86,7 @@ export function team(over: Partial<TourneyTeam> = {}): TourneyTeam {
     checkedIn: false,
     eliminated: false,
     finalRank: null,
+    captainRenamed: false,
     joinRequests: [],
     invites: [],
     ...over,

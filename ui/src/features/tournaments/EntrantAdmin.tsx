@@ -1,24 +1,45 @@
 // The organiser's side of the entrant list: adding, approving, inviting,
 // removing, and seeding the field once teams exist.
 //
-// Adding and inviting take a FAF name, not a free-typed string. The server
-// looks it up and refuses one it cannot find, which is the whole reason an
-// entry can carry an avatar and a real rating: there is no such thing here as
+// Adding and inviting pick a FAF *account*, not a typed string. The server
+// matches names exactly and refuses one it cannot find, so a typed name is a
+// guess that only fails afterwards; picking from a searched list means the
+// organiser sees the person — avatar, login, rating — before committing. That is
+// also what lets an entry carry an avatar at all: there is no such thing here as
 // an entrant who is not somebody.
+//
+// Every list on this pane shows a person the same way the participant's lists do,
+// through `PlayerChip` and the profiles loaded beside the event. They used to
+// render bare names, which is how the same entrant could appear as a face in one
+// section and a string in another.
 
-import { useState } from "react";
 import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
-import type { SeedOrder, Tourney } from "../../ipc/bindings";
+import type { AccountSearch, PlayerSummary, SeedOrder, Tourney } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-
-/** Twin of `Tourney::may_reseed`: only between forming teams and the draw. */
-export function mayReseed(event: Tourney): boolean {
-  return event.status === "drafted" && event.teams.length > 0;
-}
+import { AccountPicker } from "./AccountPicker";
+import { PlayerChip } from "./PlayerChip";
+import {
+  INVITE_STATUS_LABELS,
+  mayReseed,
+  pendingSignups,
+  profileOf,
+  profileOfInvite,
+} from "./tourneyPresentation";
 
 interface EntrantAdminProps {
   event: Tourney;
+  /** The shared name-search state; one picker is in use at a time. */
+  accountSearch: AccountSearch;
+  onSearchAccounts: (query: string) => void;
+  /**
+   * The FAF accounts behind the entrants, as loaded beside the event.
+   *
+   * The organiser's lists show the same people as the participant's, so they
+   * show them the same way: as a person with an avatar and a rating, not as a
+   * string. Passed in rather than fetched here, because they arrive with the
+   * event and one request already covers every list on the pane.
+   */
+  profiles: PlayerSummary[];
   busy: boolean;
   onAdd: (name: string, rating: number | null) => void;
   onRespondSignup: (playerId: string, accept: boolean) => void;
@@ -32,14 +53,9 @@ interface EntrantAdminProps {
 export function EntrantAdmin(props: EntrantAdminProps) {
   const { t } = useTranslation();
   const { event, busy } = props;
-  const [addName, setAddName] = useState("");
-  const [inviteName, setInviteName] = useState("");
 
-  const pending = event.players.filter((player) => player.pending);
+  const pending = pendingSignups(event);
   const signupsOpen = event.status === "signup";
-  // Only an unrated tournament asks for a rating: everywhere else the server
-  // fetches it, and a number typed here would be ignored.
-  const asksForRating = false;
 
   return (
     <div className="tournament-entrant-admin">
@@ -47,9 +63,17 @@ export function EntrantAdmin(props: EntrantAdminProps) {
         <section>
           <h5>{t("tournaments.admin.pending")}</h5>
           <ul className="tournament-entrant-list">
-            {pending.map((player) => (
+            {pending.map((player) => {
+              const profile = profileOf(props.profiles, player);
+              return (
               <li className="tournament-entrant" key={player.id}>
-                <span className="tournament-entrant-name">{player.name}</span>
+                <span className="tournament-entrant-name">
+                  {profile ? (
+                    <PlayerChip player={profile} overrideName={player.name} />
+                  ) : (
+                    player.name
+                  )}
+                </span>
                 {player.rating !== null && <span className="muted">{player.rating}</span>}
                 <Button
                   variant="primary"
@@ -62,7 +86,8 @@ export function EntrantAdmin(props: EntrantAdminProps) {
                   {t("tournaments.admin.decline")}
                 </Button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       )}
@@ -70,71 +95,55 @@ export function EntrantAdmin(props: EntrantAdminProps) {
       {signupsOpen && (
         <section>
           <h5>{t("tournaments.admin.addHeading")}</h5>
-          <form
-            className="tournament-form-row"
-            onSubmit={(submitted) => {
-              submitted.preventDefault();
-              if (addName.trim() === "") return;
-              props.onAdd(addName, null);
-              setAddName("");
-            }}
-          >
-            <label className="tournament-field">
-              <span>{t("tournaments.admin.fafName")}</span>
-              <input
-                value={addName}
-                onChange={(changed) => setAddName(changed.target.value)}
-                placeholder={t("tournaments.admin.fafNamePlaceholder")}
-                maxLength={40}
-              />
-            </label>
-            <Button type="submit" disabled={busy || addName.trim() === ""}>
-              <Icon name="plus" size={16} /> {t("tournaments.admin.add")}
-            </Button>
-          </form>
-          {/* Names are exact, because the server matches them exactly. Saying
-              so beats the refusal that otherwise arrives. */}
-          <p className="tournament-form-hint muted">{t("tournaments.admin.exactNames")}</p>
-          {asksForRating && <p className="muted">{t("tournaments.admin.ratingNeeded")}</p>}
+          <AccountPicker
+            label={t("tournaments.admin.fafName")}
+            placeholder={t("tournaments.admin.fafNamePlaceholder")}
+            search={props.accountSearch}
+            busy={busy}
+            submitLabel={t("tournaments.admin.add")}
+            onQueryChange={props.onSearchAccounts}
+            // Always without a rating. `org_add_player` accepts one, but only an
+            // unrated event needs it, and `publicView` does not send the rating
+            // type (see docs/faf-tournaments-api.md), so the client cannot tell
+            // one from the other. Asking every organiser for a number the server
+            // then ignores is the worse of the two.
+            onPick={(login) => props.onAdd(login, null)}
+          />
         </section>
       )}
 
       <section>
         <h5>{t("tournaments.admin.inviteHeading")}</h5>
-        <form
-          className="tournament-form-row"
-          onSubmit={(submitted) => {
-            submitted.preventDefault();
-            if (inviteName.trim() === "") return;
-            props.onInvite(inviteName);
-            setInviteName("");
-          }}
-        >
-          <label className="tournament-field">
-            <span>{t("tournaments.admin.fafName")}</span>
-            <input
-              value={inviteName}
-              onChange={(changed) => setInviteName(changed.target.value)}
-              maxLength={40}
-            />
-          </label>
-          <Button type="submit" disabled={busy || inviteName.trim() === ""}>
-            {t("tournaments.admin.invite")}
-          </Button>
-        </form>
+        <AccountPicker
+          label={t("tournaments.admin.fafName")}
+          search={props.accountSearch}
+          busy={busy}
+          submitLabel={t("tournaments.admin.invite")}
+          onQueryChange={props.onSearchAccounts}
+          onPick={props.onInvite}
+        />
         {event.invites.length > 0 && (
           <ul className="tournament-entrant-list">
-            {event.invites.map((invite) => (
-              <li className="tournament-entrant" key={invite.fafId}>
-                <span className="tournament-entrant-name">{invite.name}</span>
-                <span className="muted">
-                  {t(`tournaments.admin.invite.${invite.status}` as never)}
-                </span>
-                <Button disabled={busy} onClick={() => props.onUninvite(invite.fafId)}>
-                  {t("tournaments.admin.uninvite")}
-                </Button>
-              </li>
-            ))}
+            {event.invites.map((invite) => {
+              // An invitation names its FAF id outright, so the person is known
+              // before they have entered anything.
+              const profile = profileOfInvite(props.profiles, invite);
+              return (
+                <li className="tournament-entrant" key={invite.fafId}>
+                  <span className="tournament-entrant-name">
+                    {profile ? (
+                      <PlayerChip player={profile} overrideName={invite.name} />
+                    ) : (
+                      invite.name
+                    )}
+                  </span>
+                  <span className="muted">{t(INVITE_STATUS_LABELS[invite.status])}</span>
+                  <Button disabled={busy} onClick={() => props.onUninvite(invite.fafId)}>
+                    {t("tournaments.admin.uninvite")}
+                  </Button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -145,21 +154,32 @@ export function EntrantAdmin(props: EntrantAdminProps) {
           <ul className="tournament-entrant-list">
             {event.players
               .filter((player) => !player.pending)
-              .map((player) => (
-                <li className="tournament-entrant" key={player.id}>
-                  <span className="tournament-entrant-name">
-                    {player.name}
-                    {player.note !== "" && <span className="muted"> ({player.note})</span>}
-                  </span>
-                  {player.rating !== null && <span className="muted">{player.rating}</span>}
-                  {player.late && (
-                    <span className="tournament-badge">{t("tournaments.entrants.late")}</span>
-                  )}
-                  <Button disabled={busy} onClick={() => props.onRemove(player.id)}>
-                    {t("tournaments.admin.remove")}
-                  </Button>
-                </li>
-              ))}
+              .map((player) => {
+                const profile = profileOf(props.profiles, player);
+                return (
+                  <li className="tournament-entrant" key={player.id}>
+                    <span className="tournament-entrant-name">
+                      {profile ? (
+                        <PlayerChip player={profile} overrideName={player.name} />
+                      ) : (
+                        player.name
+                      )}
+                      {player.note !== "" && <span className="muted"> ({player.note})</span>}
+                    </span>
+                    {/* The tournament's own rating, which is taken as of the
+                        event's rating date and may have been capped: it can
+                        differ from the account's, and this is the one that
+                        decides seeding. */}
+                    {player.rating !== null && <span className="muted">{player.rating}</span>}
+                    {player.late && (
+                      <span className="tournament-badge">{t("tournaments.entrants.late")}</span>
+                    )}
+                    <Button disabled={busy} onClick={() => props.onRemove(player.id)}>
+                      {t("tournaments.admin.remove")}
+                    </Button>
+                  </li>
+                );
+              })}
           </ul>
         </section>
       )}

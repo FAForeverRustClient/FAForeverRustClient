@@ -185,8 +185,13 @@ function MatchCard({
     (entry.status === "ready" || entry.status === "live") &&
     entry.team1 !== null &&
     entry.team2 !== null;
+  // Twin of `Tourney::may_report`. Only the organiser records a result, and a
+  // finished match stays reportable because `report` is also the correction path.
   const mayReport =
-    event.playerReporting && playable && entry.bracket !== "freeForAll" && isMyMatch(event, entry);
+    event.viewer.organiser &&
+    entry.bracket !== "freeForAll" &&
+    entry.team1 !== null &&
+    entry.team2 !== null;
   const mayAnswer = pending !== null && isMyMatch(event, entry) && pending.byTeam !== mine;
 
   const teamName = (teamId: string | null): string => {
@@ -253,16 +258,24 @@ function MatchCard({
             </Button>
           </>
         )}
-        {!mayAnswer && playable && (
+        {!mayAnswer && (
           <>
             {/* Hosting is offered to everyone watching, not just the two
                 players: a caster or an organiser opening the lobby is normal. */}
-            <Button onClick={onHost} title={t("tournaments.match.hostHint")}>
-              <Icon name="play" size={14} /> {t("tournaments.match.host")}
-            </Button>
-            {mayReport && pending === null && (
+            {playable && (
+              <Button onClick={onHost} title={t("tournaments.match.hostHint")}>
+                <Icon name="play" size={14} /> {t("tournaments.match.host")}
+              </Button>
+            )}
+            {mayReport && (
               <Button variant="primary" onClick={onReport} disabled={busy}>
-                {t(busy ? "tournaments.match.reporting" : "tournaments.match.report")}
+                {t(
+                  busy
+                    ? "tournaments.match.reporting"
+                    : entry.status === "done"
+                      ? "tournaments.match.correct"
+                      : "tournaments.match.report",
+                )}
               </Button>
             )}
           </>

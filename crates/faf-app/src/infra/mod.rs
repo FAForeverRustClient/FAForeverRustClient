@@ -8,6 +8,22 @@
 //! normal account session; the complete fake bundle remains available for
 //! offline development (ARCHITECTURE.md §2).
 
+/// The account the offline bundle is signed in as.
+///
+/// One identity for every fake, because the real system has one: the login, the
+/// player API and the tournament service all describe the same person. They used
+/// to disagree — login `42 TestCommander`, tournaments `101 Nuggets`, player card
+/// `106 TestCommander` — and that is precisely why the fakes could not reveal
+/// that the tournament tab took its identity from a `viewer` field the real
+/// service never sends. Every fake handed out its own answer, so nothing ever
+/// needed the login.
+///
+/// It matches an entry in `FakePlayerCard`'s account list, so the avatar and
+/// rating resolve offline too.
+pub const OFFLINE_FAF_ID: i32 = 101;
+/// The login that goes with [`OFFLINE_FAF_ID`].
+pub const OFFLINE_FAF_NAME: &str = "Nuggets";
+
 pub mod auth;
 pub mod chat;
 pub mod client_update;
@@ -443,8 +459,7 @@ pub fn real_ports() -> Ports {
         Arc::new(PlayerCardClient::faf(tokens.clone()));
     let reporting: Arc<dyn crate::ports::ReportingPort> =
         Arc::new(ReportingClient::faf(tokens.clone()));
-    let tourney: Arc<dyn crate::ports::TourneyPort> =
-        Arc::new(TourneyClient::faf(tokens.clone()));
+    let tourney: Arc<dyn crate::ports::TourneyPort> = Arc::new(TourneyClient::faf(tokens.clone()));
     // Same posture as maps and tournaments: pure API reads, no subprocess.
     let coop: Arc<dyn crate::ports::CoopPort> = Arc::new(CoopClient::faf(tokens.clone()));
     let tutorials: Arc<dyn crate::ports::TutorialsPort> =
