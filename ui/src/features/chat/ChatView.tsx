@@ -106,7 +106,10 @@ const openTab = (tab: "replays") =>
 
 export function ChatView() {
   const { t } = useTranslation();
-  const state = useAppStore((s) => s.state.chat);
+  const channels = useAppStore((s) => s.state.chat.channels);
+  const activeChannelName = useAppStore((s) => s.state.chat.activeChannel);
+  const chatStatus = useAppStore((s) => s.state.chat.status);
+  const username = useAppStore((s) => s.state.chat.username);
   const social = useAppStore((s) => s.state.social);
   const player = useAppStore((s) => s.state.auth.player);
   const games = useAppStore((s) => s.state.lobby.games);
@@ -154,12 +157,12 @@ export function ChatView() {
   }, [gameLinkNotice]);
 
   const active = useMemo(
-    () => state.channels.find((c) => c.name === state.activeChannel) ?? state.channels[0],
-    [state.channels, state.activeChannel],
+    () => channels.find((c) => c.name === activeChannelName) ?? channels[0],
+    [channels, activeChannelName],
   );
 
-  const isLive = state.status === "connected" || state.status === "connecting";
-  const self = state.username || player?.name || "";
+  const isLive = chatStatus === "connected" || chatStatus === "connecting";
+  const self = username || player?.name || "";
 
   const foes = useAppStore((s) => s.state.social.foes);
 
@@ -339,7 +342,7 @@ export function ChatView() {
     <div className="chat" style={chatStyle}>
       <section className="chat-main">
         <ChannelTabs
-          channels={state.channels}
+          channels={channels}
           active={active?.name ?? ""}
           defaultChannel={DEFAULT_CHANNEL}
           onSelect={(c) => void selectChannel(c)}
@@ -352,7 +355,7 @@ export function ChatView() {
             conversation. */}
         <header className="chat-head">
           <p className="chat-topic" title={active?.topic || undefined}>
-            {channelContext(active, state.status)}
+            {channelContext(active, chatStatus)}
           </p>
           <span className="spacer" />
           {gameLinkNotice && <span className="chat-link-notice" role="status">{gameLinkNotice}</span>}
@@ -405,7 +408,7 @@ export function ChatView() {
         ) : (
           <div className="chat-scroll-wrap">
             <p className="muted chat-empty">
-              <Icon name="chat" size={18} /> {t(STATUS_LABEL[state.status])}
+              <Icon name="chat" size={18} /> {t(STATUS_LABEL[chatStatus])}
             </p>
           </div>
         )}

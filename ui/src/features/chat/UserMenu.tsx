@@ -144,8 +144,10 @@ export function UserMenu({
     const el = menuRef.current;
     if (!el) return;
     const { width, height } = el.getBoundingClientRect();
-    const maxX = window.innerWidth - width - VIEWPORT_MARGIN;
-    const maxY = window.innerHeight - height - VIEWPORT_MARGIN;
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    const maxX = viewportWidth - width - VIEWPORT_MARGIN;
+    const maxY = viewportHeight - height - VIEWPORT_MARGIN;
     setPosition({
       x: Math.max(VIEWPORT_MARGIN, Math.min(target.x, maxX)),
       y: Math.max(VIEWPORT_MARGIN, Math.min(target.y, maxY)),

@@ -93,6 +93,13 @@ export const native = {
     return listen("app://request-exit-confirm", () => handler());
   },
 
+  /**
+   * Listen for native window resize events.
+   */
+  onWindowResized(handler: (size: { width: number; height: number }) => void): Promise<() => void> {
+    return getCurrentWindow().onResized((event) => handler(event.payload));
+  },
+
   /** Terminate the application process cleanly. */
   exitApp(): Promise<void> {
     return invoke("exit_app");

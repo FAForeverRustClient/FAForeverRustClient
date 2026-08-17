@@ -30,9 +30,11 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   const updatePosition = useCallback(() => {
     const rect = anchor.current?.getBoundingClientRect();
     if (!rect) return;
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
     setPosition({
-      top: Math.max(8, Math.min(rect.top, window.innerHeight - 280)),
-      right: Math.max(8, window.innerWidth - rect.left + 8),
+      top: Math.max(8, Math.min(rect.top, viewportHeight - 280)),
+      right: Math.max(8, viewportWidth - rect.left + 8),
     });
   }, []);
 
