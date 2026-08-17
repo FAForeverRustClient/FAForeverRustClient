@@ -8,6 +8,13 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+/// FAF's permission role for organising tournaments.
+///
+/// The name the API's `ChallongeController` guards its write routes with
+/// (`@Secured("ROLE_TOURNAMENT_DIRECTOR")`), held by the `faf_tournament_directors`
+/// user group.
+pub const ROLE_TOURNAMENT_DIRECTOR: &str = "TOURNAMENT_DIRECTOR";
+
 /// An authenticated FAF player. Grows later (country, avatar, ratings…).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +24,54 @@ pub struct Player {
     // 64 bits, it crosses the boundary as a string, deliberately.
     pub id: i32,
     pub name: String,
+    /// Permission roles the identity provider reports for this session.
+    ///
+    /// **These gate visibility, never access.** Every privileged operation is
+    /// authorised server-side; an empty list here means "we could not read the
+    /// roles", not "this player may do nothing". Hiding a control the server
+    /// would refuse anyway is a courtesy, so being wrong costs a confusing
+    /// screen: not a security hole. Anything that treated this as an
+    /// authorisation decision would be trusting a value the client itself
+    /// decoded.
+    pub roles: Vec<String>,
+}
+
+impl Player {
+    /// A player with no known roles: the ordinary case, and what every caller
+    /// that has no role information should construct.
+    pub fn new(id: i32, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            roles: Vec::new(),
+        }
+    }
+
+    /// Whether this session reports `role`.
+    ///
+    /// Deliberately lenient: FAF spells the same permission `ADMIN_MAP` in the
+    /// database and `ROLE_ADMIN_MAP` in Spring's authority form, and the token
+    /// claim is passed through verbatim by the infrastructure in between. Since
+    /// this only decides whether a button is drawn, accepting both spellings is
+    /// better than silently hiding a control from someone who holds the role.
+    pub fn has_role(&self, role: &str) -> bool {
+        self.roles.iter().any(|held| {
+            normalise_role(held).eq_ignore_ascii_case(normalise_role(role))
+        })
+    }
+
+    /// Whether this session may create and manage tournaments.
+    pub fn is_tournament_director(&self) -> bool {
+        self.has_role(ROLE_TOURNAMENT_DIRECTOR)
+    }
+}
+
+fn normalise_role(role: &str) -> &str {
+    let trimmed = role.trim();
+    trimmed
+        .strip_prefix("ROLE_")
+        .or_else(|| trimmed.strip_prefix("role_"))
+        .unwrap_or(trimmed)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -113,10 +168,50 @@ mod tests {
     use super::*;
 
     fn player() -> Player {
+        Player::new(7, "Commander")
+    }
+
+    fn player_with_roles(roles: &[&str]) -> Player {
         Player {
-            id: 7,
-            name: "Commander".into(),
+            roles: roles.iter().map(|role| (*role).to_string()).collect(),
+            ..player()
         }
+    }
+
+    #[test]
+    fn a_player_without_roles_holds_none() {
+        assert!(!player().is_tournament_director());
+        assert!(!player().has_role("ADMIN_MAP"));
+    }
+
+    #[test]
+    fn a_held_role_is_recognised() {
+        assert!(player_with_roles(&["USER", "TOURNAMENT_DIRECTOR"]).is_tournament_director());
+    }
+
+    #[test]
+    fn both_spellings_of_the_same_role_match() {
+        // FAF writes `TOURNAMENT_DIRECTOR` in the database and
+        // `ROLE_TOURNAMENT_DIRECTOR` in Spring's authority form; whichever the
+        // token carries must unlock the same UI.
+        for spelling in [
+            "TOURNAMENT_DIRECTOR",
+            "ROLE_TOURNAMENT_DIRECTOR",
+            "tournament_director",
+            "  TOURNAMENT_DIRECTOR  ",
+        ] {
+            assert!(
+                player_with_roles(&[spelling]).is_tournament_director(),
+                "{spelling} should be recognised"
+            );
+        }
+    }
+
+    #[test]
+    fn a_different_role_does_not_unlock_another() {
+        let player = player_with_roles(&["ADMIN_MAP", "WRITE_AVATAR"]);
+        assert!(!player.is_tournament_director());
+        assert!(player.has_role("ADMIN_MAP"));
     }
 
     #[test]

@@ -6,7 +6,7 @@
 //! document in one call.
 
 use async_trait::async_trait;
-use faf_domain::protocol::tournaments::{first_link_url, to_plain_text};
+use faf_domain::protocol::markup::{first_link_url, to_plain_text};
 use faf_domain::state::{Tutorial, TutorialCategory};
 
 use crate::infra::env_or;

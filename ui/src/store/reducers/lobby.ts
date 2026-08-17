@@ -34,6 +34,12 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
       return { ...state, status: "connecting" };
     case "connected":
       return { ...state, status: "connected" };
+    // Another tab asked for the host dialog; the Play tab opens it when it sees
+    // this and clears it on close.
+    case "hostPrepared":
+      return { ...state, hostPrefill: event.payload.title };
+    case "hostPrefillCleared":
+      return { ...state, hostPrefill: null };
     case "gamesUpdated":
       return { ...state, games: event.payload.games };
     case "liveGamesUpdated":

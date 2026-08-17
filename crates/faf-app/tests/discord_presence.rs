@@ -88,10 +88,7 @@ impl Harness {
         });
         let ports = Ports {
             auth: Arc::new(FakeAuth {
-                player: Player {
-                    id: 7,
-                    name: "Ada".into(),
-                },
+                player: Player::new(7, "Ada"),
                 delay: Duration::ZERO,
                 fail_with: None,
             }),

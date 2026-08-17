@@ -83,7 +83,7 @@ pub(crate) async fn fetch_document_typed(
         .map_err(|error| RequestError::unexpected(format!("invalid server response: {error}")))
 }
 
-fn request_error(error: reqwest::Error) -> RequestError {
+pub(crate) fn request_error(error: reqwest::Error) -> RequestError {
     if error.is_connect() || error.is_timeout() || error.is_body() {
         RequestError::offline("Could not reach FAF services. Check your connection and try again.")
     } else {
@@ -208,7 +208,7 @@ async fn write_response(path: &str, response: reqwest::Response) -> Result<JsonA
     serde_json::from_str(&body).map_err(|error| format!("invalid JSON: {error}"))
 }
 
-async fn bounded_document_body(response: reqwest::Response) -> Result<String, RequestError> {
+pub(crate) async fn bounded_document_body(response: reqwest::Response) -> Result<String, RequestError> {
     if response
         .content_length()
         .is_some_and(|length| length > MAX_DOCUMENT_BYTES)

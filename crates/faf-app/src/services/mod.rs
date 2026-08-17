@@ -37,6 +37,6 @@ pub mod reviews;
 pub mod session;
 pub mod settings;
 pub mod social;
-pub mod tournaments;
+pub mod tourney;
 pub mod tutorials;
 pub mod uploads;

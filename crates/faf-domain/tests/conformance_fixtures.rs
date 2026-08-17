@@ -302,10 +302,7 @@ fn event_slice(event: &AppEvent) -> String {
 }
 
 fn player() -> Player {
-    Player {
-        id: 7,
-        name: "Ada".into(),
-    }
+    Player::new(7, "Ada")
 }
 
 fn chat_message(sender: &str, content: &str) -> ChatMessage {
@@ -913,23 +910,146 @@ fn cases() -> Vec<Case> {
         ),
         // ── tournaments / tutorials ──────────────────────────────────────
         case(
-            "tournaments keep the open event across a refresh",
+            "a player enters a tournament and is refused",
             vec![
-                TournamentsEvent::Loading.into(),
-                TournamentsEvent::Loaded {
-                    tournaments: vec![tournament(1), tournament(2)],
+                TourneyEvent::Loading.into(),
+                TourneyEvent::Loaded {
+                    events: vec![tourney("e1"), tourney("e2")],
                 }
                 .into(),
-                TournamentsEvent::Selected { tournament_id: 2 }.into(),
-                TournamentsEvent::Loaded {
-                    tournaments: vec![tournament(1), tournament(2)],
+                TourneyEvent::Selected {
+                    tournament_id: "e2".into(),
                 }
                 .into(),
-                // 2 is gone: the selection must fall back rather than dangle.
-                TournamentsEvent::Loaded {
-                    tournaments: vec![tournament(1)],
+                TourneyEvent::DetailLoading.into(),
+                TourneyEvent::DetailLoaded { event: Box::new(tourney("e2")) }.into(),
+                TourneyEvent::ActionStarted {
+                    action: TourneyAction::SigningUp,
                 }
                 .into(),
+                // The server's own sentence: it names the gate that was missed,
+                // and it has to survive until it is dismissed.
+                TourneyEvent::ActionFailed {
+                    failure: TourneyActionFailure {
+                        action: TourneyAction::SigningUp,
+                        reason: "your rating (1420) is below this tournament’s minimum of 1500"
+                            .into(),
+                        kind: RequestFailureKind::Rejected,
+                    },
+                }
+                .into(),
+                TourneyEvent::ActionErrorDismissed.into(),
+                // Entering on the second attempt. The profiles arrive after the
+                // detail, from a different service: the tournament service owns
+                // the entry, FAF owns the player.
+                TourneyEvent::ActionStarted {
+                    action: TourneyAction::SigningUp,
+                }
+                .into(),
+                TourneyEvent::ActionSucceeded {
+                    action: TourneyAction::SigningUp,
+                    select: None,
+                }
+                .into(),
+                TourneyEvent::EntrantProfilesLoaded {
+                    profiles: vec![player_summary(101, "Nuggets", Some(1750))],
+                }
+                .into(),
+                // Site-wide, and loaded once rather than per tournament.
+                // Creating names the event to open afterwards, which is how
+                // the organiser lands inside the one they just made.
+                TourneyEvent::ActionStarted {
+                    action: TourneyAction::Creating,
+                }
+                .into(),
+                TourneyEvent::ActionSucceeded {
+                    action: TourneyAction::Creating,
+                    select: Some("e3".into()),
+                }
+                .into(),
+                TourneyEvent::HostingLoaded {
+                    hosting: HostingStatus {
+                        logged_in: true,
+                        allowed: true,
+                        pending: false,
+                    },
+                }
+                .into(),
+                TourneyEvent::ArticlesLoaded {
+                    articles: vec![Article {
+                        id: "art33adc81d9f78".into(),
+                        title: "Tournament rules".into(),
+                        body: "Be on time, and post your replay ids.".into(),
+                        parent_id: None,
+                    }],
+                }
+                .into(),
+                // A detail for the event nobody is looking at any more must not
+                // land under the open one's heading.
+                TourneyEvent::DetailLoaded { event: Box::new(tourney("e1")) }.into(),
+                // e2 was archived between refreshes: the selection falls back
+                // and takes the bracket with it.
+                TourneyEvent::Loaded {
+                    events: vec![tourney("e1")],
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a tournament chat room is opened, read and left behind",
+            vec![
+                TourneyEvent::Loaded {
+                    events: vec![tourney("e1"), tourney("e2")],
+                }
+                .into(),
+                TourneyEvent::DetailLoaded { event: Box::new(tourney("e1")) }.into(),
+                TourneyEvent::ChatRoomsLoaded {
+                    rooms: vec![tourney_room("global", 3), tourney_room("m1", 1)],
+                }
+                .into(),
+                TourneyEvent::RoomOpened {
+                    room_id: "global".into(),
+                }
+                .into(),
+                TourneyEvent::ChatLoading.into(),
+                // Reading is what clears the badge server-side, so it clears
+                // here too rather than waiting for the next room list.
+                TourneyEvent::ChatLoaded {
+                    room_id: "global".into(),
+                    posts: vec![ChatPost {
+                        id: "c1".into(),
+                        author: "Ada".into(),
+                        body: "gl hf".into(),
+                        at: Some(1_700_000_100),
+                        system: false,
+                    }],
+                }
+                .into(),
+                // An answer for a room that is no longer open is dropped.
+                TourneyEvent::ChatLoaded {
+                    room_id: "m1".into(),
+                    posts: vec![],
+                }
+                .into(),
+                // Switching events takes the whole conversation with it.
+                TourneyEvent::Selected {
+                    tournament_id: "e2".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "the tournament tab hands a match title to the host dialog",
+            vec![
+                // Crosses a tab boundary, which is why it lives in the slice
+                // rather than in a component: the Play tab opens its dialog
+                // when the title appears, and clears it on close so the dialog
+                // does not reopen on the next visit.
+                LobbyEvent::HostPrepared {
+                    title: "Weekend Cup R2: Nuggets vs Ada".into(),
+                }
+                .into(),
+                LobbyEvent::HostPrefillCleared.into(),
             ],
         ),
         case(
@@ -1469,20 +1589,34 @@ fn cases() -> Vec<Case> {
     ]
 }
 
-fn tournament(id: i32) -> Tournament {
-    Tournament {
-        id,
+fn tourney(id: &str) -> Tourney {
+    Tourney {
+        id: id.into(),
         name: format!("Event {id}"),
-        description: String::new(),
-        tournament_type: "swiss".into(),
-        participant_count: 0,
+        status: TourneyStatus::Signup,
+        player_count: 8,
+        team_count: 8,
         created_at: Some(1_700_000_000),
-        starting_at: None,
-        completed_at: None,
-        challonge_url: String::new(),
-        live_image_url: String::new(),
-        sign_up_url: String::new(),
-        open_for_signup: false,
+        ..Tourney::default()
+    }
+}
+
+fn tourney_room(id: &str, unread: i32) -> ChatRoom {
+    ChatRoom {
+        id: id.into(),
+        name: format!("Room {id}"),
+        unread,
+    }
+}
+
+fn player_summary(id: i32, login: &str, rating: Option<i32>) -> PlayerSummary {
+    PlayerSummary {
+        id,
+        login: login.into(),
+        avatar_url: String::new(),
+        country: "de".into(),
+        global_rating: rating,
+        ladder_rating: None,
     }
 }
 
@@ -1658,7 +1792,9 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Settings:updatesChanged",
     "Social:cleared",
     "Social:relationSet",
-    "Tournaments:loadFailed",
+    "Tourney:chatFailed",
+    "Tourney:detailLoadFailed",
+    "Tourney:loadFailed",
     "Tutorials:launchFailed",
     "Tutorials:loadFailed",
 ];
@@ -1732,9 +1868,9 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         include_str!("../src/state/social.rs"),
     ),
     (
-        "Tournaments",
-        "TournamentsEvent",
-        include_str!("../src/state/tournaments.rs"),
+        "Tourney",
+        "TourneyEvent",
+        include_str!("../src/state/tourney.rs"),
     ),
     (
         "Tutorials",

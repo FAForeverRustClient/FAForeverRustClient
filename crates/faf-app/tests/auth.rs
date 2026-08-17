@@ -26,10 +26,7 @@ fn app_with(auth: FakeAuth) -> App {
 #[tokio::test]
 async fn login_success_emits_started_then_logged_in() {
     let app = app_with(FakeAuth {
-        player: Player {
-            id: 7,
-            name: "Ada".into(),
-        },
+        player: Player::new(7, "Ada"),
         delay: Duration::ZERO,
         fail_with: None,
     });

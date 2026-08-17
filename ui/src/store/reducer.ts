@@ -21,7 +21,7 @@ import { reduceReviews } from "./reducers/reviews";
 import { reduceSocial } from "./reducers/social";
 import { reduceTutorials } from "./reducers/tutorials";
 import { reduceUploads } from "./reducers/uploads";
-import { reduceTournaments } from "./reducers/tournaments";
+import { reduceTourney } from "./reducers/tourney";
 
 export { isModerator, isPrivateChannel, mentions } from "./reducers/chat";
 export { findPlayer } from "./reducers/social";
@@ -62,8 +62,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, reporting: reduceReporting(state.reporting, event.event) };
     case "Reviews":
       return { ...state, reviews: reduceReviews(state.reviews, event.event) };
-    case "Tournaments":
-      return { ...state, tournaments: reduceTournaments(state.tournaments, event.event) };
+    case "Tourney":
+      return { ...state, tourney: reduceTourney(state.tourney, event.event) };
     case "Tutorials":
       return { ...state, tutorials: reduceTutorials(state.tutorials, event.event) };
     case "Uploads":

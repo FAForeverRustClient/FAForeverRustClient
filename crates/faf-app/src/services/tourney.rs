@@ -1,0 +1,736 @@
+//! Tournament orchestration: reading the list, entering an event, playing it.
+//!
+//! Reads and writes have different shapes. A read is fire-and-forget with a
+//! generation token, so only the newest answer lands. A write is serialised and
+//! always ends by reloading from the server rather than patching the local
+//! copy: confirming a score moves the winner into the next match, eliminates
+//! the loser and can finish the tournament outright, and none of that is in the
+//! response. Any local simulation of it would drift within one round.
+
+use faf_domain::state::{
+    MatchReport, PoolDraft, TourneyAction, TourneyActionFailure, TourneyCommand, TourneyDraft,
+    TourneyEvent,
+};
+
+use crate::ports::RequestError;
+use crate::runtime::{EventSink, ServiceCtx};
+
+pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
+    match cmd {
+        TourneyCommand::Load => load(ctx, out).await,
+
+        TourneyCommand::Select { tournament_id } => {
+            out.emit(TourneyEvent::Selected {
+                tournament_id: tournament_id.clone(),
+            });
+            // Selecting is what makes a detail worth having; requiring the UI to
+            // dispatch both would let the two drift apart.
+            load_detail(&tournament_id, ctx, out).await;
+        }
+
+        TourneyCommand::LoadDetail { tournament_id } => {
+            load_detail(&tournament_id, ctx, out).await
+        }
+
+        TourneyCommand::SignUp { tournament_id } => {
+            write(TourneyAction::SigningUp, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.sign_up(&tournament_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::Withdraw { tournament_id } => {
+            // Which entry to remove is the server's own answer, read back out of
+            // the open event. A client that supplied its own id could only ever
+            // be wrong about it, and the server would refuse it anyway.
+            let Some(player_id) = my_player_id(&tournament_id, out) else {
+                out.emit(TourneyEvent::ActionFailed {
+                    failure: TourneyActionFailure {
+                        action: TourneyAction::Withdrawing,
+                        reason: "You are not signed up for this tournament.".into(),
+                        kind: faf_domain::state::RequestFailureKind::Rejected,
+                    },
+                });
+                return;
+            };
+            write(TourneyAction::Withdrawing, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.withdraw(&tournament_id, &player_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::CheckIn { tournament_id } => {
+            write(TourneyAction::CheckingIn, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.check_in(&tournament_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::SubmitReport {
+            tournament_id,
+            report,
+        } => {
+            let action = TourneyAction::SubmittingReport {
+                match_id: report.match_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let report = clean(report);
+                async move { ctx.ports.tourney.submit_report(&tournament_id, &report).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::AnswerReport {
+            tournament_id,
+            match_id,
+            accept,
+        } => {
+            let action = TourneyAction::AnsweringReport {
+                match_id: match_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .confirm_report(&tournament_id, &match_id, accept)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::DecideReport {
+            tournament_id,
+            report,
+        } => {
+            let action = TourneyAction::DecidingReport {
+                match_id: report.match_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let report = clean(report);
+                async move { ctx.ports.tourney.decide_report(&tournament_id, &report).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::LoadChat { tournament_id } => load_rooms(&tournament_id, ctx, out).await,
+
+        TourneyCommand::OpenRoom {
+            tournament_id,
+            room_id,
+        } => {
+            out.emit(TourneyEvent::RoomOpened {
+                room_id: room_id.clone(),
+            });
+            read_room(&tournament_id, &room_id, ctx, out).await;
+        }
+
+        TourneyCommand::PostChat {
+            tournament_id,
+            room_id,
+            body,
+        } => {
+            if body.trim().is_empty() {
+                return;
+            }
+            let action = TourneyAction::PostingChat {
+                room_id: room_id.clone(),
+            };
+            // A post reloads the room rather than the whole tournament: nothing
+            // about the bracket changed, and refetching it would make typing a
+            // message the most expensive thing in the tab.
+            out.emit(TourneyEvent::ActionStarted {
+                action: action.clone(),
+            });
+            let _guard = ctx.tourney_mutation.acquire().await;
+            match ctx
+                .ports
+                .tourney
+                .chat_post(&tournament_id, &room_id, body.trim())
+                .await
+            {
+                Ok(()) => {
+                    out.emit(TourneyEvent::ActionSucceeded {
+                        action,
+                        select: None,
+                    });
+                    read_room(&tournament_id, &room_id, ctx, out).await;
+                    load_rooms(&tournament_id, ctx, out).await;
+                }
+                Err(error) => out.emit(failed(action, &error)),
+            }
+        }
+
+        TourneyCommand::LoadHosting => match ctx.ports.tourney.hosting().await {
+            Ok(hosting) => out.emit(TourneyEvent::HostingLoaded { hosting }),
+            // Silent: not knowing means the create button stays hidden, which
+            // is the same as not being allowed and is the safer of the two.
+            Err(error) => tracing::warn!(%error, "could not read the hosting status"),
+        },
+
+        TourneyCommand::Create { draft } => {
+            write_selecting(TourneyAction::Creating, ctx, out, {
+                let draft = trimmed_draft(draft);
+                async move { ctx.ports.tourney.create(&draft).await.map(Some) }
+            })
+            .await;
+        }
+
+        TourneyCommand::EditInfo {
+            tournament_id,
+            draft,
+        } => {
+            write(TourneyAction::Editing, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let draft = trimmed_draft(draft);
+                async move { ctx.ports.tourney.edit_info(&tournament_id, &draft).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::Publish { tournament_id } => {
+            write(TourneyAction::Publishing, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.publish(&tournament_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::Advance {
+            tournament_id,
+            phase,
+        } => {
+            write(TourneyAction::Advancing { phase }, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.advance(&tournament_id, phase).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::Archive { tournament_id } => {
+            write(TourneyAction::Archiving, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.archive(&tournament_id).await }
+            })
+            .await;
+        }
+
+        // Teams. Every one of these ends in the same reload, because forming a
+        // team moves people between lists the response never mentions: a member
+        // joining clears their outstanding requests everywhere, and the last
+        // one leaving dissolves the team.
+        TourneyCommand::CreateTeam {
+            tournament_id,
+            name,
+        } => {
+            if name.trim().is_empty() {
+                return;
+            }
+            write(TourneyAction::CreatingTeam, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .create_team(&tournament_id, name.trim())
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::RequestJoin {
+            tournament_id,
+            team_id,
+        } => {
+            let action = TourneyAction::AnsweringTeam {
+                team_id: team_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.request_join(&tournament_id, &team_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::CancelJoin {
+            tournament_id,
+            team_id,
+        } => {
+            let action = TourneyAction::AnsweringTeam {
+                team_id: team_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.cancel_join(&tournament_id, &team_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::RespondJoin {
+            tournament_id,
+            team_id,
+            player_id,
+            accept,
+        } => {
+            let action = TourneyAction::AnsweringTeam {
+                team_id: team_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .respond_join(&tournament_id, &team_id, &player_id, accept)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::InviteToTeam {
+            tournament_id,
+            team_id,
+            player_id,
+        } => {
+            let action = TourneyAction::InvitingToTeam {
+                player_id: player_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .invite_to_team(&tournament_id, &team_id, &player_id)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::RespondInvite {
+            tournament_id,
+            team_id,
+            accept,
+        } => {
+            let action = TourneyAction::AnsweringTeam {
+                team_id: team_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .respond_invite(&tournament_id, &team_id, accept)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::LeaveTeam { tournament_id } => {
+            write(TourneyAction::LeavingTeam, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.leave_team(&tournament_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::DisbandTeam {
+            tournament_id,
+            team_id,
+        } => {
+            let action = TourneyAction::AnsweringTeam {
+                team_id: team_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.disband_team(&tournament_id, &team_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::RenameTeam {
+            tournament_id,
+            team_id,
+            name,
+        } => {
+            if name.trim().is_empty() {
+                return;
+            }
+            write(TourneyAction::RenamingTeam, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .rename_team(&tournament_id, &team_id, name.trim())
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::LoadArticles => match ctx.ports.tourney.articles().await {
+            Ok(articles) => out.emit(TourneyEvent::ArticlesLoaded { articles }),
+            // Silent: the rules pages are supporting text, and an error banner
+            // over a working bracket because a FAQ did not load would be noise.
+            Err(error) => tracing::warn!(%error, "could not load the tournament rules pages"),
+        },
+
+        TourneyCommand::AssignPool {
+            tournament_id,
+            round_key,
+            pool_id,
+        } => {
+            let action = TourneyAction::AssigningPool {
+                round_key: round_key.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .assign_pool(&tournament_id, &round_key, &pool_id)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::SavePool {
+            tournament_id,
+            pool,
+        } => {
+            write(TourneyAction::SavingPool, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let pool = trimmed(pool);
+                async move { ctx.ports.tourney.save_pool(&tournament_id, &pool).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::DismissActionError => out.emit(TourneyEvent::ActionErrorDismissed),
+    }
+}
+
+/// Drop the blank replay ids a form leaves behind.
+///
+/// The server counts them and refuses a report whose count does not match the
+/// number of new games, so an empty row the player tabbed past would cost them
+/// the submission for a reason they cannot see.
+fn clean(report: MatchReport) -> MatchReport {
+    MatchReport {
+        replay_ids: usable(report.replay_ids),
+        draw_replay_ids: usable(report.draw_replay_ids),
+        ..report
+    }
+}
+
+fn usable(ids: Vec<String>) -> Vec<String> {
+    ids.into_iter()
+        .map(|id| id.trim().to_string())
+        .filter(|id| !id.is_empty())
+        .collect()
+}
+
+/// Trim what a form leaves behind, and settle the fields the server would
+/// override anyway, so the draft that is sent is the one that comes back.
+fn trimmed_draft(draft: TourneyDraft) -> TourneyDraft {
+    let formation = draft.effective_formation();
+    TourneyDraft {
+        name: draft.name.trim().to_string(),
+        description: draft.description.trim().to_string(),
+        team_size: draft.team_size.clamp(1, 6),
+        formation,
+        ..draft
+    }
+}
+
+fn trimmed(pool: PoolDraft) -> PoolDraft {
+    PoolDraft {
+        name: pool.name.trim().to_string(),
+        ..pool
+    }
+}
+
+/// This account's entry in the open event, as the server named it.
+fn my_player_id(tournament_id: &str, out: &EventSink) -> Option<String> {
+    out.with_state(|state| {
+        state
+            .tourney
+            .detail
+            .as_ref()
+            .filter(|event| event.id == tournament_id)
+            .and_then(|event| event.viewer.signed_up_player_id.clone())
+    })
+}
+
+async fn load(ctx: &ServiceCtx, out: &EventSink) {
+    out.emit(TourneyEvent::Loading);
+    match ctx.ports.tourney.list().await {
+        Ok(mut events) => {
+            // Sorted here rather than in the view, because ordering is part of
+            // the state every consumer shares. Signups come first, being the
+            // one thing a player can still act on, then running, then the rest,
+            // newest first within each group.
+            events.sort_by(|left, right| {
+                rank(left.status)
+                    .cmp(&rank(right.status))
+                    .then_with(|| right.event_date.cmp(&left.event_date))
+                    .then_with(|| right.created_at.cmp(&left.created_at))
+            });
+            out.emit(TourneyEvent::Loaded { events });
+        }
+        Err(error) => out.emit(TourneyEvent::LoadFailed {
+            reason: error.to_string(),
+            kind: error.kind(),
+        }),
+    }
+}
+
+/// Sort order for the list: what a player can still do something about first.
+fn rank(status: faf_domain::state::TourneyStatus) -> u8 {
+    use faf_domain::state::TourneyStatus::*;
+    match status {
+        Signup => 0,
+        Running => 1,
+        Drafted => 2,
+        Draft => 3,
+        Finished => 4,
+        Unknown => 5,
+    }
+}
+
+async fn load_detail(tournament_id: &str, ctx: &ServiceCtx, out: &EventSink) {
+    let generation = ctx.tourney_detail_generation.begin();
+    out.emit(TourneyEvent::DetailLoading);
+
+    let loaded = ctx.ports.tourney.detail(tournament_id).await;
+    if !ctx.tourney_detail_generation.is_current(generation) {
+        // A newer selection is already in flight; emitting now would overwrite
+        // its state with an older event's bracket.
+        return;
+    }
+    match loaded {
+        Ok(event) => {
+            let accounts: Vec<i32> = event
+                .players
+                .iter()
+                .filter_map(|player| player.faf_id)
+                .collect();
+            out.emit(TourneyEvent::DetailLoaded {
+                event: Box::new(event),
+            });
+            load_entrant_profiles(&accounts, generation, ctx, out).await;
+        }
+        Err(error) => out.emit(TourneyEvent::DetailLoadFailed {
+            reason: error.to_string(),
+            kind: error.kind(),
+        }),
+    }
+}
+
+/// Fetch the FAF accounts behind the entrants that carry one.
+///
+/// A second request after the detail rather than part of it, because the two
+/// come from different services: the tournament service owns the entry, FAF
+/// owns the player. A failure here is silent on purpose: the bracket is
+/// complete without avatars, and an error banner over a working tournament
+/// because a decoration did not load would be noise.
+async fn load_entrant_profiles(
+    accounts: &[i32],
+    generation: u64,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) {
+    if accounts.is_empty() {
+        out.emit(TourneyEvent::EntrantProfilesLoaded { profiles: vec![] });
+        return;
+    }
+    match ctx.ports.player_card.players_by_id(accounts).await {
+        Ok(profiles) => {
+            if ctx.tourney_detail_generation.is_current(generation) {
+                out.emit(TourneyEvent::EntrantProfilesLoaded { profiles });
+            }
+        }
+        Err(error) => tracing::warn!(%error, "could not load the entrants' FAF profiles"),
+    }
+}
+
+/// The rooms of the open event.
+///
+/// Silent on failure for the same reason as the profiles: chat is beside the
+/// bracket, not the point of it.
+async fn load_rooms(tournament_id: &str, ctx: &ServiceCtx, out: &EventSink) {
+    match ctx.ports.tourney.chat_rooms(tournament_id).await {
+        Ok(rooms) => out.emit(TourneyEvent::ChatRoomsLoaded { rooms }),
+        Err(error) => tracing::warn!(%error, "could not load the tournament chat rooms"),
+    }
+}
+
+async fn read_room(tournament_id: &str, room_id: &str, ctx: &ServiceCtx, out: &EventSink) {
+    let generation = ctx.tourney_chat_generation.begin();
+    out.emit(TourneyEvent::ChatLoading);
+
+    let read = ctx.ports.tourney.chat_read(tournament_id, room_id).await;
+    if !ctx.tourney_chat_generation.is_current(generation) {
+        return;
+    }
+    match read {
+        Ok(posts) => out.emit(TourneyEvent::ChatLoaded {
+            room_id: room_id.to_string(),
+            posts,
+        }),
+        Err(error) => out.emit(TourneyEvent::ChatFailed {
+            reason: error.to_string(),
+            kind: error.kind(),
+        }),
+    }
+}
+
+/// Run one write, then resynchronise from the server.
+///
+/// The shared shape of every mutation: announce it so the pane can disable
+/// itself, serialise it against the other writes, and on success reload both
+/// the list and the open event. Reloading rather than patching is deliberate:
+/// entering changes the entrant count, confirming a score advances the winner
+/// and may finish the tournament, and none of that is in the response.
+async fn write(
+    action: TourneyAction,
+    tournament_id: &str,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    // A future rather than a closure: async blocks are lazy, so the operation
+    // still does not begin until the guard below is held.
+    operation: impl std::future::Future<Output = Result<(), RequestError>>,
+) {
+    write_selecting(action, ctx, out, async {
+        operation.await.map(|()| None)
+    })
+    .await;
+    let _ = tournament_id;
+}
+
+/// A write whose answer names the event to open afterwards.
+///
+/// Creation is the only one that does: everything else acts on the event
+/// already on screen, and the reload below re-reads whichever that is.
+async fn write_selecting(
+    action: TourneyAction,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    operation: impl std::future::Future<Output = Result<Option<String>, RequestError>>,
+) {
+    out.emit(TourneyEvent::ActionStarted {
+        action: action.clone(),
+    });
+    let _guard = ctx.tourney_mutation.acquire().await;
+
+    match operation.await {
+        Ok(select) => {
+            out.emit(TourneyEvent::ActionSucceeded {
+                action,
+                select: select.clone(),
+            });
+            load(ctx, out).await;
+            // `select` names a freshly created event; otherwise the open one is
+            // the one that changed. Archiving leaves neither, and the list
+            // reload above has already moved the selection on.
+            let open = select.or_else(|| selected_id(out));
+            if let Some(tournament_id) = open {
+                load_detail(&tournament_id, ctx, out).await;
+            }
+        }
+        Err(error) => out.emit(failed(action, &error)),
+    }
+}
+
+/// Which event the pane is showing, read back after the reduce.
+fn selected_id(out: &EventSink) -> Option<String> {
+    out.with_state(|state| state.tourney.selected_id.clone())
+}
+
+fn failed(action: TourneyAction, error: &RequestError) -> TourneyEvent {
+    TourneyEvent::ActionFailed {
+        failure: TourneyActionFailure {
+            action,
+            reason: error.to_string(),
+            kind: error.kind(),
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use faf_domain::state::TourneyStatus;
+
+    #[test]
+    fn the_list_puts_what_a_player_can_still_join_first() {
+        let mut order = [
+            TourneyStatus::Finished,
+            TourneyStatus::Draft,
+            TourneyStatus::Signup,
+            TourneyStatus::Running,
+            TourneyStatus::Drafted,
+        ];
+        order.sort_by_key(|status| rank(*status));
+        assert_eq!(
+            order,
+            [
+                TourneyStatus::Signup,
+                TourneyStatus::Running,
+                TourneyStatus::Drafted,
+                TourneyStatus::Draft,
+                TourneyStatus::Finished,
+            ]
+        );
+    }
+
+    #[test]
+    fn a_phase_step_is_only_offered_where_the_server_takes_it() {
+        use faf_domain::state::{TourneyPhase, TourneyStatus};
+        assert!(TourneyPhase::FormTeams.is_legal_from(TourneyStatus::Signup));
+        assert!(!TourneyPhase::FormTeams.is_legal_from(TourneyStatus::Drafted));
+        assert!(TourneyPhase::StartBracket.is_legal_from(TourneyStatus::Drafted));
+        assert!(!TourneyPhase::StartBracket.is_legal_from(TourneyStatus::Running));
+        // Reopening is the undo, and it stops working once anything was played.
+        assert!(TourneyPhase::ReopenSignups.is_legal_from(TourneyStatus::Drafted));
+        assert!(!TourneyPhase::ReopenSignups.is_legal_from(TourneyStatus::Running));
+    }
+
+    #[test]
+    fn a_solo_event_is_solo_whatever_the_form_said() {
+        // The server forces it, so the draft that is sent should already say
+        // so rather than being quietly overridden.
+        let draft = trimmed_draft(TourneyDraft {
+            team_size: 1,
+            formation: faf_domain::state::Formation::Draft,
+            name: "  Weekend Cup  ".into(),
+            ..TourneyDraft::new()
+        });
+        assert_eq!(draft.formation, faf_domain::state::Formation::Solo);
+        assert_eq!(draft.name, "Weekend Cup");
+    }
+
+    #[test]
+    fn blank_replay_rows_never_reach_the_server() {
+        // The server counts these against the number of new games, so an empty
+        // row the player tabbed past would cost them the submission for a
+        // reason the form never showed them.
+        let cleaned = clean(MatchReport {
+            match_id: "m1".into(),
+            score1: 2,
+            score2: 0,
+            replay_ids: vec!["  22334455 ".into(), String::new(), "   ".into()],
+            draw_replay_ids: vec!["".into()],
+        });
+        assert_eq!(cleaned.replay_ids, vec!["22334455".to_string()]);
+        assert!(cleaned.draw_replay_ids.is_empty());
+    }
+}

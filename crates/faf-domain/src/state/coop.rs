@@ -79,7 +79,7 @@ pub struct CoopMission {
     pub name: String,
     /// Already reduced to plain text: the API stores it as HTML, and the same
     /// reasoning applies as for tournament descriptions (see
-    /// `protocol::tournaments`): third-party markup never enters the state.
+    /// `protocol::markup`): third-party markup never enters the state.
     pub description: String,
     pub version: i32,
     pub download_url: String,

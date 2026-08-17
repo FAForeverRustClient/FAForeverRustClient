@@ -244,6 +244,13 @@ export function LobbyView() {
   };
 
   const [coopMissionToHost, setCoopMissionToHost] = useState<CoopMission | null>(null);
+  // A title another tab prepared, e.g. the tournament tab offering to host a
+  // bracket match. It lives in the lobby slice because it has to cross a tab
+  // boundary; opening the dialog when one arrives is the whole handling.
+  const hostPrefill = useAppStore((store) => store.state.lobby.hostPrefill);
+  useEffect(() => {
+    if (hostPrefill !== null) setHostOpen(true);
+  }, [hostPrefill]);
 
   const handleHostCoop = (mission?: CoopMission) => {
     setCoopMissionToHost(mission ?? null);
@@ -328,10 +335,17 @@ export function LobbyView() {
         <HostGameModal
           forcedFeaturedMod={inCoop ? "coop" : undefined}
           initialMap={coopMissionToHost?.mapFolderName}
-          initialTitle={coopMissionToHost ? `${coopMissionToHost.name} co-op` : undefined}
+          initialTitle={
+            hostPrefill ??
+            (coopMissionToHost ? `${coopMissionToHost.name} co-op` : undefined)
+          }
           onClose={() => {
             setHostOpen(false);
             setCoopMissionToHost(null);
+            // Otherwise the dialog reopens the next time this tab is visited.
+            if (hostPrefill !== null) {
+              ipc.send({ kind: "Lobby", command: { type: "clearHostPrefill" } });
+            }
           }}
         />
       )}

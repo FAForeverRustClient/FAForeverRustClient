@@ -43,7 +43,8 @@ pub mod reviews;
 pub mod session;
 pub mod settings_fake;
 pub mod settings_file;
-pub mod tournaments;
+pub mod tourney;
+pub mod tourney_fake;
 pub mod tutorials;
 pub mod updater;
 pub mod uploads;
@@ -75,7 +76,8 @@ pub use reviews::{FakeReviews, ReviewsClient, ReviewsConfig};
 pub use session::TokenStore;
 pub use settings_fake::FakeSettings;
 pub use settings_file::FileSettings;
-pub use tournaments::{FakeTournaments, TournamentsClient, TournamentsConfig};
+pub use tourney::{TourneyClient, TourneyConfig};
+pub use tourney_fake::FakeTourney;
 pub use tutorials::{FakeTutorials, TutorialsClient, TutorialsConfig};
 pub use updater::{FakeGameUpdater, GameUpdaterClient, UpdaterConfig};
 pub use uploads::{FakeUploads, UploadsClient, UploadsConfig};
@@ -348,15 +350,18 @@ pub fn fake_ports() -> Ports {
         player_card: Arc::new(FakePlayerCard),
         reporting: Arc::new(FakeReporting),
         reviews: Arc::new(FakeReviews::default()),
-        tournaments: Arc::new(FakeTournaments),
+        tourney: Arc::new(FakeTourney::default()),
         tutorials: Arc::new(FakeTutorials),
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
         galactic_war: Arc::new(FakeGalacticWar),
         offline_auth: true,
         // Deliberately not read from the environment: a test must not depend on
-        // the locale of the machine running it.
+        // the locale of the machine running it. The same applies to the roles
+        // below, which would otherwise make role-gated assertions pass or fail
+        // depending on the developer's shell.
         os_language: String::new(),
+        test_login_roles: Vec::new(),
     }
 }
 
@@ -438,8 +443,8 @@ pub fn real_ports() -> Ports {
         Arc::new(PlayerCardClient::faf(tokens.clone()));
     let reporting: Arc<dyn crate::ports::ReportingPort> =
         Arc::new(ReportingClient::faf(tokens.clone()));
-    let tournaments: Arc<dyn crate::ports::TournamentsPort> =
-        Arc::new(TournamentsClient::faf(tokens.clone()));
+    let tourney: Arc<dyn crate::ports::TourneyPort> =
+        Arc::new(TourneyClient::faf(tokens.clone()));
     // Same posture as maps and tournaments: pure API reads, no subprocess.
     let coop: Arc<dyn crate::ports::CoopPort> = Arc::new(CoopClient::faf(tokens.clone()));
     let tutorials: Arc<dyn crate::ports::TutorialsPort> =
@@ -486,13 +491,14 @@ pub fn real_ports() -> Ports {
         player_card,
         reporting,
         reviews,
-        tournaments,
+        tourney,
         tutorials,
         uploads,
         client_update,
         galactic_war,
         offline_auth: false,
         os_language: os_language(),
+        test_login_roles: oauth::roles_from_env(),
     }
 }
 
@@ -526,6 +532,13 @@ pub fn ports_from_env() -> Ports {
         let mut ports = fake_ports();
         ports.settings = Arc::new(FileSettings::faf());
         ports.process = Arc::new(GameProcess::faf());
+        // Same reason the real provider honours it: role-gated UI has to be
+        // reachable offline, and the roles authorise nothing on their own.
+        let roles = oauth::roles_from_env();
+        if !roles.is_empty() {
+            ports.auth = Arc::new(FakeAuth::with_roles(roles.clone()));
+            ports.test_login_roles = roles;
+        }
         ports
     } else {
         real_ports()

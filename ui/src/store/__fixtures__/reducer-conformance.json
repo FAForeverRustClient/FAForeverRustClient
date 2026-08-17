@@ -65,7 +65,8 @@
       "avatarListStatus": "idle",
       "avatarListError": "",
       "avatarSelectionStatus": "idle",
-      "avatarSelectionError": ""
+      "avatarSelectionError": "",
+      "hostPrefill": null
     },
     "replays": {
       "status": {
@@ -300,12 +301,31 @@
       "foes": [],
       "players": []
     },
-    "tournaments": {
-      "tournaments": [],
+    "tourney": {
+      "events": [],
       "status": {
         "type": "idle"
       },
-      "selectedId": null
+      "selectedId": null,
+      "detail": null,
+      "detailStatus": {
+        "type": "idle"
+      },
+      "pending": null,
+      "actionError": null,
+      "entrantProfiles": [],
+      "chatRooms": [],
+      "openRoomId": null,
+      "chatPosts": [],
+      "chatStatus": {
+        "type": "idle"
+      },
+      "articles": [],
+      "hosting": {
+        "loggedIn": false,
+        "allowed": false,
+        "pending": false
+      }
     },
     "tutorials": {
       "categories": [],
@@ -608,7 +628,8 @@
               "payload": {
                 "player": {
                   "id": 7,
-                  "name": "Ada"
+                  "name": "Ada",
+                  "roles": []
                 }
               }
             }
@@ -618,7 +639,8 @@
             "mode": "account",
             "player": {
               "id": 7,
-              "name": "Ada"
+              "name": "Ada",
+              "roles": []
             },
             "status": "loggedIn"
           }
@@ -2314,6 +2336,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2345,6 +2368,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2380,6 +2404,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "payload": {
                 "id": 7,
@@ -2419,6 +2444,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "payload": {
                 "id": 7,
@@ -2454,6 +2480,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2489,6 +2516,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "payload": {
                 "id": 7,
@@ -2528,6 +2556,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "payload": {
                 "detail": "Updating faf",
@@ -2563,6 +2592,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "inGame"
             },
@@ -2594,6 +2624,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2625,6 +2656,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2677,6 +2709,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2731,6 +2764,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2791,6 +2825,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2841,6 +2876,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2880,6 +2916,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2911,6 +2948,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2942,6 +2980,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -2978,6 +3017,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -3022,6 +3062,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -3058,6 +3099,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "loading",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -3094,6 +3136,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "ready",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -3125,6 +3168,7 @@
             "avatarSelectionError": "",
             "avatarSelectionStatus": "idle",
             "games": [],
+            "hostPrefill": null,
             "join": {
               "type": "idle"
             },
@@ -3942,268 +3986,4361 @@
       ]
     },
     {
-      "name": "tournaments keep the open event across a refresh",
+      "name": "a player enters a tournament and is refused",
       "steps": [
         {
           "event": {
-            "kind": "Tournaments",
+            "kind": "Tourney",
             "event": {
               "type": "loading"
             }
           },
           "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
             "selectedId": null,
             "status": {
               "type": "loading"
-            },
-            "tournaments": []
+            }
           }
         },
         {
           "event": {
-            "kind": "Tournaments",
+            "kind": "Tourney",
             "event": {
               "type": "loaded",
               "payload": {
-                "tournaments": [
+                "events": [
                   {
-                    "id": 1,
-                    "name": "Event 1",
+                    "id": "e1",
+                    "name": "Event e1",
                     "description": "",
-                    "tournamentType": "swiss",
-                    "participantCount": 0,
+                    "status": "signup",
+                    "category": "community",
+                    "competition": "team",
+                    "formation": "solo",
+                    "bracketKind": "single",
+                    "teamSize": 0,
+                    "divisions": 0,
+                    "playerReporting": false,
+                    "vetoEnabled": false,
+                    "rating": {
+                      "min": null,
+                      "max": null,
+                      "maxTeam": null,
+                      "cap": null
+                    },
                     "createdAt": 1700000000,
-                    "startingAt": null,
-                    "completedAt": null,
-                    "challongeUrl": "",
-                    "liveImageUrl": "",
-                    "signUpUrl": "",
-                    "openForSignup": false
+                    "eventDate": null,
+                    "signupOpensAt": null,
+                    "signupClosesAt": null,
+                    "checkInOpensAt": null,
+                    "checkInDeadline": null,
+                    "chatLocked": false,
+                    "playerCount": 8,
+                    "teamCount": 8,
+                    "players": [],
+                    "teams": [],
+                    "matches": [],
+                    "mapDb": [],
+                    "mapPools": [],
+                    "poolAssign": [],
+                    "organisers": [],
+                    "championTeamId": null,
+                    "viewer": {
+                      "loggedIn": false,
+                      "organiser": false,
+                      "fafId": null,
+                      "fafName": "",
+                      "signedUpPlayerId": null,
+                      "memberTeamId": null,
+                      "unreadByRoom": []
+                    }
                   },
                   {
-                    "id": 2,
-                    "name": "Event 2",
+                    "id": "e2",
+                    "name": "Event e2",
                     "description": "",
-                    "tournamentType": "swiss",
-                    "participantCount": 0,
+                    "status": "signup",
+                    "category": "community",
+                    "competition": "team",
+                    "formation": "solo",
+                    "bracketKind": "single",
+                    "teamSize": 0,
+                    "divisions": 0,
+                    "playerReporting": false,
+                    "vetoEnabled": false,
+                    "rating": {
+                      "min": null,
+                      "max": null,
+                      "maxTeam": null,
+                      "cap": null
+                    },
                     "createdAt": 1700000000,
-                    "startingAt": null,
-                    "completedAt": null,
-                    "challongeUrl": "",
-                    "liveImageUrl": "",
-                    "signUpUrl": "",
-                    "openForSignup": false
+                    "eventDate": null,
+                    "signupOpensAt": null,
+                    "signupClosesAt": null,
+                    "checkInOpensAt": null,
+                    "checkInDeadline": null,
+                    "chatLocked": false,
+                    "playerCount": 8,
+                    "teamCount": 8,
+                    "players": [],
+                    "teams": [],
+                    "matches": [],
+                    "mapDb": [],
+                    "mapPools": [],
+                    "poolAssign": [],
+                    "organisers": [],
+                    "championTeamId": null,
+                    "viewer": {
+                      "loggedIn": false,
+                      "organiser": false,
+                      "fafId": null,
+                      "fafName": "",
+                      "signedUpPlayerId": null,
+                      "memberTeamId": null,
+                      "unreadByRoom": []
+                    }
                   }
                 ]
               }
             }
           },
           "expected": {
-            "selectedId": 1,
-            "status": {
-              "type": "ready"
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
             },
-            "tournaments": [
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
               {
-                "challongeUrl": "",
-                "completedAt": null,
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
                 "createdAt": 1700000000,
                 "description": "",
-                "id": 1,
-                "liveImageUrl": "",
-                "name": "Event 1",
-                "openForSignup": false,
-                "participantCount": 0,
-                "signUpUrl": "",
-                "startingAt": null,
-                "tournamentType": "swiss"
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
               },
               {
-                "challongeUrl": "",
-                "completedAt": null,
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
                 "createdAt": 1700000000,
                 "description": "",
-                "id": 2,
-                "liveImageUrl": "",
-                "name": "Event 2",
-                "openForSignup": false,
-                "participantCount": 0,
-                "signUpUrl": "",
-                "startingAt": null,
-                "tournamentType": "swiss"
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
               }
-            ]
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
           }
         },
         {
           "event": {
-            "kind": "Tournaments",
+            "kind": "Tourney",
             "event": {
               "type": "selected",
               "payload": {
-                "tournamentId": 2
+                "tournamentId": "e2"
               }
             }
           },
           "expected": {
-            "selectedId": 2,
-            "status": {
-              "type": "ready"
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
             },
-            "tournaments": [
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
               {
-                "challongeUrl": "",
-                "completedAt": null,
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
                 "createdAt": 1700000000,
                 "description": "",
-                "id": 1,
-                "liveImageUrl": "",
-                "name": "Event 1",
-                "openForSignup": false,
-                "participantCount": 0,
-                "signUpUrl": "",
-                "startingAt": null,
-                "tournamentType": "swiss"
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
               },
               {
-                "challongeUrl": "",
-                "completedAt": null,
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
                 "createdAt": 1700000000,
                 "description": "",
-                "id": 2,
-                "liveImageUrl": "",
-                "name": "Event 2",
-                "openForSignup": false,
-                "participantCount": 0,
-                "signUpUrl": "",
-                "startingAt": null,
-                "tournamentType": "swiss"
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
               }
-            ]
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
           }
         },
         {
           "event": {
-            "kind": "Tournaments",
+            "kind": "Tourney",
+            "event": {
+              "type": "detailLoading"
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "loading"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "detailLoaded",
+              "payload": {
+                "event": {
+                  "id": "e2",
+                  "name": "Event e2",
+                  "description": "",
+                  "status": "signup",
+                  "category": "community",
+                  "competition": "team",
+                  "formation": "solo",
+                  "bracketKind": "single",
+                  "teamSize": 0,
+                  "divisions": 0,
+                  "playerReporting": false,
+                  "vetoEnabled": false,
+                  "rating": {
+                    "min": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "cap": null
+                  },
+                  "createdAt": 1700000000,
+                  "eventDate": null,
+                  "signupOpensAt": null,
+                  "signupClosesAt": null,
+                  "checkInOpensAt": null,
+                  "checkInDeadline": null,
+                  "chatLocked": false,
+                  "playerCount": 8,
+                  "teamCount": 8,
+                  "players": [],
+                  "teams": [],
+                  "matches": [],
+                  "mapDb": [],
+                  "mapPools": [],
+                  "poolAssign": [],
+                  "organisers": [],
+                  "championTeamId": null,
+                  "viewer": {
+                    "loggedIn": false,
+                    "organiser": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "signedUpPlayerId": null,
+                    "memberTeamId": null,
+                    "unreadByRoom": []
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "actionStarted",
+              "payload": {
+                "action": {
+                  "type": "signingUp"
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": {
+              "type": "signingUp"
+            },
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "actionFailed",
+              "payload": {
+                "failure": {
+                  "action": {
+                    "type": "signingUp"
+                  },
+                  "reason": "your rating (1420) is below this tournament’s minimum of 1500",
+                  "kind": "rejected"
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": {
+              "action": {
+                "type": "signingUp"
+              },
+              "kind": "rejected",
+              "reason": "your rating (1420) is below this tournament’s minimum of 1500"
+            },
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "actionErrorDismissed"
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "actionStarted",
+              "payload": {
+                "action": {
+                  "type": "signingUp"
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": {
+              "type": "signingUp"
+            },
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "actionSucceeded",
+              "payload": {
+                "action": {
+                  "type": "signingUp"
+                },
+                "select": null
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "entrantProfilesLoaded",
+              "payload": {
+                "profiles": [
+                  {
+                    "id": 101,
+                    "login": "Nuggets",
+                    "avatarUrl": "",
+                    "country": "de",
+                    "globalRating": 1750,
+                    "ladderRating": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [
+              {
+                "avatarUrl": "",
+                "country": "de",
+                "globalRating": 1750,
+                "id": 101,
+                "ladderRating": null,
+                "login": "Nuggets"
+              }
+            ],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "actionStarted",
+              "payload": {
+                "action": {
+                  "type": "creating"
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e2",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e2",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [
+              {
+                "avatarUrl": "",
+                "country": "de",
+                "globalRating": 1750,
+                "id": 101,
+                "ladderRating": null,
+                "login": "Nuggets"
+              }
+            ],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": {
+              "type": "creating"
+            },
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "actionSucceeded",
+              "payload": {
+                "action": {
+                  "type": "creating"
+                },
+                "select": "e3"
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e3",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "hostingLoaded",
+              "payload": {
+                "hosting": {
+                  "loggedIn": true,
+                  "allowed": true,
+                  "pending": false
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e3",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "articlesLoaded",
+              "payload": {
+                "articles": [
+                  {
+                    "id": "art33adc81d9f78",
+                    "title": "Tournament rules",
+                    "body": "Be on time, and post your replay ids.",
+                    "parentId": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [
+              {
+                "body": "Be on time, and post your replay ids.",
+                "id": "art33adc81d9f78",
+                "parentId": null,
+                "title": "Tournament rules"
+              }
+            ],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e3",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "detailLoaded",
+              "payload": {
+                "event": {
+                  "id": "e1",
+                  "name": "Event e1",
+                  "description": "",
+                  "status": "signup",
+                  "category": "community",
+                  "competition": "team",
+                  "formation": "solo",
+                  "bracketKind": "single",
+                  "teamSize": 0,
+                  "divisions": 0,
+                  "playerReporting": false,
+                  "vetoEnabled": false,
+                  "rating": {
+                    "min": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "cap": null
+                  },
+                  "createdAt": 1700000000,
+                  "eventDate": null,
+                  "signupOpensAt": null,
+                  "signupClosesAt": null,
+                  "checkInOpensAt": null,
+                  "checkInDeadline": null,
+                  "chatLocked": false,
+                  "playerCount": 8,
+                  "teamCount": 8,
+                  "players": [],
+                  "teams": [],
+                  "matches": [],
+                  "mapDb": [],
+                  "mapPools": [],
+                  "poolAssign": [],
+                  "organisers": [],
+                  "championTeamId": null,
+                  "viewer": {
+                    "loggedIn": false,
+                    "organiser": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "signedUpPlayerId": null,
+                    "memberTeamId": null,
+                    "unreadByRoom": []
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [
+              {
+                "body": "Be on time, and post your replay ids.",
+                "id": "art33adc81d9f78",
+                "parentId": null,
+                "title": "Tournament rules"
+              }
+            ],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e3",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
             "event": {
               "type": "loaded",
               "payload": {
-                "tournaments": [
+                "events": [
                   {
-                    "id": 1,
-                    "name": "Event 1",
+                    "id": "e1",
+                    "name": "Event e1",
                     "description": "",
-                    "tournamentType": "swiss",
-                    "participantCount": 0,
+                    "status": "signup",
+                    "category": "community",
+                    "competition": "team",
+                    "formation": "solo",
+                    "bracketKind": "single",
+                    "teamSize": 0,
+                    "divisions": 0,
+                    "playerReporting": false,
+                    "vetoEnabled": false,
+                    "rating": {
+                      "min": null,
+                      "max": null,
+                      "maxTeam": null,
+                      "cap": null
+                    },
                     "createdAt": 1700000000,
-                    "startingAt": null,
-                    "completedAt": null,
-                    "challongeUrl": "",
-                    "liveImageUrl": "",
-                    "signUpUrl": "",
-                    "openForSignup": false
+                    "eventDate": null,
+                    "signupOpensAt": null,
+                    "signupClosesAt": null,
+                    "checkInOpensAt": null,
+                    "checkInDeadline": null,
+                    "chatLocked": false,
+                    "playerCount": 8,
+                    "teamCount": 8,
+                    "players": [],
+                    "teams": [],
+                    "matches": [],
+                    "mapDb": [],
+                    "mapPools": [],
+                    "poolAssign": [],
+                    "organisers": [],
+                    "championTeamId": null,
+                    "viewer": {
+                      "loggedIn": false,
+                      "organiser": false,
+                      "fafId": null,
+                      "fafName": "",
+                      "signedUpPlayerId": null,
+                      "memberTeamId": null,
+                      "unreadByRoom": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [
+              {
+                "body": "Be on time, and post your replay ids.",
+                "id": "art33adc81d9f78",
+                "parentId": null,
+                "title": "Tournament rules"
+              }
+            ],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a tournament chat room is opened, read and left behind",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "events": [
+                  {
+                    "id": "e1",
+                    "name": "Event e1",
+                    "description": "",
+                    "status": "signup",
+                    "category": "community",
+                    "competition": "team",
+                    "formation": "solo",
+                    "bracketKind": "single",
+                    "teamSize": 0,
+                    "divisions": 0,
+                    "playerReporting": false,
+                    "vetoEnabled": false,
+                    "rating": {
+                      "min": null,
+                      "max": null,
+                      "maxTeam": null,
+                      "cap": null
+                    },
+                    "createdAt": 1700000000,
+                    "eventDate": null,
+                    "signupOpensAt": null,
+                    "signupClosesAt": null,
+                    "checkInOpensAt": null,
+                    "checkInDeadline": null,
+                    "chatLocked": false,
+                    "playerCount": 8,
+                    "teamCount": 8,
+                    "players": [],
+                    "teams": [],
+                    "matches": [],
+                    "mapDb": [],
+                    "mapPools": [],
+                    "poolAssign": [],
+                    "organisers": [],
+                    "championTeamId": null,
+                    "viewer": {
+                      "loggedIn": false,
+                      "organiser": false,
+                      "fafId": null,
+                      "fafName": "",
+                      "signedUpPlayerId": null,
+                      "memberTeamId": null,
+                      "unreadByRoom": []
+                    }
                   },
                   {
-                    "id": 2,
-                    "name": "Event 2",
+                    "id": "e2",
+                    "name": "Event e2",
                     "description": "",
-                    "tournamentType": "swiss",
-                    "participantCount": 0,
+                    "status": "signup",
+                    "category": "community",
+                    "competition": "team",
+                    "formation": "solo",
+                    "bracketKind": "single",
+                    "teamSize": 0,
+                    "divisions": 0,
+                    "playerReporting": false,
+                    "vetoEnabled": false,
+                    "rating": {
+                      "min": null,
+                      "max": null,
+                      "maxTeam": null,
+                      "cap": null
+                    },
                     "createdAt": 1700000000,
-                    "startingAt": null,
-                    "completedAt": null,
-                    "challongeUrl": "",
-                    "liveImageUrl": "",
-                    "signUpUrl": "",
-                    "openForSignup": false
+                    "eventDate": null,
+                    "signupOpensAt": null,
+                    "signupClosesAt": null,
+                    "checkInOpensAt": null,
+                    "checkInDeadline": null,
+                    "chatLocked": false,
+                    "playerCount": 8,
+                    "teamCount": 8,
+                    "players": [],
+                    "teams": [],
+                    "matches": [],
+                    "mapDb": [],
+                    "mapPools": [],
+                    "poolAssign": [],
+                    "organisers": [],
+                    "championTeamId": null,
+                    "viewer": {
+                      "loggedIn": false,
+                      "organiser": false,
+                      "fafId": null,
+                      "fafName": "",
+                      "signedUpPlayerId": null,
+                      "memberTeamId": null,
+                      "unreadByRoom": []
+                    }
                   }
                 ]
               }
             }
           },
           "expected": {
-            "selectedId": 2,
-            "status": {
-              "type": "ready"
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
             },
-            "tournaments": [
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
               {
-                "challongeUrl": "",
-                "completedAt": null,
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
                 "createdAt": 1700000000,
                 "description": "",
-                "id": 1,
-                "liveImageUrl": "",
-                "name": "Event 1",
-                "openForSignup": false,
-                "participantCount": 0,
-                "signUpUrl": "",
-                "startingAt": null,
-                "tournamentType": "swiss"
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
               },
               {
-                "challongeUrl": "",
-                "completedAt": null,
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
                 "createdAt": 1700000000,
                 "description": "",
-                "id": 2,
-                "liveImageUrl": "",
-                "name": "Event 2",
-                "openForSignup": false,
-                "participantCount": 0,
-                "signUpUrl": "",
-                "startingAt": null,
-                "tournamentType": "swiss"
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
               }
-            ]
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
           }
         },
         {
           "event": {
-            "kind": "Tournaments",
+            "kind": "Tourney",
             "event": {
-              "type": "loaded",
+              "type": "detailLoaded",
               "payload": {
-                "tournaments": [
+                "event": {
+                  "id": "e1",
+                  "name": "Event e1",
+                  "description": "",
+                  "status": "signup",
+                  "category": "community",
+                  "competition": "team",
+                  "formation": "solo",
+                  "bracketKind": "single",
+                  "teamSize": 0,
+                  "divisions": 0,
+                  "playerReporting": false,
+                  "vetoEnabled": false,
+                  "rating": {
+                    "min": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "cap": null
+                  },
+                  "createdAt": 1700000000,
+                  "eventDate": null,
+                  "signupOpensAt": null,
+                  "signupClosesAt": null,
+                  "checkInOpensAt": null,
+                  "checkInDeadline": null,
+                  "chatLocked": false,
+                  "playerCount": 8,
+                  "teamCount": 8,
+                  "players": [],
+                  "teams": [],
+                  "matches": [],
+                  "mapDb": [],
+                  "mapPools": [],
+                  "poolAssign": [],
+                  "organisers": [],
+                  "championTeamId": null,
+                  "viewer": {
+                    "loggedIn": false,
+                    "organiser": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "signedUpPlayerId": null,
+                    "memberTeamId": null,
+                    "unreadByRoom": []
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e1",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e1",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "chatRoomsLoaded",
+              "payload": {
+                "rooms": [
                   {
-                    "id": 1,
-                    "name": "Event 1",
-                    "description": "",
-                    "tournamentType": "swiss",
-                    "participantCount": 0,
-                    "createdAt": 1700000000,
-                    "startingAt": null,
-                    "completedAt": null,
-                    "challongeUrl": "",
-                    "liveImageUrl": "",
-                    "signUpUrl": "",
-                    "openForSignup": false
+                    "id": "global",
+                    "name": "Room global",
+                    "unread": 3
+                  },
+                  {
+                    "id": "m1",
+                    "name": "Room m1",
+                    "unread": 1
                   }
                 ]
               }
             }
           },
           "expected": {
-            "selectedId": 1,
-            "status": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [
+              {
+                "id": "global",
+                "name": "Room global",
+                "unread": 3
+              },
+              {
+                "id": "m1",
+                "name": "Room m1",
+                "unread": 1
+              }
+            ],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e1",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e1",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
               "type": "ready"
             },
-            "tournaments": [
+            "entrantProfiles": [],
+            "events": [
               {
-                "challongeUrl": "",
-                "completedAt": null,
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
                 "createdAt": 1700000000,
                 "description": "",
-                "id": 1,
-                "liveImageUrl": "",
-                "name": "Event 1",
-                "openForSignup": false,
-                "participantCount": 0,
-                "signUpUrl": "",
-                "startingAt": null,
-                "tournamentType": "swiss"
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
               }
-            ]
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "roomOpened",
+              "payload": {
+                "roomId": "global"
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [
+              {
+                "id": "global",
+                "name": "Room global",
+                "unread": 3
+              },
+              {
+                "id": "m1",
+                "name": "Room m1",
+                "unread": 1
+              }
+            ],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e1",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e1",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "chatLoading"
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [
+              {
+                "id": "global",
+                "name": "Room global",
+                "unread": 3
+              },
+              {
+                "id": "m1",
+                "name": "Room m1",
+                "unread": 1
+              }
+            ],
+            "chatStatus": {
+              "type": "loading"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e1",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e1",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "chatLoaded",
+              "payload": {
+                "roomId": "global",
+                "posts": [
+                  {
+                    "id": "c1",
+                    "author": "Ada",
+                    "body": "gl hf",
+                    "at": 1700000100,
+                    "system": false
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [
+              {
+                "at": 1700000100,
+                "author": "Ada",
+                "body": "gl hf",
+                "id": "c1",
+                "system": false
+              }
+            ],
+            "chatRooms": [
+              {
+                "id": "global",
+                "name": "Room global",
+                "unread": 0
+              },
+              {
+                "id": "m1",
+                "name": "Room m1",
+                "unread": 1
+              }
+            ],
+            "chatStatus": {
+              "type": "ready"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e1",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e1",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "chatLoaded",
+              "payload": {
+                "roomId": "m1",
+                "posts": []
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [
+              {
+                "at": 1700000100,
+                "author": "Ada",
+                "body": "gl hf",
+                "id": "c1",
+                "system": false
+              }
+            ],
+            "chatRooms": [
+              {
+                "id": "global",
+                "name": "Room global",
+                "unread": 0
+              },
+              {
+                "id": "m1",
+                "name": "Room m1",
+                "unread": 1
+              }
+            ],
+            "chatStatus": {
+              "type": "ready"
+            },
+            "detail": {
+              "bracketKind": "single",
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "description": "",
+              "divisions": 0,
+              "eventDate": null,
+              "formation": "solo",
+              "id": "e1",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "name": "Event e1",
+              "organisers": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "signupClosesAt": null,
+              "signupOpensAt": null,
+              "status": "signup",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "vetoEnabled": false,
+              "viewer": {
+                "fafId": null,
+                "fafName": "",
+                "loggedIn": false,
+                "memberTeamId": null,
+                "organiser": false,
+                "signedUpPlayerId": null,
+                "unreadByRoom": []
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "pending": null,
+            "selectedId": "e1",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "tournamentId": "e2"
+              }
+            }
+          },
+          "expected": {
+            "actionError": null,
+            "articles": [],
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "entrantProfiles": [],
+            "events": [
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e1",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e1",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              },
+              {
+                "bracketKind": "single",
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "description": "",
+                "divisions": 0,
+                "eventDate": null,
+                "formation": "solo",
+                "id": "e2",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "name": "Event e2",
+                "organisers": [],
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "signupClosesAt": null,
+                "signupOpensAt": null,
+                "status": "signup",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "vetoEnabled": false,
+                "viewer": {
+                  "fafId": null,
+                  "fafName": "",
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null,
+                  "unreadByRoom": []
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "pending": null,
+            "selectedId": "e2",
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the tournament tab hands a match title to the host dialog",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "hostPrepared",
+              "payload": {
+                "title": "Weekend Cup R2: Nuggets vs Ada"
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": "Weekend Cup R2: Nuggets vs Ada",
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "hostPrefillCleared"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
           }
         }
       ]

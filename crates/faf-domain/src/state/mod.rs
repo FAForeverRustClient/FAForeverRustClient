@@ -25,7 +25,7 @@ pub mod reviews;
 pub mod session;
 pub mod settings;
 pub mod social;
-pub mod tournaments;
+pub mod tourney;
 pub mod tutorials;
 pub mod uploads;
 
@@ -83,7 +83,7 @@ pub use player_card::{
     ClanMember, MatchmakerPlayerProfile, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
     PlayerCardCommand, PlayerCardEvent, PlayerCardProfile, PlayerCardState, PlayerCardStatus,
     PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerNameRecord, PlayerRatingSummary,
-    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
@@ -111,9 +111,14 @@ pub use settings::{
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
 };
-pub use tournaments::{
-    sort_tournaments, Tournament, TournamentStatus, TournamentsCommand, TournamentsEvent,
-    TournamentsState, TournamentsStatus,
+pub use tourney::{
+    map_key, match_vault_map, Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition,
+    Formation, MapPool, MatchLink, MatchReport, MatchStatus, PendingReport, PoolAssignment,
+    DraftRejection, HostingStatus, PoolDraft, RatingGate, RatingKind, RoomUnread, Seeding,
+    SignupMode, TeamRequest, Tourney, TourneyAction, TourneyActionFailure,
+    TourneyCategory, TourneyCommand, TourneyEvent, TourneyLoadStatus, TourneyMap, TourneyMatch,
+    TourneyDraft, TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam,
+    TourneyViewer,
 };
 pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,
@@ -149,7 +154,7 @@ pub struct AppState {
     pub reporting: ReportingState,
     pub reviews: ReviewsState,
     pub social: SocialState,
-    pub tournaments: TournamentsState,
+    pub tourney: TourneyState,
     pub tutorials: TutorialsState,
     pub uploads: UploadsState,
     pub galactic_war: GalacticWarState,

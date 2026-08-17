@@ -15,7 +15,8 @@
 use std::collections::HashMap;
 
 use faf_domain::state::{
-    ChatEvent, ChatStatus, Game, HostGamePreferences, LobbyCommand, LobbyEvent, MatchmakingState,
+    ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, LobbyCommand, LobbyEvent,
+    MatchmakingState,
     NotificationAction, NotificationKind, NotificationPreferences, PlayerCardEvent, SettingsEvent,
     SocialEvent,
 };
@@ -81,6 +82,15 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 });
             }
         }
+        // Opening the host dialog from another tab. Nothing is hosted here: the
+        // title crosses into the lobby slice and the dialog does the rest, so
+        // the map and the featured mod stay the host's decision.
+        LobbyCommand::PrepareHost { title } => {
+            out.emit(LobbyEvent::HostPrepared {
+                title: title.trim().chars().take(HostGameConfig::MAX_TITLE_CHARS).collect(),
+            })
+        }
+        LobbyCommand::ClearHostPrefill => out.emit(LobbyEvent::HostPrefillCleared),
         LobbyCommand::Host { config } => match config.validated() {
             Ok(config) => {
                 // Co-op owns a separate launch surface in both references; do

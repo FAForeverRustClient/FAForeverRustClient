@@ -1,16 +1,17 @@
-//! Tournament description handling.
+//! Somebody else's markup, reduced to text.
 //!
-//! Challonge stores an organiser's description as HTML, and the Java client
-//! substitutes it straight into a template it loads in a `WebView`. That is
-//! safe there only because the pane is a browser they already treat as
-//! untrusted; here the same content would land in the client's own document,
-//! where a `<script>` or an `onerror=` from a third-party organiser would run
-//! with the client's privileges.
+//! Four services hand this client HTML that a person wrote: tournament
+//! descriptions and chat posts, co-op mission blurbs, tutorial entries, and the
+//! rules pages. The Java client substitutes such content straight into a
+//! template it loads in a `WebView`, which is safe there only because the pane
+//! is a browser it already treats as untrusted. Here the same content would
+//! land in the client's own document, where a `<script>` or an `onerror=` from
+//! a third party would run with the client's privileges.
 //!
-//! So descriptions are reduced to plain text before they ever reach the state.
-//! Block-level tags become line breaks so a formatted announcement stays
-//! readable, everything else is dropped, and the handful of entities that
-//! survive escaping are decoded.
+//! So it is reduced to plain text before it ever reaches the state, at the one
+//! boundary it crosses. Block-level tags become line breaks so a formatted
+//! announcement stays readable, everything else is dropped, and the handful of
+//! entities that survive escaping are decoded.
 
 /// The first `https://` link in an HTML fragment, or empty when there is none.
 ///

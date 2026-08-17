@@ -385,6 +385,16 @@ pub struct LobbyState {
     pub avatar_list_error: String,
     pub avatar_selection_status: AvatarListStatus,
     pub avatar_selection_error: String,
+    /// A host dialog another tab asked for, with its title already filled in.
+    ///
+    /// Lives in the source of truth rather than in a component so a *different*
+    /// feature can open it: the tournament tab offers "host this match", which
+    /// has to cross from one tab to another. Exactly the case
+    /// [`crate::state::NavState`] exists for, and the same reasoning.
+    ///
+    /// Only the title: the map, the featured mod and the password are the
+    /// host's decision, and the existing dialog already asks for them properly.
+    pub host_prefill: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -392,6 +402,11 @@ pub struct LobbyState {
 pub enum LobbyEvent {
     Connecting,
     Connected,
+    /// Another tab asked for the host dialog, with this title.
+    HostPrepared {
+        title: String,
+    },
+    HostPrefillCleared,
     GamesUpdated {
         games: Vec<Game>,
     },
@@ -465,6 +480,17 @@ pub enum LobbyCommand {
     Host {
         config: HostGameConfig,
     },
+    /// Open the host dialog with `title` filled in, from another tab.
+    ///
+    /// Deliberately not "host this game outright": the map and the featured mod
+    /// are still the host's call, and a tournament match hosted on whatever map
+    /// happened to be selected would be worse than one keystroke saved.
+    PrepareHost {
+        title: String,
+    },
+    /// The host dialog was closed; forget the prepared title so it does not
+    /// reopen on the next visit to the tab.
+    ClearHostPrefill,
     #[serde(rename_all = "camelCase")]
     Matchmake {
         queue_name: String,
@@ -512,6 +538,8 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
     match event {
         LobbyEvent::Connecting => state.status = LobbyStatus::Connecting,
         LobbyEvent::Connected => state.status = LobbyStatus::Connected,
+        LobbyEvent::HostPrepared { title } => state.host_prefill = Some(title.clone()),
+        LobbyEvent::HostPrefillCleared => state.host_prefill = None,
         LobbyEvent::GamesUpdated { games } => state.games = games.clone(),
         LobbyEvent::LiveGamesUpdated { games } => state.live_games = games.clone(),
         LobbyEvent::MatchmakerQueuesUpdated { queues } => {
