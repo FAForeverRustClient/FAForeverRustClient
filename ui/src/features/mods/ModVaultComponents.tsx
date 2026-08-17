@@ -49,7 +49,7 @@ export function ModPreview({ mod, large = false }: { mod: VaultMod; large?: bool
   if (!mod.thumbnailUrl || failed) {
     return <span className={large ? "mod-vault-preview mod-vault-preview-empty" : "mod-vault-thumb mod-vault-preview-empty"} aria-hidden="true"><Icon name="mods" size={large ? 34 : 25} /></span>;
   }
-  return <img className={large ? "mod-vault-preview" : "mod-vault-thumb"} src={mod.thumbnailUrl} alt={t("mods.vault.preview", { name: mod.displayName })} loading="lazy" onError={() => setFailed(true)} />;
+  return <img className={large ? "mod-vault-preview" : "mod-vault-thumb"} src={mod.thumbnailUrl} alt={t("mods.vault.preview", { name: mod.displayName })} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
 }
 
 export function ModCard({
@@ -149,38 +149,116 @@ export function ModDetailPanel({
   const description = cleanDescription(mod.description);
   const updateAvailable = Boolean(installed && installed.version !== mod.version);
   return (
-    <aside className="mod-vault-details surface-panel">
-      <div className="mod-vault-detail-preview"><ModPreview mod={mod} large /></div>
-      <div className="mod-vault-detail-body">
-        <div className="mod-vault-detail-kicker"><span className={mod.modType}>{t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}</span><span className={mod.ranked ? "ranked" : "unranked"}>{t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}</span>{mod.recommended && <span>{t("mods.vault.featured")}</span>}</div>
-        <h2>{mod.displayName}</h2>
-        <p className="mod-vault-byline">{mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}{mod.uploader ? ` · ${t("mods.vault.uploadedBy", { uploader: mod.uploader })}` : ""}</p>
+    <aside className="vault-detail-panel mod-vault-details surface-panel">
+      <div className="vault-detail-preview mod-vault-detail-preview">
+        <ModPreview mod={mod} large />
+      </div>
+      <div className="vault-detail-body mod-vault-detail-body">
+        <div className="vault-detail-header">
+          <div className="vault-detail-kicker mod-vault-detail-kicker">
+            <span className={`vault-badge mod-badge mod-badge-${mod.modType}`}>
+              {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
+            </span>
+            <span className={`vault-badge is-${mod.ranked ? "ok" : "warn"} ${mod.ranked ? "ranked" : "unranked"}`}>
+              {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
+            </span>
+            {mod.recommended && <span className="vault-badge is-accent">{t("mods.vault.featured")}</span>}
+          </div>
+          <h2 className="vault-detail-title">{mod.displayName}</h2>
+          <p className="vault-detail-byline mod-vault-byline">
+            <span className="vault-detail-author">
+              {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
+            </span>
+            {mod.uploader ? (
+              <>
+                <span className="vault-detail-dot">·</span>
+                <span className="vault-detail-uploader">
+                  {t("mods.vault.uploadedBy", { uploader: mod.uploader })}
+                </span>
+              </>
+            ) : null}
+          </p>
+        </div>
 
-        <dl className="mod-vault-summary">
-          <div><dt>{t("mods.vault.version")}</dt><dd>{mod.version || "N/A"}</dd></div>
-          <div><dt>{t("mods.vault.communityRating")}</dt><dd>{ratingLabel(mod)}</dd></div>
-          <div><dt>{t("mods.vault.published")}</dt><dd>{formatShortDate(mod.createdAt)}</dd></div>
-          <div><dt>{t("mods.vault.updated")}</dt><dd>{formatShortDate(mod.updatedAt || mod.createdAt)}</dd></div>
-          <div><dt>{t("mods.vault.modId")}</dt><dd>{mod.modId ? `#${mod.modId}` : "N/A"}</dd></div>
-          <div><dt>{t("mods.vault.versionId")}</dt><dd>{mod.versionId ? `#${mod.versionId}` : "N/A"}</dd></div>
-          <div><dt>UID</dt><dd title={mod.uid}>{mod.uid || "N/A"}</dd></div>
-          <div><dt>{t("mods.vault.filename")}</dt><dd title={mod.filename}>{mod.filename || "N/A"}</dd></div>
-        </dl>
+        <div className="vault-detail-props">
+          <div className="vault-prop-row">
+            <span className="vault-prop-label">{t("mods.vault.version")}</span>
+            <span className="vault-prop-value">{mod.version ? `v${mod.version}` : "N/A"}</span>
+          </div>
+          <div className="vault-prop-row">
+            <span className="vault-prop-label">{t("mods.vault.communityRating")}</span>
+            <span className="vault-prop-value">{ratingLabel(mod)}</span>
+          </div>
+          <div className="vault-prop-row">
+            <span className="vault-prop-label">{t("mods.vault.published")}</span>
+            <span className="vault-prop-value">{formatShortDate(mod.createdAt)}</span>
+          </div>
+          <div className="vault-prop-row">
+            <span className="vault-prop-label">{t("mods.vault.updated")}</span>
+            <span className="vault-prop-value">{formatShortDate(mod.updatedAt || mod.createdAt)}</span>
+          </div>
+        </div>
 
-        <section className="mod-vault-description"><h3>{t("mods.vault.description")}</h3><p>{description || t("mods.vault.noDescription")}</p></section>
+        <section className="vault-detail-description mod-vault-description">
+          <h3>{t("mods.vault.description")}</h3>
+          <p>{description || t("mods.vault.noDescription")}</p>
+        </section>
 
-        <div className="mod-vault-detail-actions">
-          <Button onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>{t("mods.vault.reviews")}</Button>
-          {installed && <Button disabled={busy} onClick={onToggle}>{t(toggling ? "mods.vault.toggling" : installed.enabled ? "mods.vault.disable" : "mods.vault.enable")}</Button>}
-          {installed && <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>{t("mods.vault.uninstall")}</Button>}
-          <Button variant="primary" disabled={busy || Boolean(installed && !updateAvailable) || !mod.downloadUrl} onClick={onInstall}>{t(installing ? "mods.vault.busy" : updateAvailable ? "mods.vault.installUpdate" : installed ? "mods.vault.state.installed" : "mods.vault.installMod")}</Button>
+        <div className="vault-detail-actions mod-vault-detail-actions">
+          <div className="vault-detail-actions-left">
+            <Button onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>
+              {t("mods.vault.reviews")}
+            </Button>
+            {installed && (
+              <Button disabled={busy} onClick={onToggle}>
+                {t(toggling ? "mods.vault.toggling" : installed.enabled ? "mods.vault.disable" : "mods.vault.enable")}
+              </Button>
+            )}
+          </div>
+
+          <div className="vault-detail-actions-right">
+            {updateAvailable ? (
+              <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
+                {t(installing ? "mods.vault.busy" : "mods.vault.installUpdate")}
+              </Button>
+            ) : installed ? (
+              <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
+                {t("mods.vault.uninstall")}
+              </Button>
+            ) : (
+              <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
+                {t(installing ? "mods.vault.busy" : "mods.vault.installMod")}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </aside>
   );
 }
 
-export function UninstallDialog({ modName, onCancel, onConfirm }: { modName: string; onCancel: () => void; onConfirm: () => void }) {
+export function UninstallDialog({
+  modName,
+  onCancel,
+  onConfirm,
+}: {
+  modName: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
   const { t } = useTranslation();
-  return <Modal onClose={onCancel}><div className="mod-uninstall-dialog"><h2>{t("mods.vault.confirmUninstall")}</h2><p>{t("mods.vault.confirmUninstallBody", { name: modName })}</p><div><Button onClick={onCancel}>{t("mods.vault.cancel")}</Button><Button className="mod-vault-uninstall-confirm" onClick={onConfirm}>{t("mods.vault.confirmUninstallAction")}</Button></div></div></Modal>;
+  return (
+    <Modal className="confirm-modal" onClose={onCancel}>
+      <div className="confirm-dialog-content">
+        <h2>{t("mods.vault.confirmUninstall")}</h2>
+        <p>{t("mods.vault.confirmUninstallBody", { name: modName })}</p>
+        <div className="confirm-dialog-actions">
+          <Button onClick={onCancel}>{t("mods.vault.cancel")}</Button>
+          <Button className="btn-danger" onClick={onConfirm}>
+            {t("mods.vault.confirmUninstallAction")}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
 }

@@ -42,8 +42,9 @@ describe("ReplayDownloadTask", () => {
       <ReplayDownloadTask status={{ type: "downloading", payload: { uid: 27456965 } }} />,
     );
 
-    expect(markup).toContain("Replay:");
-    expect(markup).toContain("Downloading 27456965");
+    // The id never stands alone: the line names what it is, not just a number.
+    expect(markup).toContain("Downloading:");
+    expect(markup).toContain("Replay 27456965");
     expect(markup).toContain('data-indeterminate="true"');
     expect(markup).toContain("Active");
   });

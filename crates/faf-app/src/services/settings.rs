@@ -206,6 +206,13 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
     ctx.ports
         .process
         .set_paths(settings.game_path, settings.replay_game_path);
+    // The replay preparation steps patch the install they are about to launch,
+    // so they follow the configured path rather than a startup environment
+    // variable. Without this a replay install chosen in Settings left the
+    // engine version unmatched and FA opened on the main menu.
+    ctx.ports
+        .replay
+        .set_install_dir(ctx.ports.process.replay_install_dir());
     let present = ctx.ports.process.installs_present();
     out.emit(InstallEvent::Checked {
         game_ready: present.game,

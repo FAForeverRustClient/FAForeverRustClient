@@ -27,9 +27,14 @@ export function resolvedNickStyle(
   user: ChatUser | undefined,
   social: SocialState,
   preferences: ChatPreferences,
+  selfName?: string,
 ): CSSProperties | undefined {
   const assignedColor = assignedPlayerColor(preferences.nameColors.players, name);
   if (assignedColor) return { color: assignedColor };
+
+  if (selfName && name.toLowerCase() === selfName.toLowerCase() && preferences.nameColors.selfColor) {
+    return { color: preferences.nameColors.selfColor };
+  }
 
   if (isAdmin(user) && preferences.nameColors.admins) {
     return { color: preferences.nameColors.admins };
@@ -38,7 +43,7 @@ export function resolvedNickStyle(
     return { color: preferences.nameColors.moderators };
   }
 
-  return resolvePlayerStyle(name, social, preferences);
+  return resolvePlayerStyle(name, social, preferences, selfName);
 }
 
 /**

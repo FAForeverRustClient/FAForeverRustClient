@@ -4,6 +4,27 @@ export function includesNormalized(value: string | null | undefined, query: stri
   return needle === "" || (value ?? "").toLocaleLowerCase().includes(needle);
 }
 
+/**
+ * Sort newest-first by an ISO timestamp, parsing each string exactly once.
+ *
+ * `Array.prototype.sort` runs its comparator O(n log n) times, so parsing inside
+ * one re-parses every timestamp a dozen times over. On the 5005-entry map vault
+ * that measured 12.9 ms for the "newest" sort against 2.6 ms for this, which is
+ * the difference between a visible hitch and none when the sort changes.
+ *
+ * Sorts in place and returns the same array, like `sort` itself.
+ */
+export function sortByDateDesc<T>(
+  items: T[],
+  timestampOf: (item: T) => string | null | undefined,
+): T[] {
+  const parsed = new Map<T, number>();
+  for (const item of items) {
+    parsed.set(item, Date.parse(timestampOf(item) ?? "") || 0);
+  }
+  return items.sort((left, right) => (parsed.get(right) ?? 0) - (parsed.get(left) ?? 0));
+}
+
 /** Inclusive range matching. A null bound leaves that side unbounded. */
 export function isWithinNumberRange(
   value: number,

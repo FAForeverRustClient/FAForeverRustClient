@@ -147,6 +147,11 @@ pub trait ProcessPort: Send + Sync {
     /// not the one that was configured at startup.
     fn game_install_dir(&self) -> Option<PathBuf>;
 
+    /// The same, for the separate replay-playback install. This is what the
+    /// replay preparation steps patch and stage maps into, so it has to follow
+    /// [`Self::set_paths`] rather than an environment variable read at startup.
+    fn replay_install_dir(&self) -> Option<PathBuf>;
+
     /// Stat the configured executables. Drives the missing-install banner, and
     /// is the reason it can distinguish "no path set" from "path set but the
     /// file is gone": both report `false`, and both are worth telling the user

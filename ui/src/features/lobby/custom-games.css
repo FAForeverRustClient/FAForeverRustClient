@@ -81,6 +81,10 @@
 .game-browser-row {
   width: 100%;
   min-height: 54px;
+  /* As `.game-tile`: skip off-screen rows. `auto` remembers the last rendered
+     height, so a row that wrapped stays the size it really was. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 54px;
   padding: 8px 14px;
   color: var(--color-muted);
   background: transparent;
@@ -317,21 +321,7 @@
   padding-bottom: 9px;
 }
 
-.play-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  min-height: 220px;
-  padding: 28px;
-  color: var(--color-subtle);
-  text-align: center;
-}
-
-.play-empty-state h3,
-.play-empty-state p { margin: 0; }
-.play-empty-state h3 { margin-top: 10px; color: var(--color-text); font-size: 14px; }
-.play-empty-state p { margin-top: 3px; font-size: 11px; }
+/* The empty state itself is `.empty-state` in design-system/patterns.css. */
 
 .game-view-switch {
   display: inline-flex;
@@ -377,7 +367,7 @@
   overflow: auto;
 }
 
-.game-tile-grid > .play-empty-state {
+.game-tile-grid > .empty-state {
   grid-column: 1 / -1;
 }
 
@@ -386,6 +376,12 @@
   display: grid;
   min-width: 0;
   height: 128px;
+  /* The browser renders every open game, and a busy evening is 100+ of them.
+     The row height is fixed, so the engine can be told exactly how much space
+     an off-screen tile needs and skip laying it out until it scrolls in,
+     without the scrollbar moving. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 128px;
   grid-template-columns: 128px minmax(0, 1fr);
   color: var(--color-text);
   background: var(--color-bg);

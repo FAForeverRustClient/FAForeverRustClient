@@ -341,7 +341,7 @@ const Line = memo(function Line({
   const body = renderBody(message.content, self, search, onGameLink);
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
-  const nameStyle = resolvedNickStyle(message.sender, user, social, preferences);
+  const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
 
   const nick = (
     <button

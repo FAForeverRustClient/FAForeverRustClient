@@ -412,6 +412,7 @@ export type ChatMessageKind =
 
 export type ChatNameColors = {
 	/**  Empty strings mean that the category uses the ordinary text colour. */
+	selfColor: string,
 	friends: string,
 	foes: string,
 	moderators: string,

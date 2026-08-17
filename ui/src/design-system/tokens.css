@@ -43,6 +43,13 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
 
+  /* Elevation. Three steps, deliberately: a hairline lift for a control that
+     sits on a surface, a lift for something floating over the workspace, and
+     the popover. Features used to write their own `rgba(0, 0, 0, …)` shadows,
+     which is how five slightly different "1 px drop shadow" values ended up in
+     the client. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-popover: 0 16px 48px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.22);
 
   --space-1: 4px;

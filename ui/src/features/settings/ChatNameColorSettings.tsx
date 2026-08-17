@@ -7,11 +7,13 @@ import {
   STANDARD_CATEGORY_COLORS,
   type CategoryColorKey,
 } from "../../shared/nameColorsUtil";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type CategoryKey = CategoryColorKey;
 
-const CATEGORIES: Array<{ key: CategoryKey; label: string }> = [
+const CATEGORIES: Array<{ key: CategoryKey; label: MessageKey }> = [
+  { key: "selfColor", label: "settings.nameColors.self" },
   { key: "friends", label: "settings.nameColors.friends" },
   { key: "foes", label: "settings.nameColors.foes" },
   { key: "moderators", label: "settings.nameColors.moderators" },
@@ -86,16 +88,17 @@ export function ChatNameColorSettings({
       <div className="chat-category-colors">
         {CATEGORIES.map(({ key, label }) => {
           const color = preferences.nameColors[key];
+          const text = t(label);
           return (
             <div className="chat-color-rule surface" key={key}>
-              <span>{label}</span>
+              <span>{text}</span>
               <span className="chat-color-state">{color || t("settings.nameColors.default")}</span>
-              <label className="chat-color-swatch-wrap" title={t("settings.nameColors.chooseFor", { label })}>
+              <label className="chat-color-swatch-wrap" title={t("settings.nameColors.chooseFor", { label: text })}>
                 <span className="chat-color-preview-swatch" style={{ backgroundColor: color || DEFAULT_COLOR_PICKER_VALUE }} />
                 <input
                   type="color"
                   value={color || DEFAULT_COLOR_PICKER_VALUE}
-                  aria-label={t("settings.nameColors.chooseNameColor", { label: label.toLocaleLowerCase() })}
+                  aria-label={t("settings.nameColors.chooseNameColor", { label: text.toLocaleLowerCase() })}
                   onChange={(event) => setCategoryColor(key, event.target.value)}
                 />
               </label>
@@ -103,7 +106,7 @@ export function ChatNameColorSettings({
                 type="button"
                 className="chat-color-clear surface surface-interactive"
                 disabled={!color}
-                aria-label={`Clear the name color for ${label.toLocaleLowerCase()}`}
+                aria-label={`Clear the name color for ${text.toLocaleLowerCase()}`}
                 title={t("settings.nameColors.useDefaultText")}
                 onClick={() => setCategoryColor(key, "")}
               >

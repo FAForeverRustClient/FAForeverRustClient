@@ -410,8 +410,9 @@
         "showTimestamps": true,
         "use24HourTime": true,
         "coloredNames": false,
-        "rosterWidth": 236,
+        "rosterWidth": 280,
         "nameColors": {
+          "selfColor": "#ffdd00",
           "friends": "#87cefa",
           "foes": "#dc143c",
           "moderators": "#32cd32",
@@ -11992,6 +11993,354 @@
             "vaultTotalPages": null,
             "vaultTotalRecords": null
           }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloadStarted",
+              "payload": {
+                "uid": 44
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "payload": {
+                "uid": 44
+              },
+              "type": "downloading"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "playing",
+              "payload": {
+                "uid": 44,
+                "warning": null
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "uid": 44
+              },
+              "type": "playing"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloadStarted",
+              "payload": {
+                "uid": 45
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "payload": {
+                "uid": 45
+              },
+              "type": "downloading"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "uid": 44
+              },
+              "type": "playing"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "failed",
+              "payload": {
+                "reason": "could not update game to version 3701"
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "payload": {
+                "reason": "could not update game to version 3701"
+              },
+              "type": "failed"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
         }
       ]
     },
@@ -12603,10 +12952,11 @@
                 "foes": "#dc143c",
                 "friends": "#87cefa",
                 "moderators": "#32cd32",
-                "players": {}
+                "players": {},
+                "selfColor": "#ffdd00"
               },
               "readMarkers": {},
-              "rosterWidth": 236,
+              "rosterWidth": 280,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -12768,10 +13118,11 @@
                 "foes": "#dc143c",
                 "friends": "#87cefa",
                 "moderators": "#32cd32",
-                "players": {}
+                "players": {},
+                "selfColor": "#ffdd00"
               },
               "readMarkers": {},
-              "rosterWidth": 236,
+              "rosterWidth": 280,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -12956,10 +13307,11 @@
                 "foes": "#dc143c",
                 "friends": "#87cefa",
                 "moderators": "#32cd32",
-                "players": {}
+                "players": {},
+                "selfColor": "#ffdd00"
               },
               "readMarkers": {},
-              "rosterWidth": 236,
+              "rosterWidth": 280,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -13135,10 +13487,11 @@
                 "foes": "#dc143c",
                 "friends": "#87cefa",
                 "moderators": "#32cd32",
-                "players": {}
+                "players": {},
+                "selfColor": "#ffdd00"
               },
               "readMarkers": {},
-              "rosterWidth": 236,
+              "rosterWidth": 280,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -13381,10 +13734,11 @@
                 "foes": "#dc143c",
                 "friends": "#87cefa",
                 "moderators": "#32cd32",
-                "players": {}
+                "players": {},
+                "selfColor": "#ffdd00"
               },
               "readMarkers": {},
-              "rosterWidth": 236,
+              "rosterWidth": 280,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,

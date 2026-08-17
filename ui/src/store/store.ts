@@ -299,8 +299,9 @@ const INITIAL: AppState = {
       showTimestamps: true,
       use24HourTime: true,
       coloredNames: false,
-      rosterWidth: 236,
+      rosterWidth: 280,
       nameColors: {
+        selfColor: "#ffdd00",
         friends: "#87cefa",
         foes: "#dc143c",
         moderators: "#32cd32",
