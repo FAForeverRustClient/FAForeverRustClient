@@ -455,9 +455,14 @@ async fn the_language_channel_is_not_joined_when_the_preference_is_off() {
     tokio::spawn(app_loop.run());
     let mut preferences = app.snapshot().settings.chat;
     preferences.auto_join_language_channel = false;
-    app.dispatch(SettingsCommand::SetChat { preferences }.into())
-        .await
-        .unwrap();
+    app.dispatch(
+        SettingsCommand::SetChat {
+            preferences: Box::new(preferences),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
     until(&app, |state| {
         !state.settings.chat.auto_join_language_channel
     })
@@ -484,7 +489,12 @@ async fn muted_players_are_filtered_before_messages_enter_state() {
     tokio::spawn(app_loop.run());
     let mut preferences = app.snapshot().settings.chat;
     preferences.muted_players.push("stormlord".into());
-    app.dispatch(SettingsCommand::SetChat { preferences }.into())
+    app.dispatch(
+        SettingsCommand::SetChat {
+            preferences: Box::new(preferences),
+        }
+        .into(),
+    )
         .await
         .unwrap();
     until(&app, |state| !state.settings.chat.muted_players.is_empty()).await;
