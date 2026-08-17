@@ -110,7 +110,7 @@ impl TourneyClient {
             request = request.json(&body);
         }
 
-        let response = request.send().await.map_err(request_error)?;
+        let response = request.send().await.map_err(|error| self.unreachable(error))?;
         let status = response.status();
         let body = bounded_document_body(response).await?;
 
@@ -123,6 +123,23 @@ impl TourneyClient {
         }
         serde_json::from_str(&body)
             .map_err(|error| RequestError::unexpected(format!("invalid server response: {error}")))
+    }
+
+    /// A connection that never got anywhere.
+    ///
+    /// Not `request_error`: that one says "could not reach FAF services", which
+    /// is wrong twice over here. This is not FAF's service, and the usual cause
+    /// is not the network but a server that is not running, which sending
+    /// somebody off to check their connection actively hides. Naming the
+    /// address is what turns it into something anybody can act on.
+    fn unreachable(&self, error: reqwest::Error) -> RequestError {
+        if error.is_connect() || error.is_timeout() {
+            return RequestError::offline(format!(
+                "Could not reach the tournament service at {}. If that is a local server, check it is running.",
+                self.config.api_base
+            ));
+        }
+        request_error(error)
     }
 
     async fn get(&self, path: &str, query: &[(&str, &str)]) -> Result<Value, RequestError> {
