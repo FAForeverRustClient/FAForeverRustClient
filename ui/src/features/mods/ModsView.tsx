@@ -27,6 +27,7 @@ import {
   UninstallDialog,
 } from "./ModVaultComponents";
 import { InstalledModsView } from "./InstalledModsView";
+import { openUploadFromDisk } from "../uploads/UploadDialog";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -183,6 +184,7 @@ function VaultView({ busy }: { busy: boolean }) {
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("mods.view.clear")}</Button>
             <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("mods.view.refresh")}</Button>
+            <Button onClick={() => void openUploadFromDisk("mod")}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
           </>
         )}
         advanced={filtersOpen ? (

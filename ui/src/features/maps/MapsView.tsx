@@ -13,7 +13,7 @@ import {
   SearchPanelSubmit,
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
-import { openUpload } from "../uploads/UploadDialog";
+import { openUpload, openUploadFromDisk } from "../uploads/UploadDialog";
 import { Modal } from "../../design-system/Modal";
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, VaultMap } from "../../ipc/bindings";
@@ -227,6 +227,7 @@ function VaultView({ busy }: { busy: boolean }) {
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
             <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("maps.view.refresh")}</Button>
+            <Button onClick={() => void openUploadFromDisk("map")}><Icon name="plus" size={15} /> {t("maps.view.uploadFromDisk")}</Button>
           </>
         )}
         advanced={filtersOpen ? (

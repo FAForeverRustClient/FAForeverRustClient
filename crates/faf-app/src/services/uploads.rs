@@ -31,7 +31,10 @@ async fn start(ctx: &ServiceCtx, out: &EventSink) {
     // Checked here as well as in the adapter. The adapter's check is the one
     // that protects the filesystem; this one keeps a bad name from ever
     // reaching a port, and produces the error the user actually sees.
-    if !is_safe_folder_name(&request.folder_name) {
+    // A picked folder is exempt: its path is used as given and never joined to
+    // a directory of ours, so there is nothing for a name to escape from. The
+    // adapter validates it instead.
+    if request.source_path.is_none() && !is_safe_folder_name(&request.folder_name) {
         out.emit(UploadsEvent::Progressed {
             status: UploadStatus::Failed {
                 reason: format!(

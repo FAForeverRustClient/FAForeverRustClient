@@ -75,6 +75,7 @@ fn request(kind: UploadKind, folder: &str) -> UploadRequest {
         folder_name: folder.into(),
         display_name: "Something".into(),
         ranked: false,
+        source_path: None,
     }
 }
 

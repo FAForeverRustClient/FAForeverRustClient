@@ -37,13 +37,24 @@ impl UploadKind {
 #[serde(rename_all = "camelCase")]
 pub struct UploadRequest {
     pub kind: UploadKind,
-    /// The folder inside the user's maps/mods directory.
+    /// The folder inside the user's maps/mods directory, or, when
+    /// `source_path` is set, the basename of the folder that was picked.
+    /// Either way it names the archive's single top-level entry.
     pub folder_name: String,
     /// What to call it in the UI while it uploads.
     pub display_name: String,
     /// Maps only: whether the author wants it rated. Ignored for mods, which
     /// have no equivalent flag in either reference client.
     pub ranked: bool,
+    /// An absolute folder chosen from disk instead of one already installed.
+    ///
+    /// `None` is the original behaviour: `folder_name` is resolved against the
+    /// client's own maps/mods directory, and the traversal guard below is what
+    /// keeps that safe. `Some` means the user picked the folder in a native
+    /// dialog, which Java's `MapUploadController.setMapPath` also allows: the
+    /// picking is the authorisation, and the path is never joined to a
+    /// directory of ours, so the name guard does not apply to it.
+    pub source_path: Option<String>,
 }
 
 /// How far along a publish is.
@@ -194,6 +205,7 @@ mod tests {
             folder_name: "my_map.v0001".into(),
             display_name: "My Map".into(),
             ranked: false,
+            source_path: None,
         }
     }
 
