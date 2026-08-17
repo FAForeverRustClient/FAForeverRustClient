@@ -50,7 +50,7 @@ interface Props {
  * list before, because a row is 24 px and a row for someone in a game was 28 px,
  * against an assumed 26 px.
  */
-const FALLBACK_ITEM_HEIGHT = 24;
+const FALLBACK_ITEM_HEIGHT = 26;
 const OVERSCAN = 10; // extra rows to render above and below visible viewport
 
 /** The single row height every roster row is laid out at, from the stylesheet. */
@@ -275,6 +275,7 @@ export const UserList = memo(function UserList({
                     presence={presences.get(item.user.name.toLocaleLowerCase()) ?? null}
                     mapVault={mapVault}
                     preferences={preferences}
+                    self={self}
                     onOpenConversation={onOpenConversation}
                     onContextMenu={onContextMenu}
                   />
@@ -295,6 +296,7 @@ const RosterRow = memo(function RosterRow({
   presence,
   mapVault,
   preferences,
+  self,
   onOpenConversation,
   onContextMenu,
 }: {
@@ -304,10 +306,11 @@ const RosterRow = memo(function RosterRow({
   presence: GamePresence | null;
   mapVault: VaultMap[];
   preferences: ChatPreferences;
+  self: string;
   onOpenConversation: (nick: string) => void;
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
 }) {
-  const nameStyle = resolvedNickStyle(user.name, user, social, preferences);
+  const nameStyle = resolvedNickStyle(user.name, user, social, preferences, self);
   return (
     <li className="chat-roster-item">
       <div

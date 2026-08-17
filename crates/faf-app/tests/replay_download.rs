@@ -74,6 +74,8 @@ impl ReplayPort for DownloadReplay {
     async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
         unreachable!()
     }
+
+    fn set_install_dir(&self, _dir: Option<PathBuf>) {}
 }
 
 #[tokio::test]

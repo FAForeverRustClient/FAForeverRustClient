@@ -109,7 +109,9 @@ export function ReplayDownloadTask({
   return (
     <div className="client-status-task" aria-live="polite">
       <span className="client-status-task-label" title={t("status.replay.title", { uid })}>
-        <strong>{t("status.replay.label")}</strong> {t("status.replay.downloading", { uid })}
+        {/* The action leads, the subject follows, so the id is never left
+            standing on its own as a bare number with no idea what it names. */}
+        <strong>{t("status.replay.action")}</strong> {t("status.replay.subject", { uid })}
       </span>
       <span
         className="client-status-progress"
@@ -226,7 +228,7 @@ export function ClientStatusBar() {
 
   return (
     <footer ref={rootRef} className="client-status-bar" aria-label={t("status.bar.aria")}>
-      <span className="client-status-version">v{session.backendVersion || "0.3.0"}</span>
+      <span className="client-status-version">v{session.backendVersion || "0.4.0"}</span>
       {joinState.type === "preparing"
         ? <GamePreparationStatus state={joinState} />
         : joinTaskVisible

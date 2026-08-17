@@ -34,8 +34,11 @@
   display: inline-flex;
   min-height: 44px;
   align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 100px;
   gap: 9px;
-  padding: 0 14px 0 12px;
+  padding: 0 12px;
   color: var(--color-muted);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);

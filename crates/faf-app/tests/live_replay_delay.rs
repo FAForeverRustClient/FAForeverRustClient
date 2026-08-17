@@ -63,6 +63,8 @@ impl ReplayPort for RecordingReplay {
     async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
         Ok(())
     }
+
+    fn set_install_dir(&self, _dir: Option<PathBuf>) {}
 }
 
 /// A lobby whose live-game snapshots the test pushes by hand.

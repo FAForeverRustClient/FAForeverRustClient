@@ -60,6 +60,10 @@ impl ProcessPort for RecordingProcess {
         None
     }
 
+    fn replay_install_dir(&self) -> Option<PathBuf> {
+        None
+    }
+
     fn installs_present(&self) -> InstallPresence {
         InstallPresence::default()
     }

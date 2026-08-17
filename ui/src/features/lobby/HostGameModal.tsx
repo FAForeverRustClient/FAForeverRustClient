@@ -208,13 +208,28 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
       }
     }
 
+    // 4. Ensure selectedMap is present (e.g. freshly generated Neroxis map)
+    if (selectedMap && !mapByFolder.has(selectedMap.toLowerCase())) {
+      mapByFolder.set(selectedMap.toLowerCase(), {
+        displayName: selectedMap,
+        folderName: selectedMap,
+        maxPlayers: 16,
+        width: 1024,
+        height: 1024,
+        version: "1.0",
+        description: "Generated Neroxis map.",
+      });
+    }
+
     return Array.from(mapByFolder.values())
-      .filter((map) => matches(map.displayName))
+      .filter((map) => matches(map.displayName) || matches(map.folderName))
       .filter((map) => map.maxPlayers === 0 || map.maxPlayers <= maxPlayers)
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
-  }, [coopMissions, mapSearch, maps.installed, maps.vault, maxPlayers]);
+  }, [coopMissions, mapSearch, maps.installed, maps.vault, maxPlayers, selectedMap]);
 
-  const chosen = availableMaps.find((map) => map.folderName === selectedMap) ?? availableMaps[0];
+  const chosen = availableMaps.find((map) => map.folderName.toLowerCase() === selectedMap?.toLowerCase())
+    ?? availableMaps.find((map) => map.folderName === selectedMap)
+    ?? availableMaps[0];
 
   const displayedFeaturedMods: FeaturedModOption[] = useMemo(() => {
     if (forcedFeaturedMod && !FEATURED_MODS.some((m) => m.id === forcedFeaturedMod)) {
@@ -661,11 +676,11 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
             {chosen && (
               <div className="host-map-info-section">
                 <div className="host-map-info-row">
-                  <div className="host-map-info-item" title="Player capacity">
+                  <div className="host-map-info-item" title={t("lobby.host.mapPlayerCapacity")}>
                     <Icon name="users" size={13} />
                     <span>{chosen.maxPlayers > 0 ? `${chosen.maxPlayers} players` : "Players: N/A"}</span>
                   </div>
-                  <div className="host-map-info-item" title="Map dimensions">
+                  <div className="host-map-info-item" title={t("lobby.host.mapDimensions")}>
                     <Icon name="maps" size={13} />
                     <span>
                       {chosen.width > 0
@@ -714,6 +729,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
           onGenerated={(generated) => {
             const [first] = generated;
             if (first) {
+              ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
               setSelectedMap(first);
               setMapSearch("");
             }

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 
-export const ROSTER_MIN_WIDTH = 190;
-export const ROSTER_MAX_WIDTH = 520;
+export const ROSTER_MIN_WIDTH = 200;
+export const ROSTER_MAX_WIDTH = 600;
 
 const KEYBOARD_STEP = 12;
 

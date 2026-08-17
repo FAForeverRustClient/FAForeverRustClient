@@ -48,6 +48,74 @@ pub(crate) fn meta_page_i32(meta: &Value, key: &str) -> Option<i32> {
         .and_then(|value| i32::try_from(value).ok())
 }
 
+/// How many catalogue pages to have in flight at once.
+///
+/// The vault crawls are the only place this client asks for tens of pages in a
+/// row. Six is enough to hide almost all of the per-request latency without
+/// turning one client's startup into a burst the API would notice.
+const PAGE_FETCH_CONCURRENCY: usize = 6;
+
+/// Fetch every page of a paginated collection.
+///
+/// The page count comes from the document's own `meta.page.totalPages`, so the
+/// pages after the first are fetched together rather than one round trip at a
+/// time. The catalogues this serves run to tens of pages, and walking them in
+/// sequence made the wait the sum of every request instead of the slowest few.
+///
+/// Order is preserved (`buffered`, not `buffer_unordered`), because the caller's
+/// `sort` is applied by the server across the whole collection and shuffling the
+/// pages would quietly scramble it.
+///
+/// `max_pages` bounds the worst case if the collection ever grows huge, and a
+/// server that reports no page count falls back to walking until a short page
+/// arrives, which is what this did before.
+pub(crate) async fn fetch_all_pages(
+    http: &reqwest::Client,
+    token: &str,
+    max_pages: u32,
+    page_size: usize,
+    build_url: impl Fn(u32) -> Result<url::Url, String>,
+) -> Result<Vec<JsonApiDoc>, String> {
+    let first = fetch_document(http, build_url(1)?, token).await?;
+    let short_first_page = first.data.len() < page_size;
+    let reported = meta_page_i32(&first.meta, "totalPages").filter(|pages| *pages > 0);
+    let mut docs = vec![first];
+
+    let last = match reported {
+        Some(pages) => u32::try_from(pages).unwrap_or(1).min(max_pages),
+        // No page count: walk one at a time until a page comes back short.
+        None => {
+            if short_first_page {
+                return Ok(docs);
+            }
+            for page in 2..=max_pages {
+                let doc = fetch_document(http, build_url(page)?, token).await?;
+                let short = doc.data.len() < page_size;
+                docs.push(doc);
+                if short {
+                    break;
+                }
+            }
+            return Ok(docs);
+        }
+    };
+
+    if last > 1 {
+        let rest: Vec<Result<JsonApiDoc, String>> = futures_util::stream::iter(2..=last)
+            .map(|page| {
+                let url = build_url(page);
+                async move { fetch_document(http, url?, token).await }
+            })
+            .buffered(PAGE_FETCH_CONCURRENCY)
+            .collect()
+            .await;
+        for doc in rest {
+            docs.push(doc?);
+        }
+    }
+    Ok(docs)
+}
+
 pub(crate) async fn fetch_document(
     http: &reqwest::Client,
     url: url::Url,
@@ -354,8 +422,181 @@ pub(crate) fn value_bool(attributes: &Value, name: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// A floating-point attribute, from a JSON number or numeric string.
+/// `None` when absent, null, or unparseable.
+pub(crate) fn value_f64(attributes: &Value, name: &str) -> Option<f64> {
+    let value = attributes.get(name)?;
+    value
+        .as_f64()
+        .or_else(|| value.as_i64().map(|n| n as f64))
+        .or_else(|| value.as_str().and_then(|text| text.trim().parse().ok()))
+}
+
+/// Look up a relationship resource in index by `(kind, id)`, falling back to
+/// matching by `id` alone in `doc.included` if the relationship type differs.
+pub(crate) fn find_rel_resource<'a>(
+    doc: &'a JsonApiDoc,
+    index: &ResourceIndex<'a>,
+    rel: Option<(String, String)>,
+) -> Option<&'a JsonApiResource> {
+    let (kind, id) = rel?;
+    if let Some(res) = index.get(&(kind, id.clone())) {
+        return Some(*res);
+    }
+    doc.included.iter().find(|r| r.id == id)
+}
+
 pub(crate) fn rel_many(resource: &JsonApiResource, name: &str) -> Vec<(String, String)> {
     rel_targets(&resource.relationships, name)
+}
+
+#[cfg(test)]
+mod paging_tests {
+    use std::sync::{Arc, Mutex};
+
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    use tokio::net::TcpListener;
+
+    use super::*;
+
+    /// A minimal JSON:API server: one resource list per page, optionally
+    /// reporting `meta.page.totalPages`. Returns its base URL and the pages it
+    /// was asked for.
+    async fn serve(
+        page_size: usize,
+        pages: usize,
+        report_total: bool,
+    ) -> (String, Arc<Mutex<Vec<u32>>>) {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let base = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
+        let requested = Arc::new(Mutex::new(Vec::new()));
+        let seen = requested.clone();
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut stream, _)) = listener.accept().await else {
+                    return;
+                };
+                let seen = seen.clone();
+                tokio::spawn(async move {
+                    let mut buf = vec![0u8; 8192];
+                    let read = stream.read(&mut buf).await.unwrap_or(0);
+                    let request = String::from_utf8_lossy(&buf[..read]).to_string();
+                    let target = request
+                        .lines()
+                        .next()
+                        .and_then(|line| line.split(' ').nth(1))
+                        .unwrap_or("")
+                        .to_string();
+                    let page: u32 = target
+                        .split(['?', '&'])
+                        .find_map(|pair| pair.strip_prefix("page%5Bnumber%5D="))
+                        .and_then(|value| value.parse().ok())
+                        .unwrap_or(1);
+                    seen.lock().unwrap().push(page);
+
+                    let count = if page as usize == pages {
+                        page_size - 1 // a short final page
+                    } else if page as usize > pages {
+                        0
+                    } else {
+                        page_size
+                    };
+                    let data: Vec<String> = (0..count)
+                        .map(|index| format!(r#"{{"type":"map","id":"{page}-{index}"}}"#))
+                        .collect();
+                    let meta = if report_total {
+                        format!(r#","meta":{{"page":{{"totalPages":{pages}}}}}"#)
+                    } else {
+                        String::new()
+                    };
+                    let body = format!(r#"{{"data":[{}]{meta}}}"#, data.join(","));
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                        body.len()
+                    );
+                    let _ = stream.write_all(response.as_bytes()).await;
+                    let _ = stream.shutdown().await;
+                });
+            }
+        });
+
+        (base, requested)
+    }
+
+    fn url_builder(base: String) -> impl Fn(u32) -> Result<url::Url, String> {
+        move |page| {
+            let mut url =
+                url::Url::parse(&format!("{base}/data/map")).map_err(|e| e.to_string())?;
+            url.query_pairs_mut()
+                .append_pair("page[size]", "10")
+                .append_pair("page[number]", &page.to_string());
+            Ok(url)
+        }
+    }
+
+    /// The pages after the first go out together, and the caller still sees
+    /// them in order: the server sorts across the whole collection, so a
+    /// shuffled result would silently scramble "newest first".
+    #[tokio::test]
+    async fn reported_page_counts_are_fetched_together_and_stay_in_order() {
+        let (base, requested) = serve(10, 4, true).await;
+        let docs = fetch_all_pages(&reqwest::Client::new(), "token", 50, 10, url_builder(base))
+            .await
+            .unwrap();
+
+        assert_eq!(docs.len(), 4);
+        let first_ids: Vec<&str> = docs
+            .iter()
+            .map(|doc| doc.data.first().unwrap().id.as_str())
+            .collect();
+        assert_eq!(first_ids, ["1-0", "2-0", "3-0", "4-0"]);
+
+        let mut pages = requested.lock().unwrap().clone();
+        pages.sort_unstable();
+        assert_eq!(
+            pages,
+            [1, 2, 3, 4],
+            "no page fetched twice, none probed past the end"
+        );
+    }
+
+    /// Without a page count there is nothing to plan against, so it walks until
+    /// a short page arrives, exactly as this did before.
+    #[tokio::test]
+    async fn a_server_without_a_page_count_is_walked_one_page_at_a_time() {
+        let (base, requested) = serve(10, 3, false).await;
+        let docs = fetch_all_pages(&reqwest::Client::new(), "token", 50, 10, url_builder(base))
+            .await
+            .unwrap();
+
+        assert_eq!(docs.len(), 3);
+        assert_eq!(*requested.lock().unwrap(), [1, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn a_single_short_page_is_not_followed_by_another_request() {
+        let (base, requested) = serve(10, 1, false).await;
+        let docs = fetch_all_pages(&reqwest::Client::new(), "token", 50, 10, url_builder(base))
+            .await
+            .unwrap();
+
+        assert_eq!(docs.len(), 1);
+        assert_eq!(*requested.lock().unwrap(), [1]);
+    }
+
+    /// The cap is what stops a catalogue that outgrows it from being crawled
+    /// forever; it truncates rather than failing.
+    #[tokio::test]
+    async fn the_page_cap_bounds_the_crawl() {
+        let (base, requested) = serve(10, 40, true).await;
+        let docs = fetch_all_pages(&reqwest::Client::new(), "token", 3, 10, url_builder(base))
+            .await
+            .unwrap();
+
+        assert_eq!(docs.len(), 3);
+        assert_eq!(requested.lock().unwrap().len(), 3);
+    }
 }
 
 #[cfg(test)]

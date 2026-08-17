@@ -136,7 +136,7 @@ function PlayerLookupSearch({
           <button
             type="button"
             className="player-card-lookup-clear"
-            aria-label="Clear search"
+            aria-label={t("playerCard.clearSearch")}
             onClick={() => {
               setQuery("");
               setIsOpen(false);

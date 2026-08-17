@@ -47,7 +47,7 @@ export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousOverflow || "hidden";
       previousFocus?.focus();
     };
   }, []);

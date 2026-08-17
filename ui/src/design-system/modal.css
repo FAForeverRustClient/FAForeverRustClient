@@ -38,3 +38,44 @@
 .modal-close:hover {
   color: var(--color-text);
 }
+
+/* Compact confirmation / alert dialogs */
+.modal-panel.confirm-modal {
+  width: min(420px, calc(100vw - 32px));
+  max-width: 420px;
+  padding: var(--space-4);
+}
+
+.confirm-dialog-content h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.confirm-dialog-content p {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-danger {
+  color: #fff;
+  background: var(--color-error);
+  border: 1px solid var(--color-error);
+  font-weight: 550;
+}
+
+.btn-danger:hover:not(:disabled),
+.btn-danger:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error) 85%, black);
+  border-color: color-mix(in srgb, var(--color-error) 85%, black);
+}

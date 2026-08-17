@@ -35,8 +35,8 @@ use serde_json::Value;
 
 use crate::infra::env_or;
 use crate::infra::jsonapi::{
-    fetch_document, rel_target, rel_targets, resource_index, value_bool, value_i32, value_string,
-    JsonApiDoc,
+    fetch_all_pages, fetch_document, find_rel_resource, rel_target, rel_targets, resource_index,
+    value_bool, value_f64, value_i32, value_string, JsonApiDoc, JsonApiResource,
 };
 use crate::infra::vault_install::{
     bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
@@ -47,7 +47,13 @@ use crate::ports::MapsPort;
 const VAULT_PAGE_SIZE: usize = 100;
 /// Upper bound on pages fetched: bounds worst-case work if the vault ever
 /// grows huge, without silently truncating the list under normal size.
-const MAX_VAULT_PAGES: u32 = 50;
+///
+/// 50 was not enough. The live vault passed 5000 maps, which is exactly what
+/// 50 pages of 100 holds, so the newest maps had quietly stopped appearing:
+/// the cap was doing the silent truncation it exists to avoid. Pages are
+/// fetched concurrently now (see `jsonapi::fetch_all_pages`), so headroom costs
+/// far less than it did when this was a sequential crawl.
+const MAX_VAULT_PAGES: u32 = 200;
 
 #[derive(Debug, Clone)]
 pub struct MapsConfig {
@@ -95,31 +101,38 @@ impl MapsPort for MapsClient {
             .get()
             .ok_or_else(|| "not logged in".to_string())?;
 
-        // The Python client's `MapVault` paginates lazily (one page per
-        // "next page" click, no fixed cap). We don't have a paging UI yet, so
-        // fetch every page up front instead of silently truncating to the
-        // first one: a map search is useless if most of the vault is
-        // missing. `MAX_VAULT_PAGES` just bounds worst-case work if the vault
-        // ever grows huge; a single page is `VAULT_PAGE_SIZE` maps.
+        // The whole catalogue, because `maps.vault` is not only the Maps tab's
+        // list: nine features look maps up in it by folder name to resolve the
+        // art, size and player count a game or replay shows (see
+        // `shared/mapPresentation.ts`). The reference clients page this vault
+        // and have no such index; moving to that shape means giving those
+        // lookups their own source first.
+        //
+        // `MAX_VAULT_PAGES` bounds the worst case; a page is `VAULT_PAGE_SIZE`
+        // maps.
+        let api_base = self.config.api_base.clone();
+        let docs = fetch_all_pages(
+            &self.http,
+            &token,
+            MAX_VAULT_PAGES,
+            VAULT_PAGE_SIZE,
+            |page| {
+                let mut url = url::Url::parse(&format!("{api_base}/data/map"))
+                    .map_err(|e| format!("invalid API base: {e}"))?;
+                url.query_pairs_mut()
+                    .append_pair("filter", "latestVersion.hidden=='false'")
+                    .append_pair("sort", "-createTime")
+                    .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
+                    .append_pair("page[number]", &page.to_string())
+                    .append_pair("include", "latestVersion,author,reviewsSummary");
+                Ok(url)
+            },
+        )
+        .await?;
+
         let mut all_maps = Vec::new();
-        for page in 1..=MAX_VAULT_PAGES {
-            let mut url = url::Url::parse(&format!("{}/data/map", self.config.api_base))
-                .map_err(|e| format!("invalid API base: {e}"))?;
-            url.query_pairs_mut()
-                .append_pair("filter", "latestVersion.hidden=='false'")
-                .append_pair("sort", "-createTime")
-                .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
-                .append_pair("page[number]", &page.to_string())
-                .append_pair("include", "latestVersion,author,reviewsSummary");
-
-            let doc = fetch_document(&self.http, url, &token).await?;
-            let page_len = doc.data.len();
-            all_maps.extend(parse_vault_maps(&doc));
-
-            // Fewer results than requested means this was the last page.
-            if page_len < VAULT_PAGE_SIZE {
-                break;
-            }
+        for doc in &docs {
+            all_maps.extend(parse_vault_maps(doc));
         }
         Ok(all_maps)
     }
@@ -547,6 +560,29 @@ fn parse_matchmaker_pools(doc: &JsonApiDoc) -> Vec<MatchmakerMapPool> {
     pools
 }
 
+fn parse_reviews_summary(summary: &JsonApiResource) -> (i32, i32) {
+    let reviews = value_i32(&summary.attributes, "reviews")
+        .or_else(|| value_i32(&summary.attributes, "numReviews"))
+        .or_else(|| value_i32(&summary.attributes, "totalReviews"))
+        .or_else(|| value_i32(&summary.attributes, "count"))
+        .unwrap_or(0);
+
+    let avg_score = value_f64(&summary.attributes, "averageScore")
+        .or_else(|| {
+            let score = value_f64(&summary.attributes, "score")?;
+            if reviews > 0 {
+                Some(score / f64::from(reviews))
+            } else {
+                Some(score)
+            }
+        })
+        .or_else(|| value_f64(&summary.attributes, "rating"))
+        .unwrap_or(0.0);
+
+    let rating_tenths = (avg_score * 10.0).round() as i32;
+    (rating_tenths, reviews)
+}
+
 fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
     let index = resource_index(&doc.included);
     doc.data
@@ -556,20 +592,40 @@ fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
             let version = index.get(&("mapVersion".to_string(), version_id))?;
 
             let author = rel_target(&map_res.relationships, "author")
-                .and_then(|k| index.get(&k))
+                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)))
                 .and_then(|a| a.attributes.get("login"))
                 .and_then(Value::as_str)
                 .map(str::to_string);
             let reviews_summary = rel_target(&map_res.relationships, "reviewsSummary")
-                .and_then(|key| index.get(&key));
-            let rating_tenths = reviews_summary
-                .and_then(|summary| summary.attributes.get("averageScore"))
-                .and_then(Value::as_f64)
-                .map(|rating| (rating * 10.0).round() as i32)
-                .unwrap_or(0);
-            let reviews = reviews_summary
-                .and_then(|summary| value_i32(&summary.attributes, "reviews"))
-                .unwrap_or(0);
+                .or_else(|| rel_target(&map_res.relationships, "mapReviewsSummary"))
+                .or_else(|| rel_target(&version.relationships, "reviewsSummary"))
+                .or_else(|| rel_target(&version.relationships, "mapVersionReviewsSummary"))
+                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)));
+
+            let (rating_tenths, reviews) = if let Some(summary) = reviews_summary {
+                parse_reviews_summary(summary)
+            } else if let Some(summary_attr) = map_res
+                .attributes
+                .get("reviewsSummary")
+                .or_else(|| version.attributes.get("reviewsSummary"))
+            {
+                let r = value_i32(summary_attr, "reviews")
+                    .or_else(|| value_i32(summary_attr, "numReviews"))
+                    .unwrap_or(0);
+                let score = value_f64(summary_attr, "averageScore")
+                    .or_else(|| {
+                        let s = value_f64(summary_attr, "score")?;
+                        if r > 0 {
+                            Some(s / f64::from(r))
+                        } else {
+                            Some(s)
+                        }
+                    })
+                    .unwrap_or(0.0);
+                ((score * 10.0).round() as i32, r)
+            } else {
+                (0, 0)
+            };
 
             Some(VaultMap {
                 map_id: map_res.id.parse().unwrap_or_default(),

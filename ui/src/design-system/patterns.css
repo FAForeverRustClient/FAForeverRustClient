@@ -170,6 +170,44 @@
   outline-offset: 2px;
 }
 
+/* The "nothing here" state; see EmptyState.tsx for why this is one rule rather
+ * than one per feature. */
+:where(.empty-state) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 220px;
+  padding: var(--space-4);
+  color: var(--color-subtle);
+  text-align: center;
+}
+
+:where(.empty-state) h3 {
+  margin: 7px 0 0;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+:where(.empty-state) p {
+  max-width: 46ch;
+  margin: 0;
+  font-size: 12px;
+}
+
+:where(.empty-state) > button {
+  margin-top: var(--space-2);
+}
+
+/* Standing in for a results grid rather than filling a pane: a placeholder's
+ * dashed outline, so it does not read as a panel that failed to load. */
+:where(.empty-state.is-bordered) {
+  min-height: 260px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
 /* An error surface: reserved for genuine failure, per the design language's
  * rule that status colours mean status. */
 :where(.surface-error) {

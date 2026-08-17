@@ -81,10 +81,10 @@ describe("translateIn", () => {
   it("never group-formats a substituted number, which would corrupt identifiers", () => {
     // Regression guard: replay uids and match ids go through the same path as
     // quantities, and `27,456,965` is both wrong and impossible to search for.
-    expect(translateIn("en", "status.replay.downloading", { uid: 27456965 }))
-      .toBe("Downloading 27456965");
-    expect(translateIn("de", "status.replay.downloading", { uid: 27456965 }))
-      .toBe("Lädt 27456965");
+    expect(translateIn("en", "status.replay.subject", { uid: 27456965 }))
+      .toBe("Replay 27456965");
+    expect(translateIn("de", "status.replay.subject", { uid: 27456965 }))
+      .toBe("Replay 27456965");
   });
 });
 

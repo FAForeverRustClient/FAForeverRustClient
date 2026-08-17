@@ -1,17 +1,33 @@
-import type { ReplayEvent, ReplayState } from "../../ipc/bindings";
+import type { ReplayDownloadStatus, ReplayEvent, ReplayState } from "../../ipc/bindings";
+
+/** Mirrors the same guard in `faf_domain::state::replays::reduce`. */
+function clearTransientDownload(status: ReplayDownloadStatus): ReplayDownloadStatus {
+  return status.type === "downloading" ? { type: "idle" } : status;
+}
 
 export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplayState {
   switch (event.type) {
     case "connecting":
       return { ...state, status: { type: "connecting" }, lastWarning: null };
+    // Both of these clear a *transient* download. Watching a vault replay
+    // downloads it into the cache as part of playback, so its completion has no
+    // `vaultDownloaded` event to end the status bar's task; leaving it running
+    // is what pinned "Downloading <uid>" to the bottom of the client forever.
+    // An explicit save-to-library download still finishes through
+    // `vaultDownloaded`, whose terminal state must survive.
     case "playing":
       return {
         ...state,
         status: { type: "playing", payload: { uid: event.payload.uid } },
         lastWarning: event.payload.warning,
+        downloadStatus: clearTransientDownload(state.downloadStatus),
       };
     case "failed":
-      return { ...state, status: { type: "failed", payload: { reason: event.payload.reason } } };
+      return {
+        ...state,
+        status: { type: "failed", payload: { reason: event.payload.reason } },
+        downloadStatus: clearTransientDownload(state.downloadStatus),
+      };
     case "closed":
       return { ...state, status: { type: "idle" } };
     case "liveTrackingScheduled":

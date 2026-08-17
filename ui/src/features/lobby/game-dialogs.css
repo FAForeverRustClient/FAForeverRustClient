@@ -378,7 +378,7 @@
 .host-mod-tab.active {
   color: var(--color-text);
   background: var(--color-surface-raised);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .host-column-search {
@@ -424,22 +424,28 @@
 }
 
 .mod-badge {
-  padding: 1px 5px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 650;
+  text-transform: uppercase;
   letter-spacing: 0.04em;
+  line-height: 1.2;
+  border: 1px solid var(--color-border);
 }
 
 .mod-badge-ui {
   color: var(--color-muted);
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  border-color: var(--color-border);
 }
 
 .mod-badge-sim {
-  color: var(--color-accent-contrast);
-  background: var(--color-accent);
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
 
 /* Column 3: Maps */

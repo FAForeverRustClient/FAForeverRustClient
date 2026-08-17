@@ -9,10 +9,55 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
 use faf_app::ports::{
-    DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, SettingsPort,
+    DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayPort,
+    SettingsPort, VaultSearchResult,
 };
 use faf_app::{App, Ports};
-use faf_domain::state::{SettingsCommand, SettingsState};
+use faf_domain::state::{
+    LiveReplayTarget, LocalReplay, ReplayQuery, SettingsCommand, SettingsState,
+};
+
+/// Records only what this file asserts on: which install the replay preparation
+/// steps were pointed at. Everything else is unreachable here.
+struct RecordingReplay {
+    install_dirs: Arc<Mutex<Vec<Option<PathBuf>>>>,
+}
+
+#[async_trait]
+impl ReplayPort for RecordingReplay {
+    async fn watch_live(
+        &self,
+        _target: LiveReplayTarget,
+        _player: String,
+    ) -> Result<Option<String>, String> {
+        unreachable!()
+    }
+    async fn play_file(&self, _path: PathBuf) -> Result<Option<String>, String> {
+        unreachable!()
+    }
+    async fn search_vault(&self, _query: ReplayQuery) -> Result<VaultSearchResult, String> {
+        unreachable!()
+    }
+    async fn list_featured_mods(&self) -> Result<Vec<String>, String> {
+        unreachable!()
+    }
+    async fn watch_vault(&self, _uid: i32) -> Result<Option<String>, String> {
+        unreachable!()
+    }
+    async fn download_vault(&self, _uid: i32) -> Result<LocalReplay, String> {
+        unreachable!()
+    }
+    async fn list_local(&self) -> Result<Vec<LocalReplay>, String> {
+        Ok(Vec::new())
+    }
+    async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
+        unreachable!()
+    }
+
+    fn set_install_dir(&self, dir: Option<PathBuf>) {
+        self.install_dirs.lock().unwrap().push(dir);
+    }
+}
 
 struct StoredSettings(SettingsState);
 
@@ -80,6 +125,13 @@ impl ProcessPort for RecordingProcess {
         None
     }
 
+    /// Same derivation as the real process port: two directories up from the
+    /// executable (…/replaydata/bin/FA.exe → …/replaydata).
+    fn replay_install_dir(&self) -> Option<PathBuf> {
+        let (_, replay) = self.paths.lock().unwrap().last()?.clone();
+        PathBuf::from(replay).parent()?.parent().map(PathBuf::from)
+    }
+
     fn installs_present(&self) -> InstallPresence {
         InstallPresence::default()
     }
@@ -128,6 +180,44 @@ async fn loading_settings_reconfigures_process_paths_before_settling() {
     assert_eq!(
         app.snapshot().settings.replay_game_path,
         "configured-replay.exe"
+    );
+}
+
+/// The replay preparation steps (engine version match, map staging) run against
+/// whatever directory the replay port was last told about. That used to be
+/// derived from `FAF_REPLAY_GAME_PATH` once at startup, so choosing the install
+/// in Settings, the only way the UI offers, left it unset: every preparation
+/// step was skipped and FA opened a replay it could not load, landing the user
+/// on the main menu with no error reported anywhere.
+#[tokio::test]
+async fn loading_settings_points_replay_preparation_at_the_configured_install() {
+    let install_dirs = Arc::new(Mutex::new(Vec::new()));
+    let ports = Ports {
+        settings: Arc::new(StoredSettings(SettingsState {
+            game_path: "C:/faf/bin/ForgedAlliance.exe".into(),
+            replay_game_path: "C:/faf/replaydata/bin/ForgedAlliance.exe".into(),
+            ..SettingsState::default()
+        })),
+        process: Arc::new(RecordingProcess {
+            paths: Arc::new(Mutex::new(Vec::new())),
+            discovered: DiscoveredInstallPaths::default(),
+        }),
+        replay: Arc::new(RecordingReplay {
+            install_dirs: install_dirs.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+
+    assert_eq!(
+        *install_dirs.lock().unwrap(),
+        vec![Some(PathBuf::from("C:/faf/replaydata"))],
+        "the replay updater must target the install Settings configured"
     );
 }
 

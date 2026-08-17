@@ -345,10 +345,11 @@ impl NotificationPreferences {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatNameColors {
     /// Empty strings mean that the category uses the ordinary text colour.
+    pub self_color: String,
     pub friends: String,
     pub foes: String,
     pub moderators: String,
@@ -360,12 +361,55 @@ pub struct ChatNameColors {
 impl Default for ChatNameColors {
     fn default() -> Self {
         Self {
+            self_color: "#ffdd00".into(),
             friends: "#87cefa".into(),
             foes: "#dc143c".into(),
             moderators: "#32cd32".into(),
             admins: "#ba55d3".into(),
             players: BTreeMap::new(),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for ChatNameColors {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase", default)]
+        struct Wire {
+            self_color: String,
+            friends: String,
+            foes: String,
+            moderators: String,
+            admins: String,
+            players: BTreeMap<String, String>,
+        }
+
+        impl Default for Wire {
+            fn default() -> Self {
+                let defaults = ChatNameColors::default();
+                Self {
+                    self_color: defaults.self_color,
+                    friends: defaults.friends,
+                    foes: defaults.foes,
+                    moderators: defaults.moderators,
+                    admins: defaults.admins,
+                    players: defaults.players,
+                }
+            }
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Ok(Self {
+            self_color: wire.self_color,
+            friends: wire.friends,
+            foes: wire.foes,
+            moderators: wire.moderators,
+            admins: wire.admins,
+            players: wire.players,
+        })
     }
 }
 
@@ -416,7 +460,7 @@ impl Default for ChatPreferences {
             show_timestamps: true,
             use_24_hour_time: true,
             colored_names: false,
-            roster_width: 236,
+            roster_width: 280,
             name_colors: ChatNameColors::default(),
             hide_foe_messages: true,
             visible_message_limit: 500,
@@ -497,7 +541,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
 
 impl ChatPreferences {
     fn normalized(mut self) -> Self {
-        self.roster_width = self.roster_width.clamp(190, 520);
+        self.roster_width = self.roster_width.clamp(200, 600);
+        self.name_colors.self_color = normalize_color(self.name_colors.self_color);
         self.name_colors.friends = normalize_color(self.name_colors.friends);
         self.name_colors.foes = normalize_color(self.name_colors.foes);
         self.name_colors.moderators = normalize_color(self.name_colors.moderators);
@@ -1523,7 +1568,7 @@ mod tests {
         assert!(settings.chat.show_timestamps);
         assert!(settings.chat.hide_foe_messages);
         assert!(!settings.chat.colored_names);
-        assert_eq!(settings.chat.roster_width, 236);
+        assert_eq!(settings.chat.roster_width, 280);
         assert_eq!(settings.chat.visible_message_limit, 500);
         assert!(settings.notifications.match_found);
         assert!(settings.notifications.sound);
@@ -1853,7 +1898,7 @@ mod tests {
 
         assert!(settings.chat.show_joins_parts);
         assert!(settings.chat.colored_names);
-        assert_eq!(settings.chat.roster_width, 236);
+        assert_eq!(settings.chat.roster_width, 280);
         assert_eq!(settings.chat.name_colors, ChatNameColors::default());
         assert!(settings.chat.read_markers.is_empty());
     }
@@ -1878,7 +1923,7 @@ mod tests {
         }
         .normalized();
 
-        assert_eq!(settings.chat.roster_width, 520);
+        assert_eq!(settings.chat.roster_width, 600);
         assert_eq!(settings.chat.name_colors.friends, "#12abef");
         assert!(settings.chat.name_colors.foes.is_empty());
         assert_eq!(

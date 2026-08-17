@@ -3,7 +3,7 @@
    of stacking a second scrollbar on `.content`. */
 .chat {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, min(var(--chat-roster-width, 236px), 50%));
+  grid-template-columns: minmax(0, 1fr) minmax(200px, min(var(--chat-roster-width, 280px), 50%));
   gap: var(--space-3);
   height: 100%;
   min-height: 0;
@@ -593,10 +593,7 @@ html.is-resizing-chat-roster * {
   }
 }
 
-.chat-message.is-self .chat-nick {
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
+
 
 .chat-mention {
   background: var(--color-accent-glow);
@@ -988,7 +985,7 @@ html.is-resizing-chat-roster * {
   min-width: 0;
   padding: 5px 0;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text);
   background: transparent;
   border: none;
@@ -1006,7 +1003,7 @@ html.is-resizing-chat-roster * {
      repeated as a JavaScript constant: the two drifted apart the first time
      (26 px assumed against 24 px rows, 28 px for anyone in a game), which
      desynchronised the scrollbar from the names under it. */
-  --roster-row-height: 24px;
+  --roster-row-height: 26px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1056,7 +1053,7 @@ html.is-resizing-chat-roster * {
   border: 0;
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -1101,12 +1098,12 @@ html.is-resizing-chat-roster * {
 
 .chat-roster-user {
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px var(--space-1);
+  gap: 6px;
+  padding: 2px 6px;
   background: transparent;
   border-radius: var(--radius-sm);
 }
@@ -1134,8 +1131,11 @@ html.is-resizing-chat-roster * {
    `.chat-roster-user`'s vertical padding), or a player in a game makes their row
    taller than every other one and the whole list's positions drift. */
 .chat-roster-user .chat-game-badge {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs, 2px);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--color-border);
 }
 
 .chat-game-badge {
@@ -1148,7 +1148,7 @@ html.is-resizing-chat-roster * {
   padding: 0;
   background: transparent;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-xs, 2px);
   cursor: help;
 }
 
@@ -1159,6 +1159,13 @@ html.is-resizing-chat-roster * {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+img.chat-game-map {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .chat-game-map-placeholder {
@@ -1330,6 +1337,7 @@ html.is-resizing-chat-roster * {
 .chat-clan {
   color: var(--color-muted);
   font-weight: 500;
+  margin-right: 4px;
 }
 
 /* ── User context menu ────────────────────────────────────────────────── */

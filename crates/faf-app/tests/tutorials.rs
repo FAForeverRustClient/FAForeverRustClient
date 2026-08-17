@@ -48,6 +48,10 @@ impl ProcessPort for RecordingProcess {
     fn game_install_dir(&self) -> Option<PathBuf> {
         None
     }
+
+    fn replay_install_dir(&self) -> Option<PathBuf> {
+        None
+    }
     fn installs_present(&self) -> InstallPresence {
         InstallPresence::default()
     }

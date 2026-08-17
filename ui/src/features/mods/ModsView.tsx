@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { SectionTabs } from "../../design-system/SectionTabs";
 import { Icon } from "../../design-system/Icon";
+import { EmptyState } from "../../design-system/EmptyState";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   SearchField,
@@ -14,9 +15,9 @@ import {
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMod } from "../../ipc/bindings";
+import type { InstalledMod, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { includesNormalized, isWithinDateRange, isWithinNumberRange } from "../../shared/filterRanges";
+import { isWithinDateRange, isWithinNumberRange, sortByDateDesc } from "../../shared/filterRanges";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
 import {
@@ -27,6 +28,7 @@ import {
   UninstallDialog,
 } from "./ModVaultComponents";
 import { InstalledModsView } from "./InstalledModsView";
+import { ModUploadModal } from "./ModUploadModal";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
@@ -54,6 +56,20 @@ const installMod = (uid: string, downloadUrl: string) => ipc.send({ kind: "Mods"
 const uninstallMod = (folderName: string, uid: string) => ipc.send({ kind: "Mods", command: { type: "uninstallMod", payload: { folderName, uid } } });
 const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
 
+interface ModFilterState {
+  search: string;
+  creator: string;
+  sort: ModSort;
+  modType: ModTypeFilter;
+  ranked: RankedFilter;
+  installFilter: InstallFilter;
+  dateField: DateField;
+  dateAfter: string;
+  dateBefore: string;
+  minimumRating: number | null;
+  maximumRating: number | null;
+}
+
 function VaultView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.mods.vault);
@@ -64,12 +80,13 @@ function VaultView({ busy }: { busy: boolean }) {
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const preset = (browsing.modVaultPreset as ModPreset) || "recommended";
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<ModSort>(() => {
+  const initialSort: ModSort = (() => {
     if (preset === "newest") return "newest";
     if (preset === "all") return "name";
     return "rating";
-  });
+  })();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<ModSort>(initialSort);
   const [modType, setModType] = useState<ModTypeFilter>("all");
   const [ranked, setRanked] = useState<RankedFilter>("all");
   const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
@@ -83,6 +100,21 @@ function VaultView({ busy }: { busy: boolean }) {
   const [page, setPage] = useState(1);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
+
+  const [applied, setApplied] = useState<ModFilterState>({
+    search: "",
+    creator: "",
+    sort: initialSort,
+    modType: "all",
+    ranked: "all",
+    installFilter: "all",
+    dateField: "updated",
+    dateAfter: "",
+    dateBefore: "",
+    minimumRating: null,
+    maximumRating: null,
+  });
+
   const note = loadStatusNote(vaultStatus, t("mods.view.loadingVault"), t("mods.view.vaultFailed"));
   const installedByUid = useMemo(() => new Map(installed.map((mod) => [mod.uid, mod])), [installed]);
 
@@ -93,20 +125,43 @@ function VaultView({ busy }: { busy: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (preset === "newest") setSort("newest");
-    else if (preset === "all") setSort("name");
-    else if (preset === "recommended" || preset === "rating" || preset === "ui") setSort("rating");
+    if (preset === "newest") {
+      setSort("newest");
+      setApplied((prev) => ({ ...prev, sort: "newest" }));
+    } else if (preset === "all") {
+      setSort("name");
+      setApplied((prev) => ({ ...prev, sort: "name" }));
+    } else if (preset === "recommended" || preset === "rating" || preset === "ui") {
+      setSort("rating");
+      setApplied((prev) => ({ ...prev, sort: "rating" }));
+    }
   }, [preset]);
 
-  useEffect(() => setPage(1), [
-    search, preset, sort, modType, ranked, installFilter, creator, dateField,
-    dateAfter, dateBefore, minimumRating, maximumRating,
-  ]);
+  const applySearch = () => {
+    setApplied({
+      search,
+      creator,
+      sort,
+      modType,
+      ranked,
+      installFilter,
+      dateField,
+      dateAfter,
+      dateBefore,
+      minimumRating,
+      maximumRating,
+    });
+    setPage(1);
+  };
 
   const choosePreset = (next: ModPreset) => {
-    if (next === "recommended" || next === "rating" || next === "ui") setSort("rating");
-    if (next === "newest") setSort("newest");
-    if (next === "all") setSort("name");
+    let nextSort: ModSort = sort;
+    if (next === "recommended" || next === "rating" || next === "ui") nextSort = "rating";
+    if (next === "newest") nextSort = "newest";
+    if (next === "all") nextSort = "name";
+    setSort(nextSort);
+    setApplied((prev) => ({ ...prev, sort: nextSort }));
+    setPage(1);
     if (browsing.modVaultPreset !== next) {
       ipc.send({
         kind: "Settings",
@@ -115,36 +170,83 @@ function VaultView({ busy }: { busy: boolean }) {
     }
   };
 
+  const clearSearch = () => {
+    setSearch("");
+    setCreator("");
+    setModType("all");
+    setRanked("all");
+    setInstallFilter("all");
+    setDateField("updated");
+    setDateAfter("");
+    setDateBefore("");
+    setMinimumRating(null);
+    setMaximumRating(null);
+    setApplied({
+      search: "",
+      creator: "",
+      sort: "rating",
+      modType: "all",
+      ranked: "all",
+      installFilter: "all",
+      dateField: "updated",
+      dateAfter: "",
+      dateBefore: "",
+      minimumRating: null,
+      maximumRating: null,
+    });
+    setPage(1);
+    choosePreset("recommended");
+  };
+
   const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return vault
-      .filter((mod) => preset !== "recommended" || mod.recommended)
-      .filter((mod) => preset !== "ui" || mod.modType === "ui")
-      .filter((mod) => modType === "all" || mod.modType === modType)
-      .filter((mod) => ranked === "all" || mod.ranked === (ranked === "ranked"))
-      .filter((mod) => !creator.trim() || includesNormalized(mod.author, creator) || includesNormalized(mod.uploader, creator))
-      .filter((mod) => isWithinDateRange(dateField === "updated" ? mod.updatedAt : mod.createdAt, dateAfter, dateBefore))
-      .filter((mod) => isWithinNumberRange(mod.ratingTenths / 10, minimumRating, maximumRating))
-      .filter((mod) => {
+    const query = applied.search.trim().toLocaleLowerCase();
+    const creatorQuery = applied.creator.trim().toLocaleLowerCase();
+    const hasDateFilter = Boolean(applied.dateAfter || applied.dateBefore);
+
+    // Single pass; see the same change in `MapsView` for why the `.filter()`
+    // chain was worth unpicking.
+    const matches: VaultMod[] = [];
+    for (const mod of vault) {
+      if (preset === "recommended" && !mod.recommended) continue;
+      if (preset === "ui" && mod.modType !== "ui") continue;
+      if (applied.modType !== "all" && mod.modType !== applied.modType) continue;
+      if (applied.ranked !== "all" && mod.ranked !== (applied.ranked === "ranked")) continue;
+      if (creatorQuery
+        && !mod.author.toLocaleLowerCase().includes(creatorQuery)
+        && !mod.uploader.toLocaleLowerCase().includes(creatorQuery)) continue;
+      if (hasDateFilter
+        && !isWithinDateRange(applied.dateField === "updated" ? mod.updatedAt : mod.createdAt, applied.dateAfter, applied.dateBefore)) continue;
+      if (!isWithinNumberRange(mod.ratingTenths / 10, applied.minimumRating, applied.maximumRating)) continue;
+      if (applied.installFilter !== "all") {
         const installedMod = installedByUid.get(mod.uid);
-        if (installFilter === "all") return true;
-        if (installFilter === "installed") return Boolean(installedMod);
-        if (installFilter === "updates") return Boolean(installedMod && installedMod.version !== mod.version);
-        return !installedMod;
-      })
-      .filter((mod) => !query || [mod.displayName, mod.author, mod.uploader, mod.description, mod.uid, mod.filename].some((value) => value.toLocaleLowerCase().includes(query)))
-      .slice()
-      .sort((left, right) => {
-        switch (sort) {
-          case "rating": return right.ratingTenths - left.ratingTenths || right.reviews - left.reviews;
-          case "newest": return (Date.parse(right.createdAt) || 0) - (Date.parse(left.createdAt) || 0);
-          case "updated": return (Date.parse(right.updatedAt) || 0) - (Date.parse(left.updatedAt) || 0);
-          case "name": return left.displayName.localeCompare(right.displayName);
-        }
-      });
+        const matchesInstall = applied.installFilter === "installed"
+          ? Boolean(installedMod)
+          : applied.installFilter === "updates"
+            ? Boolean(installedMod && installedMod.version !== mod.version)
+            : !installedMod;
+        if (!matchesInstall) continue;
+      }
+      if (query
+        && !mod.displayName.toLocaleLowerCase().includes(query)
+        && !mod.author.toLocaleLowerCase().includes(query)
+        && !mod.uploader.toLocaleLowerCase().includes(query)
+        && !mod.description.toLocaleLowerCase().includes(query)
+        && !mod.uid.toLocaleLowerCase().includes(query)
+        && !mod.filename.toLocaleLowerCase().includes(query)) continue;
+      matches.push(mod);
+    }
+
+    if (applied.sort === "newest") return sortByDateDesc(matches, (mod) => mod.createdAt);
+    if (applied.sort === "updated") return sortByDateDesc(matches, (mod) => mod.updatedAt);
+    return matches.sort((left, right) => {
+      switch (applied.sort) {
+        case "rating": return right.ratingTenths - left.ratingTenths || right.reviews - left.reviews;
+        case "name": return left.displayName.localeCompare(right.displayName);
+        default: return 0;
+      }
+    });
   }, [
-    vault, preset, modType, ranked, creator, dateField, dateAfter, dateBefore,
-    minimumRating, maximumRating, installFilter, installedByUid, search, sort,
+    vault, preset, applied, installedByUid,
   ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -153,28 +255,15 @@ function VaultView({ busy }: { busy: boolean }) {
   const selected = pageMods.find((mod) => mod.uid === selectedUid) ?? pageMods[0] ?? null;
   const hiddenFilterCount = Number(installFilter !== "all")
     + Number(dateAfter !== "" || dateBefore !== "");
-  const resetFilters = () => {
-    setModType("all");
-    setRanked("all");
-    setInstallFilter("all");
-    setCreator("");
-    setDateField("updated");
-    setDateAfter("");
-    setDateBefore("");
-    setMinimumRating(null);
-    setMaximumRating(null);
-  };
-  const clearSearch = () => {
-    setSearch("");
-    choosePreset("recommended");
-    resetFilters();
-  };
 
   return (
     <>
       <SearchPanel
         className="mod-search-panel"
-        onSubmit={(event) => { event.preventDefault(); setPage(1); }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          applySearch();
+        }}
         secondary={(
           <>
             {MOD_PRESETS.map(([key, label]) => (
@@ -198,10 +287,28 @@ function VaultView({ busy }: { busy: boolean }) {
         ) : undefined}
       >
         <SearchField label={t("mods.view.mod")} className="search-panel-field-grow">
-          <input className="search-panel-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("mods.view.nameDescriptionUid")} />
+          <input
+            className="search-panel-control"
+            value={search}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSearch(value);
+              if (value.trim() && preset === "recommended") choosePreset("all");
+            }}
+            placeholder={t("mods.view.nameDescriptionUid")}
+          />
         </SearchField>
         <SearchField label={t("mods.view.creator")} className="search-panel-field-grow">
-          <input className="search-panel-control" value={creator} onChange={(event) => setCreator(event.target.value)} placeholder={t("mods.view.anyCreatorUploader")} />
+          <input
+            className="search-panel-control"
+            value={creator}
+            onChange={(event) => {
+              const value = event.target.value;
+              setCreator(value);
+              if (value.trim() && preset === "recommended") choosePreset("all");
+            }}
+            placeholder={t("mods.view.anyCreatorUploader")}
+          />
         </SearchField>
         <RangeSlider
           label={t("mods.view.reviewScore")}
@@ -228,15 +335,12 @@ function VaultView({ busy }: { busy: boolean }) {
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("mods.view.detectionUnavailable")}</p>}
       {vaultStatus.type === "ready" && filtered.length === 0 ? (
-        <div className="vault-empty">
-          <Icon name={vault.length === 0 ? "mods" : "search"} size={24} />
-          <h3>{t(vault.length === 0 ? "mods.view.emptyVault" : "mods.view.noMatch")}</h3>
-          <p>
-            {vault.length === 0
-              ? t("mods.view.emptyVaultHint")
-              : t("mods.view.noMatchHint")}
-          </p>
-        </div>
+        <EmptyState
+          bordered
+          icon={vault.length === 0 ? "mods" : "search"}
+          title={t(vault.length === 0 ? "mods.view.emptyVault" : "mods.view.noMatch")}
+          hint={t(vault.length === 0 ? "mods.view.emptyVaultHint" : "mods.view.noMatchHint")}
+        />
       ) : pageMods.length > 0 ? (
         <>
           <div className="vault-results-head">
@@ -317,6 +421,8 @@ const SUB_VIEWS: Record<
 export function ModsView() {
   const { t } = useTranslation();
   const [subView, setSubView] = useState<SubView>("vault");
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const installed = useAppStore((state) => state.state.mods.installed);
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const note = installNote(installStatus) ?? toggleNote(toggleStatus);
@@ -332,8 +438,19 @@ export function ModsView() {
           items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
           onChange={setSubView}
         />
+        <div className="vault-subnav-actions">
+          <Button variant="ghost" onClick={() => setUploadModalOpen(true)}>
+            <Icon name="upload" size={15} /> {t("uploads.title.mod")}
+          </Button>
+        </div>
       </div>
       <Component busy={busy} />
+      {uploadModalOpen && (
+        <ModUploadModal
+          installed={installed}
+          onClose={() => setUploadModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

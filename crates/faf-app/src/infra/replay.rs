@@ -212,6 +212,11 @@ pub struct ReplayClient {
     /// before the next request is made.
     download_http: reqwest::Client,
     process: Arc<dyn ProcessPort>,
+    /// The replay install every preparation step targets, behind a lock because
+    /// Settings can repoint it at runtime (`ReplayPort::set_install_dir`).
+    /// Seeded from the environment so a launch before the first settings sync
+    /// still works, then overwritten by the configured path.
+    install_dir: std::sync::Mutex<Option<PathBuf>>,
     /// Playback preparation writes shared cache and preference files. Keep one
     /// launch pipeline active per client so concurrent UI commands cannot race.
     playback_lock: Mutex<()>,
@@ -220,6 +225,7 @@ pub struct ReplayClient {
 impl ReplayClient {
     pub fn new(config: ReplayConfig, tokens: TokenStore, process: Arc<dyn ProcessPort>) -> Self {
         Self {
+            install_dir: std::sync::Mutex::new(config.replay_target_dir.clone()),
             config,
             tokens,
             http: super::http::shared_http_client(),
@@ -227,6 +233,11 @@ impl ReplayClient {
             process,
             playback_lock: Mutex::new(()),
         }
+    }
+
+    /// Where the engine update and map staging go for the next launch.
+    fn install_dir(&self) -> Option<PathBuf> {
+        self.install_dir.lock().unwrap().clone()
     }
 
     pub fn faf(tokens: TokenStore, process: Arc<dyn ProcessPort>) -> Self {
@@ -366,7 +377,7 @@ impl ReplayPort for ReplayClient {
         // `target.map` is the FAF technical map name (e.g. `hoey.v0002`),
         // the same shape `ensure_map_available` expects.
         let mut warning = None;
-        if let Some(target_dir) = self.config.replay_target_dir.as_deref() {
+        if let Some(target_dir) = self.install_dir().as_deref() {
             if let Err(e) = game_updater::ensure_map_available(
                 &self.http,
                 &self.config.content_base,
@@ -411,7 +422,17 @@ impl ReplayPort for ReplayClient {
         let mod_name = normalize_mod(&replay.mod_name);
         let mut warning = None;
 
-        if let Some(target_dir) = self.config.replay_target_dir.as_deref() {
+        let target = self.install_dir();
+        if target.is_none() {
+            // Every step below is skipped without it, and a replay launched
+            // against an unmatched engine build opens FA on the main menu with
+            // no error of its own. Say so rather than reporting success.
+            tracing::warn!(
+                "no replay install is configured, so the engine version and map \
+                 were not prepared; FA may refuse to load this replay"
+            );
+        }
+        if let Some(target_dir) = target.as_deref() {
             // Old replays embed the exact engine build they need; FA refuses
             // to load one that doesn't match what's installed ("Ack! Unable
             // to load game replay"). Update before every launch: cheap when
@@ -601,6 +622,16 @@ impl ReplayPort for ReplayClient {
 
     async fn list_local(&self) -> Result<Vec<LocalReplay>, String> {
         list_local_dir(&local_replays_dir()).await
+    }
+
+    fn set_install_dir(&self, dir: Option<PathBuf>) {
+        // An explicit `FAF_REPLAY_UPDATE_DIR` is a deliberate override and
+        // outranks the configured install, matching how it outranks
+        // `FAF_REPLAY_GAME_PATH` when the directory is first derived.
+        if std::env::var("FAF_REPLAY_UPDATE_DIR").is_ok_and(|value| !value.is_empty()) {
+            return;
+        }
+        *self.install_dir.lock().unwrap() = dir;
     }
 
     async fn delete_local(&self, path: PathBuf) -> Result<(), String> {
@@ -1800,6 +1831,8 @@ impl ReplayPort for FakeReplay {
     async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
         Err("local replay deletion is disabled".to_string())
     }
+
+    fn set_install_dir(&self, _dir: Option<PathBuf>) {}
 }
 
 #[cfg(test)]

@@ -61,6 +61,10 @@ impl ProcessPort for LaunchableProcess {
     fn game_install_dir(&self) -> Option<PathBuf> {
         self.install_dir.clone()
     }
+
+    fn replay_install_dir(&self) -> Option<PathBuf> {
+        None
+    }
     fn installs_present(&self) -> InstallPresence {
         InstallPresence::default()
     }

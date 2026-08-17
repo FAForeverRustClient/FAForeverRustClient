@@ -21,7 +21,7 @@ const DEFAULT_CHAT_PREFS: ChatPreferences = {
   showTimestamps: true,
   use24HourTime: true,
   coloredNames: false,
-  rosterWidth: 236,
+  rosterWidth: 280,
   hideFoeMessages: true,
   visibleMessageLimit: 500,
   autoJoinChannels: [],
@@ -30,6 +30,7 @@ const DEFAULT_CHAT_PREFS: ChatPreferences = {
   readMarkers: {},
   hiddenRosterCategories: [],
   nameColors: {
+    selfColor: "",
     friends: "",
     foes: "",
     moderators: "",
@@ -131,6 +132,19 @@ describe("nameColors", () => {
 
     const style = resolvePlayerStyle("Bob", social, prefs);
     expect(style).toEqual({ color: "#ff0000" });
+  });
+
+  it("resolves self color when specified", () => {
+    const prefs: ChatPreferences = {
+      ...DEFAULT_CHAT_PREFS,
+      nameColors: {
+        ...DEFAULT_CHAT_PREFS.nameColors,
+        selfColor: "#ffdd00",
+      },
+    };
+
+    const style = resolvePlayerStyle("Nory", EMPTY_SOCIAL, prefs, "Nory");
+    expect(style).toEqual({ color: "#ffdd00" });
   });
 
   it("falls back to random hue when coloredNames is enabled", () => {

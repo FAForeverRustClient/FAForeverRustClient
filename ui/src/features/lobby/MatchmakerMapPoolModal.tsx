@@ -109,8 +109,8 @@ export function MatchmakerMapPoolModal({ queueTitle, pools, status, vault, serve
       )}
 
       <div className="map-pool-grid">
-        {status.type === "loading" && pools.length === 0 ? <p className="play-empty">Loading the current map pools…</p>
-          : status.type === "failed" ? <p className="play-empty">Could not load map pools: {status.payload.reason}</p>
+        {status.type === "loading" && pools.length === 0 ? <p className="play-empty">{t("lobby.mapPool.loading")}</p>
+          : status.type === "failed" ? <p className="play-empty">{t("lobby.mapPool.failed", { reason: status.payload.reason })}</p>
             : !activePool || activePool.maps.length === 0 ? <p className="play-empty">{t("lobby.mapPool.empty")}</p>
               : activePool.maps.map((map) => {
                 const tokens = draftVetoes[`${activePool.id}:${map.assignmentId}`] ?? 0;

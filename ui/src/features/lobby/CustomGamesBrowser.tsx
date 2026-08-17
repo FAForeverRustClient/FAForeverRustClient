@@ -2,6 +2,7 @@ import { memo, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { EmptyState } from "../../design-system/EmptyState";
 import { Modal } from "../../design-system/Modal";
 import type { Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -577,11 +578,11 @@ export function CustomGamesBrowser({
       )}
       <div className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}>
         {games.length === 0 ? (
-          <div className="play-empty-state">
-            <Icon name="search" size={22} />
-            <h3>{t("lobby.browser.noMatch")}</h3>
-            <p>{t("lobby.browser.noMatchHint")}</p>
-          </div>
+          <EmptyState
+            icon="search"
+            title={t("lobby.browser.noMatch")}
+            hint={t("lobby.browser.noMatchHint")}
+          />
         ) : viewMode === "tiles" ? (
           games.map((game) => (
             <GameTile
