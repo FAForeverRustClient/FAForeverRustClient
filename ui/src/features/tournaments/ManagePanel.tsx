@@ -7,9 +7,10 @@
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import type { Tourney, TourneyPhase, VaultMap } from "../../ipc/bindings";
+import type { SeedOrder, Tourney, TourneyPhase, VaultMap } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { EntrantAdmin } from "./EntrantAdmin";
 import { MapPoolPanel, ManageLink } from "./MapPoolPanel";
 
 /** Twin of `TourneyPhase::is_legal_from`. */
@@ -45,6 +46,13 @@ interface ManagePanelProps {
   onArchive: () => void;
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
+  onAddPlayer: (name: string, rating: number | null) => void;
+  onRespondSignup: (playerId: string, accept: boolean) => void;
+  onRemovePlayer: (playerId: string) => void;
+  onInvitePlayer: (name: string) => void;
+  onUninvite: (fafId: number) => void;
+  onReseed: (order: SeedOrder) => void;
+  onSplitDivisions: (divisions: number) => void;
 }
 
 export function ManagePanel({
@@ -56,6 +64,7 @@ export function ManagePanel({
   onArchive,
   onAssignPool,
   onOpenUrl,
+  ...rest
 }: ManagePanelProps) {
   const { t } = useTranslation();
   // Reopening throws the teams away, so it is offered apart from the two steps
@@ -106,6 +115,21 @@ export function ManagePanel({
             <span className="muted">{t("tournaments.manage.finished")}</span>
           )}
         </div>
+      </section>
+
+      <section>
+        <h5>{t("tournaments.manage.entrants")}</h5>
+        <EntrantAdmin
+          event={event}
+          busy={busy}
+          onAdd={rest.onAddPlayer}
+          onRespondSignup={rest.onRespondSignup}
+          onRemove={rest.onRemovePlayer}
+          onInvite={rest.onInvitePlayer}
+          onUninvite={rest.onUninvite}
+          onReseed={rest.onReseed}
+          onSplit={rest.onSplitDivisions}
+        />
       </section>
 
       <section>

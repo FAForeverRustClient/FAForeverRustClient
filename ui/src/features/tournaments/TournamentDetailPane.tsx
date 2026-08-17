@@ -15,6 +15,7 @@ import type {
   ChatPost,
   ChatRoom,
   PlayerSummary,
+  SeedOrder,
   Tourney,
   TourneyLoadStatus,
   TourneyMatch,
@@ -28,12 +29,22 @@ import { ChatPanel } from "./ChatPanel";
 import { EntrantsPanel } from "./EntrantsPanel";
 import { selfOrganised, TeamsPanel } from "./TeamsPanel";
 import { ManagePanel } from "./ManagePanel";
+import { NewsPanel } from "./NewsPanel";
 import { formatDay, formatMoment, formatOf, ratingGateOf } from "./tourneyPresentation";
 
-type Section = "overview" | "rules" | "entrants" | "teams" | "bracket" | "chat" | "manage";
+type Section =
+  | "overview"
+  | "news"
+  | "rules"
+  | "entrants"
+  | "teams"
+  | "bracket"
+  | "chat"
+  | "manage";
 
 const SECTION_LABELS: Record<Section, MessageKey> = {
   overview: "tournaments.section.overview",
+  news: "tournaments.section.news",
   rules: "tournaments.section.rules",
   entrants: "tournaments.section.entrants",
   teams: "tournaments.section.teams",
@@ -77,6 +88,15 @@ interface TournamentDetailPaneProps {
   onLeaveTeam: () => void;
   onDisbandTeam: (teamId: string) => void;
   onRenameTeam: (teamId: string, name: string) => void;
+  onAddPlayer: (name: string, rating: number | null) => void;
+  onRespondSignup: (playerId: string, accept: boolean) => void;
+  onRemovePlayer: (playerId: string) => void;
+  onInvitePlayer: (name: string) => void;
+  onUninvite: (fafId: number) => void;
+  onReseed: (order: SeedOrder) => void;
+  onSplitDivisions: (divisions: number) => void;
+  onPostNews: (body: string, important: boolean) => void;
+  onDeleteNews: (newsId: string) => void;
 }
 
 export function TournamentDetailPane(props: TournamentDetailPaneProps) {
@@ -153,6 +173,12 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             (candidate) =>
               candidate !== "teams" || selfOrganised(event) || event.teams.length > 0,
           )
+          // News is a section only when there is news, or somebody who can
+          // write it. An empty tab that nobody can fill is a dead end.
+          .filter(
+            (candidate) =>
+              candidate !== "news" || event.news.length > 0 || event.viewer.organiser,
+          )
           .map((candidate) => (
             <button
               type="button"
@@ -163,6 +189,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             >
               {t(SECTION_LABELS[candidate])}
               {candidate === "entrants" && ` (${event.playerCount})`}
+              {candidate === "news" && event.news.length > 0 && ` (${event.news.length})`}
               {candidate === "chat" && unread > 0 && (
                 <span className="tournament-badge">{unread}</span>
               )}
@@ -173,6 +200,15 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       {props.detailLoading && <p className="muted">{t("tournaments.detailLoading")}</p>}
 
       {section === "overview" && <Overview event={event} />}
+
+      {section === "news" && (
+        <NewsPanel
+          event={event}
+          busy={busy}
+          onPost={props.onPostNews}
+          onDelete={props.onDeleteNews}
+        />
+      )}
 
       {section === "rules" && (
         <div className="tournament-rules">
@@ -249,6 +285,13 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onArchive={props.onArchive}
           onAssignPool={props.onAssignPool}
           onOpenUrl={props.onOpenUrl}
+          onAddPlayer={props.onAddPlayer}
+          onRespondSignup={props.onRespondSignup}
+          onRemovePlayer={props.onRemovePlayer}
+          onInvitePlayer={props.onInvitePlayer}
+          onUninvite={props.onUninvite}
+          onReseed={props.onReseed}
+          onSplitDivisions={props.onSplitDivisions}
         />
       )}
     </div>

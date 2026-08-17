@@ -12,9 +12,9 @@ use faf_app::infra::fake_ports;
 use faf_app::ports::{RequestError, TourneyPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, MatchStatus, PoolDraft, Tourney,
-    TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent, TourneyLoadStatus, TourneyPhase,
-    TourneyStatus,
+    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, MatchStatus, PoolDraft, SeedOrder,
+    Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent, TourneyLoadStatus,
+    TourneyPhase, TourneyStatus,
 };
 use faf_domain::AppEvent;
 
@@ -64,6 +64,33 @@ impl TourneyPort for RefusingTourney {
         self.refused()
     }
     async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn add_player(&self, _: &str, _: &str, _: Option<i32>) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn respond_signup(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn invite_player(&self, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn uninvite(&self, _: &str, _: i32) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn reseed(&self, _: &str, _: &SeedOrder) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn split_divisions(&self, _: &str, _: i32) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_division(&self, _: &str, _: &str, _: i32) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn post_news(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn delete_news(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
     async fn create_team(&self, _: &str, _: &str) -> Result<(), RequestError> {
@@ -649,6 +676,33 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             unreachable!()
         }
         async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn add_player(&self, _: &str, _: &str, _: Option<i32>) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn respond_signup(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn invite_player(&self, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn uninvite(&self, _: &str, _: i32) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn reseed(&self, _: &str, _: &SeedOrder) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn split_divisions(&self, _: &str, _: i32) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_division(&self, _: &str, _: &str, _: i32) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn post_news(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn delete_news(&self, _: &str, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn create_team(&self, _: &str, _: &str) -> Result<(), RequestError> {
@@ -1245,4 +1299,269 @@ async fn a_solo_event_never_offers_team_forming() {
     assert_eq!(event.team_size, 1);
     assert!(!event.teams_are_self_organised());
     assert!(!event.may_create_team());
+}
+
+#[tokio::test]
+async fn an_organiser_adds_an_entrant_by_faf_name() {
+    // There is no free-typed entrant: the server resolves the name against a
+    // real account, which is what keeps avatars and ratings possible at all.
+    let app = app();
+    open(&app, "e1a2b").await;
+    let before = app.snapshot().tourney.detail.unwrap().player_count;
+
+    app.dispatch(
+        TourneyCommand::AddPlayer {
+            tournament_id: "e1a2b".into(),
+            name: "  Alan  ".into(),
+            rating: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("open");
+    assert_eq!(event.player_count, before + 1);
+    assert!(event.players.iter().any(|player| player.name == "Alan"));
+    // A blank name is not a request at all.
+    app.dispatch(
+        TourneyCommand::AddPlayer {
+            tournament_id: "e1a2b".into(),
+            name: "   ".into(),
+            rating: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert_eq!(app.snapshot().tourney.detail.unwrap().player_count, before + 1);
+}
+
+#[tokio::test]
+async fn an_organiser_removes_an_entrant_through_the_same_route_as_a_withdrawal() {
+    // One endpoint, and the server decides which it is from who is asking.
+    let app = app();
+    open(&app, "e1a2b").await;
+    let victim = app
+        .snapshot()
+        .tourney
+        .detail
+        .unwrap()
+        .players
+        .first()
+        .map(|player| player.id.clone())
+        .expect("an entrant");
+
+    app.dispatch(
+        TourneyCommand::RemovePlayer {
+            tournament_id: "e1a2b".into(),
+            player_id: victim.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("open");
+    assert!(event.players.iter().all(|player| player.id != victim));
+}
+
+#[tokio::test]
+async fn inviting_and_uninviting_round_trips() {
+    let app = app();
+    open(&app, "e1a2b").await;
+
+    app.dispatch(
+        TourneyCommand::InvitePlayer {
+            tournament_id: "e1a2b".into(),
+            name: "Zep".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let invited = app.snapshot().tourney.detail.expect("open");
+    let invite = invited.invites.first().cloned().expect("an invitation");
+    assert_eq!(invite.name, "Zep");
+
+    app.dispatch(
+        TourneyCommand::Uninvite {
+            tournament_id: "e1a2b".into(),
+            faf_id: invite.faf_id,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert!(app.snapshot().tourney.detail.unwrap().invites.is_empty());
+}
+
+#[tokio::test]
+async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
+    let app = app();
+    open(&app, "e1a2b").await;
+    // Too early: there are no teams to seed.
+    assert!(!app.snapshot().tourney.detail.unwrap().may_reseed());
+
+    app.dispatch(
+        TourneyCommand::Advance {
+            tournament_id: "e1a2b".into(),
+            phase: TourneyPhase::FormTeams,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let drafted = app.snapshot().tourney.detail.expect("open");
+    assert!(drafted.may_reseed());
+    let order: Vec<String> = drafted.teams.iter().rev().map(|team| team.id.clone()).collect();
+
+    app.dispatch(
+        TourneyCommand::Reseed {
+            tournament_id: "e1a2b".into(),
+            order: SeedOrder::Explicit {
+                team_ids: order.clone(),
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let seeded = app.snapshot().tourney.detail.expect("open");
+    assert_eq!(seeded.team(&order[0]).unwrap().seed, 1);
+    assert_eq!(seeded.team(&order[1]).unwrap().seed, 2);
+
+    // An order that does not name every team exactly once is refused, the same
+    // way the server refuses it.
+    app.dispatch(
+        TourneyCommand::Reseed {
+            tournament_id: "e1a2b".into(),
+            order: SeedOrder::Explicit {
+                team_ids: vec![order[0].clone()],
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert!(app.snapshot().tourney.action_error.is_some());
+}
+
+#[tokio::test]
+async fn splitting_into_divisions_and_back_again() {
+    let app = app();
+    open(&app, "e1a2b").await;
+    app.dispatch(
+        TourneyCommand::Advance {
+            tournament_id: "e1a2b".into(),
+            phase: TourneyPhase::FormTeams,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    app.dispatch(
+        TourneyCommand::SplitDivisions {
+            tournament_id: "e1a2b".into(),
+            divisions: 2,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let split = app.snapshot().tourney.detail.expect("open");
+    assert_eq!(split.divisions, 2);
+    assert!(split.teams.iter().all(|team| team.division > 0));
+
+    // One division is the way back to a single field.
+    app.dispatch(
+        TourneyCommand::SplitDivisions {
+            tournament_id: "e1a2b".into(),
+            divisions: 1,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let whole = app.snapshot().tourney.detail.expect("open");
+    assert_eq!(whole.divisions, 0);
+    assert!(whole.teams.iter().all(|team| team.division == 0));
+}
+
+#[tokio::test]
+async fn news_is_posted_newest_first_and_can_be_taken_down() {
+    let app = app();
+    open(&app, "e1a2b").await;
+
+    for body in ["Signups close Friday.", "  Start moved to 19:00 UTC.  "] {
+        app.dispatch(
+            TourneyCommand::PostNews {
+                tournament_id: "e1a2b".into(),
+                body: body.into(),
+                important: body.contains("19:00"),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+        settle(&app).await;
+    }
+
+    let event = app.snapshot().tourney.detail.expect("open");
+    assert_eq!(event.news.len(), 2);
+    assert_eq!(event.news[0].body, "Start moved to 19:00 UTC.", "newest first");
+    assert!(event.news[0].important);
+
+    let id = event.news[0].id.clone();
+    app.dispatch(
+        TourneyCommand::DeleteNews {
+            tournament_id: "e1a2b".into(),
+            news_id: id.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let left = app.snapshot().tourney.detail.expect("open");
+    assert_eq!(left.news.len(), 1);
+    assert!(left.news.iter().all(|post| post.id != id));
+
+    // An empty post is not a request.
+    app.dispatch(
+        TourneyCommand::PostNews {
+            tournament_id: "e1a2b".into(),
+            body: "   ".into(),
+            important: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert_eq!(app.snapshot().tourney.detail.unwrap().news.len(), 1);
+}
+
+#[tokio::test]
+async fn a_pending_signup_waits_for_the_organiser() {
+    // Request mode: the entry exists but does not count until it is approved.
+    let app = app();
+    open(&app, "e1a2b").await;
+    let event = app.snapshot().tourney.detail.expect("open");
+    // Nothing is pending in the seed, so the list is the empty case and the
+    // organiser's panel has nothing to show.
+    assert!(event.pending_signups().is_empty());
 }

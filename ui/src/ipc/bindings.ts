@@ -1427,6 +1427,8 @@ export type InstalledMod = {
 	enabled: boolean,
 };
 
+export type InviteStatus = "pending" | "accepted" | "declined";
+
 /**
  *  Where a join attempt stands. Distinct from [`LobbyStatus`] (the connection):
  *  you can be `Connected` and `Idle`, or `Connected` and `Joining`.
@@ -2306,6 +2308,18 @@ export type NavEvent = { type: "tabSelected"; payload: {
 
 export type NavState = {
 	activeTab: Tab,
+};
+
+/**  One announcement from the organiser. */
+export type NewsPost = {
+	id: string,
+	body: string,
+	/**  Who wrote it. */
+	by: string,
+	/**  Unix seconds. */
+	at: number | null,
+	/**  Marked urgent by the organiser: a schedule change rather than a note. */
+	important: boolean,
 };
 
 export type NotificationAction = { type: "openChat"; payload: {
@@ -3216,6 +3230,21 @@ export type SeasonLeaderboard = {
 	tiers: LeaderboardTier[],
 };
 
+/**  How the organiser wants the bracket seeded. */
+export type SeedOrder =
+/**
+ *  Shuffle. The server does the shuffling, so nobody can claim the client
+ *  picked a favourable draw.
+ */
+{ type: "randomise" } |
+/**
+ *  An explicit order, best seed first. Must name every team exactly once,
+ *  which the server checks and so does [`Self::is_complete`].
+ */
+{ type: "explicit"; payload: {
+	team_ids: string[],
+} };
+
 /**  How the bracket is seeded once teams are formed. */
 export type Seeding = "rating" | "random" | "manual";
 
@@ -3503,6 +3532,13 @@ export type Tourney = {
 	/**  Which pool is played in which round, keyed by the server's round label. */
 	poolAssign: PoolAssignment[],
 	organisers: string[],
+	/**  The organiser's announcements, newest first. */
+	news: NewsPost[],
+	/**
+	 *  People the organiser invited. Empty for anyone who is not one: the
+	 *  server omits the field rather than trimming it.
+	 */
+	invites: TourneyInvite[],
 	championTeamId: string | null,
 	/**  What this account may do here, as the server sees it. */
 	viewer: TourneyViewer,
@@ -3519,7 +3555,11 @@ export type Tourney = {
  *  Each variant names the thing it is acting on, so a spinner can sit on the
  *  one match being reported instead of over the whole bracket.
  */
-export type TourneyAction = { type: "creatingTeam" } | { type: "answeringTeam"; payload: {
+export type TourneyAction = { type: "addingPlayer" } | { type: "answeringSignup"; payload: {
+	playerId: string,
+} } | { type: "removingPlayer"; payload: {
+	playerId: string,
+} } | { type: "inviting" } | { type: "reseeding" } | { type: "dividing" } | { type: "postingNews" } | { type: "creatingTeam" } | { type: "answeringTeam"; payload: {
 	teamId: string,
 } } | { type: "leavingTeam" } | { type: "invitingToTeam"; payload: {
 	playerId: string,
@@ -3656,6 +3696,64 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	teamId: string,
 	name: string,
+} } |
+/**
+ *  Add an entrant by FAF name, as the organiser.
+ *
+ *  The name is looked up against FAF server-side; there is no free-typed
+ *  entrant, which is what keeps an entry attached to a real account.
+ */
+{ type: "addPlayer"; payload: {
+	tournamentId: string,
+	name: string,
+	/**
+	 *  Only used by an unrated tournament, where the server has no rating
+	 *  to fetch and asks the organiser for one.
+	 */
+	rating: number | null,
+} } |
+/**  Approve or decline a signup that is waiting, in request mode. */
+{ type: "respondSignup"; payload: {
+	tournamentId: string,
+	playerId: string,
+	accept: boolean,
+} } |
+/**  Take an entrant out, as the organiser. */
+{ type: "removePlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+} } |
+/**  Ask somebody to enter, by FAF name. */
+{ type: "invitePlayer"; payload: {
+	tournamentId: string,
+	name: string,
+} } | { type: "uninvite"; payload: {
+	tournamentId: string,
+	fafId: number,
+} } |
+/**  Set the seeding, at random or in a given order. */
+{ type: "reseed"; payload: {
+	tournamentId: string,
+	order: SeedOrder,
+} } |
+/**
+ *  Split the field into divisions by combined rating, or back to one with
+ *  a count of 1.
+ */
+{ type: "splitDivisions"; payload: {
+	tournamentId: string,
+	divisions: number,
+} } | { type: "setDivision"; payload: {
+	tournamentId: string,
+	teamId: string,
+	division: number,
+} } | { type: "postNews"; payload: {
+	tournamentId: string,
+	body: string,
+	important: boolean,
+} } | { type: "deleteNews"; payload: {
+	tournamentId: string,
+	newsId: string,
 } } | { type: "loadArticles" } |
 /**  Ask whether this account may host, which gates the create button. */
 { type: "loadHosting" } |
@@ -3778,6 +3876,17 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	hosting: HostingStatus,
 } };
 
+/**
+ *  Somebody the organiser asked to enter.
+ *
+ *  Only organisers see these; the server leaves the field out otherwise.
+ */
+export type TourneyInvite = {
+	fafId: number,
+	name: string,
+	status: InviteStatus,
+};
+
 export type TourneyLoadStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
 	kind: RequestFailureKind,
@@ -3875,6 +3984,12 @@ export type TourneyPlayer = {
 	late: boolean,
 	/**  Waiting on an organiser to accept the signup. */
 	pending: boolean,
+	/**
+	 *  A note the organiser attached, shown beside the name. Renaming is not
+	 *  possible: identity comes from FAF, so this is how a substitute or a
+	 *  late arrival gets labelled.
+	 */
+	note: string,
 	/**  Unix seconds. */
 	signedAt: number | null,
 };

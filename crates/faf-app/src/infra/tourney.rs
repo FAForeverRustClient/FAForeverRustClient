@@ -21,8 +21,8 @@
 use async_trait::async_trait;
 use faf_domain::protocol::tourney;
 use faf_domain::state::{
-    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, PoolDraft, Tourney, TourneyDraft,
-    TourneyPhase,
+    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, PoolDraft, SeedOrder, Tourney,
+    TourneyDraft, TourneyPhase,
 };
 use serde_json::{json, Value};
 
@@ -362,6 +362,105 @@ impl TourneyPort for TourneyClient {
             json!({ "teamId": team_id, "name": name }),
         )
         .await
+    }
+
+
+    async fn add_player(
+        &self,
+        tournament_id: &str,
+        name: &str,
+        rating: Option<i32>,
+    ) -> Result<(), RequestError> {
+        let mut body = json!({ "name": name });
+        // Only an unrated tournament reads this. Sending it otherwise is
+        // harmless but says something the server would ignore.
+        if let Some(rating) = rating {
+            body["rating"] = json!(rating);
+        }
+        self.act(tournament_id, "org_add_player", body).await
+    }
+
+    async fn respond_signup(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        accept: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "respond_signup",
+            json!({ "playerId": player_id, "accept": accept }),
+        )
+        .await
+    }
+
+    async fn invite_player(&self, tournament_id: &str, name: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "invite_player", json!({ "name": name }))
+            .await
+    }
+
+    async fn uninvite(&self, tournament_id: &str, faf_id: i32) -> Result<(), RequestError> {
+        // The server compares this against a string, so it goes as one.
+        self.act(
+            tournament_id,
+            "uninvite_player",
+            json!({ "fafId": faf_id.to_string() }),
+        )
+        .await
+    }
+
+    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
+        let body = match order {
+            SeedOrder::Randomise => json!({ "randomize": true }),
+            SeedOrder::Explicit { team_ids } => json!({ "order": team_ids }),
+        };
+        self.act(tournament_id, "reseed", body).await
+    }
+
+    async fn split_divisions(
+        &self,
+        tournament_id: &str,
+        divisions: i32,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "split_divisions",
+            json!({ "divisions": divisions }),
+        )
+        .await
+    }
+
+    async fn set_division(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        division: i32,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "set_division",
+            json!({ "teamId": team_id, "division": division }),
+        )
+        .await
+    }
+
+    async fn post_news(
+        &self,
+        tournament_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "news_post",
+            json!({ "body": body, "important": important }),
+        )
+        .await
+    }
+
+    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "news_delete", json!({ "id": news_id }))
+            .await
     }
 
     async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError> {

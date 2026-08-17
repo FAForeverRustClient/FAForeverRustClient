@@ -20,8 +20,9 @@ use async_trait::async_trait;
 use faf_domain::state::{
     Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition, Formation, HostingStatus,
     MapPool, MatchLink, MatchReport, MatchStatus, PendingReport, PoolAssignment, PoolDraft,
-    RatingGate, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyMap, TourneyMatch,
-    TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    InviteStatus, NewsPost, RatingGate, SeedOrder, TeamRequest, Tourney, TourneyCategory,
+    TourneyDraft, TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer,
+    TourneyStatus, TourneyTeam, TourneyViewer,
 };
 
 use crate::ports::{RequestError, TourneyPort};
@@ -318,6 +319,7 @@ impl TourneyPort for FakeTourney {
                 late: false,
                 pending: false,
                 signed_at: Some(1_785_100_000),
+                note: String::new(),
             });
             held.event.player_count = held.event.players.len() as i32;
             held.event.viewer.signed_up_player_id = Some(player_id);
@@ -589,6 +591,220 @@ impl TourneyPort for FakeTourney {
                 return Err(RequestError::rejected("Team not found"));
             };
             team.name = name.to_string();
+            Ok(())
+        })
+    }
+
+
+    async fn add_player(
+        &self,
+        tournament_id: &str,
+        name: &str,
+        rating: Option<i32>,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let name = name.trim();
+            if name.is_empty() {
+                return Err(RequestError::rejected("Enter a FAF name"));
+            }
+            if held.event.status != TourneyStatus::Signup {
+                return Err(RequestError::rejected("Signups are closed"));
+            }
+            if held
+                .event
+                .players
+                .iter()
+                .any(|player| player.name.eq_ignore_ascii_case(name))
+            {
+                return Err(RequestError::rejected(format!("{name} is already signed up")));
+            }
+            let id = held.handle("p");
+            held.event.players.push(TourneyPlayer {
+                id,
+                name: name.to_string(),
+                // A real lookup would bring the account back; offline there is
+                // none, and an entry without one is a case the tab must handle.
+                faf_id: None,
+                rating: rating.or(Some(1_500)),
+                rating_actual: rating.or(Some(1_500)),
+                team_id: None,
+                manual: true,
+                late: false,
+                pending: false,
+                signed_at: Some(1_785_400_000),
+                note: String::new(),
+            });
+            held.event.player_count = held.event.players.len() as i32;
+            Ok(())
+        })
+    }
+
+    async fn respond_signup(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        accept: bool,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let Some(player) = held
+                .event
+                .players
+                .iter_mut()
+                .find(|player| player.id == player_id && player.pending)
+            else {
+                return Err(RequestError::rejected("That request is no longer pending"));
+            };
+            if accept {
+                player.pending = false;
+            } else {
+                held.event.players.retain(|player| player.id != player_id);
+                held.event.player_count = held.event.players.len() as i32;
+            }
+            Ok(())
+        })
+    }
+
+    async fn invite_player(&self, tournament_id: &str, name: &str) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let name = name.trim();
+            if name.is_empty() {
+                return Err(RequestError::rejected("Enter a FAF name"));
+            }
+            if held
+                .event
+                .invites
+                .iter()
+                .any(|invite| invite.name.eq_ignore_ascii_case(name))
+            {
+                return Err(RequestError::rejected(format!("{name} is already invited")));
+            }
+            held.next_id += 1;
+            held.event.invites.push(TourneyInvite {
+                faf_id: 900 + held.next_id as i32,
+                name: name.to_string(),
+                status: InviteStatus::Pending,
+            });
+            Ok(())
+        })
+    }
+
+    async fn uninvite(&self, tournament_id: &str, faf_id: i32) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            held.event.invites.retain(|invite| invite.faf_id != faf_id);
+            Ok(())
+        })
+    }
+
+    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if held.event.status != TourneyStatus::Drafted {
+                return Err(RequestError::rejected(
+                    "Seeds can only be changed after teams are formed and before the bracket starts",
+                ));
+            }
+            match order {
+                SeedOrder::Randomise => {
+                    // Reversed rather than shuffled: the fake has no clock and
+                    // no randomness, and a deterministic reorder proves the
+                    // round trip just as well.
+                    held.event.teams.reverse();
+                    for (index, team) in held.event.teams.iter_mut().enumerate() {
+                        team.seed = index as i32 + 1;
+                    }
+                }
+                SeedOrder::Explicit { team_ids } => {
+                    if !order.is_complete(&held.event.teams) {
+                        return Err(RequestError::rejected(
+                            "Seed order must include every team exactly once",
+                        ));
+                    }
+                    for (index, wanted) in team_ids.iter().enumerate() {
+                        if let Some(team) =
+                            held.event.teams.iter_mut().find(|team| &team.id == wanted)
+                        {
+                            team.seed = index as i32 + 1;
+                        }
+                    }
+                    held.event.teams.sort_by_key(|team| team.seed);
+                }
+            }
+            Ok(())
+        })
+    }
+
+    async fn split_divisions(
+        &self,
+        tournament_id: &str,
+        divisions: i32,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if held.event.status != TourneyStatus::Drafted {
+                return Err(RequestError::rejected(
+                    "Split into divisions after forming teams and before starting the bracket",
+                ));
+            }
+            let count = divisions.clamp(1, 6);
+            if count == 1 {
+                for team in &mut held.event.teams {
+                    team.division = 0;
+                }
+                held.event.divisions = 0;
+                return Ok(());
+            }
+            let per = held.event.teams.len().div_ceil(count as usize).max(1);
+            for (index, team) in held.event.teams.iter_mut().enumerate() {
+                team.division = ((index / per) as i32 + 1).min(count);
+            }
+            held.event.divisions = count;
+            Ok(())
+        })
+    }
+
+    async fn set_division(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        division: i32,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let Some(team) = held.event.teams.iter_mut().find(|team| team.id == team_id) else {
+                return Err(RequestError::rejected("Team not found"));
+            };
+            team.division = division.clamp(0, 6);
+            Ok(())
+        })
+    }
+
+    async fn post_news(
+        &self,
+        tournament_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let body = body.trim();
+            if body.is_empty() {
+                return Err(RequestError::rejected("Write something first"));
+            }
+            let id = held.handle("nw");
+            // Newest first, which is the order the server sorts them into.
+            held.event.news.insert(
+                0,
+                NewsPost {
+                    id,
+                    body: body.to_string(),
+                    by: ME_NAME.into(),
+                    at: Some(1_785_400_000),
+                    important,
+                },
+            );
+            Ok(())
+        })
+    }
+
+    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            held.event.news.retain(|post| post.id != news_id);
             Ok(())
         })
     }
@@ -938,6 +1154,7 @@ fn player(id: &str, name: &str, faf_id: i32, team_id: &str, rating: i32) -> Tour
         late: false,
         pending: false,
         signed_at: Some(1_785_100_000),
+        note: String::new(),
     }
 }
 

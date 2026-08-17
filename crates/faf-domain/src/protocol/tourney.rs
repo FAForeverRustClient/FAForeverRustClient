@@ -27,9 +27,9 @@ use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition, Formation, HostingStatus,
     MapPool, MatchLink, MatchStatus, PendingReport, PoolAssignment, RatingGate, RoomUnread,
-    TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyMap, TourneyMatch,
-    TourneyPlayer, TourneyStatus,
-    TourneyTeam, TourneyViewer,
+    InviteStatus, NewsPost, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
+    TourneyInvite, TourneyMap, TourneyMatch, TourneyPlayer, TourneyStatus, TourneyTeam,
+    TourneyViewer,
 };
 
 /// A string field, empty when absent or not a string.
@@ -198,6 +198,14 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .map(|entry| text(entry, "name"))
             .filter(|name| !name.is_empty())
             .collect(),
+        news: array(document, "news")
+            .iter()
+            .filter_map(parse_news)
+            .collect(),
+        invites: array(document, "invites")
+            .iter()
+            .filter_map(parse_invite)
+            .collect(),
         champion_team_id: id(document, "championTeamId"),
         viewer: parse_viewer(document),
     })
@@ -267,6 +275,7 @@ fn parse_player(value: &Value) -> Option<TourneyPlayer> {
         manual: flag(value, "manual"),
         late: flag(value, "late"),
         pending: flag(value, "pending"),
+        note: text(value, "note"),
         signed_at: moment(value, "signedAt"),
     })
 }
@@ -352,6 +361,30 @@ fn parse_link(value: Option<&Value>) -> Option<MatchLink> {
         // edge itself still says where the winner goes, so it is kept with a
         // slot of 0 rather than dropped.
         slot: int(link, "slot").unwrap_or(0),
+    })
+}
+
+fn parse_news(value: &Value) -> Option<NewsPost> {
+    Some(NewsPost {
+        id: id(value, "id")?,
+        // Written by an organiser, so reduced like every other such field.
+        body: to_plain_text(&text(value, "body")),
+        by: text(value, "by"),
+        at: moment(value, "at"),
+        important: flag(value, "important"),
+    })
+}
+
+/// One invitation.
+///
+/// Organiser-only: the server leaves `invites` out entirely for anyone else,
+/// so an empty list means "not yours to see" as often as it means "nobody
+/// invited".
+fn parse_invite(value: &Value) -> Option<TourneyInvite> {
+    Some(TourneyInvite {
+        faf_id: int(value, "fafId")?,
+        name: text(value, "name"),
+        status: InviteStatus::from_wire(&text(value, "status")),
     })
 }
 

@@ -18,6 +18,7 @@ import { Icon } from "../../design-system/Icon";
 import type {
   AppCommand,
   MatchReport,
+  SeedOrder,
   TourneyCommand,
   TourneyDraft,
   TourneyMatch,
@@ -260,6 +261,36 @@ export function TournamentsView() {
               }
               onRenameTeam={(teamId, name) =>
                 act({ type: "renameTeam", payload: { tournamentId: open.id, teamId, name } })
+              }
+              onAddPlayer={(name, rating) =>
+                act({ type: "addPlayer", payload: { tournamentId: open.id, name, rating } })
+              }
+              onRespondSignup={(playerId, accept) =>
+                act({
+                  type: "respondSignup",
+                  payload: { tournamentId: open.id, playerId, accept },
+                })
+              }
+              onRemovePlayer={(playerId) =>
+                act({ type: "removePlayer", payload: { tournamentId: open.id, playerId } })
+              }
+              onInvitePlayer={(name) =>
+                act({ type: "invitePlayer", payload: { tournamentId: open.id, name } })
+              }
+              onUninvite={(fafId) =>
+                act({ type: "uninvite", payload: { tournamentId: open.id, fafId } })
+              }
+              onReseed={(order: SeedOrder) =>
+                act({ type: "reseed", payload: { tournamentId: open.id, order } })
+              }
+              onSplitDivisions={(divisions) =>
+                act({ type: "splitDivisions", payload: { tournamentId: open.id, divisions } })
+              }
+              onPostNews={(body, important) =>
+                act({ type: "postNews", payload: { tournamentId: open.id, body, important } })
+              }
+              onDeleteNews={(newsId) =>
+                act({ type: "deleteNews", payload: { tournamentId: open.id, newsId } })
               }
             />
           ) : (

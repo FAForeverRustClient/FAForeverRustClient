@@ -8,8 +8,8 @@
 //! response. Any local simulation of it would drift within one round.
 
 use faf_domain::state::{
-    MatchReport, PoolDraft, TourneyAction, TourneyActionFailure, TourneyCommand, TourneyDraft,
-    TourneyEvent,
+    MatchReport, PoolDraft, SeedOrder, TourneyAction, TourneyActionFailure, TourneyCommand,
+    TourneyDraft, TourneyEvent,
 };
 
 use crate::ports::RequestError;
@@ -375,6 +375,173 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        // The organiser's side of signing up. Adding and inviting go by FAF
+        // name, which the server resolves against a real account: there is no
+        // free-typed entrant, and that is what keeps an entry attached to
+        // somebody the client can show an avatar and a rating for.
+        TourneyCommand::AddPlayer {
+            tournament_id,
+            name,
+            rating,
+        } => {
+            if name.trim().is_empty() {
+                return;
+            }
+            write(TourneyAction::AddingPlayer, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .add_player(&tournament_id, name.trim(), rating)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::RespondSignup {
+            tournament_id,
+            player_id,
+            accept,
+        } => {
+            let action = TourneyAction::AnsweringSignup {
+                player_id: player_id.clone(),
+            };
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .respond_signup(&tournament_id, &player_id, accept)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::RemovePlayer {
+            tournament_id,
+            player_id,
+        } => {
+            let action = TourneyAction::RemovingPlayer {
+                player_id: player_id.clone(),
+            };
+            // The same endpoint self-withdrawal uses. The server decides which
+            // it is from who is asking, so there is one route rather than two
+            // that could disagree.
+            write(action, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.withdraw(&tournament_id, &player_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::InvitePlayer {
+            tournament_id,
+            name,
+        } => {
+            if name.trim().is_empty() {
+                return;
+            }
+            write(TourneyAction::Inviting, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .invite_player(&tournament_id, name.trim())
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::Uninvite {
+            tournament_id,
+            faf_id,
+        } => {
+            write(TourneyAction::Inviting, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.uninvite(&tournament_id, faf_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::Reseed {
+            tournament_id,
+            order,
+        } => {
+            write(TourneyAction::Reseeding, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let order = tidy_order(order);
+                async move { ctx.ports.tourney.reseed(&tournament_id, &order).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::SplitDivisions {
+            tournament_id,
+            divisions,
+        } => {
+            write(TourneyAction::Dividing, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .split_divisions(&tournament_id, divisions.clamp(1, 6))
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetDivision {
+            tournament_id,
+            team_id,
+            division,
+        } => {
+            write(TourneyAction::Dividing, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_division(&tournament_id, &team_id, division)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::PostNews {
+            tournament_id,
+            body,
+            important,
+        } => {
+            if body.trim().is_empty() {
+                return;
+            }
+            write(TourneyAction::PostingNews, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .post_news(&tournament_id, body.trim(), important)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::DeleteNews {
+            tournament_id,
+            news_id,
+        } => {
+            write(TourneyAction::PostingNews, &tournament_id, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.delete_news(&tournament_id, &news_id).await }
+            })
+            .await;
+        }
+
         TourneyCommand::LoadArticles => match ctx.ports.tourney.articles().await {
             Ok(articles) => out.emit(TourneyEvent::ArticlesLoaded { articles }),
             // Silent: the rules pages are supporting text, and an error banner
@@ -448,6 +615,23 @@ fn trimmed_draft(draft: TourneyDraft) -> TourneyDraft {
         team_size: draft.team_size.clamp(1, 6),
         formation,
         ..draft
+    }
+}
+
+/// Drop blank ids a drag-and-drop list can leave behind.
+///
+/// The server refuses an order that does not name every team exactly once, so
+/// an empty entry would cost the whole reseed rather than one row.
+fn tidy_order(order: SeedOrder) -> SeedOrder {
+    match order {
+        SeedOrder::Randomise => SeedOrder::Randomise,
+        SeedOrder::Explicit { team_ids } => SeedOrder::Explicit {
+            team_ids: team_ids
+                .into_iter()
+                .map(|id| id.trim().to_string())
+                .filter(|id| !id.is_empty())
+                .collect(),
+        },
     }
 }
 

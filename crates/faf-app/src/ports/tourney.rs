@@ -24,8 +24,8 @@
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, PoolDraft, Tourney, TourneyDraft,
-    TourneyPhase,
+    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, PoolDraft, SeedOrder, Tourney,
+    TourneyDraft, TourneyPhase,
 };
 
 use super::RequestError;
@@ -148,6 +148,66 @@ pub trait TourneyPort: Send + Sync {
         team_id: &str,
         name: &str,
     ) -> Result<(), RequestError>;
+
+
+    /// Add an entrant by FAF name, as the organiser.
+    ///
+    /// The server looks the name up against FAF and refuses one it cannot
+    /// find: there is no free-typed entrant, which is what keeps every entry
+    /// attached to a real account. `rating` is consulted only by an unrated
+    /// tournament, where there is nothing to fetch.
+    async fn add_player(
+        &self,
+        tournament_id: &str,
+        name: &str,
+        rating: Option<i32>,
+    ) -> Result<(), RequestError>;
+
+    /// Approve or decline a signup waiting in request mode.
+    async fn respond_signup(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        accept: bool,
+    ) -> Result<(), RequestError>;
+
+    /// Ask somebody to enter, by FAF name.
+    async fn invite_player(&self, tournament_id: &str, name: &str) -> Result<(), RequestError>;
+
+    /// Withdraw an invitation.
+    async fn uninvite(&self, tournament_id: &str, faf_id: i32) -> Result<(), RequestError>;
+
+    /// Set the seeding, at random or in a given order.
+    ///
+    /// Randomising is the server's shuffle rather than the client's, so nobody
+    /// can claim the draw was picked here.
+    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError>;
+
+    /// Split the field into divisions by combined rating. A count of one puts
+    /// everyone back into a single field.
+    async fn split_divisions(
+        &self,
+        tournament_id: &str,
+        divisions: i32,
+    ) -> Result<(), RequestError>;
+
+    /// Move one team between divisions, after the automatic split.
+    async fn set_division(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        division: i32,
+    ) -> Result<(), RequestError>;
+
+    /// Post an announcement.
+    async fn post_news(
+        &self,
+        tournament_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError>;
+
+    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError>;
 
     /// Confirm attendance during the check-in window.
     ///

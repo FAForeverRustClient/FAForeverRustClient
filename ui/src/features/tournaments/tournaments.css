@@ -837,3 +837,68 @@
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-2);
 }
+
+/* -- News and entrant administration -------------------------------------- */
+
+.tournament-news,
+.tournament-entrant-admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 70ch;
+}
+
+.tournament-entrant-admin h5 {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+}
+
+.tournament-news-compose,
+.tournament-news-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-news-compose textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.tournament-news-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tournament-news-post {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* An organiser marks a post important; age is not a proxy for urgency. */
+.tournament-news-post.is-important {
+  border-color: var(--color-warn);
+}
+
+.tournament-news-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.tournament-news-by {
+  font-weight: 600;
+}
+
+.tournament-divisions {
+  max-width: 200px;
+}

@@ -41,6 +41,8 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     mapPools: [],
     poolAssign: [],
     organisers: [],
+    news: [],
+    invites: [],
     championTeamId: null,
     viewer: {
       loggedIn: true,
@@ -66,6 +68,7 @@ export function player(over: Partial<TourneyPlayer> = {}): TourneyPlayer {
     manual: false,
     late: false,
     pending: false,
+    note: "",
     signedAt: null,
     ...over,
   };

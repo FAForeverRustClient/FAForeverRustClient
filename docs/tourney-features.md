@@ -36,7 +36,7 @@ sections of it rather than places of their own.
 |---|---|---|
 | Overview | **Done** | Prize, rewards, sponsors, streams, lobby options and mods are not shown |
 | Rules / FAQ | **Done** | Description images |
-| News | **Todo** | `news_post`, `news_edit`, `news_delete`, `news_read`, and the unread badge |
+| News | **Done** | Posting, deleting and an important flag. `news_edit` and the read marker are not there |
 | Entrants | **Done** | Shows people, teams, seeds, check-in and placings |
 | Teams | **Done** | Form one, ask to join, answer requests, invite, leave, rename, disband. Only shown where there are teams to form |
 | Bracket | **Done** | Drawn from `winnerTo`/`loserTo`. Swiss and FFA rounds render as one column but have no standings table |
@@ -45,7 +45,7 @@ sections of it rather than places of their own.
 | Maps | **Partial** | Pools can be assigned and previewed. The map database itself (`map_save`, `map_publish`, `map_delete`, `copy_maps`) and the ban/pick sequence editor are not there |
 | Vetoes | **Todo** | `veto_action`, `veto_setab`, `veto_undo`, and the veto state display |
 | Draft | **Todo** | `pick`, `undo_pick`, the captain queue and the draft board |
-| Manage | **Partial** | Settings, lifecycle, map pools, archive. Missing below |
+| Manage | **Done** | Settings, lifecycle, entrant administration, invitations, seeding, divisions, map pools, archive |
 | Audit log | **Todo** | `tlog`, organiser-only |
 
 ## 3. Endpoints, grouped by what they are for
@@ -60,10 +60,10 @@ sections of it rather than places of their own.
 | `phase` → `set_captains`, `start_draft` | **Todo** (needs the draft) |
 | `delete` (archives for a non-admin) | **Done** |
 | `edit_info` | **Partial**: name, description, dates, rating gate, signup mode, player reporting. Missing rewards, prize, sponsors, streams, lobby options, mods, check-in deadline, veto, rating date |
+| `reseed`, `split_divisions`, `set_division` | **Done** |
 | `edit_date`, `edit_format`, `set_category` | **Todo** |
 | `abandon`, `restore` | **Todo** |
 | `set_plan_round_bo`, `set_round_bo` | **Todo** |
-| `reseed`, `split_divisions`, `set_division` | **Todo** |
 
 ### Signups
 
@@ -72,9 +72,10 @@ sections of it rather than places of their own.
 | `signup` | **Done** |
 | `remove` (self-withdraw) | **Done** |
 | `checkin_team` | **Done** |
-| `org_add_player`, `edit_player`, `replace_player`, `faf_lookup` | **Todo** |
-| `respond_signup` (request mode) | **Todo** |
-| `invite_player`, `uninvite_player`, `decline_invite` | **Todo** |
+| `org_add_player` | **Done** |
+| `respond_signup` (request mode) | **Done** |
+| `invite_player`, `uninvite_player` | **Done** |
+| `edit_player`, `replace_player`, `faf_lookup`, `decline_invite` | **Todo** |
 | `signup_team` | **Out**: legacy whole-team registration, superseded by the team system |
 
 ### Teams
@@ -159,11 +160,12 @@ the tab at all rather than an embedded browser.
 
 Lifecycle first, then the parts that hang off it:
 
-1. ~~**Teams**~~ (§3 Teams). Done.
-2. **Signup administration**: approving requests, adding a player by hand, invites.
-3. **Seeding**: `reseed`, divisions.
-4. **Results**: forfeits, explicit winner, FFA, standings.
-5. **The map database** and ban/pick sequences.
-6. **Vetoes**, then the **captains draft**.
-7. **News**, **series**, **Hall of Fame**, the **audit log**, chat moderation.
-8. The client-only wins in §4: notifications, replay links, pool prefill.
+1. ~~**Teams**~~. Done.
+2. ~~**Signup administration**~~. Done.
+3. ~~**Seeding**~~. Done.
+4. ~~**News**~~. Done.
+5. **Results**: forfeits, explicit winner, FFA, standings.
+6. **The map database** and ban/pick sequences.
+7. **Vetoes**, then the **captains draft**.
+8. **Series**, **Hall of Fame**, the **audit log**, chat moderation.
+9. The client-only wins in §4: notifications, replay links, pool prefill.

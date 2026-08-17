@@ -114,11 +114,12 @@ pub use social::{
 pub use tourney::{
     map_key, match_vault_map, Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition,
     Formation, MapPool, MatchLink, MatchReport, MatchStatus, PendingReport, PoolAssignment,
-    DraftRejection, HostingStatus, PoolDraft, RatingGate, RatingKind, RoomUnread, Seeding,
+    DraftRejection, HostingStatus, InviteStatus, NewsPost, PoolDraft, RatingGate, RatingKind,
+    RoomUnread, SeedOrder, Seeding,
     SignupMode, TeamRequest, Tourney, TourneyAction, TourneyActionFailure,
     TourneyCategory, TourneyCommand, TourneyEvent, TourneyLoadStatus, TourneyMap, TourneyMatch,
-    TourneyDraft, TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam,
-    TourneyViewer,
+    TourneyDraft, TourneyInvite, TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus,
+    TourneyTeam, TourneyViewer,
 };
 pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,

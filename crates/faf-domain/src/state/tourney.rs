@@ -195,6 +195,10 @@ pub struct TourneyPlayer {
     pub late: bool,
     /// Waiting on an organiser to accept the signup.
     pub pending: bool,
+    /// A note the organiser attached, shown beside the name. Renaming is not
+    /// possible: identity comes from FAF, so this is how a substitute or a
+    /// late arrival gets labelled.
+    pub note: String,
     /// Unix seconds.
     pub signed_at: Option<u32>,
 }
@@ -552,6 +556,11 @@ pub struct Tourney {
     /// Which pool is played in which round, keyed by the server's round label.
     pub pool_assign: Vec<PoolAssignment>,
     pub organisers: Vec<String>,
+    /// The organiser's announcements, newest first.
+    pub news: Vec<NewsPost>,
+    /// People the organiser invited. Empty for anyone who is not one: the
+    /// server omits the field rather than trimming it.
+    pub invites: Vec<TourneyInvite>,
     pub champion_team_id: Option<String>,
     /// What this account may do here, as the server sees it.
     pub viewer: TourneyViewer,
@@ -656,6 +665,81 @@ pub struct PoolDraft {
     /// The series length this pool is built for. The server welds the ban/pick
     /// order to it, so a pool saved without one is a plain list of maps.
     pub best_of: Option<i32>,
+}
+
+/// One announcement from the organiser.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsPost {
+    pub id: String,
+    pub body: String,
+    /// Who wrote it.
+    pub by: String,
+    /// Unix seconds.
+    pub at: Option<u32>,
+    /// Marked urgent by the organiser: a schedule change rather than a note.
+    pub important: bool,
+}
+
+/// Somebody the organiser asked to enter.
+///
+/// Only organisers see these; the server leaves the field out otherwise.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TourneyInvite {
+    pub faf_id: i32,
+    pub name: String,
+    pub status: InviteStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum InviteStatus {
+    #[default]
+    Pending,
+    Accepted,
+    Declined,
+}
+
+impl InviteStatus {
+    pub fn from_wire(raw: &str) -> Self {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "accepted" => Self::Accepted,
+            "declined" => Self::Declined,
+            _ => Self::Pending,
+        }
+    }
+}
+
+/// How the organiser wants the bracket seeded.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum SeedOrder {
+    /// Shuffle. The server does the shuffling, so nobody can claim the client
+    /// picked a favourable draw.
+    Randomise,
+    /// An explicit order, best seed first. Must name every team exactly once,
+    /// which the server checks and so does [`Self::is_complete`].
+    Explicit { team_ids: Vec<String> },
+}
+
+impl SeedOrder {
+    /// Whether an explicit order names every team exactly once.
+    ///
+    /// The server refuses anything else with "seed order must include every
+    /// team exactly once", so the control is disabled rather than the organiser
+    /// finding out after a drag.
+    pub fn is_complete(&self, teams: &[TourneyTeam]) -> bool {
+        let Self::Explicit { team_ids } = self else {
+            return true;
+        };
+        if team_ids.len() != teams.len() {
+            return false;
+        }
+        teams
+            .iter()
+            .all(|team| team_ids.iter().filter(|id| *id == &team.id).count() == 1)
+    }
 }
 
 /// A map pool bound to a round.
@@ -772,6 +856,22 @@ impl Tourney {
             .iter()
             .filter(|team| team.invites.iter().any(|invite| invite.player_id == mine))
             .collect()
+    }
+
+    /// Signups waiting on the organiser, in request mode.
+    ///
+    /// The server shows a pending entry only to organisers and to the person
+    /// who asked, so this is already the right list for whoever is looking.
+    pub fn pending_signups(&self) -> Vec<&TourneyPlayer> {
+        self.players.iter().filter(|player| player.pending).collect()
+    }
+
+    /// Whether seeds can still be changed.
+    ///
+    /// Only between forming teams and drawing the bracket. Before that there
+    /// are no teams; after it the draw is fixed.
+    pub fn may_reseed(&self) -> bool {
+        self.status == TourneyStatus::Drafted && !self.teams.is_empty()
     }
 
     /// Entrants with no team yet, which is who a captain can invite.
@@ -1171,6 +1271,19 @@ pub enum TourneyLoadStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum TourneyAction {
+    AddingPlayer,
+    #[serde(rename_all = "camelCase")]
+    AnsweringSignup {
+        player_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    RemovingPlayer {
+        player_id: String,
+    },
+    Inviting,
+    Reseeding,
+    Dividing,
+    PostingNews,
     CreatingTeam,
     #[serde(rename_all = "camelCase")]
     AnsweringTeam {
@@ -1429,6 +1542,72 @@ pub enum TourneyCommand {
         tournament_id: String,
         team_id: String,
         name: String,
+    },
+    /// Add an entrant by FAF name, as the organiser.
+    ///
+    /// The name is looked up against FAF server-side; there is no free-typed
+    /// entrant, which is what keeps an entry attached to a real account.
+    #[serde(rename_all = "camelCase")]
+    AddPlayer {
+        tournament_id: String,
+        name: String,
+        /// Only used by an unrated tournament, where the server has no rating
+        /// to fetch and asks the organiser for one.
+        rating: Option<i32>,
+    },
+    /// Approve or decline a signup that is waiting, in request mode.
+    #[serde(rename_all = "camelCase")]
+    RespondSignup {
+        tournament_id: String,
+        player_id: String,
+        accept: bool,
+    },
+    /// Take an entrant out, as the organiser.
+    #[serde(rename_all = "camelCase")]
+    RemovePlayer {
+        tournament_id: String,
+        player_id: String,
+    },
+    /// Ask somebody to enter, by FAF name.
+    #[serde(rename_all = "camelCase")]
+    InvitePlayer {
+        tournament_id: String,
+        name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    Uninvite {
+        tournament_id: String,
+        faf_id: i32,
+    },
+    /// Set the seeding, at random or in a given order.
+    #[serde(rename_all = "camelCase")]
+    Reseed {
+        tournament_id: String,
+        order: SeedOrder,
+    },
+    /// Split the field into divisions by combined rating, or back to one with
+    /// a count of 1.
+    #[serde(rename_all = "camelCase")]
+    SplitDivisions {
+        tournament_id: String,
+        divisions: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    SetDivision {
+        tournament_id: String,
+        team_id: String,
+        division: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    PostNews {
+        tournament_id: String,
+        body: String,
+        important: bool,
+    },
+    #[serde(rename_all = "camelCase")]
+    DeleteNews {
+        tournament_id: String,
+        news_id: String,
     },
     LoadArticles,
     /// Ask whether this account may host, which gates the create button.
@@ -1696,6 +1875,7 @@ mod tests {
             manual: false,
             late: false,
             pending: false,
+            note: String::new(),
             signed_at: None,
         }
     }
