@@ -1448,9 +1448,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::NotificationsChanged { preferences } => {
             state.notifications = preferences.clone()
         }
-        SettingsEvent::ChatChanged { preferences } => {
-            state.chat = preferences.as_ref().clone()
-        }
+        SettingsEvent::ChatChanged { preferences } => state.chat = preferences.as_ref().clone(),
         SettingsEvent::GameChanged { preferences } => state.game = preferences.clone(),
         SettingsEvent::DiscordChanged { preferences } => state.discord = *preferences,
         SettingsEvent::ConnectivityChanged { preferences } => state.connectivity = *preferences,

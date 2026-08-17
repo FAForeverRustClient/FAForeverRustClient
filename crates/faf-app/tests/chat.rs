@@ -495,8 +495,8 @@ async fn muted_players_are_filtered_before_messages_enter_state() {
         }
         .into(),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     until(&app, |state| !state.settings.chat.muted_players.is_empty()).await;
 
     app.dispatch(
