@@ -117,8 +117,8 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         SettingsCommand::SetChat { preferences } => {
             let mut next = out.with_state(|state| state.settings.clone());
-            next.chat = preferences;
-            let preferences = next.normalized().chat;
+            next.chat = *preferences;
+            let preferences = Box::new(next.normalized().chat);
             let show_joins_parts = preferences.show_joins_parts;
             out.emit(SettingsEvent::ChatChanged { preferences });
             out.emit(ChatEvent::JoinsPartsToggled {

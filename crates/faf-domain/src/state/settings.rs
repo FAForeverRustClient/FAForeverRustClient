@@ -1360,8 +1360,11 @@ pub enum SettingsEvent {
     NotificationsChanged {
         preferences: NotificationPreferences,
     },
+    /// Boxed for the same reason `Loaded` is: chat preferences carry the name
+    /// colours and are far larger than any sibling variant, so an unboxed one
+    /// would set the size of every `SettingsEvent` ever passed around.
     ChatChanged {
-        preferences: ChatPreferences,
+        preferences: Box<ChatPreferences>,
     },
     GameChanged {
         preferences: GamePreferences,
@@ -1410,8 +1413,9 @@ pub enum SettingsCommand {
     SetNotifications {
         preferences: NotificationPreferences,
     },
+    /// Boxed, like the event it produces.
     SetChat {
-        preferences: ChatPreferences,
+        preferences: Box<ChatPreferences>,
     },
     SetGame {
         preferences: GamePreferences,
@@ -1448,7 +1452,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::NotificationsChanged { preferences } => {
             state.notifications = preferences.clone()
         }
-        SettingsEvent::ChatChanged { preferences } => state.chat = preferences.clone(),
+        SettingsEvent::ChatChanged { preferences } => state.chat = (**preferences).clone(),
         SettingsEvent::GameChanged { preferences } => state.game = preferences.clone(),
         SettingsEvent::DiscordChanged { preferences } => state.discord = *preferences,
         SettingsEvent::ConnectivityChanged { preferences } => state.connectivity = *preferences,
