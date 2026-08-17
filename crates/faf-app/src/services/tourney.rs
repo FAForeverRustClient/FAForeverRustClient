@@ -469,6 +469,71 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::SetCaptain {
+            tournament_id,
+            team_id,
+            player_id,
+        } => {
+            let action = TourneyAction::SettingCaptain {
+                player_id: player_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_captain(&tournament_id, &team_id, &player_id)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::MovePlayer {
+            tournament_id,
+            player_id,
+            team_id,
+        } => {
+            let action = TourneyAction::MovingPlayer {
+                player_id: player_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .move_player(&tournament_id, &player_id, team_id.as_deref())
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::EditPlayer {
+            tournament_id,
+            player_id,
+            note,
+            rating,
+        } => {
+            let action = TourneyAction::EditingPlayer {
+                player_id: player_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                // Trimmed here rather than in the form: the server stores what it
+                // is given, and a note of spaces would render as a stray "()"
+                // beside the name.
+                let note = note.trim().to_string();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .edit_player(&tournament_id, &player_id, &note, rating)
+                        .await
+                }
+            })
+            .await;
+        }
+
         TourneyCommand::InvitePlayer {
             tournament_id,
             name,

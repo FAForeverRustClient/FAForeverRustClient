@@ -157,6 +157,38 @@ pub trait TourneyPort: Send + Sync {
         rating: Option<i32>,
     ) -> Result<(), RequestError>;
 
+    /// Hand the armband to another member of a team.
+    async fn set_captain(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        player_id: &str,
+    ) -> Result<(), RequestError>;
+
+    /// Move an entrant to another team, or off every team.
+    ///
+    /// `team_id` of `None` parks them without removing them from the event. The
+    /// server dissolves a team its last member leaves and passes a departing
+    /// captain's armband on, so the caller reloads rather than modelling it.
+    async fn move_player(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        team_id: Option<&str>,
+    ) -> Result<(), RequestError>;
+
+    /// Attach a note to an entrant, and set a rating where the event has none.
+    ///
+    /// Names are not editable: identity comes from FAF and the server says so.
+    /// `rating` is refused by any event that fetches ratings.
+    async fn edit_player(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        note: &str,
+        rating: Option<i32>,
+    ) -> Result<(), RequestError>;
+
     /// Approve or decline a signup waiting in request mode.
     async fn respond_signup(
         &self,

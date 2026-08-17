@@ -121,6 +121,11 @@ struct TourneyRuleCase {
     would_exceed_team_cap: bool,
     self_organised: bool,
     may_reseed: bool,
+    /// `Tourney::may_shuffle_teams`: whether the organiser may still move people
+    /// between teams. Refused once the bracket exists.
+    may_shuffle_teams: bool,
+    /// `Tourney::may_set_rating`: only an unrated event takes a typed rating.
+    may_set_rating: bool,
     pending_signup_ids: Vec<String>,
     /// `Tourney::members` of the team above, in the order it holds them: a twin
     /// that iterated the entrant list instead would produce a different order.
@@ -326,6 +331,8 @@ fn tourney_rule_case(
             .is_some_and(|team| event.would_exceed_team_cap(team)),
         self_organised: event.teams_are_self_organised(),
         may_reseed: event.may_reseed(),
+        may_shuffle_teams: event.may_shuffle_teams(),
+        may_set_rating: event.may_set_rating(),
         pending_signup_ids: event
             .pending_signups()
             .into_iter()
@@ -414,6 +421,31 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         ..Tourney::default()
     };
 
+    // The organiser's own view of the same drafted event: this is where team
+    // shuffling is offered, and nowhere else.
+    let organised = Tourney {
+        id: "organised".into(),
+        viewer: TourneyViewer {
+            logged_in: true,
+            organiser: true,
+            ..TourneyViewer::default()
+        },
+        ..drafted.clone()
+    };
+    // The same, once the bracket exists: the draw was made from these teams, so
+    // the service refuses to move anyone.
+    let organised_running = Tourney {
+        id: "organised-running".into(),
+        status: TourneyStatus::Running,
+        ..organised.clone()
+    };
+    // An unrated event, which is the only kind that takes a typed rating.
+    let unrated = Tourney {
+        id: "unrated".into(),
+        rating_kind: RatingKind::None,
+        ..organised.clone()
+    };
+
     vec![
         tourney_rule_case(
             "an open 2v2 where joining would break the team cap",
@@ -434,6 +466,24 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             vec![],
         ),
         tourney_rule_case("a solo event with a signup waiting", solo, None, vec![]),
+        tourney_rule_case(
+            "the organiser's view before the draw: teams can still be shuffled",
+            organised,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same event once the bracket exists: shuffling is refused",
+            organised_running,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "an unrated event, the only kind that takes a typed rating",
+            unrated,
+            Some("t1"),
+            vec![],
+        ),
     ]
 }
 

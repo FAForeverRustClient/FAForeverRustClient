@@ -100,6 +100,9 @@ interface TournamentDetailPaneProps {
   onDisbandTeam: (teamId: string) => void;
   onRenameTeam: (teamId: string, name: string) => void;
   onAddPlayer: (name: string, rating: number | null) => void;
+  onSetCaptain: (teamId: string, playerId: string) => void;
+  onMovePlayer: (playerId: string, teamId: string | null) => void;
+  onEditPlayer: (playerId: string, note: string, rating: number | null) => void;
   onRespondSignup: (playerId: string, accept: boolean) => void;
   onRemovePlayer: (playerId: string) => void;
   onInvitePlayer: (name: string) => void;
@@ -300,6 +303,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onAssignPool={props.onAssignPool}
           onOpenUrl={props.onOpenUrl}
           onAddPlayer={props.onAddPlayer}
+          onSetCaptain={props.onSetCaptain}
+          onMovePlayer={props.onMovePlayer}
+          onEditPlayer={props.onEditPlayer}
           onRespondSignup={props.onRespondSignup}
           onRemovePlayer={props.onRemovePlayer}
           onInvitePlayer={props.onInvitePlayer}

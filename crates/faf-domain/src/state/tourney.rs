@@ -532,6 +532,19 @@ pub struct Tourney {
     pub player_reporting: bool,
     pub veto_enabled: bool,
     pub rating: RatingGate,
+    /// Which FAF rating the event seeds and gates on, or [`RatingKind::None`].
+    ///
+    /// Sent with every answer, and worth reading for one concrete reason: an
+    /// unrated event has no rating to fetch, so the organiser supplies one when
+    /// adding an entrant. Without this the client cannot tell the two apart, and
+    /// the field it needs stays hidden.
+    pub rating_kind: RatingKind,
+    /// The instant ratings were frozen at, in Unix seconds.
+    ///
+    /// What stops an entrant signing up on a peak rating and playing weeks later
+    /// on a lower one: every rating in the event is the value as of this date.
+    /// Shown rather than acted on — the server does the freezing.
+    pub rating_date: Option<u32>,
     /// Unix seconds.
     pub created_at: Option<u32>,
     pub event_date: Option<u32>,
@@ -986,6 +999,27 @@ impl Tourney {
             && entry.team2.is_some()
     }
 
+    /// Whether the organiser may still shuffle who is on which team.
+    ///
+    /// `move_player` and `set_captain` are refused once the bracket is drawn: the
+    /// draw is made from the teams, so changing them afterwards would leave the
+    /// bracket describing an event that no longer exists. Before that — while
+    /// signups run and after teams are formed — it is the organiser's main tool
+    /// for fixing a no-show or an uneven field.
+    pub fn may_shuffle_teams(&self) -> bool {
+        self.viewer.organiser && !self.status.has_bracket() && self.team_size > 1
+    }
+
+    /// Whether the organiser may type a rating for an entrant.
+    ///
+    /// Only an unrated event. Everywhere else the server fetches the rating as of
+    /// the event's rating date and refuses a typed one with "Ratings are fetched
+    /// from FAF for this tournament and cannot be edited", so the field is not
+    /// offered rather than offered and refused.
+    pub fn may_set_rating(&self) -> bool {
+        self.viewer.organiser && self.rating_kind == RatingKind::None
+    }
+
     /// Whether this account may rename or take apart `team`.
     ///
     /// An organiser may rename any team as often as needed. A captain gets one
@@ -1332,6 +1366,20 @@ pub enum TourneyAction {
     RemovingPlayer {
         player_id: String,
     },
+    /// Organiser team management, keyed by the entrant so one row's spinner does
+    /// not disable the whole list.
+    #[serde(rename_all = "camelCase")]
+    MovingPlayer {
+        player_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    EditingPlayer {
+        player_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    SettingCaptain {
+        player_id: String,
+    },
     Inviting,
     Reseeding,
     Dividing,
@@ -1661,6 +1709,38 @@ pub enum TourneyCommand {
     RemovePlayer {
         tournament_id: String,
         player_id: String,
+    },
+    /// Hand the armband to another member of a team.
+    #[serde(rename_all = "camelCase")]
+    SetCaptain {
+        tournament_id: String,
+        team_id: String,
+        player_id: String,
+    },
+    /// Move an entrant to another team, or off every team.
+    ///
+    /// `team_id` of `None` takes them out without removing them from the event,
+    /// which is how a substitute is parked. Emptying a team dissolves it, and a
+    /// departing captain's armband passes to the next member: the server does
+    /// both, so the client reloads rather than guessing.
+    #[serde(rename_all = "camelCase")]
+    MovePlayer {
+        tournament_id: String,
+        player_id: String,
+        team_id: Option<String>,
+    },
+    /// Attach a note to an entrant, and set their rating where the event has none.
+    ///
+    /// Renaming is deliberately absent: identity comes from FAF and the server
+    /// refuses it outright. A note is how a substitute or a late arrival gets
+    /// labelled. The rating is accepted only by an unrated event.
+    #[serde(rename_all = "camelCase")]
+    EditPlayer {
+        tournament_id: String,
+        player_id: String,
+        note: String,
+        /// Only sent by an unrated event; the server refuses it otherwise.
+        rating: Option<i32>,
     },
     /// Ask somebody to enter, by FAF name.
     #[serde(rename_all = "camelCase")]

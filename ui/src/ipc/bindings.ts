@@ -3522,6 +3522,23 @@ export type Tourney = {
 	playerReporting: boolean,
 	vetoEnabled: boolean,
 	rating: RatingGate,
+	/**
+	 *  Which FAF rating the event seeds and gates on, or [`RatingKind::None`].
+	 *
+	 *  Sent with every answer, and worth reading for one concrete reason: an
+	 *  unrated event has no rating to fetch, so the organiser supplies one when
+	 *  adding an entrant. Without this the client cannot tell the two apart, and
+	 *  the field it needs stays hidden.
+	 */
+	ratingKind: RatingKind,
+	/**
+	 *  The instant ratings were frozen at, in Unix seconds.
+	 *
+	 *  What stops an entrant signing up on a peak rating and playing weeks later
+	 *  on a lower one: every rating in the event is the value as of this date.
+	 *  Shown rather than acted on — the server does the freezing.
+	 */
+	ratingDate: number | null,
 	/**  Unix seconds. */
 	createdAt: number | null,
 	eventDate: number | null,
@@ -3577,6 +3594,17 @@ export type Tourney = {
 export type TourneyAction = { type: "addingPlayer" } | { type: "answeringSignup"; payload: {
 	playerId: string,
 } } | { type: "removingPlayer"; payload: {
+	playerId: string,
+} } |
+/**
+ *  Organiser team management, keyed by the entrant so one row's spinner does
+ *  not disable the whole list.
+ */
+{ type: "movingPlayer"; payload: {
+	playerId: string,
+} } | { type: "editingPlayer"; payload: {
+	playerId: string,
+} } | { type: "settingCaptain"; payload: {
 	playerId: string,
 } } | { type: "inviting" } | { type: "reseeding" } | { type: "dividing" } | { type: "postingNews" } | { type: "creatingTeam" } | { type: "answeringTeam"; payload: {
 	teamId: string,
@@ -3741,6 +3769,39 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 { type: "removePlayer"; payload: {
 	tournamentId: string,
 	playerId: string,
+} } |
+/**  Hand the armband to another member of a team. */
+{ type: "setCaptain"; payload: {
+	tournamentId: string,
+	teamId: string,
+	playerId: string,
+} } |
+/**
+ *  Move an entrant to another team, or off every team.
+ *
+ *  `team_id` of `None` takes them out without removing them from the event,
+ *  which is how a substitute is parked. Emptying a team dissolves it, and a
+ *  departing captain's armband passes to the next member: the server does
+ *  both, so the client reloads rather than guessing.
+ */
+{ type: "movePlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	teamId: string | null,
+} } |
+/**
+ *  Attach a note to an entrant, and set their rating where the event has none.
+ *
+ *  Renaming is deliberately absent: identity comes from FAF and the server
+ *  refuses it outright. A note is how a substitute or a late arrival gets
+ *  labelled. The rating is accepted only by an unrated event.
+ */
+{ type: "editPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	note: string,
+	/**  Only sent by an unrated event; the server refuses it otherwise. */
+	rating: number | null,
 } } |
 /**  Ask somebody to enter, by FAF name. */
 { type: "invitePlayer"; payload: {

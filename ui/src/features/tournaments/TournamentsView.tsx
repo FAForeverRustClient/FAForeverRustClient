@@ -267,6 +267,15 @@ export function TournamentsView() {
                 act({ type: "addPlayer", payload: { tournamentId: open.id, name, rating } });
                 act({ type: "clearAccountSearch" });
               }}
+              onSetCaptain={(teamId, playerId) =>
+                act({ type: "setCaptain", payload: { tournamentId: open.id, teamId, playerId } })
+              }
+              onMovePlayer={(playerId, teamId) =>
+                act({ type: "movePlayer", payload: { tournamentId: open.id, playerId, teamId } })
+              }
+              onEditPlayer={(playerId, note, rating) =>
+                act({ type: "editPlayer", payload: { tournamentId: open.id, playerId, note, rating } })
+              }
               onRespondSignup={(playerId, accept) =>
                 act({
                   type: "respondSignup",

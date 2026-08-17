@@ -305,6 +305,35 @@ export function profileOfInvite(
 }
 
 /**
+ * Twin of `Tourney::may_shuffle_teams`: whether the organiser may still move
+ * people between teams.
+ *
+ * Refused once the bracket is drawn — the draw is made from the teams, so
+ * changing them afterwards would leave the bracket describing an event that no
+ * longer exists.
+ */
+export function mayShuffleTeams(event: Tourney): boolean {
+  return event.viewer.organiser && !hasBracket(event.status) && event.teamSize > 1;
+}
+
+/**
+ * Twin of `Tourney::may_set_rating`: whether a rating can be typed for an
+ * entrant.
+ *
+ * Only an unrated event. Everywhere else the service fetched the rating as of
+ * the event's rating date and refuses a typed one, so the field is withheld
+ * rather than offered and refused.
+ */
+export function maySetRating(event: Tourney): boolean {
+  return event.viewer.organiser && event.ratingKind === "none";
+}
+
+/** Twin of `TourneyStatus::has_bracket`. */
+export function hasBracket(status: TourneyStatus): boolean {
+  return status === "running" || status === "finished";
+}
+
+/**
  * Twin of `Tourney::may_rename`: who may rename or disband a team.
  *
  * An organiser may rename any team as often as needed. A captain gets exactly

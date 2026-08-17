@@ -397,6 +397,54 @@ impl TourneyPort for TourneyClient {
         self.act(tournament_id, "org_add_player", body).await
     }
 
+    async fn set_captain(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        player_id: &str,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "set_captain",
+            json!({ "teamId": team_id, "playerId": player_id }),
+        )
+        .await
+    }
+
+    async fn move_player(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        team_id: Option<&str>,
+    ) -> Result<(), RequestError> {
+        // An absent `teamId` is the instruction to park them: the server takes
+        // them off their current team and puts them nowhere. Sending `null`
+        // rather than omitting the key says the same thing and reads clearer.
+        self.act(
+            tournament_id,
+            "move_player",
+            json!({ "playerId": player_id, "teamId": team_id }),
+        )
+        .await
+    }
+
+    async fn edit_player(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        note: &str,
+        rating: Option<i32>,
+    ) -> Result<(), RequestError> {
+        // `name` is deliberately never sent. The server compares it against the
+        // stored one and refuses any difference, so including it can only turn a
+        // note edit into a refusal.
+        let mut body = json!({ "playerId": player_id, "note": note });
+        if let Some(rating) = rating {
+            body["rating"] = json!(rating);
+        }
+        self.act(tournament_id, "edit_player", body).await
+    }
+
     async fn respond_signup(
         &self,
         tournament_id: &str,
