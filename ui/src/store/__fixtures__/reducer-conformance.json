@@ -4067,6 +4067,8 @@
                       "maxTeam": null,
                       "cap": null
                     },
+                    "ratingKind": "global",
+                    "ratingDate": null,
                     "createdAt": 1700000000,
                     "eventDate": null,
                     "signupOpensAt": null,
@@ -4114,6 +4116,8 @@
                       "maxTeam": null,
                       "cap": null
                     },
+                    "ratingKind": "global",
+                    "ratingDate": null,
                     "createdAt": 1700000000,
                     "eventDate": null,
                     "signupOpensAt": null,
@@ -4198,6 +4202,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4245,6 +4251,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4337,6 +4345,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4384,6 +4394,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4473,6 +4485,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4520,6 +4534,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4575,6 +4591,8 @@
                     "maxTeam": null,
                     "cap": null
                   },
+                  "ratingKind": "global",
+                  "ratingDate": null,
                   "createdAt": 1700000000,
                   "eventDate": null,
                   "signupOpensAt": null,
@@ -4652,6 +4670,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -4704,6 +4724,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4751,6 +4773,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4839,6 +4863,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -4891,6 +4917,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -4938,6 +4966,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5038,6 +5068,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -5090,6 +5122,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5137,6 +5171,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5220,6 +5256,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -5272,6 +5310,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5319,6 +5359,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5407,6 +5449,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -5459,6 +5503,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5506,6 +5552,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5597,6 +5645,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -5649,6 +5699,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5696,6 +5748,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5791,6 +5845,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -5852,6 +5908,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5899,6 +5957,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -5987,6 +6047,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -6048,6 +6110,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6095,6 +6159,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6192,6 +6258,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6239,6 +6307,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6335,6 +6405,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6382,6 +6454,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6488,6 +6562,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6535,6 +6611,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6590,6 +6668,8 @@
                     "maxTeam": null,
                     "cap": null
                   },
+                  "ratingKind": "global",
+                  "ratingDate": null,
                   "createdAt": 1700000000,
                   "eventDate": null,
                   "signupOpensAt": null,
@@ -6680,6 +6760,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6727,6 +6809,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -6783,6 +6867,8 @@
                       "maxTeam": null,
                       "cap": null
                     },
+                    "ratingKind": "global",
+                    "ratingDate": null,
                     "createdAt": 1700000000,
                     "eventDate": null,
                     "signupOpensAt": null,
@@ -6874,6 +6960,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -7359,6 +7447,8 @@
                       "maxTeam": null,
                       "cap": null
                     },
+                    "ratingKind": "global",
+                    "ratingDate": null,
                     "createdAt": 1700000000,
                     "eventDate": null,
                     "signupOpensAt": null,
@@ -7406,6 +7496,8 @@
                       "maxTeam": null,
                       "cap": null
                     },
+                    "ratingKind": "global",
+                    "ratingDate": null,
                     "createdAt": 1700000000,
                     "eventDate": null,
                     "signupOpensAt": null,
@@ -7490,6 +7582,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -7537,6 +7631,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -7592,6 +7688,8 @@
                     "maxTeam": null,
                     "cap": null
                   },
+                  "ratingKind": "global",
+                  "ratingDate": null,
                   "createdAt": 1700000000,
                   "eventDate": null,
                   "signupOpensAt": null,
@@ -7669,6 +7767,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -7721,6 +7821,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -7768,6 +7870,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -7876,6 +7980,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -7928,6 +8034,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -7975,6 +8083,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8072,6 +8182,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -8124,6 +8236,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8171,6 +8285,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8265,6 +8381,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -8317,6 +8435,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8364,6 +8484,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8478,6 +8600,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -8530,6 +8654,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8577,6 +8703,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8683,6 +8811,8 @@
                 "maxTeam": null,
                 "min": null
               },
+              "ratingDate": null,
+              "ratingKind": "global",
               "signupClosesAt": null,
               "signupOpensAt": null,
               "status": "signup",
@@ -8735,6 +8865,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8782,6 +8914,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8874,6 +9008,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -8921,6 +9057,8 @@
                   "maxTeam": null,
                   "min": null
                 },
+                "ratingDate": null,
+                "ratingKind": "global",
                 "signupClosesAt": null,
                 "signupOpensAt": null,
                 "status": "signup",
@@ -14224,6 +14362,8 @@
             "maxTeam": 3000,
             "cap": null
           },
+          "ratingKind": "global",
+          "ratingDate": null,
           "createdAt": null,
           "eventDate": null,
           "signupOpensAt": null,
@@ -14363,6 +14503,8 @@
         "wouldExceedTeamCap": true,
         "selfOrganised": true,
         "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
         "pendingSignupIds": [
           "p9"
         ],
@@ -14407,6 +14549,8 @@
             "maxTeam": 3000,
             "cap": null
           },
+          "ratingKind": "global",
+          "ratingDate": null,
           "createdAt": null,
           "eventDate": null,
           "signupOpensAt": null,
@@ -14546,6 +14690,8 @@
         "wouldExceedTeamCap": false,
         "selfOrganised": true,
         "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
         "pendingSignupIds": [
           "p9"
         ],
@@ -14580,6 +14726,8 @@
             "maxTeam": null,
             "cap": null
           },
+          "ratingKind": "global",
+          "ratingDate": null,
           "createdAt": null,
           "eventDate": null,
           "signupOpensAt": null,
@@ -14644,6 +14792,8 @@
         "wouldExceedTeamCap": false,
         "selfOrganised": false,
         "mayReseed": true,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
         "pendingSignupIds": [],
         "memberIds": [
           "p1"
@@ -14673,6 +14823,8 @@
             "maxTeam": null,
             "cap": null
           },
+          "ratingKind": "global",
+          "ratingDate": null,
           "createdAt": null,
           "eventDate": null,
           "signupOpensAt": null,
@@ -14720,10 +14872,303 @@
         "wouldExceedTeamCap": false,
         "selfOrganised": false,
         "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
         "pendingSignupIds": [
           "p1"
         ],
         "memberIds": [],
+        "myInviteTeamIds": [],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the organiser's view before the draw: teams can still be shuffled",
+        "event": {
+          "id": "organised",
+          "name": "",
+          "description": "",
+          "status": "drafted",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "playerReporting": false,
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1500,
+              "ratingActual": 1500,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "championTeamId": null,
+          "viewer": {
+            "loggedIn": true,
+            "organiser": true,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null
+          }
+        },
+        "teamId": "t1",
+        "teamRating": 1500,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": true,
+        "mayShuffleTeams": true,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1"
+        ],
+        "myInviteTeamIds": [],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same event once the bracket exists: shuffling is refused",
+        "event": {
+          "id": "organised-running",
+          "name": "",
+          "description": "",
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "playerReporting": false,
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1500,
+              "ratingActual": 1500,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "championTeamId": null,
+          "viewer": {
+            "loggedIn": true,
+            "organiser": true,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null
+          }
+        },
+        "teamId": "t1",
+        "teamRating": 1500,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1"
+        ],
+        "myInviteTeamIds": [],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "an unrated event, the only kind that takes a typed rating",
+        "event": {
+          "id": "unrated",
+          "name": "",
+          "description": "",
+          "status": "drafted",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "playerReporting": false,
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "none",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1500,
+              "ratingActual": 1500,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "championTeamId": null,
+          "viewer": {
+            "loggedIn": true,
+            "organiser": true,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null
+          }
+        },
+        "teamId": "t1",
+        "teamRating": 1500,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": true,
+        "mayShuffleTeams": true,
+        "maySetRating": true,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1"
+        ],
         "myInviteTeamIds": [],
         "rooms": [],
         "unreadTotal": 0

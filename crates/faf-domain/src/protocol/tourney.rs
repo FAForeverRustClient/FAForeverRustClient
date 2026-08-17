@@ -27,8 +27,8 @@ use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition, Formation, HostingStatus,
     InviteStatus, MapPool, MatchLink, MatchStatus, NewsPost, PendingReport, PoolAssignment,
-    RatingGate, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap,
-    TourneyMatch, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    RatingGate, RatingKind, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite,
+    TourneyMap, TourneyMatch, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 
 /// A string field, empty when absent or not a string.
@@ -160,6 +160,12 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             max_team: int(document, "maxTeamRating"),
             cap: int(document, "ratingCap"),
         },
+        // Both come with every answer. They were ignored for a while, and the
+        // cost was a feature deleted as "impossible": an unrated event needs the
+        // organiser to type a rating, and only `ratingType` says which events
+        // those are.
+        rating_kind: RatingKind::from_wire(&text(document, "ratingType")),
+        rating_date: moment(document, "ratingDate"),
         created_at: moment(document, "createdAt"),
         // These four are typed by a person and stored as ISO text; the two
         // below them are machine stamps in milliseconds.

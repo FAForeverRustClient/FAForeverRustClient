@@ -25,6 +25,8 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     playerReporting: true,
     vetoEnabled: false,
     rating: { min: null, max: null, maxTeam: null, cap: null },
+    ratingKind: "global",
+    ratingDate: null,
     createdAt: null,
     eventDate: null,
     signupOpensAt: null,

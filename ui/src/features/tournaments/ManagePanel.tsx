@@ -19,7 +19,8 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { EntrantAdmin } from "./EntrantAdmin";
 import { MapPoolPanel, ManageLink } from "./MapPoolPanel";
-import { isLegalFrom } from "./tourneyPresentation";
+import { TeamAdmin } from "./TeamAdmin";
+import { isLegalFrom, mayShuffleTeams } from "./tourneyPresentation";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -48,6 +49,9 @@ interface ManagePanelProps {
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
   onAddPlayer: (name: string, rating: number | null) => void;
+  onSetCaptain: (teamId: string, playerId: string) => void;
+  onMovePlayer: (playerId: string, teamId: string | null) => void;
+  onEditPlayer: (playerId: string, note: string, rating: number | null) => void;
   onRespondSignup: (playerId: string, accept: boolean) => void;
   onRemovePlayer: (playerId: string) => void;
   onInvitePlayer: (name: string) => void;
@@ -137,6 +141,23 @@ export function ManagePanel({
           onSplit={rest.onSplitDivisions}
         />
       </section>
+
+      {/* Only while the teams still decide anything: once the bracket is drawn
+          the service refuses every one of these, because the draw was made from
+          the teams. */}
+      {mayShuffleTeams(event) && event.teams.length > 0 && (
+        <section>
+          <h5>{t("tournaments.manage.teams")}</h5>
+          <TeamAdmin
+            event={event}
+            profiles={profiles}
+            busy={busy}
+            onSetCaptain={rest.onSetCaptain}
+            onMovePlayer={rest.onMovePlayer}
+            onEditPlayer={rest.onEditPlayer}
+          />
+        </section>
+      )}
 
       <section>
         <h5>{t("tournaments.manage.maps")}</h5>

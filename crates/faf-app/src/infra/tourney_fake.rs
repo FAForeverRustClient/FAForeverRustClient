@@ -683,6 +683,133 @@ impl TourneyPort for FakeTourney {
         })
     }
 
+    async fn set_captain(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        player_id: &str,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let Some(team) = held.event.teams.iter_mut().find(|team| team.id == team_id) else {
+                return Err(RequestError::rejected("Team not found"));
+            };
+            // The server insists the new captain is already on the team, rather
+            // than pulling them across as a side effect.
+            if !team.player_ids.iter().any(|id| id == player_id) {
+                return Err(RequestError::rejected("That player is not on this team"));
+            }
+            team.captain_id = Some(player_id.to_string());
+            Ok(())
+        })
+    }
+
+    async fn move_player(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        team_id: Option<&str>,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if held.event.player(player_id).is_none() {
+                return Err(RequestError::rejected("Player not found"));
+            }
+            let size = held.event.team_size;
+
+            // Off the old team first, exactly in the server's order: a team that
+            // loses its last member is dissolved, and a departing captain's
+            // armband passes to whoever is now first.
+            if let Some(current) = held
+                .event
+                .players
+                .iter()
+                .find(|player| player.id == player_id)
+                .and_then(|player| player.team_id.clone())
+            {
+                if let Some(team) = held.event.teams.iter_mut().find(|team| team.id == current) {
+                    team.player_ids.retain(|id| id != player_id);
+                    if team.captain_id.as_deref() == Some(player_id) {
+                        team.captain_id = team.player_ids.first().cloned();
+                    }
+                }
+                held.event.teams.retain(|team| !team.player_ids.is_empty());
+            }
+            if let Some(player) = held
+                .event
+                .players
+                .iter_mut()
+                .find(|player| player.id == player_id)
+            {
+                player.team_id = None;
+            }
+
+            // Then onto the new one, if there is one and it has room.
+            if let Some(destination) = team_id {
+                let Some(team) = held
+                    .event
+                    .teams
+                    .iter_mut()
+                    .find(|team| team.id == destination)
+                else {
+                    return Err(RequestError::rejected("Destination team not found"));
+                };
+                if i32::try_from(team.player_ids.len()).unwrap_or(i32::MAX) >= size {
+                    return Err(RequestError::rejected("That team is full"));
+                }
+                team.player_ids.push(player_id.to_string());
+                if team.captain_id.is_none() {
+                    team.captain_id = Some(player_id.to_string());
+                }
+                if let Some(player) = held
+                    .event
+                    .players
+                    .iter_mut()
+                    .find(|player| player.id == player_id)
+                {
+                    player.team_id = Some(destination.to_string());
+                }
+            }
+            held.event.team_count = held.event.teams.len() as i32;
+            Ok(())
+        })
+    }
+
+    async fn edit_player(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        note: &str,
+        rating: Option<i32>,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            // The rating gate is the server's, and it is worth keeping here: it is
+            // the one refusal an organiser meets by accident, when they try to
+            // correct a rating the service fetched itself.
+            let rated = held.event.rating_kind != faf_domain::state::RatingKind::None;
+            if rating.is_some() && rated {
+                return Err(RequestError::rejected(
+                    "Ratings are fetched from FAF for this tournament and cannot be edited",
+                ));
+            }
+            let Some(player) = held
+                .event
+                .players
+                .iter_mut()
+                .find(|player| player.id == player_id)
+            else {
+                return Err(RequestError::rejected("Player not found"));
+            };
+            player.note = note.trim().chars().take(40).collect();
+            if let Some(rating) = rating {
+                if !(0..=4_000).contains(&rating) {
+                    return Err(RequestError::rejected("Rating must be 0-4000"));
+                }
+                player.rating_actual = Some(rating);
+                player.rating = Some(rating);
+            }
+            Ok(())
+        })
+    }
+
     async fn respond_signup(
         &self,
         tournament_id: &str,

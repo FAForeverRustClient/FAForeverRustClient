@@ -44,6 +44,8 @@ import {
   mapKey,
   matchVaultMap,
   mayReseed,
+  maySetRating,
+  mayShuffleTeams,
   myInvites,
   newGames,
   openEvent,
@@ -92,6 +94,8 @@ interface HelperFixture {
     wouldExceedTeamCap: boolean;
     selfOrganised: boolean;
     mayReseed: boolean;
+    mayShuffleTeams: boolean;
+    maySetRating: boolean;
     pendingSignupIds: string[];
     memberIds: string[];
     myInviteTeamIds: string[];
@@ -214,6 +218,8 @@ describe("tournament rule twins match Rust", () => {
       wouldExceedTeamCap: team === null ? false : wouldExceedCap(event, team),
       selfOrganised: selfOrganised(event),
       mayReseed: mayReseed(event),
+      mayShuffleTeams: mayShuffleTeams(event),
+      maySetRating: maySetRating(event),
       pendingSignupIds: pendingSignups(event).map((player) => player.id),
       memberIds: team === null ? [] : teamMembers(event, team).map((player) => player.id),
       myInviteTeamIds: myInvites(event).map((held) => held.id),
@@ -223,6 +229,8 @@ describe("tournament rule twins match Rust", () => {
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
       selfOrganised: recorded.selfOrganised,
       mayReseed: recorded.mayReseed,
+      mayShuffleTeams: recorded.mayShuffleTeams,
+      maySetRating: recorded.maySetRating,
       pendingSignupIds: recorded.pendingSignupIds,
       memberIds: recorded.memberIds,
       myInviteTeamIds: recorded.myInviteTeamIds,

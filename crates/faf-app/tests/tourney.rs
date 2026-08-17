@@ -72,6 +72,21 @@ impl TourneyPort for RefusingTourney {
     async fn respond_signup(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
+    async fn set_captain(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn move_player(&self, _: &str, _: &str, _: Option<&str>) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn edit_player(
+        &self,
+        _: &str,
+        _: &str,
+        _: &str,
+        _: Option<i32>,
+    ) -> Result<(), RequestError> {
+        self.refused()
+    }
     async fn invite_player(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
@@ -823,6 +838,21 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             Err(RequestError::offline("no route to host"))
         }
         async fn create(&self, _: &TourneyDraft) -> Result<String, RequestError> {
+            unreachable!()
+        }
+        async fn set_captain(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn move_player(&self, _: &str, _: &str, _: Option<&str>) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn edit_player(
+            &self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: Option<i32>,
+        ) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn edit_info(&self, _: &str, _: &TourneyDraft) -> Result<(), RequestError> {
