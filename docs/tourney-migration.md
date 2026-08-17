@@ -89,18 +89,39 @@ the FAF role is real, it simply no longer gates anything here. Whether an
 account organises *this* event is the tournament service's own answer, in
 `viewer.organiser`.
 
-## What has not been verified
+## Testing against a real server
 
-Nothing here has run against a live instance. The tests exercise the fake, and
-the desktop shell has not been launched since the rewrite, so the tab has been
-type-checked and unit-tested but never rendered. Two things to do first with a
-real deployment:
+**The Bearer blocker is gone.** `resolveBearerSession` is deployed and live:
+`https://tournaments.doodlepros.com` answers `GET /api/tournaments` and
+validates `Authorization: Bearer <faf access token>` against FAF's own `/me`.
+No client change is needed for any of it.
 
-- Confirm the Bearer path in `currentSession` is live. Until it is, the client
-  cannot even read.
-- Check the map preview field name in `publicMapView`. The codec accepts
-  `imageUrl` / `image` / `url` / `preview`. Mostly moot now that previews come
-  from FAF's vault, but it is the fallback for maps never uploaded there.
+The reason nobody has seen it work is `.claude/launch.json`, which pinned
+`FAF_FAKE_AUTH=1`. That picks `fake_ports()`, so the tab talked to
+`FakeTourney` and the real client was never constructed. Two configurations
+now sit beside it.
+
+**Local first.** In a checkout of `faf-tournaments`:
+
+```
+node server.js
+```
+
+Then run the client with `TOURNEY_API_BASE=http://localhost:8090` and log in
+with FAF normally. That is real HTTP, the real codec and a real identity
+against a `data/db.json` of your own. Worth knowing: `resolveBearerSession`
+does not depend on `FAF_OAUTH_ON`, so a local instance needs no OAuth
+configuration at all, and with OAuth unconfigured `host_status` answers
+`allowed: 1`, so creating tournaments works without host approval.
+
+**Live second.** The same, without `TOURNEY_API_BASE`. Those are real
+tournaments: reads are free, but creating, archiving and reporting are not a
+sandbox.
+
+Still unverified either way: the map preview field name in `publicMapView`.
+The codec accepts `imageUrl` / `image` / `url` / `preview`. Mostly moot now
+that previews come from FAF's vault, but it is the fallback for maps never
+uploaded there.
 
 ## Gates
 
