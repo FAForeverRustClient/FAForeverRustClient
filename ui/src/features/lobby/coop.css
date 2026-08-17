@@ -52,12 +52,31 @@
   display: grid;
   flex: 1;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
 }
 
-.coop-games-main,
-.coop-detail {
+.coop-layout > .play-toolbar {
+  grid-column: 1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+
+.coop-layout > .coop-games-main {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.coop-layout > .coop-detail {
+  grid-column: 2;
+  grid-row: 2;
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -129,7 +148,23 @@
 @media (max-width: 900px) {
   .coop-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     height: auto;
+  }
+
+  .coop-layout > .play-toolbar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .coop-layout > .coop-games-main {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .coop-layout > .coop-detail {
+    grid-column: 1;
+    grid-row: 3;
   }
 }
 
@@ -228,8 +263,7 @@
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 100px;
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -266,11 +300,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.coop-detail-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.coop-detail-preview-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.coop-detail-host-btn {
+  margin-left: auto;
   flex-shrink: 0;
 }
 
@@ -323,6 +376,11 @@
   border-bottom: 2px solid var(--color-faction-seraphim);
 }
 
+.coop-map-tile-badge[data-faction="custom"] {
+  border-bottom: 2px solid var(--color-accent);
+  color: var(--color-muted);
+}
+
 .coop-detail-brief {
   margin: 10px 0;
   white-space: pre-line;
@@ -348,8 +406,52 @@
 .coop-board-filter {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--space-2);
+}
+
+.coop-board-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.coop-player-count-group {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  gap: 2px;
+}
+
+.coop-player-count-group button {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.coop-player-count-group button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.coop-player-count-group button.is-active {
+  color: var(--color-text);
+  background: var(--color-surface-active, var(--color-surface));
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .coop-load-error {

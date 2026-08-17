@@ -280,25 +280,27 @@ function VaultView({ busy }: { busy: boolean }) {
       {vaultStatus.type === "ready" && filtered.length === 0 ? (
         <div className="vault-empty"><Icon name={vault.length === 0 ? "maps" : "search"} size={24} /><h3>{t(vault.length === 0 ? "maps.view.emptyVault" : "maps.view.noMatch")}</h3><p>{t(vault.length === 0 ? "maps.view.emptyVaultHint" : "maps.view.noMatchHint")}</p></div>
       ) : pageMaps.length > 0 && (
-        <div className="vault-layout">
-          <section className="vault-browser">
-            <div className="vault-results-head"><span>{filtered.length} {filtered.length === 1 ? "map" : "maps"}</span><span>Page {currentPage} of {totalPages}</span></div>
-            <div className="map-vault-grid">
-              {pageMaps.map((map) => {
-                const isInstalled = mapInstalled(map, installedFolders);
-                const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
-                const favorite = favoriteFolders.has(map.folderName.toLocaleLowerCase());
-                return <MapCard key={map.folderName} map={map} active={selected?.folderName === map.folderName} installed={isInstalled} busy={isBusy} favorite={favorite} onSelect={() => setSelectedFolder(map.folderName)} onInstall={() => installMap(map.folderName, map.downloadUrl)} onToggleFavorite={() => toggleFavorite(map.folderName)} />;
-              })}
-            </div>
-            {totalPages > 1 && (
-              <div className="vault-pagination">
-                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+        <>
+          <div className="vault-results-head"><span>{filtered.length} {filtered.length === 1 ? "map" : "maps"}</span><span>Page {currentPage} of {totalPages}</span></div>
+          <div className="vault-layout">
+            <section className="vault-browser">
+              <div className="map-vault-grid">
+                {pageMaps.map((map) => {
+                  const isInstalled = mapInstalled(map, installedFolders);
+                  const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
+                  const favorite = favoriteFolders.has(map.folderName.toLocaleLowerCase());
+                  return <MapCard key={map.folderName} map={map} active={selected?.folderName === map.folderName} installed={isInstalled} busy={isBusy} favorite={favorite} onSelect={() => setSelectedFolder(map.folderName)} onInstall={() => installMap(map.folderName, map.downloadUrl)} onToggleFavorite={() => toggleFavorite(map.folderName)} />;
+                })}
               </div>
-            )}
-          </section>
-          {selected && <MapDetailPanel map={selected} installed={mapInstalled(selected, installedFolders)} busy={busy && installStatus.type === "installing" && installStatus.payload.folderName === selected.folderName} favorite={favoriteFolders.has(selected.folderName.toLocaleLowerCase())} onInstall={() => installMap(selected.folderName, selected.downloadUrl)} onUninstall={() => setPendingUninstall(selected)} onPreview={() => setPreviewMap(selected)} onToggleFavorite={() => toggleFavorite(selected.folderName)} />}
-        </div>
+              {totalPages > 1 && (
+                <div className="vault-pagination">
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+                </div>
+              )}
+            </section>
+            {selected && <MapDetailPanel map={selected} installed={mapInstalled(selected, installedFolders)} busy={busy && installStatus.type === "installing" && installStatus.payload.folderName === selected.folderName} favorite={favoriteFolders.has(selected.folderName.toLocaleLowerCase())} onInstall={() => installMap(selected.folderName, selected.downloadUrl)} onUninstall={() => setPendingUninstall(selected)} onPreview={() => setPreviewMap(selected)} onToggleFavorite={() => toggleFavorite(selected.folderName)} />}
+          </div>
+        </>
       )}
 
       {pendingUninstall && <MapUninstallDialog mapName={pendingUninstall.displayName} onCancel={() => setPendingUninstall(null)} onConfirm={() => { uninstallMap(pendingUninstall.folderName); setPendingUninstall(null); }} />}

@@ -190,17 +190,30 @@ export function LobbyView() {
     ipc.send({ kind: "Maps", command: { type: "loadVault" } });
   }, []);
 
+  const customGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() !== "coop" && game.gameType.toLocaleLowerCase() !== "coop"), [lobby.games]);
+  const coopGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() === "coop" || game.gameType.toLocaleLowerCase() === "coop"), [lobby.games]);
+
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
-    return lobby.games
+    return customGames
       .slice()
-      .filter((game) => game.modName.toLocaleLowerCase() !== "coop" && game.gameType.toLocaleLowerCase() !== "coop")
       .filter((game) => !query || [game.title, game.host, game.map, game.modName].some((value) => value.toLocaleLowerCase().includes(query)))
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule)))
       .sort((left, right) => compareGames(sort, left, right));
-  }, [applyFilters, hideModded, hidePrivate, lobby.games, rules, search, sort]);
+  }, [applyFilters, customGames, hideModded, hidePrivate, rules, search, sort]);
+
+  const filteredCoopGames = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return coopGames
+      .slice()
+      .filter((game) => !query || [game.title, game.host, game.map, game.modName].some((value) => value.toLocaleLowerCase().includes(query)))
+      .filter((game) => !hidePrivate || !game.passwordProtected)
+      .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
+      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule)))
+      .sort((left, right) => compareGames(sort, left, right));
+  }, [applyFilters, coopGames, hideModded, hidePrivate, rules, search, sort]);
 
   const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
   const connected = lobby.status === "connected";
@@ -208,8 +221,6 @@ export function LobbyView() {
   const inMatchmaker = lobby.playMode === "matchmaking";
   const inCoop = lobby.playMode === "coop";
   const inGalacticWar = lobby.playMode === "galacticWar";
-  const customGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() !== "coop" && game.gameType.toLocaleLowerCase() !== "coop"), [lobby.games]);
-  const coopGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() === "coop" || game.gameType.toLocaleLowerCase() === "coop"), [lobby.games]);
 
   const requestJoin = (game: Game) => {
     if (game.passwordProtected) {
@@ -283,7 +294,33 @@ export function LobbyView() {
           party={lobby.party}
         />
       ) : inCoop ? (
-        <CoopPanel games={coopGames} onJoin={requestJoin} onHost={handleHostCoop} />
+        <CoopPanel
+          games={filteredCoopGames}
+          viewMode={gameView}
+          toolbar={(
+            <CustomGamesToolbar
+              search={search}
+              sort={sort}
+              viewMode={gameView}
+              hidePrivate={hidePrivate}
+              hideModded={hideModded}
+              applyFilters={applyFilters}
+              filterCount={rules.length}
+              connected={connected}
+              onSearch={setSearch}
+              onSort={(value) => updateGameBrowser({ sort: value })}
+              onViewMode={selectGameView}
+              onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
+              onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+              onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
+              onOpenFilters={() => setFiltersOpen(true)}
+              onHost={() => handleHostCoop()}
+              onRefresh={() => ipc.send({ kind: "Coop", command: { type: "loadCatalog" } })}
+            />
+          )}
+          onJoin={requestJoin}
+          onHost={handleHostCoop}
+        />
       ) : inGalacticWar ? (
         <GalacticWarPanel />
       ) : (
