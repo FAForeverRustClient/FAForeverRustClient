@@ -5,17 +5,38 @@
 //! actual API calls, folder scan, zip extraction, and `game.prefs`
 //! read/write live entirely behind the port: see `infra/mods.rs`.
 
-use faf_domain::state::{ModsCommand, ModsEvent};
+use faf_domain::state::{ModListStatus, ModsCommand, ModsEvent};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
 pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ModsCommand::LoadVault => {
+            // Same guard, same reason, as `services::maps`: one crawl.
+            if out.with_state(|state| {
+                matches!(
+                    state.mods.vault_status,
+                    ModListStatus::Loading | ModListStatus::Ready
+                )
+            }) {
+                return;
+            }
             out.emit(ModsEvent::VaultLoading);
             match ctx.ports.mods.list_vault().await {
                 Ok(mods) => out.emit(ModsEvent::VaultLoaded { mods }),
                 Err(reason) => out.emit(ModsEvent::VaultLoadFailed { reason }),
+            }
+        }
+        ModsCommand::SearchVault { query } => {
+            out.emit(ModsEvent::VaultSearching);
+            match ctx.ports.mods.search_vault(query.clone()).await {
+                Ok(page) => out.emit(ModsEvent::VaultSearched {
+                    mods: page.mods,
+                    query,
+                    total_pages: page.total_pages,
+                    total_records: page.total_records,
+                }),
+                Err(reason) => out.emit(ModsEvent::VaultSearchFailed { reason }),
             }
         }
         ModsCommand::LoadInstalled => {

@@ -125,6 +125,30 @@
       "vaultStatus": {
         "type": "idle"
       },
+      "browse": [],
+      "browseStatus": {
+        "type": "idle"
+      },
+      "browseQuery": {
+        "search": "",
+        "author": "",
+        "ranked": null,
+        "recommended": false,
+        "minRatingTenths": null,
+        "maxRatingTenths": null,
+        "minPlayers": null,
+        "maxPlayers": null,
+        "width": 0,
+        "height": 0,
+        "after": "",
+        "before": "",
+        "sortBy": "rating",
+        "sortDescending": true,
+        "page": 1,
+        "pageSize": 36
+      },
+      "browseTotalPages": null,
+      "browseTotalRecords": null,
       "installed": [],
       "installedStatus": {
         "type": "idle"
@@ -196,6 +220,28 @@
       "vaultStatus": {
         "type": "idle"
       },
+      "browse": [],
+      "browseStatus": {
+        "type": "idle"
+      },
+      "browseQuery": {
+        "search": "",
+        "author": "",
+        "modType": "",
+        "ranked": null,
+        "recommended": false,
+        "minRatingTenths": null,
+        "maxRatingTenths": null,
+        "dateFieldUpdated": true,
+        "after": "",
+        "before": "",
+        "sortBy": "rating",
+        "sortDescending": true,
+        "page": 1,
+        "pageSize": 36
+      },
+      "browseTotalPages": null,
+      "browseTotalRecords": null,
       "installed": [],
       "installedStatus": {
         "type": "idle"
@@ -4636,6 +4682,30 @@
             }
           },
           "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "height": 0,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
             "installStatus": {
               "type": "idle"
             },
@@ -4664,6 +4734,215 @@
             }
           },
           "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "height": 0,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "payload": {
+                "reason": "503"
+              },
+              "type": "failed"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultSearching"
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "height": 0,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "loading"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "payload": {
+                "reason": "503"
+              },
+              "type": "failed"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultSearched",
+              "payload": {
+                "maps": [],
+                "query": {
+                  "search": "seton",
+                  "author": "",
+                  "ranked": null,
+                  "recommended": false,
+                  "minRatingTenths": null,
+                  "maxRatingTenths": null,
+                  "minPlayers": null,
+                  "maxPlayers": null,
+                  "width": 0,
+                  "height": 0,
+                  "after": "",
+                  "before": "",
+                  "sortBy": "rating",
+                  "sortDescending": true,
+                  "page": 2,
+                  "pageSize": 36
+                },
+                "totalPages": 4,
+                "totalRecords": 131
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "height": 0,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 2,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "seton",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "ready"
+            },
+            "browseTotalPages": 4,
+            "browseTotalRecords": 131,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "payload": {
+                "reason": "503"
+              },
+              "type": "failed"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultSearchFailed",
+              "payload": {
+                "reason": "the filter was rejected"
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "height": 0,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 2,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "seton",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "payload": {
+                "reason": "the filter was rejected"
+              },
+              "type": "failed"
+            },
+            "browseTotalPages": 4,
+            "browseTotalRecords": 131,
             "installStatus": {
               "type": "idle"
             },
@@ -4692,6 +4971,33 @@
             }
           },
           "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "height": 0,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 2,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "seton",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "payload": {
+                "reason": "the filter was rejected"
+              },
+              "type": "failed"
+            },
+            "browseTotalPages": 4,
+            "browseTotalRecords": 131,
             "installStatus": {
               "type": "idle"
             },
@@ -4733,6 +5039,33 @@
             }
           },
           "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "height": 0,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 2,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "seton",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "payload": {
+                "reason": "the filter was rejected"
+              },
+              "type": "failed"
+            },
+            "browseTotalPages": 4,
+            "browseTotalRecords": 131,
             "installStatus": {
               "type": "idle"
             },
@@ -4772,10 +5105,200 @@
           "event": {
             "kind": "Mods",
             "event": {
+              "type": "vaultSearching"
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true
+            },
+            "browseStatus": {
+              "type": "loading"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "vaultSearched",
+              "payload": {
+                "mods": [],
+                "query": {
+                  "search": "",
+                  "author": "",
+                  "modType": "ui",
+                  "ranked": null,
+                  "recommended": false,
+                  "minRatingTenths": null,
+                  "maxRatingTenths": null,
+                  "dateFieldUpdated": true,
+                  "after": "",
+                  "before": "",
+                  "sortBy": "rating",
+                  "sortDescending": true,
+                  "page": 1,
+                  "pageSize": 36
+                },
+                "totalPages": 2,
+                "totalRecords": 48
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "ui",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true
+            },
+            "browseStatus": {
+              "type": "ready"
+            },
+            "browseTotalPages": 2,
+            "browseTotalRecords": 48,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "vaultSearchFailed",
+              "payload": {
+                "reason": "the filter was rejected"
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "ui",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true
+            },
+            "browseStatus": {
+              "payload": {
+                "reason": "the filter was rejected"
+              },
+              "type": "failed"
+            },
+            "browseTotalPages": 2,
+            "browseTotalRecords": 48,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
               "type": "installedLoading"
             }
           },
           "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "ui",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true
+            },
+            "browseStatus": {
+              "payload": {
+                "reason": "the filter was rejected"
+              },
+              "type": "failed"
+            },
+            "browseTotalPages": 2,
+            "browseTotalRecords": 48,
             "installStatus": {
               "type": "idle"
             },
@@ -4803,6 +5326,31 @@
             }
           },
           "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "ui",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true
+            },
+            "browseStatus": {
+              "payload": {
+                "reason": "the filter was rejected"
+              },
+              "type": "failed"
+            },
+            "browseTotalPages": 2,
+            "browseTotalRecords": 48,
             "installStatus": {
               "type": "idle"
             },
@@ -6836,18 +7384,12 @@
           "event": {
             "kind": "Replays",
             "event": {
-              "type": "vaultDownloadStarted",
-              "payload": {
-                "uid": 42
-              }
+              "type": "vaultLoading"
             }
           },
           "expected": {
             "downloadStatus": {
-              "payload": {
-                "uid": 42
-              },
-              "type": "downloading"
+              "type": "idle"
             },
             "featuredMods": [],
             "lastWarning": null,
@@ -6893,10 +7435,175 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "loading"
             },
             "vaultTotalPages": null,
             "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultLoaded",
+              "payload": {
+                "replays": [],
+                "query": {
+                  "player": "",
+                  "exactPlayer": false,
+                  "map": "",
+                  "mapAuthor": "",
+                  "title": "",
+                  "replayId": "",
+                  "host": "",
+                  "featuredMods": [],
+                  "leaderboards": [],
+                  "factions": [],
+                  "victoryConditions": [],
+                  "minRating": null,
+                  "maxRating": null,
+                  "minReviewScore": null,
+                  "maxReviewScore": null,
+                  "minDurationMinutes": null,
+                  "maxDurationMinutes": null,
+                  "mapMinPlayers": null,
+                  "mapMaxPlayers": null,
+                  "mapMinSizeKm": null,
+                  "mapMaxSizeKm": null,
+                  "rankedMapOnly": false,
+                  "after": "",
+                  "before": "",
+                  "onlyRanked": false,
+                  "sortBy": "startTime",
+                  "sortDescending": true,
+                  "page": 2,
+                  "pageSize": 50
+                },
+                "hasMore": true,
+                "totalPages": 9,
+                "totalRecords": 412
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": true,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 2,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloadStarted",
+              "payload": {
+                "uid": 42
+              }
+            }
+          },
+          "expected": {
+            "downloadStatus": {
+              "payload": {
+                "uid": 42
+              },
+              "type": "downloading"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": true,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": false,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 2,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         },
         {
@@ -6965,7 +7672,7 @@
               "type": "idle"
             },
             "vault": [],
-            "vaultHasMore": false,
+            "vaultHasMore": true,
             "vaultQuery": {
               "after": "",
               "before": "",
@@ -6987,7 +7694,7 @@
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
-              "page": 1,
+              "page": 2,
               "pageSize": 50,
               "player": "",
               "rankedMapOnly": false,
@@ -6998,10 +7705,10 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "ready"
             },
-            "vaultTotalPages": null,
-            "vaultTotalRecords": null
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         },
         {
@@ -7051,7 +7758,7 @@
               "type": "idle"
             },
             "vault": [],
-            "vaultHasMore": false,
+            "vaultHasMore": true,
             "vaultQuery": {
               "after": "",
               "before": "",
@@ -7073,7 +7780,7 @@
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
-              "page": 1,
+              "page": 2,
               "pageSize": 50,
               "player": "",
               "rankedMapOnly": false,
@@ -7084,10 +7791,10 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "ready"
             },
-            "vaultTotalPages": null,
-            "vaultTotalRecords": null
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         },
         {
@@ -7139,7 +7846,7 @@
               "type": "idle"
             },
             "vault": [],
-            "vaultHasMore": false,
+            "vaultHasMore": true,
             "vaultQuery": {
               "after": "",
               "before": "",
@@ -7161,7 +7868,7 @@
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
-              "page": 1,
+              "page": 2,
               "pageSize": 50,
               "player": "",
               "rankedMapOnly": false,
@@ -7172,10 +7879,10 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "ready"
             },
-            "vaultTotalPages": null,
-            "vaultTotalRecords": null
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         },
         {
@@ -7225,7 +7932,7 @@
               "type": "idle"
             },
             "vault": [],
-            "vaultHasMore": false,
+            "vaultHasMore": true,
             "vaultQuery": {
               "after": "",
               "before": "",
@@ -7247,7 +7954,7 @@
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
-              "page": 1,
+              "page": 2,
               "pageSize": 50,
               "player": "",
               "rankedMapOnly": false,
@@ -7258,10 +7965,10 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "ready"
             },
-            "vaultTotalPages": null,
-            "vaultTotalRecords": null
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         },
         {
@@ -7312,7 +8019,7 @@
               "type": "playing"
             },
             "vault": [],
-            "vaultHasMore": false,
+            "vaultHasMore": true,
             "vaultQuery": {
               "after": "",
               "before": "",
@@ -7334,7 +8041,7 @@
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
-              "page": 1,
+              "page": 2,
               "pageSize": 50,
               "player": "",
               "rankedMapOnly": false,
@@ -7345,10 +8052,10 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "ready"
             },
-            "vaultTotalPages": null,
-            "vaultTotalRecords": null
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         },
         {
@@ -7401,7 +8108,7 @@
               "type": "playing"
             },
             "vault": [],
-            "vaultHasMore": false,
+            "vaultHasMore": true,
             "vaultQuery": {
               "after": "",
               "before": "",
@@ -7423,7 +8130,7 @@
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
-              "page": 1,
+              "page": 2,
               "pageSize": 50,
               "player": "",
               "rankedMapOnly": false,
@@ -7434,10 +8141,10 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "ready"
             },
-            "vaultTotalPages": null,
-            "vaultTotalRecords": null
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         },
         {
@@ -7487,7 +8194,7 @@
               "type": "failed"
             },
             "vault": [],
-            "vaultHasMore": false,
+            "vaultHasMore": true,
             "vaultQuery": {
               "after": "",
               "before": "",
@@ -7509,7 +8216,7 @@
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
-              "page": 1,
+              "page": 2,
               "pageSize": 50,
               "player": "",
               "rankedMapOnly": false,
@@ -7520,10 +8227,10 @@
               "victoryConditions": []
             },
             "vaultStatus": {
-              "type": "idle"
+              "type": "ready"
             },
-            "vaultTotalPages": null,
-            "vaultTotalRecords": null
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
           }
         }
       ]

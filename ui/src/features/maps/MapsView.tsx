@@ -16,10 +16,11 @@ import {
 } from "../../design-system/SearchPanel";
 import { Modal } from "../../design-system/Modal";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMap, VaultMap } from "../../ipc/bindings";
+import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { loadStatusNote } from "../../shared/loadStatusNote";
-import { isWithinDateRange, isWithinNumberRange, sortByDateDesc } from "../../shared/filterRanges";
+import { isWithinNumberRange } from "../../shared/filterRanges";
+import { EMPTY_MAP_QUERY } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import {
   installNote,
@@ -78,10 +79,52 @@ interface MapFilterState {
   height: number;
 }
 
+/**
+ * The tab's filter state as the API query it stands for.
+ *
+ * The presets are sorts plus, for `recommended`, a flag the API models on the
+ * map itself. `favorites` has no server equivalent and is handled by the caller.
+ */
+function mapVaultQuery(applied: MapFilterState, preset: VaultPreset, page: number): MapVaultQuery {
+  const sortBy: MapVaultQuery["sortBy"] = applied.sort === "size" ? "size"
+    : applied.sort === "name" ? "name"
+      : applied.sort === "played" ? "played"
+        : applied.sort === "newest" ? "newest"
+          : "rating";
+  return {
+    ...EMPTY_MAP_QUERY,
+    search: applied.search.trim(),
+    author: applied.author.trim(),
+    ranked: applied.ranked === "all" ? null : applied.ranked === "ranked",
+    recommended: preset === "recommended",
+    // The domain carries review scores in tenths so the whole state stays
+    // comparable; the sliders are in stars.
+    minRatingTenths: applied.minimumRating === null ? null : Math.round(applied.minimumRating * 10),
+    maxRatingTenths: applied.maximumRating === null ? null : Math.round(applied.maximumRating * 10),
+    minPlayers: applied.minimumPlayers,
+    maxPlayers: applied.maximumPlayers,
+    width: applied.width,
+    height: applied.height,
+    after: applied.createdAfter,
+    before: applied.createdBefore,
+    sortBy,
+    // Name ascending, everything else best/newest/most first.
+    sortDescending: sortBy !== "name",
+    page,
+    pageSize: PAGE_SIZE,
+  };
+}
+
 function VaultView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
+  // `vault` is the catalogue index, still loaded once and still what the
+  // favourites preset and every map-art lookup read. `browse` is one page of a
+  // server-side search, and is what this tab shows.
   const vault = useAppStore((state) => state.state.maps.vault);
   const vaultStatus = useAppStore((state) => state.state.maps.vaultStatus);
+  const browse = useAppStore((state) => state.state.maps.browse);
+  const browseStatus = useAppStore((state) => state.state.maps.browseStatus);
+  const browseTotalPages = useAppStore((state) => state.state.maps.browseTotalPages);
   const installed = useAppStore((state) => state.state.maps.installed);
   const installedStatus = useAppStore((state) => state.state.maps.installedStatus);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
@@ -238,55 +281,49 @@ function VaultView({ busy }: { busy: boolean }) {
     choosePreset("recommended");
   };
 
-  const filtered = useMemo(() => {
-    const query = applied.search.trim().toLocaleLowerCase();
-    // Hoisted out of the loop: the shared range helpers normalise their query
-    // on every call, which over 5005 maps is 5005 identical trims.
-    const authorQuery = applied.author.trim().toLocaleLowerCase();
-    const hasDateFilter = Boolean(applied.createdAfter || applied.createdBefore);
+  // The search runs on the server, as it does in both reference clients. What
+  // the user typed goes out as a query; the results come back as one page.
+  const query = useMemo(
+    () => mapVaultQuery(applied, preset, page),
+    [applied, preset, page],
+  );
 
-    // One pass rather than a chain of `.filter()` calls. Each link in that chain
-    // allocated a fresh array of up to 5005 maps, and the search predicate built
-    // a five-element array per map on top of it.
-    const matches: VaultMap[] = [];
-    for (const map of vault) {
-      if (preset === "recommended" && !map.recommended) continue;
-      if (preset === "favorites" && !favoriteFolders.has(map.folderName.toLocaleLowerCase())) continue;
-      if (applied.ranked !== "all" && map.ranked !== (applied.ranked === "ranked")) continue;
-      if (authorQuery && !(map.author ?? "").toLocaleLowerCase().includes(authorQuery)) continue;
-      if (hasDateFilter && !isWithinDateRange(map.createdAt, applied.createdAfter, applied.createdBefore)) continue;
-      if (!isWithinNumberRange(map.ratingTenths / 10, applied.minimumRating, applied.maximumRating)) continue;
-      if (!isWithinNumberRange(map.maxPlayers, applied.minimumPlayers, applied.maximumPlayers)) continue;
-      if (applied.width !== 0 && map.width !== applied.width) continue;
-      if (applied.height !== 0 && map.height !== applied.height) continue;
-      if (applied.installFilter !== "all"
-        && mapInstalled(map, installedFolders) !== (applied.installFilter === "installed")) continue;
-      if (query
-        && !map.displayName.toLocaleLowerCase().includes(query)
-        && !(map.author ?? "").toLocaleLowerCase().includes(query)
-        && !map.folderName.toLocaleLowerCase().includes(query)
-        && !map.description.toLocaleLowerCase().includes(query)
-        && !map.mapType.toLocaleLowerCase().includes(query)) continue;
-      matches.push(map);
-    }
+  // `favorites` is the one preset the API cannot answer: it is local state the
+  // server has never heard of. The favourites set is small and the catalogue
+  // index is loaded anyway, so this preset keeps filtering the index and stays
+  // exact, rather than becoming "favourites on this page".
+  const localFavorites = preset === "favorites";
 
-    if (applied.sort === "newest") return sortByDateDesc(matches, (map) => map.createdAt);
-    return matches.sort((left, right) => {
-      switch (applied.sort) {
-        case "rating": return right.ratingTenths - left.ratingTenths || right.reviews - left.reviews;
-        case "played": return right.gamesPlayed - left.gamesPlayed;
-        case "size": return right.width * right.height - left.width * left.height;
-        case "name": return left.displayName.localeCompare(right.displayName);
-        default: return 0;
-      }
-    });
-  }, [
-    vault, preset, favoriteFolders, applied, installedFolders,
-  ]);
+  useEffect(() => {
+    if (localFavorites) return;
+    ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } });
+  }, [localFavorites, query]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const favorites = useMemo(
+    () => (localFavorites
+      ? vault.filter((map) => favoriteFolders.has(map.folderName.toLocaleLowerCase()))
+      : []),
+    [localFavorites, vault, favoriteFolders],
+  );
+
+  // Installed/available is the other filter the server cannot apply, and unlike
+  // favourites it has no complete local set to fall back on, so it narrows the
+  // page that came back. `MapsView`'s result count says so.
+  const results = useMemo(() => {
+    const source = localFavorites ? favorites : browse;
+    if (applied.installFilter === "all") return source;
+    return source.filter(
+      (map) => mapInstalled(map, installedFolders) === (applied.installFilter === "installed"),
+    );
+  }, [applied.installFilter, browse, favorites, installedFolders, localFavorites]);
+
+  const totalPages = localFavorites
+    ? Math.max(1, Math.ceil(favorites.length / PAGE_SIZE))
+    : browseTotalPages ?? 1;
   const currentPage = Math.min(page, totalPages);
-  const pageMaps = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageMaps = localFavorites
+    ? results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+    : results;
   const selected = pageMaps.find((map) => map.folderName === selectedFolder) ?? pageMaps[0] ?? null;
   const hiddenFilterCount = Number(installFilter !== "all")
     + Number(createdAfter !== "" || createdBefore !== "")
@@ -318,7 +355,15 @@ function VaultView({ busy }: { busy: boolean }) {
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
-            <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("maps.view.refresh")}</Button>
+            {/* Re-runs the current search. It used to re-crawl the catalogue,
+                which the service now refuses once that has succeeded, and this
+                tab no longer browses the catalogue anyway. */}
+            <Button
+              onClick={() => ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } })}
+              disabled={browseStatus.type === "loading"}
+            >
+              <Icon name="refresh" size={15} /> {t("maps.view.refresh")}
+            </Button>
           </>
         )}
         advanced={filtersOpen ? (
@@ -386,7 +431,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("maps.view.detectionUnavailable")}</p>}
-      {vaultStatus.type === "ready" && filtered.length === 0 ? (
+      {browseStatus.type === "ready" && pageMaps.length === 0 ? (
         <EmptyState
           bordered
           icon={vault.length === 0 ? "maps" : "search"}
@@ -395,7 +440,10 @@ function VaultView({ busy }: { busy: boolean }) {
         />
       ) : pageMaps.length > 0 && (
         <>
-          <div className="vault-results-head"><span>{filtered.length} {filtered.length === 1 ? "map" : "maps"}</span><span>Page {currentPage} of {totalPages}</span></div>
+          <div className="vault-results-head">
+            <span>{t("maps.view.resultCount", { count: pageMaps.length })}</span>
+            <span>{t("maps.view.pageOf", { page: currentPage, total: totalPages })}</span>
+          </div>
           <div className="vault-layout">
             <section className="vault-browser">
               <div className="map-vault-grid">

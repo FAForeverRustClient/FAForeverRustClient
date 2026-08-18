@@ -11,6 +11,8 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+
+use crate::protocol::vault_query::MapVaultQuery;
 use specta::Type;
 
 /// One map version, as listed from the FAF Data API (`GET /data/map`,
@@ -131,8 +133,20 @@ pub enum MapInstallStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MapsState {
+    /// The whole catalogue, kept as a lookup index: nine features resolve a
+    /// map from a folder name through it (`shared/mapPresentation.ts`). It is
+    /// deliberately not what the Maps tab browses; see `browse` below.
     pub vault: Vec<VaultMap>,
     pub vault_status: MapListStatus,
+    /// One page of a server-side vault search, which is what the Maps tab
+    /// shows. Both reference clients browse this way rather than filtering a
+    /// downloaded catalogue.
+    pub browse: Vec<VaultMap>,
+    pub browse_status: MapListStatus,
+    pub browse_query: MapVaultQuery,
+    /// `None` when the server did not report one.
+    pub browse_total_pages: Option<i32>,
+    pub browse_total_records: Option<i32>,
     pub installed: Vec<InstalledMap>,
     pub installed_status: MapListStatus,
     pub install_status: MapInstallStatus,
@@ -144,6 +158,19 @@ pub struct MapsState {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum MapsEvent {
     VaultLoading,
+    VaultSearching,
+    /// One page of a vault search. Carries the query it answers so a late
+    /// response cannot be mistaken for the current one.
+    #[serde(rename_all = "camelCase")]
+    VaultSearched {
+        maps: Vec<VaultMap>,
+        query: MapVaultQuery,
+        total_pages: Option<i32>,
+        total_records: Option<i32>,
+    },
+    VaultSearchFailed {
+        reason: String,
+    },
     VaultLoaded {
         maps: Vec<VaultMap>,
     },
@@ -193,8 +220,11 @@ pub enum MapsEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum MapsCommand {
-    /// Fetch the map vault (mirrors `MapVault`'s default "All" browse query).
+    /// Fetch the whole catalogue once, as the folder-name lookup index.
     LoadVault,
+    /// Fetch one page of a vault search, the way both reference clients
+    /// browse. Submit-driven: sent on search, sort and page changes.
+    SearchVault { query: MapVaultQuery },
     /// Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`).
     LoadInstalled,
     #[serde(rename_all = "camelCase")]
@@ -216,6 +246,24 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
         MapsEvent::VaultLoaded { maps } => {
             state.vault = maps.clone();
             state.vault_status = MapListStatus::Ready;
+        }
+        MapsEvent::VaultSearching => state.browse_status = MapListStatus::Loading,
+        MapsEvent::VaultSearched {
+            maps,
+            query,
+            total_pages,
+            total_records,
+        } => {
+            state.browse = maps.clone();
+            state.browse_query = query.clone();
+            state.browse_total_pages = *total_pages;
+            state.browse_total_records = *total_records;
+            state.browse_status = MapListStatus::Ready;
+        }
+        MapsEvent::VaultSearchFailed { reason } => {
+            state.browse_status = MapListStatus::Failed {
+                reason: reason.clone(),
+            };
         }
         MapsEvent::VaultLoadFailed { reason } => {
             state.vault_status = MapListStatus::Failed {

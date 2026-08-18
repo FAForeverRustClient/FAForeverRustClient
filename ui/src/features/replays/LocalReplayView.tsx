@@ -40,7 +40,12 @@ function localReplayKey(replay: LocalReplay): string {
 
 const openFile = (path: string) =>
   ipc.send({ kind: "Replays", command: { type: "openFile", payload: { path } } });
-const loadLocal = () => ipc.send({ kind: "Replays", command: { type: "loadLocal" } });
+/// How many of the newest replays have their headers read. Ten pages, the
+/// same default the backend uses; paging past it asks for more rather than
+/// making every session wait for an archive of thousands.
+const INITIAL_DETAIL_LIMIT = PAGE_SIZE * 10;
+const loadLocal = (limit: number = INITIAL_DETAIL_LIMIT) =>
+  ipc.send({ kind: "Replays", command: { type: "loadLocal", payload: { limit } } });
 const deleteLocal = (path: string) =>
   ipc.send({ kind: "Replays", command: { type: "deleteLocal", payload: { path } } });
 
@@ -60,6 +65,7 @@ function formatFileSize(bytes: number): string {
 
 const LOCAL_STATUS_LABELS: Record<LocalReplay["status"], MessageKey> = {
   complete: "replays.local.status.complete",
+  unread: "replays.local.status.unread",
   incomplete: "replays.local.status.incomplete",
   legacy: "replays.local.status.legacy",
   broken: "replays.local.status.broken",
@@ -69,13 +75,16 @@ function localStatusLabel(status: LocalReplay["status"]): string {
   return t(LOCAL_STATUS_LABELS[status]);
 }
 
-function localStatusTone(status: LocalReplay["status"]): "ok" | "warn" | "error" {
+function localStatusTone(status: LocalReplay["status"]): "ok" | "warn" | "error" | "muted" {
   switch (status) {
     case "complete": return "ok";
     case "broken": return "error";
     case "incomplete":
     case "legacy":
       return "warn";
+    // Not a problem with the file: its header simply has not been read yet.
+    case "unread":
+      return "muted";
   }
 }
 
@@ -150,6 +159,11 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     setPage(1);
   }, [query]);
 
+  // Paging into the part of the archive whose headers were never read: ask for
+  // enough to cover it, plus the same run again so the next few pages are
+  // already there.
+  const [detailLimit, setDetailLimit] = useState(INITIAL_DETAIL_LIMIT);
+
   const filtered = useMemo(
     () => filterLocalReplays(
       local,
@@ -164,6 +178,22 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [filtered, currentPage],
   );
+
+  // Reaching the end of what has been read asks for the next run.
+  //
+  // Waiting until the user goes *past* the loaded set cannot work: the page
+  // count is derived from the replays that are actually listed, so the last
+  // loaded page is also the last page the pager offers, and there is no button
+  // to press to get any further. That deadlock is why the tab stopped at page
+  // 10 of an archive holding three thousand files. Triggering on arrival at the
+  // last page instead, while the folder still holds more, keeps it moving.
+  const moreOnDisk = detailLimit < local.length;
+  useEffect(() => {
+    if (!moreOnDisk || currentPage < totalPages) return;
+    const next = detailLimit + INITIAL_DETAIL_LIMIT;
+    setDetailLimit(next);
+    loadLocal(next);
+  }, [currentPage, detailLimit, moreOnDisk, totalPages]);
 
   const featuredMods = useMemo(
     () => [...new Set(local.map((replay) => replay.modName).filter(Boolean))].sort(),

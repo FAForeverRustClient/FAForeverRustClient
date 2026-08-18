@@ -67,7 +67,7 @@ impl ReplayPort for DownloadReplay {
         })
     }
 
-    async fn list_local(&self) -> Result<Vec<LocalReplay>, String> {
+    async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
         unreachable!()
     }
 

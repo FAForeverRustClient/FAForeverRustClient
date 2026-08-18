@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { advancedReplayFilterCount, EMPTY_REPLAY_QUERY, personalReplayQuery } from "./replayQuery";
+import {
+  advancedReplayFilterCount,
+  ALL_TIME_AFTER,
+  EMPTY_REPLAY_QUERY,
+  isoDaysAgo,
+  personalReplayQuery,
+} from "./replayQuery";
 
 describe("advancedReplayFilterCount", () => {
   it("counts logical hidden filters without double-counting ranges", () => {
@@ -25,14 +31,31 @@ describe("advancedReplayFilterCount", () => {
 
 describe("personalReplayQuery", () => {
   it("starts with the signed-in player's newest replays", () => {
-    expect(personalReplayQuery("TestPlayer")).toEqual({
+    expect(personalReplayQuery("TestPlayer", "2023-08-18")).toEqual({
       ...EMPTY_REPLAY_QUERY,
       player: "TestPlayer",
       exactPlayer: true,
+      after: "2023-08-18",
     });
   });
 
   it("falls back to the public feed when no account is available", () => {
-    expect(personalReplayQuery("")).toEqual(EMPTY_REPLAY_QUERY);
+    expect(personalReplayQuery("", "2023-08-18")).toEqual(EMPTY_REPLAY_QUERY);
+  });
+});
+
+describe("the date floor toggle", () => {
+  it("gives the landing query a visible bound instead of the backend's hidden one", () => {
+    const query = personalReplayQuery("TestPlayer", isoDaysAgo(365));
+    // Non-empty `after` is what suppresses `ReplayQuery::fallback_months`, so
+    // the six-month floor no longer applies behind the user's back.
+    expect(query.after).not.toBe("");
+  });
+
+  it("expresses all-time as a bound older than any replay, not as no bound", () => {
+    // An empty `after` would hand the decision back to the backend floor, which
+    // is the opposite of what turning the toggle off means.
+    expect(ALL_TIME_AFTER).not.toBe("");
+    expect(Number(ALL_TIME_AFTER.slice(0, 4))).toBeLessThan(2011);
   });
 });

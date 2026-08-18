@@ -39,13 +39,13 @@ pub use ice::{ConnectivitySession, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
 pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
-pub use maps::MapsPort;
-pub use mods::ModsPort;
+pub use maps::{MapSearchPage, MapsPort};
+pub use mods::{ModSearchPage, ModsPort};
 pub use player_card::PlayerCardPort;
 pub use process::{
     DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayMetadata,
 };
-pub use replay::{ReplayPort, VaultSearchResult};
+pub use replay::{ReplayPort, VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT};
 pub use reporting::{GameParticipation, ReportPlayerRequest, ReportingPort};
 pub use reviews::{ReviewPage, ReviewsPort};
 pub use settings::SettingsPort;

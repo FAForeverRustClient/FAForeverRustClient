@@ -57,45 +57,39 @@
   cursor: default;
 }
 
-.pagination-ellipsis {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  flex: 0 0 36px;
+/* First and last, shown only when the ten-page window cannot reach the ends.
+   Same slot geometry as a page button, so the row width stays constant. */
+.pagination-end {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Typing a page number. Narrow, so it reads as an accessory to the row rather
+   than a search box, and it keeps the row's slot height. */
+.pagination-jump {
+  display: flex;
+  margin-left: var(--space-2);
+}
+
+.pagination-jump input {
+  width: 64px;
   height: 32px;
-  padding: 0;
-  color: var(--color-subtle);
+  padding: 0 8px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: 12px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  text-align: center;
 }
 
-.pagination-ellipsis:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border);
+.pagination-jump input::placeholder {
+  color: var(--color-subtle);
 }
 
-.pagination-ellipsis:focus-visible {
+.pagination-jump input:focus-visible {
+  border-color: var(--color-accent);
   outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-.pagination-nav {
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: 12px;
-}
-
-/* Previous/Next keep a fixed width too, so the two ends of the row stay put
-   regardless of the label's rendered length in the active language. */
-.pagination-nav {
-  flex: 0 0 auto;
-  min-width: 86px;
-  justify-content: center;
+  outline-offset: -1px;
 }

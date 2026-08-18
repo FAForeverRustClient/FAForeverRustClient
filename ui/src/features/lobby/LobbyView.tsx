@@ -58,9 +58,11 @@ function compareGames(sort: SortMode, left: Game, right: Game): number {
   }
 }
 
-function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; onJoin: () => void }) {
+function GameDetails({ game, onJoin }: { game: Game; onJoin: () => void }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
+  const lobby = useAppStore((state) => state.state.lobby);
+  const player = useAppStore((state) => state.state.auth.player);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const vaultMap = findVaultMap(maps.vault, game.map);
   const presentation = mapPresentation(maps.vault, game.map);
@@ -72,6 +74,42 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
     mapGenStatus.type === "resolvingVersion";
   const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
   const simMods = Object.values(game.simMods);
+
+  const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
+  const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
+    teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
+  );
+
+  const isJoiningThis = lobby.join.type === "joining" && lobby.join.payload.id === game.id;
+  const isPreparingThis = lobby.join.type === "preparing";
+  const isLaunchedThis = lobby.join.type === "launched" && lobby.join.payload.launch.uid === game.id;
+  const isInGame = lobby.join.type === "inGame";
+
+  const isBusyWithOther = (lobby.join.type === "joining" && lobby.join.payload.id !== game.id)
+    || (lobby.join.type === "launched" && !isLaunchedThis)
+    || (isInGame && !isPlayerInGame && !isHost);
+
+  let joinLabel = t("lobby.details.joinGame");
+  let joinDisabled = false;
+  let joinTitle: string | undefined;
+
+  if (isHost) {
+    joinLabel = t("lobby.details.hostedByYou");
+    joinDisabled = true;
+  } else if (isPlayerInGame) {
+    joinLabel = t("lobby.details.inGame");
+    joinDisabled = true;
+  } else if (isJoiningThis) {
+    joinLabel = t("lobby.details.joining");
+    joinDisabled = true;
+  } else if (isPreparingThis) {
+    joinLabel = t("lobby.details.preparing");
+    joinDisabled = true;
+  } else if (isBusyWithOther) {
+    joinLabel = t("lobby.details.joinGame");
+    joinDisabled = true;
+    joinTitle = t("lobby.details.alreadyInGame");
+  }
 
   return (
     <aside className="game-detail-panel surface-panel">
@@ -158,7 +196,7 @@ function GameDetails({ game, joining, onJoin }: { game: Game; joining: boolean; 
             ))}
           </div>
         )}
-        <Button className="game-detail-join" variant="primary" disabled={joining} onClick={onJoin}>{t(joining ? "lobby.details.joining" : "lobby.details.joinGame")}</Button>
+        <Button className="game-detail-join" variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
       </div>
     </aside>
   );
@@ -187,7 +225,12 @@ export function LobbyView() {
   useEffect(() => {
     if (useAppStore.getState().state.lobby.status === "disconnected") connect();
     ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
-    ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    // Only when nothing has loaded it yet: this tab mounts on every visit, and
+    // the vault is the catalogue crawl. The service refuses a second one
+    // anyway; this just saves the round trip, and matches every other caller.
+    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
+      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    }
   }, []);
 
   const customGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() !== "coop" && game.gameType.toLocaleLowerCase() !== "coop"), [lobby.games]);
@@ -217,7 +260,6 @@ export function LobbyView() {
 
   const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
   const connected = lobby.status === "connected";
-  const joining = lobby.join.type === "joining" || lobby.join.type === "launched" || lobby.join.type === "preparing" || lobby.join.type === "inGame";
   const inMatchmaker = lobby.playMode === "matchmaking";
   const inCoop = lobby.playMode === "coop";
   const inGalacticWar = lobby.playMode === "galacticWar";
@@ -350,7 +392,7 @@ export function LobbyView() {
             onJoin={requestJoin}
           />
           {selected ? (
-            <GameDetails game={selected} joining={joining} onJoin={() => requestJoin(selected)} />
+            <GameDetails game={selected} onJoin={() => requestJoin(selected)} />
           ) : (
             <aside className="game-detail-panel surface-panel empty">
               <Icon name="play" size={24} />
