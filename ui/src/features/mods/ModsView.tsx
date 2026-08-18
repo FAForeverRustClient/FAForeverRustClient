@@ -28,6 +28,10 @@ import {
   UninstallDialog,
 } from "./ModVaultComponents";
 import { InstalledModsView } from "./InstalledModsView";
+// Two entry points, not two implementations of one: the modal publishes a mod
+// that is already installed, and `openUploadFromDisk` takes an archive straight
+// off the filesystem, which is what an author has after building one.
+import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModUploadModal } from "./ModUploadModal";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -280,7 +284,8 @@ function VaultView({ busy }: { busy: boolean }) {
             >
               <Icon name="refresh" size={15} /> {t("mods.view.refresh")}
             </Button>
-          </>
+            <Button onClick={() => void openUploadFromDisk("mod")}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
+                      </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">

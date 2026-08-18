@@ -11,7 +11,7 @@ use crate::state::{
     AuthCommand, ChatCommand, ClientUpdateCommand, CoopCommand, GalacticWarCommand,
     LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand,
     NotificationCommand, PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand,
-    SessionCommand, SettingsCommand, SocialCommand, TournamentsCommand, TutorialsCommand,
+    SessionCommand, SettingsCommand, SocialCommand, TourneyCommand, TutorialsCommand,
     UploadsCommand,
 };
 
@@ -37,7 +37,7 @@ pub enum AppCommand {
     Reporting(ReportingCommand),
     Reviews(ReviewsCommand),
     Social(SocialCommand),
-    Tournaments(TournamentsCommand),
+    Tourney(TourneyCommand),
     Tutorials(TutorialsCommand),
     Uploads(UploadsCommand),
     GalacticWar(GalacticWarCommand),
@@ -129,9 +129,9 @@ impl From<SocialCommand> for AppCommand {
     }
 }
 
-impl From<TournamentsCommand> for AppCommand {
-    fn from(c: TournamentsCommand) -> Self {
-        AppCommand::Tournaments(c)
+impl From<TourneyCommand> for AppCommand {
+    fn from(c: TourneyCommand) -> Self {
+        AppCommand::Tourney(c)
     }
 }
 

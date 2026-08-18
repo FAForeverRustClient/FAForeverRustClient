@@ -185,7 +185,7 @@ async fn serve_requests(ctx: Arc<ServiceCtx>, sink: EventSink) {
 mod tests {
     use super::*;
     use faf_domain::state::{
-        AuthState, DiscordPreferences, LobbyState, Player, SettingsState, TournamentsEvent,
+        AuthState, DiscordPreferences, LobbyState, Player, SettingsState, TourneyEvent,
     };
     use std::collections::BTreeMap;
 
@@ -219,10 +219,7 @@ mod tests {
     fn state_with(games: Vec<Game>, live: Vec<Game>) -> AppState {
         AppState {
             auth: AuthState {
-                player: Some(Player {
-                    id: 7,
-                    name: "Ada".into(),
-                }),
+                player: Some(Player::new(7, "Ada")),
                 ..AuthState::default()
             },
             lobby: LobbyState {
@@ -305,8 +302,6 @@ mod tests {
         assert!(affects_presence(&AppEvent::Lobby(
             faf_domain::state::LobbyEvent::InGame
         )));
-        assert!(!affects_presence(&AppEvent::Tournaments(
-            TournamentsEvent::Loading
-        )));
+        assert!(!affects_presence(&AppEvent::Tourney(TourneyEvent::Loading)));
     }
 }

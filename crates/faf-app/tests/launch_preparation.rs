@@ -116,10 +116,7 @@ fn harness_with_install(
     let launched = Arc::new(Mutex::new(false));
     let ports = Ports {
         auth: Arc::new(FakeAuth {
-            player: Player {
-                id: 7,
-                name: "Ada".into(),
-            },
+            player: Player::new(7, "Ada"),
             delay: Duration::ZERO,
             fail_with: None,
         }),
@@ -208,10 +205,7 @@ async fn a_game_that_exits_releases_the_join_so_another_can_be_attempted() {
     let launched = Arc::new(Mutex::new(false));
     let ports = Ports {
         auth: Arc::new(FakeAuth {
-            player: Player {
-                id: 7,
-                name: "Ada".into(),
-            },
+            player: Player::new(7, "Ada"),
             delay: Duration::ZERO,
             fail_with: None,
         }),

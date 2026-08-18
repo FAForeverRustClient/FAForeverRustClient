@@ -14,7 +14,7 @@
 //! none of those words and swept in ordinary maps that happen to.
 
 use async_trait::async_trait;
-use faf_domain::protocol::tournaments::to_plain_text;
+use faf_domain::protocol::markup::to_plain_text;
 use faf_domain::state::{
     CoopCategory, CoopFaction, CoopMission, CoopResult, CoopScenario, ANY_PLAYER_COUNT,
 };

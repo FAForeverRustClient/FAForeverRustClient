@@ -25,6 +25,7 @@ function state(overrides: Partial<LobbyState> = {}): LobbyState {
     avatarListError: "",
     avatarSelectionStatus: "idle",
     avatarSelectionError: "",
+    hostPrefill: null,
     ...overrides,
   };
 }

@@ -119,23 +119,37 @@ async fn run(
 
 /// Resolve, and validate, the folder being published.
 fn source_folder(request: &UploadRequest) -> Result<PathBuf, String> {
+    let picked = request.source_path.is_some();
     // Checked here as well as in the service: this is the last point before a
     // directory is read and its contents published, and the name may have
     // arrived from anywhere.
-    let folder = match request.kind {
-        UploadKind::Map => {
-            if !is_safe_folder_name(&request.folder_name) {
-                return Err(format!(
-                    "“{}” is not a folder name that can be published",
-                    request.folder_name
-                ));
+    let folder = match request.source_path.as_deref() {
+        // Picked from disk. The name guard exists to stop a *name* from
+        // escaping our maps/mods directory; here nothing is joined to anything
+        // and the native dialog is the user's own authorisation, which is what
+        // Java's `MapUploadController.setMapPath` relies on too.
+        Some(path) => {
+            let path = PathBuf::from(path);
+            if !path.is_absolute() {
+                return Err("the chosen folder must be an absolute path".to_string());
             }
-            crate::infra::maps::maps_dir().join(&request.folder_name)
+            path
         }
-        UploadKind::Mod => crate::infra::mods::safe_mod_target(
-            &crate::infra::mods::mods_dir(),
-            &request.folder_name,
-        )?,
+        None => match request.kind {
+            UploadKind::Map => {
+                if !is_safe_folder_name(&request.folder_name) {
+                    return Err(format!(
+                        "“{}” is not a folder name that can be published",
+                        request.folder_name
+                    ));
+                }
+                crate::infra::maps::maps_dir().join(&request.folder_name)
+            }
+            UploadKind::Mod => crate::infra::mods::safe_mod_target(
+                &crate::infra::mods::mods_dir(),
+                &request.folder_name,
+            )?,
+        },
     };
     let metadata = std::fs::symlink_metadata(&folder).map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {
@@ -153,7 +167,60 @@ fn source_folder(request: &UploadRequest) -> Result<PathBuf, String> {
     if !metadata.is_dir() {
         return Err(format!("{} is not installed locally", request.display_name));
     }
+    // Only for a picked folder: an installed one came from our own installer
+    // and is known to be the right shape. Java gets this check for free by
+    // parsing the map before it will offer the upload button; without it the
+    // vault accepts the archive and is left holding a broken entry.
+    if picked {
+        looks_like(&folder, request.kind)?;
+    }
     Ok(folder)
+}
+
+/// Refuse a folder that plainly is not a map or mod folder.
+fn looks_like(folder: &Path, kind: UploadKind) -> Result<(), String> {
+    let entries = std::fs::read_dir(folder)
+        .map_err(|error| format!("could not read {}: {error}", folder.display()))?;
+    let found = entries.flatten().any(|entry| {
+        let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+        match kind {
+            UploadKind::Map => name.ends_with(".scmap"),
+            UploadKind::Mod => name == "mod_info.lua",
+        }
+    });
+    if found {
+        return Ok(());
+    }
+    Err(match kind {
+        UploadKind::Map => {
+            "that folder holds no .scmap file, so it is not a map folder".to_string()
+        }
+        UploadKind::Mod => {
+            "that folder holds no mod_info.lua, so it is not a mod folder".to_string()
+        }
+    })
+}
+
+/// A name safe to put in a multipart header.
+///
+/// An installed folder's name has already passed `is_safe_folder_name`; a
+/// picked one has not, and the vault only cares that the part is a `.zip`.
+fn archive_file_name(folder_name: &str) -> String {
+    let cleaned: String = folder_name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if cleaned.is_empty() {
+        "upload".to_string()
+    } else {
+        cleaned
+    }
 }
 
 /// Zip `source` into a temporary archive, with the folder itself as the single
@@ -305,7 +372,7 @@ async fn upload_map(
     bytes: Vec<u8>,
 ) -> Result<(), String> {
     let part = reqwest::multipart::Part::bytes(bytes)
-        .file_name(format!("{}.zip", request.folder_name))
+        .file_name(format!("{}.zip", archive_file_name(&request.folder_name)))
         .mime_str("application/zip")
         .map_err(|error| format!("could not build the upload: {error}"))?;
     let form = reqwest::multipart::Form::new()
@@ -515,6 +582,7 @@ mod tests {
                 folder_name: name.into(),
                 display_name: "x".into(),
                 ranked: false,
+                source_path: None,
             };
             let result = source_folder(&request);
             assert!(result.is_err(), "{name} must be refused");
@@ -532,6 +600,7 @@ mod tests {
             folder_name: "definitely_not_here.v0001".into(),
             display_name: "Ghost Map".into(),
             ranked: false,
+            source_path: None,
         };
         let error = source_folder(&request).unwrap_err();
         assert!(error.contains("Ghost Map"), "names what is missing");
@@ -557,6 +626,7 @@ mod tests {
                 folder_name: "my_mod".into(),
                 display_name: "My Mod".into(),
                 ranked: false,
+                source_path: None,
             })
             .await;
 
@@ -569,6 +639,58 @@ mod tests {
         assert_eq!(seen.last(), Some(&UploadStatus::Succeeded));
     }
 
+    #[test]
+    fn a_picked_folder_is_used_as_given_rather_than_joined_to_ours() {
+        // The point of the feature: a map that was never installed by the
+        // client can still be published, exactly as Java allows.
+        let root = temp_dir("picked");
+        let source = root.join("brand new map.v0001");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("map.scmap"), b"terrain").unwrap();
+
+        let request = UploadRequest {
+            kind: UploadKind::Map,
+            folder_name: "brand new map.v0001".into(),
+            display_name: "Brand New Map".into(),
+            ranked: false,
+            source_path: Some(source.to_string_lossy().into_owned()),
+        };
+        assert_eq!(source_folder(&request).unwrap(), source);
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_picked_folder_that_is_not_a_map_is_refused_before_zipping() {
+        // Someone picks their Documents folder. Refusing here costs nothing;
+        // the vault would otherwise accept the archive and keep the entry.
+        let root = temp_dir("wrong-kind");
+        let source = root.join("holiday photos");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("beach.jpg"), b"not a map").unwrap();
+
+        let request = UploadRequest {
+            kind: UploadKind::Map,
+            folder_name: "holiday photos".into(),
+            display_name: "holiday photos".into(),
+            ranked: false,
+            source_path: Some(source.to_string_lossy().into_owned()),
+        };
+        let error = source_folder(&request).unwrap_err();
+        assert!(error.contains(".scmap"), "{error}");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_picked_folders_name_cannot_break_the_multipart_header() {
+        // A picked name never passed `is_safe_folder_name`, and it ends up in
+        // a `filename=` parameter.
+        assert_eq!(archive_file_name("my_map.v0001"), "my_map.v0001");
+        assert_eq!(archive_file_name("a\"b; c/d"), "a_b__c_d");
+        assert_eq!(archive_file_name(""), "upload");
+    }
+
     #[tokio::test]
     async fn a_map_publish_skips_the_storage_handshake() {
         let mut rx = FakeUploads
@@ -577,6 +699,7 @@ mod tests {
                 folder_name: "my_map.v0001".into(),
                 display_name: "My Map".into(),
                 ranked: true,
+                source_path: None,
             })
             .await;
 

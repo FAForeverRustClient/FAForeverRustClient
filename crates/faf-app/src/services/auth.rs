@@ -47,8 +47,8 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(AuthEvent::LoginStarted);
             out.emit(AuthEvent::TestLoggedIn {
                 player: Player {
-                    id: 42,
-                    name: "TestCommander".into(),
+                    roles: ctx.ports.test_login_roles.clone(),
+                    ..Player::new(42, "TestCommander")
                 },
             });
         }

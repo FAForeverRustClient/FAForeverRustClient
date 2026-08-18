@@ -44,6 +44,13 @@ hex color instead of a token).
 Env toggles for local dev:
 - `FAF_FAKE_AUTH=1`: skip the browser login (offline fake auth)
 - `FAF_FAKE_LOBBY=1` / `FAF_FAKE_CHAT=1`: keep either live service local while testing
+- `FAF_FAKE_ROLES=TOURNAMENT_DIRECTOR`: comma-separated permission roles for the session,
+  so role-gated UI can be built and screenshotted without holding the role. It reveals
+  controls and authorises nothing: FAF still refuses every privileged call from an account
+  that lacks the role. Nothing gates on it today; the tournament service answers who the
+  caller is per event instead.
+- `TOURNEY_API_BASE=…`: point the tournament tab at a different faf-tournaments
+  deployment, such as a local `node server.js`. Defaults to the live service.
 - `FAF_REAL_LOBBY=1` / `FAF_REAL_CHAT=1`: legacy flags retained for existing launch scripts;
   live services are now the default for a real account session
 - `FAF_ICE_ADAPTER_KIND`: overrides the Settings choice: `java` selects the

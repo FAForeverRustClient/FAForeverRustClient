@@ -9,6 +9,21 @@
         "FAF_FAKE_AUTH=1 FAF_REAL_LOBBY= FAF_REAL_LAUNCH= pnpm tauri dev"
       ],
       "port": 5173
+    },
+    {
+      "name": "forge-client-tourney-local",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "TOURNEY_API_BASE=http://localhost:8090 pnpm tauri dev"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "forge-client-tourney-live",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "pnpm tauri dev"],
+      "port": 5173
     }
   ]
 }

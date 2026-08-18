@@ -11,7 +11,7 @@ use crate::state::{
     AuthEvent, ChatEvent, ClientUpdateEvent, CoopEvent, GalacticWarEvent, InstallEvent,
     LeaderboardEvent, LobbyEvent, MapGeneratorEvent, MapsEvent, ModsEvent, NavEvent,
     NotificationEvent, PlayerCardEvent, ReplayEvent, ReportingEvent, ReviewsEvent, SessionEvent,
-    SettingsEvent, SocialEvent, TournamentsEvent, TutorialsEvent, UploadsEvent,
+    SettingsEvent, SocialEvent, TourneyEvent, TutorialsEvent, UploadsEvent,
 };
 
 // No `Eq`: `ReplayEvent` carries an `f32` (vault replay review score).
@@ -35,7 +35,7 @@ pub enum AppEvent {
     Reporting(ReportingEvent),
     Reviews(ReviewsEvent),
     Social(SocialEvent),
-    Tournaments(TournamentsEvent),
+    Tourney(TourneyEvent),
     Tutorials(TutorialsEvent),
     Uploads(UploadsEvent),
     GalacticWar(GalacticWarEvent),
@@ -128,9 +128,9 @@ impl From<SocialEvent> for AppEvent {
     }
 }
 
-impl From<TournamentsEvent> for AppEvent {
-    fn from(e: TournamentsEvent) -> Self {
-        AppEvent::Tournaments(e)
+impl From<TourneyEvent> for AppEvent {
+    fn from(e: TourneyEvent) -> Self {
+        AppEvent::Tourney(e)
     }
 }
 

@@ -25,7 +25,7 @@ pub mod reviews;
 pub mod session;
 pub mod settings;
 pub mod social;
-pub mod tournaments;
+pub mod tourney;
 pub mod tutorials;
 pub mod uploads;
 
@@ -83,7 +83,7 @@ pub use player_card::{
     ClanMember, MatchmakerPlayerProfile, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
     PlayerCardCommand, PlayerCardEvent, PlayerCardProfile, PlayerCardState, PlayerCardStatus,
     PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerNameRecord, PlayerRatingSummary,
-    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
@@ -111,9 +111,24 @@ pub use settings::{
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
 };
-pub use tournaments::{
-    sort_tournaments, Tournament, TournamentStatus, TournamentsCommand, TournamentsEvent,
-    TournamentsState, TournamentsStatus,
+pub use tourney::{
+    map_key, match_vault_map, Article, AuditEntry, BracketKind, BracketSide, ChatMute, ChatPost,
+    ChatRoom, Competition, DraftRejection, Formation, HostingStatus, InviteStatus, MapDraft,
+    MapPool, MatchLink, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
+    PoolAssignment, PoolDraft, PoolRejection, PoolSide, PoolStep, RatingGate, RatingKind,
+    SeedOrder, Seeding, SignupMode, Standing, StandingOutcome, StandingsKind, TeamExit,
+    TeamRequest, Tourney, TourneyAction, TourneyActionFailure, TourneyCategory, TourneyCommand,
+    TourneyDraft, TourneyEvent, TourneyInvite, TourneyLoadStatus, TourneyMap, TourneyMatch,
+    TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
+};
+pub use tourney::{
+    BracketConfig, Caster, FeedsInto, FormatDraft, Qualifier, QualifierKind, QualifierRejection,
+    QualifierRule, RoomBadge, RoundKey, RoundPlan, SeriesColour, SeriesDetail, SeriesDraft,
+    SeriesEdition, TourneySeries, BEST_OF_CHOICES,
+};
+pub use tourney::{
+    Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
+    VetoDecider, VetoMode, VetoTurn,
 };
 pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,
@@ -149,7 +164,7 @@ pub struct AppState {
     pub reporting: ReportingState,
     pub reviews: ReviewsState,
     pub social: SocialState,
-    pub tournaments: TournamentsState,
+    pub tourney: TourneyState,
     pub tutorials: TutorialsState,
     pub uploads: UploadsState,
     pub galactic_war: GalacticWarState,

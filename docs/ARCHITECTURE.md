@@ -347,6 +347,49 @@ Each feature = *new slice + new service + new port impl*. None can introduce spa
 
 - **Settings + theming (central UI system). Done.** A `settings` slice: the first *persisted* slice: holds the UI `theme` (a typed `Theme` enum, so the frontend can't pick an invalid theme). New `SettingsPort` + `FileSettings` (JSON in the OS config dir) persist it; `SettingsCommand::Load` runs at startup, `SetTheme` persists on change. The service shows the persistence pattern: it emits the event (single reduce chokepoint), then reads the *post-reduce* slice back via `EventSink::with_state` and hands it to the port: services still never mutate state, and unrelated slices are not cloned. The frontend projects `settings.theme` onto `<html data-theme>`; every component reads semantic CSS variables only, so the four shipped themes (`forgeDark`/`forgeLight`/`javaClient`/`pythonClient`) are pure token sets in `tokens.css`. A `Button` primitive centralizes control structure, and a dependency-free CI gate forbids hardcoded hex in component CSS. This is the contract that means a new design system never revisits a component file.
 
+- **Tournaments. Done, and rebuilt once.** The first *role-gated write* surface, and the
+  clearest demonstration of what the port boundary is for. It shipped against FAF's Challonge
+  bridge (`ChallongeController` forwarding `/challonge/**` with FAF's own key), and was later
+  repointed at `faf-tournaments`, the tournament team's own service, without the slice's
+  *shape* changing: `TourneyPort` replaced `TournamentsPort`, `infra/tourney.rs` replaced the
+  Challonge form encoding, and the service's read/write policies carried over untouched.
+
+  Three conventions come out of it, and all three generalise:
+
+  1. **A role in the client is visibility, never authorisation.** `Player::roles` is read
+     from the identity token's `ext.roles` *without verifying the signature*, and can be
+     overridden entirely by `FAF_FAKE_ROLES`. Both are sound because the value only decides
+     whether a control is drawn: the server validates the token properly and answers 403
+     regardless. Anything that treated a client-side role as permission would be trusting a
+     value the client itself decoded.
+
+     The tournament service goes one better and simply tells the client who it is: every
+     `GET /api/t/{id}` carries a `viewer` block naming this account's entry, its team and
+     whether it organises the event. That is taken as given rather than re-derived from the
+     FAF id, because the server authorises every write against the same answer, and a second
+     opinion computed here could only ever disagree with the one that counts.
+  2. **A write reloads rather than patches.** Confirming a score advances the winner along
+     the bracket, eliminates the loser and can finish the tournament outright, none of which
+     is in the response. So the service re-reads the list and the open event after every
+     mutation. Writes are serialised (`tourney_mutation`) and detail reads carry a generation
+     token (`tourney_detail_generation`), because command order is not response order.
+  3. **The server's refusal is the best error message available.** `faf-tournaments` answers
+     400 and 403 with a sentence written for the player: which rating gate they missed, when
+     check-in opens, how many replay ids are still wanted. `infra/tourney.rs` passes it
+     through verbatim rather than mapping it to a category and losing it.
+
+- **Entrants are FAF players, not strings. Done.** Challonge modelled an entrant as free
+  text, which is why no FAF tournament tool has ever shown an avatar or a rating next to a
+  bracket row; the client worked around it by smuggling the account id through Challonge's
+  255-character `misc` field. `faf-tournaments` carries `fafId` as a first-class field, so
+  the workaround is gone and the capability stayed: avatars, ratings, the player card and
+  private messages all follow from the entry itself.
+
+  Third-party markup never enters the state. Tournament descriptions, chat posts and rules
+  pages are organiser-authored HTML, and they are reduced to plain text at the boundary by
+  `protocol::markup` before they reach `AppState`. The Java client renders such content in a
+  `WebView` it already treats as untrusted; here it would land in the client's own document.
+
 Remaining order: chat → vault → launcher/ICE → replay → social → updater.
 
 ---

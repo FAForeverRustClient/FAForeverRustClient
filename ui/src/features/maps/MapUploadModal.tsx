@@ -104,6 +104,10 @@ export function MapUploadModal({
             folderName: selectedMap.folderName,
             displayName: selectedMap.displayName,
             ranked: rankedPreference,
+            // Installed, so there is no archive to point at: the backend finds
+            // the folder in the user's maps directory itself. A path is only set
+            // when an archive was picked off the filesystem.
+            sourcePath: null,
           },
         },
       },

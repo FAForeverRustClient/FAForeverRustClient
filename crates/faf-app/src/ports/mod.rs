@@ -23,7 +23,7 @@ pub mod replay;
 pub mod reporting;
 pub mod reviews;
 pub mod settings;
-pub mod tournaments;
+pub mod tourney;
 pub mod tutorials;
 pub mod updater;
 pub mod uploads;
@@ -49,7 +49,7 @@ pub use replay::{ReplayPort, VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT};
 pub use reporting::{GameParticipation, ReportPlayerRequest, ReportingPort};
 pub use reviews::{ReviewPage, ReviewsPort};
 pub use settings::SettingsPort;
-pub use tournaments::TournamentsPort;
+pub use tourney::TourneyPort;
 pub use tutorials::TutorialsPort;
 pub use updater::{GamePreparation, GameUpdaterPort, PreparationStep, UpdateProgress};
 pub use uploads::UploadsPort;
@@ -84,7 +84,7 @@ pub struct Ports {
     pub player_card: Arc<dyn PlayerCardPort>,
     pub reporting: Arc<dyn ReportingPort>,
     pub reviews: Arc<dyn ReviewsPort>,
-    pub tournaments: Arc<dyn TournamentsPort>,
+    pub tourney: Arc<dyn TourneyPort>,
     pub tutorials: Arc<dyn TutorialsPort>,
     pub uploads: Arc<dyn UploadsPort>,
     /// Replaces the *client*, not the game. Distinct from `updater` above,
@@ -110,4 +110,14 @@ pub struct Ports {
     /// machine runs them. Selects FAF's language channel; see
     /// [`faf_domain::state::language_channel`].
     pub os_language: String,
+    /// Roles handed to the credential-free test login, from `FAF_FAKE_ROLES`.
+    ///
+    /// A bundle property for the same reason as `os_language`: it is read from
+    /// the environment once at startup, and `services` must not read the
+    /// environment itself. Empty in the normal case.
+    ///
+    /// This reveals role-gated UI; it authorises nothing. A test-login session
+    /// holds no token at all, so every privileged call fails regardless of what
+    /// is listed here.
+    pub test_login_roles: Vec<String>,
 }

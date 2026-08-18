@@ -76,6 +76,19 @@ pub struct ServiceCtx {
     pub maps_mutation: SerialMutation,
     pub mods_mutation: SerialMutation,
     pub auth_mutation: SerialMutation,
+    /// Player and organiser writes go one at a time. The server recomputes the
+    /// bracket on every confirmed result, so two overlapping reports would each
+    /// be answered against a bracket the other has already moved.
+    pub tourney_mutation: SerialMutation,
+    /// Only the newest detail response may land: opening three events in a row
+    /// must not leave the first one's bracket on screen because it answered
+    /// last.
+    pub tourney_detail_generation: LatestRequest,
+    /// The same, for reading a chat room.
+    pub tourney_chat_generation: LatestRequest,
+    /// The same, for the organiser's account search: it fires per keystroke, so
+    /// answers overtaking each other is the normal case rather than the rare one.
+    pub tourney_account_search_generation: LatestRequest,
 }
 
 /// The sink a service emits events into.
@@ -236,6 +249,10 @@ impl App {
             maps_mutation: SerialMutation::default(),
             mods_mutation: SerialMutation::default(),
             auth_mutation: SerialMutation::default(),
+            tourney_mutation: SerialMutation::default(),
+            tourney_detail_generation: LatestRequest::default(),
+            tourney_chat_generation: LatestRequest::default(),
+            tourney_account_search_generation: LatestRequest::default(),
         };
 
         let app = Self {
@@ -390,7 +407,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::PlayerCard(c) => services::player_card::handle(c, ctx, sink).await,
         AppCommand::Reporting(c) => services::reporting::handle(c, ctx, sink).await,
         AppCommand::Reviews(c) => services::reviews::handle(c, ctx, sink).await,
-        AppCommand::Tournaments(c) => services::tournaments::handle(c, ctx, sink).await,
+        AppCommand::Tourney(c) => services::tourney::handle(c, ctx, sink).await,
         AppCommand::Tutorials(c) => services::tutorials::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,
         AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,

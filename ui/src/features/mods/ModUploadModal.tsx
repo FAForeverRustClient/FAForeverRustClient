@@ -91,6 +91,9 @@ export function ModUploadModal({
             folderName: selectedMod.folderName,
             displayName: selectedMod.displayName,
             ranked: false,
+            // Installed, so there is no archive to point at: the backend finds
+            // the folder in the user's mods directory itself.
+            sourcePath: null,
           },
         },
       },

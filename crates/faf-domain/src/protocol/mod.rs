@@ -13,6 +13,7 @@ pub mod irc;
 pub mod log_analysis;
 pub mod map_generator;
 pub mod map_generator_name;
+pub mod markup;
 pub mod replay_query;
-pub mod tournaments;
+pub mod tourney;
 pub mod vault_query;

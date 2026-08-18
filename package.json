@@ -1,7 +1,7 @@
 {
   "name": "forge-client",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.0-pre.2",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "scripts": {

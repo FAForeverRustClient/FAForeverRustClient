@@ -22,6 +22,13 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
+/// The same set, minus the dialog's own close button: what a caller would
+/// consider the first control of *their* dialog. Tab order still includes the
+/// close button; this only decides where the caret starts.
+const CONTENT_FOCUSABLE = FOCUSABLE.split(",")
+  .map((selector) => `${selector}:not(.modal-close)`)
+  .join(",");
+
 export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
   const { t } = useTranslation();
   // Most callers rely on this default for the dialog's accessible name.
@@ -33,8 +40,15 @@ export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const panel = panelRef.current;
-    const firstControl = panel?.querySelector<HTMLElement>(FOCUSABLE);
-    (firstControl ?? panel)?.focus();
+    // The close button is the first control in the DOM, so focusing "the first
+    // control" put the caret on it and every keystroke went nowhere: a dialog
+    // whose text field looked ready but silently ignored typing. A field the
+    // caller marked `autoFocus` wins, then any other control, and the close
+    // button only as a last resort.
+    const requested = panel?.querySelector<HTMLElement>("[autofocus]");
+    const firstControl = panel?.querySelector<HTMLElement>(CONTENT_FOCUSABLE);
+    const fallback = panel?.querySelector<HTMLElement>(FOCUSABLE);
+    (requested ?? firstControl ?? fallback ?? panel)?.focus();
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";

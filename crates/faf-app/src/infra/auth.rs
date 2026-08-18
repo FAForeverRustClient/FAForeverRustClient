@@ -23,12 +23,30 @@ pub struct FakeAuth {
 impl Default for FakeAuth {
     fn default() -> Self {
         Self {
-            player: Player {
-                id: 42,
-                name: "TestCommander".into(),
-            },
+            // No roles by design: a test must not behave differently because
+            // the machine running it happens to export `FAF_FAKE_ROLES`. The
+            // offline bundle in `ports_from_env` applies that override.
+            // The offline bundle's one identity: see `infra::OFFLINE_FAF_ID`.
+            // Every fake must agree about who is signed in, or a feature that
+            // reads the login behaves differently from one that reads a
+            // service's own answer.
+            player: Player::new(super::OFFLINE_FAF_ID, super::OFFLINE_FAF_NAME),
             delay: Duration::from_millis(400),
             fail_with: None,
+        }
+    }
+}
+
+impl FakeAuth {
+    /// The default fake, signing in as a player holding `roles`.
+    pub fn with_roles(roles: Vec<String>) -> Self {
+        let default = Self::default();
+        Self {
+            player: Player {
+                roles,
+                ..default.player
+            },
+            ..default
         }
     }
 }

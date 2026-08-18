@@ -272,8 +272,10 @@ impl AuthPort for OAuthAuth {
             self.schedule_refresh(tokens.expires_in);
         }
 
-        // 9. Resolve the player.
-        self.fetch_me(&tokens.access_token).await
+        // 9. Resolve the player, tagged with this session's permission roles.
+        let mut player = self.fetch_me(&tokens.access_token).await?;
+        player.roles = session_roles(&tokens);
+        Ok(player)
     }
 
     async fn restore(&self) -> AuthResult<Option<Player>> {
@@ -298,7 +300,10 @@ impl AuthPort for OAuthAuth {
         self.schedule_refresh(tokens.expires_in);
 
         match self.fetch_me(&tokens.access_token).await {
-            Ok(player) => Ok(Some(player)),
+            Ok(mut player) => {
+                player.roles = session_roles(&tokens);
+                Ok(Some(player))
+            }
             Err(error) => {
                 self.cancel_refresh();
                 self.tokens.clear();
@@ -611,6 +616,108 @@ struct TokenResponse {
     /// wakes up; absent responses fall back to `DEFAULT_TOKEN_LIFETIME`.
     #[serde(default)]
     expires_in: Option<u64>,
+    /// OIDC identity token, present because we request the `openid` scope. Its
+    /// payload is where FAF puts the session's permission roles.
+    #[serde(default)]
+    id_token: Option<String>,
+}
+
+/// Environment override for the session's roles, comma-separated.
+///
+/// The counterpart to `FAF_FAKE_AUTH`: it lets role-gated UI be developed and
+/// screenshotted without holding the role on the live account. It is safe
+/// precisely because the roles decide nothing: the FAF API still refuses every
+/// privileged call from an account that lacks them, so this reveals controls,
+/// it does not grant anything.
+const FAKE_ROLES_ENV: &str = "FAF_FAKE_ROLES";
+
+/// Roles forced by [`FAKE_ROLES_ENV`], if any. Empty when the variable is unset
+/// or holds nothing usable, so callers can treat it as "no override".
+///
+/// Shared with the offline port bundle so `FAF_FAKE_AUTH=1` and a real login
+/// honour the same switch.
+pub(crate) fn roles_from_env() -> Vec<String> {
+    let Ok(raw) = std::env::var(FAKE_ROLES_ENV) else {
+        return Vec::new();
+    };
+    let roles: Vec<String> = raw
+        .split(',')
+        .map(str::trim)
+        .filter(|role| !role.is_empty())
+        .map(str::to_string)
+        .collect();
+    if !roles.is_empty() {
+        tracing::warn!(
+            ?roles,
+            "using {FAKE_ROLES_ENV}; role-gated UI is shown regardless of the account's real roles"
+        );
+    }
+    roles
+}
+
+/// The permission roles for this session.
+fn session_roles(tokens: &TokenResponse) -> Vec<String> {
+    let overridden = roles_from_env();
+    if !overridden.is_empty() {
+        return overridden;
+    }
+
+    let roles = tokens
+        .id_token
+        .as_deref()
+        .map(roles_from_id_token)
+        .unwrap_or_default();
+    if roles.is_empty() {
+        // Not an error: most accounts hold no special permission, and the
+        // client works identically either way. Logged because "the organiser
+        // panel never appears" is otherwise indistinguishable from a bug.
+        tracing::debug!("no roles found in the identity token");
+    } else {
+        tracing::debug!(?roles, "session roles");
+    }
+    roles
+}
+
+/// Read `ext.roles` out of an OIDC identity token.
+///
+/// **The signature is deliberately not verified.** That would normally be
+/// unacceptable, and it is worth being explicit about why it is fine here: the
+/// token came from Hydra over TLS on a connection this process opened itself,
+/// and the value is used for one thing only: deciding whether to draw a
+/// control. Authorisation happens at the FAF API, which validates the token
+/// properly and answers 403 regardless of what this function returned. Adding
+/// JWKS fetching and signature checking would buy no security while adding a
+/// network dependency to login.
+///
+/// Anything unreadable yields no roles, never an error: a login must not fail
+/// because a claim moved.
+fn roles_from_id_token(id_token: &str) -> Vec<String> {
+    let Some(payload) = id_token.split('.').nth(1) else {
+        return Vec::new();
+    };
+    // JWT payloads are base64url without padding, but some issuers pad anyway.
+    let Ok(decoded) = URL_SAFE_NO_PAD.decode(payload.trim_end_matches('=')) else {
+        return Vec::new();
+    };
+    let Ok(claims) = serde_json::from_slice::<Value>(&decoded) else {
+        return Vec::new();
+    };
+    // FAF nests them under `ext` (that is where Hydra puts a consent app's
+    // custom claims); `roles` at the top level is the shape a plain OIDC
+    // provider would use, and costs nothing to also accept.
+    claims
+        .get("ext")
+        .and_then(|ext| ext.get("roles"))
+        .or_else(|| claims.get("roles"))
+        .and_then(Value::as_array)
+        .map(|roles| {
+            roles
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Extract the player from a FAF `/me` JSON:API document.
@@ -632,7 +739,8 @@ fn player_from_me(value: &Value) -> Option<Player> {
     let id =
         json_id(attributes.and_then(|a| a.get("userId"))).or_else(|| json_id(data.get("id")))?;
 
-    Some(Player { id, name })
+    // Roles do not come from `/me`; the caller attaches them from the token.
+    Some(Player::new(id, name))
 }
 
 /// Read an id that the server may encode as a JSON number or a string.
@@ -652,6 +760,69 @@ fn snippet(body: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A JWT with `payload` as its claims. Header and signature are inert: the
+    /// reader never looks at them (see `roles_from_id_token`).
+    fn id_token(payload: Value) -> String {
+        format!(
+            "header.{}.signature",
+            URL_SAFE_NO_PAD.encode(payload.to_string())
+        )
+    }
+
+    #[test]
+    fn roles_are_read_from_the_ext_claim() {
+        // The shape FAF actually issues: Hydra nests a consent app's custom
+        // claims under `ext`, which is where its own gateway reads them from.
+        let token = id_token(serde_json::json!({
+            "sub": "42",
+            "ext": { "username": "Commander", "roles": ["USER", "TOURNAMENT_DIRECTOR"] },
+        }));
+        assert_eq!(
+            roles_from_id_token(&token),
+            vec!["USER".to_string(), "TOURNAMENT_DIRECTOR".to_string()]
+        );
+    }
+
+    #[test]
+    fn a_top_level_roles_claim_is_also_accepted() {
+        let token = id_token(serde_json::json!({ "roles": ["ADMIN_MAP"] }));
+        assert_eq!(roles_from_id_token(&token), vec!["ADMIN_MAP".to_string()]);
+    }
+
+    #[test]
+    fn a_padded_payload_is_still_decoded() {
+        // Base64url in a JWT is unpadded by spec, but padding shows up in the
+        // wild and losing every role over a trailing `=` would be absurd.
+        let encoded = URL_SAFE_NO_PAD.encode(r#"{"ext":{"roles":["USER"]}}"#);
+        let token = format!("header.{encoded}==.signature");
+        assert_eq!(roles_from_id_token(&token), vec!["USER".to_string()]);
+    }
+
+    #[test]
+    fn an_unreadable_token_yields_no_roles_rather_than_failing() {
+        // Every one of these must leave login working: the roles decide what is
+        // drawn, and drawing less is always survivable.
+        for token in [
+            "",
+            "not-a-jwt",
+            "header.!!!not-base64!!!.signature",
+            &id_token(serde_json::json!({ "ext": { "roles": "TOURNAMENT_DIRECTOR" } })),
+            &id_token(serde_json::json!({ "ext": {} })),
+            &id_token(serde_json::json!([])),
+        ] {
+            assert!(
+                roles_from_id_token(token).is_empty(),
+                "{token:?} should yield no roles"
+            );
+        }
+    }
+
+    #[test]
+    fn non_string_entries_are_dropped_rather_than_stringified() {
+        let token = id_token(serde_json::json!({ "ext": { "roles": ["USER", 7, null] } }));
+        assert_eq!(roles_from_id_token(&token), vec!["USER".to_string()]);
+    }
 
     #[test]
     fn pkce_challenge_matches_rfc7636_vector() {

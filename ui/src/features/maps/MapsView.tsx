@@ -14,6 +14,9 @@ import {
   SearchPanelSubmit,
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
+// Only the from-disk entry point: publishing an installed map moved into its own
+// modal on this branch, so `openUpload` is no longer called from here.
+import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Modal } from "../../design-system/Modal";
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
@@ -364,7 +367,8 @@ function VaultView({ busy }: { busy: boolean }) {
             >
               <Icon name="refresh" size={15} /> {t("maps.view.refresh")}
             </Button>
-          </>
+            <Button onClick={() => void openUploadFromDisk("map")}><Icon name="plus" size={15} /> {t("maps.view.uploadFromDisk")}</Button>
+                      </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">

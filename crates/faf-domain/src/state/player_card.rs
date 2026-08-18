@@ -24,6 +24,33 @@ pub enum RatingHistoryPeriod {
     All,
 }
 
+/// A player as a picker row or a list entry needs them.
+///
+/// Deliberately much smaller than [`PlayerCardProfile`]: this is what comes
+/// back when searching for someone to enter into a tournament, or when
+/// resolving a list of names, and both routinely return dozens at a time. The
+/// full profile is four requests; this is one.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerSummary {
+    pub id: i32,
+    pub login: String,
+    /// Empty when the player has no avatar selected.
+    pub avatar_url: String,
+    pub country: String,
+    /// The number a signup post means by "rating". Absent for an account that
+    /// has never been rated.
+    pub global_rating: Option<i32>,
+    pub ladder_rating: Option<i32>,
+}
+
+impl PlayerSummary {
+    /// The rating to sort and display by, preferring the global one.
+    pub fn headline_rating(&self) -> Option<i32> {
+        self.global_rating.or(self.ladder_rating)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerAvatar {
