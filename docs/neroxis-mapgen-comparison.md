@@ -1,164 +1,168 @@
-# Neroxis-Mapgen: Feature-Vergleich Rust vs. Python vs. Java vs. Generator-CLI
+# Neroxis mapgen: feature comparison, Rust vs Python vs Java vs the generator CLI
 
-Stand: 2026-08-16 · Rust-Repo Branch `feat/tutorials-guides`, Basis `582ab6f`
+As of 2026-08-16 · Rust repo branch `feat/tutorials-guides`, base `582ab6f`
 
-## Vergleichsbasis
+## What is being compared
 
-| Quelle | Referenz | Rolle |
+| Source | Reference | Role |
 |---|---|---|
-| **Rust/Tauri** | dieses Repo | Neuentwicklung |
-| **Python** | `D:\Projects\FAF\Forks\py-client` (= `FAForever/client`) | Legacy-Client (PyQt6) |
-| **Java** | `FAForever/downlords-faf-client` | Offizieller Client |
-| **Generator** | `FAForever/Neroxis-Map-Generator`, **empirisch gegen `NeroxisGen_1.22.1.jar` verifiziert** | Autoritative Quelle |
+| **Rust/Tauri** | this repo | the new client |
+| **Python** | `D:\Projects\FAF\Forks\py-client` (= `FAForever/client`) | legacy client (PyQt6) |
+| **Java** | `FAForever/downlords-faf-client` | official client |
+| **Generator** | `FAForever/Neroxis-Map-Generator`, **verified empirically against `NeroxisGen_1.22.1.jar`** | the authoritative source |
 
-Der Python-Code liegt an **zwei** Stellen, was leicht zu übersehen ist:
+The Python code lives in **two** places, which is easy to miss:
 
-- `src/mapGenerator/` (328 Zeilen): nur Prozess-Handling und Download
-- `src/games/mapgenoptions*.py` + `res/games/mapgen.ui` (~900 Zeilen + 32 KB UI): **der komplette Options-Dialog**
+- `src/mapGenerator/` (328 lines): process handling and download only
+- `src/games/mapgenoptions*.py` + `res/games/mapgen.ui` (~900 lines + 32 KB of UI): **the entire
+  options dialog**
 
-Wer nur `src/mapGenerator/` liest, hält den Python-Client für reproduktions-only. Das ist falsch:
-er hat den umfangreichsten Optionsdialog der drei Clients.
+Read only `src/mapGenerator/` and you would take the Python client for reproduction-only. That is
+wrong: it has the most extensive options dialog of the three clients.
 
-## Methodik
+## Method
 
-Alle Aussagen stammen aus dem Quellcode. Zusätzlich wurde der **ausgelieferte JAR direkt
-ausgeführt** (`natives/jre` = Temurin 25, weil Neroxis 1.22.x Class-File-Version 69 braucht) -
-alle mit ⚡ markierten Befunde sind empirisch belegt, nicht aus dem Code geschlossen.
+Every claim here comes from source. On top of that the **shipped JAR was run directly**
+(`natives/jre` = Temurin 25, because Neroxis 1.22.x needs class-file version 69). Everything
+marked with a lightning bolt is empirically demonstrated rather than inferred from the code.
 
-Status Rust-Client: ✅ Parität oder besser · 🟡 Lücke · ❌ fehlt · 🐞 fehlerhaft
+Status of the Rust client: OK = parity or better · GAP = incomplete · MISSING = absent ·
+BUG = wrong.
 
 ---
 
-## 1. Executive Summary
+## 1. Executive summary
 
-| # | Befund | Schwere |
+| # | Finding | Severity |
 |---|---|---|
-| 1 | ⚡ Dichte-Slider senden 0–127, der Generator akzeptiert nur 0–1. **Beide** Referenzclients rechnen um, wir nicht | 🐞 **P0** |
-| 2 | ⚡ Ungültige Spawn/Team- und Symmetrie/Team-Kombinationen werden nicht abgefangen | ❌ **P0** |
-| 3 | ⚡ `--parse` existiert: Validierung + Namensauflösung **ohne** Generierung. **Kein Client nutzt es** | 💡 **Chance** |
-| 4 | Rohargumente werden per `split_whitespace()` zerlegt → Pfade mit Leerzeichen brechen (Python nutzt `shlex`) | 🐞 **P1** |
-| 5 | Versionsliste holt nur 30 von 130 Releases (keine Paginierung) | 🟡 **P1** |
-| 6 | Optionslisten werden bei jedem Dialogöffnen neu vom JAR geholt; Python cacht sie pro Version als JSON | 🟡 **P1** |
-| 7 | `numTeams = 0` (asymmetrisch) und 9–16 nicht erreichbar | ❌ **P1** |
-| 8 | Kein Generator-Log: beide Referenzclients schreiben eines | ❌ **P1** |
-| 9 | ⚡ Map-Styles haben Größen-/Spawn-/Team-Constraints. **Kein Client filtert danach** | 💡 **Chance** |
-| 10 | ⚡ `--preview-path` erzeugt Vorschaubilder in einen eigenen Ordner. **Kein Client nutzt es** | 💡 **Chance** |
+| 1 | (verified) The density sliders send 0 to 127; the generator accepts 0 to 1 only. **Both** reference clients convert, we do not | BUG **P0** |
+| 2 | (verified) Invalid spawn/team and symmetry/team combinations are not caught | MISSING **P0** |
+| 3 | (verified) `--parse` exists: validation and name resolution **without** generating. **No client uses it** | opportunity |
+| 4 | Raw arguments are split with `split_whitespace()`, so paths with spaces break (Python uses `shlex`) | BUG **P1** |
+| 5 | The version list fetches 30 of 130 releases (no pagination) | GAP **P1** |
+| 6 | Option lists are refetched from the JAR every time the dialog opens; Python caches them per version as JSON | GAP **P1** |
+| 7 | `numTeams = 0` (asymmetric) and 9 to 16 are unreachable | MISSING **P1** |
+| 8 | No generator log: both reference clients write one | MISSING **P1** |
+| 9 | (verified) Map styles carry size, spawn and team constraints. **No client filters on them** | opportunity |
+| 10 | (verified) `--preview-path` writes preview images into a folder of their own. **No client uses it** | opportunity |
 
 ---
 
-## 2. Die drei Clients im Überblick
+## 2. The three clients at a glance
 
-### Python: der umfangreichste Dialog, die schwächste Validierung
+### Python: the most extensive dialog, the weakest validation
 
-Aufbau:
+How it is put together:
 
-| Datei | Aufgabe |
+| File | Job |
 |---|---|
-| `mapgenManager.py` | Download, Versionsverwaltung, JAR-Cache |
-| `mapgenProcess.py` | QProcess, stdout-Scraping, Fortschrittsdialog mit **Cancel** |
-| `mapgenoptionsdialog.py` | Der Dialog, inkl. `OptionsExtractor` |
-| `mapgenoptions.py` | Options-Abstraktion (ComboBox/SpinBox/Range → CLI-Argument) |
-| `mapgenoptionsvalues.py` | Hartkodierte Fallback-Enums für alte Versionen |
+| `mapgenManager.py` | download, version management, JAR cache |
+| `mapgenProcess.py` | QProcess, stdout scraping, progress dialog with **Cancel** |
+| `mapgenoptionsdialog.py` | the dialog, including `OptionsExtractor` |
+| `mapgenoptions.py` | options abstraction (combo box / spin box / range to CLI argument) |
+| `mapgenoptionsvalues.py` | hardcoded fallback enums for older versions |
 
-Was der Python-Client **besser macht als Java und wir**:
+What the Python client does **better than Java and better than us**:
 
-- **Options-Cache pro Generatorversion.** `OptionsExtractor` ruft das JAR einmal pro Optionsliste
-  auf und schreibt das Ergebnis nach `mapgen_options.json`, **verschlüsselt nach Version**. Beim
-  nächsten Öffnen wird nichts mehr gestartet. Wir starten sechs JVMs bei jedem Dialogöffnen.
-- **Vollständige Release-Liste.** `?per_page=100` plus Auswertung des GitHub-`Link`-Headers für
-  Folgeseiten (`GITHUB_NEXT_PAGE`-Regex). Ergebnis in `release_tags` gecacht.
-- **`shlex.split`** für Rohargumente: korrektes Shell-Quoting.
-- **`--folder-path`-Schalter**: eine Checkbox stellt automatisch `--folder-path <User-Maps-Ordner>`
-  voran.
-- **„Run Help"-Button**: zeigt die `--help`-Ausgabe des Generators im Dialog.
-- **Versions-Umschaltung zur Laufzeit** mit „Switch"-Button, plus Nachfrage bei neuer Version.
-- **Mindestversion für Optionsextraktion**: unter 1.12.0 wird gar nicht erst versucht.
-- **`RANDOM`-Sentinel** in jeder Combo; wählt man bei Prop/Resource `RANDOM`, werden die
-  zugehörigen Dichte-Felder deaktiviert.
+- **An options cache per generator version.** `OptionsExtractor` calls the JAR once per option list
+  and writes the result to `mapgen_options.json`, **keyed by version**. Nothing is started the next
+  time it opens. We start six JVMs every time the dialog opens.
+- **The complete release list.** `?per_page=100` plus reading GitHub's `Link` header for further
+  pages (a `GITHUB_NEXT_PAGE` regex). The result is cached in `release_tags`.
+- **`shlex.split`** for raw arguments: correct shell quoting.
+- **A `--folder-path` switch**: one checkbox automatically prepends
+  `--folder-path <user maps folder>`.
+- **A "Run Help" button**: shows the generator's `--help` output in the dialog.
+- **Switching version at runtime** with a "Switch" button, plus a prompt when a new version
+  appears.
+- **A minimum version for option extraction**: below 1.12.0 it does not even try.
+- **A `RANDOM` sentinel** in every combo; choosing `RANDOM` for prop or resource disables the
+  matching density fields.
 
-Was er **schlechter** macht: praktisch keine Eingabevalidierung. Spawns und Teams gehen 1–1000,
-Map-Größe 2,5–80 km. Der Client verlässt sich darauf, dass der Generator meckert, und zeigt dessen
-stdout in einem Dialog an.
+What it does **worse**: essentially no input validation. Spawns and teams go from 1 to 1000, map
+size from 2.5 to 80 km. The client relies on the generator complaining, and shows its stdout in a
+dialog.
 
-**Wichtig:** Python nutzt bereits `--visibility` (das aktuelle Flag), nicht die Legacy-Aliase.
+**Worth noting:** Python already uses `--visibility` (the current flag), not the legacy aliases.
 
-### Java: die strengste Validierung
+### Java: the strictest validation
 
-`GenerateMapController` macht ungültige Eingaben *strukturell unmöglich*: `selectableSpawnCounts`
-ist eine `FilteredList` mit Prädikat `value % numTeams == 0`, die bei jeder Team-Änderung neu
-filtert. Man *kann* dort keine 5 Spawns bei 2 Teams einstellen.
+`GenerateMapController` makes invalid input *structurally impossible*: `selectableSpawnCounts` is a
+`FilteredList` with the predicate `value % numTeams == 0`, refiltered whenever the team count
+changes. You simply *cannot* set 5 spawns with 2 teams there.
 
-Dafür: keine Versionsauswahl, kein Options-Cache, keine Paginierung, `commandLineArgs.split(" ")`.
+Against that: no version selection, no options cache, no pagination, and
+`commandLineArgs.split(" ")`.
 
-### Rust: dazwischen, mit eigenen Stärken
+### Rust: in between, with strengths of its own
 
-Versionsauswahl im UI, Download-Größenlimit, sauberes Prozess-Reaping, Vorschau-Karten,
-vierstufige Fortschrittsanzeige, benutzergesteuertes Cleanup mit Favoritenschutz. Aber: keine
-Validierung, und der Dichte-Bug.
+Version selection in the UI, a download size limit, clean process reaping, preview cards, a
+four-stage progress display, user-driven cleanup with favourite protection. But: no validation, and
+the density bug.
 
 ---
 
-## 3. CLI-Flag-Matrix
+## 3. CLI flag matrix
 
 | Flag | Generator | Python | Java | **Rust** |
 |---|---|---|---|---|
-| `--map-name` | ✔ | ✔ | ✔ | ✅ |
-| `--map-size` | oGrids **oder** `10km` | ✔ (km, 1,25er-Raster) | ✔ (km-Spinner) | 🟡 nur oGrids, feste Liste |
-| `--spawn-count` | 0–16 | ✔ 1–1000 | ✔ gefiltert | 🟡 2–16, ungefiltert |
-| `--num-teams` | 0–16 (**0 = asymmetrisch**) | ✔ 1–1000 | ✔ 0, 2–16 | ❌ 2–8 |
-| `--num-to-generate` | ✔ | ✔ | ✔ 1–50 | 🟡 1–10 |
-| `--seed` | `Long` | ✔ | ✔ | 🟡 unvalidierter String |
-| `--terrain-symmetry` | 22 Werte | ✔ | ✔ | ✅ |
-| `--style` | 21 Presets | ✔ | ✔ | ✅ |
-| `--terrain-style` | 24 | ✔ | ✔ | ✅ |
-| `--texture-style` / `--biome` | 13 | ✔ | ✔ | ✅ |
-| `--resource-style` | 6 | ✔ | ✔ | ✅ |
-| `--prop-style` | 10 | ✔ | ✔ | ✅ |
-| `--reclaim-density` | **0.0–1.0** | ✔ (`/100`) | ✔ (`/127`) | 🐞 **roh 0–127** |
-| `--resource-density` | **0.0–1.0** | ✔ (`/100`) | ✔ (`/127`) | 🐞 **roh 0–127** |
-| `--visibility` | aktuelles Flag | ✔ | ❌ | ❌ |
-| `--tournament-style` / `--blind` / `--unexplored` | `hidden` (Legacy) | ❌ | ✔ | ✅ |
-| `--visualize` | negierbar | nur roh | nur roh | ✅ (Timeout-Ausnahme korrekt) |
-| `--debug` | negierbar | nur roh | nur roh | 🟡 nur roh |
-| `--out-path` / `--folder-path` | ✔ | ✔ **Checkbox** | ❌ | ❌ |
-| `--preview-path` | ✔ | ❌ | ❌ | ❌ |
-| `--parse` | ✔ | ❌ | ❌ | ❌ |
-| `--help` / `--version` | ✔ | ✔ Button | ❌ | ❌ |
-| Optionslisten-Unterbefehle | 6 Stück | ✔ **gecacht** | ✔ | ✅ ungecacht |
+| `--map-name` | yes | yes | yes | OK |
+| `--map-size` | oGrids **or** `10km` | yes (km, 1.25 steps) | yes (km spinner) | GAP: oGrids only, fixed list |
+| `--spawn-count` | 0 to 16 | yes, 1 to 1000 | yes, filtered | GAP: 2 to 16, unfiltered |
+| `--num-teams` | 0 to 16 (**0 = asymmetric**) | yes, 1 to 1000 | yes, 0 and 2 to 16 | MISSING: 2 to 8 |
+| `--num-to-generate` | yes | yes | yes, 1 to 50 | GAP: 1 to 10 |
+| `--seed` | `Long` | yes | yes | GAP: unvalidated string |
+| `--terrain-symmetry` | 22 values | yes | yes | OK |
+| `--style` | 21 presets | yes | yes | OK |
+| `--terrain-style` | 24 | yes | yes | OK |
+| `--texture-style` / `--biome` | 13 | yes | yes | OK |
+| `--resource-style` | 6 | yes | yes | OK |
+| `--prop-style` | 10 | yes | yes | OK |
+| `--reclaim-density` | **0.0 to 1.0** | yes (`/100`) | yes (`/127`) | BUG: **raw 0 to 127** |
+| `--resource-density` | **0.0 to 1.0** | yes (`/100`) | yes (`/127`) | BUG: **raw 0 to 127** |
+| `--visibility` | the current flag | yes | no | no |
+| `--tournament-style` / `--blind` / `--unexplored` | `hidden` (legacy) | no | yes | OK |
+| `--visualize` | negatable | raw only | raw only | OK (timeout exemption correct) |
+| `--debug` | negatable | raw only | raw only | GAP: raw only |
+| `--out-path` / `--folder-path` | yes | yes, **checkbox** | no | no |
+| `--preview-path` | yes | no | no | no |
+| `--parse` | yes | no | no | no |
+| `--help` / `--version` | yes | yes, button | no | no |
+| Option-list subcommands | 6 of them | yes, **cached** | yes | OK, uncached |
 
 ---
 
-## 4. Die Lücken im Detail
+## 4. The gaps in detail
 
-### 4.1 🐞 P0: Dichte-Einheiten ⚡
+### 4.1 BUG P0: density units (verified)
 
-Die Hilfe des ausgelieferten JAR sagt wörtlich: *„Reclaim density for the generated map. **Min: 0
-Max: 1**"*. Direkt verifiziert:
+The shipped JAR's help says it in as many words: *"Reclaim density for the generated map. **Min: 0
+Max: 1**"*. Verified directly:
 
 ```
 $ java -jar NeroxisGen_1.22.1.jar --parse ... --reclaim-density 64
 Invalid value for option '--reclaim-density': Must be between 0 and 1 but was `64,000000`
 ```
 
-Die 127 ist `GeneratedMapNameEncoder.NUM_BINS`, also die Auflösung der internen Diskretisierung -
-nicht die Skala. Beide Referenzclients rechnen um:
+The 127 is `GeneratedMapNameEncoder.NUM_BINS`, the resolution of the internal discretisation, not
+the scale. Both reference clients convert:
 
-- Java: Slider 0–127 (Bin-Skala) → `reclaimLowValue / 127f`
-- Python: SpinBox 0–100 (Prozent) → `random.randrange(min, max+1) / 100`
+- Java: slider 0 to 127 (the bin scale) then `reclaimLowValue / 127f`
+- Python: spin box 0 to 100 (percent) then `random.randrange(min, max+1) / 100`
 
-Bei uns fehlt die Division. Slider bis 127 in
-[GenerateMapModal.tsx:412](ui/src/features/maps/GenerateMapModal.tsx:412) und `:423`, roh
-weitergereicht in
-[protocol/map_generator.rs:554-571](crates/faf-domain/src/protocol/map_generator.rs:554). Der
-Kommentar auf `:302` behauptet ausdrücklich das Gegenteil und ist zu korrigieren.
+We are missing the division. Sliders up to 127 in
+[GenerateMapModal.tsx:412](ui/src/features/maps/GenerateMapModal.tsx:412) and `:423`, passed
+through raw in
+[protocol/map_generator.rs:554-571](crates/faf-domain/src/protocol/map_generator.rs:554). The
+comment on `:302` states the opposite outright and needs correcting.
 
-**Auswirkung:** Unangetastete Slider bleiben auf `None`, es wird kein Flag emittiert: es
-funktioniert. Beim ersten Verschieben bricht der Lauf ab. Custom-Style mit Dichte ist unbenutzbar.
+**Effect:** an untouched slider stays `None` and emits no flag, so it works. Move it once and the
+run aborts. A custom style with a density is unusable.
 
-**Fix:** `/ 127.0` beim Emittieren, UI-Einheit belassen. Domain-Test, der prüft, dass der
-emittierte Wert in `0.0..=1.0` liegt.
+**Fix:** divide by 127.0 on the way out, keep the UI unit. A domain test asserting the emitted
+value lands in `0.0..=1.0`.
 
-### 4.2 ❌ P0: Ungültige Kombinationen ⚡
+### 4.2 MISSING P0: invalid combinations (verified)
 
 ```
 $ java -jar NeroxisGen_1.22.1.jar --parse --spawn-count 5 --num-teams 2
@@ -168,84 +172,83 @@ $ java -jar NeroxisGen_1.22.1.jar --parse --num-teams 2 --terrain-symmetry POINT
 Terrain symmetry `POINT3` not compatible with Num Teams `2`
 ```
 
-Regeln aus `MapGeneratorCommand.checkParameters` und den Record-Constructors:
+The rules, from `MapGeneratorCommand.checkParameters` and the record constructors:
 
-| Regel | Prüfen wir? |
+| Rule | Do we check it? |
 |---|---|
-| `numTeams != 0 && spawnCount % numTeams != 0` | ❌ |
-| `numTeams != 0 && terrainSymmetry.numSymPoints % numTeams != 0` | ❌ |
-| `mapSize % 64 != 0` | ⚠️ implizit (Liste ist konform, Rohargumente umgehen sie) |
-| `spawnCount ∈ 0..16`, `mapSize ∈ 0..2048`, `numTeams ∈ 0..16` | 🟡 teilweise |
+| `numTeams != 0 && spawnCount % numTeams != 0` | no |
+| `numTeams != 0 && terrainSymmetry.numSymPoints % numTeams != 0` | no |
+| `mapSize % 64 != 0` | implicitly (the list conforms; raw arguments bypass it) |
+| `spawnCount in 0..16`, `mapSize in 0..2048`, `numTeams in 0..16` | partly |
 
-Die Symmetrie-Regel ist die subtilste: `POINT3` hat 3 Symmetriepunkte, `XZ`/`X`/`Z`/`ZX` je 2,
-`QUAD`/`DIAG` je 4. Wir behandeln Symmetrien als undurchsichtige Strings.
+The symmetry rule is the subtlest: `POINT3` has 3 symmetry points, `XZ`/`X`/`Z`/`ZX` have 2 each,
+`QUAD`/`DIAG` 4 each. We treat symmetries as opaque strings.
 
-**Fix:** siehe § 5.1: `--parse` erledigt das, ohne dass wir eine Regel nachbauen.
+**Fix:** see section 5.1. `--parse` does this without us rebuilding a single rule.
 
-### 4.3 🐞 P1: Rohargumente zerbrechen an Leerzeichen
+### 4.3 BUG P1: raw arguments break on spaces
 
 ```rust
 options.command_line_args.split_whitespace()
 ```
 [protocol/map_generator.rs:466](crates/faf-domain/src/protocol/map_generator.rs:466)
 
-`--folder-path "C:\Users\Max Mustermann\maps"` wird zu vier Argumenten. Der Java-Client hat
-denselben Fehler (`split(" ")`), der Python-Client nicht: er nutzt `shlex.split`. Da unser Ziel der
-bessere Client ist, ist Python hier die Referenz.
+`--folder-path "C:\Users\Max Mustermann\maps"` becomes four arguments. The Java client has the same
+bug (`split(" ")`); the Python client does not, because it uses `shlex.split`. Since the goal is to
+be the better client, Python is the reference here.
 
-### 4.4 🟡 P1: Versionsliste unvollständig ⚡
+### 4.4 GAP P1: the version list is incomplete (verified)
 
-Wir rufen `/releases` ohne `per_page` und ohne Paginierung auf. GitHub liefert **30 von 130**
-Releases; die Liste endet bei 1.8.4. Python holt alle 130 (`per_page=100` + `Link`-Header) und
-cacht sie in `release_tags`.
+We call `/releases` without `per_page` and without pagination. GitHub returns **30 of 130**
+releases, and the list stops at 1.8.4. Python fetches all 130 (`per_page=100` plus the `Link`
+header) and caches them in `release_tags`.
 
-### 4.5 🟡 P1: Optionslisten nicht gecacht
+### 4.5 GAP P1: option lists are not cached
 
-`load_options` startet sechs JVM-Prozesse bei jedem Dialogöffnen
+`load_options` starts six JVM processes every time the dialog opens
 ([services/map_generator.rs:180-189](crates/faf-app/src/services/map_generator.rs:180)). Python
-extrahiert einmal pro Generatorversion und legt das Ergebnis in `mapgen_options.json` ab.
+extracts once per generator version and puts the result in `mapgen_options.json`.
 
-Ein Cache ist umso sinnvoller, als die Listen sich innerhalb einer Version definitionsgemäß nie
-ändern.
+A cache makes all the more sense because within a version the lists cannot change by definition.
 
-### 4.6 ❌ P1: Nicht erreichbare gültige Werte
+### 4.6 MISSING P1: valid values that cannot be reached
 
-| Einstellung | Generator | Python | Java | Rust |
+| Setting | Generator | Python | Java | Rust |
 |---|---|---|---|---|
-| `numTeams` | 0–16 | 1–1000 | 0, 2–16 | **2–8** |
-| `numToGenerate` | beliebig | ≥1 | 1–50 | **1–10** |
-| `mapSize` | 0–2048, `%64` | 2,5–80 km | 5–20 km (13 Werte) | **9 Werte** |
+| `numTeams` | 0 to 16 | 1 to 1000 | 0, 2 to 16 | **2 to 8** |
+| `numToGenerate` | any | 1 or more | 1 to 50 | **1 to 10** |
+| `mapSize` | 0 to 2048, `%64` | 2.5 to 80 km | 5 to 20 km (13 values) | **9 values** |
 
-`--num-teams 0` ist ausdrücklich dokumentiert als *„0 is no teams asymmetric"* und schaltet
-sämtliche Team-Validierung ab. Ein eigener Map-Typ, den wir nicht anbieten.
+`--num-teams 0` is documented explicitly as *"0 is no teams asymmetric"* and switches off all team
+validation. A map type of its own that we do not offer.
 
-Bei den Größen fehlen uns 576, 704, 832, 896, 960 gegenüber Javas Raster; dafür haben wir 2048.
+On sizes we are missing 576, 704, 832, 896 and 960 against Java's grid; we do have 2048.
 
-### 4.7 ❌ P1: Kein Generator-Log
+### 4.7 MISSING P1: no generator log
 
-Python schreibt `map_generator.log`, Java loggt über `faf-map-generator`. Wir loggen bewusst nur,
-*dass* eine Zeile kam ([infra/map_generator.rs:354](crates/faf-app/src/infra/map_generator.rs:354)).
-Bei einem Fehlschlag sieht der Nutzer nur die erste stderr-Zeile.
+Python writes `map_generator.log`; Java logs through `faf-map-generator`. We deliberately log only
+*that* a line arrived ([infra/map_generator.rs:354](crates/faf-app/src/infra/map_generator.rs:354)).
+On a failure the user sees the first stderr line and nothing else.
 
-### 4.8 ❌ P2: Kein Bestätigungs-Prompt beim Join
+### 4.8 MISSING P2: no confirmation prompt on join
 
-Python fragt vor der Generierung einer Lobby-Map (Yes / Yes to all / No), weil der Vorgang
-minutenlang eine CPU auslastet. Unser `GenerateNamed` startet sofort. Java fragt ebenfalls nicht.
+Python asks before generating a lobby map (Yes / Yes to all / No), because the operation pins a CPU
+for minutes. Our `GenerateNamed` starts immediately. Java does not ask either.
 
 ---
 
-## 5. Was der Generator kann, das **kein** Client liefert
+## 5. What the generator can do that **no** client offers
 
-Der zweite Teil der Fragestellung. Alles hier ist am ausgelieferten 1.22.1-JAR verifiziert.
+The second half of the question. Everything here is verified against the shipped 1.22.1 JAR.
 
-### 5.1 ⚡ `--parse`: Trockenlauf, Validator und Namensauflöser in einem
+### 5.1 `--parse`: dry run, validator and name resolver in one (verified)
 
-> „Only parse the options and return the parameters in json"
+> "Only parse the options and return the parameters in json"
 
-Der Generator kann Optionen **auflösen, validieren und den resultierenden Map-Namen berechnen,
-ohne eine Map zu erzeugen**. Er läuft in unter einer Sekunde statt in Minuten.
+The generator can **resolve, validate and compute the resulting map name without generating a
+map**. It runs in under a second instead of minutes.
 
-**Richtung A: Optionen → Name + Parameter:**
+**Direction A, options to name and parameters:**
 
 ```
 $ java -jar NeroxisGen_1.22.1.jar --parse --map-size 10km --spawn-count 6 \
@@ -255,171 +258,171 @@ $ java -jar NeroxisGen_1.22.1.jar --parse --map-size 10km --spawn-count 6 \
  "mapName":"neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj"}
 ```
 
-**Richtung B: Name → Parameter:**
+**Direction B, name to parameters:**
 
 ```
 $ java -jar NeroxisGen_1.22.1.jar --map-name neroxis_map_generator_1.22.1_mmyctirfxqlx6_baeaj7yja4aqoxza --parse
 {"parameters":{"seed":7147258385031501695,"spawnCount":8,"mapSize":512,"numTeams":4,
  "mode":{"terrainSymmetry":null,"mapStyle":{"terrainStyle":"FLOODED","biomeName":"SYRTIS",
  "propStyle":"ROCK_FIELD","resourceStyle":"LOW_MEX",
- "reclaimDensity":0.7480315,"resourceDensity":0.2519685}}}, "mapName":"…"}
+ "reclaimDensity":0.7480315,"resourceDensity":0.2519685}}}, "mapName":"..."}
 ```
 
-Das löst gleich drei Probleme auf einmal:
+That solves three problems at once:
 
-1. **Validierung ohne Nachbau.** Statt `spawnCount % numTeams`, `mapSize % 64` und die
-   Symmetrie-Regel in `faf-domain` zu reimplementieren und bei jedem Generator-Release
-   nachzuziehen: `--parse` vorschalten. Exit-Code 0 → generieren. Exit ≠ 0 → die Fehlermeldung des
-   Generators anzeigen, die bereits präzise formuliert ist („Spawn Count `5` not a multiple of Num
-   Teams `2`"). Der JAR ist im Host-Flow ohnehin schon geladen.
-2. **Namensvorschau.** Der Nutzer sieht den Map-Namen, bevor er generiert: teilbar, in die Lobby
-   kopierbar.
-3. **Metadaten zu fremden Maps.** Beim Lobby-Join lässt sich anzeigen „10 km · 8 Spawns · 4 Teams ·
-   FLOODED/SYRTIS", bevor man eine minutenlange Generierung startet.
+1. **Validation without rebuilding it.** Instead of reimplementing `spawnCount % numTeams`,
+   `mapSize % 64` and the symmetry rule in `faf-domain` and chasing every generator release: put
+   `--parse` in front. Exit code 0, generate. Non-zero, show the generator's own message, which is
+   already precise ("Spawn Count `5` not a multiple of Num Teams `2`"). The JAR is loaded in the
+   host flow anyway.
+2. **A name preview.** The user sees the map name before generating: shareable, and copyable into
+   the lobby.
+3. **Metadata for somebody else's maps.** On joining a lobby you could show "10 km · 8 spawns ·
+   4 teams · FLOODED/SYRTIS" before starting a generation that takes minutes.
 
-Einschränkung für Punkt 3: ein JVM-Start pro Name ist für eine Lobby-**Liste** zu langsam. Dafür
-eignet sich die lokale Base32-Dekodierung (Byte-Layout siehe § 6) oder ein Cache; `--parse` ist die
-richtige Wahl auf Anfrage für eine einzelne Map.
+A limit on point 3: one JVM start per name is too slow for a lobby *list*. Local base32 decoding
+suits that (byte layout in section 6), or a cache; `--parse` is the right choice on demand for a
+single map.
 
-### 5.2 ⚡ `--preview-path`: Vorschaubilder in einen eigenen Ordner
+### 5.2 `--preview-path`: preview images in a folder of their own (verified)
 
-`--preview-path <ordner>` schreibt die Preview-PNGs separat. Wir lesen die Vorschau derzeit aus dem
-Map-Ordner und probieren dafür neun Dateinamensvarianten durch
-([infra/map_generator.rs:474-531](crates/faf-app/src/infra/map_generator.rs:474)). Mit
-`--preview-path` in ein temporäres Verzeichnis entfällt das Raten komplett.
+`--preview-path <folder>` writes the preview PNGs separately. We currently read the preview out of
+the map folder and try nine filename variants to find it
+([infra/map_generator.rs:474-531](crates/faf-app/src/infra/map_generator.rs:474)). Pointing
+`--preview-path` at a temporary directory removes the guessing entirely.
 
-Achtung: greift nur im Casual-Modus (`allowDebug()`), bei Turnier-/Blind-Maps gibt es
-definitionsgemäß keine Vorschau.
+Note: this only applies in casual mode (`allowDebug()`); tournament and blind maps have no preview
+by definition.
 
-### 5.3 ⚡ Map-Styles haben Parameter-Constraints
+### 5.3 Map styles carry parameter constraints (verified)
 
-Jedes Preset in `MapStyle.Predefined` trägt einen `ParameterConstraints`-Datensatz:
+Every preset in `MapStyle.Predefined` carries a `ParameterConstraints` record:
 
-| Style | Map-Größe | Spawns | Teams |
+| Style | Map size | Spawns | Teams |
 |---|---|---|---|
-| `BIG_ISLANDS`, `SMALL_ISLANDS`, `LAND_BRIDGE` | 768–1024 | – | LAND_BRIDGE: 2–4 |
-| `CENTER_LAKE`, `FLOODED`, `ONE_ISLAND`, `VALLEY` | 384–1024 | – | – |
-| `MOUNTAIN_RANGE` | 256–640 | – | – |
-| `LOW_MEX` | 256–640 | 0–4 | genau 2 |
-| `SETONISH` | 512–1024 | – | genau 2 |
-| alle übrigen | beliebig | – | – |
+| `BIG_ISLANDS`, `SMALL_ISLANDS`, `LAND_BRIDGE` | 768 to 1024 | any | LAND_BRIDGE: 2 to 4 |
+| `CENTER_LAKE`, `FLOODED`, `ONE_ISLAND`, `VALLEY` | 384 to 1024 | any | any |
+| `MOUNTAIN_RANGE` | 256 to 640 | any | any |
+| `LOW_MEX` | 256 to 640 | 0 to 4 | exactly 2 |
+| `SETONISH` | 512 to 1024 | any | exactly 2 |
+| all others | any | any | any |
 
-Der Generator nutzt diese Constraints **nur bei der Zufallsauswahl** (`RANDOM_MAP_STYLE_OPTIONS`,
-gewichtet: `BASIC` und `LAND_BRIDGE` doppelt, `FORREST_SOMETHING` mit 0,01). Wählt der Nutzer
-einen Style explizit, wird er ungefiltert übernommen: auch wenn er nicht passt.
+The generator uses these constraints **only when picking at random** (`RANDOM_MAP_STYLE_OPTIONS`,
+weighted: `BASIC` and `LAND_BRIDGE` twice, `FORREST_SOMETHING` at 0.01). Choose a style explicitly
+and it is taken unfiltered, even where it does not fit.
 
-**Kein Client zeigt das an.** Wer bei 5 km `BIG_ISLANDS` wählt, bekommt kein sinnvolles Ergebnis
-und erfährt nicht, warum. Styles im Dialog auszugrauen oder mit dem gültigen Größenbereich zu
-beschriften, wäre eine echte Verbesserung. Die Tabelle ist allerdings versionsabhängig und müsste
-gepflegt werden: oder man leitet sie aus einem `--parse`-Vergleich ab.
+**No client shows this.** Pick `BIG_ISLANDS` at 5 km and you get nothing sensible, with no
+explanation. Greying styles out in the dialog, or labelling them with their valid size range, would
+be a real improvement. The table is version-dependent though and would need maintaining, or it
+could be derived from a `--parse` comparison.
 
-### 5.4 ⚡ Weitere ungenutzte Fähigkeiten
+### 5.4 Further unused capabilities (verified)
 
-| Fähigkeit | Detail | Wer nutzt es |
+| Capability | Detail | Who uses it |
 |---|---|---|
-| **km-Schreibweise** | `--map-size 10km` wird intern zu 512 (`× 51.2`) | niemand direkt (alle rechnen selbst) |
-| **`--num-teams 0`** | asymmetrische Maps ohne Teamstruktur | niemand |
-| **Abgekürzte Optionen** | `setAbbreviatedOptionsAllowed(true)` → `--map-si 512` funktioniert | niemand |
-| **Unbekannte Argumente tolerant** | `setUnmatchedArgumentsAllowed(true)` → unbekannte Flags brechen den Lauf **nicht** ab | niemand (wichtig für Vorwärtskompatibilität) |
-| **`--version`** | `-V` liefert die Generatorversion | niemand (alle leiten sie aus dem Dateinamen ab) |
-| **`--debug`** | schreibt `debug/pipelineMaskHashes.txt` und gibt Parameter aus | nur über Rohargumente |
-| **Unterbefehl-Aliase** | `styles` = `--styles`, `biomes` = `--texture-styles` = `--biomes` | alle nutzen nur die `--`-Form |
+| **km notation** | `--map-size 10km` becomes 512 internally (`x 51.2`) | nobody directly (everyone converts themselves) |
+| **`--num-teams 0`** | asymmetric maps with no team structure | nobody |
+| **Abbreviated options** | `setAbbreviatedOptionsAllowed(true)`, so `--map-si 512` works | nobody |
+| **Unknown arguments tolerated** | `setUnmatchedArgumentsAllowed(true)`, so unknown flags do **not** abort the run | nobody (and it matters for forward compatibility) |
+| **`--version`** | `-V` returns the generator version | nobody (everyone derives it from the filename) |
+| **`--debug`** | writes `debug/pipelineMaskHashes.txt` and prints the parameters | only through raw arguments |
+| **Subcommand aliases** | `styles` = `--styles`, `biomes` = `--texture-styles` = `--biomes` | everyone uses the `--` form only |
 
-Nicht im JAR enthalten: die **Toolsuite** (MapEvaluator, MapPopulator, MapResizer,
-PbrTextureGenerator, Import/Export) wird als eigenes Artefakt `neroxis-toolsuite-*` veröffentlicht.
-`NeroxisGen_<version>.jar` enthält nur den Generator. Wer diese Werkzeuge nutzen will, müsste ein
-zweites, ~55 MB großes Paket ausliefern: für einen Client vermutlich außerhalb des Sinnvollen.
+Not in the JAR: the **tool suite** (MapEvaluator, MapPopulator, MapResizer, PbrTextureGenerator,
+import/export) is published as its own artefact, `neroxis-toolsuite-*`. `NeroxisGen_<version>.jar`
+contains the generator alone. Using those tools would mean shipping a second package of about
+55 MB, which is probably beyond what makes sense for a client.
 
 ---
 
-## 6. Anhang: Aufbau des Map-Namens
+## 6. Appendix: how the map name is built
 
 ```
 neroxis_map_generator_<version>_<seed-b32>_<options-b32>[_<time-b32>]
 ```
 
-Base32 (Commons-Codec, lowercase, ohne Padding). Options-Bytes:
+Base32 (Commons-Codec, lowercase, no padding). The options bytes:
 
-| Byte | Bedeutung |
+| Byte | Meaning |
 |---|---|
 | 0 | spawnCount |
 | 1 | mapSize / 64 |
 | 2 | numTeams |
-| 3 | Symmetrie-Ordinal (−1 = keine) |
-| 4 (bei Länge 5) | `MapStyle.Predefined`-Ordinal |
-| 4–9 (bei Länge 10) | Biome, Terrain, Resource, Prop, Reclaim-Bin, Resource-Bin |
-| 3 + Segment 6 (bei Länge 4) | Visibility-Ordinal + Generierungszeitpunkt (Turniermodus) |
+| 3 | symmetry ordinal (-1 = none) |
+| 4 (when the length is 5) | `MapStyle.Predefined` ordinal |
+| 4 to 9 (when the length is 10) | biome, terrain, resource, prop, reclaim bin, resource bin |
+| 3 plus segment 6 (when the length is 4) | visibility ordinal and generation time (tournament mode) |
 
-Dichten werden als Bin-Index 0–126 gespeichert; `0.75` kommt als `0.7480315` (= 95/127) zurück.
-Die Enum-Ordinale sind **versionsabhängig**: eine lokale Dekodierung muss bei Unbekanntem
-schweigen statt zu raten.
+Densities are stored as a bin index from 0 to 126; `0.75` comes back as `0.7480315` (= 95/127). The
+enum ordinals are **version-dependent**: a local decoder has to stay quiet on anything it does not
+recognise rather than guess.
 
 ---
 
-## 7. Umsetzungsstand
+## 7. State of implementation
 
-Der Vergleich oben beschreibt den Stand *vor* der Umsetzung. Dieser Abschnitt hält fest, was
-inzwischen im Rust-Client steckt. Die Abschnitte 3 bis 6 sind bewusst unverändert geblieben: sie
-dokumentieren die Ausgangslage und die Belege dafür.
+The comparison above describes the state *before* the work. This section records what is in the
+Rust client now. Sections 3 to 6 have deliberately been left unchanged: they document the starting
+position and the evidence for it.
 
-### Umgesetzt
+### Done
 
-| # | Punkt | Wo |
+| # | Item | Where |
 |---|---|---|
-| 1 | Dichte wird als 0.0-1.0 emittiert (`format_density`), Slider bleiben Bin-Skala | `protocol/map_generator.rs` |
-| 2 | `--parse` als Vorabprüfung vor jeder Generierung aus Optionen | `services/map_generator.rs`, `infra/map_generator.rs` |
-| 3 | Rohargumente mit Shell-Quoting (`split_command_line`) | `protocol/map_generator.rs` |
-| 4 | Release-Paginierung, 130 statt 30 Versionen | `infra/map_generator.rs` |
-| 5 | Optionslisten pro Version auf Platte gecacht | `infra/map_generator.rs` |
-| 6 | Teams 0-16 inklusive „asymmetrisch", Spawns auf Vielfache gefiltert | `generatorPresentation.ts` |
-| 7 | Generator-Logfile mit Rotation | `infra/map_generator.rs` |
-| 8 | Alle 13 Größen des 64er-Rasters plus 1280 und 2048 | `generatorPresentation.ts` |
-| 9 | Bis zu 50 Karten pro Lauf | `generatorPresentation.ts` |
-| 10 | Namensvorschau aus `--parse` im Dialog | `GenerateMapModal.tsx` |
-| 11 | `--preview-path` statt neun geratener Dateinamen | `infra/map_generator.rs` |
-| 13 | Abbrechen während des Laufs (`CancelSignal`) | `infra/map_generator.rs` |
-| 14 | `--out-path` als Feld | `GenerateMapModal.tsx` |
-| 15 | Generator-Hilfe im Dialog | `GenerateMapModal.tsx` |
-| 16 | Seed wird als `i64` validiert | `protocol/map_generator.rs` |
-| 18 | `--debug` und `--visualize` als Schalter | `GenerateMapModal.tsx` |
-| 20 | Map-Namen werden lokal dekodiert und angezeigt | `protocol/map_generator_name.rs` |
-| 21 | Style-Constraints als Warnung und als Auswahlkriterium | `protocol/map_generator.rs` |
+| 1 | Density is emitted as 0.0 to 1.0 (`format_density`); the sliders stay on the bin scale | `protocol/map_generator.rs` |
+| 2 | `--parse` as a pre-flight check before every generation from options | `services/map_generator.rs`, `infra/map_generator.rs` |
+| 3 | Raw arguments with shell quoting (`split_command_line`) | `protocol/map_generator.rs` |
+| 4 | Release pagination, 130 versions instead of 30 | `infra/map_generator.rs` |
+| 5 | Option lists cached on disk per version | `infra/map_generator.rs` |
+| 6 | Teams 0 to 16 including "asymmetric", spawns filtered to multiples | `generatorPresentation.ts` |
+| 7 | A generator log file with rotation | `infra/map_generator.rs` |
+| 8 | All 13 sizes of the 64 grid plus 1280 and 2048 | `generatorPresentation.ts` |
+| 9 | Up to 50 maps per run | `generatorPresentation.ts` |
+| 10 | Name preview from `--parse` in the dialog | `GenerateMapModal.tsx` |
+| 11 | `--preview-path` instead of nine guessed filenames | `infra/map_generator.rs` |
+| 13 | Cancelling mid-run (`CancelSignal`) | `infra/map_generator.rs` |
+| 14 | `--out-path` as a field | `GenerateMapModal.tsx` |
+| 15 | Generator help in the dialog | `GenerateMapModal.tsx` |
+| 16 | The seed is validated as an `i64` | `protocol/map_generator.rs` |
+| 18 | `--debug` and `--visualize` as switches | `GenerateMapModal.tsx` |
+| 20 | Map names are decoded locally and shown | `protocol/map_generator_name.rs` |
+| 21 | Style constraints as a warning and as a selection criterion | `protocol/map_generator.rs` |
 
-Dazu zwei Dinge, die in der ursprünglichen Liste gar nicht standen, weil sie erst beim
-Nachbau auffielen:
+Plus two things that were not on the original list at all, because they only surfaced while
+rebuilding:
 
-- **Symmetrie-Vorfilterung.** Sind mehrere Symmetrien angehakt, wählen Python und Java gleichverteilt
-  aus allen. Steht `POINT3` neben `POINT4` und man will zwei Teams, scheitert etwa jeder zweite Lauf
-  ohne erkennbaren Grund. Wir filtern vor der Auswahl auf team-kompatible Symmetrien und fallen nur
-  auf die Rohauswahl zurück, wenn keine einzige passt.
-- **Style-Vorfilterung.** Dieselbe Logik für Map-Styles gegenüber der gewählten Kartengröße.
+- **Symmetry pre-filtering.** With several symmetries ticked, Python and Java pick uniformly from
+  all of them. Put `POINT3` next to `POINT4` and ask for two teams, and roughly every second run
+  fails for no visible reason. We filter to team-compatible symmetries before picking, and fall
+  back to the raw selection only when not one of them fits.
+- **Style pre-filtering.** The same logic for map styles against the chosen map size.
 
-### Bewusst nicht umgesetzt
+### Deliberately not done
 
-**19. Wechsel auf `--visibility`.** Die ursprüngliche Empfehlung war falsch. Am ausgelieferten JAR
-verifiziert: picocli läuft mit `setUnmatchedArgumentsAllowed(true)`, unbekannte Flags werden also
-**stillschweigend ignoriert** statt einen Fehler auszulösen.
+**19. Switching to `--visibility`.** The original recommendation was wrong. Verified against the
+shipped JAR: picocli runs with `setUnmatchedArgumentsAllowed(true)`, so unknown flags are **ignored
+silently** rather than raising an error.
 
 ```
 $ java -jar NeroxisGen_1.22.1.jar --parse --map-size 512 --spawn-count 6 --num-teams 2 --totally-bogus-flag
 {"parameters":{...},"mapName":"neroxis_map_generator_1.22.1_ed577kmcvkh22_ayeae"}
 ```
 
-Ein `--visibility BLIND` an einen älteren Generator wäre damit wirkungslos, und der Nutzer bekäme
-kommentarlos eine Casual-Karte statt einer Blind-Karte. Die Legacy-Flags `--tournament-style`,
-`--blind` und `--unexplored` funktionieren dagegen über die gesamte unterstützte Versionsspanne;
-in 1.22.1 sind sie nur `hidden`, nicht entfernt. Sie zu behalten ist die sicherere Wahl.
+A `--visibility BLIND` sent to an older generator would therefore do nothing, and the user would
+get a casual map instead of a blind one without a word about it. The legacy flags
+`--tournament-style`, `--blind` and `--unexplored` work across the whole supported version range;
+in 1.22.1 they are `hidden`, not removed. Keeping them is the safer choice.
 
-### Offen
+### Open
 
-| # | Punkt | Warum noch nicht |
+| # | Item | Why not yet |
 |---|---|---|
-| 12 | Bestätigungs-Prompt vor der Generierung beim Lobby-Join | Braucht ein neues Feld im Settings-Schema und einen Eingriff in den Join-Pfad, beides außerhalb des Mapgen-Moduls |
-| 17 | „Generierte Karten beim Beenden löschen" | Ebenfalls Settings-Schema plus ein Shutdown-Hook; der manuelle `CleanUp`-Befehl mit Favoritenschutz existiert bereits |
+| 12 | A confirmation prompt before generating on lobby join | Needs a new field in the settings schema and a change to the join path, both outside the mapgen module |
+| 17 | "Delete generated maps on exit" | Also the settings schema plus a shutdown hook; the manual `CleanUp` command with favourite protection already exists |
 
-### Verifikation
+### Verification
 
-Die Dekodierung der Map-Namen ist gegen die echte Generator-Ausgabe getestet, nicht gegen unsere
-Lesart des Quellcodes: die Erwartungswerte in `map_generator_name.rs` stammen aus
-`java -jar NeroxisGen_1.22.1.jar --parse ...`-Läufen. Ebenso die Fehlermeldungen, an denen sich die
-Validierung orientiert.
+The map name decoding is tested against the generator's real output rather than against our reading
+of its source: the expected values in `map_generator_name.rs` come from
+`java -jar NeroxisGen_1.22.1.jar --parse ...` runs. So do the error messages the validation is
+modelled on.
