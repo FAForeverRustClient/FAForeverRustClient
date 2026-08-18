@@ -24,8 +24,13 @@ export function usePlayerStyle(name: string): CSSProperties | undefined {
   const color = useAppStore((state) => {
     if (!name) return undefined;
     const chat = state.state.settings.chat;
+    const selfName = state.state.auth.player?.name;
     const assignedColor = assignedPlayerColor(chat.nameColors.players, name);
     if (assignedColor) return assignedColor;
+
+    if (selfName && name.toLowerCase() === selfName.toLowerCase() && chat.nameColors.selfColor) {
+      return chat.nameColors.selfColor;
+    }
 
     if (chat.nameColors.friends && includesName(state.state.social.friends, name)) {
       return chat.nameColors.friends;

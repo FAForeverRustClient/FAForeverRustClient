@@ -444,12 +444,13 @@ html.is-resizing-chat-roster * {
 .chat-message {
   position: relative;
   display: grid;
-  grid-template-columns: 40px minmax(76px, 101px) minmax(0, 1fr) 44px;
+  grid-template-columns: 36px minmax(72px, 128px) minmax(0, 1fr) 44px;
   gap: 7px;
   align-items: start;
   min-height: 24px;
   padding: 2px 7px;
   border-radius: var(--radius-sm);
+  font-size: 13px;
   line-height: 1.45;
   flex-shrink: 0;
 }
@@ -468,19 +469,19 @@ html.is-resizing-chat-roster * {
 .chat-message.is-error,
 .chat-message.is-action {
   grid-template-columns: minmax(0, 1fr) 44px;
-  padding-left: 42px;
+  padding-left: 38px;
 }
 
 .chat-message-time {
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-subtle);
   text-align: right;
 }
 
 .chat-message-avatar {
   display: grid;
-  width: 40px;
+  width: 36px;
   height: 20px;
   place-items: center;
   overflow: hidden;
@@ -488,7 +489,7 @@ html.is-resizing-chat-roster * {
 
 .chat-message-avatar img {
   display: block;
-  width: 40px;
+  width: 36px;
   height: 20px;
   object-fit: contain;
 }
@@ -1045,9 +1046,9 @@ html.is-resizing-chat-roster * {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin: 0 0 2px;
-  padding: 3px var(--space-1);
+  padding: 4px 6px;
   color: var(--color-muted);
   background: transparent;
   border: 0;
