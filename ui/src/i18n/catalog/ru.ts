@@ -210,12 +210,11 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "designSystem.featured.title": "Подборка команды FAF",
 
   "designSystem.pagination.aria": "Постраничная навигация",
-  "designSystem.pagination.previousPage": "Предыдущая страница",
-  "designSystem.pagination.nextPage": "Следующая страница",
-  "designSystem.pagination.previous": "Назад",
-  "designSystem.pagination.next": "Вперёд",
   "designSystem.pagination.page": "Страница {page}",
-  "designSystem.pagination.jumpTo": "Перейти на страницу {page}",
+  "designSystem.pagination.firstPage": "Первая страница",
+  "designSystem.pagination.lastPage": "Последняя страница ({page})",
+  "designSystem.pagination.goTo": "Перейти к странице",
+  "designSystem.pagination.goToPlaceholder": "Страница…",
   "factions.random": "Случайная",
   "factions.unknown": "Неизвестная фракция",
 
@@ -725,6 +724,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.generate.saveSettings": "Сохранить настройки",
 
   "maps.generate.chooseMap": "Выберите карту",
+  "maps.generate.singleResultTitle": "Карта создана",
+  "maps.generate.singleResultSubtitle": "Ваша карта сгенерирована и установлена в папку карт пользователя.",
+  "maps.generate.useMap": "Использовать карту",
   "maps.generate.choicesNote": "Создано карт: {count}. Все установлены; выберите ту, которую хотите использовать сейчас.",
   "maps.generate.typeOverridesNote": "«{type}» задаёт всю карту: пока он выбран, параметры ниже игнорируются.",
   "maps.generate.backToOptions": "Назад к настройкам",
@@ -1548,6 +1550,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.details.privateGame": "Приватная игра",
   "lobby.details.joining": "Подключение…",
   "lobby.details.joinGame": "Войти в игру",
+  "lobby.details.hostedByYou": "Вы организатор",
+  "lobby.details.inGame": "В игре",
+  "lobby.details.preparing": "Подготовка…",
+  "lobby.details.alreadyInGame": "Вы уже в игре",
 
   "lobby.toolbar.searchPlaceholder": "Поиск игр, карт или хостов",
   "lobby.toolbar.searchAria": "Поиск пользовательских игр",

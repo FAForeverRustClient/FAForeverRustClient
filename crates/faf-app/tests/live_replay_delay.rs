@@ -57,7 +57,7 @@ impl ReplayPort for RecordingReplay {
     async fn download_vault(&self, _uid: i32) -> Result<LocalReplay, String> {
         Err("not used by live-replay delay tests".into())
     }
-    async fn list_local(&self) -> Result<Vec<LocalReplay>, String> {
+    async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
         Ok(Vec::new())
     }
     async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {

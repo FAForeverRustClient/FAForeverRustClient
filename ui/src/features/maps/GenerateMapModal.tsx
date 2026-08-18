@@ -363,19 +363,17 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
       <Modal onClose={onClose} className="generate-map-modal">
         <div className="generate-map-head">
           <h2 className="generate-map-title">
-            {pickable
-              ? t("maps.generate.chooseMap")
-              : isSingle
-                ? "Map Generated"
+            {isSingle
+              ? t("maps.generate.singleResultTitle")
+              : pickable
+                ? t("maps.generate.chooseMap")
                 : t("maps.generate.resultTitle")}
           </h2>
           <p className="generate-map-subtitle">
             {results.length === 0
               ? t("maps.generate.resultNone")
               : isSingle
-                ? pickable
-                  ? "Your map has been generated and installed. Select it to continue."
-                  : "Your map has been generated and installed in your user maps folder."
+                ? t("maps.generate.singleResultSubtitle")
                 : pickable
                   ? t("maps.generate.choicesNote", { count: results.length })
                   : t("maps.generate.resultNote", { count: results.length })}
@@ -447,7 +445,9 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             }}
           >
             {pickable
-              ? t("maps.generate.chooseMap")
+              ? isSingle
+                ? t("maps.generate.useMap")
+                : t("maps.generate.chooseMap")
               : t("maps.generate.done")}
           </Button>
         </div>

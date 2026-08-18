@@ -4,17 +4,49 @@
 //! work, then emits the corresponding events. The actual API calls, folder
 //! scan and zip extraction live entirely behind the port: see `infra/maps.rs`.
 
-use faf_domain::state::{MapsCommand, MapsEvent};
+use faf_domain::state::{MapListStatus, MapsCommand, MapsEvent};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
 pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         MapsCommand::LoadVault => {
+            // Crawling the whole catalogue is the most expensive thing this
+            // client does, so it happens once. Seven of the nine callers
+            // checked `vaultStatus` themselves before sending this; the two on
+            // the Play tab did not, so opening Play, and the host dialog, threw
+            // a finished crawl away and started it again on every mount. The
+            // check belongs here, where a new caller cannot forget it.
+            //
+            // A previous failure is still retried: only "already loaded" and
+            // "already in flight" are reasons to do nothing.
+            if out.with_state(|state| {
+                matches!(
+                    state.maps.vault_status,
+                    MapListStatus::Loading | MapListStatus::Ready
+                )
+            }) {
+                return;
+            }
             out.emit(MapsEvent::VaultLoading);
             match ctx.ports.maps.list_vault().await {
                 Ok(maps) => out.emit(MapsEvent::VaultLoaded { maps }),
                 Err(reason) => out.emit(MapsEvent::VaultLoadFailed { reason }),
+            }
+        }
+        MapsCommand::SearchVault { query } => {
+            // No guard and no dedupe beyond the generation check: this is a
+            // user-driven search, and asking again is exactly what the search
+            // button means.
+            out.emit(MapsEvent::VaultSearching);
+            match ctx.ports.maps.search_vault(query.clone()).await {
+                Ok(page) => out.emit(MapsEvent::VaultSearched {
+                    maps: page.maps,
+                    query,
+                    total_pages: page.total_pages,
+                    total_records: page.total_records,
+                }),
+                Err(reason) => out.emit(MapsEvent::VaultSearchFailed { reason }),
             }
         }
         MapsCommand::LoadInstalled => {

@@ -14,6 +14,8 @@
 //! `context/python_client/src/vaults/modvault/utils.py::setActiveMods`).
 
 use serde::{Deserialize, Serialize};
+
+use crate::protocol::vault_query::ModVaultQuery;
 use specta::Type;
 
 /// UI mods are cosmetic/interface-only and freely toggleable; SIM mods
@@ -130,8 +132,17 @@ pub enum ModToggleStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ModsState {
+    /// The whole catalogue. Kept for the same reason as the map one, and
+    /// deliberately not what the Mods tab browses; see `browse`.
     pub vault: Vec<VaultMod>,
     pub vault_status: ModListStatus,
+    /// One page of a server-side vault search, which is what the Mods tab
+    /// shows.
+    pub browse: Vec<VaultMod>,
+    pub browse_status: ModListStatus,
+    pub browse_query: ModVaultQuery,
+    pub browse_total_pages: Option<i32>,
+    pub browse_total_records: Option<i32>,
     pub installed: Vec<InstalledMod>,
     pub installed_status: ModListStatus,
     pub install_status: ModInstallStatus,
@@ -142,6 +153,17 @@ pub struct ModsState {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ModsEvent {
     VaultLoading,
+    VaultSearching,
+    #[serde(rename_all = "camelCase")]
+    VaultSearched {
+        mods: Vec<VaultMod>,
+        query: ModVaultQuery,
+        total_pages: Option<i32>,
+        total_records: Option<i32>,
+    },
+    VaultSearchFailed {
+        reason: String,
+    },
     VaultLoaded {
         mods: Vec<VaultMod>,
     },
@@ -192,9 +214,11 @@ pub enum ModsEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ModsCommand {
-    /// Fetch the mod vault (newest first: mirrors the current default
-    /// posture of `MapsCommand::LoadVault`).
+    /// Fetch the whole catalogue once.
     LoadVault,
+    /// Fetch one page of a vault search. Submit-driven, as in both reference
+    /// clients.
+    SearchVault { query: ModVaultQuery },
     /// Scan the user's mods folder (mirrors `MapsCommand::LoadInstalled`).
     LoadInstalled,
     /// Download and extract a mod version's zip (mirrors
@@ -216,6 +240,24 @@ pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
         ModsEvent::VaultLoaded { mods } => {
             state.vault = mods.clone();
             state.vault_status = ModListStatus::Ready;
+        }
+        ModsEvent::VaultSearching => state.browse_status = ModListStatus::Loading,
+        ModsEvent::VaultSearched {
+            mods,
+            query,
+            total_pages,
+            total_records,
+        } => {
+            state.browse = mods.clone();
+            state.browse_query = query.clone();
+            state.browse_total_pages = *total_pages;
+            state.browse_total_records = *total_records;
+            state.browse_status = ModListStatus::Ready;
+        }
+        ModsEvent::VaultSearchFailed { reason } => {
+            state.browse_status = ModListStatus::Failed {
+                reason: reason.clone(),
+            };
         }
         ModsEvent::VaultLoadFailed { reason } => {
             state.vault_status = ModListStatus::Failed {

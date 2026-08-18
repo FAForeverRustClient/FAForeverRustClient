@@ -1,52 +1,61 @@
-import { Button } from "./Button";
-import { t } from "../i18n";
+import { useState } from "react";
 import { useTranslation } from "../i18n/useTranslation";
 import "./pagination.css";
+
+/**
+ * How many page buttons to show at once.
+ *
+ * Nine, not the Java client's ten. An odd count is what puts the current page
+ * in the actual middle of the run: with ten there are four buttons on one side
+ * and five on the other, which reads as off-centre because it is.
+ */
+export const MAX_PAGE_INDICATORS = 9;
 
 export interface PaginationProps {
   currentPage: number;
   /**
-   * `null` when the source cannot say how many pages exist.
-   *
-   * The online replay vault is in that position whenever the API omits
-   * `meta.page.totalPages`. It used to guess "current page, plus one more if
-   * this page was full", so the numbered buttons *grew as you clicked*: pages 1
-   * and 2, then 3 appeared, then 4. Rendering numbers the caller does not have
-   * is worse than admitting it, so an unknown total shows position and
-   * direction only.
+   * `null` when the source cannot say how many pages exist, which the API does
+   * for some replay queries. The window is then driven by `hasMore` alone: a
+   * run of pages ahead of the current one, growing as the user advances,
+   * rather than a single position with nothing to click.
    */
   totalPages: number | null;
   onPageChange: (page: number) => void;
-  /** Only consulted when `totalPages` is null: whether Next is available. */
+  /**
+   * Whether the source has more results than this page. Outranks
+   * `totalPages`, which the API can under-report.
+   */
   hasMore?: boolean;
   maxVisiblePages?: number;
   className?: string;
   ariaLabel?: string;
 }
 
-export type PageItem =
-  | { type: "page"; page: number; current: boolean }
-  | { type: "ellipsis"; jumpTo: number; label: string };
+export type PageItem = { type: "page"; page: number; current: boolean };
 
 /**
- * The page controls, as a fixed number of slots.
+ * A sliding window of consecutive page numbers.
  *
- * `maxVisible` is the total slot count, first and last page included. Once the
- * range is longer than that, the list always has exactly `maxVisible` entries
- * and every entry is either a page or an ellipsis: never an empty gap.
+ * Modelled on the Java client's `vault/VaultEntityController`, which shows a run
+ * of *consecutive* pages around the current one and reaches the ends through
+ * separate first and last buttons. No ellipsis anywhere. The one departure is
+ * the count; see `MAX_PAGE_INDICATORS`.
  *
- * Two earlier attempts at this were wrong, so both are spelled out. Letting the
- * ellipsis slots simply appear and disappear changed the entry count between
- * pages, and since the row is centred every button slid sideways as you paged.
- * Reserving those slots with an invisible placeholder fixed the count but left
- * a visible hole in the row. Constant count is also not sufficient on its own:
- * "1" and "139" are different widths, so the slots are given a uniform width in
- * `pagination.css` as well. Count and width both have to be constant.
+ * This used to pin page 1 and the last page and fill the gaps with clickable
+ * ellipses. That put a "jump to page 1" control immediately next to a page 1
+ * button that was always on screen, which is the redundancy that prompted this
+ * rewrite.
+ *
+ * The window is always exactly `maxVisible` long once there are that many
+ * pages, and every entry is a real page. Constant count matters because the row
+ * is centred, so a changing entry count slides every button sideways as you
+ * page; `pagination.css` gives the slots a uniform width for the same reason,
+ * since "1" and "139" are not the same size.
  */
 export function getPageItems(
   currentPage: number,
   totalPages: number,
-  maxVisible: number = 9,
+  maxVisible: number = MAX_PAGE_INDICATORS,
 ): PageItem[] {
   if (totalPages <= 1) return [];
 
@@ -56,42 +65,16 @@ export function getPageItems(
     current: p === currentPage,
   });
 
-  // Short enough to show whole: no ellipsis needed, so no slot arithmetic.
   if (totalPages <= maxVisible) {
-    return Array.from({ length: totalPages }, (_, i) => page(i + 1));
+    return Array.from({ length: totalPages }, (_, index) => page(index + 1));
   }
 
-  // Slots between the pinned first and last pages.
-  const middle = maxVisible - 2;
-  // Page slots left once both ellipses are shown.
-  const window = middle - 2;
-  const edge = 1 + Math.ceil(middle / 2);
-
-  const jump = (to: number): PageItem => ({
-    type: "ellipsis",
-    jumpTo: to,
-    label: t("designSystem.pagination.jumpTo", { page: to }),
-  });
-
-  const items: PageItem[] = [page(1)];
-
-  if (currentPage <= edge) {
-    // Near the start: no leading ellipsis, so the slot it would have taken
-    // holds a real page instead of a gap.
-    for (let p = 2; p <= middle; p++) items.push(page(p));
-    items.push(jump(Math.min(totalPages, currentPage + 10)));
-  } else if (currentPage >= totalPages - edge + 1) {
-    items.push(jump(Math.max(1, currentPage - 10)));
-    for (let p = totalPages - middle + 1; p <= totalPages - 1; p++) items.push(page(p));
-  } else {
-    items.push(jump(Math.max(1, currentPage - 10)));
-    const start = currentPage - Math.floor((window - 1) / 2);
-    for (let p = start; p < start + window; p++) items.push(page(p));
-    items.push(jump(Math.min(totalPages, currentPage + 10)));
-  }
-
-  items.push(page(totalPages));
-  return items;
+  // Centre the window on the current page, then push it back inside the range.
+  // Clamping rather than shrinking is what keeps the count constant at both
+  // ends of the range.
+  const half = Math.floor((maxVisible - 1) / 2);
+  const start = Math.min(Math.max(1, currentPage - half), totalPages - maxVisible + 1);
+  return Array.from({ length: maxVisible }, (_, index) => page(start + index));
 }
 
 export function Pagination({
@@ -99,73 +82,106 @@ export function Pagination({
   totalPages,
   onPageChange,
   hasMore = false,
-  maxVisiblePages = 9,
+  maxVisiblePages = MAX_PAGE_INDICATORS,
   className = "",
   ariaLabel,
 }: PaginationProps) {
   const { t } = useTranslation();
+  const [jump, setJump] = useState("");
   const unknownTotal = totalPages === null;
-  if (!unknownTotal && totalPages <= 1) return null;
+  if (!unknownTotal && totalPages <= 1 && !hasMore) return null;
   if (unknownTotal && currentPage <= 1 && !hasMore) return null;
 
-  const items = unknownTotal ? [] : getPageItems(currentPage, totalPages, maxVisiblePages);
-  const atEnd = unknownTotal ? !hasMore : currentPage >= totalPages;
+  // The reported count is a floor, not a ceiling.
+  //
+  // `hasMore` outranks it: the API's totals for a very large collection can be
+  // capped or estimated, and a full page of results is direct evidence another
+  // exists. Clamping the window to the reported count is what left the replay
+  // vault showing five buttons and no way past them; when the source says there
+  // is more, the window keeps a full run of pages ahead of wherever the user
+  // has reached, so clicking 10 offers up to 15 rather than dead-ending.
+  const reach = hasMore ? currentPage + maxVisiblePages : currentPage;
+  const effectiveTotal = unknownTotal ? reach : Math.max(totalPages, reach);
+  const items = getPageItems(currentPage, effectiveTotal, maxVisiblePages);
+  // Shown whenever the range is longer than the window, including when the
+  // source reports more than its own count: the last button then targets the
+  // highest page the server has actually claimed, and disables itself once the
+  // user is past it, rather than disappearing exactly where it is most useful.
+  const showEnds = !unknownTotal && effectiveTotal > maxVisiblePages;
 
   return (
     <nav className={`pagination ${className}`.trim()} aria-label={ariaLabel ?? t("designSystem.pagination.aria")}>
-      <Button
-        className="pagination-nav"
-        disabled={currentPage <= 1}
-        onClick={() => onPageChange(currentPage - 1)}
-        aria-label={t("designSystem.pagination.previousPage")}
-      >
-        {t("designSystem.pagination.previous")}
-      </Button>
-
       {unknownTotal && (
         <span className="pagination-position" aria-current="page">
           {t("designSystem.pagination.page", { page: currentPage })}
         </span>
       )}
 
-      {items.map((item, index) => {
-        if (item.type === "ellipsis") {
-          return (
-            <button
-              key={`ellipsis-${index}`}
-              type="button"
-              className="pagination-ellipsis"
-              onClick={() => onPageChange(item.jumpTo)}
-              title={item.label}
-              aria-label={item.label}
-            >
-              …
-            </button>
-          );
-        }
+      {/* First and last, as separate controls rather than a clickable
+          ellipsis: this is how the Java client reaches the ends of a long
+          range. */}
+      {showEnds && (
+        <button
+          type="button"
+          className="pagination-btn pagination-end"
+          disabled={currentPage <= 1}
+          onClick={() => onPageChange(1)}
+          aria-label={t("designSystem.pagination.firstPage")}
+          title={t("designSystem.pagination.firstPage")}
+        >
+          «
+        </button>
+      )}
 
-        return (
-          <button
-            key={`page-${item.page}`}
-            type="button"
-            className={`pagination-btn${item.current ? " active" : ""}`}
-            onClick={() => onPageChange(item.page)}
-            aria-label={t("designSystem.pagination.page", { page: item.page })}
-            aria-current={item.current ? "page" : undefined}
-          >
-            {item.page}
-          </button>
-        );
-      })}
+      {items.map((item) => (
+        <button
+          key={`page-${item.page}`}
+          type="button"
+          className={`pagination-btn${item.current ? " active" : ""}`}
+          onClick={() => onPageChange(item.page)}
+          aria-label={t("designSystem.pagination.page", { page: item.page })}
+          aria-current={item.current ? "page" : undefined}
+        >
+          {item.page}
+        </button>
+      ))}
 
-      <Button
-        className="pagination-nav"
-        disabled={atEnd}
-        onClick={() => onPageChange(currentPage + 1)}
-        aria-label={t("designSystem.pagination.nextPage")}
+      {showEnds && (
+        <button
+          type="button"
+          className="pagination-btn pagination-end"
+          disabled={currentPage >= (totalPages ?? 1)}
+          onClick={() => onPageChange(totalPages ?? 1)}
+          aria-label={t("designSystem.pagination.lastPage", { page: totalPages ?? 0 })}
+          title={t("designSystem.pagination.lastPage", { page: totalPages ?? 0 })}
+        >
+          »
+        </button>
+      )}
+
+      {/* Typing a page number. With hundreds of pages the window and the end
+          buttons still leave the middle of the range several clicks away. */}
+      <form
+        className="pagination-jump"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const entered = Number.parseInt(jump, 10);
+          if (!Number.isFinite(entered)) return;
+          const highest = unknownTotal ? entered : totalPages;
+          onPageChange(Math.min(Math.max(1, entered), Math.max(1, highest)));
+          setJump("");
+        }}
       >
-        {t("designSystem.pagination.next")}
-      </Button>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={jump}
+          onChange={(event) => setJump(event.target.value.replace(/[^0-9]/g, ""))}
+          placeholder={t("designSystem.pagination.goToPlaceholder")}
+          aria-label={t("designSystem.pagination.goTo")}
+          title={t("designSystem.pagination.goTo")}
+        />
+      </form>
     </nav>
   );
 }

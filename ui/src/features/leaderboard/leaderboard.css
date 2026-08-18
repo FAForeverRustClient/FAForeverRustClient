@@ -14,8 +14,6 @@
 .leaderboard-season-toolbar,
 .leaderboard-season-meta,
 .leaderboard-section-title,
-.leaderboard-pagination,
-.leaderboard-pagination-shell,
 .leaderboard-subdivisions {
   display: flex;
   align-items: center;
@@ -225,6 +223,12 @@
   overflow: hidden;
 }
 
+.leaderboard-results.is-loading .leaderboard-table-scroll {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
 .leaderboard-table-scroll {
   flex: 1;
   min-height: 0;
@@ -383,51 +387,6 @@
 .leaderboard-player-actions {
   display: grid;
   gap: var(--space-2);
-}
-
-.leaderboard-pagination-shell {
-  position: relative;
-  border-top: 1px solid var(--color-border);
-}
-
-.leaderboard-pagination {
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-}
-
-.leaderboard-pagination span {
-  padding: 0 var(--space-2);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.leaderboard-pagination button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.leaderboard-result-count-footer {
-  position: absolute;
-  top: 50%;
-  right: var(--space-3);
-  transform: translateY(-50%);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-@media (max-width: 760px) {
-  .leaderboard-pagination-shell {
-    padding-bottom: 34px;
-  }
-
-  .leaderboard-result-count-footer {
-    top: auto;
-    right: var(--space-3);
-    bottom: var(--space-2);
-    transform: none;
-  }
 }
 
 .leaderboard-empty,

@@ -151,10 +151,17 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             match result {
                 Ok(search) => {
-                    let has_more = search
-                        .total_pages
-                        .map(|pages| query.page < pages as u32)
-                        .unwrap_or_else(|| search.replays.len() as u32 >= query.page_size);
+                    // A full page is direct evidence that another one exists,
+                    // and it outranks the reported count. The API's totals for
+                    // a table this size can be capped or estimated, and
+                    // deriving `has_more` from the count alone meant a capped
+                    // total stranded the user on its last page with a dead
+                    // Next button.
+                    let full_page = search.replays.len() as u32 >= query.page_size;
+                    let has_more = full_page
+                        || search
+                            .total_pages
+                            .is_some_and(|pages| query.page < pages as u32);
                     out.emit(ReplayEvent::VaultLoaded {
                         replays: search.replays,
                         query,
@@ -196,10 +203,10 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ReplayEvent::VaultDownloadFailed { uid, reason }),
             }
         }
-        ReplayCommand::LoadLocal => {
+        ReplayCommand::LoadLocal { limit } => {
             let generation = ctx.replay_local_generation.begin();
             out.emit(ReplayEvent::LocalLoading);
-            let result = ctx.ports.replay.list_local().await;
+            let result = ctx.ports.replay.list_local(limit as usize).await;
             if !ctx.replay_local_generation.is_current(generation) {
                 return;
             }

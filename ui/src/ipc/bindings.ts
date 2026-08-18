@@ -1692,7 +1692,13 @@ export type LocalReplayPlayer = {
  *  command stream. Matches the Python client's complete/incomplete/broken/
  *  legacy buckets, while keeping incomplete and legacy files playable.
  */
-export type LocalReplayStatus = "complete" | "incomplete" | "legacy" | "broken";
+export type LocalReplayStatus = "complete" |
+/**
+ *  Listed from the directory, header not read yet. The archive is listed in
+ *  full but only the newest pages are read up front; this marks the rest so
+ *  the UI can say "not loaded" rather than imply the file is damaged.
+ */
+"unread" | "incomplete" | "legacy" | "broken";
 
 export type LocalReplayTeam = {
 	team: string,
@@ -1873,9 +1879,57 @@ export type MapListStatus = { type: "idle" } | { type: "loading" } | { type: "re
 	reason: string,
 } };
 
+/**
+ *  Sort orders offered for the map vault. Every property is one the Java
+ *  client sorts by, so all of them are known-sortable server side.
+ */
+export type MapSortField =
+/**  Wilson lower bound, not the raw average: see the module note. */
+"rating" | "newest" | "played" | "name" | "size";
+
+/**
+ *  A page of the map vault.
+ *
+ *  Empty strings and `None` mean "do not filter on this", so a default query is
+ *  the unfiltered highest-rated feed the tab opens with. Ratings are in tenths
+ *  to keep the whole state `Eq`, matching [`crate::state::VaultMap`].
+ */
+export type MapVaultQuery = {
+	/**  Free text, matched against the map's display name. */
+	search: string,
+	author: string,
+	/**  `None` = either; `Some(true)` = ranked only. */
+	ranked: boolean | null,
+	/**  The "recommended" preset, which the API models as a flag on the map. */
+	recommended: boolean,
+	/**  Average review score bounds, in tenths of a star (`43` = 4.3). */
+	minRatingTenths: number | null,
+	maxRatingTenths: number | null,
+	minPlayers: number | null,
+	maxPlayers: number | null,
+	/**  Exact map edge length in pixels, `0` for any. */
+	width: number,
+	height: number,
+	/**  Inclusive `YYYY-MM-DD` bounds on the upload date. Empty = unbounded. */
+	after: string,
+	before: string,
+	sortBy: MapSortField,
+	sortDescending: boolean,
+	/**  1-based, matching the API's `page[number]`. */
+	page: number,
+	pageSize: number,
+};
+
 export type MapsCommand =
-/**  Fetch the map vault (mirrors `MapVault`'s default "All" browse query). */
+/**  Fetch the whole catalogue once, as the folder-name lookup index. */
 { type: "loadVault" } |
+/**
+ *  Fetch one page of a vault search, the way both reference clients
+ *  browse. Submit-driven: sent on search, sort and page changes.
+ */
+{ type: "searchVault"; payload: {
+	query: MapVaultQuery,
+} } |
 /**  Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`). */
 { type: "loadInstalled" } | { type: "loadMatchmakerPools"; payload: {
 	queueName: string,
@@ -1890,7 +1944,19 @@ export type MapsCommand =
 	folderName: string,
 } };
 
-export type MapsEvent = { type: "vaultLoading" } | { type: "vaultLoaded"; payload: {
+export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
+/**
+ *  One page of a vault search. Carries the query it answers so a late
+ *  response cannot be mistaken for the current one.
+ */
+{ type: "vaultSearched"; payload: {
+	maps: VaultMap[],
+	query: MapVaultQuery,
+	totalPages: number | null,
+	totalRecords: number | null,
+} } | { type: "vaultSearchFailed"; payload: {
+	reason: string,
+} } | { type: "vaultLoaded"; payload: {
 	maps: VaultMap[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
@@ -1922,8 +1988,24 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultLoaded"; payloa
 } };
 
 export type MapsState = {
+	/**
+	 *  The whole catalogue, kept as a lookup index: nine features resolve a
+	 *  map from a folder name through it (`shared/mapPresentation.ts`). It is
+	 *  deliberately not what the Maps tab browses; see `browse` below.
+	 */
 	vault: VaultMap[],
 	vaultStatus: MapListStatus,
+	/**
+	 *  One page of a server-side vault search, which is what the Maps tab
+	 *  shows. Both reference clients browse this way rather than filtering a
+	 *  downloaded catalogue.
+	 */
+	browse: VaultMap[],
+	browseStatus: MapListStatus,
+	browseQuery: MapVaultQuery,
+	/**  `None` when the server did not report one. */
+	browseTotalPages: number | null,
+	browseTotalRecords: number | null,
 	installed: InstalledMap[],
 	installedStatus: MapListStatus,
 	installStatus: MapInstallStatus,
@@ -2017,6 +2099,8 @@ export type ModListStatus = { type: "idle" } | { type: "loading" } | { type: "re
 	reason: string,
 } };
 
+export type ModSortField = "rating" | "newest" | "updated" | "name";
+
 /**
  *  Status of an enable/disable action for one installed mod. Separate from
  *  [`ModInstallStatus`] since toggling and installing are independent
@@ -2036,6 +2120,30 @@ export type ModToggleStatus = { type: "idle" } | { type: "toggling"; payload: {
  */
 export type ModType = "ui" | "sim";
 
+/**  A page of the mod vault. */
+export type ModVaultQuery = {
+	search: string,
+	/**
+	 *  Matched against the mod's author, which on this endpoint is a plain
+	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
+	 */
+	author: string,
+	/**  `ui` or `sim`; empty for either. */
+	modType: string,
+	ranked: boolean | null,
+	recommended: boolean,
+	minRatingTenths: number | null,
+	maxRatingTenths: number | null,
+	/**  Which timestamp the date bounds apply to: `updated` or `uploaded`. */
+	dateFieldUpdated: boolean,
+	after: string,
+	before: string,
+	sortBy: ModSortField,
+	sortDescending: boolean,
+	page: number,
+	pageSize: number,
+};
+
 /**  One report previously filed by the authenticated player. */
 export type ModerationReportSummary = {
 	id: number,
@@ -2049,11 +2157,15 @@ export type ModerationReportSummary = {
 };
 
 export type ModsCommand =
-/**
- *  Fetch the mod vault (newest first: mirrors the current default
- *  posture of `MapsCommand::LoadVault`).
- */
+/**  Fetch the whole catalogue once. */
 { type: "loadVault" } |
+/**
+ *  Fetch one page of a vault search. Submit-driven, as in both reference
+ *  clients.
+ */
+{ type: "searchVault"; payload: {
+	query: ModVaultQuery,
+} } |
 /**  Scan the user's mods folder (mirrors `MapsCommand::LoadInstalled`). */
 { type: "loadInstalled" } |
 /**
@@ -2078,7 +2190,14 @@ export type ModsCommand =
 	enabled: boolean,
 } };
 
-export type ModsEvent = { type: "vaultLoading" } | { type: "vaultLoaded"; payload: {
+export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | { type: "vaultSearched"; payload: {
+	mods: VaultMod[],
+	query: ModVaultQuery,
+	totalPages: number | null,
+	totalRecords: number | null,
+} } | { type: "vaultSearchFailed"; payload: {
+	reason: string,
+} } | { type: "vaultLoaded"; payload: {
 	mods: VaultMod[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
@@ -2111,8 +2230,21 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultLoaded"; payloa
 } };
 
 export type ModsState = {
+	/**
+	 *  The whole catalogue. Kept for the same reason as the map one, and
+	 *  deliberately not what the Mods tab browses; see `browse`.
+	 */
 	vault: VaultMod[],
 	vaultStatus: ModListStatus,
+	/**
+	 *  One page of a server-side vault search, which is what the Mods tab
+	 *  shows.
+	 */
+	browse: VaultMod[],
+	browseStatus: ModListStatus,
+	browseQuery: ModVaultQuery,
+	browseTotalPages: number | null,
+	browseTotalRecords: number | null,
 	installed: InstalledMod[],
 	installedStatus: ModListStatus,
 	installStatus: ModInstallStatus,
@@ -2543,8 +2675,15 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 { type: "downloadVault"; payload: {
 	uid: number,
 } } |
-/**  Scan the shared FAF replay folder for local `.fafreplay` files. */
-{ type: "loadLocal" } |
+/**
+ *  Scan the shared FAF replay folder for local `.fafreplay` files.
+ *  Scan the shared replay folder. `limit` bounds how many of the newest
+ *  files have their headers read, which is the expensive part; the view
+ *  raises it when the user pages past what is loaded.
+ */
+{ type: "loadLocal"; payload: {
+	limit: number,
+} } |
 /**
  *  Permanently remove one replay from the shared replay folder. The port
  *  validates that the resolved file is directly inside that folder.

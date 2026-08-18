@@ -209,16 +209,18 @@ export function LeagueLeaderboardPanel() {
           </div>
 
           <div className="leaderboard-main-grid">
-            <div className="leaderboard-results surface-panel">
-              {state.seasonStatus.type === "loading" && <div className="leaderboard-state muted">Loading season rankings…</div>}
-              {state.seasonStatus.type === "failed" && <div className="leaderboard-state leaderboard-error">{state.seasonStatus.payload.reason}</div>}
-              {state.seasonStatus.type !== "failed" && (
+            <div className={`leaderboard-results surface-panel${state.seasonStatus.type === "loading" ? " is-loading" : ""}`}>
+              {state.seasonStatus.type === "failed" ? (
+                <div className="leaderboard-state leaderboard-error">{state.seasonStatus.payload.reason}</div>
+              ) : filtered.length === 0 && state.seasonStatus.type === "loading" ? (
+                <div className="leaderboard-state muted">Loading season rankings…</div>
+              ) : (
                 <LeaderboardTable
                   entries={filtered}
                   columns={["rank", "player", "division", "score", "games"]}
                   selectedPlayerId={selected?.playerId ?? null}
                   onSelect={setSelected}
-                  emptyMessage={state.seasonStatus.type === "loading" ? "" : t("leaderboard.leagues.empty")}
+                  emptyMessage={t("leaderboard.leagues.empty")}
                 />
               )}
             </div>

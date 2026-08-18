@@ -5,6 +5,7 @@
 import { create } from "zustand";
 import type { AppEvent, AppState } from "../ipc/bindings";
 import { EMPTY_REPLAY_QUERY } from "../shared/replayQuery";
+import { EMPTY_MAP_QUERY, EMPTY_MOD_QUERY } from "../shared/vaultQuery";
 import { applyEvent } from "./reducer";
 
 const INITIAL: AppState = {
@@ -55,6 +56,11 @@ const INITIAL: AppState = {
   maps: {
     vault: [],
     vaultStatus: { type: "idle" },
+    browse: [],
+    browseStatus: { type: "idle" },
+    browseQuery: EMPTY_MAP_QUERY,
+    browseTotalPages: null,
+    browseTotalRecords: null,
     installed: [],
     installedStatus: { type: "idle" },
     installStatus: { type: "idle" },
@@ -117,6 +123,11 @@ const INITIAL: AppState = {
   mods: {
     vault: [],
     vaultStatus: { type: "idle" },
+    browse: [],
+    browseStatus: { type: "idle" },
+    browseQuery: EMPTY_MOD_QUERY,
+    browseTotalPages: null,
+    browseTotalRecords: null,
     installed: [],
     installedStatus: { type: "idle" },
     installStatus: { type: "idle" },

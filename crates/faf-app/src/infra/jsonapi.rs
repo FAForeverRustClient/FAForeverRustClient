@@ -41,6 +41,23 @@ pub(crate) struct JsonApiResource {
 
 pub(crate) type ResourceIndex<'a> = HashMap<(String, String), &'a JsonApiResource>;
 
+/// How many pages a search has, from whichever of the two the server reported.
+///
+/// `page[totals]` is what asks for these, and the API does not always answer
+/// with `totalPages`: the replay vault came back with neither, or with only a
+/// record count, which left the pager in its "unknown total" mode showing
+/// `Previous / Page 5 / Next` instead of numbered pages. Deriving the page count
+/// from the record count when only that is present covers the difference, and
+/// costs nothing when `totalPages` is there.
+pub(crate) fn total_pages(meta: &Value, page_size: u32) -> Option<i32> {
+    if let Some(pages) = meta_page_i32(meta, "totalPages").filter(|pages| *pages > 0) {
+        return Some(pages);
+    }
+    let records = meta_page_i32(meta, "totalRecords").filter(|records| *records >= 0)?;
+    let size = page_size.max(1) as i32;
+    Some(((records + size - 1) / size).max(1))
+}
+
 pub(crate) fn meta_page_i32(meta: &Value, key: &str) -> Option<i32> {
     meta.get("page")?
         .get(key)?
@@ -448,6 +465,54 @@ pub(crate) fn find_rel_resource<'a>(
 
 pub(crate) fn rel_many(resource: &JsonApiResource, name: &str) -> Vec<(String, String)> {
     rel_targets(&resource.relationships, name)
+}
+
+#[cfg(test)]
+mod total_pages_tests {
+    use super::*;
+
+    fn meta(json: &str) -> Value {
+        serde_json::from_str(json).unwrap()
+    }
+
+    #[test]
+    fn a_reported_page_count_is_used_as_is() {
+        assert_eq!(
+            total_pages(&meta(r#"{"page":{"totalPages":7,"totalRecords":250}}"#), 36),
+            Some(7)
+        );
+    }
+
+    /// The case that left the replay pager showing `Page 5` with no numbers.
+    #[test]
+    fn a_record_count_alone_still_yields_a_page_count() {
+        assert_eq!(
+            total_pages(&meta(r#"{"page":{"totalRecords":131}}"#), 36),
+            Some(4)
+        );
+        assert_eq!(
+            total_pages(&meta(r#"{"page":{"totalRecords":36}}"#), 36),
+            Some(1)
+        );
+    }
+
+    /// No results is still one page: a pager that claims zero pages has nothing
+    /// to render and no way back.
+    #[test]
+    fn an_empty_result_is_one_page() {
+        assert_eq!(
+            total_pages(&meta(r#"{"page":{"totalRecords":0}}"#), 36),
+            Some(1)
+        );
+    }
+
+    /// Neither reported: the pager keeps its unknown-total mode rather than
+    /// inventing a number.
+    #[test]
+    fn nothing_reported_stays_unknown() {
+        assert_eq!(total_pages(&meta(r#"{"page":{}}"#), 36), None);
+        assert_eq!(total_pages(&meta("{}"), 36), None);
+    }
 }
 
 #[cfg(test)]

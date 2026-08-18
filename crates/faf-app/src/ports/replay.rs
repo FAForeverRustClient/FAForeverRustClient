@@ -61,7 +61,10 @@ pub trait ReplayPort: Send + Sync {
 
     /// List `.fafreplay` files in the shared FAF replay folder (mirrors the
     /// Java client's `LocalReplayVaultController`).
-    async fn list_local(&self) -> Result<Vec<LocalReplay>, String>;
+    /// `limit` bounds how many of the newest files have their headers read.
+    /// Every replay is still listed; the ones past the limit carry only what
+    /// the directory entry gave, which is why the caller can ask for more.
+    async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String>;
 
     /// Delete a replay previously returned by [`Self::list_local`].
     async fn delete_local(&self, path: PathBuf) -> Result<(), String>;

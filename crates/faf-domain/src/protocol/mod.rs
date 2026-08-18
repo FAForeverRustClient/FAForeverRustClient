@@ -15,3 +15,4 @@ pub mod map_generator;
 pub mod map_generator_name;
 pub mod replay_query;
 pub mod tournaments;
+pub mod vault_query;

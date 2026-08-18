@@ -42,6 +42,11 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         vault: event.payload.replays,
         vaultQuery: event.payload.query,
         vaultHasMore: event.payload.hasMore,
+        // Dropping these is what left the pager in its unknown-total mode,
+        // showing `Page 4` instead of numbered pages: the server reported the
+        // count, the Rust reducer stored it, and this twin threw it away.
+        vaultTotalPages: event.payload.totalPages ?? null,
+        vaultTotalRecords: event.payload.totalRecords ?? null,
         vaultStatus: { type: "ready" },
       };
     case "vaultLoadFailed":
