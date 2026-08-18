@@ -17,15 +17,20 @@
 //! - read and post in the tournament chat
 //! - assign a map pool to a round, with FAF's own map previews
 //!
-//! Setting a tournament up: format, best-of plan, rating gates, series,
-//! qualifiers, the map database, site administration: stays on the website. It
-//! is done once per event, it is form-heavy, and a second surface for it would
-//! be a worse copy of a maintained one. The client links there instead.
+//! - run the organiser's side of an event: the map database, the map pools,
+//!   the vetoes, the draft, the series it belongs to and the qualifiers that
+//!   feed it
+//!
+//! What stays on the website is site administration: the article pages, the
+//! hosting approvals, the category tags. Those are the site team's, not an
+//! organiser's, and a second surface for them would be a worse copy of a
+//! maintained one. The client links there instead.
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, PoolDraft, SeedOrder, Tourney,
-    TourneyDraft, TourneyPhase,
+    Article, BracketConfig, ChatPost, ChatRoom, FfaReport, FormatDraft, HostingStatus, MapDraft,
+    MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
+    TourneyDraft, TourneyPhase, TourneySeries,
 };
 
 use super::RequestError;
@@ -56,7 +61,17 @@ pub trait TourneyPort: Send + Sync {
     async fn publish(&self, tournament_id: &str) -> Result<(), RequestError>;
 
     /// Move the event along its own lifecycle.
-    async fn advance(&self, tournament_id: &str, phase: TourneyPhase) -> Result<(), RequestError>;
+    ///
+    /// `config` is the best-of plan and is read on `start_bracket` alone. It is
+    /// optional because the service defaults every value from the event's own
+    /// plan: an absent config draws exactly the bracket it drew before this
+    /// existed.
+    async fn advance(
+        &self,
+        tournament_id: &str,
+        phase: TourneyPhase,
+        config: Option<&BracketConfig>,
+    ) -> Result<(), RequestError>;
 
     /// Hide the event. A site admin can restore it, which is why this is not
     /// called delete: for anyone else the server archives rather than removes.
@@ -241,22 +256,15 @@ pub trait TourneyPort: Send + Sync {
     /// the one running late.
     async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError>;
 
-    /// Report a result as one of the players.
+    /// Answer a result raised against this account's match.
     ///
-    /// Only legal when the organiser enabled player reporting
-    /// ([`faf_domain::state::Tourney::may_report`]) and the caller is in the
-    /// match. The other side confirms with [`Self::confirm_report`].
-    async fn submit_report(
-        &self,
-        tournament_id: &str,
-        report: &MatchReport,
-    ) -> Result<(), RequestError>;
-
-    /// Answer a result the opponent submitted.
+    /// The client never raises one: recording a result is the organiser's, and
+    /// `report_submit` additionally insists on one FAF replay id per game.
+    /// Answering is a different act, and a report raised from the website has
+    /// to be answerable here or the tab shows a decision it cannot make.
     ///
-    /// `accept` is the whole point of the two-signature flow: rejecting is as
-    /// ordinary an answer as agreeing, and it clears the pending score so the
-    /// other side can submit the right one.
+    /// `accept` is the whole point: rejecting is as ordinary an answer as
+    /// agreeing, and it clears the pending score so the right one can follow.
     async fn confirm_report(
         &self,
         tournament_id: &str,
@@ -313,6 +321,208 @@ pub trait TourneyPort: Send + Sync {
         pool_id: &str,
     ) -> Result<(), RequestError>;
 
+    /// Take the draft pick that is due.
+    ///
+    /// Refused unless the caller captains the team on the clock, or organises
+    /// the event. The picked entrant must be teamless.
+    async fn draft_pick(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError>;
+
+    /// Take back the last pick. A captain may undo only their own, and only
+    /// while nobody has picked after them; an organiser at any point.
+    async fn draft_undo(&self, tournament_id: &str) -> Result<(), RequestError>;
+
+    /// Mark which entrants captain a team, before a draft starts.
+    async fn set_captains(
+        &self,
+        tournament_id: &str,
+        player_ids: &[String],
+    ) -> Result<(), RequestError>;
+
+    /// Record a free-for-all lobby.
+    ///
+    /// Separate from [`Self::decide_report`] because the body is a different
+    /// shape: a lobby has entrants rather than two sides, and is settled by a
+    /// set of winners or a points table.
+    async fn report_ffa(&self, tournament_id: &str, report: &FfaReport)
+        -> Result<(), RequestError>;
+
+    /// Take the veto step that is due.
+    ///
+    /// Refused unless it is this caller's turn, which is why the tab checks
+    /// [`faf_domain::state::Tourney::may_veto`] before offering the grid.
+    async fn veto_act(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        map_id: &str,
+    ) -> Result<(), RequestError>;
+
+    /// Say which team is A. Only before the first step.
+    async fn veto_set_sides(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        team_a: &str,
+    ) -> Result<(), RequestError>;
+
+    /// Take back the last step. Organiser only.
+    async fn veto_undo(&self, tournament_id: &str, match_id: &str) -> Result<(), RequestError>;
+
+    /// Add a map to the event's own database, or edit one already there.
+    ///
+    /// Returns nothing: the service answers with the new id, but the tab reloads
+    /// the whole event afterwards and reads it from there, which is the only
+    /// version guaranteed to agree with everything else on screen.
+    async fn save_map(&self, tournament_id: &str, map: &MapDraft) -> Result<(), RequestError>;
+
+    /// Show or hide one map.
+    async fn publish_map(
+        &self,
+        tournament_id: &str,
+        map_id: &str,
+        published: bool,
+    ) -> Result<(), RequestError>;
+
+    /// Remove a map, and with it every pool entry and round assignment naming
+    /// it. The service does that cascade itself.
+    async fn delete_map(&self, tournament_id: &str, map_id: &str) -> Result<(), RequestError>;
+
+    /// Show or hide one pool. Publishing also publishes every map in it.
+    async fn publish_pool(
+        &self,
+        tournament_id: &str,
+        pool_id: &str,
+        published: bool,
+    ) -> Result<(), RequestError>;
+
+    async fn delete_pool(&self, tournament_id: &str, pool_id: &str) -> Result<(), RequestError>;
+
     /// Create or replace a map pool.
     async fn save_pool(&self, tournament_id: &str, pool: &PoolDraft) -> Result<(), RequestError>;
+
+    /// Every series, already sorted by the service.
+    ///
+    /// Site-wide rather than per-tournament, like [`Self::articles`]: a series
+    /// groups editions that are otherwise independent events, so it cannot hang
+    /// off any one of them.
+    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError>;
+
+    /// One series with its editions.
+    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError>;
+
+    /// Create a series, or rename one that exists.
+    ///
+    /// Creating needs hosting rights, which every organiser already has;
+    /// renaming needs more, and the service decides that itself and reports it
+    /// in [`SeriesDetail::can_edit`].
+    async fn save_series(&self, draft: &SeriesDraft) -> Result<(), RequestError>;
+
+    /// Delete a series. Its editions are unfiled, not deleted.
+    async fn delete_series(&self, series_id: &str) -> Result<(), RequestError>;
+
+    /// File this event under a series, or take it out with `None`.
+    async fn set_series(
+        &self,
+        tournament_id: &str,
+        series_id: Option<&str>,
+    ) -> Result<(), RequestError>;
+
+    /// Link an event whose result feeds entrants into this one.
+    ///
+    /// The link lives on the parent alone. Qualifying does not sign anybody up:
+    /// the service invites each qualified account, and they still accept.
+    async fn add_qualifier(
+        &self,
+        tournament_id: &str,
+        qualifier_id: &str,
+        rule: QualifierRule,
+    ) -> Result<(), RequestError>;
+
+    /// Unlink one, by the link's own id. Invites already sent are kept.
+    async fn remove_qualifier(
+        &self,
+        tournament_id: &str,
+        link_id: &str,
+    ) -> Result<(), RequestError>;
+
+    /// Change the shape of the competition.
+    ///
+    /// `structural` says whether the team setup is among the changes. It is a
+    /// parameter rather than something worked out here because the service
+    /// refuses those four keys outside signups on *presence* alone: resending
+    /// an unchanged team size would turn an ordinary bracket-type change into a
+    /// refusal.
+    async fn edit_format(
+        &self,
+        tournament_id: &str,
+        format: &FormatDraft,
+        structural: bool,
+    ) -> Result<(), RequestError>;
+
+    /// Silence an account in the event's chat, or let it speak again.
+    async fn mute_chat(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+        muted: bool,
+    ) -> Result<(), RequestError>;
+
+    /// Take one post out of a room.
+    async fn delete_chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        post_id: &str,
+    ) -> Result<(), RequestError>;
+
+    /// Give a FAF account organiser rights here.
+    ///
+    /// No counterpart: `remove_organizer` is site-admin-only, and nothing in the
+    /// viewer block says whether this account is one. A button that answered
+    /// "Site admin only" for every ordinary organiser would read as broken.
+    async fn add_organiser(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+    ) -> Result<(), RequestError>;
+
+    /// Show or hide one organiser in the public list.
+    async fn set_organiser_visibility(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        hidden: bool,
+    ) -> Result<(), RequestError>;
+
+    /// Mark the event as called off, or take that back.
+    ///
+    /// Not the same as archiving: an abandoned event stays visible, which is
+    /// the point. An empty bracket with no explanation reads as a broken tab.
+    async fn abandon(&self, tournament_id: &str, abandoned: bool) -> Result<(), RequestError>;
+
+    /// Correct an announcement already posted.
+    async fn edit_news(
+        &self,
+        tournament_id: &str,
+        news_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError>;
+
+    /// Clear this account's unread badge for the event, on every device.
+    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError>;
+
+    /// Let a FAF account cast this event, or take that back.
+    ///
+    /// A caster sees every match chat rather than only their own. This replaced
+    /// a secret link carrying a token, which the client had nowhere to put.
+    async fn set_caster(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+        casting: bool,
+    ) -> Result<(), RequestError>;
 }

@@ -1,10 +1,9 @@
 // Reporting one series result.
 //
-// Its own dialog rather than an inline field, because the server's rule is
-// specific and unforgiving: exactly one FAF replay id per newly reported game,
-// or the whole submission is refused. That rule is what makes a bracket
-// auditable afterwards, so the form asks for the right number of ids up front
-// instead of letting the player discover it by being turned away.
+// The organiser's, and only theirs. `report` takes a score, an explicit winner
+// and a forfeit, and it is also the correction path, so it stays open on a
+// finished match. It needs no replay ids: that rule belongs to `report_submit`,
+// the player path, which this client does not use.
 //
 // The score is a running total, not this game's result: a Bo3 at 1-1 is
 // reported as 2-1, and the server counts the difference.
@@ -14,7 +13,7 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import type { MatchReport, Tourney, TourneyMatch } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { isSubmittable } from "./tourneyPresentation";
+import { isSubmittable } from "../../shared/tourneyRules";
 
 interface MatchReportDialogProps {
   event: Tourney;

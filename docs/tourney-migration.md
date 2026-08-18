@@ -5,18 +5,21 @@ Kept after the fact rather than deleted: it says what the service actually
 does, which decisions were deliberate, and what has still never been run
 against a live instance.
 
-Read [faf-tournaments-api.md](faf-tournaments-api.md) first; it has the routes,
-`publicView`, and what is confirmed versus assumed.
+Read [tourney-audit.md](tourney-audit.md) first: it is
+measured against `server.js` rather than recalled, and it says which of the
+decisions below no longer hold. `faf-tournaments-api.md` was deleted; it was a
+retelling and was wrong in several places that decisions had been built on.
 
 ## Decisions this plan rests on
 
 - **Replace, not run alongside.** The tournament team is moving off Challonge;
   two sources in one tab would only confuse. The Challonge codec, port, infra
   and the forum signup parser all come out.
-- **The client is for participants, not administrators.** See, enter, play,
-  talk, plus assigning map pools, because map picking with FAF's own previews
-  is the one organiser task the client does better than the website. Setting a
-  tournament up stays on the website, reached by a link.
+- ~~**The client is for participants, not administrators.**~~ **Reversed
+  2026-08-17.** The scope is now the website's whole feature set, built in
+  lifecycle order. Creating, entrant administration, teams, seeding, divisions
+  and news all live in the tab. What is left is tracked in
+  [tourney-features.md](tourney-features.md).
 - **The forum workflow is obsolete.** Signups happen on the website now, so
   `protocol/signups.rs` and the import/export dialogs are deleted rather than
   ported. They solved a problem Challonge created.

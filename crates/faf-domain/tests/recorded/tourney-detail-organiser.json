@@ -1,0 +1,639 @@
+{
+ "id": "177f518243",
+ "name": "Conformance Sample",
+ "description": "Sample rules.",
+ "rewards": "Glory",
+ "prize": {
+  "currency": "EUR",
+  "amount": 50
+ },
+ "sponsors": "Nobody",
+ "category": "community",
+ "published": 1,
+ "publishAt": null,
+ "archived": 0,
+ "abandoned": 0,
+ "seriesId": null,
+ "qualifiers": [],
+ "feedsInto": null,
+ "seriesName": null,
+ "seriesColor": null,
+ "signupOpensAt": null,
+ "signupClosesAt": null,
+ "minTeams": 2,
+ "descImages": [],
+ "news": [
+  {
+   "id": "nw2640de5e437c",
+   "at": 1787016328827,
+   "by": "Organiser",
+   "body": "Check-in opens one hour before start.",
+   "important": 1
+  }
+ ],
+ "streams": [
+  {
+   "url": "https://twitch.tv/example",
+   "info": "Main"
+  }
+ ],
+ "organizersPublic": [
+  {
+   "name": "Organiser",
+   "discord": ""
+  }
+ ],
+ "minRating": 800,
+ "maxRating": 2200,
+ "maxTeamRating": 3600,
+ "ratingCap": 2000,
+ "checkInDeadline": null,
+ "checkInOpensAt": null,
+ "chatLockAt": null,
+ "chatLocked": 0,
+ "lobbyOptions": "No rush 5:00",
+ "mods": "None",
+ "competition": "team",
+ "formation": "open",
+ "teamSize": 2,
+ "draftOrder": "linear",
+ "bracketType": "double",
+ "ffaCfg": null,
+ "plan": {
+  "wb": 3,
+  "wbFinal": 3,
+  "lb": 3,
+  "lbFinal": 3,
+  "gf": 5,
+  "lbHandicap": 0,
+  "wbList": [
+   3,
+   3
+  ],
+  "lbList": [
+   3,
+   3
+  ]
+ },
+ "maxTeams": 8,
+ "perRoundBo": 0,
+ "cfg": {
+  "wb": [
+   3,
+   3
+  ],
+  "lb": [
+   3,
+   3
+  ],
+  "gf": 5,
+  "lbHandicap": 0
+ },
+ "seeding": "rating",
+ "ratingType": "global",
+ "ratingDate": null,
+ "signupMode": "open",
+ "playerReporting": 0,
+ "veto": {
+  "enabled": false,
+  "mode": "upfront",
+  "abMode": "lowerA"
+ },
+ "status": "running",
+ "createdAt": 1787016276798,
+ "eventDate": null,
+ "challongeDate": null,
+ "rounds": 2,
+ "maps": {},
+ "mapDb": [
+  {
+   "id": "map840c71c638",
+   "name": "Setons Clutch",
+   "image": null,
+   "description": "",
+   "spec": null,
+   "published": 1
+  },
+  {
+   "id": "map02d2b8f93f",
+   "name": "Theta Passage",
+   "image": null,
+   "description": "",
+   "spec": null,
+   "published": 1
+  },
+  {
+   "id": "map786c71e6cd",
+   "name": "Open Palms",
+   "image": null,
+   "description": "",
+   "spec": null,
+   "published": 1
+  },
+  {
+   "id": "mapfc93528fd9",
+   "name": "Twin Rivers",
+   "image": null,
+   "description": "",
+   "spec": null,
+   "published": 1
+  }
+ ],
+ "mapPools": [
+  {
+   "id": "poolbf7c3004df",
+   "name": "Round 1 Pool",
+   "mapIds": [
+    "map840c71c638",
+    "map02d2b8f93f",
+    "map786c71e6cd",
+    "mapfc93528fd9"
+   ],
+   "sequence": [
+    {
+     "action": "ban",
+     "team": "A"
+    },
+    {
+     "action": "pick",
+     "team": "B"
+    },
+    {
+     "action": "pick",
+     "team": "A"
+    }
+   ],
+   "bo": 3,
+   "published": 1,
+   "publishAt": null
+  }
+ ],
+ "poolAssign": {},
+ "players": [
+  {
+   "id": "p1000",
+   "name": "Alpha",
+   "rating": 1900,
+   "fafId": 5000,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tf3b9e0fe",
+   "signedAt": 1787016384,
+   "addedBy": "organizer"
+  },
+  {
+   "id": "p1001",
+   "name": "Bravo",
+   "rating": 1500,
+   "fafId": 5001,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tf3b9e0fe",
+   "signedAt": 1787016384,
+   "addedBy": "organizer"
+  },
+  {
+   "id": "p1002",
+   "name": "Charlie",
+   "rating": 1200,
+   "fafId": 5002,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tbe9e7527",
+   "signedAt": 1787016384,
+   "addedBy": "organizer"
+  },
+  {
+   "id": "p1003",
+   "name": "Delta",
+   "rating": 1000,
+   "fafId": 5003,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tbe9e7527",
+   "signedAt": 1787016384,
+   "addedBy": "organizer"
+  },
+  {
+   "id": "p1004",
+   "name": "Echo",
+   "rating": 1750,
+   "fafId": 5004,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tafd8dbe8",
+   "signedAt": 1787016473,
+   "addedBy": "organizer"
+  },
+  {
+   "id": "p1005",
+   "name": "Foxtrot",
+   "rating": 1400,
+   "fafId": 5005,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tafd8dbe8",
+   "signedAt": 1787016473,
+   "addedBy": "organizer"
+  },
+  {
+   "id": "p1006",
+   "name": "Golf",
+   "rating": 1150,
+   "fafId": 5006,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tf6ec5d7f",
+   "signedAt": 1787016473,
+   "addedBy": "organizer"
+  },
+  {
+   "id": "p1007",
+   "name": "Hotel",
+   "rating": 950,
+   "fafId": 5007,
+   "manual": false,
+   "late": 0,
+   "teamName": null,
+   "teamId": "tf6ec5d7f",
+   "signedAt": 1787016473,
+   "addedBy": "organizer"
+  }
+ ],
+ "teams": [
+  {
+   "id": "tf3b9e0fe",
+   "name": "Red Dawn",
+   "seed": 1,
+   "captainId": "p1000",
+   "playerIds": [
+    "p1000",
+    "p1001"
+   ],
+   "division": 0,
+   "checkedIn": 0,
+   "createdAt": 1787016444105,
+   "captainRenamed": 0,
+   "joinRequests": [],
+   "invites": [],
+   "eliminated": false,
+   "out": null,
+   "finalRank": null
+  },
+  {
+   "id": "tafd8dbe8",
+   "name": "Green Wing",
+   "seed": 2,
+   "captainId": "p1004",
+   "playerIds": [
+    "p1004",
+    "p1005"
+   ],
+   "division": 0,
+   "checkedIn": 0,
+   "createdAt": 1787016489495,
+   "captainRenamed": 0,
+   "joinRequests": [],
+   "invites": [],
+   "eliminated": false,
+   "out": null,
+   "finalRank": null
+  },
+  {
+   "id": "tbe9e7527",
+   "name": "Blue Steel",
+   "seed": 3,
+   "captainId": "p1002",
+   "playerIds": [
+    "p1002",
+    "p1003"
+   ],
+   "division": 0,
+   "checkedIn": 0,
+   "createdAt": 1787016444275,
+   "captainRenamed": 0,
+   "joinRequests": [],
+   "invites": [],
+   "eliminated": false,
+   "out": null,
+   "finalRank": null
+  },
+  {
+   "id": "tf6ec5d7f",
+   "name": "Gold Rush",
+   "seed": 4,
+   "captainId": "p1006",
+   "playerIds": [
+    "p1006",
+    "p1007"
+   ],
+   "division": 0,
+   "checkedIn": 0,
+   "createdAt": 1787016489563,
+   "captainRenamed": 0,
+   "joinRequests": [],
+   "invites": [],
+   "eliminated": false,
+   "out": null,
+   "finalRank": null
+  }
+ ],
+ "draft": null,
+ "matches": [
+  {
+   "id": "m8799e8a5",
+   "bracket": "wb",
+   "round": 1,
+   "index": 0,
+   "bo": 3,
+   "hcap": 0,
+   "division": 0,
+   "team1": "tf3b9e0fe",
+   "team2": "tf6ec5d7f",
+   "score1": null,
+   "score2": null,
+   "status": "ready",
+   "winner": null,
+   "loser": null,
+   "winnerTo": {
+    "id": "m26ca509d",
+    "slot": 1
+   },
+   "loserTo": {
+    "id": "mcc270685",
+    "slot": 1
+   }
+  },
+  {
+   "id": "me23bd3ab",
+   "bracket": "wb",
+   "round": 1,
+   "index": 1,
+   "bo": 3,
+   "hcap": 0,
+   "division": 0,
+   "team1": "tafd8dbe8",
+   "team2": "tbe9e7527",
+   "score1": null,
+   "score2": null,
+   "status": "ready",
+   "winner": null,
+   "loser": null,
+   "winnerTo": {
+    "id": "m26ca509d",
+    "slot": 2
+   },
+   "loserTo": {
+    "id": "mcc270685",
+    "slot": 2
+   }
+  },
+  {
+   "id": "m26ca509d",
+   "bracket": "wb",
+   "round": 2,
+   "index": 0,
+   "bo": 3,
+   "hcap": 0,
+   "division": 0,
+   "team1": null,
+   "team2": null,
+   "score1": null,
+   "score2": null,
+   "status": "waiting",
+   "winner": null,
+   "loser": null,
+   "winnerTo": {
+    "id": "m9cd4b326",
+    "slot": 1
+   },
+   "loserTo": {
+    "id": "m0fc6e70b",
+    "slot": 1
+   }
+  },
+  {
+   "id": "mcc270685",
+   "bracket": "lb",
+   "round": 1,
+   "index": 0,
+   "bo": 3,
+   "hcap": 0,
+   "division": 0,
+   "team1": null,
+   "team2": null,
+   "score1": null,
+   "score2": null,
+   "status": "waiting",
+   "winner": null,
+   "loser": null,
+   "winnerTo": {
+    "id": "m0fc6e70b",
+    "slot": 2
+   },
+   "loserTo": null
+  },
+  {
+   "id": "m0fc6e70b",
+   "bracket": "lb",
+   "round": 2,
+   "index": 0,
+   "bo": 3,
+   "hcap": 0,
+   "division": 0,
+   "team1": null,
+   "team2": null,
+   "score1": null,
+   "score2": null,
+   "status": "waiting",
+   "winner": null,
+   "loser": null,
+   "winnerTo": {
+    "id": "m9cd4b326",
+    "slot": 2
+   },
+   "loserTo": null
+  },
+  {
+   "id": "m9cd4b326",
+   "bracket": "gf",
+   "round": 1,
+   "index": 0,
+   "bo": 5,
+   "hcap": 0,
+   "division": 0,
+   "team1": null,
+   "team2": null,
+   "score1": null,
+   "score2": null,
+   "status": "waiting",
+   "winner": null,
+   "loser": null,
+   "winnerTo": null,
+   "loserTo": null
+  }
+ ],
+ "championTeamId": null,
+ "subs": [],
+ "pendingCaptains": [],
+ "divisions": 0,
+ "imported": false,
+ "importedType": null,
+ "importedGroups": [],
+ "importedStandings": [],
+ "standingsOnly": 0,
+ "hasOrganizer": 1,
+ "createdByName": "",
+ "source": null,
+ "sourceUrl": null,
+ "organizers": [
+  {
+   "fafId": 9001,
+   "name": "Organiser",
+   "hidden": 0
+  },
+  {
+   "fafId": 9002,
+   "name": "Deputy",
+   "hidden": 1
+  }
+ ],
+ "chatPingCount": 0,
+ "myMentionCount": 0,
+ "unreadByRoom": {},
+ "myUnreadCount": 0,
+ "tlog": [
+  {
+   "at": 1787016588096,
+   "by": "Organizer link",
+   "text": "created pool \"Round 1 Pool\" (4 maps, Bo3)"
+  },
+  {
+   "at": 1787016580974,
+   "by": "Organizer link",
+   "text": "added map Twin Rivers"
+  },
+  {
+   "at": 1787016580907,
+   "by": "Organizer link",
+   "text": "added map Open Palms"
+  },
+  {
+   "at": 1787016580831,
+   "by": "Organizer link",
+   "text": "added map Theta Passage"
+  },
+  {
+   "at": 1787016580769,
+   "by": "Organizer link",
+   "text": "added map Setons Clutch"
+  },
+  {
+   "at": 1787016497869,
+   "by": "Organizer link",
+   "text": "started the bracket (4 teams)"
+  },
+  {
+   "at": 1787016497801,
+   "by": "Organizer link",
+   "text": "closed signups & locked teams"
+  },
+  {
+   "at": 1787016497734,
+   "by": "Organizer link",
+   "text": "moved Hotel to team \"Gold Rush\""
+  },
+  {
+   "at": 1787016497665,
+   "by": "Organizer link",
+   "text": "moved Foxtrot to team \"Green Wing\""
+  },
+  {
+   "at": 1787016451904,
+   "by": "Organizer link",
+   "text": "started the bracket (2 teams)"
+  },
+  {
+   "at": 1787016451811,
+   "by": "Organizer link",
+   "text": "closed signups & locked teams"
+  },
+  {
+   "at": 1787016451722,
+   "by": "Organizer link",
+   "text": "moved Delta to team \"Blue Steel\""
+  },
+  {
+   "at": 1787016451650,
+   "by": "Organizer link",
+   "text": "moved Bravo to team \"Red Dawn\""
+  },
+  {
+   "at": 1787016424577,
+   "by": "Organizer link",
+   "text": "closed signups & locked teams"
+  },
+  {
+   "at": 1787016328827,
+   "by": "Organizer link",
+   "text": "news posted: [important] Check-in opens one hour before start."
+  },
+  {
+   "at": 1787016284286,
+   "by": "Organizer link",
+   "text": "tournament published"
+  },
+  {
+   "at": 1787016276799,
+   "by": "Anonymous",
+   "text": "tournament created"
+  }
+ ],
+ "chatMutes": [
+  {
+   "fafId": "8001",
+   "name": "Noisy",
+   "at": 1787027693000
+  }
+ ],
+ "chatMutedMe": 0,
+ "invites": [
+  {
+   "fafId": 7001,
+   "name": "Invitee",
+   "at": 1787027693000,
+   "via": null,
+   "viaName": null,
+   "status": "pending"
+  },
+  {
+   "fafId": 7002,
+   "name": "Declined",
+   "at": 1787027693000,
+   "via": null,
+   "viaName": null,
+   "status": "declined"
+  }
+ ],
+ "viewer": {
+  "admin": 1,
+  "organizer": 1,
+  "teamId": null,
+  "loggedIn": 0,
+  "fafId": null,
+  "fafName": null,
+  "signedUpPlayerId": null,
+  "memberTeamId": null,
+  "invited": 0,
+  "oauthEnabled": 0,
+  "streamer": 0,
+  "newsReadAt": 0
+ }
+}

@@ -697,8 +697,26 @@
 .tournament-form {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+  min-width: min(560px, 92vw);
+}
+
+/* Nested fieldsets group the questions that are answered together. The border
+   is what makes "three dates" read as one decision rather than three fields
+   that happen to be adjacent. */
+.tournament-form > fieldset.tournament-field {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   gap: var(--space-3);
-  min-width: min(420px, 90vw);
+}
+
+.tournament-form > fieldset.tournament-field > legend {
+  padding: 0 var(--space-2);
+}
+
+:root[data-theme="light"] {
+  --tournament-picker-invert: 0;
 }
 
 .tournament-form h3 {
@@ -713,6 +731,79 @@
   border: 0;
   padding: 0;
   margin: 0;
+}
+
+/* Form controls.
+ *
+ * There is no base style for `input`, `select` or `textarea` anywhere in the
+ * app: `styles.css` sets `font: inherit` and a focus ring and stops. Every
+ * other feature that shows a control styles its own, so this is the tournament
+ * tab's, in one place rather than per panel. Without it a native white control
+ * sits on a dark surface, which is what the whole feature looked like.
+ */
+.tournament-field input,
+.tournament-field select,
+.tournament-field textarea,
+.tournament-form input,
+.tournament-form select,
+.tournament-form textarea {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-width: 0;
+  width: 100%;
+}
+
+.tournament-field textarea,
+.tournament-form textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.tournament-field input:hover:not(:disabled),
+.tournament-field select:hover:not(:disabled),
+.tournament-field textarea:hover:not(:disabled) {
+  border-color: var(--color-accent-glow);
+}
+
+.tournament-field input:disabled,
+.tournament-field select:disabled,
+.tournament-field textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A checkbox is the one control that must not stretch: it is a box beside a
+   label, not a field. */
+.tournament-field input[type="checkbox"],
+.tournament-checkbox input,
+.tournament-check input {
+  width: auto;
+  min-width: 0;
+  accent-color: var(--color-accent);
+}
+
+.tournament-checkbox,
+.tournament-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The native calendar and spinner glyphs are drawn dark on a dark control by
+   default, which makes them invisible rather than subtle. */
+.tournament-field input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.tournament-field input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(var(--tournament-picker-invert, 1));
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.tournament-field input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+.tournament-field input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .tournament-field > span,
@@ -765,6 +856,565 @@
 .tournament-manage-panel h5 {
   margin: 0 0 var(--space-2);
   font-size: 13px;
+}
+
+/* The captains draft. The pool is a plain list because it is scanned by name
+   and rating, and a grid would spread that across the screen. */
+.tournament-draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tournament-draft-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tournament-draft-head h5 {
+  margin: 0;
+}
+
+/* A free-for-all lobby. A list of entrants rather than a pair, so it reads
+   down rather than across, and the scores line up on the right. */
+.tournament-ffa-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.tournament-ffa-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.tournament-ffa-entrants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tournament-ffa-entrants li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Who went through, marked on the row rather than by reordering: the lobby is
+   read again later and the order it was played in is part of the record. */
+.tournament-ffa-entrants li.is-through {
+  font-weight: 550;
+}
+
+.tournament-ffa-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+}
+
+/* The ban and pick run, under its match. Tiles rather than a list: a veto is
+   read at a glance to see what is left, and names alone make that slower. */
+.tournament-veto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-veto-turn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 13px;
+}
+
+.tournament-veto h6 {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.tournament-veto-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-veto-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 12px;
+  min-width: 0;
+}
+
+.tournament-veto-map img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+/* A banned map stays on screen: the run is watched, and what was taken away is
+   as much of the story as what is left. Dimmed, not hidden. */
+.tournament-veto-grid.is-gone {
+  opacity: 0.55;
+}
+
+/* The map database and the pool editor. Rows rather than cards: an organiser
+   scans them for one name, and a grid of tiles would make that slower. */
+.tournament-map-list,
+.tournament-pool-admin-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-map-row,
+.tournament-pool-admin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+}
+
+.tournament-map-row img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.tournament-map-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.tournament-hidden-mark {
+  font-size: 12px;
+  color: var(--color-warn);
+  white-space: nowrap;
+}
+
+.tournament-map-editor,
+.tournament-pool-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.tournament-pool-maps-pick,
+.tournament-pool-steps {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tournament-pool-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* A refusal the client worked out itself, shown where the mistake is rather
+   than after the service has turned the form away. */
+.tournament-refusal {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+/* Moderation lives on the post rather than in a panel, so it has to be quiet
+   until it is wanted: an organiser reading a room is reading, not moderating. */
+.tournament-chat-moderate {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.tournament-chat-post:hover .tournament-chat-moderate,
+.tournament-chat-moderate:focus-within {
+  opacity: 1;
+}
+
+.tournament-chat-action {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tournament-chat-action:hover,
+.tournament-chat-action:focus-visible {
+  color: var(--color-error);
+}
+
+.tournament-chat-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.tournament-mute-list,
+.tournament-organiser-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+
+.tournament-mute,
+.tournament-organiser {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.tournament-organisers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.tournament-format {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tournament-format-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tournament-format-fields .tournament-field {
+  flex: 1 1 180px;
+}
+
+.tournament-news-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-news-edit textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+/* The completed-matches group. A bracket makes a room per match and keeps them
+   forever, so the played ones fold behind one row. */
+.tournament-chat-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.tournament-chat-completed {
+  margin-left: var(--space-3);
+}
+
+/* Being named replaces the unread count rather than sitting beside it, so it
+   has to read as a different kind of mark, not a louder one. */
+.tournament-badge.is-mention {
+  background: var(--color-warn);
+  color: var(--color-accent-contrast);
+  font-weight: 700;
+}
+
+.tournament-chat-bell {
+  display: inline-flex;
+  color: var(--color-warn);
+}
+
+/* Picking maps out of the vault.
+ *
+ * The preview comes from the Maps tab's own `MapPreview`, which emits
+ * `.map-vault-thumb`. That class is styled in `maps.css`, and `MapsView` is
+ * lazily loaded, so an organiser who opens Tournaments without ever visiting
+ * Maps would get an unsized image. The rules below are scoped to the tile and
+ * do not depend on that stylesheet being in the bundle.
+ */
+.tournament-map-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.tournament-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.tournament-map-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  padding: var(--space-2);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tournament-map-tile:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.tournament-map-tile.is-picked {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent-glow);
+}
+
+.tournament-map-tile:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tournament-map-tile-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.tournament-map-tile .map-vault-thumb,
+.tournament-map-tile .map-vault-preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-subtle);
+}
+
+/* One pool for the whole event, set apart from the per-round list because it
+   overwrites every one of them at once. */
+.tournament-pool-all {
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* Series and qualifiers. Two blocks under one heading, and set apart from each
+   other on purpose: filing an event under a series changes nothing but how it
+   is listed, while adding a qualifier sends invitations. */
+.tournament-series {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.tournament-series-picker {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tournament-series-picker .tournament-field {
+  flex: 1 1 220px;
+}
+
+.tournament-series-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.tournament-qualifier-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+
+.tournament-qualifier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.tournament-qualifier > p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* The remove button sits at the end of its own row rather than filling the
+   card: unlinking is not the reason anyone opens this list. */
+.tournament-qualifier > button {
+  align-self: flex-start;
+}
+
+.tournament-qualifier-name {
+  font-weight: 600;
+}
+
+.tournament-qualifier-add {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tournament-qualifier-add .tournament-field {
+  flex: 1 1 160px;
+}
+
+/* The cutoff is two or three digits and should not stretch to match the two
+   pickers beside it. */
+.tournament-qualifier-add .tournament-field:last-of-type {
+  flex: 0 0 96px;
+}
+
+/* The audit log: three columns that stay aligned down the list, because the
+   thing a reader scans for is who did something, not when. */
+.tournament-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tournament-log-line {
+  display: grid;
+  grid-template-columns: minmax(9rem, auto) minmax(6rem, auto) 1fr;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.tournament-log-who {
+  font-weight: 550;
+}
+
+.tournament-log-what {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The standings table. Plain rows, because the ranking is the content and a
+   striped or boxed table would compete with the podium marks for attention. */
+.tournament-standings table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tournament-standings th,
+.tournament-standings td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tournament-standings th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+/* Only the podium is tinted, and only on the left edge: a full row highlight
+   on three of four rows in a small bracket reads as noise rather than rank. */
+.tournament-standings tr.rank-1 td:first-child {
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+.tournament-standings tr.rank-2 td:first-child,
+.tournament-standings tr.rank-3 td:first-child {
+  box-shadow: inset 2px 0 0 var(--color-border-strong);
+}
+
+/* The per-team division picker sits in the team header, beside the roster
+   count, because it belongs to the team rather than to any of its players. */
+.tournament-division-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* An event nobody but its organiser can see. Marked out rather than left as a
+   plain section: signups are already running, so the state reads as normal
+   until something says otherwise, and the step is easy to never take. */
+.tournament-unpublished {
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+}
+
+.tournament-unpublished p {
+  margin: 0 0 var(--space-3);
+  max-width: 60ch;
 }
 
 .tournament-danger {

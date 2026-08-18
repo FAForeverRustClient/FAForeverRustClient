@@ -7,7 +7,7 @@
 import type { PlayerSummary, Tourney, TourneyPlayer } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerChip } from "./PlayerChip";
-import { profileOf, teamMembers } from "./tourneyPresentation";
+import { profileOf, teamMembers } from "../../shared/tourneyRules";
 
 interface EntrantsPanelProps {
   event: Tourney;

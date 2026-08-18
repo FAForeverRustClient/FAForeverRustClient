@@ -8,7 +8,7 @@
 // two sides disagreeing about a blank replay row.
 
 import { describe, expect, it } from "vitest";
-import { isSubmittable, newGames } from "./tourneyPresentation";
+import { isSubmittable, newGames } from "../../shared/tourneyRules";
 import { match } from "./fixtures";
 
 describe("newGames", () => {

@@ -6,17 +6,18 @@
 // check-in windows, rating gates, and a bracket that is an explicit graph
 // rather than a set of round numbers to be inferred from.
 //
-// The scope is deliberately a *participant's*: see an event, enter it, check
-// in, play, report a result, talk to the other players. Creating a tournament
-// and configuring its format stay on the website, reached from Manage. The one
-// organiser task kept here is assigning map pools, because picking maps is a
-// search through FAF's vault with previews and the website cannot match that.
+// The scope is the website's own, built in lifecycle order: create an event,
+// take entrants, form teams, seed, draw, record results. A participant's path
+// through the same tab is the short one: see an event, enter it, check in,
+// play, talk. What an organiser cannot do here yet is listed in
+// `docs/tourney-features.md`, which is kept honest against `server.js`.
 
 import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type {
   AppCommand,
+  BracketConfig,
   MatchReport,
   SeedOrder,
   TourneyCommand,
@@ -31,7 +32,8 @@ import { matchTitle } from "./matchTitle";
 import { MatchReportDialog } from "./MatchReportDialog";
 import { TournamentDetailPane } from "./TournamentDetailPane";
 import { TournamentForm } from "./TournamentForm";
-import { busyMatchId, formatDay, openEvent, STATUS_LABELS } from "./tourneyPresentation";
+import { STATUS_LABELS, formatDay } from "./tourneyPresentation";
+import { busyMatchId, openEvent } from "../../shared/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -45,6 +47,7 @@ export function TournamentsView() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.tourney);
   const vault = useAppStore((store) => store.state.maps.vault);
+  const vaultStatus = useAppStore((store) => store.state.maps.vaultStatus);
   const [reporting, setReporting] = useState<TourneyMatch | null>(null);
   const [editing, setEditing] = useState<"create" | "edit" | null>(null);
 
@@ -57,6 +60,14 @@ export function TournamentsView() {
       // Hosting is approval-only, granted per account. Asked once, because the
       // alternative is a create button that answers "not approved yet".
       send({ type: "loadHosting" });
+    }
+    // The map vault, which this tab reads but never used to ask for. It was
+    // loaded only by the Maps tab, so an organiser who came straight here saw
+    // every map in their own database marked "not in the vault" and no preview
+    // beside any of it. It is the whole catalogue, cached in the slice, so this
+    // costs one request per session and nothing per tournament.
+    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
+      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
     }
   }, []);
 
@@ -185,9 +196,12 @@ export function TournamentsView() {
             <TournamentDetailPane
               event={open}
               detailLoading={state.detailStatus.type === "loading"}
+              series={state.series}
+              events={state.events}
               profiles={state.entrantProfiles}
               articles={state.articles}
               vault={vault}
+              vaultStatus={vaultStatus}
               chatRooms={state.chatRooms}
               openRoomId={state.openRoomId}
               chatPosts={state.chatPosts}
@@ -225,8 +239,15 @@ export function TournamentsView() {
                 void openHttpsUrl(url);
               }}
               onEdit={() => setEditing("edit")}
-              onAdvance={(phase: TourneyPhase) =>
-                act({ type: "advance", payload: { tournamentId: open.id, phase } })
+              onPublish={() => act({ type: "publish", payload: { tournamentId: open.id } })}
+              onAdvance={(phase: TourneyPhase, config?: BracketConfig) =>
+                act({
+                  type: "advance",
+                  // Null rather than absent: the config is only ever set on
+                  // `start_bracket`, and the service defaults every value from
+                  // the event's own plan when it is not there.
+                  payload: { tournamentId: open.id, phase, config: config ?? null },
+                })
               }
               onArchive={() => act({ type: "archive", payload: { tournamentId: open.id } })}
               onCreateTeam={(name) =>
@@ -275,6 +296,99 @@ export function TournamentsView() {
               }
               onEditPlayer={(playerId, note, rating) =>
                 act({ type: "editPlayer", payload: { tournamentId: open.id, playerId, note, rating } })
+              }
+              onDraftPick={(playerId) =>
+                act({ type: "draftPickPlayer", payload: { tournamentId: open.id, playerId } })
+              }
+              onDraftUndo={() =>
+                act({ type: "draftUndo", payload: { tournamentId: open.id } })
+              }
+              onSetCaptains={(playerIds) =>
+                act({ type: "setCaptains", payload: { tournamentId: open.id, playerIds } })
+              }
+              onReportFfa={(report) =>
+                act({ type: "reportFfa", payload: { tournamentId: open.id, report } })
+              }
+              onVetoAct={(matchId, mapId) =>
+                act({ type: "vetoAct", payload: { tournamentId: open.id, matchId, mapId } })
+              }
+              onVetoSetSides={(matchId, teamA) =>
+                act({ type: "vetoSetSides", payload: { tournamentId: open.id, matchId, teamA } })
+              }
+              onVetoUndo={(matchId) =>
+                act({ type: "vetoUndo", payload: { tournamentId: open.id, matchId } })
+              }
+              onSaveMap={(map) => act({ type: "saveMap", payload: { tournamentId: open.id, map } })}
+              onPublishMap={(mapId, published) =>
+                act({ type: "publishMap", payload: { tournamentId: open.id, mapId, published } })
+              }
+              onDeleteMap={(mapId) =>
+                act({ type: "deleteMap", payload: { tournamentId: open.id, mapId } })
+              }
+              onSavePool={(pool) =>
+                act({ type: "savePool", payload: { tournamentId: open.id, pool } })
+              }
+              onPublishPool={(poolId, published) =>
+                act({ type: "publishPool", payload: { tournamentId: open.id, poolId, published } })
+              }
+              onDeletePool={(poolId) =>
+                act({ type: "deletePool", payload: { tournamentId: open.id, poolId } })
+              }
+              onRefreshChat={(roomId) =>
+                act({ type: "refreshChat", payload: { tournamentId: open.id, roomId } })
+              }
+              onDeleteChatPost={(roomId, postId) =>
+                act({
+                  type: "deleteChatPost",
+                  payload: { tournamentId: open.id, roomId, postId },
+                })
+              }
+              onMute={(fafId, name, muted) =>
+                act({ type: "muteChat", payload: { tournamentId: open.id, fafId, name, muted } })
+              }
+              onAddOrganiser={(fafId, name) =>
+                act({ type: "addOrganiser", payload: { tournamentId: open.id, fafId, name } })
+              }
+              onSetCaster={(fafId, name, casting) =>
+                act({ type: "setCaster", payload: { tournamentId: open.id, fafId, name, casting } })
+              }
+              onSetOrganiserVisibility={(fafId, hidden) =>
+                act({
+                  type: "setOrganiserVisibility",
+                  payload: { tournamentId: open.id, fafId, hidden },
+                })
+              }
+              onAbandon={(abandoned) =>
+                act({ type: "abandon", payload: { tournamentId: open.id, abandoned } })
+              }
+              onEditFormat={(format) =>
+                act({ type: "editFormat", payload: { tournamentId: open.id, format } })
+              }
+              onEditNews={(newsId, body, important) =>
+                act({
+                  type: "editNews",
+                  payload: { tournamentId: open.id, newsId, body, important },
+                })
+              }
+              onMarkNewsRead={() =>
+                act({ type: "markNewsRead", payload: { tournamentId: open.id } })
+              }
+              onLoadSeries={() => act({ type: "loadSeries" })}
+              onSetSeries={(seriesId) =>
+                act({ type: "setSeries", payload: { tournamentId: open.id, seriesId } })
+              }
+              onSaveSeries={(draft) => act({ type: "saveSeries", payload: { draft } })}
+              onAddQualifier={(qualifierId, rule) =>
+                act({
+                  type: "addQualifier",
+                  payload: { tournamentId: open.id, qualifierId, rule },
+                })
+              }
+              onRemoveQualifier={(linkId) =>
+                act({ type: "removeQualifier", payload: { tournamentId: open.id, linkId } })
+              }
+              onSetDivision={(teamId, division) =>
+                act({ type: "setDivision", payload: { tournamentId: open.id, teamId, division } })
               }
               onRespondSignup={(playerId, accept) =>
                 act({

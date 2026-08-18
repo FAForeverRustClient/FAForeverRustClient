@@ -212,6 +212,9 @@ const INITIAL: AppState = {
     articles: [],
     hosting: { loggedIn: false, allowed: false, pending: false },
     accountSearch: { query: "", matches: [], status: { type: "idle" } },
+    series: [],
+    seriesStatus: { type: "idle" },
+    openSeries: null,
   },
   tutorials: {
     categories: [],

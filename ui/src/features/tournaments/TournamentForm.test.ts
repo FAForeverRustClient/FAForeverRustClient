@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import { draftOf } from "./TournamentForm";
-import { rejectionOf } from "./tourneyPresentation";
+import { rejectionOf } from "../../shared/tourneyRules";
 import { tourney } from "./fixtures";
 import type { TourneyDraft } from "../../ipc/bindings";
 
@@ -68,14 +68,21 @@ describe("draftOf", () => {
       name: "Autumn Invitational",
       description: "Four invited players.",
       teamSize: 3,
-      playerReporting: false,
+      signupMode: "invite",
+      ratingKind: "ladder1v1",
+      ratingDate: 1_787_000_000,
       eventDate: 1_787_421_600,
     });
     const from = draftOf(event);
     expect(from.name).toBe("Autumn Invitational");
     expect(from.description).toBe("Four invited players.");
-    expect(from.playerReporting).toBe(false);
     expect(from.eventDate).toBe(1_787_421_600);
+    expect(from.ratingDate).toBe(1_787_000_000);
+    // Read off the event, never assumed. `edit_info` resends both, so a
+    // default here would reopen an invite-only event and reset its rating type
+    // the first time somebody corrected a typo in the name.
+    expect(from.signupMode).toBe("invite");
+    expect(from.ratingKind).toBe("ladder1v1");
     // Format fields come along so the form can show them, even though editing
     // never sends them.
     expect(from.teamSize).toBe(3);

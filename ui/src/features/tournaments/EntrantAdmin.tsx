@@ -4,7 +4,7 @@
 // Adding and inviting pick a FAF *account*, not a typed string. The server
 // matches names exactly and refuses one it cannot find, so a typed name is a
 // guess that only fails afterwards; picking from a searched list means the
-// organiser sees the person — avatar, login, rating — before committing. That is
+// organiser sees the person (avatar, login, rating) before committing. That is
 // also what lets an entry carry an avatar at all: there is no such thing here as
 // an entrant who is not somebody.
 //
@@ -18,13 +18,8 @@ import type { AccountSearch, PlayerSummary, SeedOrder, Tourney } from "../../ipc
 import { useTranslation } from "../../i18n/useTranslation";
 import { AccountPicker } from "./AccountPicker";
 import { PlayerChip } from "./PlayerChip";
-import {
-  INVITE_STATUS_LABELS,
-  mayReseed,
-  pendingSignups,
-  profileOf,
-  profileOfInvite,
-} from "./tourneyPresentation";
+import { INVITE_STATUS_LABELS } from "./tourneyPresentation";
+import { mayReseed, pendingSignups, profileOf, profileOfInvite } from "../../shared/tourneyRules";
 
 interface EntrantAdminProps {
   event: Tourney;
@@ -102,11 +97,11 @@ export function EntrantAdmin(props: EntrantAdminProps) {
             busy={busy}
             submitLabel={t("tournaments.admin.add")}
             onQueryChange={props.onSearchAccounts}
-            // Always without a rating. `org_add_player` accepts one, but only an
-            // unrated event needs it, and `publicView` does not send the rating
-            // type (see docs/faf-tournaments-api.md), so the client cannot tell
-            // one from the other. Asking every organiser for a number the server
-            // then ignores is the worse of the two.
+            // Always without a rating. `org_add_player` accepts one, but only
+            // an unrated event has any use for it, and there the rating is set
+            // afterwards in the team admin, where `maySetRating` gates it.
+            // Asking on every add would put a field in front of every organiser
+            // for a number the service ignores in all but one kind of event.
             onPick={(login) => props.onAdd(login, null)}
           />
         </section>

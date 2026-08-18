@@ -25,10 +25,20 @@ use serde_json::{json, Value};
 
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
-    Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition, Formation, HostingStatus,
-    InviteStatus, MapPool, MatchLink, MatchStatus, NewsPost, PendingReport, PoolAssignment,
-    RatingGate, RatingKind, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite,
-    TourneyMap, TourneyMatch, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
+    ChatRoom, Competition, Formation, HostingStatus, InviteStatus, MapPool, MatchLink, MatchStatus,
+    NewsPost, Organiser, PendingReport, PoolAction, PoolAssignment, PoolSide, PoolStep, RatingGate,
+    RatingKind, SignupMode, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
+    TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus,
+    TourneyTeam, TourneyViewer,
+};
+use crate::state::{
+    Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
+    VetoDecider, VetoMode,
+};
+use crate::state::{
+    FeedsInto, FormatDraft, Qualifier, QualifierKind, QualifierRule, SeriesColour, SeriesDetail,
+    SeriesDraft, SeriesEdition, TourneySeries,
 };
 
 /// A string field, empty when absent or not a string.
@@ -151,6 +161,8 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         team_size: int(document, "teamSize").unwrap_or(1),
         divisions: int(document, "divisions").unwrap_or(0),
         player_reporting: flag_or_true(document, "playerReporting"),
+        signup_mode: SignupMode::from_wire(&text(document, "signupMode")),
+        max_teams: int(document, "maxTeams").unwrap_or(0).max(0),
         veto_enabled: document
             .get("veto")
             .is_some_and(|veto| flag(veto, "enabled")),
@@ -175,6 +187,52 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         check_in_opens_at: moment(document, "checkInOpensAt"),
         check_in_deadline: moment(document, "checkInDeadline"),
         chat_locked: flag(document, "chatLocked"),
+        abandoned: flag(document, "abandoned"),
+        chat_muted_me: flag(document, "chatMutedMe"),
+        // Sent as `1`/`0`, and absent from a list row for anyone who cannot see
+        // drafts, where a missing field must read as published rather than as
+        // hidden: the row would not have been sent otherwise.
+        imported: flag(document, "imported"),
+        draft: document
+            .get("draft")
+            .filter(|held| held.is_object())
+            .map(|held| Draft {
+                order: string_list(held, "order"),
+                current: int(held, "current").unwrap_or(0),
+                last_pick: held
+                    .get("lastPick")
+                    .filter(|pick| pick.is_object())
+                    .and_then(|pick| {
+                        Some(DraftPick {
+                            player_id: id(pick, "playerId")?,
+                            team_id: id(pick, "teamId")?,
+                            at_index: int(pick, "atIndex").unwrap_or(0),
+                        })
+                    }),
+            }),
+        pending_captains: string_list(document, "pendingCaptains"),
+        draft_snakes: text(document, "draftOrder")
+            .trim()
+            .eq_ignore_ascii_case("snake"),
+        ffa: document
+            .get("ffaCfg")
+            .filter(|cfg| cfg.is_object())
+            .map(|cfg| FfaConfig {
+                per_match: int(cfg, "perMatch").unwrap_or(0),
+                advance: int(cfg, "advance").unwrap_or(1),
+                mode: FfaMode::from_wire(&text(cfg, "mode")),
+                rounds: int(cfg, "rounds").unwrap_or(0),
+                cut_to: int(cfg, "cutTo").unwrap_or(0),
+                final_size: int(cfg, "finalSize").unwrap_or(0),
+            }),
+        veto: VetoConfig {
+            enabled: flag(document.get("veto").unwrap_or(&Value::Null), "enabled"),
+            mode: VetoMode::from_wire(&text(document.get("veto").unwrap_or(&Value::Null), "mode")),
+        },
+        published: document
+            .get("published")
+            .is_none_or(|value| flag(document, "published") || value.is_null()),
+        publish_at: moment(document, "publishAt"),
         player_count: count(document, "players"),
         team_count: count(document, "teams"),
         players: array(document, "players")
@@ -211,6 +269,35 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .iter()
             .filter_map(parse_invite)
             .collect(),
+        audit_log: array(document, "tlog")
+            .iter()
+            .filter_map(parse_audit_entry)
+            .collect(),
+        organiser_accounts: array(document, "organizers")
+            .iter()
+            .filter_map(parse_organiser)
+            .collect(),
+        chat_mutes: array(document, "chatMutes")
+            .iter()
+            .filter_map(parse_chat_mute)
+            .collect(),
+        casters: array(document, "casters")
+            .iter()
+            .filter_map(|caster| {
+                Some(Caster {
+                    faf_id: int(caster, "fafId")?,
+                    name: text(caster, "name"),
+                })
+            })
+            .collect(),
+        series_id: id(document, "seriesId"),
+        series_name: text(document, "seriesName"),
+        series_colour: SeriesColour::from_wire(&text(document, "seriesColor")),
+        qualifiers: array(document, "qualifiers")
+            .iter()
+            .filter_map(parse_qualifier)
+            .collect(),
+        feeds_into: parse_feeds_into(document.get("feedsInto")),
         champion_team_id: id(document, "championTeamId"),
         viewer: parse_viewer(document),
     })
@@ -224,7 +311,7 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
 /// authorises every write, so a second opinion worked out client-side could only
 /// ever disagree with the one that counts.
 ///
-/// Absent from the list endpoint, where it defaults — correctly, because a list
+/// Absent from the list endpoint, where it defaults, correctly, because a list
 /// row carries no viewer-specific answer and must offer no organiser control.
 fn parse_viewer(document: &Value) -> TourneyViewer {
     let Some(viewer) = document.get("viewer") else {
@@ -239,6 +326,8 @@ fn parse_viewer(document: &Value) -> TourneyViewer {
         faf_name: text(viewer, "fafName"),
         signed_up_player_id: id(viewer, "signedUpPlayerId"),
         member_team_id: id(viewer, "memberTeamId"),
+        caster: flag(viewer, "caster"),
+        news_read_at: moment(viewer, "newsReadAt"),
     }
 }
 
@@ -273,6 +362,54 @@ fn parse_player(value: &Value) -> Option<TourneyPlayer> {
     })
 }
 
+/// Where a team's run ended. Absent, null, or missing either half all mean the
+/// same thing: still in it, or not decided yet.
+fn parse_exit(value: Option<&Value>) -> Option<TeamExit> {
+    let value = value?;
+    Some(TeamExit {
+        bracket: BracketSide::from_wire(&text(value, "bracket")),
+        round: int(value, "round")?,
+    })
+}
+
+/// One audit line. A line without text is dropped rather than shown blank:
+/// the log is read as prose, and an empty row is noise in it.
+fn parse_audit_entry(value: &Value) -> Option<AuditEntry> {
+    let line = text(value, "text");
+    if line.trim().is_empty() {
+        return None;
+    }
+    let by = text(value, "by");
+    Some(AuditEntry {
+        at: moment(value, "at"),
+        by: if by.trim().is_empty() {
+            "Organizer".to_string()
+        } else {
+            by
+        },
+        text: line,
+    })
+}
+
+fn parse_organiser(value: &Value) -> Option<Organiser> {
+    Some(Organiser {
+        faf_id: int(value, "fafId")?,
+        name: text(value, "name"),
+        hidden: flag(value, "hidden"),
+    })
+}
+
+/// `fafId` arrives as a string here and as a number everywhere else: the
+/// service builds this list from `Object.keys`, which stringifies. Read through
+/// the tolerant integer reader rather than `as_i64`, or every mute is dropped.
+fn parse_chat_mute(value: &Value) -> Option<ChatMute> {
+    Some(ChatMute {
+        faf_id: int(value, "fafId")?,
+        name: text(value, "name"),
+        at: moment(value, "at"),
+    })
+}
+
 fn parse_team(value: &Value) -> Option<TourneyTeam> {
     Some(TourneyTeam {
         id: id(value, "id")?,
@@ -283,6 +420,7 @@ fn parse_team(value: &Value) -> Option<TourneyTeam> {
         division: int(value, "division").unwrap_or(0),
         checked_in: flag(value, "checkedIn"),
         eliminated: flag(value, "eliminated"),
+        out: parse_exit(value.get("out")),
         final_rank: int(value, "finalRank"),
         captain_renamed: flag(value, "captainRenamed"),
         join_requests: parse_requests(value, "joinRequests"),
@@ -326,6 +464,27 @@ fn parse_match(value: &Value) -> Option<TourneyMatch> {
         winner_to: parse_link(value.get("winnerTo")),
         loser_to: parse_link(value.get("loserTo")),
         pending_report: parse_pending_report(value.get("pendingReport")),
+        veto: parse_match_veto(value.get("veto")),
+        entrants: string_list(value, "entrants"),
+        winners: string_list(value, "winners"),
+        // An object keyed by team id, read into an ordered list. `null` until
+        // the lobby is reported, which is not the same as everybody on zero.
+        points: value
+            .get("points")
+            .and_then(Value::as_object)
+            .map(|scores| {
+                scores
+                    .iter()
+                    .filter_map(|(team_id, points)| {
+                        Some(TeamPoints {
+                            team_id: team_id.clone(),
+                            points: i32::try_from(points.as_i64()?).ok()?,
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        is_final: flag(value, "isFinal"),
         replay_ids: string_list(value, "replayIds"),
     })
 }
@@ -360,6 +519,7 @@ fn parse_link(value: Option<&Value>) -> Option<MatchLink> {
 
 fn parse_news(value: &Value) -> Option<NewsPost> {
     Some(NewsPost {
+        edited_at: moment(value, "editedAt"),
         id: id(value, "id")?,
         // Written by an organiser, so reduced like every other such field.
         body: to_plain_text(&text(value, "body")),
@@ -387,6 +547,74 @@ fn parse_map(value: &Value) -> Option<TourneyMap> {
         id: id(value, "id")?,
         name: text(value, "name"),
         image_url: first_text(value, &["imageUrl", "image", "url", "preview"]),
+        description: text(value, "description"),
+        // Absent means visible: a list row that reached a player at all was one
+        // the service was willing to show them.
+        published: value
+            .get("published")
+            .is_none_or(|_| flag(value, "published")),
+    })
+}
+
+/// One ban/pick step. A step missing either half is dropped rather than
+/// defaulted: the service only ever stores complete pairs, so half a step is a
+/// response we do not understand, and guessing the missing side would put a map
+/// in front of the wrong team.
+/// The ban/pick run of one match.
+///
+/// Absent for a match the service has not started one for, which is every match
+/// in an event without vetoes and every match before its pool is assigned.
+fn parse_match_veto(value: Option<&Value>) -> Option<MatchVeto> {
+    let value = value?;
+    if !value.is_object() {
+        return None;
+    }
+    Some(MatchVeto {
+        remaining: string_list(value, "remaining"),
+        banned: array(value, "banned")
+            .iter()
+            .filter_map(parse_choice)
+            .collect(),
+        picks: array(value, "picks")
+            .iter()
+            .filter_map(parse_choice)
+            .collect(),
+        sequence: array(value, "sequence")
+            .iter()
+            .filter_map(parse_pool_step)
+            .collect(),
+        step_index: int(value, "stepIndex").unwrap_or(0),
+        // Empty rather than absent until an organiser has chosen, and an empty
+        // string is not a team id.
+        team_a: id(value, "teamA"),
+        team_b: id(value, "teamB"),
+        done: flag(value, "done"),
+        decider: parse_decider(value.get("decider")),
+    })
+}
+
+fn parse_choice(value: &Value) -> Option<VetoChoice> {
+    Some(VetoChoice {
+        map: id(value, "map")?,
+        by: text(value, "by"),
+        game: int(value, "game"),
+    })
+}
+
+fn parse_decider(value: Option<&Value>) -> Option<VetoDecider> {
+    let value = value?;
+    Some(VetoDecider {
+        map: id(value, "map")?,
+        game: int(value, "game").unwrap_or(0),
+    })
+}
+
+fn parse_pool_step(value: &Value) -> Option<PoolStep> {
+    let action = value.get("action")?.as_str()?;
+    let team = value.get("team")?.as_str()?;
+    Some(PoolStep {
+        action: PoolAction::from_wire(action),
+        team: PoolSide::from_wire(team),
     })
 }
 
@@ -395,8 +623,13 @@ fn parse_pool(value: &Value) -> Option<MapPool> {
         id: id(value, "id")?,
         name: text(value, "name"),
         map_ids: string_list(value, "mapIds"),
-        sequence: string_list(value, "sequence"),
+        sequence: array(value, "sequence")
+            .iter()
+            .filter_map(parse_pool_step)
+            .collect(),
         best_of: int(value, "bo"),
+        published: flag(value, "published"),
+        publish_at: moment(value, "publishAt"),
     })
 }
 
@@ -435,6 +668,15 @@ pub fn parse_chat_rooms(document: &Value) -> Vec<ChatRoom> {
                 name: room_label(room, &room_id),
                 id: room_id,
                 unread: int(room, "unread").unwrap_or(0),
+                // The three flags the list is built out of. They were dropped
+                // for a while, and with them went the whole shape of the room
+                // list: every finished match's room stayed in the live list,
+                // an `@` went unannounced, and an organiser had no way to see
+                // which room had asked for them.
+                done: flag(room, "done"),
+                mentioned: flag(room, "mention"),
+                needs_organiser: flag(room, "ping"),
+                count: int(room, "count").unwrap_or(0),
             })
         })
         .collect()
@@ -462,6 +704,10 @@ pub fn parse_chat_posts(document: &Value) -> Vec<ChatPost> {
             Some(ChatPost {
                 id: id(post, "id")?,
                 author: text(post, "who"),
+                // The account behind the name, which is what silencing them
+                // needs: `chat_mute` is addressed by FAF id, and the name is
+                // free text the service stores rather than resolves.
+                faf_id: int(post, "fafId"),
                 // Somebody else's typing, reduced like every other such field.
                 body: to_plain_text(&text(post, "text")),
                 at: moment(post, "at"),
@@ -535,7 +781,6 @@ pub fn create_body(draft: &TourneyDraft) -> Value {
         "seeding": draft.seeding.as_wire(),
         "ratingType": draft.rating_kind.as_wire(),
         "signupMode": draft.signup_mode.as_wire(),
-        "playerReporting": draft.player_reporting,
         "maxTeams": draft.max_teams,
     });
     merge_shared(&mut body, draft);
@@ -551,7 +796,6 @@ pub fn edit_info_body(draft: &TourneyDraft) -> Value {
     let mut body = json!({
         "name": draft.name.trim(),
         "signupMode": draft.signup_mode.as_wire(),
-        "playerReporting": draft.player_reporting,
     });
     merge_shared(&mut body, draft);
     body
@@ -560,11 +804,21 @@ pub fn edit_info_body(draft: &TourneyDraft) -> Value {
 /// The fields creation and editing spell the same way.
 fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
     body["description"] = json!(draft.description.trim());
+    // Always off, and always sent. The client has no player reporting path at
+    // all: `report_submit` was removed, and the organiser records every result.
+    // The key has to be present to say so, because the service reads an absent
+    // one as *on* (`playerReporting === undefined ? true`), which would leave
+    // every event created here accepting scores the client cannot show.
+    body["playerReporting"] = json!(false);
     // `null` is meaningful rather than omitted: the server tells a cleared date
     // from an untouched one by whether the key is there at all.
     body["eventDate"] = iso(draft.event_date);
     body["signupOpensAt"] = iso(draft.signup_opens_at);
     body["signupClosesAt"] = iso(draft.signup_closes_at);
+    // Milliseconds on the way out as well as in: the service stores this one as
+    // `new Date(x).getTime()`, unlike the three above, which it keeps as text.
+    // An ISO instant parses to the right number either way.
+    body["ratingDate"] = iso(draft.rating_date);
     body["minRating"] = gate(draft.rating.min);
     body["maxRating"] = gate(draft.rating.max);
     body["maxTeamRating"] = gate(draft.rating.max_team);
@@ -611,6 +865,334 @@ fn first_text(value: &Value, names: &[&str]) -> String {
         .map(|name| text(value, name))
         .find(|found| !found.trim().is_empty())
         .unwrap_or_default()
+}
+
+/// The series list, from `GET /api/series`.
+///
+/// Already sorted by the service: running series first, then by most recent
+/// activity. Kept in that order rather than re-sorted here, because the key it
+/// sorts on ("is any edition still being played") is worked out from every
+/// tournament in the database, and the client holds only the ones it was sent.
+pub fn parse_series_list(document: &Value) -> Vec<TourneySeries> {
+    let items = match document {
+        Value::Array(items) => items.as_slice(),
+        Value::Object(_) => array(document, "series"),
+        _ => &[],
+    };
+    items.iter().filter_map(parse_series).collect()
+}
+
+fn parse_series(value: &Value) -> Option<TourneySeries> {
+    Some(TourneySeries {
+        id: id(value, "id")?,
+        name: text(value, "name"),
+        description: to_plain_text(&text(value, "description")),
+        colour: SeriesColour::from_wire(&text(value, "color")),
+        category: parse_series_category(value),
+        editions: int(value, "editions").unwrap_or(0),
+        active: int(value, "activeCount").unwrap_or(0),
+        // A millisecond stamp, unlike every other date on this endpoint: the
+        // service builds it with `getTime()` rather than storing it.
+        last_at: moment(value, "lastMs"),
+        latest_id: id(value, "latestId"),
+        latest_name: text(value, "latestName"),
+        latest_date: calendar_moment(value, "latestDate"),
+    })
+}
+
+/// One series with its editions, from `GET /api/series/{id}`.
+///
+/// `None` when the wrapper carries no series object, which is what a 404 looks
+/// like once the status is past: the endpoint answers `{error}` and nothing to
+/// build a series out of.
+pub fn parse_series_detail(document: &Value) -> Option<SeriesDetail> {
+    let series = document.get("series")?;
+    Some(SeriesDetail {
+        id: id(series, "id")?,
+        name: text(series, "name"),
+        description: to_plain_text(&text(series, "description")),
+        colour: SeriesColour::from_wire(&text(series, "color")),
+        category: parse_series_category(series),
+        editions: array(document, "editions")
+            .iter()
+            .filter_map(parse_series_edition)
+            .collect(),
+        can_edit: flag(document, "canEdit"),
+    })
+}
+
+/// A series' category, where it has one.
+///
+/// `null` unless a site admin tagged it, and distinct from a tournament's, which
+/// defaults to `community`: an untagged *series* is untagged, not community, and
+/// the two show differently.
+fn parse_series_category(value: &Value) -> Option<TourneyCategory> {
+    match text(value, "category").trim().to_ascii_lowercase().as_str() {
+        "official" => Some(TourneyCategory::Official),
+        "community" => Some(TourneyCategory::Community),
+        _ => None,
+    }
+}
+
+fn parse_series_edition(value: &Value) -> Option<SeriesEdition> {
+    Some(SeriesEdition {
+        id: id(value, "id")?,
+        name: text(value, "name"),
+        status: TourneyStatus::from_wire(&text(value, "status")),
+        category: parse_series_category(value),
+        published: flag(value, "published"),
+        competition: Competition::from_wire(&text(value, "competition")),
+        bracket_kind: BracketKind::from_wire(&text(value, "bracketType")),
+        team_size: int(value, "teamSize").unwrap_or(1),
+        player_count: count(value, "players"),
+        team_count: count(value, "teams"),
+        event_date: calendar_moment(value, "eventDate"),
+        abandoned: flag(value, "abandoned"),
+        champion_team_id: id(value, "championTeamId"),
+        champion: text(value, "champion"),
+    })
+}
+
+fn parse_qualifier(value: &Value) -> Option<Qualifier> {
+    Some(Qualifier {
+        id: id(value, "id")?,
+        tournament_id: id(value, "tournamentId")?,
+        name: text(value, "name"),
+        // Absent where the child has been deleted, which is exactly when the
+        // name is the service's own placeholder rather than a tournament's.
+        status: value
+            .get("status")
+            .and_then(Value::as_str)
+            .map(TourneyStatus::from_wire),
+        rule: parse_qualifier_rule(value.get("rule")),
+        applied: moment(value, "applied"),
+        qualified: string_list(value, "qualified"),
+        unreachable: string_list(value, "unreachable"),
+    })
+}
+
+/// A qualifier's rule, defaulted the way the service defaults it.
+///
+/// `null` is live here: `qualifier_add` stores whatever `{type, n}` it built,
+/// but a link written before the field existed has none, and the service reads
+/// that as top-1 through the same clamping this mirrors.
+fn parse_qualifier_rule(value: Option<&Value>) -> QualifierRule {
+    let Some(rule) = value.filter(|rule| rule.is_object()) else {
+        return QualifierRule::default();
+    };
+    QualifierRule {
+        kind: QualifierKind::from_wire(&text(rule, "type")),
+        n: int(rule, "n").unwrap_or(1).max(1),
+    }
+}
+
+fn parse_feeds_into(value: Option<&Value>) -> Option<FeedsInto> {
+    let value = value.filter(|found| found.is_object())?;
+    Some(FeedsInto {
+        parent_id: id(value, "parentId")?,
+        parent_name: text(value, "parentName"),
+        rule: parse_qualifier_rule(value.get("rule")),
+        applied: moment(value, "applied"),
+    })
+}
+
+/// The body for `POST /api/t/{id}/edit_format`.
+///
+/// Deliberately short of what the endpoint accepts. The best-of plan per round
+/// (`plan`, `perRoundBo`), the seeding policy and the entrant cap are left out
+/// entirely, so the service keeps whatever is there: an absent key takes the
+/// existing value, while a present one is an instruction. None of the three is
+/// read off the event, so anything this sent for them would be a guess that
+/// overwrites.
+///
+/// The structural keys are sent only when they are actually being changed. The
+/// service refuses all four outside signups *as a group*, on presence alone, so
+/// resending an unchanged team size would turn an ordinary bracket-type change
+/// during a draft into "Reopen signups to change the team setup".
+pub fn edit_format_body(format: &FormatDraft, structural: bool) -> Value {
+    // `seeding` and `maxTeams` are deliberately absent, for the same reason
+    // `plan` is: the client does not read either field off the event, so any
+    // value it sent would be a guess. The service treats a present key as an
+    // instruction, so guessing would reset the seeding policy and clear the
+    // entrant cap every time an organiser changed the bracket type.
+    let mut body = json!({
+        "bracketType": match format.bracket_kind {
+            BracketKind::Double => "double",
+            BracketKind::Swiss => "swiss",
+            BracketKind::Single => "single",
+        },
+    });
+    if structural {
+        body["competition"] = json!(match format.competition {
+            Competition::FreeForAll => "ffa",
+            Competition::Team => "team",
+        });
+        body["teamSize"] = json!(format.team_size);
+        body["formation"] = json!(match format.formation {
+            Formation::Draft => "draft",
+            _ => "open",
+        });
+        body["draftOrder"] = json!(if format.draft_snakes {
+            "snake"
+        } else {
+            "linear"
+        });
+    }
+    body
+}
+
+/// The body for `POST /api/t/{id}/phase`.
+///
+/// The config rides along only on `start_bracket`, and only when the organiser
+/// changed something: an absent one lets the service default every value from
+/// the event's stored plan, which is what drawing a bracket did before this
+/// existed and what it still does if the dialog is accepted unchanged.
+pub fn phase_body(phase: TourneyPhase, config: Option<&BracketConfig>) -> Value {
+    let mut body = json!({ "action": phase.as_wire() });
+    let Some(config) = config.filter(|_| phase == TourneyPhase::StartBracket) else {
+        return body;
+    };
+    body["config"] = match config {
+        // A free-for-all is drawn from `ffaCfg` and takes no config at all.
+        BracketConfig::FreeForAll => json!({}),
+        BracketConfig::Single { rounds } => json!({ "rounds": rounds }),
+        BracketConfig::Double {
+            wb,
+            lb,
+            gf,
+            lb_handicap,
+        } => json!({ "wb": wb, "lb": lb, "gf": gf, "lbHandicap": lb_handicap }),
+        BracketConfig::Swiss {
+            rounds,
+            best_of,
+            final_match,
+            final_best_of,
+            fast,
+        } => json!({
+            "rounds": rounds,
+            "bo": best_of,
+            "final": final_match,
+            "finalBo": final_best_of,
+            "fast": fast,
+        }),
+    };
+    body
+}
+
+/// The body for `POST /api/t/{id}/add_caster`.
+///
+/// The id goes as a number here, unlike the organiser and mute lists: this
+/// endpoint is new and reads `b.fafId` directly rather than through the string
+/// keys those two are stored under.
+pub fn add_caster_body(faf_id: i32, name: &str) -> Value {
+    json!({ "fafId": faf_id, "name": name })
+}
+
+/// The body for `POST /api/t/{id}/remove_caster`.
+pub fn remove_caster_body(faf_id: i32) -> Value {
+    json!({ "fafId": faf_id })
+}
+
+/// The body for `POST /api/t/{id}/chat_mute`.
+///
+/// Unmuting is the same call with `unmute` set, not a separate action, and the
+/// name rides along because the service stores it beside the id: the muted list
+/// is built from object keys and has nothing else to resolve a name from.
+pub fn chat_mute_body(faf_id: i32, name: &str, muted: bool) -> Value {
+    json!({ "fafId": faf_id.to_string(), "name": name, "unmute": !muted })
+}
+
+/// The body for `POST /api/t/{id}/chat_delete`.
+///
+/// `room` rather than `roomId`, matching the rest of the chat surface.
+pub fn chat_delete_body(room_id: &str, post_id: &str) -> Value {
+    json!({ "room": room_id, "id": post_id })
+}
+
+/// The body for `POST /api/t/{id}/add_organizer`.
+///
+/// The id is sent as text: the service keeps its organiser list as strings and
+/// compares with `indexOf`, so a number would be added and then never found
+/// again by any of the checks that read it.
+pub fn add_organiser_body(faf_id: i32, name: &str) -> Value {
+    json!({ "fafId": faf_id.to_string(), "name": name })
+}
+
+/// The body for `POST /api/t/{id}/organizer_visibility`.
+pub fn organiser_visibility_body(faf_id: i32, hidden: bool) -> Value {
+    json!({ "fafId": faf_id.to_string(), "hidden": hidden })
+}
+
+/// The body for `POST /api/t/{id}/abandon`.
+///
+/// Taking it back is the same call with `undo`, so there is one action rather
+/// than a pair that could disagree about what the flag means.
+pub fn abandon_body(abandoned: bool) -> Value {
+    json!({ "undo": !abandoned })
+}
+
+/// The body for `POST /api/t/{id}/news_edit`.
+pub fn edit_news_body(news_id: &str, body: &str, important: bool) -> Value {
+    json!({ "id": news_id, "body": body.trim(), "important": important })
+}
+
+/// The body for `POST /api/series` with `action: create` or `update`.
+///
+/// One body for both, because the service takes one: the presence of an id is
+/// what tells them apart, and every other key means the same thing either way.
+/// `category` is sent as `null` to clear the tag, which the service accepts and
+/// an absent key would not.
+pub fn series_body(draft: &SeriesDraft) -> Value {
+    let mut body = json!({
+        "action": if draft.id.trim().is_empty() { "create" } else { "update" },
+        "name": draft.name.trim(),
+        "description": draft.description.trim(),
+        "color": draft.colour.as_wire(),
+        "category": match draft.category {
+            Some(TourneyCategory::Official) => json!("official"),
+            Some(TourneyCategory::Community) => json!("community"),
+            None => Value::Null,
+        },
+    });
+    if !draft.id.trim().is_empty() {
+        body["id"] = json!(draft.id.trim());
+    }
+    body
+}
+
+/// The body for `POST /api/series` with `action: delete`.
+///
+/// Deleting a series does not delete its editions: the service unfiles each of
+/// them and leaves the tournaments alone.
+pub fn delete_series_body(series_id: &str) -> Value {
+    json!({ "action": "delete", "id": series_id })
+}
+
+/// The body for `POST /api/t/{id}/set_series`.
+///
+/// An empty id is how a tournament leaves its series, and is the reason this
+/// takes an `Option` rather than a `&str`: the service reads a blank string as
+/// "unfile me" and an unknown one as an error, so the two must not collapse.
+pub fn set_series_body(series_id: Option<&str>) -> Value {
+    json!({ "seriesId": series_id.unwrap_or_default() })
+}
+
+/// The body for `POST /api/t/{id}/qualifier_add`.
+pub fn qualifier_add_body(tournament_id: &str, rule: QualifierRule) -> Value {
+    json!({
+        "tournamentId": tournament_id,
+        "ruleType": rule.kind.as_wire(),
+        "n": rule.n.max(1),
+    })
+}
+
+/// The body for `POST /api/t/{id}/qualifier_remove`.
+///
+/// Addressed by the link's own id, not the child's: a link removed here keeps
+/// any invites it already sent, which is the service's choice and the reason
+/// removing one is not an undo.
+pub fn qualifier_remove_body(link_id: &str) -> Value {
+    json!({ "id": link_id })
 }
 
 #[cfg(test)]
@@ -973,13 +1555,49 @@ mod tests {
         assert_eq!(body["formation"], "draft");
         assert_eq!(body["bracketType"], "double");
         assert_eq!(body["teamSize"], 2);
-        assert_eq!(body["playerReporting"], true);
+        // Always sent, always off. An absent key would be read as *on*, and the
+        // client has no player reporting path to show for it.
+        assert_eq!(body["playerReporting"], false);
         // Dates go as ISO text: `cleanDate` accepts only strings, and a number
         // would be read as no date at all.
         assert_eq!(body["eventDate"], "2026-08-22T18:00:00Z");
         assert_eq!(body["signupClosesAt"], Value::Null);
         assert_eq!(body["minRating"], 800);
         assert_eq!(body["maxRating"], Value::Null, "an absent bound clears it");
+    }
+
+    #[test]
+    fn the_rating_date_goes_out_as_an_instant_on_both_paths() {
+        // The one date the service stores as a number rather than as text: it
+        // writes `new Date(x).getTime()`. An ISO instant parses to the right
+        // millisecond either way, and `null` is what clears it.
+        let draft = TourneyDraft {
+            name: "Weekend Cup".into(),
+            rating_date: Some(1_787_421_600),
+            ..TourneyDraft::new()
+        };
+        assert_eq!(create_body(&draft)["ratingDate"], "2026-08-22T18:00:00Z");
+        assert_eq!(edit_info_body(&draft)["ratingDate"], "2026-08-22T18:00:00Z");
+
+        let cleared = TourneyDraft {
+            rating_date: None,
+            ..draft
+        };
+        assert_eq!(create_body(&cleared)["ratingDate"], Value::Null);
+        assert_eq!(edit_info_body(&cleared)["ratingDate"], Value::Null);
+    }
+
+    #[test]
+    fn neither_path_ever_turns_player_reporting_on() {
+        // The service reads an absent key as on, so both bodies have to say no
+        // rather than stay quiet. Nothing in the client can show a player's
+        // report, and `report_submit` is gone.
+        let draft = TourneyDraft {
+            name: "Weekend Cup".into(),
+            ..TourneyDraft::new()
+        };
+        assert_eq!(create_body(&draft)["playerReporting"], false);
+        assert_eq!(edit_info_body(&draft)["playerReporting"], false);
     }
 
     #[test]
@@ -1044,5 +1662,332 @@ mod tests {
         let detailed = parse_tourney(&document()).unwrap();
         assert_eq!(detailed.player_count, 2);
         assert_eq!(detailed.team_count, 1);
+    }
+
+    #[test]
+    fn a_format_change_sends_the_team_setup_only_when_it_changes() {
+        // The service refuses those four keys outside signups on *presence*
+        // alone, not on whether they differ. Resending an unchanged team size
+        // alongside a bracket change would be refused for touching neither.
+        let format = FormatDraft {
+            competition: Competition::Team,
+            team_size: 2,
+            formation: Formation::Draft,
+            bracket_kind: BracketKind::Swiss,
+            draft_snakes: true,
+        };
+
+        let bracket_only = edit_format_body(&format, false);
+        assert_eq!(bracket_only["bracketType"], "swiss");
+        for structural in ["competition", "teamSize", "formation", "draftOrder"] {
+            assert!(
+                bracket_only.get(structural).is_none(),
+                "{structural} must not ride along"
+            );
+        }
+
+        let whole = edit_format_body(&format, true);
+        assert_eq!(whole["competition"], "team");
+        assert_eq!(whole["teamSize"], 2);
+        assert_eq!(whole["formation"], "draft");
+        assert_eq!(whole["draftOrder"], "snake");
+
+        // Never sent, in either shape: the client reads none of these off the
+        // event, so any value here would overwrite with a guess.
+        for guessed in ["plan", "perRoundBo", "seeding", "maxTeams"] {
+            assert!(
+                whole.get(guessed).is_none() && bracket_only.get(guessed).is_none(),
+                "{guessed} is not ours to send"
+            );
+        }
+    }
+
+    #[test]
+    fn the_small_organiser_writes_spell_their_ids_the_way_the_service_stores_them() {
+        // Every one of these is keyed by FAF id, and the service keeps those as
+        // *strings*: it builds the lists with `Object.keys` and compares with
+        // `indexOf`. A number would be written and then never found again.
+        assert_eq!(chat_mute_body(101, "Nuggets", true)["fafId"], "101");
+        assert_eq!(add_organiser_body(101, "Nuggets")["fafId"], "101");
+        assert_eq!(organiser_visibility_body(101, true)["fafId"], "101");
+
+        // Muting and unmuting are one action with a flag, so the two can never
+        // disagree about what the flag means.
+        assert_eq!(chat_mute_body(101, "Nuggets", true)["unmute"], false);
+        assert_eq!(chat_mute_body(101, "Nuggets", false)["unmute"], true);
+        assert_eq!(abandon_body(true)["undo"], false);
+        assert_eq!(abandon_body(false)["undo"], true);
+
+        // `room`, not `roomId`, matching the rest of the chat surface.
+        let deleted = chat_delete_body("global", "c1");
+        assert_eq!(deleted["room"], "global");
+        assert_eq!(deleted["id"], "c1");
+
+        assert_eq!(edit_news_body("n1", "  moved  ", true)["body"], "moved");
+    }
+
+    #[test]
+    fn the_best_of_plan_rides_along_with_the_draw_and_nothing_else() {
+        // The step the client was missing: it sent `phase` with the action
+        // alone, so the service used its own defaults and the organiser never
+        // got a say. The config is read on `start_bracket` and there only.
+        let plan = BracketConfig::Single {
+            rounds: vec![3, 3, 5],
+        };
+        let drawn = phase_body(TourneyPhase::StartBracket, Some(&plan));
+        assert_eq!(drawn["action"], "start_bracket");
+        assert_eq!(drawn["config"]["rounds"], json!([3, 3, 5]));
+
+        // Every other step ignores it rather than sending it somewhere it
+        // would not be read.
+        let formed = phase_body(TourneyPhase::FormTeams, Some(&plan));
+        assert!(formed.get("config").is_none());
+
+        // And a draw with nothing to say sends nothing, which is what lets the
+        // service default the whole plan from the event.
+        assert!(phase_body(TourneyPhase::StartBracket, None)
+            .get("config")
+            .is_none());
+    }
+
+    #[test]
+    fn each_format_spells_its_plan_the_way_the_service_reads_it() {
+        // Field names taken from the handler, not guessed: `bo` and `finalBo`
+        // for swiss, `lbHandicap` for the grand final's head start.
+        let double = phase_body(
+            TourneyPhase::StartBracket,
+            Some(&BracketConfig::Double {
+                wb: vec![3, 3],
+                lb: vec![3, 3],
+                gf: 7,
+                lb_handicap: false,
+            }),
+        );
+        assert_eq!(double["config"]["wb"], json!([3, 3]));
+        assert_eq!(double["config"]["lb"], json!([3, 3]));
+        assert_eq!(double["config"]["gf"], 7);
+        assert_eq!(double["config"]["lbHandicap"], false);
+
+        let swiss = phase_body(
+            TourneyPhase::StartBracket,
+            Some(&BracketConfig::Swiss {
+                rounds: 5,
+                best_of: 1,
+                final_match: false,
+                final_best_of: 5,
+                fast: true,
+            }),
+        );
+        assert_eq!(swiss["config"]["rounds"], 5);
+        assert_eq!(swiss["config"]["bo"], 1);
+        assert_eq!(swiss["config"]["final"], false);
+        assert_eq!(swiss["config"]["fast"], true);
+
+        // A free-for-all is drawn from `ffaCfg` and takes an empty config.
+        let ffa = phase_body(TourneyPhase::StartBracket, Some(&BracketConfig::FreeForAll));
+        assert_eq!(ffa["config"], json!({}));
+    }
+
+    #[test]
+    fn the_caster_role_is_read_and_written() {
+        let event = parse_tourney(&json!({
+            "id": "e1a2b",
+            "casters": [{ "fafId": 102, "name": "Ada" }],
+            "viewer": { "loggedIn": 1, "caster": 1 }
+        }))
+        .expect("an event");
+        assert_eq!(event.casters.len(), 1);
+        assert_eq!(event.casters[0].faf_id, 102);
+        assert!(event.viewer.caster, "and this account is one of them");
+
+        // A number here, unlike the organiser and mute lists: this endpoint is
+        // newer and reads `fafId` directly rather than through a string key.
+        assert_eq!(add_caster_body(102, "Ada")["fafId"], 102);
+        assert_eq!(remove_caster_body(102)["fafId"], 102);
+    }
+
+    #[test]
+    fn a_series_list_keeps_the_order_the_service_sorted_it_into() {
+        // The sort key is "is any edition still being played", worked out from
+        // every tournament in the database. The client holds only what it was
+        // sent, so re-sorting here could only ever produce a different answer.
+        let list = parse_series_list(&json!({
+            "series": [
+                {
+                    "id": "s1", "name": "Weekend Ladder", "description": "<p>Monthly</p>",
+                    "color": "amber", "category": "official",
+                    "editions": 4, "activeCount": 1, "lastMs": 1_786_212_000_000i64,
+                    "latestId": "e9", "latestName": "Autumn", "latestDate": "2026-08-01"
+                },
+                {
+                    "id": "s2", "name": "Midweek Blitz", "description": "",
+                    "color": null, "category": null,
+                    "editions": 0, "activeCount": 0, "lastMs": 0
+                }
+            ]
+        }));
+        assert_eq!(
+            list.iter().map(|row| row.id.as_str()).collect::<Vec<_>>(),
+            ["s1", "s2"]
+        );
+
+        let ladder = &list[0];
+        assert_eq!(ladder.colour, SeriesColour::Amber);
+        assert_eq!(ladder.category, Some(TourneyCategory::Official));
+        assert_eq!(
+            ladder.description, "Monthly",
+            "markup is reduced on the way in"
+        );
+        // Milliseconds, unlike every other date on this endpoint: the service
+        // builds this one with `getTime()`.
+        assert_eq!(ladder.last_at, Some(1_786_212_000));
+        assert_eq!(ladder.latest_date, Some(1_785_542_400));
+
+        // An untagged series is untagged, not community: a tournament's
+        // category defaults, a series' does not, and the two show differently.
+        assert_eq!(list[1].category, None);
+        assert_eq!(list[1].colour, SeriesColour::Plain);
+        assert_eq!(list[1].last_at, None, "no activity is no date, not 1970");
+    }
+
+    #[test]
+    fn a_series_detail_carries_its_editions_and_the_right_to_edit_it() {
+        let detail = parse_series_detail(&json!({
+            "series": {
+                "id": "s1", "name": "Weekend Ladder", "description": "Monthly",
+                "color": "blue", "category": "community"
+            },
+            "editions": [{
+                "id": "e9", "name": "Autumn", "status": "finished", "category": "official",
+                "published": 1, "competition": "team", "bracketType": "single", "teamSize": 2,
+                "players": 8, "teams": 4, "eventDate": "2026-08-01T18:00:00Z",
+                "abandoned": 0, "championTeamId": "t1", "champion": "Ada and Grace"
+            }],
+            "canEdit": 1
+        }))
+        .expect("a series");
+
+        assert_eq!(detail.colour, SeriesColour::Blue);
+        assert!(detail.can_edit);
+        let edition = &detail.editions[0];
+        assert_eq!(edition.status, TourneyStatus::Finished);
+        assert_eq!(edition.player_count, 8);
+        assert_eq!(edition.team_count, 4);
+        assert_eq!(edition.champion, "Ada and Grace");
+        // The edition's own category, which need not be the series'.
+        assert_eq!(edition.category, Some(TourneyCategory::Official));
+
+        // A 404 answers `{error}` and nothing to build a series out of.
+        assert!(parse_series_detail(&json!({ "error": "Series not found" })).is_none());
+    }
+
+    #[test]
+    fn a_qualifier_link_reads_its_rule_and_who_could_not_be_invited() {
+        let event = parse_tourney(&json!({
+            "id": "e1a2b",
+            "seriesId": "s1",
+            "seriesName": "Weekend Ladder",
+            "seriesColor": "green",
+            "qualifiers": [
+                {
+                    "id": "q1", "tournamentId": "child", "name": "Qualifier One",
+                    "status": "finished",
+                    "rule": { "type": "points", "n": 3 },
+                    "applied": 1_786_300_000_000i64,
+                    "qualified": ["Ada", "Grace"],
+                    "unreachable": ["Guest"]
+                },
+                {
+                    // Written before the rule field existed, and read the way
+                    // the service reads it: top 1.
+                    "id": "q2", "tournamentId": "gone", "name": "(deleted tournament)",
+                    "status": null, "rule": null
+                }
+            ],
+            "feedsInto": {
+                "parentId": "final", "parentName": "Grand Final",
+                "rule": { "type": "top", "n": 4 }, "applied": null
+            }
+        }))
+        .expect("an event");
+
+        assert_eq!(event.series_id.as_deref(), Some("s1"));
+        assert_eq!(event.series_colour, SeriesColour::Green);
+
+        let applied = &event.qualifiers[0];
+        assert_eq!(applied.rule.kind, QualifierKind::Points);
+        assert_eq!(applied.rule.n, 3);
+        assert_eq!(applied.applied, Some(1_786_300_000));
+        assert_eq!(applied.unreachable, ["Guest"]);
+
+        let orphan = &event.qualifiers[1];
+        assert_eq!(orphan.rule, QualifierRule::default());
+        assert!(
+            orphan.status.is_none(),
+            "no status is a child that has been deleted, not a child at status zero"
+        );
+
+        let parent = event.feeds_into.expect("the parent");
+        assert_eq!(parent.parent_name, "Grand Final");
+        assert_eq!(parent.rule.n, 4);
+        assert!(parent.applied.is_none(), "still being played");
+    }
+
+    #[test]
+    fn filing_and_unfiling_are_told_apart_by_an_empty_id() {
+        // The service reads a blank string as "unfile me" and an unknown one as
+        // an error, so the two must not collapse into each other.
+        assert_eq!(set_series_body(Some("s1"))["seriesId"], "s1");
+        assert_eq!(set_series_body(None)["seriesId"], "");
+    }
+
+    #[test]
+    fn saving_a_series_says_which_of_the_three_actions_it_is() {
+        // One endpoint, three verbs, told apart by `action` alone.
+        let created = series_body(&SeriesDraft {
+            name: "  Weekend Ladder  ".into(),
+            colour: SeriesColour::Red,
+            ..SeriesDraft::default()
+        });
+        assert_eq!(created["action"], "create");
+        assert_eq!(created["name"], "Weekend Ladder");
+        assert_eq!(created["color"], "red");
+        assert!(
+            created.get("id").is_none(),
+            "an id is what makes it an update"
+        );
+        assert_eq!(
+            created["category"],
+            Value::Null,
+            "an untagged series sends null rather than leaving the key out, or the tag cannot be cleared"
+        );
+
+        let updated = series_body(&SeriesDraft {
+            id: "s1".into(),
+            name: "Weekend Ladder".into(),
+            category: Some(TourneyCategory::Official),
+            ..SeriesDraft::default()
+        });
+        assert_eq!(updated["action"], "update");
+        assert_eq!(updated["id"], "s1");
+        assert_eq!(updated["category"], "official");
+
+        assert_eq!(delete_series_body("s1")["action"], "delete");
+    }
+
+    #[test]
+    fn a_qualifier_body_clamps_the_cutoff_the_way_the_service_does() {
+        let body = qualifier_add_body(
+            "child",
+            QualifierRule {
+                kind: QualifierKind::Points,
+                n: 0,
+            },
+        );
+        assert_eq!(body["tournamentId"], "child");
+        assert_eq!(body["ruleType"], "points");
+        assert_eq!(body["n"], 1, "the service clamps to 1 and so does this");
+        // Removal is addressed by the link, not by the child it points at.
+        assert_eq!(qualifier_remove_body("q1")["id"], "q1");
     }
 }

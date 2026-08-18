@@ -1,42 +1,27 @@
 // Binding a map pool to a round.
 //
-// The one organiser task this client does better than the website, and the
-// reason it is here at all: picking maps is a search through FAF's vault with
-// previews, which the client already has and a web form cannot match. Setting
-// the tournament up, its format, its rating gates, its series, stays on the
-// website behind a link.
+// The last of the three map steps: `MapDbPanel` holds the maps, `PoolEditor`
+// groups them into a pool with a ban/pick order, and this says which round is
+// played from which pool.
+//
+// The rounds do not wait for the draw. `roundPlan` reads them off the bracket
+// once it exists and **projects** them from the expected entrant count before
+// that, which is what lets an organiser prepare the whole map plan during
+// signups. That is also when they do it: a bracket is drawn on the day, and a
+// panel that offered nothing until then would send them to the website for the
+// one step that has to happen first.
 //
 // The pool's maps are the tournament's own records, which carry a name an
-// organiser typed by hand. `matchVaultMap` is the twin of the Rust resolver
+// organiser typed or picked. `matchVaultMap` is the twin of the Rust resolver
 // that turns `Setons Clutch`, `scmp_009` and `SCMP_009.v0001` into the same
 // vault entry, so a preview appears without anyone maintaining a lookup table.
 
 import { Button } from "../../design-system/Button";
 import type { MapPool, Tourney, VaultMap } from "../../ipc/bindings";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { BRACKET_LABELS, matchVaultMap } from "./tourneyPresentation";
-
-/**
- * Every round of the drawn bracket, as the keys the server assigns pools by.
- *
- * `{bracket}:{round}` is the server's own grammar, taken from the matches
- * rather than assembled from a guess about how it spells its bracket names.
- */
-export function roundKeys(event: Tourney): { key: string; bracket: string; round: number }[] {
-  const wire: Record<string, string> = {
-    winners: "wb",
-    losers: "lb",
-    grandFinal: "gf",
-    swiss: "sw",
-    freeForAll: "ffa",
-  };
-  const seen = new Map<string, { key: string; bracket: string; round: number }>();
-  for (const entry of event.matches) {
-    const key = `${wire[entry.bracket]}:${entry.round}`;
-    if (!seen.has(key)) seen.set(key, { key, bracket: entry.bracket, round: entry.round });
-  }
-  return [...seen.values()];
-}
+import { BRACKET_LABELS } from "./tourneyPresentation";
+import { matchVaultMap, roundPlan, type RoundKey } from "../../shared/tourneyRules";
 
 interface MapPoolPanelProps {
   event: Tourney;
@@ -47,7 +32,8 @@ interface MapPoolPanelProps {
 
 export function MapPoolPanel({ event, vault, busy, onAssign }: MapPoolPanelProps) {
   const { t } = useTranslation();
-  const rounds = roundKeys(event);
+  const plan = roundPlan(event);
+  const rounds = plan.keys;
 
   if (event.mapPools.length === 0) {
     return <p className="muted">{t("tournaments.pools.none")}</p>;
@@ -61,17 +47,58 @@ export function MapPoolPanel({ event, vault, busy, onAssign }: MapPoolPanelProps
 
   return (
     <div className="tournament-pools">
-      {rounds.length === 0 && <p className="muted">{t("tournaments.pools.noRounds")}</p>}
+      {rounds.length === 0 && (
+        <p className="muted">
+          {t(
+            event.competition === "freeForAll"
+              ? "tournaments.pools.noRoundsFfa"
+              : "tournaments.pools.noRoundsYet",
+          )}
+        </p>
+      )}
 
-      {rounds.map(({ key, bracket, round }) => {
+      {/* One pool for the whole event is the common case by a distance: most
+          tournaments play the same maps every round, and setting that as eight
+          separate dropdowns is eight chances to miss one. */}
+      {rounds.length > 1 && (
+        <div className="tournament-pool-all surface">
+          <label className="tournament-field">
+            <span>{t("tournaments.pools.everyRound")}</span>
+            <select
+              value=""
+              disabled={busy}
+              onChange={(changed) => {
+                const poolId = changed.target.value;
+                if (poolId === "") return;
+                for (const round of rounds) onAssign(round.key, poolId);
+              }}
+            >
+              <option value="">{t("tournaments.pools.everyRoundPick")}</option>
+              {event.mapPools.map((candidate) => (
+                <option value={candidate.id} key={candidate.id}>
+                  {candidate.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      {/* Said plainly rather than left to be discovered: these rounds are a
+          projection, and a field that grows or shrinks before the draw changes
+          them. */}
+      {plan.projected && rounds.length > 0 && (
+        <p className="muted">
+          {t("tournaments.pools.projected", { count: String(plan.teams) })}
+        </p>
+      )}
+
+      {rounds.map(({ key, bracket, round, lastRound }: RoundKey) => {
         const pool = poolFor(key);
         return (
           <section className="surface tournament-pool-round" key={key}>
             <header className="tournament-pool-header">
-              <h5>
-                {t(BRACKET_LABELS[bracket as keyof typeof BRACKET_LABELS])}{" "}
-                {t("tournaments.bracket.round", { round })}
-              </h5>
+              <h5>{roundLabel(t, bracket, round, lastRound)}</h5>
               <label className="tournament-field">
                 <span className="visually-hidden">{t("tournaments.pools.assign")}</span>
                 <select
@@ -124,6 +151,32 @@ export function MapPoolPanel({ event, vault, busy, onAssign }: MapPoolPanelProps
       })}
     </div>
   );
+}
+
+/**
+ * A round's name as the bracket itself would say it.
+ *
+ * "Semifinals" rather than "Winners round 3", because that is what an organiser
+ * calls the round they are assigning maps to. Only the deepest rounds get a
+ * name; anything earlier stays numbered, which is also what the website does.
+ */
+function roundLabel(
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+  bracket: string,
+  round: number,
+  lastRound: number,
+): string {
+  if (bracket === "grandFinal") return t("tournaments.pools.roundGrandFinal");
+  if (bracket === "swiss") return t("tournaments.pools.roundSwiss", { round });
+  if (bracket === "losers") {
+    return round === lastRound
+      ? t("tournaments.pools.roundLosersFinal")
+      : t("tournaments.pools.roundLosers", { round });
+  }
+  if (round === lastRound) return t("tournaments.pools.roundFinal");
+  if (round === lastRound - 1) return t("tournaments.pools.roundSemi");
+  if (round === lastRound - 2) return t("tournaments.pools.roundQuarter");
+  return `${t(BRACKET_LABELS[bracket as keyof typeof BRACKET_LABELS])} ${t("tournaments.bracket.round", { round })}`;
 }
 
 interface ManageLinkProps {

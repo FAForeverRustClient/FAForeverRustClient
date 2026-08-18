@@ -176,6 +176,34 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
         : state;
     case "accountSearchCleared":
       return { ...state, accountSearch: { query: "", matches: [], status: { type: "idle" } } };
+
+    case "seriesLoading":
+      return { ...state, seriesStatus: { type: "loading" } };
+    case "seriesLoaded": {
+      const { series } = event.payload;
+      // A series deleted while its page was open leaves the page showing
+      // editions nothing can reload, under a heading nobody can reach.
+      const stillPresent =
+        state.openSeries === null || series.some((row) => row.id === state.openSeries?.id);
+      return {
+        ...state,
+        series,
+        seriesStatus: { type: "ready" },
+        openSeries: stillPresent ? state.openSeries : null,
+      };
+    }
+    case "seriesFailed":
+      return {
+        ...state,
+        seriesStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    case "seriesOpened":
+      return { ...state, openSeries: event.payload.detail };
+    case "seriesClosed":
+      return { ...state, openSeries: null };
   }
 }
 

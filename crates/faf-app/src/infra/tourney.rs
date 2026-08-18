@@ -15,14 +15,16 @@
 //! `if (sub === '...')` in a four-thousand-line handler. Every body below was
 //! read out of that handler rather than guessed, and the field names are its
 //! own: `key` rather than `round` for a pool assignment, `text` rather than
-//! `body` for a chat post. When the server changes, `docs/faf-tournaments-api.md`
-//! changes with it.
+//! `body` for a chat post. Read the handler before writing any request body;
+//! `docs/tourney-audit.md` records what has actually been checked
+//! against it and what has not.
 
 use async_trait::async_trait;
 use faf_domain::protocol::tourney;
 use faf_domain::state::{
-    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, PoolDraft, SeedOrder, Tourney,
-    TourneyDraft, TourneyPhase,
+    Article, BracketConfig, ChatPost, ChatRoom, FfaReport, FormatDraft, HostingStatus, MapDraft,
+    MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
+    TourneyDraft, TourneyPhase, TourneySeries,
 };
 use serde_json::{json, Value};
 
@@ -264,8 +266,13 @@ impl TourneyPort for TourneyClient {
         self.act(tournament_id, "publish", json!({})).await
     }
 
-    async fn advance(&self, tournament_id: &str, phase: TourneyPhase) -> Result<(), RequestError> {
-        self.act(tournament_id, "phase", json!({ "action": phase.as_wire() }))
+    async fn advance(
+        &self,
+        tournament_id: &str,
+        phase: TourneyPhase,
+        config: Option<&BracketConfig>,
+    ) -> Result<(), RequestError> {
+        self.act(tournament_id, "phase", tourney::phase_body(phase, config))
             .await
     }
 
@@ -535,25 +542,6 @@ impl TourneyPort for TourneyClient {
             .await
     }
 
-    async fn submit_report(
-        &self,
-        tournament_id: &str,
-        report: &MatchReport,
-    ) -> Result<(), RequestError> {
-        self.act(
-            tournament_id,
-            "report_submit",
-            json!({
-                "matchId": report.match_id,
-                "score1": report.score1,
-                "score2": report.score2,
-                "replayIds": report.replay_ids,
-                "drawReplayIds": report.draw_replay_ids,
-            }),
-        )
-        .await
-    }
-
     async fn confirm_report(
         &self,
         tournament_id: &str,
@@ -660,11 +648,152 @@ impl TourneyPort for TourneyClient {
         .await
     }
 
+    async fn draft_pick(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "pick", json!({ "playerId": player_id }))
+            .await
+    }
+
+    async fn draft_undo(&self, tournament_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "undo_pick", json!({})).await
+    }
+
+    async fn set_captains(
+        &self,
+        tournament_id: &str,
+        player_ids: &[String],
+    ) -> Result<(), RequestError> {
+        // `phase` again, like every other lifecycle step: the action name is in
+        // the body, not the path.
+        self.act(
+            tournament_id,
+            "phase",
+            json!({ "action": "set_captains", "captainIds": player_ids }),
+        )
+        .await
+    }
+
+    async fn report_ffa(
+        &self,
+        tournament_id: &str,
+        report: &FfaReport,
+    ) -> Result<(), RequestError> {
+        let mut body = json!({ "matchId": report.match_id });
+        if report.points.is_empty() {
+            body["winners"] = json!(report.winners);
+        } else {
+            // An object keyed by team id, which is how the handler indexes it.
+            body["points"] = Value::Object(
+                report
+                    .points
+                    .iter()
+                    .map(|scored| (scored.team_id.clone(), json!(scored.points)))
+                    .collect(),
+            );
+        }
+        self.act(tournament_id, "report", body).await
+    }
+
+    async fn veto_act(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        map_id: &str,
+    ) -> Result<(), RequestError> {
+        // `map` rather than `mapId`: the handler compares it against the ids in
+        // `remaining`, case-insensitively, but the key is its own.
+        self.act(
+            tournament_id,
+            "veto_action",
+            json!({ "matchId": match_id, "map": map_id }),
+        )
+        .await
+    }
+
+    async fn veto_set_sides(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        team_a: &str,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "veto_setab",
+            json!({ "matchId": match_id, "teamA": team_a }),
+        )
+        .await
+    }
+
+    async fn veto_undo(&self, tournament_id: &str, match_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "veto_undo", json!({ "matchId": match_id }))
+            .await
+    }
+
+    async fn save_map(&self, tournament_id: &str, map: &MapDraft) -> Result<(), RequestError> {
+        let mut body = json!({
+            "name": map.name.trim(),
+            "description": map.description.trim(),
+            "published": map.published,
+        });
+        // An empty id means "add"; sending it anyway would have the service look
+        // for a map called "" and refuse.
+        if !map.id.is_empty() {
+            body["id"] = json!(map.id);
+        }
+        self.act(tournament_id, "map_save", body).await
+    }
+
+    async fn publish_map(
+        &self,
+        tournament_id: &str,
+        map_id: &str,
+        published: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "map_publish",
+            json!({ "id": map_id, "published": published }),
+        )
+        .await
+    }
+
+    async fn delete_map(&self, tournament_id: &str, map_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "map_delete", json!({ "id": map_id }))
+            .await
+    }
+
+    async fn publish_pool(
+        &self,
+        tournament_id: &str,
+        pool_id: &str,
+        published: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "pool_publish",
+            json!({ "id": pool_id, "published": published }),
+        )
+        .await
+    }
+
+    async fn delete_pool(&self, tournament_id: &str, pool_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "pool_delete", json!({ "id": pool_id }))
+            .await
+    }
+
     async fn save_pool(&self, tournament_id: &str, pool: &PoolDraft) -> Result<(), RequestError> {
         let mut body = json!({
             "name": pool.name,
             "mapIds": pool.map_ids,
             "bo": pool.best_of.unwrap_or(1),
+            // Objects, and the side is upper case: `cleanSequence` keeps only
+            // `{action, team}` pairs whose team is exactly `A` or `B`, and
+            // silently drops the rest. Sending the serde spelling would post an
+            // order and store none.
+            "sequence": pool
+                .sequence
+                .iter()
+                .map(|step| json!({ "action": step.action.as_wire(), "team": step.team.as_wire() }))
+                .collect::<Vec<_>>(),
         });
         // An empty id creates; the server distinguishes on the key being
         // present at all, so it is left out rather than sent blank.
@@ -673,11 +802,212 @@ impl TourneyPort for TourneyClient {
         }
         self.act(tournament_id, "pool_save", body).await
     }
+
+    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
+        let document = self.get("series", &[]).await?;
+        Ok(tourney::parse_series_list(&document))
+    }
+
+    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
+        let document = self
+            .get(&format!("series/{}", encode(series_id)), &[])
+            .await?;
+        tourney::parse_series_detail(&document)
+            .ok_or_else(|| RequestError::not_found("That series no longer exists."))
+    }
+
+    async fn save_series(&self, draft: &SeriesDraft) -> Result<(), RequestError> {
+        // Not a tournament write: `series` is a top-level collection, and all
+        // three of its verbs are one POST distinguished by `action`.
+        self.send(
+            reqwest::Method::POST,
+            "series",
+            &[],
+            Some(tourney::series_body(draft)),
+        )
+        .await
+        .map(|_| ())
+    }
+
+    async fn delete_series(&self, series_id: &str) -> Result<(), RequestError> {
+        self.send(
+            reqwest::Method::POST,
+            "series",
+            &[],
+            Some(tourney::delete_series_body(series_id)),
+        )
+        .await
+        .map(|_| ())
+    }
+
+    async fn set_series(
+        &self,
+        tournament_id: &str,
+        series_id: Option<&str>,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "set_series",
+            tourney::set_series_body(series_id),
+        )
+        .await
+    }
+
+    async fn add_qualifier(
+        &self,
+        tournament_id: &str,
+        qualifier_id: &str,
+        rule: QualifierRule,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "qualifier_add",
+            tourney::qualifier_add_body(qualifier_id, rule),
+        )
+        .await
+    }
+
+    async fn remove_qualifier(
+        &self,
+        tournament_id: &str,
+        link_id: &str,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "qualifier_remove",
+            tourney::qualifier_remove_body(link_id),
+        )
+        .await
+    }
+
+    async fn edit_format(
+        &self,
+        tournament_id: &str,
+        format: &FormatDraft,
+        structural: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "edit_format",
+            tourney::edit_format_body(format, structural),
+        )
+        .await
+    }
+
+    async fn mute_chat(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+        muted: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "chat_mute",
+            tourney::chat_mute_body(faf_id, name, muted),
+        )
+        .await
+    }
+
+    async fn delete_chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        post_id: &str,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "chat_delete",
+            tourney::chat_delete_body(room_id, post_id),
+        )
+        .await
+    }
+
+    async fn add_organiser(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "add_organizer",
+            tourney::add_organiser_body(faf_id, name),
+        )
+        .await
+    }
+
+    async fn set_organiser_visibility(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        hidden: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "organizer_visibility",
+            tourney::organiser_visibility_body(faf_id, hidden),
+        )
+        .await
+    }
+
+    async fn abandon(&self, tournament_id: &str, abandoned: bool) -> Result<(), RequestError> {
+        self.act(tournament_id, "abandon", tourney::abandon_body(abandoned))
+            .await
+    }
+
+    async fn edit_news(
+        &self,
+        tournament_id: &str,
+        news_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "news_edit",
+            tourney::edit_news_body(news_id, body, important),
+        )
+        .await
+    }
+
+    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError> {
+        // No body: the service reads the account off the session and marks
+        // every announcement up to the newest one.
+        self.act(tournament_id, "news_read", json!({})).await
+    }
+
+    async fn set_caster(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+        casting: bool,
+    ) -> Result<(), RequestError> {
+        // Two endpoints rather than a flag, unlike muting: removal takes only
+        // the id, so there is nothing for a shared body to carry.
+        if casting {
+            self.act(
+                tournament_id,
+                "add_caster",
+                tourney::add_caster_body(faf_id, name),
+            )
+            .await
+        } else {
+            self.act(
+                tournament_id,
+                "remove_caster",
+                tourney::remove_caster_body(faf_id),
+            )
+            .await
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use faf_domain::state::{PoolAction, PoolSide};
     use serde_json::json;
 
     fn client(base: &str) -> TourneyClient {
@@ -704,6 +1034,27 @@ mod tests {
                 .as_str(),
             "http://localhost:3000/api/tournaments"
         );
+    }
+
+    #[test]
+    fn a_pool_step_is_spelled_the_way_the_service_reads_it() {
+        // `lib/match.js::cleanSequence` keeps a step only if its team is exactly
+        // `A` or `B`, and drops anything else without an error. The serde
+        // spelling of `PoolSide` is lower case, so sending the enum straight
+        // through would post a ban/pick order and store an empty one.
+        assert_eq!(PoolSide::A.as_wire(), "A");
+        assert_eq!(PoolSide::B.as_wire(), "B");
+        assert_eq!(PoolAction::Ban.as_wire(), "ban");
+        assert_eq!(PoolAction::Pick.as_wire(), "pick");
+
+        // And the round trip holds, which is what keeps an edited pool the same
+        // pool: read the service's spelling, write it back unchanged.
+        for side in [PoolSide::A, PoolSide::B] {
+            assert_eq!(PoolSide::from_wire(side.as_wire()), side);
+        }
+        for action in [PoolAction::Ban, PoolAction::Pick] {
+            assert_eq!(PoolAction::from_wire(action.as_wire()), action);
+        }
     }
 
     #[test]

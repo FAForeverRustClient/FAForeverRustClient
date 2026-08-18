@@ -15,17 +15,26 @@
 import type { CSSProperties } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import type { PlayerSummary, Tourney, TourneyMatch } from "../../ipc/bindings";
+import type {
+  FfaReport,
+  PlayerSummary,
+  Tourney,
+  TourneyMatch,
+  VaultMap,
+} from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
+import { FfaLobby } from "./FfaLobby";
 import { PlayerChip } from "./PlayerChip";
+import { VetoPanel } from "./VetoPanel";
 import { BRACKET_LABELS, isMyMatch, myTeamId } from "./tourneyPresentation";
+import { mayReport } from "../../shared/tourneyRules";
 
 interface Column {
   round: number;
   matches: TourneyMatch[];
 }
 
-export interface Side {
+interface Side {
   bracket: TourneyMatch["bracket"];
   columns: Column[];
 }
@@ -90,6 +99,11 @@ interface BracketViewProps {
   onReport: (entry: TourneyMatch) => void;
   onAnswer: (entry: TourneyMatch, accept: boolean) => void;
   onHost: (entry: TourneyMatch) => void;
+  vault: VaultMap[];
+  onVetoAct: (matchId: string, mapId: string) => void;
+  onVetoSetSides: (matchId: string, teamA: string) => void;
+  onVetoUndo: (matchId: string) => void;
+  onReportFfa: (report: FfaReport) => void;
 }
 
 export function BracketView({
@@ -99,6 +113,11 @@ export function BracketView({
   onReport,
   onAnswer,
   onHost,
+  vault,
+  onVetoAct,
+  onVetoSetSides,
+  onVetoUndo,
+  onReportFfa,
 }: BracketViewProps) {
   const { t } = useTranslation();
   const sides = groupIntoSides(event.matches);
@@ -142,6 +161,11 @@ export function BracketView({
                         busy={busyMatchId === entry.id}
                         onReport={() => onReport(entry)}
                         onAnswer={(accept) => onAnswer(entry, accept)}
+                        vault={vault}
+                        onVetoAct={onVetoAct}
+                        onVetoSetSides={onVetoSetSides}
+                        onVetoUndo={onVetoUndo}
+                        onReportFfa={onReportFfa}
                         onHost={() => onHost(entry)}
                       />
                     ))}
@@ -164,6 +188,11 @@ interface MatchCardProps {
   onReport: () => void;
   onAnswer: (accept: boolean) => void;
   onHost: () => void;
+  vault: VaultMap[];
+  onVetoAct: (matchId: string, mapId: string) => void;
+  onVetoSetSides: (matchId: string, teamA: string) => void;
+  onVetoUndo: (matchId: string) => void;
+  onReportFfa: (report: FfaReport) => void;
 }
 
 function MatchCard({
@@ -174,8 +203,26 @@ function MatchCard({
   onReport,
   onAnswer,
   onHost,
+  vault,
+  onVetoAct,
+  onVetoSetSides,
+  onVetoUndo,
+  onReportFfa,
 }: MatchCardProps) {
   const { t } = useTranslation();
+  // A free-for-all lobby has entrants rather than two sides, so the card below
+  // would draw it as "TBD vs TBD". Its own shape, same place in the column.
+  if (entry.bracket === "freeForAll") {
+    return (
+      <FfaLobby
+        event={event}
+        entry={entry}
+        profiles={profiles}
+        busy={busy}
+        onReport={onReportFfa}
+      />
+    );
+  }
   const mine = myTeamId(event);
   const pending = entry.pendingReport;
   // Twins of `Tourney::may_report` and `may_confirm`. Offering a control the
@@ -185,13 +232,7 @@ function MatchCard({
     (entry.status === "ready" || entry.status === "live") &&
     entry.team1 !== null &&
     entry.team2 !== null;
-  // Twin of `Tourney::may_report`. Only the organiser records a result, and a
-  // finished match stays reportable because `report` is also the correction path.
-  const mayReport =
-    event.viewer.organiser &&
-    entry.bracket !== "freeForAll" &&
-    entry.team1 !== null &&
-    entry.team2 !== null;
+  const reportable = mayReport(event, entry);
   const mayAnswer = pending !== null && isMyMatch(event, entry) && pending.byTeam !== mine;
 
   const teamName = (teamId: string | null): string => {
@@ -267,7 +308,7 @@ function MatchCard({
                 <Icon name="play" size={14} /> {t("tournaments.match.host")}
               </Button>
             )}
-            {mayReport && (
+            {reportable && (
               <Button variant="primary" onClick={onReport} disabled={busy}>
                 {t(
                   busy
@@ -281,6 +322,22 @@ function MatchCard({
           </>
         )}
       </div>
+
+      {/* The ban and pick run, under the match it belongs to rather than in a
+          section of its own: it is about these two teams and nothing else, and
+          a separate tab would make a captain hunt for their own turn. */}
+      {entry.veto !== null && event.veto.enabled && (
+        <VetoPanel
+          event={event}
+          entry={entry}
+          vault={vault}
+          profiles={profiles}
+          busy={busy}
+          onAct={onVetoAct}
+          onSetSides={onVetoSetSides}
+          onUndo={onVetoUndo}
+        />
+      )}
     </div>
   );
 }

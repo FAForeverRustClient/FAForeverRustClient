@@ -17,15 +17,7 @@ import { Icon } from "../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerChip } from "./PlayerChip";
-import {
-  mayRename,
-  myInvites,
-  profileOf,
-  selfOrganised,
-  teamMembers,
-  teamRating,
-  wouldExceedCap,
-} from "./tourneyPresentation";
+import { mayRename, myInvites, profileOf, selfOrganised, teamMembers, teamRating, wouldExceedCap } from "../../shared/tourneyRules";
 
 interface TeamsPanelProps {
   event: Tourney;

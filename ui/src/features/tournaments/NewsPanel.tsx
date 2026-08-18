@@ -16,13 +16,18 @@ interface NewsPanelProps {
   event: Tourney;
   busy: boolean;
   onPost: (body: string, important: boolean) => void;
+  onEdit: (newsId: string, body: string, important: boolean) => void;
   onDelete: (newsId: string) => void;
 }
 
-export function NewsPanel({ event, busy, onPost, onDelete }: NewsPanelProps) {
+export function NewsPanel({ event, busy, onPost, onEdit, onDelete }: NewsPanelProps) {
   const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [important, setImportant] = useState(false);
+  /** The post being corrected, if any. */
+  const [editing, setEditing] = useState<{ id: string; body: string; important: boolean } | null>(
+    null,
+  );
   const organiser = event.viewer.organiser;
 
   return (
@@ -89,13 +94,78 @@ export function NewsPanel({ event, busy, onPost, onDelete }: NewsPanelProps) {
                     {t("tournaments.news.importantBadge")}
                   </span>
                 )}
+                {/* A post that has itself been corrected is worth flagging:
+                    the thing these announce is usually a schedule, and a
+                    schedule that changed twice is not the same news. */}
+                {post.editedAt !== null && (
+                  <span className="muted">{t("tournaments.news.edited")}</span>
+                )}
                 {organiser && (
-                  <Button disabled={busy} onClick={() => onDelete(post.id)}>
-                    {t("tournaments.news.remove")}
-                  </Button>
+                  <>
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        setEditing({ id: post.id, body: post.body, important: post.important })
+                      }
+                    >
+                      {t("tournaments.news.edit")}
+                    </Button>
+                    <Button disabled={busy} onClick={() => onDelete(post.id)}>
+                      {t("tournaments.news.remove")}
+                    </Button>
+                  </>
                 )}
               </div>
-              <p className="tournament-description">{post.body}</p>
+              {editing?.id === post.id ? (
+                <form
+                  className="tournament-news-edit"
+                  onSubmit={(submitted) => {
+                    submitted.preventDefault();
+                    if (editing.body.trim() === "") return;
+                    onEdit(editing.id, editing.body, editing.important);
+                    setEditing(null);
+                  }}
+                >
+                  <textarea
+                    value={editing.body}
+                    autoFocus
+                    rows={3}
+                    maxLength={1000}
+                    aria-label={t("tournaments.news.compose")}
+                    onChange={(changed) =>
+                      setEditing((held) =>
+                        held === null ? held : { ...held, body: changed.target.value },
+                      )
+                    }
+                  />
+                  <div className="tournament-news-actions">
+                    <label className="tournament-check">
+                      <input
+                        type="checkbox"
+                        checked={editing.important}
+                        onChange={(changed) =>
+                          setEditing((held) =>
+                            held === null ? held : { ...held, important: changed.target.checked },
+                          )
+                        }
+                      />
+                      <span>{t("tournaments.news.important")}</span>
+                    </label>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={busy || editing.body.trim() === ""}
+                    >
+                      {t("tournaments.news.save")}
+                    </Button>
+                    <Button type="button" disabled={busy} onClick={() => setEditing(null)}>
+                      {t("tournaments.news.cancel")}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <p className="tournament-description">{post.body}</p>
+              )}
             </li>
           ))}
         </ol>

@@ -2,8 +2,8 @@
 //
 // Separate from `EntrantAdmin`, which is about getting people *into* the event.
 // This is about arranging them once they are in: hand the armband to somebody
-// else, move a player across, park a substitute, attach a note, and — only where
-// the event fetches no ratings — set one by hand.
+// else, move a player across, park a substitute, attach a note, and, only where
+// the event fetches no ratings, set one by hand.
 //
 // All four are refused by the service once the bracket is drawn, because the
 // draw is made from the teams. So the whole section disappears then rather than
@@ -14,7 +14,7 @@ import { Button } from "../../design-system/Button";
 import type { PlayerSummary, Tourney, TourneyPlayer } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerChip } from "./PlayerChip";
-import { maySetRating, profileOf, teamMembers } from "./tourneyPresentation";
+import { maySetRating, profileOf, teamMembers } from "../../shared/tourneyRules";
 
 interface TeamAdminProps {
   event: Tourney;
@@ -23,6 +23,7 @@ interface TeamAdminProps {
   onSetCaptain: (teamId: string, playerId: string) => void;
   onMovePlayer: (playerId: string, teamId: string | null) => void;
   onEditPlayer: (playerId: string, note: string, rating: number | null) => void;
+  onSetDivision: (teamId: string, division: number) => void;
 }
 
 export function TeamAdmin(props: TeamAdminProps) {
@@ -164,6 +165,27 @@ export function TeamAdmin(props: TeamAdminProps) {
                 <span className="muted">
                   {team.playerIds.length}/{event.teamSize}
                 </span>
+                {/* Splitting the field creates the divisions; this is how one
+                    team moves between them afterwards, which is what fixes an
+                    uneven split without redoing the whole thing. */}
+                {event.divisions > 1 && (
+                  <label className="tournament-division-pick">
+                    <span className="muted">{t("tournaments.teamAdmin.division")}</span>
+                    <select
+                      value={team.division}
+                      disabled={busy}
+                      onChange={(changed) =>
+                        props.onSetDivision(team.id, Number(changed.target.value))
+                      }
+                    >
+                      {Array.from({ length: event.divisions }, (_, index) => (
+                        <option key={index} value={index}>
+                          {index + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </div>
               <ul className="tournament-entrant-list">
                 {teamMembers(event, team).map((member) =>

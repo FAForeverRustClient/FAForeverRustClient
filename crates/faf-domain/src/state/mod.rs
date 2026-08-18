@@ -112,13 +112,23 @@ pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
 };
 pub use tourney::{
-    map_key, match_vault_map, Article, BracketKind, BracketSide, ChatPost, ChatRoom, Competition,
-    DraftRejection, Formation, HostingStatus, InviteStatus, MapPool, MatchLink, MatchReport,
-    MatchStatus, NewsPost, PendingReport, PoolAssignment, PoolDraft, RatingGate, RatingKind,
-    SeedOrder, Seeding, SignupMode, TeamRequest, Tourney, TourneyAction, TourneyActionFailure,
-    TourneyCategory, TourneyCommand, TourneyDraft, TourneyEvent, TourneyInvite, TourneyLoadStatus,
-    TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus,
-    TourneyTeam, TourneyViewer,
+    map_key, match_vault_map, Article, AuditEntry, BracketKind, BracketSide, ChatMute, ChatPost,
+    ChatRoom, Competition, DraftRejection, Formation, HostingStatus, InviteStatus, MapDraft,
+    MapPool, MatchLink, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
+    PoolAssignment, PoolDraft, PoolRejection, PoolSide, PoolStep, RatingGate, RatingKind,
+    SeedOrder, Seeding, SignupMode, Standing, StandingOutcome, StandingsKind, TeamExit,
+    TeamRequest, Tourney, TourneyAction, TourneyActionFailure, TourneyCategory, TourneyCommand,
+    TourneyDraft, TourneyEvent, TourneyInvite, TourneyLoadStatus, TourneyMap, TourneyMatch,
+    TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
+};
+pub use tourney::{
+    BracketConfig, Caster, FeedsInto, FormatDraft, Qualifier, QualifierKind, QualifierRejection,
+    QualifierRule, RoomBadge, RoundKey, RoundPlan, SeriesColour, SeriesDetail, SeriesDraft,
+    SeriesEdition, TourneySeries, BEST_OF_CHOICES,
+};
+pub use tourney::{
+    Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
+    VetoDecider, VetoMode, VetoTurn,
 };
 pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,

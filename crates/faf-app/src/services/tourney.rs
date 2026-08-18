@@ -8,8 +8,8 @@
 //! response. Any local simulation of it would drift within one round.
 
 use faf_domain::state::{
-    MatchReport, PoolDraft, SeedOrder, TourneyAction, TourneyActionFailure, TourneyCommand,
-    TourneyDraft, TourneyEvent,
+    MatchReport, PoolDraft, SeedOrder, SeriesDraft, TourneyAction, TourneyActionFailure,
+    TourneyCommand, TourneyDraft, TourneyEvent,
 };
 
 use crate::ports::RequestError;
@@ -27,8 +27,6 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // dispatch both would let the two drift apart.
             load_detail(&tournament_id, ctx, out).await;
         }
-
-        TourneyCommand::LoadDetail { tournament_id } => load_detail(&tournament_id, ctx, out).await,
 
         TourneyCommand::SignUp { tournament_id } => {
             write(TourneyAction::SigningUp, ctx, out, {
@@ -63,26 +61,6 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             write(TourneyAction::CheckingIn, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.check_in(&tournament_id).await }
-            })
-            .await;
-        }
-
-        TourneyCommand::SubmitReport {
-            tournament_id,
-            report,
-        } => {
-            let action = TourneyAction::SubmittingReport {
-                match_id: report.match_id.clone(),
-            };
-            write(action, ctx, out, {
-                let tournament_id = tournament_id.clone();
-                let report = clean(report);
-                async move {
-                    ctx.ports
-                        .tourney
-                        .submit_report(&tournament_id, &report)
-                        .await
-                }
             })
             .await;
         }
@@ -137,6 +115,30 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 room_id: room_id.clone(),
             });
             read_room(&tournament_id, &room_id, ctx, out).await;
+        }
+
+        TourneyCommand::RefreshChat {
+            tournament_id,
+            room_id,
+        } => {
+            // Both halves, because they answer different questions: the room
+            // is what is being read, and the list carries the unread counts,
+            // the `@` marks and the organiser bells for every other room.
+            //
+            // Silent throughout. A failed poll is logged and dropped rather
+            // than shown: the room on screen is still the last good one, and a
+            // banner every few seconds on a flaky connection would be worse
+            // than the gap it reports.
+            match ctx.ports.tourney.chat_read(&tournament_id, &room_id).await {
+                Ok(posts) => out.emit(TourneyEvent::ChatLoaded { room_id, posts }),
+                Err(error) => {
+                    tracing::debug!(%error, "a tournament chat poll came back empty-handed");
+                    return;
+                }
+            }
+            if let Ok(rooms) = ctx.ports.tourney.chat_rooms(&tournament_id).await {
+                out.emit(TourneyEvent::ChatRoomsLoaded { rooms });
+            }
         }
 
         TourneyCommand::PostChat {
@@ -223,10 +225,17 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         TourneyCommand::Advance {
             tournament_id,
             phase,
+            config,
         } => {
             write(TourneyAction::Advancing { phase }, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.advance(&tournament_id, phase).await }
+                let config = config.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .advance(&tournament_id, phase, config.as_ref())
+                        .await
+                }
             })
             .await;
         }
@@ -672,6 +681,195 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::DraftPickPlayer {
+            tournament_id,
+            player_id,
+        } => {
+            write(TourneyAction::Drafting, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .draft_pick(&tournament_id, &player_id)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::DraftUndo { tournament_id } => {
+            write(TourneyAction::Drafting, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.draft_undo(&tournament_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetCaptains {
+            tournament_id,
+            player_ids,
+        } => {
+            write(TourneyAction::Drafting, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_captains(&tournament_id, &player_ids)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::ReportFfa {
+            tournament_id,
+            report,
+        } => {
+            let action = TourneyAction::ReportingFfa {
+                match_id: report.match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.report_ffa(&tournament_id, &report).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::VetoAct {
+            tournament_id,
+            match_id,
+            map_id,
+        } => {
+            let action = TourneyAction::Vetoing {
+                match_id: match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .veto_act(&tournament_id, &match_id, &map_id)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::VetoSetSides {
+            tournament_id,
+            match_id,
+            team_a,
+        } => {
+            let action = TourneyAction::Vetoing {
+                match_id: match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .veto_set_sides(&tournament_id, &match_id, &team_a)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::VetoUndo {
+            tournament_id,
+            match_id,
+        } => {
+            let action = TourneyAction::Vetoing {
+                match_id: match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.veto_undo(&tournament_id, &match_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::SaveMap { tournament_id, map } => {
+            write(TourneyAction::SavingMap, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.save_map(&tournament_id, &map).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::PublishMap {
+            tournament_id,
+            map_id,
+            published,
+        } => {
+            let action = TourneyAction::PublishingMap {
+                map_id: map_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .publish_map(&tournament_id, &map_id, published)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::DeleteMap {
+            tournament_id,
+            map_id,
+        } => {
+            let action = TourneyAction::DeletingMap {
+                map_id: map_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.delete_map(&tournament_id, &map_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::PublishPool {
+            tournament_id,
+            pool_id,
+            published,
+        } => {
+            let action = TourneyAction::PublishingPool {
+                pool_id: pool_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .publish_pool(&tournament_id, &pool_id, published)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::DeletePool {
+            tournament_id,
+            pool_id,
+        } => {
+            let action = TourneyAction::DeletingPool {
+                pool_id: pool_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .delete_pool(&tournament_id, &pool_id)
+                        .await
+                }
+            })
+            .await;
+        }
+
         TourneyCommand::SavePool {
             tournament_id,
             pool,
@@ -684,7 +882,290 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::LoadSeries => load_series(ctx, out).await,
+
+        TourneyCommand::OpenSeries { series_id } => open_series(&series_id, ctx, out).await,
+
+        TourneyCommand::CloseSeries => out.emit(TourneyEvent::SeriesClosed),
+
+        TourneyCommand::SaveSeries { draft } => {
+            let draft = trimmed_series(draft);
+            write_series(TourneyAction::SavingSeries, ctx, out, {
+                let draft = draft.clone();
+                async move { ctx.ports.tourney.save_series(&draft).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::DeleteSeries { series_id } => {
+            let action = TourneyAction::DeletingSeries {
+                series_id: series_id.clone(),
+            };
+            // The open series is the one being deleted more often than not, so
+            // it is closed before the reload rather than after: a detail pane
+            // showing a series the next list will not contain is a flicker of
+            // something that no longer exists.
+            write_series(action, ctx, out, {
+                let series_id = series_id.clone();
+                async move { ctx.ports.tourney.delete_series(&series_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetSeries {
+            tournament_id,
+            series_id,
+        } => {
+            // Touches both sides: the event gains or loses its label, and the
+            // series gains or loses an edition. `write` reloads the event; the
+            // series list is reloaded after it, or the count beside the name
+            // would stay a request behind.
+            write(TourneyAction::SettingSeries, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let series_id = series_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_series(&tournament_id, series_id.as_deref())
+                        .await
+                }
+            })
+            .await;
+            load_series(ctx, out).await;
+        }
+
+        TourneyCommand::AddQualifier {
+            tournament_id,
+            qualifier_id,
+            rule,
+        } => {
+            write(TourneyAction::AddingQualifier, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let qualifier_id = qualifier_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .add_qualifier(&tournament_id, &qualifier_id, rule)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::RemoveQualifier {
+            tournament_id,
+            link_id,
+        } => {
+            let action = TourneyAction::RemovingQualifier {
+                link_id: link_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let link_id = link_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .remove_qualifier(&tournament_id, &link_id)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::EditFormat {
+            tournament_id,
+            format,
+        } => {
+            // Whether the team setup is among the changes is decided here,
+            // against the event on screen, because the service refuses those
+            // four keys outside signups on presence alone. Sending an unchanged
+            // team size alongside a bracket-type change would be refused with
+            // "Reopen signups to change the team setup", for a change that
+            // touched neither teams nor signups.
+            let structural = open_event(out)
+                .map(|event| format.is_structural(&event))
+                .unwrap_or(true);
+            write(TourneyAction::EditingFormat, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let format = format.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .edit_format(&tournament_id, &format, structural)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::MuteChat {
+            tournament_id,
+            faf_id,
+            name,
+            muted,
+        } => {
+            // No room reload afterwards, unlike deleting a post below: muting
+            // changes who may speak, not what has been said. The event reload
+            // `write` ends with carries the muted list and `chatMutedMe`, which
+            // is everything that moved.
+            let action = TourneyAction::MutingChat { faf_id };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let name = name.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .mute_chat(&tournament_id, faf_id, &name, muted)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::DeleteChatPost {
+            tournament_id,
+            room_id,
+            post_id,
+        } => {
+            let action = TourneyAction::DeletingChatPost {
+                post_id: post_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let room_id = room_id.clone();
+                let post_id = post_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .delete_chat_post(&tournament_id, &room_id, &post_id)
+                        .await
+                }
+            })
+            .await;
+            // A deleted post is only gone once the room is read again: the
+            // event reload above does not carry the conversation.
+            read_room(&tournament_id, &room_id, ctx, out).await;
+        }
+
+        TourneyCommand::AddOrganiser {
+            tournament_id,
+            faf_id,
+            name,
+        } => {
+            write(TourneyAction::AddingOrganiser, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let name = name.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .add_organiser(&tournament_id, faf_id, &name)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetCaster {
+            tournament_id,
+            faf_id,
+            name,
+            casting,
+        } => {
+            let action = TourneyAction::SettingCaster { faf_id };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let name = name.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_caster(&tournament_id, faf_id, &name, casting)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetOrganiserVisibility {
+            tournament_id,
+            faf_id,
+            hidden,
+        } => {
+            let action = TourneyAction::SettingOrganiserVisibility { faf_id };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_organiser_visibility(&tournament_id, faf_id, hidden)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::Abandon {
+            tournament_id,
+            abandoned,
+        } => {
+            write(TourneyAction::Abandoning, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.abandon(&tournament_id, abandoned).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::EditNews {
+            tournament_id,
+            news_id,
+            body,
+            important,
+        } => {
+            let action = TourneyAction::EditingNews {
+                news_id: news_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                let news_id = news_id.clone();
+                let body = body.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .edit_news(&tournament_id, &news_id, &body, important)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::MarkNewsRead { tournament_id } => {
+            // Deliberately not a `write`: nothing on screen changes except a
+            // badge, and announcing it would blank the pane and reload the list
+            // for an act the reader did not ask for. A failure is logged rather
+            // than shown, for the same reason: the badge staying is not worth an
+            // error banner over the announcements it belongs to.
+            if let Err(error) = ctx.ports.tourney.mark_news_read(&tournament_id).await {
+                tracing::warn!(%error, "could not mark the tournament news as read");
+                return;
+            }
+            load_detail(&tournament_id, ctx, out).await;
+        }
+
         TourneyCommand::DismissActionError => out.emit(TourneyEvent::ActionErrorDismissed),
+    }
+}
+
+/// The event the pane is showing, read back out of the state.
+fn open_event(out: &EventSink) -> Option<faf_domain::state::Tourney> {
+    out.with_state(|state| state.tourney.open_event().cloned())
+}
+
+/// Trim what a form leaves behind, the way every other draft is trimmed.
+fn trimmed_series(draft: SeriesDraft) -> SeriesDraft {
+    SeriesDraft {
+        id: draft.id.trim().to_string(),
+        name: draft.name.trim().to_string(),
+        description: draft.description.trim().to_string(),
+        ..draft
     }
 }
 
@@ -862,7 +1343,7 @@ const MIN_ACCOUNT_QUERY: usize = 2;
 /// Deliberately the *same* lookup the player card's picker uses
 /// (`PlayerCardPort::search_players`), not a tournament-specific one: an entrant
 /// is a FAF account, and the client already knows how to find and show one. The
-/// tournament service has no player search of its own worth using — it matches
+/// tournament service has no player search of its own worth using: it matches
 /// names exactly and answers "no such player", which is the refusal this
 /// removes.
 async fn search_accounts(query: &str, ctx: &ServiceCtx, out: &EventSink) {
@@ -997,6 +1478,75 @@ async fn write_selecting(
 /// Which event the pane is showing, read back after the reduce.
 fn selected_id(out: &EventSink) -> Option<String> {
     out.with_state(|state| state.tourney.selected_id.clone())
+}
+
+async fn load_series(ctx: &ServiceCtx, out: &EventSink) {
+    out.emit(TourneyEvent::SeriesLoading);
+    match ctx.ports.tourney.series().await {
+        Ok(series) => out.emit(TourneyEvent::SeriesLoaded { series }),
+        Err(error) => out.emit(TourneyEvent::SeriesFailed {
+            reason: error.to_string(),
+            kind: error.kind(),
+        }),
+    }
+}
+
+async fn open_series(series_id: &str, ctx: &ServiceCtx, out: &EventSink) {
+    match ctx.ports.tourney.series_detail(series_id).await {
+        Ok(detail) => out.emit(TourneyEvent::SeriesOpened {
+            detail: Box::new(detail),
+        }),
+        // Reported through the list's own status rather than swallowed: the
+        // pane it would have filled stays empty otherwise, with nothing saying
+        // why.
+        Err(error) => out.emit(TourneyEvent::SeriesFailed {
+            reason: error.to_string(),
+            kind: error.kind(),
+        }),
+    }
+}
+
+/// A write against the series collection rather than against one tournament.
+///
+/// Reloads the series list instead of the event list, and re-reads the open
+/// series where it survived: renaming one from its own page has to change the
+/// heading above the editions, not only the row in the list behind it.
+async fn write_series(
+    action: TourneyAction,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    operation: impl std::future::Future<Output = Result<(), RequestError>>,
+) {
+    out.emit(TourneyEvent::ActionStarted {
+        action: action.clone(),
+    });
+    let _guard = ctx.tourney_mutation.acquire().await;
+
+    match operation.await {
+        Ok(()) => {
+            out.emit(TourneyEvent::ActionSucceeded {
+                action,
+                select: None,
+            });
+            load_series(ctx, out).await;
+            // Deleting the open series drops it in the reduce above, so this
+            // asks the state rather than assuming either way.
+            if let Some(open) = out.with_state(|state| {
+                state
+                    .tourney
+                    .open_series
+                    .as_ref()
+                    .map(|series| series.id.clone())
+            }) {
+                open_series(&open, ctx, out).await;
+            }
+            // Unfiling an edition changes the event too: its label goes.
+            if let Some(tournament_id) = selected_id(out) {
+                load_detail(&tournament_id, ctx, out).await;
+            }
+        }
+        Err(error) => out.emit(failed(action, &error)),
+    }
 }
 
 fn failed(action: TourneyAction, error: &RequestError) -> TourneyEvent {

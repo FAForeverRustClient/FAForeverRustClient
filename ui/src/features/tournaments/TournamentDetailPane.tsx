@@ -2,7 +2,7 @@
 //
 // The order is the order a player needs them: what this is, what the rules say,
 // who else is in, where the bracket stands, what people are saying. Manage is
-// last and is a link, because setting an event up stays on the website.
+// last because it is the organiser's, and only they are shown it.
 //
 // Entering is the primary action and sits in the header, not in a section. It
 // is the one thing a player opens this tab to do.
@@ -13,32 +13,38 @@ import { Icon } from "../../design-system/Icon";
 import type {
   AccountSearch,
   Article,
+  BracketConfig,
   ChatPost,
   ChatRoom,
+  FfaReport,
+  MapDraft,
+  MapListStatus,
+  PoolDraft,
   PlayerSummary,
+  FormatDraft,
+  QualifierRule,
   SeedOrder,
+  SeriesDraft,
   Tourney,
   TourneyLoadStatus,
   TourneyMatch,
   TourneyPhase,
+  TourneySeries,
   VaultMap,
 } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { AuditLogPanel } from "./AuditLogPanel";
 import { BracketView } from "./BracketView";
 import { ChatPanel } from "./ChatPanel";
+import { DraftPanel } from "./DraftPanel";
 import { EntrantsPanel } from "./EntrantsPanel";
 import { TeamsPanel } from "./TeamsPanel";
 import { ManagePanel } from "./ManagePanel";
 import { NewsPanel } from "./NewsPanel";
-import {
-  formatDay,
-  formatMoment,
-  formatOf,
-  ratingGateOf,
-  selfOrganised,
-  unreadTotal,
-} from "./tourneyPresentation";
+import { StandingsPanel } from "./StandingsPanel";
+import { formatDay, formatMoment, formatOf, ratingGateOf } from "./tourneyPresentation";
+import { selfOrganised, standingsKind, unreadNews, unreadTotal } from "../../shared/tourneyRules";
 
 type Section =
   | "overview"
@@ -46,9 +52,12 @@ type Section =
   | "rules"
   | "entrants"
   | "teams"
+  | "draft"
   | "bracket"
+  | "standings"
   | "chat"
-  | "manage";
+  | "manage"
+  | "log";
 
 const SECTION_LABELS: Record<Section, MessageKey> = {
   overview: "tournaments.section.overview",
@@ -56,17 +65,25 @@ const SECTION_LABELS: Record<Section, MessageKey> = {
   rules: "tournaments.section.rules",
   entrants: "tournaments.section.entrants",
   teams: "tournaments.section.teams",
+  draft: "tournaments.section.draft",
   bracket: "tournaments.section.bracket",
+  standings: "tournaments.section.standings",
   chat: "tournaments.section.chat",
   manage: "tournaments.section.manage",
+  log: "tournaments.section.log",
 };
 
 interface TournamentDetailPaneProps {
   event: Tourney;
   detailLoading: boolean;
+  /** Every series, for the organiser's picker. Loaded when Manage is opened. */
+  series: TourneySeries[];
+  /** The list behind this detail, as candidates for a qualifier link. */
+  events: Tourney[];
   profiles: PlayerSummary[];
   articles: Article[];
   vault: VaultMap[];
+  vaultStatus: MapListStatus;
   chatRooms: ChatRoom[];
   openRoomId: string | null;
   chatPosts: ChatPost[];
@@ -88,7 +105,8 @@ interface TournamentDetailPaneProps {
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
   onEdit: () => void;
-  onAdvance: (phase: TourneyPhase) => void;
+  onPublish: () => void;
+  onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
   onArchive: () => void;
   onCreateTeam: (name: string) => void;
   onRequestJoin: (teamId: string) => void;
@@ -103,6 +121,35 @@ interface TournamentDetailPaneProps {
   onSetCaptain: (teamId: string, playerId: string) => void;
   onMovePlayer: (playerId: string, teamId: string | null) => void;
   onEditPlayer: (playerId: string, note: string, rating: number | null) => void;
+  onSetDivision: (teamId: string, division: number) => void;
+  onSaveMap: (map: MapDraft) => void;
+  onPublishMap: (mapId: string, published: boolean) => void;
+  onDeleteMap: (mapId: string) => void;
+  onSavePool: (pool: PoolDraft) => void;
+  onPublishPool: (poolId: string, published: boolean) => void;
+  onDeletePool: (poolId: string) => void;
+  onDeleteChatPost: (roomId: string, postId: string) => void;
+  onRefreshChat: (roomId: string) => void;
+  onMute: (fafId: number, name: string, muted: boolean) => void;
+  onAddOrganiser: (fafId: number, name: string) => void;
+  onSetOrganiserVisibility: (fafId: number, hidden: boolean) => void;
+  onSetCaster: (fafId: number, name: string, casting: boolean) => void;
+  onAbandon: (abandoned: boolean) => void;
+  onEditFormat: (format: FormatDraft) => void;
+  onEditNews: (newsId: string, body: string, important: boolean) => void;
+  onMarkNewsRead: () => void;
+  onLoadSeries: () => void;
+  onSetSeries: (seriesId: string | null) => void;
+  onSaveSeries: (draft: SeriesDraft) => void;
+  onAddQualifier: (qualifierId: string, rule: QualifierRule) => void;
+  onRemoveQualifier: (linkId: string) => void;
+  onVetoAct: (matchId: string, mapId: string) => void;
+  onVetoSetSides: (matchId: string, teamA: string) => void;
+  onVetoUndo: (matchId: string) => void;
+  onReportFfa: (report: FfaReport) => void;
+  onDraftPick: (playerId: string) => void;
+  onDraftUndo: () => void;
+  onSetCaptains: (playerIds: string[]) => void;
   onRespondSignup: (playerId: string, accept: boolean) => void;
   onRemovePlayer: (playerId: string) => void;
   onInvitePlayer: (name: string) => void;
@@ -143,6 +190,11 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     // beside the bracket, not the point of it, and a tab nobody opens should
     // not cost a request per tournament.
     if (next === "chat" && props.chatRooms.length === 0) props.onOpenChat();
+    // The series list is a second endpoint, and most visits never open Manage.
+    if (next === "manage" && props.series.length === 0) props.onLoadSeries();
+    // Opening the announcements is what reading them means. The service keeps
+    // the mark, so the badge clears on every device rather than once here.
+    if (next === "news" && unreadNews(event) > 0) props.onMarkNewsRead();
   };
 
   return (
@@ -183,10 +235,31 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           // to be told it exists. Teams only exist where there are teams to
           // form: a solo event has none until the organiser makes them.
           .filter((candidate) => candidate !== "manage" || event.viewer.organiser)
+          // The log is the organiser's too, and only where the service sent
+          // one: it withholds `tlog` from everyone else, so an empty section
+          // would be indistinguishable from an event nothing has happened in.
+          .filter(
+            (candidate) =>
+              candidate !== "log" || (event.viewer.organiser && event.auditLog.length > 0),
+          )
           .filter(
             (candidate) =>
               candidate !== "teams" || selfOrganised(event) || event.teams.length > 0,
           )
+          // The draft is a section only where there is one: a draft-formation
+          // event before it starts, or one running. Everywhere else it would be
+          // a tab that opens on nothing.
+          .filter(
+            (candidate) =>
+              candidate !== "draft" ||
+              event.draft !== null ||
+              (event.viewer.organiser && event.formation === "draft"),
+          )
+          // Standings exist once there is something to stand on: a drawn
+          // bracket, or an import that arrived with its own final table. Before
+          // that the tab would open on "nothing yet", which is a worse answer
+          // than not offering it.
+          .filter((candidate) => candidate !== "standings" || standingsKind(event) !== "none")
           // News is a section only when there is news, or somebody who can
           // write it. An empty tab that nobody can fill is a dead end.
           .filter(
@@ -204,6 +277,12 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               {t(SECTION_LABELS[candidate])}
               {candidate === "entrants" && ` (${event.playerCount})`}
               {candidate === "news" && event.news.length > 0 && ` (${event.news.length})`}
+              {/* Two different counts on purpose: the news tab says how many
+                  announcements there are, and the badge beside it how many are
+                  new to this account. */}
+              {candidate === "news" && unreadNews(event) > 0 && (
+                <span className="tournament-badge">{unreadNews(event)}</span>
+              )}
               {candidate === "chat" && unread > 0 && (
                 <span className="tournament-badge">{unread}</span>
               )}
@@ -220,6 +299,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           event={event}
           busy={busy}
           onPost={props.onPostNews}
+          onEdit={props.onEditNews}
           onDelete={props.onDeleteNews}
         />
       )}
@@ -273,7 +353,28 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onReport={props.onReport}
           onAnswer={props.onAnswer}
           onHost={props.onHost}
+          vault={props.vault}
+          onVetoAct={props.onVetoAct}
+          onVetoSetSides={props.onVetoSetSides}
+          onVetoUndo={props.onVetoUndo}
+          onReportFfa={props.onReportFfa}
         />
+      )}
+
+      {section === "draft" && (
+        <DraftPanel
+          event={event}
+          profiles={props.profiles}
+          busy={busy}
+          onPick={props.onDraftPick}
+          onUndo={props.onDraftUndo}
+          onSetCaptains={props.onSetCaptains}
+          onStart={() => props.onAdvance("startDraft")}
+        />
+      )}
+
+      {section === "standings" && (
+        <StandingsPanel event={event} profiles={props.profiles} />
       )}
 
       {section === "chat" && (
@@ -286,18 +387,27 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           busy={busy}
           onOpenRoom={props.onOpenRoom}
           onPost={props.onPost}
+          onDeletePost={props.onDeleteChatPost}
+          onMute={props.onMute}
+          onRefresh={props.onRefreshChat}
         />
       )}
+
+      {section === "log" && <AuditLogPanel event={event} />}
 
       {section === "manage" && (
         <ManagePanel
           event={event}
           vault={props.vault}
+          vaultStatus={props.vaultStatus}
+          series={props.series}
+          events={props.events}
           profiles={props.profiles}
           accountSearch={props.accountSearch}
           onSearchAccounts={props.onSearchAccounts}
           busy={busy}
           onEdit={props.onEdit}
+          onPublish={props.onPublish}
           onAdvance={props.onAdvance}
           onArchive={props.onArchive}
           onAssignPool={props.onAssignPool}
@@ -306,6 +416,23 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onSetCaptain={props.onSetCaptain}
           onMovePlayer={props.onMovePlayer}
           onEditPlayer={props.onEditPlayer}
+          onSetDivision={props.onSetDivision}
+          onSaveMap={props.onSaveMap}
+          onPublishMap={props.onPublishMap}
+          onDeleteMap={props.onDeleteMap}
+          onSavePool={props.onSavePool}
+          onPublishPool={props.onPublishPool}
+          onDeletePool={props.onDeletePool}
+          onSetSeries={props.onSetSeries}
+          onSaveSeries={props.onSaveSeries}
+          onAddQualifier={props.onAddQualifier}
+          onRemoveQualifier={props.onRemoveQualifier}
+          onMute={props.onMute}
+          onAddOrganiser={props.onAddOrganiser}
+          onSetOrganiserVisibility={props.onSetOrganiserVisibility}
+          onSetCaster={props.onSetCaster}
+          onAbandon={props.onAbandon}
+          onEditFormat={props.onEditFormat}
           onRespondSignup={props.onRespondSignup}
           onRemovePlayer={props.onRemovePlayer}
           onInvitePlayer={props.onInvitePlayer}

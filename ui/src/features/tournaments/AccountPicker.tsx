@@ -3,7 +3,7 @@
 // The reason this exists rather than a text field: the tournament server matches
 // names *exactly* and refuses anything it cannot find, so a typed name is a
 // guess that fails after the fact. Here the organiser sees who they are about to
-// add — avatar, login, rating — and clicks the person.
+// add (avatar, login, rating) and clicks the person.
 //
 // It reuses what the client already has rather than adding a lookup of its own:
 // `PlayerCardPort::search_players` (the same batch account search behind the
@@ -68,7 +68,7 @@ export function AccountPicker(props: AccountPickerProps) {
 
   // The search state is shared: the add field and the invite field are two of
   // these, and one slice serves both. So a picker shows results only while they
-  // belong to *its* box — otherwise typing a name to add would drop a list of
+  // belong to *its* box, otherwise typing a name to add would drop a list of
   // clickable matches under the invite field as well.
   //
   // Prefix rather than equality, because the query is debounced and therefore
@@ -81,7 +81,7 @@ export function AccountPicker(props: AccountPickerProps) {
 
   // Only offer the typed text directly when nothing was found: the server may
   // still know a name FAF's own search spells differently, so the escape hatch
-  // stays — but as the fallback, not the primary path.
+  // stays, but as the fallback, not the primary path.
   const searched = mine;
   const found = mine ? props.search.matches : [];
   const loading = mine && props.search.status.type === "loading";

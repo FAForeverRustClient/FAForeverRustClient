@@ -12,11 +12,19 @@ use faf_app::infra::fake_ports;
 use faf_app::ports::{RequestError, TourneyPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    Article, ChatPost, ChatRoom, HostingStatus, MatchReport, MatchStatus, PoolDraft, SeedOrder,
-    Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent, TourneyLoadStatus,
-    TourneyPhase, TourneyStatus,
+    Article, BracketConfig, ChatPost, ChatRoom, FfaReport, FormatDraft, HostingStatus, MapDraft,
+    MatchReport, MatchStatus, PoolDraft, QualifierKind, QualifierRule, SeedOrder, SeriesDetail,
+    SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
+    TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
 use faf_domain::AppEvent;
+
+fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
+    faf_domain::state::TeamPoints {
+        team_id: team_id.into(),
+        points,
+    }
+}
 
 /// A port that reads fine and refuses every write with the same error.
 ///
@@ -54,7 +62,12 @@ impl TourneyPort for RefusingTourney {
     async fn publish(&self, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn advance(&self, _: &str, _: TourneyPhase) -> Result<(), RequestError> {
+    async fn advance(
+        &self,
+        _: &str,
+        _: TourneyPhase,
+        _: Option<&BracketConfig>,
+    ) -> Result<(), RequestError> {
         self.refused()
     }
     async fn archive(&self, _: &str) -> Result<(), RequestError> {
@@ -138,9 +151,6 @@ impl TourneyPort for RefusingTourney {
     async fn check_in(&self, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
-        self.refused()
-    }
     async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
@@ -162,7 +172,91 @@ impl TourneyPort for RefusingTourney {
     async fn assign_pool(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+    async fn draft_pick(&self, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn draft_undo(&self, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_captains(&self, _: &str, _: &[String]) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn report_ffa(&self, _: &str, _: &FfaReport) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn veto_act(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn veto_set_sides(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn veto_undo(&self, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn save_map(&self, _: &str, _: &MapDraft) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn publish_map(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn delete_map(&self, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn publish_pool(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn delete_pool(&self, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
     async fn save_pool(&self, _: &str, _: &PoolDraft) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
+        self.inner.series().await
+    }
+    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
+        self.inner.series_detail(series_id).await
+    }
+    async fn save_series(&self, _: &SeriesDraft) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn delete_series(&self, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_series(&self, _: &str, _: Option<&str>) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn add_qualifier(&self, _: &str, _: &str, _: QualifierRule) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn remove_qualifier(&self, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn edit_format(&self, _: &str, _: &FormatDraft, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn mute_chat(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn delete_chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn add_organiser(&self, _: &str, _: i32, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_organiser_visibility(&self, _: &str, _: i32, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn abandon(&self, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn edit_news(&self, _: &str, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn mark_news_read(&self, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_caster(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
 }
@@ -172,7 +266,7 @@ impl TourneyPort for RefusingTourney {
 /// Signing in is not ceremony. The service identifies the caller by session and
 /// sends no viewer block, so the client works out what this account may do from
 /// its own FAF login. A test that skipped the login would exercise a signed-out
-/// tab — which is exactly what the tab used to be against the real server, while
+/// tab, which is exactly what the tab used to be against the real server, while
 /// these tests passed.
 async fn app() -> App {
     let (app, app_loop) = App::new("test", fake_ports());
@@ -394,71 +488,32 @@ async fn withdrawing_without_an_entry_is_refused_before_a_request_is_made() {
 }
 
 #[tokio::test]
-async fn reporting_a_series_waits_for_the_opponent_before_the_bracket_moves() {
+async fn a_score_raised_elsewhere_is_answerable_here() {
+    // The client never raises a result as a player: recording one is the
+    // organiser's, and `report_submit` insists on a replay id per game besides.
+    // A report raised on the website still has to be answerable, or the tab
+    // shows a decision it cannot make.
     let app = app().await;
     open(&app, "e9z9z").await;
     let before = app.snapshot().tourney.detail.expect("the bracket");
-    assert!(before.may_report(&before.matches[0]));
-
-    app.dispatch(
-        TourneyCommand::SubmitReport {
-            tournament_id: "e9z9z".into(),
-            report: MatchReport {
-                match_id: "m1".into(),
-                score1: 2,
-                score2: 0,
-                // A blank row the player tabbed past: dropped by the service,
-                // or the server would count it and refuse the whole report.
-                replay_ids: vec!["22334455".into(), "  ".into(), "22334456".into()],
-                draw_replay_ids: Vec::new(),
-                winner: None,
-                forfeit: None,
-            },
-        }
-        .into(),
-    )
-    .await
-    .unwrap();
-    settle(&app).await;
-
-    let state = app.snapshot().tourney;
-    assert!(state.action_error.is_none(), "{:?}", state.action_error);
-    let detail = state.detail.expect("still open");
-    let entry = &detail.matches[0];
+    let entry = &before.matches[0];
+    assert!(before.may_confirm(entry), "raised by the other side");
+    assert_eq!(
+        entry.pending_report.as_ref().map(|pending| pending.score1),
+        Some(2)
+    );
     assert_eq!(
         entry.status,
         MatchStatus::Ready,
         "the bracket has not moved"
     );
-    assert_eq!(
-        entry.pending_report.as_ref().map(|pending| pending.score1),
-        Some(2)
-    );
-    assert_eq!(detail.matches[2].team1, None, "the final is still empty");
+    assert_eq!(before.matches[2].team1, None, "the final is still empty");
 }
 
 #[tokio::test]
 async fn a_confirmed_score_advances_the_winner_and_the_state_follows() {
     let app = app().await;
     open(&app, "e9z9z").await;
-    app.dispatch(
-        TourneyCommand::SubmitReport {
-            tournament_id: "e9z9z".into(),
-            report: MatchReport {
-                match_id: "m1".into(),
-                score1: 2,
-                score2: 0,
-                replay_ids: vec!["22334455".into(), "22334456".into()],
-                draw_replay_ids: Vec::new(),
-                winner: None,
-                forfeit: None,
-            },
-        }
-        .into(),
-    )
-    .await
-    .unwrap();
-    settle(&app).await;
 
     app.dispatch(
         TourneyCommand::AnswerReport {
@@ -479,6 +534,619 @@ async fn a_confirmed_score_advances_the_winner_and_the_state_follows() {
         Some("t1"),
         "reloaded from the server rather than patched locally"
     );
+}
+
+#[tokio::test]
+async fn the_map_database_takes_maps_and_hides_them_until_published() {
+    // The step that is easy to skip: the service hides an unpublished map from
+    // players, so a pool built from unpublished maps is a round nobody can read.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    let before = app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("the event")
+        .map_db
+        .len();
+
+    app.dispatch(
+        TourneyCommand::SaveMap {
+            tournament_id: "e1a2b".into(),
+            map: MapDraft {
+                id: String::new(),
+                name: "  Twin Rivers  ".into(),
+                description: "8 spawns".into(),
+                published: false,
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert!(app.snapshot().tourney.action_error.is_none());
+    assert_eq!(event.map_db.len(), before + 1);
+    let added = event.map_db.last().expect("the new map");
+    assert_eq!(added.name, "Twin Rivers", "trimmed before it was sent");
+    assert!(!added.published, "added out of sight, as the service does");
+
+    let map_id = added.id.clone();
+    app.dispatch(
+        TourneyCommand::PublishMap {
+            tournament_id: "e1a2b".into(),
+            map_id: map_id.clone(),
+            published: true,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert!(
+        event
+            .map_db
+            .iter()
+            .any(|map| map.id == map_id && map.published),
+        "the reload carries the new visibility back"
+    );
+
+    // Deleting cascades: the service strips the map from every pool naming it,
+    // and the fake has to, or the tab shows a pool entry it cannot name.
+    app.dispatch(
+        TourneyCommand::DeleteMap {
+            tournament_id: "e1a2b".into(),
+            map_id: map_id.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert!(!event.map_db.iter().any(|map| map.id == map_id));
+    assert!(
+        !event
+            .map_pools
+            .iter()
+            .any(|pool| pool.map_ids.contains(&map_id)),
+        "and out of every pool that named it"
+    );
+}
+
+#[tokio::test]
+async fn publishing_a_pool_publishes_the_maps_in_it() {
+    // A visible pool of invisible maps is a list of raw ids, so the service
+    // publishes the maps along with it.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+
+    app.dispatch(
+        TourneyCommand::SaveMap {
+            tournament_id: "e1a2b".into(),
+            map: MapDraft {
+                id: String::new(),
+                name: "Open Palms".into(),
+                description: String::new(),
+                published: false,
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let hidden = app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("the event")
+        .map_db
+        .last()
+        .expect("the new map")
+        .id
+        .clone();
+
+    app.dispatch(
+        TourneyCommand::SavePool {
+            tournament_id: "e1a2b".into(),
+            pool: PoolDraft {
+                id: String::new(),
+                name: "Finals".into(),
+                map_ids: vec![hidden.clone()],
+                best_of: Some(1),
+                sequence: Vec::new(),
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let pool_id = app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("the event")
+        .map_pools
+        .last()
+        .expect("the new pool")
+        .id
+        .clone();
+
+    app.dispatch(
+        TourneyCommand::PublishPool {
+            tournament_id: "e1a2b".into(),
+            pool_id: pool_id.clone(),
+            published: true,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert!(event
+        .map_pools
+        .iter()
+        .any(|pool| pool.id == pool_id && pool.published));
+    assert!(
+        event
+            .map_db
+            .iter()
+            .any(|map| map.id == hidden && map.published),
+        "its maps came out with it"
+    );
+}
+
+#[tokio::test]
+async fn a_veto_walks_its_order_and_leaves_a_decider() {
+    // The whole run, offline: three steps over four maps, and the survivor
+    // becomes the last game. This is what a Bo3 pool is shaped for.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    let event = app.snapshot().tourney.detail.expect("the bracket");
+    let entry = event
+        .matches
+        .iter()
+        .find(|entry| entry.id == "m2")
+        .expect("the match with a run");
+    let veto = entry.veto.as_ref().expect("a run in progress");
+    assert_eq!(veto.remaining.len(), 4);
+    let turn = veto
+        .current_turn()
+        .expect("sides are set, so somebody is due");
+    assert_eq!(turn.team_id, "t2", "team A opens");
+    assert_eq!(turn.action, faf_domain::state::PoolAction::Ban);
+    // This account captains t1 and is not in this match, so the grid is not
+    // theirs. The offline account is an organiser, which is the other path.
+    assert!(
+        event.may_veto(entry),
+        "an organiser may act for either side"
+    );
+
+    for map_id in ["map1", "map2", "map3"] {
+        app.dispatch(
+            TourneyCommand::VetoAct {
+                tournament_id: "e9z9z".into(),
+                match_id: "m2".into(),
+                map_id: map_id.into(),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+        settle(&app).await;
+        assert!(
+            app.snapshot().tourney.action_error.is_none(),
+            "{:?}",
+            app.snapshot().tourney.action_error
+        );
+    }
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    let veto = event
+        .matches
+        .iter()
+        .find(|entry| entry.id == "m2")
+        .and_then(|entry| entry.veto.as_ref())
+        .expect("the run");
+    assert!(veto.done, "the order has been walked");
+    assert_eq!(veto.banned.len(), 1, "one ban, as the order said");
+    assert_eq!(veto.picks.len(), 2);
+    assert_eq!(veto.picks[0].game, Some(1), "picks are numbered games");
+    assert_eq!(veto.picks[1].game, Some(2));
+    let decider = veto.decider.as_ref().expect("the survivor decides");
+    assert_eq!(decider.map, "map4");
+    assert_eq!(decider.game, 3, "played last");
+    assert!(veto.current_turn().is_none(), "nothing is due any more");
+}
+
+#[tokio::test]
+async fn undoing_a_veto_step_puts_the_map_back() {
+    let app = app().await;
+    open(&app, "e9z9z").await;
+
+    app.dispatch(
+        TourneyCommand::VetoAct {
+            tournament_id: "e9z9z".into(),
+            match_id: "m2".into(),
+            map_id: "map1".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    app.dispatch(
+        TourneyCommand::VetoUndo {
+            tournament_id: "e9z9z".into(),
+            match_id: "m2".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    let veto = event
+        .matches
+        .iter()
+        .find(|entry| entry.id == "m2")
+        .and_then(|entry| entry.veto.as_ref())
+        .expect("the run");
+    assert_eq!(veto.step_index, 0, "back to the start");
+    assert!(veto.banned.is_empty());
+    assert!(
+        veto.remaining.contains(&"map1".to_string()),
+        "and the map is in play again"
+    );
+}
+
+#[tokio::test]
+async fn a_map_that_is_not_in_play_is_refused() {
+    // The service checks against `remaining`, so a stale grid, or a second
+    // click on a map somebody else just took, is turned away rather than
+    // silently taking a different one.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+
+    app.dispatch(
+        TourneyCommand::VetoAct {
+            tournament_id: "e9z9z".into(),
+            match_id: "m2".into(),
+            map_id: "map9".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let failure = app
+        .snapshot()
+        .tourney
+        .action_error
+        .expect("refused in the service's own words");
+    assert!(failure.reason.contains("not available"));
+}
+
+#[tokio::test]
+async fn the_sides_can_be_set_once_and_not_after_the_run_starts() {
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    // `m1` has no run at all, so the control must not be offered for it either.
+    let event = app.snapshot().tourney.detail.expect("the bracket");
+    let plain = event.matches.iter().find(|e| e.id == "m1").unwrap();
+    assert!(!event.may_set_veto_sides(plain), "no run, no sides to set");
+    // `m2` already has its sides, so there is nothing left to choose.
+    let running = event.matches.iter().find(|e| e.id == "m2").unwrap();
+    assert!(!event.may_set_veto_sides(running), "already chosen");
+
+    // Choosing again is refused once a step has been taken.
+    app.dispatch(
+        TourneyCommand::VetoAct {
+            tournament_id: "e9z9z".into(),
+            match_id: "m2".into(),
+            map_id: "map1".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    app.dispatch(
+        TourneyCommand::VetoSetSides {
+            tournament_id: "e9z9z".into(),
+            match_id: "m2".into(),
+            team_a: "t3".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let failure = app.snapshot().tourney.action_error.expect("refused");
+    assert!(failure.reason.contains("already started"));
+}
+
+#[tokio::test]
+async fn a_scored_free_for_all_lobby_adds_to_the_table() {
+    // The mode the bracket cannot express: no two sides, no winner, a points
+    // total that decides. `standings` reads it and nothing else does.
+    let app = app().await;
+    open(&app, "f4f4f").await;
+    let event = app.snapshot().tourney.detail.expect("the event");
+    assert_eq!(
+        event.standings_kind(),
+        faf_domain::state::StandingsKind::Points
+    );
+
+    // One lobby is already scored, so the table has a leader and a tail.
+    let before = event.standings();
+    assert_eq!(before[0].team_id, "t2", "5 points leads");
+    assert_eq!(before[0].wins, 5, "the total rides in `wins`");
+    assert!(
+        before.iter().all(|row| row.place.is_some()),
+        "a points table always ranks every row"
+    );
+
+    let lobby = event
+        .matches
+        .iter()
+        .find(|entry| entry.id == "f2")
+        .expect("the unscored lobby");
+    assert!(event.ffa_is_scored(lobby));
+    assert!(event.may_report_ffa(lobby));
+
+    app.dispatch(
+        TourneyCommand::ReportFfa {
+            tournament_id: "f4f4f".into(),
+            report: FfaReport {
+                match_id: "f2".into(),
+                winners: Vec::new(),
+                points: vec![
+                    team_points("t4", 9),
+                    team_points("t5", 2),
+                    team_points("t6", 4),
+                ],
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let after = state.detail.expect("still open").standings();
+    assert_eq!(after[0].team_id, "t4", "9 points now leads");
+    assert_eq!(after[0].wins, 9);
+}
+
+#[tokio::test]
+async fn a_scored_lobby_needs_a_number_for_every_entrant() {
+    // The service asks for all of them and names the range, so the client
+    // refuses the same way rather than sending a table with a hole in it.
+    let app = app().await;
+    open(&app, "f4f4f").await;
+
+    app.dispatch(
+        TourneyCommand::ReportFfa {
+            tournament_id: "f4f4f".into(),
+            report: FfaReport {
+                match_id: "f2".into(),
+                winners: Vec::new(),
+                points: vec![team_points("t4", 9)],
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let failure = app.snapshot().tourney.action_error.expect("refused");
+    assert!(failure.reason.contains("every player"));
+}
+
+#[tokio::test]
+async fn the_winner_count_a_lobby_wants_follows_the_format() {
+    let app = app().await;
+    open(&app, "f4f4f").await;
+    let event = app.snapshot().tourney.detail.expect("the event");
+    let lobby = event.matches.iter().find(|e| e.id == "f2").unwrap();
+
+    // Two lobbies in the round, so neither is the final, and `advance` decides.
+    assert_eq!(event.ffa_winners_needed(lobby), 1);
+
+    // A three-entrant lobby can never advance everybody: the count is capped at
+    // one short of the field however high `advance` is set.
+    let wide = faf_domain::state::Tourney {
+        ffa: Some(faf_domain::state::FfaConfig {
+            advance: 9,
+            ..event.ffa.clone().unwrap()
+        }),
+        ..event.clone()
+    };
+    assert_eq!(wide.ffa_winners_needed(lobby), 2);
+}
+
+#[tokio::test]
+async fn a_captains_draft_runs_from_signups_to_full_teams() {
+    // The whole flow: two captains marked, signups closed, the order walked,
+    // and the event lands where the bracket can be drawn from it.
+    let app = app().await;
+    open(&app, "d3d3d").await;
+    let event = app.snapshot().tourney.detail.expect("the event");
+    assert_eq!(event.status, TourneyStatus::Signup);
+    assert!(event.draft.is_none(), "not started yet");
+    assert_eq!(event.pending_captains.len(), 2);
+
+    app.dispatch(
+        TourneyCommand::Advance {
+            tournament_id: "d3d3d".into(),
+            phase: TourneyPhase::StartDraft,
+            config: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert!(app.snapshot().tourney.action_error.is_none());
+    assert_eq!(event.status, TourneyStatus::Draft, "the draft is running");
+    let draft = event.draft.as_ref().expect("an order was built");
+    // A 2v2 with two captains needs one pick each: they are already on their
+    // own teams.
+    assert_eq!(draft.order.len(), 2);
+    assert_eq!(draft.current, 0);
+    assert_eq!(event.teams.len(), 2, "one team per captain");
+    assert_eq!(event.undrafted().len(), 2, "the two who are not captains");
+    assert!(event.may_pick(), "the offline account organises it");
+
+    let first = event.undrafted()[0].id.clone();
+    app.dispatch(
+        TourneyCommand::DraftPickPlayer {
+            tournament_id: "d3d3d".into(),
+            player_id: first.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert_eq!(event.undrafted().len(), 1);
+    assert_eq!(
+        event.draft.as_ref().unwrap().current,
+        1,
+        "the clock moved on"
+    );
+    assert_eq!(event.draft_turn(), Some("dt2"), "the other captain is due");
+
+    let second = event.undrafted()[0].id.clone();
+    app.dispatch(
+        TourneyCommand::DraftPickPlayer {
+            tournament_id: "d3d3d".into(),
+            player_id: second,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert!(event.undrafted().is_empty(), "everyone has a team");
+    assert_eq!(
+        event.status,
+        TourneyStatus::Drafted,
+        "the order ran out, so the draft is over"
+    );
+    assert!(event.draft_turn().is_none());
+}
+
+#[tokio::test]
+async fn undoing_a_pick_puts_the_player_back_in_the_pool() {
+    let app = app().await;
+    open(&app, "d3d3d").await;
+    app.dispatch(
+        TourneyCommand::Advance {
+            tournament_id: "d3d3d".into(),
+            phase: TourneyPhase::StartDraft,
+            config: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let picked = app.snapshot().tourney.detail.unwrap().undrafted()[0]
+        .id
+        .clone();
+    app.dispatch(
+        TourneyCommand::DraftPickPlayer {
+            tournament_id: "d3d3d".into(),
+            player_id: picked.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    app.dispatch(
+        TourneyCommand::DraftUndo {
+            tournament_id: "d3d3d".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert_eq!(
+        event.draft.as_ref().unwrap().current,
+        0,
+        "back on the clock"
+    );
+    assert!(
+        event.undrafted().iter().any(|player| player.id == picked),
+        "and back in the pool"
+    );
+    assert!(
+        !event
+            .teams
+            .iter()
+            .any(|team| team.player_ids.contains(&picked)),
+        "and off the team that had them"
+    );
+}
+
+#[tokio::test]
+async fn a_draft_needs_two_captains_before_it_can_start() {
+    let app = app().await;
+    open(&app, "d3d3d").await;
+
+    app.dispatch(
+        TourneyCommand::SetCaptains {
+            tournament_id: "d3d3d".into(),
+            player_ids: vec!["c1".into()],
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    app.dispatch(
+        TourneyCommand::Advance {
+            tournament_id: "d3d3d".into(),
+            phase: TourneyPhase::StartDraft,
+            config: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let failure = app.snapshot().tourney.action_error.expect("refused");
+    assert!(failure.reason.contains("2 captains"));
 }
 
 #[tokio::test]
@@ -768,6 +1436,7 @@ async fn assigning_a_pool_to_a_round_survives_the_reload() {
                 name: "  Semifinals  ".into(),
                 map_ids: vec!["map1".into(), "map2".into()],
                 best_of: Some(3),
+                sequence: Vec::new(),
             },
         }
         .into(),
@@ -861,7 +1530,12 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn publish(&self, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
-        async fn advance(&self, _: &str, _: TourneyPhase) -> Result<(), RequestError> {
+        async fn advance(
+            &self,
+            _: &str,
+            _: TourneyPhase,
+            _: Option<&BracketConfig>,
+        ) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn archive(&self, _: &str) -> Result<(), RequestError> {
@@ -936,9 +1610,6 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn check_in(&self, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
-        async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
-            unreachable!()
-        }
         async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
             unreachable!()
         }
@@ -960,7 +1631,101 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn assign_pool(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
+        async fn draft_pick(&self, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn draft_undo(&self, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_captains(&self, _: &str, _: &[String]) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn report_ffa(&self, _: &str, _: &FfaReport) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn veto_act(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn veto_set_sides(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn veto_undo(&self, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn save_map(&self, _: &str, _: &MapDraft) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn publish_map(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn delete_map(&self, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn publish_pool(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn delete_pool(&self, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
         async fn save_pool(&self, _: &str, _: &PoolDraft) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
+            Err(RequestError::offline("no route to host"))
+        }
+        async fn series_detail(&self, _: &str) -> Result<SeriesDetail, RequestError> {
+            Err(RequestError::offline("no route to host"))
+        }
+        async fn save_series(&self, _: &SeriesDraft) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn delete_series(&self, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_series(&self, _: &str, _: Option<&str>) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn add_qualifier(
+            &self,
+            _: &str,
+            _: &str,
+            _: QualifierRule,
+        ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn remove_qualifier(&self, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn edit_format(&self, _: &str, _: &FormatDraft, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn mute_chat(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn delete_chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn add_organiser(&self, _: &str, _: i32, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_organiser_visibility(
+            &self,
+            _: &str,
+            _: i32,
+            _: bool,
+        ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn abandon(&self, _: &str, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn edit_news(&self, _: &str, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn mark_news_read(&self, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_caster(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
             unreachable!()
         }
     }
@@ -1053,6 +1818,51 @@ async fn a_created_tournament_becomes_the_open_one() {
     assert_eq!(state.selected_id.as_deref(), Some(open.id.as_str()));
     assert_eq!(open.name, "Spring Open", "trimmed before it was sent");
     assert_eq!(open.status, TourneyStatus::Signup);
+    // Signups are open and nobody else can see it. The service creates every
+    // tournament unpublished, which is why the tab has to offer the step.
+    assert!(!open.published, "created unpublished, as the service does");
+    assert!(open.may_publish(), "and the organiser is offered the step");
+}
+
+#[tokio::test]
+async fn publishing_is_what_makes_a_created_event_visible() {
+    // The gap this closes: `create` leaves the event visible to its organiser
+    // alone, so an organiser who never publishes has an event taking signups
+    // that nobody can find.
+    let app = app().await;
+    app.dispatch(TourneyCommand::Load.into()).await.unwrap();
+    settle(&app).await;
+
+    app.dispatch(
+        TourneyCommand::Create {
+            draft: TourneyDraft {
+                name: "Autumn Cup".into(),
+                team_size: 1,
+                ..TourneyDraft::new()
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let id = app.snapshot().tourney.selected_id.expect("the new event");
+
+    app.dispatch(
+        TourneyCommand::Publish {
+            tournament_id: id.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let open = state.detail.expect("still open after the write");
+    assert!(open.published, "the reload carries the new visibility back");
+    assert!(!open.may_publish(), "and the control is withdrawn");
 }
 
 #[tokio::test]
@@ -1072,6 +1882,7 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::StartBracket,
+            config: None,
         }
         .into(),
     )
@@ -1085,6 +1896,7 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
+            config: None,
         }
         .into(),
     )
@@ -1099,6 +1911,7 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::StartBracket,
+            config: None,
         }
         .into(),
     )
@@ -1118,6 +1931,7 @@ async fn reopening_signups_gives_the_teams_back_to_their_players() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
+            config: None,
         }
         .into(),
     )
@@ -1129,6 +1943,7 @@ async fn reopening_signups_gives_the_teams_back_to_their_players() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::ReopenSignups,
+            config: None,
         }
         .into(),
     )
@@ -1212,6 +2027,7 @@ async fn a_refused_lifecycle_write_leaves_the_event_untouched() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
+            config: None,
         }
         .into(),
     )
@@ -1634,6 +2450,7 @@ async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
+            config: None,
         }
         .into(),
     )
@@ -1691,6 +2508,7 @@ async fn splitting_into_divisions_and_back_again() {
         TourneyCommand::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
+            config: None,
         }
         .into(),
     )
@@ -1732,6 +2550,10 @@ async fn splitting_into_divisions_and_back_again() {
 async fn news_is_posted_newest_first_and_can_be_taken_down() {
     let app = app().await;
     open(&app, "e1a2b").await;
+    // Counted against what the fixture already holds rather than absolutely:
+    // the event is seeded with announcements so the unread badge has something
+    // to be unread about, and this test is about the two it posts.
+    let seeded = app.snapshot().tourney.detail.expect("open").news.len();
 
     for body in ["Signups close Friday.", "  Start moved to 19:00 UTC.  "] {
         app.dispatch(
@@ -1748,7 +2570,7 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
     }
 
     let event = app.snapshot().tourney.detail.expect("open");
-    assert_eq!(event.news.len(), 2);
+    assert_eq!(event.news.len(), seeded + 2);
     assert_eq!(
         event.news[0].body, "Start moved to 19:00 UTC.",
         "newest first"
@@ -1767,7 +2589,7 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
     .unwrap();
     settle(&app).await;
     let left = app.snapshot().tourney.detail.expect("open");
-    assert_eq!(left.news.len(), 1);
+    assert_eq!(left.news.len(), seeded + 1);
     assert!(left.news.iter().all(|post| post.id != id));
 
     // An empty post is not a request.
@@ -1782,7 +2604,10 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
     .await
     .unwrap();
     settle(&app).await;
-    assert_eq!(app.snapshot().tourney.detail.unwrap().news.len(), 1);
+    assert_eq!(
+        app.snapshot().tourney.detail.unwrap().news.len(),
+        seeded + 1
+    );
 }
 
 #[tokio::test]
@@ -1794,4 +2619,1078 @@ async fn a_pending_signup_waits_for_the_organiser() {
     // Nothing is pending in the seed, so the list is the empty case and the
     // organiser's panel has nothing to show.
     assert!(event.pending_signups().is_empty());
+}
+
+/// Wait for the series half to settle, which the tournament settle cannot see.
+async fn settle_series(app: &App) {
+    for _ in 0..200 {
+        let state = app.snapshot().tourney;
+        if state.pending.is_none() && state.series_status != TourneyLoadStatus::Loading {
+            tokio::task::yield_now().await;
+            if app.snapshot().tourney.pending.is_none() {
+                return;
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+    }
+    panic!("the series never settled");
+}
+
+#[tokio::test]
+async fn a_series_counts_the_editions_filed_under_it() {
+    // The counts are the whole reason a series list is worth having, and none of
+    // them is stored: the service derives every one from the tournaments. Filing
+    // an event has to move them, or the list is a set of frozen numbers.
+    let app = app().await;
+    app.dispatch(TourneyCommand::LoadSeries.into())
+        .await
+        .unwrap();
+    settle_series(&app).await;
+
+    let series = app.snapshot().tourney.series;
+    let ladder = series
+        .iter()
+        .find(|row| row.id == "s0001")
+        .expect("the seeded series");
+    assert_eq!(ladder.editions, 1, "one edition is filed to begin with");
+    assert_eq!(ladder.active, 0, "and it has finished, so none is live");
+    assert_eq!(ladder.latest_name, "Spring Ladder Cup");
+
+    // File a running event under it. Both counts move, and the latest edition
+    // becomes the newer one.
+    open(&app, "e9z9z").await;
+    app.dispatch(
+        TourneyCommand::SetSeries {
+            tournament_id: "e9z9z".into(),
+            series_id: Some("s0001".into()),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle_series(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let ladder = state
+        .series
+        .iter()
+        .find(|row| row.id == "s0001")
+        .expect("still there");
+    assert_eq!(ladder.editions, 2);
+    assert_eq!(ladder.active, 1, "the running edition counts as live");
+    assert_eq!(ladder.latest_name, "Autumn Invitational");
+
+    // And the event carries the label, which is what a list row draws.
+    let detail = state.detail.expect("still open");
+    assert_eq!(detail.series_id.as_deref(), Some("s0001"));
+    assert_eq!(detail.series_name, "Weekend Ladder");
+}
+
+#[tokio::test]
+async fn leaving_a_series_takes_the_label_with_it() {
+    let app = app().await;
+    open(&app, "e7f7f").await;
+    assert_eq!(
+        app.snapshot()
+            .tourney
+            .detail
+            .expect("the event")
+            .series_name,
+        "Weekend Ladder"
+    );
+
+    app.dispatch(
+        TourneyCommand::SetSeries {
+            tournament_id: "e7f7f".into(),
+            series_id: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle_series(&app).await;
+
+    let state = app.snapshot().tourney;
+    let detail = state.detail.expect("still open");
+    assert!(detail.series_id.is_none());
+    assert!(
+        detail.series_name.is_empty(),
+        "the name goes with the id, or the tab labels an event with a series it left"
+    );
+    assert_eq!(
+        state
+            .series
+            .iter()
+            .find(|row| row.id == "s0001")
+            .expect("the series survives")
+            .editions,
+        0,
+        "unfiling an edition is what the count is derived from"
+    );
+}
+
+#[tokio::test]
+async fn deleting_a_series_unfiles_its_editions_rather_than_deleting_them() {
+    // The half an organiser worries about before pressing the button. The
+    // service unfiles; a client that implied otherwise would be asking them to
+    // take a risk that does not exist.
+    let app = app().await;
+    open(&app, "e7f7f").await;
+    app.dispatch(TourneyCommand::LoadSeries.into())
+        .await
+        .unwrap();
+    settle_series(&app).await;
+    app.dispatch(
+        TourneyCommand::OpenSeries {
+            series_id: "s0001".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle_series(&app).await;
+    assert_eq!(
+        app.snapshot()
+            .tourney
+            .open_series
+            .expect("opened")
+            .editions
+            .len(),
+        1
+    );
+
+    app.dispatch(
+        TourneyCommand::DeleteSeries {
+            series_id: "s0001".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle_series(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    assert!(state.series.is_empty(), "the series itself is gone");
+    assert!(
+        state.open_series.is_none(),
+        "and the page showing it closed rather than lingering over nothing"
+    );
+    // The tournament is still there, and no longer labelled.
+    let detail = state.detail.expect("the event survives");
+    assert_eq!(detail.id, "e7f7f");
+    assert!(detail.series_id.is_none());
+}
+
+#[tokio::test]
+async fn two_series_cannot_share_a_name() {
+    // The one refusal an organiser meets by accident: a series per edition, all
+    // called the same thing.
+    let app = app().await;
+    app.dispatch(TourneyCommand::LoadSeries.into())
+        .await
+        .unwrap();
+    settle_series(&app).await;
+
+    // Trimmed and case-folded, the way the service compares them: the near-miss
+    // is the one that would otherwise get through.
+    app.dispatch(
+        TourneyCommand::SaveSeries {
+            draft: SeriesDraft {
+                name: "  weekend ladder  ".into(),
+                ..SeriesDraft::default()
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle_series(&app).await;
+
+    let state = app.snapshot().tourney;
+    let failure = state.action_error.expect("refused");
+    assert_eq!(failure.action, TourneyAction::SavingSeries);
+    assert!(
+        failure.reason.contains("already exists"),
+        "the service's own sentence: {}",
+        failure.reason
+    );
+    assert_eq!(state.series.len(), 1, "and nothing was created");
+
+    // A name of its own is taken, which is what says the refusal was about the
+    // clash rather than about saving at all.
+    app.dispatch(
+        TourneyCommand::SaveSeries {
+            draft: SeriesDraft {
+                name: "Midweek Blitz".into(),
+                ..SeriesDraft::default()
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle_series(&app).await;
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    assert_eq!(state.series.len(), 2);
+}
+
+#[tokio::test]
+async fn a_finished_qualifier_names_who_went_through_and_who_could_not_be_reached() {
+    // The whole point of the link, and the half that is easy to drop: a team
+    // qualifies, and an invite is addressed to a FAF account. A manually added
+    // entrant has none, so they qualify and cannot be invited. The service
+    // reports that rather than swallowing it, because it is the organiser who
+    // then has to add them by hand.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+
+    app.dispatch(
+        TourneyCommand::AddQualifier {
+            tournament_id: "e1a2b".into(),
+            qualifier_id: "e7f7f".into(),
+            rule: QualifierRule {
+                kind: QualifierKind::Top,
+                n: 2,
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let event = state.detail.expect("still open");
+    let link = event.qualifiers.first().expect("the link");
+    assert_eq!(link.tournament_id, "e7f7f");
+    assert!(
+        link.applied.is_some(),
+        "the child has finished, so the link applied at once"
+    );
+    assert_eq!(link.qualified, ["Ada"], "the champion goes through");
+    assert_eq!(
+        link.unreachable,
+        ["Guest"],
+        "and the runner-up has no account to invite"
+    );
+
+    // Removing it takes the link and leaves the invites, which is why it is not
+    // an undo.
+    app.dispatch(
+        TourneyCommand::RemoveQualifier {
+            tournament_id: "e1a2b".into(),
+            link_id: link.id.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert!(app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("still open")
+        .qualifiers
+        .is_empty());
+}
+
+#[tokio::test]
+async fn a_link_that_would_make_a_cycle_is_refused_by_the_service() {
+    // The one check the client cannot make: it needs the candidate's own links,
+    // which a list row does not carry. Pinned here so the refusal is known to
+    // arrive rather than assumed.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    app.dispatch(
+        TourneyCommand::AddQualifier {
+            tournament_id: "e1a2b".into(),
+            qualifier_id: "e9z9z".into(),
+            rule: QualifierRule::default(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert!(app.snapshot().tourney.action_error.is_none());
+
+    // Now the other way round.
+    open(&app, "e9z9z").await;
+    app.dispatch(
+        TourneyCommand::AddQualifier {
+            tournament_id: "e9z9z".into(),
+            qualifier_id: "e1a2b".into(),
+            rule: QualifierRule::default(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let failure = app
+        .snapshot()
+        .tourney
+        .action_error
+        .expect("the service refuses the cycle");
+    assert_eq!(failure.action, TourneyAction::AddingQualifier);
+    assert!(
+        failure.reason.contains("already draws"),
+        "the service's own sentence: {}",
+        failure.reason
+    );
+}
+
+#[tokio::test]
+async fn silencing_somebody_tells_them_before_they_type() {
+    // The whole reason `chatMutedMe` is read: the service refuses a muted
+    // account's post with a sentence they see only after writing one.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    assert!(
+        app.snapshot()
+            .tourney
+            .detail
+            .expect("the event")
+            .may_post_chat(),
+        "nothing is stopping them to begin with"
+    );
+
+    app.dispatch(
+        TourneyCommand::MuteChat {
+            tournament_id: "e9z9z".into(),
+            faf_id: 101,
+            name: "Nuggets".into(),
+            muted: true,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let event = state.detail.expect("still open");
+    assert!(!event.may_post_chat(), "the composer closes");
+    assert_eq!(event.chat_mutes.len(), 1, "and the organiser sees who");
+    assert_eq!(event.chat_mutes[0].name, "Nuggets");
+
+    // Unmuting is the same command, not a second one that could disagree about
+    // what the flag means.
+    app.dispatch(
+        TourneyCommand::MuteChat {
+            tournament_id: "e9z9z".into(),
+            faf_id: 101,
+            name: "Nuggets".into(),
+            muted: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert!(event.may_post_chat());
+    assert!(event.chat_mutes.is_empty());
+}
+
+#[tokio::test]
+async fn a_deleted_post_is_gone_from_the_room_that_is_open() {
+    // The event reload every write ends with does not carry the conversation,
+    // so a deleted post would sit on screen until the room was reopened.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    app.dispatch(
+        TourneyCommand::LoadChat {
+            tournament_id: "e9z9z".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    app.dispatch(
+        TourneyCommand::OpenRoom {
+            tournament_id: "e9z9z".into(),
+            room_id: "global".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let posts = app.snapshot().tourney.chat_posts;
+    let victim = posts.first().expect("a seeded post").id.clone();
+    assert!(posts.iter().any(|post| post.faf_id.is_some()));
+
+    app.dispatch(
+        TourneyCommand::DeleteChatPost {
+            tournament_id: "e9z9z".into(),
+            room_id: "global".into(),
+            post_id: victim.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    assert!(
+        !state.chat_posts.iter().any(|post| post.id == victim),
+        "the room on screen was re-read, not just the event"
+    );
+}
+
+#[tokio::test]
+async fn a_hidden_organiser_keeps_their_rights_and_loses_the_credit() {
+    // Two lists with different meanings: `organizers` is the public one,
+    // `organizersPublic` in the service's own words, and hiding takes somebody
+    // out of it without taking anything away.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+
+    app.dispatch(
+        TourneyCommand::AddOrganiser {
+            tournament_id: "e1a2b".into(),
+            faf_id: 102,
+            name: "Ada_Lovelace".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let event = state.detail.expect("still open");
+    assert_eq!(event.organiser_accounts.len(), 2);
+    assert!(event.organisers.iter().any(|name| name == "Ada_Lovelace"));
+
+    app.dispatch(
+        TourneyCommand::SetOrganiserVisibility {
+            tournament_id: "e1a2b".into(),
+            faf_id: 102,
+            hidden: true,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("still open");
+    assert_eq!(
+        event.organiser_accounts.len(),
+        2,
+        "still an organiser: hiding is about the credit, not the rights"
+    );
+    assert!(
+        event.organiser_accounts.iter().any(|held| held.hidden),
+        "and the organiser-only list says which of them chose to hide"
+    );
+    assert!(
+        !event.organisers.iter().any(|name| name == "Ada_Lovelace"),
+        "but the public list no longer names them"
+    );
+
+    // Adding the same account twice is the service's own refusal.
+    app.dispatch(
+        TourneyCommand::AddOrganiser {
+            tournament_id: "e1a2b".into(),
+            faf_id: 102,
+            name: "Ada_Lovelace".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let failure = app
+        .snapshot()
+        .tourney
+        .action_error
+        .expect("refused the second time");
+    assert_eq!(failure.action, TourneyAction::AddingOrganiser);
+}
+
+#[tokio::test]
+async fn the_team_setup_locks_a_step_before_the_rest_of_the_format() {
+    // The distinction the panel turns on: the bracket type stays open right up
+    // to the draw, while the team size closes with signups. Sending an
+    // unchanged team size alongside a bracket change would be refused for
+    // touching neither, which is why `structural` is worked out per write.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    let event = app.snapshot().tourney.detail.expect("the event");
+    assert_eq!(event.status, TourneyStatus::Signup);
+    assert!(event.may_edit_format() && event.may_edit_team_setup());
+
+    let mut format = FormatDraft::of(&event);
+    format.bracket_kind = faf_domain::state::BracketKind::Swiss;
+    assert!(
+        !format.is_structural(&event),
+        "a bracket change alone touches no teams"
+    );
+    app.dispatch(
+        TourneyCommand::EditFormat {
+            tournament_id: "e1a2b".into(),
+            format: format.clone(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    assert_eq!(
+        state.detail.expect("still open").bracket_kind,
+        faf_domain::state::BracketKind::Swiss
+    );
+
+    // Now the same event with its bracket drawn: the whole format is locked,
+    // and the service says so rather than quietly doing nothing.
+    open(&app, "e9z9z").await;
+    let running = app.snapshot().tourney.detail.expect("the running event");
+    assert!(!running.may_edit_format());
+    app.dispatch(
+        TourneyCommand::EditFormat {
+            tournament_id: "e9z9z".into(),
+            format: FormatDraft {
+                team_size: 3,
+                ..FormatDraft::of(&running)
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let failure = app.snapshot().tourney.action_error.expect("refused");
+    assert_eq!(failure.action, TourneyAction::EditingFormat);
+    assert!(
+        failure.reason.contains("locked"),
+        "the service's own sentence: {}",
+        failure.reason
+    );
+}
+
+#[tokio::test]
+async fn reading_the_announcements_clears_the_badge_for_the_account() {
+    // Kept by the service rather than locally, which is the point: the badge
+    // clears on every device rather than once per machine.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    let event = app.snapshot().tourney.detail.expect("the event");
+    assert!(
+        event.unread_news() > 0,
+        "the fixture event has announcements nobody has read"
+    );
+
+    app.dispatch(
+        TourneyCommand::MarkNewsRead {
+            tournament_id: "e1a2b".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    assert_eq!(state.detail.expect("still open").unread_news(), 0);
+}
+
+#[tokio::test]
+async fn correcting_an_announcement_marks_it_as_corrected() {
+    // These announce schedules, and a schedule that changed twice is not the
+    // same news: the stamp is what says so.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    let post = app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("the event")
+        .news
+        .first()
+        .expect("an announcement")
+        .clone();
+    assert!(post.edited_at.is_none());
+
+    app.dispatch(
+        TourneyCommand::EditNews {
+            tournament_id: "e1a2b".into(),
+            news_id: post.id.clone(),
+            body: "  Start moved to 20:00 UTC.  ".into(),
+            important: true,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let corrected = state
+        .detail
+        .expect("still open")
+        .news
+        .into_iter()
+        .find(|held| held.id == post.id)
+        .expect("still there");
+    assert_eq!(corrected.body, "Start moved to 20:00 UTC.");
+    assert!(corrected.important);
+    assert!(corrected.edited_at.is_some());
+
+    // An empty correction is refused rather than blanking the post.
+    app.dispatch(
+        TourneyCommand::EditNews {
+            tournament_id: "e1a2b".into(),
+            news_id: post.id.clone(),
+            body: "   ".into(),
+            important: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let failure = app.snapshot().tourney.action_error.expect("refused");
+    assert_eq!(
+        failure.action,
+        TourneyAction::EditingNews {
+            news_id: post.id.clone()
+        }
+    );
+}
+
+#[tokio::test]
+async fn abandoning_an_event_leaves_it_visible_and_is_reversible() {
+    // Not the same as archiving, which hides it. An empty bracket with no
+    // explanation reads as a broken tab, which is what this exists to avoid.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+
+    app.dispatch(
+        TourneyCommand::Abandon {
+            tournament_id: "e1a2b".into(),
+            abandoned: true,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    assert!(state.detail.expect("still open").abandoned);
+    assert!(
+        state.events.iter().any(|row| row.id == "e1a2b"),
+        "and it is still in the list, unlike an archived one"
+    );
+
+    app.dispatch(
+        TourneyCommand::Abandon {
+            tournament_id: "e1a2b".into(),
+            abandoned: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert!(!app.snapshot().tourney.detail.expect("still open").abandoned);
+}
+
+#[tokio::test]
+async fn map_pools_can_be_bound_to_rounds_before_the_bracket_is_drawn() {
+    // The flow this exists for, and the one that was impossible: an organiser
+    // prepares the map plan while signups run. The rounds are projected from
+    // the expected field, the keys are the service's own, and it takes them for
+    // a bracket that does not exist yet, because it only checks the pool.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    let event = app.snapshot().tourney.detail.expect("the event");
+    assert_eq!(event.status, TourneyStatus::Signup);
+    assert!(event.matches.is_empty(), "nothing is drawn yet");
+
+    let plan = event.round_plan();
+    assert!(plan.projected, "worked out, not read off a bracket");
+    assert!(
+        !plan.keys.is_empty(),
+        "the whole point: rounds to assign before the draw"
+    );
+    let pool = event.map_pools.first().expect("a seeded pool").id.clone();
+
+    // "One pool for the whole event", which is what most tournaments want and
+    // what the panel offers as a single control.
+    for round in &plan.keys {
+        app.dispatch(
+            TourneyCommand::AssignPool {
+                tournament_id: "e1a2b".into(),
+                round_key: round.key.clone(),
+                pool_id: pool.clone(),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+        settle(&app).await;
+    }
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let after = state.detail.expect("still open");
+    assert_eq!(
+        after.pool_assign.len(),
+        plan.keys.len(),
+        "every projected round was bound"
+    );
+    assert!(
+        after
+            .pool_assign
+            .iter()
+            .all(|assignment| assignment.pool_id == pool),
+        "and all to the same pool"
+    );
+}
+
+#[tokio::test]
+async fn the_round_projection_follows_the_field_and_the_format() {
+    // Three answers that have to move together, because the projection is what
+    // decides how many rounds an organiser is offered.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    let event = app.snapshot().tourney.detail.expect("the event");
+
+    // A drawn bracket answers from its own matches rather than from a guess.
+    open(&app, "e9z9z").await;
+    let running = app.snapshot().tourney.detail.expect("the running event");
+    let drawn = running.round_plan();
+    assert!(!drawn.projected);
+    assert_eq!(drawn.teams, 4);
+    assert!(drawn.keys.iter().all(|round| running
+        .matches
+        .iter()
+        .any(|entry| entry.bracket == round.bracket && entry.round == round.round)));
+
+    // A free-for-all has no ban and pick rounds at all, so it must project
+    // nothing rather than a bracket it will never draw.
+    open(&app, "f4f4f").await;
+    let ffa = app.snapshot().tourney.detail.expect("the ffa event");
+    assert!(ffa.round_plan().keys.is_empty());
+
+    // And the signup event's own projection follows its entrants.
+    assert_eq!(
+        event.projected_team_count(),
+        event.players.len() as i32 / event.team_size.max(1)
+    );
+}
+
+#[tokio::test]
+async fn a_match_gets_a_room_only_once_both_sides_are_known() {
+    // The tournament team's first requirement for the chat, and the service's
+    // own rule: a room per match, but not before there is a match to have one
+    // about. Otherwise the list fills with "? vs ?".
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    app.dispatch(
+        TourneyCommand::LoadChat {
+            tournament_id: "e9z9z".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    let event = state.detail.expect("the event");
+    let expected: Vec<String> = event
+        .matches
+        .iter()
+        .filter(|entry| entry.team1.is_some() && entry.team2.is_some())
+        .map(|entry| format!("match:{}", entry.id))
+        .collect();
+
+    for id in &expected {
+        assert!(
+            state.chat_rooms.iter().any(|room| &room.id == id),
+            "a match with both sides known has a room: {id}"
+        );
+    }
+    // And the empty second-round slot has none.
+    let waiting = event
+        .matches
+        .iter()
+        .find(|entry| entry.team1.is_none() || entry.team2.is_none());
+    if let Some(entry) = waiting {
+        let id = format!("match:{}", entry.id);
+        assert!(
+            !state.chat_rooms.iter().any(|room| room.id == id),
+            "a match still waiting on a feeder has no room yet"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_played_matchs_room_folds_into_the_completed_group() {
+    // The team's second requirement: a bracket makes a room per match and never
+    // deletes one, so a finished match's room has to leave the live list. It
+    // said so at the time: otherwise you see too many and it gets confusing.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    app.dispatch(
+        TourneyCommand::LoadChat {
+            tournament_id: "e9z9z".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let before = app.snapshot().tourney;
+    let (active, completed) = before.chat_groups();
+    assert!(completed.is_empty(), "nothing has been played yet");
+    let live = active.len();
+    let played = before
+        .detail
+        .expect("the event")
+        .matches
+        .iter()
+        .find(|entry| entry.status == MatchStatus::Ready)
+        .expect("a match ready to play")
+        .id
+        .clone();
+
+    // Settle it, and its room should move.
+    app.dispatch(
+        TourneyCommand::DecideReport {
+            tournament_id: "e9z9z".into(),
+            report: MatchReport {
+                match_id: played.clone(),
+                score1: 2,
+                score2: 0,
+                ..MatchReport::default()
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    app.dispatch(
+        TourneyCommand::LoadChat {
+            tournament_id: "e9z9z".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let after = app.snapshot().tourney;
+    let (active, completed) = after.chat_groups();
+    assert!(
+        completed
+            .iter()
+            .any(|room| room.id == format!("match:{played}")),
+        "the played match's room is in the completed group"
+    );
+    assert!(
+        !active
+            .iter()
+            .any(|room| room.id == format!("match:{played}")),
+        "and out of the live list"
+    );
+    assert!(active.len() < live || after.chat_rooms.len() > live);
+}
+
+#[tokio::test]
+async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
+    // The service has no push of any kind. Without a poll the tab can send a
+    // message and never receive one, which looks like a working chat right up
+    // until somebody else types.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    app.dispatch(
+        TourneyCommand::LoadChat {
+            tournament_id: "e9z9z".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    app.dispatch(
+        TourneyCommand::OpenRoom {
+            tournament_id: "e9z9z".into(),
+            room_id: "global".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    let before = app.snapshot().tourney.chat_posts.len();
+
+    // Somebody else posts. Nothing tells the tab, which is the whole point.
+    app.dispatch(
+        TourneyCommand::PostChat {
+            tournament_id: "e9z9z".into(),
+            room_id: "global".into(),
+            body: "on my way".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    app.dispatch(
+        TourneyCommand::RefreshChat {
+            tournament_id: "e9z9z".into(),
+            room_id: "global".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.chat_posts.len() > before, "the poll brought it in");
+    assert!(state.chat_posts.iter().any(|post| post.body == "on my way"));
+    // Silent by design: a poll every few seconds must not announce itself, or
+    // the room blinks out and back while somebody is reading it.
+    assert_eq!(state.chat_status, TourneyLoadStatus::Ready);
+    assert!(state.action_error.is_none());
+}
+
+#[tokio::test]
+async fn a_caster_is_added_by_account_and_sees_the_whole_event() {
+    // The role that replaced the caster link. The link carried a token in a
+    // URL, which the client had nowhere to put; an account role arrives through
+    // the session like everything else.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    assert!(app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("the event")
+        .casters
+        .is_empty());
+
+    app.dispatch(
+        TourneyCommand::SetCaster {
+            tournament_id: "e9z9z".into(),
+            faf_id: 102,
+            name: "Ada_Lovelace".into(),
+            casting: true,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let event = state.detail.expect("still open");
+    assert_eq!(event.casters.len(), 1);
+    assert_eq!(event.casters[0].name, "Ada_Lovelace");
+
+    app.dispatch(
+        TourneyCommand::SetCaster {
+            tournament_id: "e9z9z".into(),
+            faf_id: 102,
+            name: "Ada_Lovelace".into(),
+            casting: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+    assert!(app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("still open")
+        .casters
+        .is_empty());
+}
+
+#[tokio::test]
+async fn drawing_the_bracket_carries_the_best_of_plan() {
+    // What the website does and the client did not: `phase` went out with the
+    // action alone, so the service fell back to its own plan every time.
+    let app = app().await;
+    open(&app, "e1a2b").await;
+    app.dispatch(
+        TourneyCommand::Advance {
+            tournament_id: "e1a2b".into(),
+            phase: TourneyPhase::FormTeams,
+            config: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let event = app.snapshot().tourney.detail.expect("teams formed");
+    assert_eq!(event.status, TourneyStatus::Drafted);
+    // The plan the dialog opens on: what the service would have used anyway.
+    let plan = BracketConfig::of(&event);
+    assert!(plan.is_submittable(event.teams.len() as i32));
+
+    app.dispatch(
+        TourneyCommand::Advance {
+            tournament_id: "e1a2b".into(),
+            phase: TourneyPhase::StartBracket,
+            config: Some(plan),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let state = app.snapshot().tourney;
+    assert!(state.action_error.is_none(), "{:?}", state.action_error);
+    let drawn = state.detail.expect("still open");
+    assert_eq!(drawn.status, TourneyStatus::Running);
+    assert!(!drawn.matches.is_empty(), "and there is a bracket");
+}
+
+#[tokio::test]
+async fn a_plan_with_the_wrong_number_of_rounds_is_caught_here() {
+    // The service trims or pads the list to the bracket's real length, so a
+    // wrong count loses a round's setting rather than failing. Refused before
+    // it is sent, for the same reason the pool counts are.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    let event = app.snapshot().tourney.detail.expect("a drawn event");
+    let teams = event.teams.len() as i32;
+
+    let short = BracketConfig::Single { rounds: vec![3] };
+    assert!(!short.is_submittable(teams), "one round for four teams");
+    assert!(BracketConfig::of(&event).is_submittable(teams));
 }

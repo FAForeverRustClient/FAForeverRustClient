@@ -144,7 +144,7 @@ impl PlayerCardClient {
     ///
     /// Failure is silent and leaves the ratings empty. A picker row without a
     /// rating is still a person worth choosing, and an unrated newcomer has no
-    /// row here at all — which is exactly why this cannot be one request.
+    /// row here at all, which is exactly why this cannot be one request.
     async fn fill_ratings(&self, players: &mut [PlayerSummary], token: &str) {
         let ids: Vec<String> = players.iter().map(|player| player.id.to_string()).collect();
         if ids.is_empty() {
@@ -1213,7 +1213,7 @@ mod tests {
 
     /// The exact RSQL the API accepts for a prefix search.
     ///
-    /// This shipped as `login=="Seraphim"*` — wildcard outside the literal — and
+    /// This shipped as `login=="Seraphim"*`, wildcard outside the literal, and
     /// the API refuses it with `Filter expression is not in expected format`. It
     /// went unnoticed because `search_players` had no caller and no test ever
     /// built the string. Asserting the string is the only thing that would have

@@ -82,6 +82,26 @@ export type Article = {
 	parentId: string | null,
 };
 
+/**
+ *  One line of a tournament's audit log.
+ *
+ *  Organiser-only: the service withholds `tlog` from everybody else, and sends
+ *  at most the last three hundred lines, newest first. Every organiser write
+ *  leaves one, which makes it the only place a co-organiser can see what
+ *  somebody else changed.
+ */
+export type AuditEntry = {
+	/**  Unix seconds. The service stores milliseconds. */
+	at: number | null,
+	/**
+	 *  Who did it, already rendered by the service: an organiser's name, or a
+	 *  phrase like "Organizer link" for a token holder with no account.
+	 */
+	by: string,
+	/**  What they did, as a sentence the service composed. */
+	text: string,
+};
+
 /**  What the UI can ask the auth service to do. */
 export type AuthCommand =
 /**
@@ -129,6 +149,47 @@ export type AvailableAvatar = {
 
 export type AvatarListStatus = "idle" | "loading" | "ready" | "failed";
 
+/**
+ *  The best-of plan, settled at the moment the bracket is drawn.
+ *
+ *  Asked once, here, rather than at creation: the number of rounds follows from
+ *  the entrant count, so before signups close there is nothing to ask about.
+ *  The service defaults every value from the event's stored `plan`, so an
+ *  absent config still draws a bracket; this is what lets the organiser say
+ *  otherwise without going to the website.
+ *
+ *  One variant per format because the shapes genuinely differ, and a single
+ *  flat struct would have three quarters of its fields inert at any time.
+ */
+export type BracketConfig =
+/**  A free-for-all is drawn from its own configuration and asks nothing. */
+{ type: "freeForAll" } |
+/**  One best-of per round, deepest last. */
+{ type: "single"; payload: {
+	rounds: number[],
+} } | { type: "double"; payload: {
+	/**  Winners rounds, `ceil(log2(teams))` of them. */
+	wb: number[],
+	/**  Losers rounds, `2R - 2` of them. */
+	lb: number[],
+	gf: number,
+	/**  Whether the winners finalist starts the grand final one game up. */
+	lbHandicap: boolean,
+} } | { type: "swiss"; payload: {
+	/**  1 to 15. */
+	rounds: number,
+	/**  1 or 3; the service accepts nothing else here. */
+	bestOf: number,
+	/**  Whether the top two play a final after the last round. */
+	finalMatch: boolean,
+	finalBestOf: number,
+	/**
+	 *  Whether a pairing starts as soon as two teams are free, rather than
+	 *  waiting for the round to finish.
+	 */
+	fast: boolean,
+} };
+
 export type BracketKind = "single" | "double" | "swiss";
 
 /**
@@ -170,6 +231,19 @@ export type BrowsingPreferences = {
 	 *  is one-time and the old keys can be removed on a later confirmed load.
 	 */
 	legacyStorageMigrated: boolean,
+};
+
+/**
+ *  Somebody allowed to watch the whole event in order to cast it.
+ *
+ *  A caster sees every match chat, not only the ones they are in, which is the
+ *  point: they are commentating on matches they are not playing. The website
+ *  did this with a secret link carrying a token; it is an account role now, so
+ *  the client gets it from the session like everything else.
+ */
+export type Caster = {
+	fafId: number,
+	name: string,
 };
 
 /**  One conversation: a public `#channel` or a private per-user exchange. */
@@ -410,6 +484,18 @@ export type ChatMessageKind =
 /**  Client-generated failure (unknown command, send failed). */
 "error";
 
+/**  Somebody an organiser silenced in the event's chat. */
+export type ChatMute = {
+	/**
+	 *  Sent as a *string*, because the service builds this list out of
+	 *  `Object.keys`, and object keys are strings whatever went in.
+	 */
+	fafId: number,
+	name: string,
+	/**  Unix seconds. */
+	at: number | null,
+};
+
 export type ChatNameColors = {
 	/**  Empty strings mean that the category uses the ordinary text colour. */
 	selfColor: string,
@@ -425,6 +511,15 @@ export type ChatNameColors = {
 export type ChatPost = {
 	id: string,
 	author: string,
+	/**
+	 *  The FAF account behind the name, where there is one. `None` for a
+	 *  system line and for anyone posting through a token rather than a login.
+	 *
+	 *  Read so an organiser can silence the author of the post in front of
+	 *  them: `chat_mute` is addressed by account, and the name beside a post is
+	 *  free text with nothing to resolve it against.
+	 */
+	fafId: number | null,
 	body: string,
 	/**  Unix seconds. */
 	at: number | null,
@@ -494,6 +589,34 @@ export type ChatRoom = {
 	name: string,
 	/**  Messages posted since this account last opened the room. */
 	unread: number,
+	/**
+	 *  Whether the match this room belongs to has been played.
+	 *
+	 *  A room per match adds up fast, and a finished one is a conversation
+	 *  nobody is having any more. The service says which, and the list folds
+	 *  them into a group that starts collapsed rather than leaving a bracket's
+	 *  worth of dead rooms above the live ones.
+	 */
+	done: boolean,
+	/**
+	 *  Whether this account was named with `@` in this room and has not opened
+	 *  it since.
+	 *
+	 *  Louder than the unread count and shown instead of it: being addressed
+	 *  by name is a different thing from a room having moved on, and it is the
+	 *  one a player is scanning for.
+	 */
+	mentioned: boolean,
+	/**
+	 *  Whether somebody typed `!organizer` here and no organiser has read it.
+	 *
+	 *  Organiser-facing: it exists so they can find the room that wants them
+	 *  without skimming every one. The service clears it when an organiser
+	 *  opens the room.
+	 */
+	needsOrganiser: boolean,
+	/**  How many messages the room holds in total. */
+	count: number,
 };
 
 export type ChatState = {
@@ -881,6 +1004,111 @@ export type DiscordPreferences = {
 	 *  refused even if someone still holds one.
 	 */
 	disallowJoins: boolean,
+};
+
+/**
+ *  A captains draft in progress.
+ *
+ *  The order is worked out once, when the draft starts, and then walked. It is
+ *  team ids repeated: a 2v2 with four teams is eight entries long, and a snake
+ *  order reverses on every other pass. The client never rebuilds it, because
+ *  captains pick concurrently and a locally computed turn would disagree.
+ */
+export type Draft = {
+	/**  Team ids, in the order they pick. */
+	order: string[],
+	/**  How far along it is: the index into `order`. */
+	current: number,
+	/**  The pick that can still be taken back. */
+	lastPick: DraftPick | null,
+};
+
+export type DraftPick = {
+	playerId: string,
+	teamId: string,
+	/**
+	 *  Where in the order it was, which is what decides whether a captain may
+	 *  still undo it: only if nobody has picked since.
+	 */
+	atIndex: number,
+};
+
+/**  The parent this tournament feeds, where it feeds one. */
+export type FeedsInto = {
+	parentId: string,
+	parentName: string,
+	rule: QualifierRule,
+	/**  Unix seconds, once the parent has taken its entrants. */
+	applied: number | null,
+};
+
+/**
+ *  How a free-for-all event is run.
+ *
+ *  A free-for-all has no two sides: a round is a set of lobbies, each with
+ *  several entrants, and what carries forward is either the top few of each
+ *  lobby or a running points total. Everything the bracket takes for granted
+ *  (two teams, a winner, a loser) is absent, which is why it is configured
+ *  rather than inferred.
+ */
+export type FfaConfig = {
+	/**  Entrants per lobby. */
+	perMatch: number,
+	/**  How many of each lobby go through, in elimination mode. */
+	advance: number,
+	mode: FfaMode,
+	rounds: number,
+	/**  Cut the field to this many before the last rounds. Zero for no cut. */
+	cutTo: number,
+	/**  Entrants in the final. Zero to let it fall out of the format. */
+	finalSize: number,
+};
+
+export type FfaMode =
+/**  The top few of each lobby go through; the rest are out. */
+"elimination" |
+/**  Everybody plays every round and the points decide. */
+"points";
+
+/**
+ *  A free-for-all lobby's result.
+ *
+ *  One shape for the two ways the service takes it, because a lobby is one or
+ *  the other and never both: a scored round sends `points`, everything else
+ *  sends `winners`. `Tourney::ffa_is_scored` says which.
+ */
+export type FfaReport = {
+	matchId: string,
+	/**  Who went through. Empty in a scored round. */
+	winners: string[],
+	/**  Points per entrant. Empty in an elimination round. */
+	points: TeamPoints[],
+};
+
+/**
+ *  The shape of the competition, changed after the event was created.
+ *
+ *  A narrower set than the service's `edit_format` accepts. The best-of plan
+ *  per round stays on the website, being a dozen numbers whose meaning changes
+ *  with the bracket type; the seeding policy and the entrant cap are absent for
+ *  a harder reason, which is that the client never reads either off the event,
+ *  so it has nothing to put in the field but a guess.
+ *
+ *  What is here is what an organiser gets wrong at creation and then has to
+ *  undo: the wrong bracket, a team size of one where two was meant, an open
+ *  field where a draft was meant.
+ */
+export type FormatDraft = {
+	competition: Competition,
+	/**
+	 *  1 to 6 for a team event, 1 to 3 for a free-for-all: the service clamps
+	 *  each to its own range.
+	 */
+	teamSize: number,
+	formation: Formation,
+	bracketKind: BracketKind,
+	/**  Whether the draft order snakes back on every other pass. */
+	draftSnakes: boolean,
 };
 
 /**  How teams come together. */
@@ -1830,6 +2058,15 @@ export type LocalReplayTeam = {
 	players: LocalReplayPlayer[],
 };
 
+/**  A map being added to or edited in a tournament's own map database. */
+export type MapDraft = {
+	/**  Empty to add a new map; an existing id edits that one. */
+	id: string,
+	name: string,
+	description: string,
+	published: boolean,
+};
+
 export type MapGeneratorCommand =
 /**
  *  Reproduce a specific generated map, downloading the matching generator
@@ -2009,9 +2246,24 @@ export type MapPool = {
 	id: string,
 	name: string,
 	mapIds: string[],
-	/**  The ban/pick sequence, as the organiser arranged it. */
-	sequence: string[],
+	/**
+	 *  The ban/pick order, as the organiser arranged it.
+	 *
+	 *  One step short of the pool's map count: every map but one is consumed,
+	 *  and the survivor is the decider.
+	 */
+	sequence: PoolStep[],
 	bestOf: number | null,
+	/**
+	 *  Whether players can see this pool. Publishing one also publishes every
+	 *  map in it, because a visible pool of invisible maps is a list of ids.
+	 */
+	published: boolean,
+	/**
+	 *  A scheduled reveal, in Unix seconds. Cleared once it fires, and ignored
+	 *  outright for a pool that is already out.
+	 */
+	publishAt: number | null,
 };
 
 export type MapsCommand =
@@ -2107,7 +2359,7 @@ export type MatchReport = {
 	 *  The team to declare the winner, whatever the score says.
 	 *
 	 *  The organiser's override: it finalises a match even when neither side
-	 *  reached the wins the series needs — a 1-1 that ended in a walkover, or any
+	 *  reached the wins the series needs: a 1-1 that ended in a walkover, or any
 	 *  inconclusive result that has to be resolved so the bracket can move.
 	 */
 	winner: string | null,
@@ -2138,6 +2390,38 @@ export type MatchStatus =
 "live" |
 /**  Walkover. One side advances without a game being played. */
 "bye" | "done";
+
+/**
+ *  The ban/pick run of one match.
+ *
+ *  Built by the service from the round's pool when the match becomes playable,
+ *  and then walked one step at a time. Every field here is state the service
+ *  keeps: nothing is worked out client-side, because two captains act on it
+ *  concurrently and a client that guessed would show one of them a stale turn.
+ */
+export type MatchVeto = {
+	/**  Map ids still in play, in no meaningful order. */
+	remaining: string[],
+	banned: VetoChoice[],
+	/**  Picked maps, in the order the games are played. */
+	picks: VetoChoice[],
+	/**
+	 *  The order being walked, copied from the pool at the time it started, so
+	 *  editing the pool afterwards cannot change a run already under way.
+	 */
+	sequence: PoolStep[],
+	/**  How far along it is: the index into `sequence`. */
+	stepIndex: number,
+	/**
+	 *  Which team is A. Empty until an organiser says, and the run cannot start
+	 *  before they do.
+	 */
+	teamA: string | null,
+	teamB: string | null,
+	done: boolean,
+	/**  The map left over once the order is walked, played as the last game. */
+	decider: VetoDecider | null,
+};
 
 export type MatchmakerMapPool = {
 	id: number,
@@ -2347,6 +2631,12 @@ export type NewsPost = {
 	by: string,
 	/**  Unix seconds. */
 	at: number | null,
+	/**
+	 *  When it was last corrected, in Unix seconds, or `None` for a post that
+	 *  stands as written. Shown rather than acted on: a schedule change that
+	 *  has itself been changed is worth flagging.
+	 */
+	editedAt: number | null,
 	/**  Marked urgent by the organiser: a schedule change rather than a note. */
 	important: boolean,
 };
@@ -2408,6 +2698,20 @@ export type NotificationPreferences = {
 
 export type NotificationState = {
 	items: ClientNotification[],
+};
+
+/**
+ *  One organiser of an event, as an organiser sees the list.
+ *
+ *  Distinct from `organisers`, which is the public list and carries names only:
+ *  this one names FAF accounts and says which of them chose to stay off the
+ *  public list.
+ */
+export type Organiser = {
+	fafId: number,
+	name: string,
+	/**  Hidden from the public organiser list, but still an organiser. */
+	hidden: boolean,
 };
 
 export type PartyMember = {
@@ -2712,6 +3016,8 @@ export type PlayerVeto = {
 	vetoTokensApplied: number,
 };
 
+export type PoolAction = "ban" | "pick";
+
 /**
  *  A map pool bound to a round.
  *
@@ -2736,6 +3042,89 @@ export type PoolDraft = {
 	 *  order to it, so a pool saved without one is a plain list of maps.
 	 */
 	bestOf: number | null,
+	/**
+	 *  The ban/pick order. Either empty, or exactly one step short of the map
+	 *  count with `best_of - 1` picks among them: the service refuses anything
+	 *  else, naming the numbers it wanted.
+	 */
+	sequence: PoolStep[],
+};
+
+export type PoolSide = "a" | "b";
+
+/**
+ *  One step of a pool's ban/pick order.
+ *
+ *  Objects on the wire, not strings. Read as a flat list of names until a
+ *  recorded response showed otherwise, which silently emptied every sequence:
+ *  `lib/match.js::cleanSequence` keeps only `{action, team}` pairs.
+ */
+export type PoolStep = {
+	action: PoolAction,
+	/**
+	 *  Which side takes the step. The service decides which team is A per
+	 *  match, from the pool's `abMode`.
+	 */
+	team: PoolSide,
+};
+
+/**
+ *  A tournament whose result feeds entrants into another one.
+ *
+ *  The link lives on the *parent* alone, and a child derives "feeds into X" by
+ *  lookup, so the two sides can never disagree. Qualifying does not sign anyone
+ *  up: the service sends each qualified account a normal invite, which they
+ *  still have to accept.
+ */
+export type Qualifier = {
+	/**  The link's own id, which is what removes it. */
+	id: string,
+	/**  The child event this draws from. */
+	tournamentId: string,
+	/**  Its name, or the service's placeholder where it has since been deleted. */
+	name: string,
+	/**  `None` where the child is gone. */
+	status: TourneyStatus | null,
+	rule: QualifierRule,
+	/**
+	 *  When the link was applied, in Unix seconds, or `None` while the child is
+	 *  still being played. The service sweeps lazily, on read, so a finished
+	 *  child can sit unapplied for as long as nobody asks for the list.
+	 */
+	applied: number | null,
+	/**  The teams that qualified, by name, filled in once applied. */
+	qualified: string[],
+	/**
+	 *  Teams that qualified and could not be invited, because no member has a
+	 *  FAF account: a manually added entrant has none, and an invite is
+	 *  addressed to an account. Worth showing rather than swallowing, since it
+	 *  is the organiser who then has to add them by hand.
+	 */
+	unreachable: string[],
+};
+
+/**  Which measure a qualifier link ranks by. */
+export type QualifierKind =
+/**
+ *  The best N, however the child's format ranks its entrants: champion
+ *  first in an elimination bracket, standings order in Swiss, points order
+ *  in a free-for-all.
+ */
+"top" |
+/**
+ *  Everyone who reached N points, which only Swiss and free-for-all can
+ *  answer.
+ */
+"points";
+
+/**  How many of a child's entrants go through, and by what measure. */
+export type QualifierRule = {
+	kind: QualifierKind,
+	/**
+	 *  The cutoff: how many for [`QualifierKind::Top`], the lowest qualifying
+	 *  score for [`QualifierKind::Points`]. At least 1 either way.
+	 */
+	n: number,
 };
 
 /**  Rating limits an organiser set on entry. */
@@ -3268,6 +3657,76 @@ export type SeedOrder =
 /**  How the bracket is seeded once teams are formed. */
 export type Seeding = "rating" | "random" | "manual";
 
+/**
+ *  A series' colour, from the service's fixed palette.
+ *
+ *  Six named values rather than free-form hex, so a series can never end up
+ *  unreadable against the dark theme. The service picks one from the name when
+ *  a series is created and lets its owner change it; [`Self::Plain`] is never
+ *  picked automatically, so it means somebody chose it.
+ */
+export type SeriesColour = "amber" | "blue" | "green" | "red" | "purple" | "plain";
+
+/**  One series with its editions, from `GET /api/series/{id}`. */
+export type SeriesDetail = {
+	id: string,
+	name: string,
+	description: string,
+	colour: SeriesColour,
+	category: TourneyCategory | null,
+	/**  Newest first. */
+	editions: SeriesEdition[],
+	/**
+	 *  Whether this account may rename or delete it.
+	 *
+	 *  Read from the service rather than worked out here, and that is the whole
+	 *  reason it is a field: the answer is "a site admin, a director, whoever
+	 *  created it, or an organiser of any edition in it", and the last of those
+	 *  needs every tournament in the database to decide. The client holds the
+	 *  list it was sent, not the database.
+	 */
+	canEdit: boolean,
+};
+
+/**  A series being created or renamed. */
+export type SeriesDraft = {
+	/**  Empty to create; an existing id edits that one. */
+	id: string,
+	name: string,
+	description: string,
+	colour: SeriesColour,
+	category: TourneyCategory | null,
+};
+
+/**
+ *  One tournament as a series lists it.
+ *
+ *  Deliberately not a [`Tourney`]: `GET /api/series/{id}` sends a dozen fields
+ *  per edition, not a whole event, and widening the tournament type to hold a
+ *  tenth of itself would leave every consumer asking which half is filled in.
+ */
+export type SeriesEdition = {
+	id: string,
+	name: string,
+	status: TourneyStatus,
+	category: TourneyCategory | null,
+	/**
+	 *  Unpublished editions reach only their own organisers, site admins and
+	 *  directors: the service filters the list before sending it.
+	 */
+	published: boolean,
+	competition: Competition,
+	bracketKind: BracketKind,
+	teamSize: number,
+	playerCount: number,
+	teamCount: number,
+	eventDate: number | null,
+	abandoned: boolean,
+	championTeamId: string | null,
+	/**  The winning team's name, already resolved by the service. */
+	champion: string,
+};
+
 /**  Things the UI can ask the session service to do. */
 export type SessionCommand =
 /**  Handshake: ask the backend to report readiness. */
@@ -3313,7 +3772,9 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	note: string,
 } } | { type: "setNotifications"; payload: {
 	preferences: NotificationPreferences,
-} } | { type: "setChat"; payload: {
+} } |
+/**  Boxed, like the event it produces. */
+{ type: "setChat"; payload: {
 	preferences: ChatPreferences,
 } } | { type: "setGame"; payload: {
 	preferences: GamePreferences,
@@ -3345,7 +3806,13 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: SocialPreferences,
 } } | { type: "notificationsChanged"; payload: {
 	preferences: NotificationPreferences,
-} } | { type: "chatChanged"; payload: {
+} } |
+/**
+ *  Boxed for the same reason `Loaded` is: chat preferences carry the name
+ *  colours and are far larger than any sibling variant, so an unboxed one
+ *  would set the size of every `SettingsEvent` ever passed around.
+ */
+{ type: "chatChanged"; payload: {
 	preferences: ChatPreferences,
 } } | { type: "gameChanged"; payload: {
 	preferences: GamePreferences,
@@ -3491,6 +3958,29 @@ export type StyleConstraints = {
  */
 export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "tutorials" | "units" | "contribution" | "settings";
 
+/**
+ *  How far a team got: the side and round its last match was in.
+ *
+ *  The service writes this when a match is decided, and clears it again when a
+ *  result is corrected. It is what the standings are built from: a bracket says
+ *  who beat whom, but only this says where each run ended.
+ */
+export type TeamExit = {
+	bracket: BracketSide,
+	round: number,
+};
+
+/**
+ *  One entrant's score in one free-for-all lobby.
+ *
+ *  A list rather than a map: the service sends an object keyed by team id, and
+ *  an ordered list is what the table needs anyway.
+ */
+export type TeamPoints = {
+	teamId: string,
+	points: number,
+};
+
 /**  One side asking the other about a team place. */
 export type TeamRequest = {
 	playerId: string,
@@ -3519,8 +4009,30 @@ export type Tourney = {
 	/**  1 to 6. */
 	teamSize: number,
 	divisions: number,
-	/**  Whether players may report their own results, or only organisers can. */
+	/**
+	 *  The entrant cap the organiser set, or 0 for none.
+	 *
+	 *  Read because the round projection needs it: before anybody has entered,
+	 *  a cap is the only thing that says how large the bracket will be, and
+	 *  preparing map pools during signups turns on knowing that.
+	 */
+	maxTeams: number,
+	/**
+	 *  Whether players may report their own results, or only organisers can.
+	 *
+	 *  Read but never written as true: the client has no player reporting path,
+	 *  and both write bodies say so explicitly. It still matters on the way in,
+	 *  because a report raised on the *website* has to be answerable here.
+	 */
 	playerReporting: boolean,
+	/**
+	 *  How entrants get in.
+	 *
+	 *  Sent with every answer and read for a concrete reason: the edit form
+	 *  resends it, so an event whose mode the client could not see would be
+	 *  reopened to everyone the first time somebody corrected its name.
+	 */
+	signupMode: SignupMode,
 	vetoEnabled: boolean,
 	rating: RatingGate,
 	/**
@@ -3537,7 +4049,7 @@ export type Tourney = {
 	 *
 	 *  What stops an entrant signing up on a peak rating and playing weeks later
 	 *  on a lower one: every rating in the event is the value as of this date.
-	 *  Shown rather than acted on — the server does the freezing.
+	 *  Shown rather than acted on: the server does the freezing.
 	 */
 	ratingDate: number | null,
 	/**  Unix seconds. */
@@ -3552,6 +4064,47 @@ export type Tourney = {
 	 *  the server locks writing two days after the event ends.
 	 */
 	chatLocked: boolean,
+	/**  Whether this event bans and picks its maps, and how. */
+	veto: VetoConfig,
+	/**  How the free-for-all is run. `None` for a team event. */
+	ffa: FfaConfig | null,
+	/**
+	 *  The captains draft, while one is running. `None` for every other
+	 *  formation and before it starts.
+	 */
+	draft: Draft | null,
+	/**
+	 *  The entrants an organiser marked as captains before starting a draft.
+	 *  They become the captains of the teams the service creates.
+	 */
+	pendingCaptains: string[],
+	/**
+	 *  Whether the draft order snakes back on every other pass, rather than
+	 *  running the same way each time.
+	 */
+	draftSnakes: boolean,
+	/**
+	 *  Whether this event's results came from somewhere else.
+	 *
+	 *  An imported bracket carries its source's own final placings and often
+	 *  nothing else, so the standings are read off `final_rank` rather than
+	 *  worked out from the matches.
+	 */
+	imported: boolean,
+	/**
+	 *  Whether anyone but the organiser can see this event.
+	 *
+	 *  `POST /api/tournaments` creates with this false, and the list endpoint
+	 *  then shows the row to its organisers alone. An event that is missing
+	 *  from the list for everybody else is not a bug in the list: it was never
+	 *  published, and only `publish` changes that.
+	 */
+	published: boolean,
+	/**
+	 *  When publication is scheduled for, in Unix seconds, or `None` for an
+	 *  event that is either already out or has no date set.
+	 */
+	publishAt: number | null,
 	/**
 	 *  How many have entered, and how many teams they formed.
 	 *
@@ -3576,6 +4129,57 @@ export type Tourney = {
 	 *  server omits the field rather than trimming it.
 	 */
 	invites: TourneyInvite[],
+	/**
+	 *  The organiser-only audit log, newest first. Empty for everyone else,
+	 *  because the service does not send it to them.
+	 */
+	auditLog: AuditEntry[],
+	/**
+	 *  Every organiser, including any who hid themselves from the public list.
+	 *  Organiser-only, like the log.
+	 */
+	organiserAccounts: Organiser[],
+	/**  Accounts silenced in this event's chat. Organiser-only. */
+	chatMutes: ChatMute[],
+	/**  Who is casting this event. Organiser-only, like the lists above. */
+	casters: Caster[],
+	/**
+	 *  Called off rather than played: too few signups, usually.
+	 *
+	 *  Distinct from archived, which hides the event. An abandoned one stays
+	 *  visible and finished-looking, and saying so is the whole point: an event
+	 *  with an empty bracket and no explanation reads as broken.
+	 */
+	abandoned: boolean,
+	/**
+	 *  Whether this account has been silenced in the event's chat.
+	 *
+	 *  Read for one reason: a muted player's post is refused with a sentence
+	 *  they see only after typing it. Knowing beforehand turns that into a
+	 *  closed composer with a reason.
+	 */
+	chatMutedMe: boolean,
+	/**
+	 *  The series this edition belongs to, where it belongs to one.
+	 *
+	 *  Three fields for one relationship because the service resolves it for
+	 *  us: the id is what `set_series` writes, and the name and colour are the
+	 *  series' own, sent alongside so a row can be labelled without a second
+	 *  request per tournament.
+	 */
+	seriesId: string | null,
+	seriesName: string,
+	seriesColour: SeriesColour,
+	/**
+	 *  Events whose results feed entrants into this one. Organiser-facing, but
+	 *  sent to everybody: who qualifies for a final is public information.
+	 */
+	qualifiers: Qualifier[],
+	/**
+	 *  The event this one feeds, where it feeds one. Derived by the service
+	 *  from every other tournament's links, never stored on this side.
+	 */
+	feedsInto: FeedsInto | null,
 	championTeamId: string | null,
 	/**  What this account may do here, as the server sees it. */
 	viewer: TourneyViewer,
@@ -3613,9 +4217,7 @@ export type TourneyAction = { type: "addingPlayer" } | { type: "answeringSignup"
 	playerId: string,
 } } | { type: "renamingTeam" } | { type: "creating" } | { type: "editing" } | { type: "publishing" } | { type: "advancing"; payload: {
 	phase: TourneyPhase,
-} } | { type: "archiving" } | { type: "signingUp" } | { type: "withdrawing" } | { type: "checkingIn" } | { type: "submittingReport"; payload: {
-	matchId: string,
-} } | { type: "answeringReport"; payload: {
+} } | { type: "archiving" } | { type: "signingUp" } | { type: "withdrawing" } | { type: "checkingIn" } | { type: "answeringReport"; payload: {
 	matchId: string,
 } } | { type: "decidingReport"; payload: {
 	matchId: string,
@@ -3623,7 +4225,33 @@ export type TourneyAction = { type: "addingPlayer" } | { type: "answeringSignup"
 	roomId: string,
 } } | { type: "assigningPool"; payload: {
 	roundKey: string,
-} } | { type: "savingPool" };
+} } | { type: "vetoing"; payload: {
+	matchId: string,
+} } | { type: "reportingFfa"; payload: {
+	matchId: string,
+} } | { type: "drafting" } | { type: "savingMap" } | { type: "publishingMap"; payload: {
+	mapId: string,
+} } | { type: "deletingMap"; payload: {
+	mapId: string,
+} } | { type: "publishingPool"; payload: {
+	poolId: string,
+} } | { type: "deletingPool"; payload: {
+	poolId: string,
+} } | { type: "savingPool" } | { type: "editingFormat" } | { type: "mutingChat"; payload: {
+	fafId: number,
+} } | { type: "deletingChatPost"; payload: {
+	postId: string,
+} } | { type: "addingOrganiser" } | { type: "settingCaster"; payload: {
+	fafId: number,
+} } | { type: "settingOrganiserVisibility"; payload: {
+	fafId: number,
+} } | { type: "abandoning" } | { type: "editingNews"; payload: {
+	newsId: string,
+} } | { type: "savingSeries" } | { type: "deletingSeries"; payload: {
+	seriesId: string,
+} } | { type: "settingSeries" } | { type: "addingQualifier" } | { type: "removingQualifier"; payload: {
+	linkId: string,
+} };
 
 /**  A write that came back refused. */
 export type TourneyActionFailure = {
@@ -3645,10 +4273,6 @@ export type TourneyCategory =
 export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 } } |
-/**  Reload the open event. */
-{ type: "loadDetail"; payload: {
-	tournamentId: string,
-} } |
 /**  Enter as the signed-in player. The primary action of the whole tab. */
 { type: "signUp"; payload: {
 	tournamentId: string,
@@ -3663,12 +4287,14 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 } } | { type: "checkIn"; payload: {
 	tournamentId: string,
 } } |
-/**  Report a series as one of its players. */
-{ type: "submitReport"; payload: {
-	tournamentId: string,
-	report: MatchReport,
-} } |
-/**  Agree with, or refuse, the score the opponent submitted. */
+/**
+ *  Agree with, or refuse, the score the opponent submitted.
+ *
+ *  The one report-shaped thing a player does here. Raising a result is the
+ *  organiser's, but answering one raised elsewhere is not the same act, and
+ *  a client that showed a pending report it could not answer would be worse
+ *  than one that never showed it.
+ */
 { type: "answerReport"; payload: {
 	tournamentId: string,
 	matchId: string,
@@ -3691,6 +4317,21 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	roomId: string,
 	body: string,
+} } |
+/**
+ *  Re-read the open room and the room list, without saying so.
+ *
+ *  The service has no push of any kind: it is HTTP, and the website polls.
+ *  Without this the tab can send a message and never receive one, which
+ *  looks like a working chat until somebody else types.
+ *
+ *  Distinct from [`Self::OpenRoom`] because it must be silent: announcing a
+ *  load every few seconds would blink the room out and back, and would
+ *  fight the reader's scroll position.
+ */
+{ type: "refreshChat"; payload: {
+	tournamentId: string,
+	roomId: string,
 } } |
 /**  Start a team and captain it. */
 { type: "createTeam"; payload: {
@@ -3874,6 +4515,11 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 { type: "advance"; payload: {
 	tournamentId: string,
 	phase: TourneyPhase,
+	/**
+	 *  The best-of plan, on `start_bracket` alone. `None` everywhere else,
+	 *  and on a draw that takes the service's own defaults.
+	 */
+	config: BracketConfig | null,
 } } |
 /**
  *  Hide the event. Restorable by a site admin, which is why it is not
@@ -3887,9 +4533,177 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	roundKey: string,
 	poolId: string,
+} } |
+/**  Take the draft pick that is due. */
+{ type: "draftPickPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+} } |
+/**  Take back the last pick. */
+{ type: "draftUndo"; payload: {
+	tournamentId: string,
+} } |
+/**  Mark which entrants captain a team, before the draft starts. */
+{ type: "setCaptains"; payload: {
+	tournamentId: string,
+	playerIds: string[],
+} } |
+/**  Record a free-for-all lobby: either who went through, or the points. */
+{ type: "reportFfa"; payload: {
+	tournamentId: string,
+	report: FfaReport,
+} } |
+/**  Take the veto step that is due: ban or pick the named map. */
+{ type: "vetoAct"; payload: {
+	tournamentId: string,
+	matchId: string,
+	/**  A map id from the run's `remaining`. */
+	mapId: string,
+} } |
+/**  Say which of the two teams is A, before the run starts. */
+{ type: "vetoSetSides"; payload: {
+	tournamentId: string,
+	matchId: string,
+	teamA: string,
+} } |
+/**  Take back the last step. The organiser's, for a misclick. */
+{ type: "vetoUndo"; payload: {
+	tournamentId: string,
+	matchId: string,
+} } |
+/**  Add a map to the event's own database, or edit one already in it. */
+{ type: "saveMap"; payload: {
+	tournamentId: string,
+	map: MapDraft,
+} } |
+/**  Show or hide one map. */
+{ type: "publishMap"; payload: {
+	tournamentId: string,
+	mapId: string,
+	published: boolean,
+} } | { type: "deleteMap"; payload: {
+	tournamentId: string,
+	mapId: string,
+} } |
+/**  Show or hide one pool. Publishing also publishes the maps in it. */
+{ type: "publishPool"; payload: {
+	tournamentId: string,
+	poolId: string,
+	published: boolean,
+} } | { type: "deletePool"; payload: {
+	tournamentId: string,
+	poolId: string,
 } } | { type: "savePool"; payload: {
 	tournamentId: string,
 	pool: PoolDraft,
+} } |
+/**  Load every series, for the picker and the series list. */
+{ type: "loadSeries" } |
+/**  Open one series and read its editions. */
+{ type: "openSeries"; payload: {
+	seriesId: string,
+} } |
+/**  Close it again, back to the list. */
+{ type: "closeSeries" } |
+/**  Create a series, or rename one that exists. */
+{ type: "saveSeries"; payload: {
+	draft: SeriesDraft,
+} } |
+/**  Delete a series. Its editions are unfiled, not deleted. */
+{ type: "deleteSeries"; payload: {
+	seriesId: string,
+} } |
+/**  File this event under a series, or take it out with `None`. */
+{ type: "setSeries"; payload: {
+	tournamentId: string,
+	seriesId: string | null,
+} } |
+/**  Link an event whose result feeds entrants into this one. */
+{ type: "addQualifier"; payload: {
+	tournamentId: string,
+	/**  The child event. */
+	qualifierId: string,
+	rule: QualifierRule,
+} } |
+/**
+ *  Unlink one. Invites it already sent are kept, which is why this is not
+ *  an undo.
+ */
+{ type: "removeQualifier"; payload: {
+	tournamentId: string,
+	/**  The link's own id, not the child's. */
+	linkId: string,
+} } |
+/**  Change the shape of the competition, before the bracket is drawn. */
+{ type: "editFormat"; payload: {
+	tournamentId: string,
+	format: FormatDraft,
+} } |
+/**  Silence an account in the event's chat, or let it speak again. */
+{ type: "muteChat"; payload: {
+	tournamentId: string,
+	fafId: number,
+	/**
+	 *  Carried so the muted list can name them: the service stores the name
+	 *  alongside the id, having no other way to resolve it afterwards.
+	 */
+	name: string,
+	muted: boolean,
+} } |
+/**  Take one post out of a room. */
+{ type: "deleteChatPost"; payload: {
+	tournamentId: string,
+	roomId: string,
+	postId: string,
+} } |
+/**
+ *  Give a FAF account organiser rights here.
+ *
+ *  There is no counterpart: taking them away is the site admin's, and the
+ *  client cannot tell whether this account is one.
+ */
+{ type: "addOrganiser"; payload: {
+	tournamentId: string,
+	fafId: number,
+	name: string,
+} } |
+/**
+ *  Let a FAF account cast this event, or take that back.
+ *
+ *  One command for both directions: the two service endpoints differ only
+ *  in whether a name rides along, and a pair of commands could disagree
+ *  about which way the flag pointed.
+ */
+{ type: "setCaster"; payload: {
+	tournamentId: string,
+	fafId: number,
+	name: string,
+	casting: boolean,
+} } |
+/**
+ *  Show or hide one organiser in the public list. They stay an organiser
+ *  either way.
+ */
+{ type: "setOrganiserVisibility"; payload: {
+	tournamentId: string,
+	fafId: number,
+	hidden: boolean,
+} } |
+/**  Mark the event as called off, or take that back. */
+{ type: "abandon"; payload: {
+	tournamentId: string,
+	abandoned: boolean,
+} } |
+/**  Correct an announcement already posted. */
+{ type: "editNews"; payload: {
+	tournamentId: string,
+	newsId: string,
+	body: string,
+	important: boolean,
+} } |
+/**  Clear this account's unread badge, on every device. */
+{ type: "markNewsRead"; payload: {
+	tournamentId: string,
 } } | { type: "dismissActionError" };
 
 /**
@@ -3915,11 +4729,20 @@ export type TourneyDraft = {
 	seeding: Seeding,
 	ratingKind: RatingKind,
 	signupMode: SignupMode,
-	playerReporting: boolean,
 	/**  Unix seconds; sent as an ISO instant, which is what the server stores. */
 	eventDate: number | null,
 	signupOpensAt: number | null,
 	signupClosesAt: number | null,
+	/**
+	 *  The instant every entrant's rating is taken from, or `None` to use
+	 *  whatever it is when they sign up.
+	 *
+	 *  The third date an event needs, and the one that is not about scheduling:
+	 *  it stops an entrant signing up on a peak rating and playing weeks later
+	 *  on a lower one. The service freezes against it when it fetches a rating
+	 *  from FAF, so it has to be set before signups open to mean anything.
+	 */
+	ratingDate: number | null,
 	rating: RatingGate,
 	/**  Entrant cap. Zero means no cap, which is the server's own convention. */
 	maxTeams: number,
@@ -3981,7 +4804,20 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	kind: RequestFailureKind,
 } } |
 /**  The organiser picked somebody, or left the field: drop the list. */
-{ type: "accountSearchCleared" };
+{ type: "accountSearchCleared" } | { type: "seriesLoading" } | { type: "seriesLoaded"; payload: {
+	series: TourneySeries[],
+} } | { type: "seriesFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
+} } |
+/**  One series opened, with its editions. */
+{ type: "seriesOpened"; payload: {
+	/**
+	 *  Boxed for the same reason the tournament detail is: a series with
+	 *  its editions is the largest thing this enum carries.
+	 */
+	detail: SeriesDetail,
+} } | { type: "seriesClosed" };
 
 /**
  *  Somebody the organiser asked to enter.
@@ -4011,6 +4847,20 @@ export type TourneyMap = {
 	 *  exists for maps that are not in the vault at all.
 	 */
 	imageUrl: string,
+	/**
+	 *  The organiser's note about it: a spawn count, a mod requirement, why it
+	 *  is in the pool at all.
+	 */
+	description: string,
+	/**
+	 *  Whether players can see it.
+	 *
+	 *  The service hides an unpublished map from everyone but the organisers,
+	 *  with one exception it makes itself: a map already on screen in a live
+	 *  veto or an assigned round keeps its name, or players would be looking at
+	 *  a raw id.
+	 */
+	published: boolean,
 };
 
 /**  One match. */
@@ -4041,6 +4891,22 @@ export type TourneyMatch = {
 	/**  A score one side submitted, waiting for the other to agree. */
 	pendingReport: PendingReport | null,
 	/**
+	 *  The ban/pick run, when the event has vetoes and this match has reached
+	 *  the point of having one.
+	 */
+	veto: MatchVeto | null,
+	/**
+	 *  Everyone in this free-for-all lobby. Empty for a two-sided match, which
+	 *  uses `team1`/`team2` instead.
+	 */
+	entrants: string[],
+	/**  Who went through. One entrant in a final, `advance` of them otherwise. */
+	winners: string[],
+	/**  Points per entrant, in points mode. Empty until the lobby is reported. */
+	points: TeamPoints[],
+	/**  Whether this lobby decides the event. */
+	isFinal: boolean,
+	/**
 	 *  FAF replay ids for the games played so far, in the order they were
 	 *  confirmed. The server insists on one per newly reported game, which is
 	 *  what makes a bracket auditable after the fact.
@@ -4064,7 +4930,11 @@ export type TourneyPhase =
  *  Undo both, back to taking signups. Destroys the teams, which is why the
  *  UI confirms before sending it.
  */
-"reopenSignups";
+"reopenSignups" |
+/**  Fix the list of captains, before a draft starts. */
+"setCaptains" |
+/**  Build the pick order and hand the first pick out. */
+"startDraft";
 
 /**
  *  One entrant, as a person rather than a name.
@@ -4099,6 +4969,49 @@ export type TourneyPlayer = {
 	note: string,
 	/**  Unix seconds. */
 	signedAt: number | null,
+};
+
+/**
+ *  A named grouping of tournaments.
+ *
+ *  Only a label, and worth saying plainly because the name invites a stronger
+ *  reading: editions of a series are fully independent events. There is no
+ *  qualification between them, no fixed cadence and no shared bracket. A series
+ *  links them for browsing, which is why it lives at `GET /api/series` rather
+ *  than inside any one tournament.
+ *
+ *  Qualification is the separate mechanism below ([`Qualifier`]), and the two
+ *  are unrelated: a qualifier link can cross series, and editions of one series
+ *  usually feed nothing at all.
+ */
+export type TourneySeries = {
+	id: string,
+	name: string,
+	/**
+	 *  Reduced to plain text on the way in, like every other field somebody
+	 *  else's editor produced.
+	 */
+	description: string,
+	colour: SeriesColour,
+	/**  `Some` only where the site admin tagged it; a community series has none. */
+	category: TourneyCategory | null,
+	/**  Published, unarchived editions. */
+	editions: number,
+	/**
+	 *  How many of those are still open or being played. The service sorts
+	 *  running series first, so a dormant one falls to the bottom rather than
+	 *  being mixed in with the live ones.
+	 */
+	active: number,
+	/**
+	 *  The most recent edition's date, in Unix seconds, or its creation stamp
+	 *  where it has none. The service's own sort key, kept so the client can
+	 *  show what the order is built on.
+	 */
+	lastAt: number | null,
+	latestId: string | null,
+	latestName: string,
+	latestDate: number | null,
 };
 
 export type TourneyState = {
@@ -4150,6 +5063,15 @@ export type TourneyState = {
 	 *  find, so guessing the spelling is the failure mode this removes.
 	 */
 	accountSearch: AccountSearch,
+	/**
+	 *  Every series, for the picker and the series list. Loaded on demand
+	 *  rather than with the tab: most visits never open a series, and the list
+	 *  is a second request against a different endpoint.
+	 */
+	series: TourneySeries[],
+	seriesStatus: TourneyLoadStatus,
+	/**  The open series with its editions, or `None` while the list is showing. */
+	openSeries: SeriesDetail | null,
 };
 
 /**
@@ -4160,7 +5082,14 @@ export type TourneyState = {
  *  this.
  */
 export type TourneyStatus =
-/**  Announced, not yet open. */
+/**
+ *  A captains draft is running: the teams exist, their captains are taking
+ *  turns picking, and nobody else can do anything yet.
+ *
+ *  Not "announced but not open", which is what this said until the draft was
+ *  built and `lib/teams.js:53` was read: the service moves an event here
+ *  from `signup` when `start_draft` runs.
+ */
 "draft" |
 /**  Taking signups. */
 "signup" |
@@ -4182,6 +5111,11 @@ export type TourneyTeam = {
 	division: number,
 	checkedIn: boolean,
 	eliminated: boolean,
+	/**
+	 *  Where the run ended. `None` for a team still in it, and for every team
+	 *  while the bracket has not produced a loser yet.
+	 */
+	out: TeamExit | null,
 	finalRank: number | null,
 	/**
 	 *  Whether the captain has already used their one rename.
@@ -4208,7 +5142,7 @@ export type TourneyTeam = {
  *  What the service says this account may do in one tournament.
  *
  *  `GET /api/t/{id}` sets a `viewer` block on the response after `publicView`
- *  builds the document — which is why it is invisible when reading `publicView`
+ *  builds the document, which is why it is invisible when reading `publicView`
  *  alone. Taken as given rather than worked out client-side: the same session
  *  check produces it and authorises every write, so a second opinion here could
  *  only ever disagree with the one that counts.
@@ -4229,6 +5163,23 @@ export type TourneyViewer = {
 	signedUpPlayerId: string | null,
 	/**  The team this account plays in. */
 	memberTeamId: string | null,
+	/**
+	 *  Whether this account casts this event.
+	 *
+	 *  A caster is shown every match chat rather than only their own. The
+	 *  service decides it and sends every room accordingly, so this is read to
+	 *  *say* so rather than to filter: a list that silently held more rooms
+	 *  than a player's would look like a bug.
+	 */
+	caster: boolean,
+	/**
+	 *  The newest announcement this account has read, in Unix seconds.
+	 *
+	 *  Kept by the service rather than locally, which is the point of it: the
+	 *  badge clears on every device rather than once per machine. `None` for a
+	 *  reader who is not signed in, where nothing is remembered at all.
+	 */
+	newsReadAt: number | null,
 };
 
 /**  One lesson. */
@@ -4596,3 +5547,30 @@ export type VaultReplay = {
 export type VaultStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+/**  One ban or pick that has been made. */
+export type VetoChoice = {
+	/**  The map id, which is a key into the event's own map database. */
+	map: string,
+	/**  The team that made it. */
+	by: string,
+	/**  Which game of the series it is. Only picks carry one. */
+	game: number | null,
+};
+
+/**  Whether an event runs vetoes at all, and how. */
+export type VetoConfig = {
+	enabled: boolean,
+	mode: VetoMode,
+};
+
+export type VetoDecider = {
+	map: string,
+	game: number,
+};
+
+export type VetoMode =
+/**  The whole order is walked before the first game. */
+"upfront" |
+/**  One step between games. */
+"continuous";

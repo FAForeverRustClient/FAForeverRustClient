@@ -12,8 +12,8 @@
 ///
 /// One identity for every fake, because the real system has one: the login, the
 /// player API and the tournament service all describe the same person. They used
-/// to disagree — login `42 TestCommander`, tournaments `101 Nuggets`, player card
-/// `106 TestCommander` — and that is precisely why the fakes could not reveal
+/// to disagree: login `42 TestCommander`, tournaments `101 Nuggets`, player card
+/// `106 TestCommander`, and that is precisely why the fakes could not reveal
 /// that the tournament tab took its identity from a `viewer` field the real
 /// service never sends. Every fake handed out its own answer, so nothing ever
 /// needed the login.

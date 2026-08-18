@@ -17,7 +17,7 @@ import { Modal } from "../../design-system/Modal";
 import type { Tourney, TourneyDraft } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { type DraftRejection, rejectionOf } from "./tourneyPresentation";
+import { rejectionOf, type DraftRejection } from "../../shared/tourneyRules";
 
 const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
   nameRequired: "tournaments.form.nameRequired",
@@ -55,13 +55,16 @@ export function draftOf(event: Tourney): TourneyDraft {
     teamSize: event.teamSize,
     formation: event.formation,
     bracketKind: event.bracketKind,
+    // Read off the event, not assumed. `edit_info` sends `signupMode`, so a
+    // hardcoded "open" here reopened an invite-only event to everyone the
+    // first time its organiser corrected a typo in the name.
     seeding: "rating",
-    ratingKind: "global",
-    signupMode: "open",
-    playerReporting: event.playerReporting,
+    ratingKind: event.ratingKind,
+    signupMode: event.signupMode,
     eventDate: event.eventDate,
     signupOpensAt: event.signupOpensAt,
     signupClosesAt: event.signupClosesAt,
+    ratingDate: event.ratingDate,
     rating: event.rating,
     maxTeams: 0,
   };
@@ -78,10 +81,10 @@ const BLANK: TourneyDraft = {
   seeding: "rating",
   ratingKind: "global",
   signupMode: "open",
-  playerReporting: true,
   eventDate: null,
   signupOpensAt: null,
   signupClosesAt: null,
+  ratingDate: null,
   rating: { min: null, max: null, maxTeam: null, cap: null },
   maxTeams: 0,
 };
@@ -201,24 +204,39 @@ export function TournamentForm({ event, busy, onSubmit, onClose }: TournamentFor
         )}
       </fieldset>
 
-      <div className="tournament-form-row">
-        <label className="tournament-field">
-          <span>{t("tournaments.form.eventDate")}</span>
-          <input
-            type="datetime-local"
-            value={localValue(draft.eventDate)}
-            onChange={(changed) => set({ eventDate: secondsOf(changed.target.value) })}
-          />
-        </label>
-        <label className="tournament-field">
-          <span>{t("tournaments.form.signupCloses")}</span>
-          <input
-            type="datetime-local"
-            value={localValue(draft.signupClosesAt)}
-            onChange={(changed) => set({ signupClosesAt: secondsOf(changed.target.value) })}
-          />
-        </label>
-      </div>
+      <fieldset className="tournament-field">
+        <legend>{t("tournaments.form.dates")}</legend>
+        <div className="tournament-form-row">
+          <label className="tournament-field">
+            <span>{t("tournaments.form.eventDate")}</span>
+            <input
+              type="datetime-local"
+              value={localValue(draft.eventDate)}
+              onChange={(changed) => set({ eventDate: secondsOf(changed.target.value) })}
+            />
+          </label>
+          <label className="tournament-field">
+            <span>{t("tournaments.form.signupCloses")}</span>
+            <input
+              type="datetime-local"
+              value={localValue(draft.signupClosesAt)}
+              onChange={(changed) => set({ signupClosesAt: secondsOf(changed.target.value) })}
+            />
+          </label>
+          <label className="tournament-field">
+            <span>{t("tournaments.form.ratingDate")}</span>
+            <input
+              type="datetime-local"
+              value={localValue(draft.ratingDate)}
+              onChange={(changed) => set({ ratingDate: secondsOf(changed.target.value) })}
+              disabled={draft.ratingKind === "none"}
+            />
+          </label>
+        </div>
+        {/* The third date is the one that is not about scheduling, so it says
+            what it is for rather than relying on its label. */}
+        <p className="tournament-form-hint muted">{t("tournaments.form.ratingDateHint")}</p>
+      </fieldset>
 
       <div className="tournament-form-row">
         <label className="tournament-field">
@@ -251,15 +269,6 @@ export function TournamentForm({ event, busy, onSubmit, onClose }: TournamentFor
           </select>
         </label>
       </div>
-
-      <label className="tournament-check">
-        <input
-          type="checkbox"
-          checked={draft.playerReporting}
-          onChange={(changed) => set({ playerReporting: changed.target.checked })}
-        />
-        <span>{t("tournaments.form.playerReporting")}</span>
-      </label>
 
       {/* Said before the submit rather than after it: the organiser should not
           fill in a long form and then be told the name was missing. */}

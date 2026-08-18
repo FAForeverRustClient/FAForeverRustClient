@@ -66,6 +66,17 @@ struct HelperFixture {
     tourney_draft_rejections: Vec<TourneyDraftRejectionCase>,
     tourney_reports: Vec<TourneyReportCase>,
     tourney_map_matches: TourneyMapMatchFixture,
+    tourney_standings: Vec<TourneyStandingsCase>,
+    tourney_profiles: Vec<TourneyProfileCase>,
+    tourney_pool_drafts: Vec<TourneyPoolDraftCase>,
+    tourney_vetoes: Vec<TourneyVetoCase>,
+    tourney_ffa: Vec<TourneyFfaCase>,
+    tourney_drafts: Vec<TourneyDraftCase>,
+    tourney_qualifiers: Vec<TourneyQualifierCase>,
+    tourney_lifecycles: Vec<TourneyLifecycleCase>,
+    tourney_rounds: Vec<TourneyRoundCase>,
+    tourney_chat_rooms: Vec<TourneyChatRoomCase>,
+    tourney_bracket_configs: Vec<TourneyBracketConfigCase>,
 }
 
 #[derive(Serialize)]
@@ -132,6 +143,16 @@ struct TourneyRuleCase {
     member_ids: Vec<String>,
     /// `Tourney::my_invites`: the teams waiting on *this* account's answer.
     my_invite_team_ids: Vec<String>,
+    /// `Tourney::may_rename` for the team above. Until this was recorded the
+    /// Rust half had no caller at all, and only the frontend twin ran.
+    may_rename: bool,
+    /// `Tourney::may_publish`: the service creates every tournament unpublished,
+    /// so getting this wrong hides an event from everyone but its organiser.
+    may_publish: bool,
+    /// `Tourney::may_report` over every match of the event, in bracket order.
+    /// Recorded as ids rather than a single bool so the `has_bracket` half of
+    /// the rule is exercised: that half is the one the frontend twin had lost.
+    reportable_match_ids: Vec<String>,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -172,7 +193,7 @@ struct TourneyPhaseLegalityCase {
 /// The *first* refusal is the one the form shows, so the order matters as much
 /// as the rules: a draft with two problems must name the same one the server
 /// would. Held here because `DraftRejection` never reaches `AppState` and so is
-/// absent from the generated bindings — the frontend spells the union out by
+/// absent from the generated bindings: the frontend spells the union out by
 /// hand, which is exactly the kind of copy that drifts.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -209,6 +230,197 @@ struct TourneyReportEntry {
     handicap: i32,
     score1: Option<i32>,
     score2: Option<i32>,
+}
+
+/// The standings table, which is the same rule written three times: here, in
+/// `Tourney::standings`, and in the browser twin. The service sends no table at
+/// all, so nothing external would catch the three disagreeing.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyStandingsCase {
+    name: String,
+    event: Box<Tourney>,
+    kind: StandingsKind,
+    rows: Vec<Standing>,
+}
+
+/// Matching an entrant to the FAF account behind them.
+///
+/// The last of the tournament twins to be pinned. Cheap to get wrong in a way
+/// nothing shouts about: a miss shows a bare name where every other list shows
+/// an avatar, which reads as a gap in the vault rather than as a bug.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyProfileCase {
+    name: String,
+    profiles: Vec<PlayerSummary>,
+    entrant: TourneyPlayer,
+    /// The login `TourneyState::profile_of` resolves to, or `None`.
+    resolved_login: Option<String>,
+}
+
+/// Whether the service would accept a pool.
+///
+/// Two counting rules that look like arithmetic and are not: every map but one
+/// is consumed by a step, and every pick is a game. Getting them wrong sends the
+/// organiser round a trip to be told numbers they then have to work backwards
+/// from, which is exactly what the twin exists to avoid.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyPoolDraftCase {
+    name: String,
+    draft: PoolDraft,
+    rejection: Option<PoolRejection>,
+    submittable: bool,
+}
+
+/// The four answers an event gives about editing it, talking in it and reading
+/// its news.
+///
+/// Grouped into one case because they are all read off the same event and all
+/// four decide whether a control is drawn at all. The two format answers are
+/// nested on purpose: the service locks the whole format once the bracket
+/// exists, and locks the *team setup* one step earlier, at the end of signups.
+/// A twin that collapsed them would offer the team size during a draft and be
+/// answered "Reopen signups to change the team setup".
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyLifecycleCase {
+    name: String,
+    event: Box<Tourney>,
+    may_edit_format: bool,
+    may_edit_team_setup: bool,
+    may_post_chat: bool,
+    unread_news: i32,
+    /// Whether changing the format to `format` touches the team setup.
+    format: FormatDraft,
+    structural: bool,
+}
+
+/// The best-of plan a draw would start from, and whether it would be taken.
+///
+/// Worth pinning because the round counts are the same arithmetic the round
+/// projection uses and are wrong in the same quiet way: the service pads or
+/// trims the list to the length the bracket really has, so a client that
+/// offered one row too few would drop a round's setting without saying so.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyBracketConfigCase {
+    name: String,
+    event: Box<Tourney>,
+    config: BracketConfig,
+    submittable: bool,
+}
+
+/// How the room list is split, and what each room marks itself with.
+///
+/// The split is the tournament team's own requirement: a bracket makes a room
+/// per match and never deletes one, so the played ones have to fold away or the
+/// live list is unusable by the quarter-finals. The badge order matters for a
+/// smaller reason that is easy to get backwards: being named by `@` replaces
+/// the unread count rather than sitting beside it, because that is what makes
+/// it findable.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyChatRoomCase {
+    name: String,
+    rooms: Vec<ChatRoom>,
+    /// Ids, in order, of the rooms that stay in the live list.
+    active: Vec<String>,
+    /// Ids, in order, of the rooms folded into the completed group.
+    completed: Vec<String>,
+    /// Whether the collapsed group still has to announce itself.
+    completed_wants_attention: bool,
+    /// One badge per room, in the order the rooms came in.
+    badges: Vec<RoomBadge>,
+}
+
+/// Which rounds a map pool can be bound to, before and after the draw.
+///
+/// The projected half is the one worth pinning: it decides how many rounds an
+/// organiser is offered while signups are still open, and it is arithmetic
+/// (`ceil(log2)`, and `2R-2` losers rounds) that is easy to get subtly wrong on
+/// one side only. A client that offered one round too few would leave a round
+/// of the real bracket with no map pool and nobody looking for it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyRoundCase {
+    name: String,
+    event: Box<Tourney>,
+    plan: RoundPlan,
+}
+
+/// Whether a qualifier link would be taken, and why not where it would not.
+///
+/// Worth pinning for a reason the other rejections do not share: three of the
+/// four answers mirror a refusal the service makes, and the fourth does not.
+/// A points rule against an elimination bracket is *accepted* by the service
+/// and then qualifies nobody, silently. If the two halves of the client drift
+/// on that one, one of them starts offering a link that quietly does nothing.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyQualifierCase {
+    name: String,
+    /// The parent, which holds the links.
+    event: Box<Tourney>,
+    /// The child being linked in.
+    candidate: Box<Tourney>,
+    rule: QualifierRule,
+    rejection: Option<QualifierRejection>,
+}
+
+/// Whose veto step is due, and who may take it.
+///
+/// Two captains act on one run concurrently, so a client that got the turn
+/// wrong would show one of them a button that answers "Not your turn" and the
+/// other nothing at all. The three refusals are pinned as carefully as the
+/// permission: a finished run, a run with no sides chosen, and a run walked off
+/// the end all read as "nobody is due" and must not be told apart by accident.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyVetoCase {
+    name: String,
+    event: Box<Tourney>,
+    /// The match the run belongs to, always the first of the event.
+    turn_team_id: Option<String>,
+    may_veto: bool,
+    may_set_sides: bool,
+}
+
+/// A free-for-all lobby: how many winners it wants, whether it is scored, and
+/// whether a given report would be accepted.
+///
+/// Three rules that interlock and are each easy to get subtly wrong. The winner
+/// count is capped by the field, a points event still decides its final by a
+/// winner rather than a score, and a scored round needs a number for *every*
+/// entrant rather than for the ones somebody typed.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyFfaCase {
+    name: String,
+    event: Box<Tourney>,
+    report: FfaReport,
+    winners_needed: i32,
+    scored: bool,
+    may_report: bool,
+    submittable: bool,
+}
+
+/// Whose captains-draft pick is due, and who may take or undo it.
+///
+/// The undo rule is the subtle one: an organiser may take back any pick, but a
+/// captain only their own and only while nobody has picked after them. Getting
+/// that wrong lets one captain rewrite another's turn.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyDraftCase {
+    name: String,
+    event: Box<Tourney>,
+    turn_team_id: Option<String>,
+    may_pick: bool,
+    may_undo: bool,
+    /// `Tourney::undrafted`, in the order it returns them.
+    undrafted_ids: Vec<String>,
 }
 
 /// Resolving an organiser's hand-typed map name against FAF's vault.
@@ -303,6 +515,7 @@ fn tourney_team(id: &str, players: &[&str]) -> TourneyTeam {
         division: 0,
         checked_in: false,
         eliminated: false,
+        out: None,
         final_rank: None,
         captain_renamed: false,
         join_requests: Vec::new(),
@@ -350,10 +563,65 @@ fn tourney_rule_case(
             .into_iter()
             .map(|team| team.id.clone())
             .collect(),
+        may_rename: team.as_ref().is_some_and(|team| event.may_rename(team)),
+        may_publish: event.may_publish(),
+        reportable_match_ids: event
+            .matches
+            .iter()
+            .filter(|entry| event.may_report(entry))
+            .map(|entry| entry.id.clone())
+            .collect(),
         unread_total: state.unread_total(),
         rooms,
         event: Box::new(event),
     }
+}
+
+fn tourney_match(
+    id: &str,
+    bracket: BracketSide,
+    team1: Option<&str>,
+    team2: Option<&str>,
+) -> TourneyMatch {
+    TourneyMatch {
+        id: id.into(),
+        bracket,
+        round: 1,
+        index: 0,
+        best_of: 3,
+        handicap: 0,
+        division: 0,
+        team1: team1.map(Into::into),
+        team2: team2.map(Into::into),
+        score1: None,
+        score2: None,
+        status: MatchStatus::Ready,
+        winner: None,
+        loser: None,
+        winner_to: None,
+        loser_to: None,
+        pending_report: None,
+        veto: None,
+        entrants: Vec::new(),
+        winners: Vec::new(),
+        points: Vec::new(),
+        is_final: false,
+        replay_ids: Vec::new(),
+    }
+}
+
+/// Two matches with two sides, plus a free-for-all round. Enough for
+/// `may_report` to separate the three halves of its condition.
+fn tourney_matches() -> Vec<TourneyMatch> {
+    vec![
+        tourney_match("m1", BracketSide::Winners, Some("t1"), Some("t2")),
+        // No opponent drawn yet: the service refuses a result for a half-empty
+        // slot, so the control must not be offered either.
+        tourney_match("m2", BracketSide::Winners, Some("t1"), None),
+        // `report` takes a different body for a free-for-all round, which this
+        // client does not send.
+        tourney_match("ffa1", BracketSide::FreeForAll, Some("t1"), Some("t2")),
+    ]
 }
 
 fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
@@ -364,6 +632,7 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         status: TourneyStatus::Signup,
         formation: Formation::Open,
         team_size: 2,
+        published: true,
         rating: RatingGate {
             max_team: Some(3_000),
             ..RatingGate::default()
@@ -403,6 +672,7 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
     // Teams formed, bracket not drawn: the one window seeds can change in.
     let drafted = Tourney {
         id: "drafted".into(),
+        published: true,
         status: TourneyStatus::Drafted,
         formation: Formation::Open,
         team_size: 2,
@@ -414,6 +684,7 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
     // either until teams exist.
     let solo = Tourney {
         id: "solo".into(),
+        published: true,
         status: TourneyStatus::Signup,
         formation: Formation::Solo,
         team_size: 1,
@@ -430,6 +701,9 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             organiser: true,
             ..TourneyViewer::default()
         },
+        // Matches exist in the model before the draw is run, so the status is
+        // what decides, not their presence.
+        matches: tourney_matches(),
         ..drafted.clone()
     };
     // The same, once the bracket exists: the draw was made from these teams, so
@@ -439,11 +713,61 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         status: TourneyStatus::Running,
         ..organised.clone()
     };
+    // Freshly created: taking signups already, and visible to nobody else.
+    let unpublished = Tourney {
+        id: "unpublished".into(),
+        status: TourneyStatus::Signup,
+        published: false,
+        ..organised.clone()
+    };
+    // The same event as any other reader sees it: no control, because publishing
+    // is not theirs to do.
+    let unpublished_visitor = Tourney {
+        id: "unpublished-visitor".into(),
+        viewer: TourneyViewer {
+            logged_in: true,
+            ..TourneyViewer::default()
+        },
+        ..unpublished.clone()
+    };
     // An unrated event, which is the only kind that takes a typed rating.
     let unrated = Tourney {
         id: "unrated".into(),
         rating_kind: RatingKind::None,
         ..organised.clone()
+    };
+
+    // The captain's own view: one rename, and only while the team holds more
+    // than one player.
+    let captained = Tourney {
+        id: "captained".into(),
+        published: true,
+        status: TourneyStatus::Signup,
+        formation: Formation::Open,
+        team_size: 2,
+        players: vec![
+            tourney_player("me", Some(1_500), Some("t1"), false),
+            tourney_player("p2", Some(1_500), Some("t1"), false),
+        ],
+        teams: vec![TourneyTeam {
+            captain_id: Some("me".into()),
+            ..tourney_team("t1", &["me", "p2"])
+        }],
+        viewer: TourneyViewer {
+            logged_in: true,
+            signed_up_player_id: Some("me".into()),
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    let renamed_once = Tourney {
+        id: "renamed-once".into(),
+        teams: vec![TourneyTeam {
+            captain_id: Some("me".into()),
+            captain_renamed: true,
+            ..tourney_team("t1", &["me", "p2"])
+        }],
+        ..captained.clone()
     };
 
     vec![
@@ -484,6 +808,1281 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             Some("t1"),
             vec![],
         ),
+        tourney_rule_case(
+            "a freshly created event the organiser has not published yet",
+            unpublished,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same unpublished event, seen by someone who cannot publish it",
+            unpublished_visitor,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "a captain who has not yet spent their one rename",
+            captained,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same captain, once the service has counted the rename",
+            renamed_once,
+            Some("t1"),
+            vec![],
+        ),
+    ]
+}
+
+fn standings_team(id: &str, seed: i32, out: Option<(BracketSide, i32)>) -> TourneyTeam {
+    TourneyTeam {
+        seed,
+        out: out.map(|(bracket, round)| TeamExit { bracket, round }),
+        ..tourney_team(id, &[])
+    }
+}
+
+fn standings_match(
+    id: &str,
+    status: MatchStatus,
+    sides: (Option<&str>, Option<&str>),
+    score: (Option<i32>, Option<i32>),
+    decided: (Option<&str>, Option<&str>),
+) -> TourneyMatch {
+    TourneyMatch {
+        status,
+        score1: score.0,
+        score2: score.1,
+        winner: decided.0.map(Into::into),
+        loser: decided.1.map(Into::into),
+        ..tourney_match(id, BracketSide::Swiss, sides.0, sides.1)
+    }
+}
+
+fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
+    // A four-team double elimination, played out. Two teams went out at the
+    // same depth, which is the case a naive index would rank 3 and 4.
+    let finished = Tourney {
+        id: "finished".into(),
+        status: TourneyStatus::Finished,
+        bracket_kind: BracketKind::Double,
+        champion_team_id: Some("t1".into()),
+        teams: vec![
+            standings_team("t4", 4, Some((BracketSide::Losers, 1))),
+            standings_team("t2", 2, Some((BracketSide::GrandFinal, 1))),
+            standings_team("t3", 3, Some((BracketSide::Losers, 1))),
+            standings_team("t1", 1, None),
+        ],
+        ..Tourney::default()
+    };
+    // Mid-event: nobody has won, so nobody may be called first.
+    let running = Tourney {
+        id: "running".into(),
+        status: TourneyStatus::Running,
+        bracket_kind: BracketKind::Single,
+        champion_team_id: None,
+        teams: vec![
+            standings_team("t2", 2, Some((BracketSide::Winners, 1))),
+            standings_team("t1", 1, None),
+            standings_team("t3", 3, Some((BracketSide::Winners, 2))),
+        ],
+        ..Tourney::default()
+    };
+    // Swiss, including the bye that a team drawing the odd number gets.
+    let swiss = Tourney {
+        id: "swiss".into(),
+        status: TourneyStatus::Running,
+        bracket_kind: BracketKind::Swiss,
+        teams: vec![
+            standings_team("t1", 1, None),
+            standings_team("t2", 2, None),
+            standings_team("t3", 3, None),
+        ],
+        matches: vec![
+            standings_match(
+                "m1",
+                MatchStatus::Done,
+                (Some("t1"), Some("t2")),
+                (Some(2), Some(0)),
+                (Some("t1"), Some("t2")),
+            ),
+            standings_match(
+                "m2",
+                MatchStatus::Bye,
+                (Some("t3"), None),
+                (None, None),
+                (None, None),
+            ),
+        ],
+        ..Tourney::default()
+    };
+    // An import, which often carries a final table and nothing else.
+    let imported = Tourney {
+        id: "imported".into(),
+        imported: true,
+        status: TourneyStatus::Finished,
+        champion_team_id: Some("t1".into()),
+        teams: vec![
+            TourneyTeam {
+                final_rank: Some(2),
+                ..standings_team("t2", 2, None)
+            },
+            TourneyTeam {
+                final_rank: Some(1),
+                ..standings_team("t1", 1, None)
+            },
+            standings_team("t9", 9, None),
+        ],
+        ..Tourney::default()
+    };
+    // A scored free-for-all, where the total decides and nobody is knocked out.
+    let points = Tourney {
+        id: "points".into(),
+        status: TourneyStatus::Running,
+        competition: Competition::FreeForAll,
+        ffa: Some(FfaConfig {
+            per_match: 3,
+            advance: 1,
+            mode: FfaMode::Points,
+            rounds: 2,
+            cut_to: 0,
+            final_size: 0,
+        }),
+        teams: vec![
+            standings_team("t1", 1, None),
+            standings_team("t2", 2, None),
+            standings_team("t3", 3, None),
+        ],
+        matches: vec![TourneyMatch {
+            points: vec![
+                TeamPoints {
+                    team_id: "t1".into(),
+                    points: 3,
+                },
+                TeamPoints {
+                    team_id: "t2".into(),
+                    points: 7,
+                },
+                TeamPoints {
+                    team_id: "t3".into(),
+                    points: 7,
+                },
+            ],
+            ..tourney_match("f1", BracketSide::FreeForAll, None, None)
+        }],
+        ..Tourney::default()
+    };
+    // Signups: no table at all, and a pane that drew one would be inventing it.
+    let early = Tourney {
+        id: "early".into(),
+        status: TourneyStatus::Signup,
+        teams: vec![standings_team("t1", 1, None)],
+        ..Tourney::default()
+    };
+
+    [
+        (
+            "a finished double elimination, with a shared third",
+            finished,
+        ),
+        ("mid-event, where nobody has a place yet", running),
+        ("a Swiss table, including a bye", swiss),
+        ("an import, which carries only its own placings", imported),
+        (
+            "a scored free-for-all, where seed breaks a points tie",
+            points,
+        ),
+        ("signups, where there is no table", early),
+    ]
+    .into_iter()
+    .map(|(name, event)| TourneyStandingsCase {
+        name: name.to_string(),
+        kind: event.standings_kind(),
+        rows: event.standings(),
+        event: Box::new(event),
+    })
+    .collect()
+}
+
+fn tourney_profile_cases() -> Vec<TourneyProfileCase> {
+    let profiles = vec![
+        PlayerSummary {
+            id: 101,
+            login: "Nuggets".into(),
+            avatar_url: String::new(),
+            country: "DE".into(),
+            global_rating: Some(1_700),
+            ladder_rating: None,
+        },
+        PlayerSummary {
+            id: 102,
+            login: "Ada".into(),
+            avatar_url: String::new(),
+            country: "GB".into(),
+            global_rating: Some(1_900),
+            ladder_rating: None,
+        },
+    ];
+
+    [
+        // The ordinary case, and the one that must not match on name.
+        (
+            "an entrant whose account is loaded",
+            tourney_player_with_faf("p1", Some(102)),
+        ),
+        // An organiser can add a player by hand, and that entry is a name and
+        // nothing else. A real case rather than a failure.
+        (
+            "an entrant added by hand, with no account",
+            tourney_player_with_faf("p2", None),
+        ),
+        // Loaded profiles lag the entrant list: a signup that arrives before
+        // the next profile fetch has an id nothing answers to yet.
+        (
+            "an account the profile list has not caught up with",
+            tourney_player_with_faf("p3", Some(999)),
+        ),
+    ]
+    .into_iter()
+    .map(|(name, entrant)| {
+        let state = TourneyState {
+            entrant_profiles: profiles.clone(),
+            ..TourneyState::default()
+        };
+        TourneyProfileCase {
+            name: name.to_string(),
+            resolved_login: state.profile_of(&entrant).map(|found| found.login.clone()),
+            profiles: profiles.clone(),
+            entrant,
+        }
+    })
+    .collect()
+}
+
+fn tourney_player_with_faf(id: &str, faf_id: Option<i32>) -> TourneyPlayer {
+    TourneyPlayer {
+        faf_id,
+        ..tourney_player(id, Some(1_500), None, false)
+    }
+}
+
+fn pool_step(action: PoolAction, team: PoolSide) -> PoolStep {
+    PoolStep { action, team }
+}
+
+fn tourney_pool_draft_cases() -> Vec<TourneyPoolDraftCase> {
+    let maps =
+        |count: usize| -> Vec<String> { (0..count).map(|index| format!("map{index}")).collect() };
+    // A Bo3 over four maps: three steps, of which two are picks, leaving one
+    // map as the decider. This is the shape the service wants.
+    let good = PoolDraft {
+        id: String::new(),
+        name: "Round 1".into(),
+        map_ids: maps(4),
+        best_of: Some(3),
+        sequence: vec![
+            pool_step(PoolAction::Ban, PoolSide::A),
+            pool_step(PoolAction::Pick, PoolSide::B),
+            pool_step(PoolAction::Pick, PoolSide::A),
+        ],
+    };
+
+    [
+        ("a Bo3 over four maps with two picks", good.clone()),
+        (
+            "no name",
+            PoolDraft {
+                name: "  ".into(),
+                ..good.clone()
+            },
+        ),
+        (
+            "no maps",
+            PoolDraft {
+                map_ids: Vec::new(),
+                ..good.clone()
+            },
+        ),
+        (
+            "no order at all, which is a plain list of maps",
+            PoolDraft {
+                sequence: Vec::new(),
+                ..good.clone()
+            },
+        ),
+        (
+            "one step too few for the map count",
+            PoolDraft {
+                map_ids: maps(5),
+                ..good.clone()
+            },
+        ),
+        (
+            "the right number of steps, the wrong number of picks",
+            PoolDraft {
+                sequence: vec![
+                    pool_step(PoolAction::Ban, PoolSide::A),
+                    pool_step(PoolAction::Ban, PoolSide::B),
+                    pool_step(PoolAction::Pick, PoolSide::A),
+                ],
+                ..good.clone()
+            },
+        ),
+        (
+            "a Bo1, which wants no picks at all",
+            PoolDraft {
+                best_of: Some(1),
+                map_ids: maps(2),
+                sequence: vec![pool_step(PoolAction::Ban, PoolSide::A)],
+                ..good
+            },
+        ),
+    ]
+    .into_iter()
+    .map(|(name, draft)| TourneyPoolDraftCase {
+        name: name.to_string(),
+        rejection: draft.rejection(),
+        submittable: draft.rejection().is_none(),
+        draft,
+    })
+    .collect()
+}
+
+fn tourney_bracket_config_cases() -> Vec<TourneyBracketConfigCase> {
+    let with_teams = |count: usize, competition, bracket| Tourney {
+        id: "e1".into(),
+        status: TourneyStatus::Drafted,
+        competition,
+        bracket_kind: bracket,
+        teams: (0..count)
+            .map(|index| tourney_team(&format!("t{index}"), &[]))
+            .collect(),
+        ..Tourney::default()
+    };
+
+    [
+        (
+            "eight teams, single elimination",
+            with_teams(8, Competition::Team, BracketKind::Single),
+        ),
+        (
+            "a field that is not a power of two",
+            with_teams(6, Competition::Team, BracketKind::Single),
+        ),
+        (
+            "double elimination, where the losers side is 2R - 2 rounds",
+            with_teams(8, Competition::Team, BracketKind::Double),
+        ),
+        (
+            "swiss, which is a round count rather than a tree",
+            with_teams(8, Competition::Team, BracketKind::Swiss),
+        ),
+        (
+            "a free-for-all, which is drawn from its own configuration",
+            with_teams(8, Competition::FreeForAll, BracketKind::Single),
+        ),
+        (
+            "the smallest bracket there is",
+            with_teams(2, Competition::Team, BracketKind::Double),
+        ),
+    ]
+    .into_iter()
+    .map(|(name, event)| {
+        let config = BracketConfig::of(&event);
+        TourneyBracketConfigCase {
+            name: name.to_string(),
+            submittable: config.is_submittable(event.teams.len() as i32),
+            config,
+            event: Box::new(event),
+        }
+    })
+    .collect()
+}
+
+fn tourney_chat_room_cases() -> Vec<TourneyChatRoomCase> {
+    let mentioned = |id: &str| ChatRoom {
+        mentioned: true,
+        unread: 4,
+        ..tourney_room(id, 4)
+    };
+
+    [
+        (
+            "a bracket part-way through: two live rooms and two played",
+            vec![
+                tourney_room("global", 2),
+                tourney_room("match:m3", 0),
+                tourney_room_done("match:m1", false),
+                tourney_room_done("match:m2", false),
+            ],
+        ),
+        (
+            // The case the fold costs something, and the reason the group
+            // carries a mark of its own.
+            "named in a room that has been folded away",
+            vec![
+                tourney_room("global", 0),
+                tourney_room_done("match:m1", true),
+            ],
+        ),
+        (
+            "named in a live room, where the mark replaces the count",
+            vec![mentioned("global"), tourney_room("match:m1", 7)],
+        ),
+        (
+            "nothing has happened anywhere",
+            vec![tourney_room("global", 0)],
+        ),
+        (
+            "every room is finished",
+            vec![
+                tourney_room_done("match:m1", false),
+                tourney_room_done("match:m2", false),
+            ],
+        ),
+    ]
+    .into_iter()
+    .map(|(name, rooms)| {
+        let state = TourneyState {
+            chat_rooms: rooms.clone(),
+            ..TourneyState::default()
+        };
+        let (active, completed) = state.chat_groups();
+        TourneyChatRoomCase {
+            name: name.to_string(),
+            active: active.iter().map(|room| room.id.clone()).collect(),
+            completed: completed.iter().map(|room| room.id.clone()).collect(),
+            completed_wants_attention: state.completed_wants_attention(),
+            badges: rooms.iter().map(ChatRoom::badge).collect(),
+            rooms,
+        }
+    })
+    .collect()
+}
+
+fn tourney_round_cases() -> Vec<TourneyRoundCase> {
+    let base = Tourney {
+        id: "e1".into(),
+        status: TourneyStatus::Signup,
+        competition: Competition::Team,
+        team_size: 2,
+        bracket_kind: BracketKind::Single,
+        ..Tourney::default()
+    };
+    let entrants = |count: usize| -> Vec<TourneyPlayer> {
+        (0..count)
+            .map(|index| tourney_player(&format!("p{index}"), Some(1_500), None, false))
+            .collect()
+    };
+
+    [
+        (
+            "eight signups in a 2v2, so four teams and two rounds",
+            Tourney {
+                players: entrants(8),
+                ..base.clone()
+            },
+        ),
+        (
+            // The cap answers before anybody has entered, which is what makes
+            // preparing pools possible on the day the event is created.
+            "no signups yet, but a cap of eight",
+            Tourney {
+                max_teams: 8,
+                ..base.clone()
+            },
+        ),
+        (
+            "a field that does not divide into a power of two",
+            Tourney {
+                players: entrants(10),
+                ..base.clone()
+            },
+        ),
+        (
+            "double elimination, which adds a losers side and a grand final",
+            Tourney {
+                max_teams: 8,
+                bracket_kind: BracketKind::Double,
+                ..base.clone()
+            },
+        ),
+        (
+            "swiss, which is rounds and a final rather than a tree",
+            Tourney {
+                max_teams: 8,
+                bracket_kind: BracketKind::Swiss,
+                ..base.clone()
+            },
+        ),
+        (
+            "too few entrants to draw anything",
+            Tourney {
+                players: entrants(1),
+                ..base.clone()
+            },
+        ),
+        (
+            // A free-for-all has no ban/pick rounds, so it must not project a
+            // bracket it will never draw.
+            "a free-for-all",
+            Tourney {
+                max_teams: 8,
+                competition: Competition::FreeForAll,
+                ..base.clone()
+            },
+        ),
+        (
+            // Once the draw exists the projection is irrelevant: the real
+            // rounds win, cap or no cap.
+            "a drawn bracket, where the real rounds win",
+            Tourney {
+                max_teams: 64,
+                status: TourneyStatus::Running,
+                matches: tourney_matches(),
+                ..base.clone()
+            },
+        ),
+    ]
+    .into_iter()
+    .map(|(name, event)| TourneyRoundCase {
+        name: name.to_string(),
+        plan: event.round_plan(),
+        event: Box::new(event),
+    })
+    .collect()
+}
+
+fn tourney_lifecycle_cases() -> Vec<TourneyLifecycleCase> {
+    let news = |id: &str, at: u32| NewsPost {
+        id: id.into(),
+        body: "Start moved an hour later.".into(),
+        by: "Nuggets".into(),
+        at: Some(at),
+        edited_at: None,
+        important: true,
+    };
+    let base = Tourney {
+        id: "e1".into(),
+        status: TourneyStatus::Signup,
+        competition: Competition::Team,
+        formation: Formation::Open,
+        bracket_kind: BracketKind::Double,
+        team_size: 2,
+        news: vec![news("n1", 1_786_100_000), news("n2", 1_786_200_000)],
+        viewer: TourneyViewer {
+            logged_in: true,
+            organiser: true,
+            faf_id: Some(101),
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    let unchanged = FormatDraft::of(&base);
+    let bracket_only = FormatDraft {
+        bracket_kind: BracketKind::Swiss,
+        ..unchanged.clone()
+    };
+    let team_setup = FormatDraft {
+        team_size: 4,
+        ..unchanged.clone()
+    };
+
+    [
+        (
+            "signups open, nothing read yet",
+            base.clone(),
+            bracket_only.clone(),
+        ),
+        (
+            "signups open, changing the team size",
+            base.clone(),
+            team_setup.clone(),
+        ),
+        (
+            "signups open, changing nothing at all",
+            base.clone(),
+            unchanged,
+        ),
+        (
+            // The step that matters: the format is still editable, the team
+            // setup is not.
+            "teams formed, so only the bracket type is still open",
+            Tourney {
+                status: TourneyStatus::Drafted,
+                ..base.clone()
+            },
+            team_setup.clone(),
+        ),
+        (
+            "the bracket is drawn, and the format is locked",
+            Tourney {
+                status: TourneyStatus::Running,
+                ..base.clone()
+            },
+            bracket_only.clone(),
+        ),
+        (
+            "a reader who is not the organiser",
+            Tourney {
+                viewer: TourneyViewer {
+                    organiser: false,
+                    ..base.viewer.clone()
+                },
+                ..base.clone()
+            },
+            bracket_only.clone(),
+        ),
+        (
+            "silenced in chat, which is not the same as a locked room",
+            Tourney {
+                chat_muted_me: true,
+                ..base.clone()
+            },
+            bracket_only.clone(),
+        ),
+        (
+            "the room locked two days after the event",
+            Tourney {
+                chat_locked: true,
+                ..base.clone()
+            },
+            bracket_only.clone(),
+        ),
+        (
+            "one announcement read, one still new",
+            Tourney {
+                viewer: TourneyViewer {
+                    news_read_at: Some(1_786_100_000),
+                    ..base.viewer.clone()
+                },
+                ..base.clone()
+            },
+            bracket_only.clone(),
+        ),
+        (
+            // Nothing is remembered for a signed-out reader, so a badge would
+            // never clear.
+            "signed out, where nothing is remembered",
+            Tourney {
+                viewer: TourneyViewer {
+                    logged_in: false,
+                    organiser: false,
+                    ..TourneyViewer::default()
+                },
+                ..base.clone()
+            },
+            bracket_only,
+        ),
+    ]
+    .into_iter()
+    .map(|(name, event, format)| TourneyLifecycleCase {
+        name: name.to_string(),
+        may_edit_format: event.may_edit_format(),
+        may_edit_team_setup: event.may_edit_team_setup(),
+        may_post_chat: event.may_post_chat(),
+        unread_news: event.unread_news(),
+        structural: format.is_structural(&event),
+        format,
+        event: Box::new(event),
+    })
+    .collect()
+}
+
+fn tourney_series(id: &str, name: &str, editions: i32, active: i32) -> TourneySeries {
+    TourneySeries {
+        id: id.into(),
+        name: name.into(),
+        description: "A monthly cup.".into(),
+        colour: SeriesColour::Blue,
+        category: Some(TourneyCategory::Official),
+        editions,
+        active,
+        last_at: Some(1_786_212_000),
+        latest_id: Some("e1".into()),
+        latest_name: "Spring Cup".into(),
+        latest_date: Some(1_786_212_000),
+    }
+}
+
+fn tourney_series_detail(id: &str, name: &str) -> SeriesDetail {
+    SeriesDetail {
+        id: id.into(),
+        name: name.into(),
+        description: "A monthly cup.".into(),
+        colour: SeriesColour::Blue,
+        category: Some(TourneyCategory::Official),
+        editions: vec![SeriesEdition {
+            id: "e1".into(),
+            name: "Spring Cup".into(),
+            status: TourneyStatus::Finished,
+            category: Some(TourneyCategory::Official),
+            published: true,
+            competition: Competition::Team,
+            bracket_kind: BracketKind::Single,
+            team_size: 1,
+            player_count: 4,
+            team_count: 4,
+            event_date: Some(1_786_212_000),
+            abandoned: false,
+            champion_team_id: Some("t1".into()),
+            champion: "Ada".into(),
+        }],
+        can_edit: true,
+    }
+}
+
+fn tourney_qualifier_cases() -> Vec<TourneyQualifierCase> {
+    let parent = Tourney {
+        id: "parent".into(),
+        name: "Grand Final".into(),
+        qualifiers: vec![Qualifier {
+            id: "link1".into(),
+            tournament_id: "linked".into(),
+            name: "Already In".into(),
+            status: Some(TourneyStatus::Finished),
+            rule: QualifierRule::default(),
+            ..Qualifier::default()
+        }],
+        ..Tourney::default()
+    };
+    let elimination = Tourney {
+        id: "child".into(),
+        name: "Qualifier One".into(),
+        competition: Competition::Team,
+        bracket_kind: BracketKind::Double,
+        ..Tourney::default()
+    };
+    let swiss = Tourney {
+        id: "swiss".into(),
+        name: "Swiss Open".into(),
+        bracket_kind: BracketKind::Swiss,
+        ..elimination.clone()
+    };
+    let ffa = Tourney {
+        id: "ffa".into(),
+        name: "Free For All".into(),
+        competition: Competition::FreeForAll,
+        ..elimination.clone()
+    };
+    let top = |n: i32| QualifierRule {
+        kind: QualifierKind::Top,
+        n,
+    };
+    let points = |n: i32| QualifierRule {
+        kind: QualifierKind::Points,
+        n,
+    };
+
+    [
+        (
+            "the top four of an elimination bracket",
+            elimination.clone(),
+            top(4),
+        ),
+        (
+            "a tournament linked into itself",
+            Tourney {
+                id: "parent".into(),
+                ..elimination.clone()
+            },
+            top(4),
+        ),
+        (
+            "a child that is already linked",
+            Tourney {
+                id: "linked".into(),
+                ..elimination.clone()
+            },
+            top(1),
+        ),
+        ("a cutoff of zero", elimination.clone(), top(0)),
+        (
+            "points against an elimination bracket, which scores nothing",
+            elimination.clone(),
+            points(3),
+        ),
+        ("points against a Swiss field", swiss, points(3)),
+        ("points against a free-for-all", ffa, points(3)),
+    ]
+    .into_iter()
+    .map(|(name, candidate, rule)| TourneyQualifierCase {
+        name: name.to_string(),
+        rejection: parent.qualifier_rejection(&candidate, rule),
+        event: Box::new(parent.clone()),
+        candidate: Box::new(candidate),
+        rule,
+    })
+    .collect()
+}
+
+fn veto_event(
+    name: &str,
+    organiser: bool,
+    my_player: Option<&str>,
+    veto: Option<MatchVeto>,
+    status: MatchStatus,
+) -> TourneyVetoCase {
+    let entry = TourneyMatch {
+        status,
+        veto,
+        ..tourney_match("m1", BracketSide::Winners, Some("t1"), Some("t2"))
+    };
+    let event = Tourney {
+        id: "veto".into(),
+        status: TourneyStatus::Running,
+        veto: VetoConfig {
+            enabled: true,
+            mode: VetoMode::Upfront,
+        },
+        players: vec![
+            tourney_player("cap1", Some(1_500), Some("t1"), false),
+            tourney_player("cap2", Some(1_500), Some("t2"), false),
+        ],
+        teams: vec![
+            TourneyTeam {
+                captain_id: Some("cap1".into()),
+                ..tourney_team("t1", &["cap1"])
+            },
+            TourneyTeam {
+                captain_id: Some("cap2".into()),
+                ..tourney_team("t2", &["cap2"])
+            },
+        ],
+        matches: vec![entry],
+        viewer: TourneyViewer {
+            logged_in: true,
+            organiser,
+            signed_up_player_id: my_player.map(Into::into),
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    let entry = &event.matches[0];
+    TourneyVetoCase {
+        name: name.to_string(),
+        turn_team_id: entry
+            .veto
+            .as_ref()
+            .and_then(|veto| veto.current_turn())
+            .map(|turn| turn.team_id),
+        may_veto: event.may_veto(entry),
+        may_set_sides: event.may_set_veto_sides(entry),
+        event: Box::new(event),
+    }
+}
+
+fn running_veto(step_index: i32, team_a: Option<&str>, done: bool) -> MatchVeto {
+    MatchVeto {
+        remaining: vec!["map1".into(), "map2".into(), "map3".into(), "map4".into()],
+        banned: Vec::new(),
+        picks: Vec::new(),
+        sequence: vec![
+            pool_step(PoolAction::Ban, PoolSide::A),
+            pool_step(PoolAction::Pick, PoolSide::B),
+            pool_step(PoolAction::Pick, PoolSide::A),
+        ],
+        step_index,
+        team_a: team_a.map(Into::into),
+        team_b: team_a.map(|a| if a == "t1" { "t2".into() } else { "t1".into() }),
+        done,
+        decider: None,
+    }
+}
+
+fn tourney_veto_cases() -> Vec<TourneyVetoCase> {
+    vec![
+        // The captain of the side that is due. The one case that says yes for
+        // somebody who is not an organiser.
+        veto_event(
+            "the captain whose turn it is",
+            false,
+            Some("cap1"),
+            Some(running_veto(0, Some("t1"), false)),
+            MatchStatus::Ready,
+        ),
+        // The other captain, on the same run: it is not their step.
+        veto_event(
+            "the captain of the other side",
+            false,
+            Some("cap2"),
+            Some(running_veto(0, Some("t1"), false)),
+            MatchStatus::Ready,
+        ),
+        // An organiser may act for either side, which is how a run gets unstuck.
+        veto_event(
+            "an organiser, who may act for either side",
+            true,
+            None,
+            Some(running_veto(0, Some("t1"), false)),
+            MatchStatus::Ready,
+        ),
+        // Second step, so the other side is due and the first captain is not.
+        veto_event(
+            "one step in, where the other side is due",
+            false,
+            Some("cap1"),
+            Some(running_veto(1, Some("t1"), false)),
+            MatchStatus::Ready,
+        ),
+        // No sides yet: nobody is due, and the organiser is offered the choice.
+        veto_event(
+            "a run with no sides chosen yet",
+            true,
+            None,
+            Some(running_veto(0, None, false)),
+            MatchStatus::Ready,
+        ),
+        // Finished: nothing is due, and the sides are settled.
+        veto_event(
+            "a finished run",
+            true,
+            None,
+            Some(running_veto(3, Some("t1"), true)),
+            MatchStatus::Ready,
+        ),
+        // Walked off the end without being marked done, which the service can
+        // leave behind after an undo. Nobody is due.
+        veto_event(
+            "a run walked past its last step",
+            true,
+            None,
+            Some(running_veto(9, Some("t1"), false)),
+            MatchStatus::Ready,
+        ),
+        // A played match keeps its run on screen but closes it.
+        veto_event(
+            "a match that already has a result",
+            true,
+            None,
+            Some(running_veto(0, Some("t1"), false)),
+            MatchStatus::Done,
+        ),
+        // No run at all, which is every match of an event without vetoes.
+        veto_event("a match with no run", true, None, None, MatchStatus::Ready),
+    ]
+}
+
+fn ffa_lobby(id: &str, index: i32, entrants: &[&str], is_final: bool) -> TourneyMatch {
+    TourneyMatch {
+        index,
+        is_final,
+        entrants: entrants.iter().map(|id| (*id).to_string()).collect(),
+        ..tourney_match(id, BracketSide::FreeForAll, None, None)
+    }
+}
+
+fn ffa_case(
+    name: &str,
+    mode: FfaMode,
+    advance: i32,
+    lobbies: Vec<TourneyMatch>,
+    report: FfaReport,
+) -> TourneyFfaCase {
+    let event = Tourney {
+        id: "ffa".into(),
+        status: TourneyStatus::Running,
+        competition: Competition::FreeForAll,
+        team_size: 1,
+        ffa: Some(FfaConfig {
+            per_match: 3,
+            advance,
+            mode,
+            rounds: 3,
+            cut_to: 0,
+            final_size: 0,
+        }),
+        teams: (1..=6)
+            .map(|index| TourneyTeam {
+                seed: index,
+                ..tourney_team(&format!("t{index}"), &[])
+            })
+            .collect(),
+        matches: lobbies,
+        viewer: TourneyViewer {
+            logged_in: true,
+            organiser: true,
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    let entry = &event.matches[0];
+    TourneyFfaCase {
+        name: name.to_string(),
+        winners_needed: event.ffa_winners_needed(entry),
+        scored: event.ffa_is_scored(entry),
+        may_report: event.may_report_ffa(entry),
+        submittable: report.is_submittable(
+            entry,
+            event.ffa_is_scored(entry),
+            event.ffa_winners_needed(entry),
+        ),
+        report,
+        event: Box::new(event),
+    }
+}
+
+fn ffa_points(pairs: &[(&str, i32)]) -> FfaReport {
+    FfaReport {
+        match_id: "f1".into(),
+        winners: Vec::new(),
+        points: pairs
+            .iter()
+            .map(|(id, points)| TeamPoints {
+                team_id: (*id).to_string(),
+                points: *points,
+            })
+            .collect(),
+    }
+}
+
+fn ffa_winners(ids: &[&str]) -> FfaReport {
+    FfaReport {
+        match_id: "f1".into(),
+        winners: ids.iter().map(|id| (*id).to_string()).collect(),
+        points: Vec::new(),
+    }
+}
+
+fn tourney_ffa_cases() -> Vec<TourneyFfaCase> {
+    let two_lobbies = || {
+        vec![
+            ffa_lobby("f1", 0, &["t1", "t2", "t3"], false),
+            ffa_lobby("f2", 1, &["t4", "t5", "t6"], false),
+        ]
+    };
+    let one_lobby = || vec![ffa_lobby("f1", 0, &["t1", "t2", "t3"], false)];
+
+    vec![
+        ffa_case(
+            "a scored lobby with a number for everyone",
+            FfaMode::Points,
+            1,
+            two_lobbies(),
+            ffa_points(&[("t1", 5), ("t2", 3), ("t3", 0)]),
+        ),
+        ffa_case(
+            "a scored lobby missing an entrant",
+            FfaMode::Points,
+            1,
+            two_lobbies(),
+            ffa_points(&[("t1", 5), ("t2", 3)]),
+        ),
+        ffa_case(
+            "a score above the range the service accepts",
+            FfaMode::Points,
+            1,
+            two_lobbies(),
+            ffa_points(&[("t1", 5), ("t2", 3), ("t3", 1_001)]),
+        ),
+        ffa_case(
+            "an elimination lobby advancing exactly one",
+            FfaMode::Elimination,
+            1,
+            two_lobbies(),
+            ffa_winners(&["t1"]),
+        ),
+        ffa_case(
+            "an elimination lobby advancing one too many",
+            FfaMode::Elimination,
+            1,
+            two_lobbies(),
+            ffa_winners(&["t1", "t2"]),
+        ),
+        ffa_case(
+            "a winner who is not in the lobby",
+            FfaMode::Elimination,
+            1,
+            two_lobbies(),
+            ffa_winners(&["t9"]),
+        ),
+        ffa_case(
+            "the same winner named twice",
+            FfaMode::Elimination,
+            2,
+            two_lobbies(),
+            ffa_winners(&["t1", "t1"]),
+        ),
+        ffa_case(
+            "advance set higher than the lobby can give",
+            FfaMode::Elimination,
+            9,
+            two_lobbies(),
+            ffa_winners(&["t1", "t2"]),
+        ),
+        ffa_case(
+            "the last lobby of a round, which is the final",
+            FfaMode::Elimination,
+            2,
+            one_lobby(),
+            ffa_winners(&["t1"]),
+        ),
+        // The last lobby of a round is a final for the *winner count*, but not
+        // for scoring: the service keys that off `isFinal` alone, so a points
+        // event still wants points here. The two rules read alike and are not.
+        ffa_case(
+            "the last lobby of a points round, which is still scored",
+            FfaMode::Points,
+            1,
+            one_lobby(),
+            ffa_winners(&["t1"]),
+        ),
+        ffa_case(
+            "a points event's flagged final, decided by a winner",
+            FfaMode::Points,
+            1,
+            vec![ffa_lobby("f1", 0, &["t1", "t2", "t3"], true)],
+            ffa_winners(&["t1"]),
+        ),
+    ]
+}
+
+fn draft_case(
+    name: &str,
+    status: TourneyStatus,
+    organiser: bool,
+    my_player: Option<&str>,
+    current: i32,
+    last_pick: Option<(&str, &str, i32)>,
+) -> TourneyDraftCase {
+    let event = Tourney {
+        id: "draft".into(),
+        status,
+        formation: Formation::Draft,
+        team_size: 2,
+        players: vec![
+            tourney_player("cap1", Some(1_500), Some("d1"), false),
+            tourney_player("cap2", Some(1_500), Some("d2"), false),
+            tourney_player("free1", Some(1_400), None, false),
+            tourney_player("free2", Some(1_300), None, false),
+            // Waiting on the organiser, so not in the pool: the service refuses
+            // a pick naming them.
+            tourney_player("pending", Some(1_200), None, true),
+        ],
+        teams: vec![
+            TourneyTeam {
+                captain_id: Some("cap1".into()),
+                ..tourney_team("d1", &["cap1"])
+            },
+            TourneyTeam {
+                captain_id: Some("cap2".into()),
+                ..tourney_team("d2", &["cap2"])
+            },
+        ],
+        draft: Some(Draft {
+            order: vec!["d1".into(), "d2".into()],
+            current,
+            last_pick: last_pick.map(|(player_id, team_id, at_index)| DraftPick {
+                player_id: player_id.into(),
+                team_id: team_id.into(),
+                at_index,
+            }),
+        }),
+        viewer: TourneyViewer {
+            logged_in: true,
+            organiser,
+            signed_up_player_id: my_player.map(Into::into),
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    TourneyDraftCase {
+        name: name.to_string(),
+        turn_team_id: event.draft_turn().map(str::to_string),
+        may_pick: event.may_pick(),
+        may_undo: event.may_undo_pick(),
+        undrafted_ids: event
+            .undrafted()
+            .into_iter()
+            .map(|player| player.id.clone())
+            .collect(),
+        event: Box::new(event),
+    }
+}
+
+fn tourney_draft_cases() -> Vec<TourneyDraftCase> {
+    vec![
+        draft_case(
+            "the captain on the clock",
+            TourneyStatus::Draft,
+            false,
+            Some("cap1"),
+            0,
+            None,
+        ),
+        draft_case(
+            "the other captain, waiting",
+            TourneyStatus::Draft,
+            false,
+            Some("cap2"),
+            0,
+            None,
+        ),
+        draft_case(
+            "an organiser, who may pick for either",
+            TourneyStatus::Draft,
+            true,
+            None,
+            0,
+            None,
+        ),
+        draft_case(
+            "a captain undoing their own most recent pick",
+            TourneyStatus::Draft,
+            false,
+            Some("cap1"),
+            1,
+            Some(("free1", "d1", 0)),
+        ),
+        draft_case(
+            "a captain trying to undo after the next pick landed",
+            TourneyStatus::Draft,
+            false,
+            Some("cap1"),
+            2,
+            Some(("free1", "d1", 0)),
+        ),
+        draft_case(
+            "an organiser undoing a pick nobody else could",
+            TourneyStatus::Draft,
+            true,
+            None,
+            2,
+            Some(("free1", "d1", 0)),
+        ),
+        draft_case(
+            "a captain on the clock, who still may not undo the other side's pick",
+            TourneyStatus::Draft,
+            false,
+            Some("cap2"),
+            1,
+            Some(("free1", "d1", 0)),
+        ),
+        draft_case(
+            "the order walked out, so nobody is on the clock",
+            TourneyStatus::Draft,
+            true,
+            None,
+            2,
+            None,
+        ),
+        draft_case(
+            "a finished draft, where undoing is still allowed",
+            TourneyStatus::Drafted,
+            true,
+            None,
+            2,
+            Some(("free2", "d2", 1)),
+        ),
+        draft_case(
+            "signups, before the draft has started",
+            TourneyStatus::Signup,
+            true,
+            None,
+            0,
+            None,
+        ),
     ]
 }
 
@@ -519,12 +2118,20 @@ fn tourney_open_event_cases() -> Vec<TourneyOpenEventCase> {
 fn tourney_busy_match_cases() -> Vec<TourneyBusyMatchCase> {
     [
         None,
-        Some(TourneyAction::SubmittingReport {
-            match_id: "m1".into(),
-        }),
         Some(TourneyAction::AnsweringReport {
             match_id: "m2".into(),
         }),
+        // Both narrow to one match too: a captain taking a veto step, or an
+        // organiser scoring a lobby, must not freeze the rest of the draw.
+        Some(TourneyAction::Vetoing {
+            match_id: "m4".into(),
+        }),
+        Some(TourneyAction::ReportingFfa {
+            match_id: "m5".into(),
+        }),
+        // Event-wide, despite belonging to the draft: a pick changes the teams,
+        // and there is no one match to attach it to.
+        Some(TourneyAction::Drafting),
         Some(TourneyAction::DecidingReport {
             match_id: "m3".into(),
         }),
@@ -703,6 +2310,11 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
             winner_to: None,
             loser_to: None,
             pending_report: None,
+            veto: None,
+            entrants: Vec::new(),
+            winners: Vec::new(),
+            points: Vec::new(),
+            is_final: false,
             replay_ids: Vec::new(),
         };
     let ids = |count: usize| -> Vec<String> {
@@ -853,6 +2465,8 @@ fn tourney_map_match_fixture() -> TourneyMapMatchFixture {
                 id: "m".into(),
                 name: name.into(),
                 image_url: String::new(),
+                description: String::new(),
+                published: true,
             };
             TourneyMapMatchCase {
                 typed: name.into(),
@@ -1021,6 +2635,17 @@ fn helper_fixture() -> HelperFixture {
         tourney_draft_rejections: tourney_draft_rejection_cases(),
         tourney_reports: tourney_report_cases(),
         tourney_map_matches: tourney_map_match_fixture(),
+        tourney_standings: tourney_standings_cases(),
+        tourney_profiles: tourney_profile_cases(),
+        tourney_pool_drafts: tourney_pool_draft_cases(),
+        tourney_vetoes: tourney_veto_cases(),
+        tourney_ffa: tourney_ffa_cases(),
+        tourney_drafts: tourney_draft_cases(),
+        tourney_qualifiers: tourney_qualifier_cases(),
+        tourney_lifecycles: tourney_lifecycle_cases(),
+        tourney_rounds: tourney_round_cases(),
+        tourney_chat_rooms: tourney_chat_room_cases(),
+        tourney_bracket_configs: tourney_bracket_config_cases(),
     }
 }
 
@@ -1808,6 +3433,43 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a series is browsed, opened and then deleted underneath",
+            vec![
+                TourneyEvent::SeriesLoading.into(),
+                TourneyEvent::SeriesLoaded {
+                    series: vec![tourney_series("s1", "Weekend Ladder", 2, 1)],
+                }
+                .into(),
+                TourneyEvent::SeriesOpened {
+                    detail: Box::new(tourney_series_detail("s1", "Weekend Ladder")),
+                }
+                .into(),
+                // A list that no longer contains the open series drops it: the
+                // page would otherwise keep showing editions that nothing can
+                // reload, under a heading nobody can reach.
+                TourneyEvent::SeriesLoaded {
+                    series: vec![tourney_series("s2", "Midweek Blitz", 1, 0)],
+                }
+                .into(),
+                // And the other way: an open series that survives the reload
+                // stays open.
+                TourneyEvent::SeriesOpened {
+                    detail: Box::new(tourney_series_detail("s2", "Midweek Blitz")),
+                }
+                .into(),
+                TourneyEvent::SeriesLoaded {
+                    series: vec![tourney_series("s2", "Midweek Blitz", 1, 0)],
+                }
+                .into(),
+                TourneyEvent::SeriesClosed.into(),
+                TourneyEvent::SeriesFailed {
+                    reason: "no route to host".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a tournament chat room is opened, read and left behind",
             vec![
                 TourneyEvent::Loaded {
@@ -1832,6 +3494,7 @@ fn cases() -> Vec<Case> {
                 TourneyEvent::ChatLoaded {
                     room_id: "global".into(),
                     posts: vec![ChatPost {
+                        faf_id: Some(102),
                         id: "c1".into(),
                         author: "Ada".into(),
                         body: "gl hf".into(),
@@ -2439,6 +4102,17 @@ fn tourney_room(id: &str, unread: i32) -> ChatRoom {
         id: id.into(),
         name: format!("Room {id}"),
         unread,
+        ..ChatRoom::default()
+    }
+}
+
+/// A room whose match has been played, which is what the completed group is
+/// built from.
+fn tourney_room_done(id: &str, mentioned: bool) -> ChatRoom {
+    ChatRoom {
+        done: true,
+        mentioned,
+        ..tourney_room(id, 0)
     }
 }
 
