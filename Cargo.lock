@@ -1117,7 +1117,7 @@ dependencies = [
 
 [[package]]
 name = "faf-app"
-version = "0.4.0-pre.1"
+version = "0.4.0-pre.2"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -1146,7 +1146,7 @@ dependencies = [
 
 [[package]]
 name = "faf-domain"
-version = "0.4.0-pre.1"
+version = "0.4.0-pre.2"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1157,7 +1157,7 @@ dependencies = [
 
 [[package]]
 name = "faf-ipc"
-version = "0.4.0-pre.1"
+version = "0.4.0-pre.2"
 dependencies = [
  "faf-domain",
  "specta",
@@ -1268,7 +1268,7 @@ checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
 
 [[package]]
 name = "forge-client"
-version = "0.4.0-pre.1"
+version = "0.4.0-pre.2"
 dependencies = [
  "faf-app",
  "faf-domain",
