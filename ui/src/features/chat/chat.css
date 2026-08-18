@@ -444,8 +444,8 @@ html.is-resizing-chat-roster * {
 .chat-message {
   position: relative;
   display: grid;
-  grid-template-columns: 36px minmax(72px, 128px) minmax(0, 1fr) 44px;
-  gap: 7px;
+  grid-template-columns: 32px minmax(64px, 116px) minmax(0, 1fr) 44px;
+  gap: 6px;
   align-items: start;
   min-height: 24px;
   padding: 2px 7px;
@@ -469,7 +469,7 @@ html.is-resizing-chat-roster * {
 .chat-message.is-error,
 .chat-message.is-action {
   grid-template-columns: minmax(0, 1fr) 44px;
-  padding-left: 38px;
+  padding-left: 34px;
 }
 
 .chat-message-time {
@@ -481,16 +481,16 @@ html.is-resizing-chat-roster * {
 
 .chat-message-avatar {
   display: grid;
-  width: 36px;
-  height: 20px;
+  width: 32px;
+  height: 18px;
   place-items: center;
   overflow: hidden;
 }
 
 .chat-message-avatar img {
   display: block;
-  width: 36px;
-  height: 20px;
+  width: 32px;
+  height: 18px;
   object-fit: contain;
 }
 
@@ -594,20 +594,25 @@ html.is-resizing-chat-roster * {
   }
 }
 
-
-
 .chat-mention {
+  display: inline-block;
+  line-height: 1.15;
+  vertical-align: baseline;
+  padding: 2px 5px;
   background: var(--color-accent-glow);
   color: inherit;
-  border-radius: var(--radius-sm);
-  padding: 0 3px;
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .chat-search-hit {
-  padding: 0 1px;
+  display: inline-block;
+  line-height: 1.15;
+  vertical-align: baseline;
+  padding: 1px 3px;
   color: inherit;
   background: var(--color-accent-glow);
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 .chat-link {
