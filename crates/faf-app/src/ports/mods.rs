@@ -8,7 +8,16 @@
 //! `active_mods` table. See `infra/mods.rs` for the real implementation.
 
 use async_trait::async_trait;
+use faf_domain::protocol::vault_query::ModVaultQuery;
 use faf_domain::state::{InstalledMod, VaultMod};
+
+/// One page of a mod vault search. Mirrors `MapSearchPage`.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ModSearchPage {
+    pub mods: Vec<VaultMod>,
+    pub total_pages: Option<i32>,
+    pub total_records: Option<i32>,
+}
 
 #[async_trait]
 pub trait ModsPort: Send + Sync {
@@ -16,6 +25,9 @@ pub trait ModsPort: Send + Sync {
     ///: mirrors the current default "newest first" posture of
     /// `MapsPort::list_vault`).
     async fn list_vault(&self) -> Result<Vec<VaultMod>, String>;
+
+    /// One page of a server-side vault search, as `MapsPort::search_vault`.
+    async fn search_vault(&self, query: ModVaultQuery) -> Result<ModSearchPage, String>;
 
     /// Scan the user's mods folder, cross-referenced against `game.prefs`'s
     /// `active_mods` table for each mod's `enabled` state.

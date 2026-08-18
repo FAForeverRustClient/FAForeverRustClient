@@ -46,18 +46,19 @@ use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 
 use async_trait::async_trait;
+use faf_domain::protocol::vault_query::ModVaultQuery;
 use faf_domain::state::{InstalledMod, ModType, VaultMod};
 use serde_json::Value;
 
 use crate::infra::env_or;
 use crate::infra::jsonapi::{
-    fetch_all_pages, fetch_document, find_rel_resource, rel_target, resource_index, value_bool,
-    value_f64, value_i32, JsonApiDoc, JsonApiResource,
+    fetch_all_pages, fetch_document, find_rel_resource, meta_page_i32, rel_target, resource_index,
+    total_pages, value_bool, value_f64, value_i32, JsonApiDoc, JsonApiResource,
 };
 use crate::infra::vault_install::{
     bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
-use crate::ports::ModsPort;
+use crate::ports::{ModSearchPage, ModsPort};
 
 /// Mods per vault page fetched in [`ModsClient::list_vault`]: mirrors
 /// `infra::maps`'s identical pagination constants.
@@ -170,6 +171,35 @@ impl ModsPort for ModsClient {
             all_mods.extend(parse_vault_mods(doc));
         }
         Ok(all_mods)
+    }
+
+    async fn search_vault(&self, query: ModVaultQuery) -> Result<ModSearchPage, String> {
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+
+        let mut url = url::Url::parse(&format!("{}/data/mod", self.config.api_base))
+            .map_err(|e| format!("invalid API base: {e}"))?;
+        {
+            let mut pairs = url.query_pairs_mut();
+            if let Some(filter) = query.build_filter() {
+                pairs.append_pair("filter", &filter);
+            }
+            pairs
+                .append_pair("sort", &query.sort_param())
+                .append_pair("page[size]", &query.page_size.to_string())
+                .append_pair("page[number]", &query.page.max(1).to_string())
+                .append_key_only("page[totals]")
+                .append_pair("include", "latestVersion,reviewsSummary,uploader");
+        }
+
+        let doc = fetch_document(&self.http, url, &token).await?;
+        Ok(ModSearchPage {
+            mods: parse_vault_mods(&doc),
+            total_pages: total_pages(&doc.meta, query.page_size),
+            total_records: meta_page_i32(&doc.meta, "totalRecords"),
+        })
     }
 
     async fn list_installed(&self) -> Result<Vec<InstalledMod>, String> {
@@ -776,6 +806,10 @@ pub struct FakeMods;
 #[async_trait]
 impl ModsPort for FakeMods {
     async fn list_vault(&self) -> Result<Vec<VaultMod>, String> {
+        Err("mod vault is unavailable in offline mode".to_string())
+    }
+
+    async fn search_vault(&self, _query: ModVaultQuery) -> Result<ModSearchPage, String> {
         Err("mod vault is unavailable in offline mode".to_string())
     }
 

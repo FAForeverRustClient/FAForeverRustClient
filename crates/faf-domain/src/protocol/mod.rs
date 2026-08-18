@@ -16,3 +16,4 @@ pub mod map_generator_name;
 pub mod markup;
 pub mod replay_query;
 pub mod tourney;
+pub mod vault_query;

@@ -100,7 +100,9 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
 
   useEffect(() => {
     ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
-    ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
+      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    }
     ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
   }, []);
 

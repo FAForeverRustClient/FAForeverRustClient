@@ -13,10 +13,11 @@ import { LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardEntry, RatingQuery } from "../../ipc/bindings";
+import type { MessageKey } from "../../i18n";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const OPTIONAL_COLUMNS: Array<{ key: LeaderboardColumn; label: string }> = [
+const OPTIONAL_COLUMNS: Array<{ key: LeaderboardColumn; label: MessageKey }> = [
   { key: "rating", label: "leaderboard.column.rating" },
   { key: "mean", label: "leaderboard.column.mean" },
   { key: "deviation", label: "leaderboard.column.deviation" },
@@ -168,6 +169,11 @@ export function RatingLeaderboardPanel() {
             <Button className={activeOnly ? "active" : ""} onClick={() => changeActivityFilter(true)}>{t("leaderboard.ratings.activeThisMonth")}</Button>
             <Button className={!activeOnly ? "active" : ""} onClick={() => changeActivityFilter(false)}>{t("leaderboard.ratings.allPlayers")}</Button>
             <span className="spacer" />
+            <span className="leaderboard-result-count muted">
+              {state.ratingPage.totalResults === null
+                ? `${state.ratingPage.entries.length} loaded`
+                : `${state.ratingPage.totalResults.toLocaleString("en-US")} players`}
+            </span>
             <div className="leaderboard-columns" ref={columnsRef}>
               <Button
                 className={`leaderboard-columns-trigger${columnsOpen ? " active" : ""}`}
@@ -191,7 +197,7 @@ export function RatingLeaderboardPanel() {
                       checked={visibleColumns.includes(column.key)}
                       onChange={() => toggleColumn(column.key)}
                     />
-                    {column.label}
+                    {t(column.label)}
                   </label>
                 ))}
               </div>}
@@ -219,35 +225,31 @@ export function RatingLeaderboardPanel() {
       </SearchPanel>
 
       <div className="leaderboard-main-grid">
-        <div className="leaderboard-results surface-panel">
-          {state.ratingsStatus.type === "loading" && <div className="leaderboard-state muted">Loading rankings…</div>}
-          {state.ratingsStatus.type === "failed" && <div className="leaderboard-state leaderboard-error">{state.ratingsStatus.payload.reason}</div>}
-          {state.ratingsStatus.type !== "failed" && (
+        <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
+          {state.ratingsStatus.type === "failed" ? (
+            <div className="leaderboard-state leaderboard-error">{state.ratingsStatus.payload.reason}</div>
+          ) : entries.length === 0 && state.ratingsStatus.type === "loading" ? (
+            <div className="leaderboard-state muted">Loading rankings…</div>
+          ) : (
             <LeaderboardTable
               entries={entries}
               columns={columns}
               selectedPlayerId={selected?.playerId ?? null}
               onSelect={setSelected}
-              emptyMessage={state.ratingsStatus.type === "loading" ? "" : t("leaderboard.ratings.empty")}
+              emptyMessage={t("leaderboard.ratings.empty")}
             />
           )}
-          <div className="leaderboard-pagination-shell">
-            <div className="leaderboard-pagination">
-              <Pagination
-                currentPage={state.ratingPage.page}
-                totalPages={state.ratingPage.totalPages}
-                onPageChange={changePage}
-                ariaLabel={t("leaderboard.ratings.leaderboardPages")}
-              />
-            </div>
-            <span className="leaderboard-result-count leaderboard-result-count-footer muted">
-              {state.ratingPage.totalResults === null
-                ? `${state.ratingPage.entries.length} loaded`
-                : `${state.ratingPage.totalResults.toLocaleString("en-US")} players`}
-            </span>
-          </div>
         </div>
         <PlayerDetailsPanel entry={selected} />
+      </div>
+
+      <div className="vault-pagination">
+        <Pagination
+          currentPage={state.ratingPage.page}
+          totalPages={state.ratingPage.totalPages}
+          onPageChange={changePage}
+          ariaLabel={t("leaderboard.ratings.leaderboardPages")}
+        />
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "../../design-system/Icon";
+import { baseMapName, normalizeMapName } from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { clientIntlTag } from "../../shared/dates";
 import { t, type MessageKey } from "../../i18n";
@@ -141,6 +142,58 @@ function ReplayListStatus({
   );
 }
 
+function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string }) {
+  const normalized = mapName ? normalizeMapName(mapName) : "";
+  const baseName = mapName ? baseMapName(mapName) : "";
+  const cdnFallback = normalized && !normalized.includes(" ")
+    ? `https://content.faforever.com/maps/previews/small/${encodeURIComponent(normalized)}.png`
+    : undefined;
+  const baseFallback = baseName && baseName !== normalized && !baseName.includes(" ")
+    ? `https://content.faforever.com/maps/previews/small/${encodeURIComponent(baseName)}.png`
+    : undefined;
+
+  const [currentUrl, setCurrentUrl] = useState(url || cdnFallback || baseFallback || "");
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setCurrentUrl(url || cdnFallback || baseFallback || "");
+    setFailed(false);
+  }, [url, cdnFallback, baseFallback]);
+
+  const handleError = () => {
+    if (currentUrl === url && cdnFallback && currentUrl !== cdnFallback) {
+      setCurrentUrl(cdnFallback);
+    } else if (
+      (currentUrl === url || currentUrl === cdnFallback) &&
+      baseFallback &&
+      currentUrl !== baseFallback
+    ) {
+      setCurrentUrl(baseFallback);
+    } else {
+      setFailed(true);
+    }
+  };
+
+  if (!currentUrl || failed) {
+    return (
+      <span className="replay-list-thumb replay-list-thumb-empty" aria-label={`${mapName} preview unavailable`}>
+        <Icon name="maps" size={17} />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      className="replay-list-thumb"
+      src={currentUrl}
+      alt={`${mapName} preview`}
+      loading="lazy"
+      decoding="async"
+      onError={handleError}
+    />
+  );
+}
+
 function ReplayListRowView({ row }: { row: ReplayListRow }) {
   const interactive = Boolean(row.onSelect || row.onActivate);
   return (
@@ -159,13 +212,7 @@ function ReplayListRowView({ row }: { row: ReplayListRow }) {
       }}
     >
       <div className="replay-list-cell replay-list-map-cell" role="cell">
-        {row.mapThumbnailUrl ? (
-          <img className="replay-list-thumb" src={row.mapThumbnailUrl} alt={`${row.mapName} preview`} loading="lazy" />
-        ) : (
-          <span className="replay-list-thumb replay-list-thumb-empty" aria-label={`${row.mapName} preview unavailable`}>
-            <Icon name="maps" size={17} />
-          </span>
-        )}
+        <ReplayListThumbnail url={row.mapThumbnailUrl} mapName={row.mapName} />
       </div>
       <ReplayListCellView cell={row.game} className="replay-list-game-cell" />
       <ReplayListCellView cell={row.mod} className="replay-list-mod-cell" />

@@ -3601,6 +3601,24 @@ fn cases() -> Vec<Case> {
                     reason: "503".into(),
                 }
                 .into(),
+                // The browsed page is a separate slice from the catalogue
+                // index, so both reducers have to keep them apart.
+                MapsEvent::VaultSearching.into(),
+                MapsEvent::VaultSearched {
+                    maps: Vec::new(),
+                    query: faf_domain::protocol::vault_query::MapVaultQuery {
+                        search: "seton".into(),
+                        page: 2,
+                        ..Default::default()
+                    },
+                    total_pages: Some(4),
+                    total_records: Some(131),
+                }
+                .into(),
+                MapsEvent::VaultSearchFailed {
+                    reason: "the filter was rejected".into(),
+                }
+                .into(),
                 MapsEvent::InstalledLoading.into(),
                 MapsEvent::InstalledLoaded {
                     maps: vec![InstalledMap {
@@ -3619,6 +3637,21 @@ fn cases() -> Vec<Case> {
         case(
             "mods load and report a failure",
             vec![
+                ModsEvent::VaultSearching.into(),
+                ModsEvent::VaultSearched {
+                    mods: Vec::new(),
+                    query: faf_domain::protocol::vault_query::ModVaultQuery {
+                        mod_type: "ui".into(),
+                        ..Default::default()
+                    },
+                    total_pages: Some(2),
+                    total_records: Some(48),
+                }
+                .into(),
+                ModsEvent::VaultSearchFailed {
+                    reason: "the filter was rejected".into(),
+                }
+                .into(),
                 ModsEvent::InstalledLoading.into(),
                 ModsEvent::InstalledLoadFailed {
                     reason: "no mods folder".into(),
@@ -3840,6 +3873,21 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 ReplayEvent::LiveTrackingCleared.into(),
+                // The page count the pager renders numbered pages from. The
+                // TypeScript twin silently dropped it, and nothing noticed
+                // because this event had no fixture case at all.
+                ReplayEvent::VaultLoading.into(),
+                ReplayEvent::VaultLoaded {
+                    replays: Vec::new(),
+                    query: Box::new(ReplayQuery {
+                        page: 2,
+                        ..Default::default()
+                    }),
+                    has_more: true,
+                    total_pages: Some(9),
+                    total_records: Some(412),
+                }
+                .into(),
                 ReplayEvent::VaultDownloadStarted { uid: 42 }.into(),
                 ReplayEvent::VaultDownloaded {
                     uid: 42,
@@ -4277,8 +4325,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Replays:localLoaded",
     "Replays:localLoading",
     "Replays:vaultLoadFailed",
-    "Replays:vaultLoaded",
-    "Replays:vaultLoading",
     "Reporting:failed",
     "Reporting:historyFailed",
     "Reporting:historyLoaded",

@@ -15,9 +15,9 @@ import {
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMod, VaultMod } from "../../ipc/bindings";
+import type { InstalledMod, ModVaultQuery } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { isWithinDateRange, isWithinNumberRange, sortByDateDesc } from "../../shared/filterRanges";
+import { EMPTY_MOD_QUERY } from "../../shared/vaultQuery";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
 import {
@@ -74,10 +74,42 @@ interface ModFilterState {
   maximumRating: number | null;
 }
 
+/**
+ * The tab.s filter state as the API query it stands for. See `MapsView`.
+ */
+function modVaultQuery(applied: ModFilterState, preset: ModPreset, page: number): ModVaultQuery {
+  const sortBy: ModVaultQuery["sortBy"] = applied.sort === "newest" ? "newest"
+    : applied.sort === "updated" ? "updated"
+      : applied.sort === "name" ? "name"
+        : "rating";
+  // The `ui` preset is a type filter, not a sort.
+  const modType = preset === "ui" ? "ui" : applied.modType === "all" ? "" : applied.modType;
+  return {
+    ...EMPTY_MOD_QUERY,
+    search: applied.search.trim(),
+    author: applied.creator.trim(),
+    modType,
+    ranked: applied.ranked === "all" ? null : applied.ranked === "ranked",
+    recommended: preset === "recommended",
+    minRatingTenths: applied.minimumRating === null ? null : Math.round(applied.minimumRating * 10),
+    maxRatingTenths: applied.maximumRating === null ? null : Math.round(applied.maximumRating * 10),
+    dateFieldUpdated: applied.dateField === "updated",
+    after: applied.dateAfter,
+    before: applied.dateBefore,
+    sortBy,
+    sortDescending: sortBy !== "name",
+    page,
+    pageSize: PAGE_SIZE,
+  };
+}
+
 function VaultView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.mods.vault);
   const vaultStatus = useAppStore((state) => state.state.mods.vaultStatus);
+  const browse = useAppStore((state) => state.state.mods.browse);
+  const browseStatus = useAppStore((state) => state.state.mods.browseStatus);
+  const browseTotalPages = useAppStore((state) => state.state.mods.browseTotalPages);
   const installed = useAppStore((state) => state.state.mods.installed);
   const installedStatus = useAppStore((state) => state.state.mods.installedStatus);
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
@@ -202,60 +234,30 @@ function VaultView({ busy }: { busy: boolean }) {
     choosePreset("recommended");
   };
 
-  const filtered = useMemo(() => {
-    const query = applied.search.trim().toLocaleLowerCase();
-    const creatorQuery = applied.creator.trim().toLocaleLowerCase();
-    const hasDateFilter = Boolean(applied.dateAfter || applied.dateBefore);
+  // Server-side search, as in both reference clients: the filters go out as a
+  // query and one page comes back.
+  const query = useMemo(() => modVaultQuery(applied, preset, page), [applied, preset, page]);
 
-    // Single pass; see the same change in `MapsView` for why the `.filter()`
-    // chain was worth unpicking.
-    const matches: VaultMod[] = [];
-    for (const mod of vault) {
-      if (preset === "recommended" && !mod.recommended) continue;
-      if (preset === "ui" && mod.modType !== "ui") continue;
-      if (applied.modType !== "all" && mod.modType !== applied.modType) continue;
-      if (applied.ranked !== "all" && mod.ranked !== (applied.ranked === "ranked")) continue;
-      if (creatorQuery
-        && !mod.author.toLocaleLowerCase().includes(creatorQuery)
-        && !mod.uploader.toLocaleLowerCase().includes(creatorQuery)) continue;
-      if (hasDateFilter
-        && !isWithinDateRange(applied.dateField === "updated" ? mod.updatedAt : mod.createdAt, applied.dateAfter, applied.dateBefore)) continue;
-      if (!isWithinNumberRange(mod.ratingTenths / 10, applied.minimumRating, applied.maximumRating)) continue;
-      if (applied.installFilter !== "all") {
-        const installedMod = installedByUid.get(mod.uid);
-        const matchesInstall = applied.installFilter === "installed"
-          ? Boolean(installedMod)
-          : applied.installFilter === "updates"
-            ? Boolean(installedMod && installedMod.version !== mod.version)
-            : !installedMod;
-        if (!matchesInstall) continue;
-      }
-      if (query
-        && !mod.displayName.toLocaleLowerCase().includes(query)
-        && !mod.author.toLocaleLowerCase().includes(query)
-        && !mod.uploader.toLocaleLowerCase().includes(query)
-        && !mod.description.toLocaleLowerCase().includes(query)
-        && !mod.uid.toLocaleLowerCase().includes(query)
-        && !mod.filename.toLocaleLowerCase().includes(query)) continue;
-      matches.push(mod);
-    }
+  useEffect(() => {
+    ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } });
+  }, [query]);
 
-    if (applied.sort === "newest") return sortByDateDesc(matches, (mod) => mod.createdAt);
-    if (applied.sort === "updated") return sortByDateDesc(matches, (mod) => mod.updatedAt);
-    return matches.sort((left, right) => {
-      switch (applied.sort) {
-        case "rating": return right.ratingTenths - left.ratingTenths || right.reviews - left.reviews;
-        case "name": return left.displayName.localeCompare(right.displayName);
-        default: return 0;
+  // Install state is the users disk, which the API knows nothing about, so this
+  // one filter narrows the page that came back rather than the whole vault.
+  const pageMods = useMemo(() => {
+    if (applied.installFilter === "all") return browse;
+    return browse.filter((mod) => {
+      const installedMod = installedByUid.get(mod.uid);
+      if (applied.installFilter === "installed") return Boolean(installedMod);
+      if (applied.installFilter === "updates") {
+        return Boolean(installedMod && installedMod.version !== mod.version);
       }
+      return !installedMod;
     });
-  }, [
-    vault, preset, applied, installedByUid,
-  ]);
+  }, [applied.installFilter, browse, installedByUid]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = browseTotalPages ?? 1;
   const currentPage = Math.min(page, totalPages);
-  const pageMods = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const selected = pageMods.find((mod) => mod.uid === selectedUid) ?? pageMods[0] ?? null;
   const hiddenFilterCount = Number(installFilter !== "all")
     + Number(dateAfter !== "" || dateBefore !== "");
@@ -276,9 +278,14 @@ function VaultView({ busy }: { busy: boolean }) {
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("mods.view.clear")}</Button>
-            <Button onClick={loadVault} disabled={vaultStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("mods.view.refresh")}</Button>
+            <Button
+              onClick={() => ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } })}
+              disabled={browseStatus.type === "loading"}
+            >
+              <Icon name="refresh" size={15} /> {t("mods.view.refresh")}
+            </Button>
             <Button onClick={() => void openUploadFromDisk("mod")}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
-          </>
+                      </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">
@@ -339,7 +346,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("mods.view.detectionUnavailable")}</p>}
-      {vaultStatus.type === "ready" && filtered.length === 0 ? (
+      {browseStatus.type === "ready" && pageMods.length === 0 ? (
         <EmptyState
           bordered
           icon={vault.length === 0 ? "mods" : "search"}
@@ -349,8 +356,8 @@ function VaultView({ busy }: { busy: boolean }) {
       ) : pageMods.length > 0 ? (
         <>
           <div className="vault-results-head">
-            <span>{filtered.length} {filtered.length === 1 ? "mod" : "mods"}</span>
-            <span>Page {currentPage} of {totalPages}</span>
+            <span>{t("maps.view.resultCount", { count: pageMods.length })}</span>
+            <span>{t("maps.view.pageOf", { page: currentPage, total: totalPages })}</span>
           </div>
           <div className="vault-layout">
             <section className="vault-browser">

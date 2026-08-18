@@ -71,8 +71,8 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::infra::jsonapi::{
-    fetch_document, meta_page_i32, rel_target, rel_targets, resource_index, value_i32, JsonApiDoc,
-    JsonApiResource,
+    fetch_document, meta_page_i32, rel_target, rel_targets, resource_index, total_pages, value_i32,
+    JsonApiDoc, JsonApiResource,
 };
 use crate::infra::session::TokenStore;
 use crate::infra::vault_install::{bounded_body, validate_origin_url, MAX_DOWNLOAD_BYTES};
@@ -570,7 +570,7 @@ impl ReplayPort for ReplayClient {
                 .append_pair("sort", &query.sort_param())
                 .append_pair("page[size]", &query.page_size.to_string())
                 .append_pair("page[number]", &query.page.max(1).to_string())
-                .append_pair("page[totals]", "true")
+                .append_key_only("page[totals]")
                 .append_pair(
                     "include",
                     "mapVersion.map,featuredMod,playerStats.player,playerStats.ratingChanges,reviewsSummary",
@@ -585,7 +585,7 @@ impl ReplayPort for ReplayClient {
 
         let doc = fetch_document(&self.http, url, &token).await?;
         let replays = parse_vault_replays(&doc);
-        let total_pages = meta_page_i32(&doc.meta, "totalPages");
+        let total_pages = total_pages(&doc.meta, query.page_size);
         let total_records = meta_page_i32(&doc.meta, "totalRecords");
         Ok(VaultSearchResult {
             replays,
@@ -620,8 +620,8 @@ impl ReplayPort for ReplayClient {
         local_metadata_for_path(&path).await
     }
 
-    async fn list_local(&self) -> Result<Vec<LocalReplay>, String> {
-        list_local_dir(&local_replays_dir()).await
+    async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String> {
+        list_local_dir(&local_replays_dir(), limit).await
     }
 
     fn set_install_dir(&self, dir: Option<PathBuf>) {
@@ -642,16 +642,14 @@ impl ReplayPort for ReplayClient {
 /// Scans `dir` for `.fafreplay` and legacy `.scfareplay` files: the testable body of
 /// [`ReplayClient::list_local`], split out so tests don't have to mutate the
 /// process-global `FAF_REPLAYS_DIR`/`ALLUSERSPROFILE` env vars.
-async fn list_local_dir(dir: &std::path::Path) -> Result<Vec<LocalReplay>, String> {
+async fn list_local_dir(dir: &std::path::Path, limit: usize) -> Result<Vec<LocalReplay>, String> {
     let mut entries = match tokio::fs::read_dir(dir).await {
         Ok(rd) => rd,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(e) => return Err(format!("could not read {}: {e}", dir.display())),
     };
 
-    // Sort by mtime first (cheap: directory metadata only) and cap to the
-    // most recent MAX_LOCAL_REPLAYS before reading any file content, so this
-    // stays fast regardless of how many replays have piled up.
+    // Sort by mtime first, which is cheap: directory metadata only.
     let mut files: Vec<(PathBuf, std::time::SystemTime, u64)> = Vec::new();
     while let Some(entry) = entries
         .next_entry()
@@ -672,19 +670,43 @@ async fn list_local_dir(dir: &std::path::Path) -> Result<Vec<LocalReplay>, Strin
         }
     }
     files.sort_by_key(|f| std::cmp::Reverse(f.1));
-    files.truncate(MAX_LOCAL_REPLAYS);
 
-    let mut replays = Vec::with_capacity(files.len());
-    for (path, modified, file_size) in files {
-        replays.push(read_local_metadata(&path, modified, file_size).await);
-    }
+    // Every replay is listed, but only the newest `limit` have their headers
+    // read. That read is the whole cost: one `open` plus a bounded read per
+    // file, and a real archive is thousands of files, so doing all of them made
+    // opening the Local tab a visible wait. Reading only what the first pages
+    // show, and letting the view ask for more, keeps the list complete without
+    // paying for all of it up front.
+    //
+    // Order is preserved (`buffered`), because the sort above is the "newest
+    // first" the list is presented in.
+    let detailed = files.len().min(limit);
+    let mut replays: Vec<LocalReplay> = futures_util::stream::iter(files[..detailed].to_vec())
+        .map(|(path, modified, file_size)| async move {
+            read_local_metadata(&path, modified, file_size).await
+        })
+        .buffered(LOCAL_REPLAY_READ_CONCURRENCY)
+        .collect()
+        .await;
+
+    // The rest carry what the directory entry already gave: name, date and
+    // size. `Unread` says the details were not fetched, which is not the same
+    // claim as `Broken`.
+    replays.extend(files[detailed..].iter().map(|(path, modified, file_size)| {
+        empty_local_replay(path, *modified, *file_size, LocalReplayStatus::Unread, true)
+    }));
     Ok(replays)
 }
 
-/// How many of the most-recently-modified local replay files to list (see
-/// [`ReplayClient::list_local`]: this bounds the header-read work
-/// regardless of how large the shared replay folder has grown).
-const MAX_LOCAL_REPLAYS: usize = 100;
+pub const LOCAL_REPLAY_PAGE_LIMIT: usize = crate::ports::DEFAULT_LOCAL_REPLAY_LIMIT;
+
+/// How many local replay headers to read at once.
+///
+/// Each is an `open` plus one bounded read, so the wall-clock cost of listing a
+/// folder is dominated by how many of those can be in flight rather than by how
+/// many files there are. Sixteen keeps a three-thousand-file archive responsive
+/// without flooding the runtime.
+const LOCAL_REPLAY_READ_CONCURRENCY: usize = 16;
 
 /// The shared FAF replay folder every client writes to. Mirrors the Python
 /// client's `APPDATA_DIR` (`%ALLUSERSPROFILE%\FAForever` on Windows, falling
@@ -1824,7 +1846,7 @@ impl ReplayPort for FakeReplay {
         Err("replay downloading is unavailable in offline mode".to_string())
     }
 
-    async fn list_local(&self) -> Result<Vec<LocalReplay>, String> {
+    async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
         Ok(Vec::new())
     }
 
@@ -1979,7 +2001,9 @@ mod tests {
             .await
             .unwrap();
 
-        let replays = list_local_dir(&dir).await.expect("should list");
+        let replays = list_local_dir(&dir, LOCAL_REPLAY_PAGE_LIMIT)
+            .await
+            .expect("should list");
         assert_eq!(replays.len(), 4, "every replay-shaped file stays visible");
         let complete = replays.iter().find(|replay| replay.uid == Some(1)).unwrap();
         assert_eq!(complete.status, LocalReplayStatus::Complete);
@@ -2012,10 +2036,43 @@ mod tests {
         let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 
+    /// A real archive is thousands of files. Listing only the newest hundred
+    /// gave the Local tab three pages of a folder holding three thousand
+    /// replays, with nothing saying the rest existed.
+    #[tokio::test]
+    async fn list_local_dir_returns_every_replay_not_just_the_newest_hundred() {
+        let dir = std::env::temp_dir().join(format!("forge-local-all-{}", std::process::id()));
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+        for index in 0..250 {
+            tokio::fs::write(dir.join(format!("{index}.scfareplay")), b"body")
+                .await
+                .unwrap();
+        }
+
+        let replays = list_local_dir(&dir, LOCAL_REPLAY_PAGE_LIMIT).await.unwrap();
+        assert_eq!(replays.len(), 250);
+
+        // The limit bounds how many headers are *read*, never how many replays
+        // are listed: a smaller limit still returns the whole archive, with the
+        // remainder marked as not yet read rather than dropped.
+        let bounded = list_local_dir(&dir, 10).await.unwrap();
+        assert_eq!(bounded.len(), 250);
+        assert_eq!(
+            bounded
+                .iter()
+                .filter(|replay| replay.status == LocalReplayStatus::Unread)
+                .count(),
+            240
+        );
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
     #[tokio::test]
     async fn list_local_dir_missing_folder_returns_empty() {
         let dir = std::env::temp_dir().join("forge-local-replays-does-not-exist");
-        let replays = list_local_dir(&dir)
+        let replays = list_local_dir(&dir, LOCAL_REPLAY_PAGE_LIMIT)
             .await
             .expect("missing dir is not an error");
         assert!(replays.is_empty());
@@ -2056,7 +2113,7 @@ mod tests {
         let path = dir.join("27619486-Nory.fafreplay");
         tokio::fs::write(&path, &file).await.unwrap();
 
-        let replays = list_local_dir(&dir).await.unwrap();
+        let replays = list_local_dir(&dir, LOCAL_REPLAY_PAGE_LIMIT).await.unwrap();
         let replay = replays.first().expect("the recording should be listed");
         assert_eq!(replay.uid, Some(27_619_486));
         assert_eq!(replay.title, "Turtle bowl");

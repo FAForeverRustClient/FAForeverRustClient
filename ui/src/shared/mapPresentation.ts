@@ -109,7 +109,7 @@ function uniqueUrls(urls: Array<string | undefined>): string[] {
  * environments may send a scenario path. Reduce all of those forms to the
  * folder name used by the preview service and vault catalogue.
  */
-function normalizeMapName(mapName: string): string {
+export function normalizeMapName(mapName: string): string {
   const normalized = mapName.trim().replace(/\\/g, "/").replace(/\/+$/, "");
   const parts = normalized.split("/").filter(Boolean);
   const fileName = parts[parts.length - 1] ?? normalized;
@@ -122,7 +122,7 @@ function normalizeMapName(mapName: string): string {
     .toLocaleLowerCase();
 }
 
-function baseMapName(mapName: string): string {
+export function baseMapName(mapName: string): string {
   return normalizeMapName(mapName).replace(/\.v\d+$/i, "");
 }
 

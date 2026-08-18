@@ -236,6 +236,12 @@ button.vault-input {
   display: block;
 }
 
+.replay-card-thumb-empty {
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+}
+
 /* Icon-paired facts, as in the Java card: the two durations are minutes apart
    in a normal game, and a trailing "game"/"real" word made the pair read as
    one value with a suffix. */

@@ -8,6 +8,24 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
       return { ...state, vault: event.payload.maps, vaultStatus: { type: "ready" } };
     case "vaultLoadFailed":
       return { ...state, vaultStatus: { type: "failed", payload: { reason: event.payload.reason } } };
+    // `browse` is one page of a server-side search and is separate from
+    // `vault`, which stays the whole catalogue used as a folder-name index.
+    case "vaultSearching":
+      return { ...state, browseStatus: { type: "loading" } };
+    case "vaultSearched":
+      return {
+        ...state,
+        browse: event.payload.maps,
+        browseQuery: event.payload.query,
+        browseTotalPages: event.payload.totalPages,
+        browseTotalRecords: event.payload.totalRecords,
+        browseStatus: { type: "ready" },
+      };
+    case "vaultSearchFailed":
+      return {
+        ...state,
+        browseStatus: { type: "failed", payload: { reason: event.payload.reason } },
+      };
     case "installedLoading":
       return { ...state, installedStatus: { type: "loading" } };
     case "installedLoaded":

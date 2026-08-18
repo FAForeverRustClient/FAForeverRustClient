@@ -189,6 +189,10 @@ pub struct LocalReplayPlayer {
 #[serde(rename_all = "camelCase")]
 pub enum LocalReplayStatus {
     Complete,
+    /// Listed from the directory, header not read yet. The archive is listed in
+    /// full but only the newest pages are read up front; this marks the rest so
+    /// the UI can say "not loaded" rather than imply the file is damaged.
+    Unread,
     Incomplete,
     Legacy,
     Broken,
@@ -390,7 +394,13 @@ pub enum ReplayCommand {
         uid: i32,
     },
     /// Scan the shared FAF replay folder for local `.fafreplay` files.
-    LoadLocal,
+    /// Scan the shared replay folder. `limit` bounds how many of the newest
+    /// files have their headers read, which is the expensive part; the view
+    /// raises it when the user pages past what is loaded.
+    #[serde(rename_all = "camelCase")]
+    LoadLocal {
+        limit: u32,
+    },
     /// Permanently remove one replay from the shared replay folder. The port
     /// validates that the resolved file is directly inside that folder.
     DeleteLocal {

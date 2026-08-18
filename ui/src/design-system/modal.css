@@ -68,7 +68,7 @@
 }
 
 .btn-danger {
-  color: #fff;
+  color: var(--color-text);
   background: var(--color-error);
   border: 1px solid var(--color-error);
   font-weight: 550;
