@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs } from "../../design-system/SectionTabs";
 import { ipc } from "../../ipc/client";
-import type { PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
+import type { PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { flagSrc } from "../../shared/countryFlags";
 import { noteForPlayer } from "../../shared/playerNotes";
@@ -12,7 +12,6 @@ import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { PlayerAchievements } from "./PlayerAchievements";
 import { PlayerClanView } from "./PlayerClanView";
 import { PlayerOverview } from "./PlayerOverview";
-import { PlayerNoteEditor } from "./PlayerNoteEditor";
 import { OwnAvatarPicker } from "./OwnAvatarPicker";
 import { PlayerStatistics } from "./PlayerStatistics";
 import { RatingHistoryChart } from "./RatingHistoryChart";
@@ -44,6 +43,149 @@ const PERIODS: Array<{ value: RatingHistoryPeriod; label: MessageKey }> = [
   { value: "year", label: "playerCard.period.year" },
   { value: "all", label: "playerCard.period.all" },
 ];
+
+function PlayerLookupSearch({
+  players,
+  onSelect,
+}: {
+  players: readonly PlayerProfile[];
+  onSelect: (playerId: number | null, login: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const suggestions = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return [];
+    const matches = players.filter((p) => p.login.toLowerCase().includes(needle));
+    matches.sort((a, b) => {
+      const aStarts = a.login.toLowerCase().startsWith(needle);
+      const bStarts = b.login.toLowerCase().startsWith(needle);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return a.login.localeCompare(b.login);
+    });
+    return matches.slice(0, 8);
+  }, [query, players]);
+
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const handleSelect = (playerId: number | null, login: string) => {
+    setIsOpen(false);
+    setQuery("");
+    onSelect(playerId, login);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (suggestions.length > 0) {
+        setIsOpen(true);
+        setActiveIndex((prev) => (prev + 1) % suggestions.length);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (suggestions.length > 0) {
+        setIsOpen(true);
+        setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+      }
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (isOpen && suggestions[activeIndex]) {
+        handleSelect(suggestions[activeIndex].id, suggestions[activeIndex].login);
+      } else if (query.trim()) {
+        handleSelect(null, query.trim());
+      }
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="player-card-lookup-wrap" ref={wrapRef}>
+      <div className="player-card-lookup-field">
+        <Icon name="search" size={14} className="player-card-lookup-icon" />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+            setActiveIndex(0);
+          }}
+          onFocus={() => {
+            if (query.trim()) setIsOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={t("playerCard.lookup.placeholder")}
+          aria-label={t("playerCard.lookup.label")}
+        />
+        {query && (
+          <button
+            type="button"
+            className="player-card-lookup-clear"
+            aria-label={t("playerCard.clearSearch")}
+            onClick={() => {
+              setQuery("");
+              setIsOpen(false);
+              inputRef.current?.focus();
+            }}
+          >
+            <Icon name="close" size={12} />
+          </button>
+        )}
+      </div>
+
+      {isOpen && suggestions.length > 0 && (
+        <ul className="player-card-suggestions surface-raised" role="listbox">
+          {suggestions.map((player, index) => (
+            <li
+              key={player.id}
+              role="option"
+              aria-selected={index === activeIndex}
+              className={`player-card-suggestion-item ${index === activeIndex ? "is-selected" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(player.id, player.login);
+              }}
+              onMouseEnter={() => setActiveIndex(index)}
+            >
+              {player.country ? (
+                <img
+                  className="player-card-suggestion-flag"
+                  src={flagSrc(player.country)}
+                  alt={player.country.toUpperCase()}
+                  width={16}
+                  height={16}
+                  decoding="async"
+                  draggable={false}
+                />
+              ) : (
+                <span className="player-card-suggestion-flag-placeholder" />
+              )}
+              <span className="player-card-suggestion-name">
+                {player.clan && <span className="chat-clan">[{player.clan}]</span>}
+                {player.login}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
   rating: PlayerRatingSummary;
@@ -194,8 +336,6 @@ export function PlayerCardModal() {
   const playerNotes = useAppStore((store) => store.state.settings.social.playerNotes);
   const [tab, setTab] = useState<PlayerCardTab>("overview");
   const [ratingId, setRatingId] = useState<number | null>(null);
-  const [lookup, setLookup] = useState("");
-  const [noteEditorOpen, setNoteEditorOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const profile = state.profile;
   const knownPlayer = profile
@@ -208,8 +348,6 @@ export function PlayerCardModal() {
     if (!profile) return;
     setTab("overview");
     setRatingId(profile.ratings[0]?.leaderboardId ?? null);
-    setLookup("");
-    setNoteEditorOpen(false);
     setAvatarPickerOpen(false);
   }, [profile]);
 
@@ -247,12 +385,14 @@ export function PlayerCardModal() {
               draggable={false}
             />
           )}
-          <div><span className="player-card-eyebrow">{t("playerCard.eyebrow")}</span><h2><PlayerName name={profile?.login || state.requestedLogin || t("playerCard.fallbackName")} /></h2></div>
+          <h2>
+            <PlayerName name={profile?.login || state.requestedLogin || t("playerCard.fallbackName")} />
+          </h2>
         </div>
-        <form className="player-card-lookup" onSubmit={(event) => { event.preventDefault(); if (lookup.trim()) void openPlayerCard(null, lookup.trim()); }}>
-          <input value={lookup} onChange={(event) => setLookup(event.target.value)} placeholder={t("playerCard.lookup.placeholder")} aria-label={t("playerCard.lookup.label")} />
-          <Button type="submit" disabled={!lookup.trim()}><Icon name="search" size={15} /> {t("playerCard.lookup.submit")}</Button>
-        </form>
+        <PlayerLookupSearch
+          players={social.players}
+          onSelect={(playerId, login) => void openPlayerCard(playerId, login)}
+        />
         {profile && <div className="player-card-actions">
           <Button onClick={() => void navigator.clipboard.writeText(profile.login)}>{t("playerCard.action.copyName")}</Button>
           <Button onClick={browseReplays}>{t("playerCard.action.replays")}</Button>
@@ -262,17 +402,6 @@ export function PlayerCardModal() {
           {!isMe && <Button onClick={() => setRelation("foe", !isFoe)}>{t(isFoe ? "playerCard.action.removeFoe" : "playerCard.action.markFoe")}</Button>}
         </div>}
       </div>
-
-      {profile && noteEditorOpen && (
-        <div className="player-note-inline-editor surface">
-          <PlayerNoteEditor
-            playerId={profile.playerId}
-            login={profile.login}
-            initialNote={playerNote}
-            onClose={() => setNoteEditorOpen(false)}
-          />
-        </div>
-      )}
 
       {profile && isMe && avatarPickerOpen && (
         <OwnAvatarPicker
@@ -296,7 +425,7 @@ export function PlayerCardModal() {
             onChange={setTab}
           />
           <div className="player-card-content">
-            {tab === "overview" && <PlayerOverview profile={profile} note={playerNote} onEditNote={() => setNoteEditorOpen(true)} onOpenHistory={openHistory} />}
+            {tab === "overview" && <PlayerOverview profile={profile} note={playerNote} onOpenHistory={openHistory} />}
             {tab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
             {tab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
             {tab === "statistics" && <PlayerStatistics profile={profile} />}

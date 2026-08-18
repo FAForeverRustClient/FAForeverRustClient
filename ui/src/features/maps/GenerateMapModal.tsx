@@ -24,6 +24,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
+  DecodedMapName,
   GenerationType,
   GeneratorOptions,
   GeneratorStatus,
@@ -121,6 +122,90 @@ function Select({
   );
 }
 
+interface SingleMapResultProps {
+  map: string;
+  previewUrl: string | undefined;
+  facts: DecodedMapName | undefined;
+}
+
+function SingleMapResult({ map, previewUrl, facts }: SingleMapResultProps) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  const copyName = () => {
+    void navigator.clipboard.writeText(map);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="generate-map-single-result surface-panel">
+      <div className="generate-map-single-preview">
+        {previewUrl ? (
+          <img src={previewUrl} alt={map} className="generate-map-single-img" />
+        ) : (
+          <div className="generate-map-single-placeholder">
+            <Icon name="maps" size={48} />
+          </div>
+        )}
+      </div>
+
+      <div className="generate-map-single-info">
+        <div className="generate-map-name-row">
+          <div className="generate-map-name-wrap">
+            <span className="generate-map-name-label">{t("maps.generate.reproduceTitle") || "Map name"}</span>
+            <code className="generate-map-name-code" title={map}>{map}</code>
+          </div>
+          <Button onClick={copyName} title={t("maps.generate.copyName")}>
+            <Icon name={copied ? "check" : "copy"} size={14} />
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+
+        <dl className="generate-map-specs-grid">
+          <div>
+            <dt>{t("maps.generate.mapSize")}</dt>
+            <dd>{facts ? formatMapSize(facts.mapSize) : "N/A"}</dd>
+          </div>
+          <div>
+            <dt>{t("maps.generate.spawns")}</dt>
+            <dd>{facts ? `${facts.spawnCount} players` : "N/A"}</dd>
+          </div>
+          <div>
+            <dt>{t("maps.generate.teams")}</dt>
+            <dd>{facts ? (facts.numTeams === 0 ? "Asymmetric" : `${facts.numTeams} teams`) : "N/A"}</dd>
+          </div>
+          <div>
+            <dt>{t("maps.generate.symmetry")}</dt>
+            <dd>{facts?.symmetry || t("maps.generate.any")}</dd>
+          </div>
+          <div>
+            <dt>{t("maps.generate.generatorVersion")}</dt>
+            <dd>{facts ? `v${facts.version}` : "N/A"}</dd>
+          </div>
+          <div>
+            <dt>{t("maps.generate.seed")}</dt>
+            <dd className="generate-map-spec-seed" title={facts?.seed}>{facts?.seed || "N/A"}</dd>
+          </div>
+        </dl>
+
+        {facts && (
+          <div className="generate-map-tags">
+            {summariseDecodedName(facts).map((fact) => (
+              <span key={fact} className="generate-map-tag">{fact}</span>
+            ))}
+          </div>
+        )}
+
+        <div className="generate-map-ready-badge">
+          <Icon name="check" size={15} />
+          <span>{t("maps.generate.installedReady")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   onClose: () => void;
   /** Called with the generated folder names, e.g. to host one straight away. */
@@ -174,6 +259,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const pick = (map: string) => {
     setResults(null);
     onGenerated?.([map]);
+    onClose();
   };
 
   const set = <K extends keyof GeneratorOptions>(key: K, value: GeneratorOptions[K]) =>
@@ -270,66 +356,99 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   // single map left the commonest case with nothing to show at all.
   if (results !== null) {
     const pickable = Boolean(onGenerated);
+    const isSingle = results.length === 1;
+    const singleMap = results[0];
+
     return (
       <Modal onClose={onClose} className="generate-map-modal">
         <div className="generate-map-head">
           <h2 className="generate-map-title">
-            {pickable ? t("maps.generate.chooseMap") : t("maps.generate.resultTitle")}
+            {pickable
+              ? t("maps.generate.chooseMap")
+              : isSingle
+                ? "Map Generated"
+                : t("maps.generate.resultTitle")}
           </h2>
           <p className="generate-map-subtitle">
             {results.length === 0
               ? t("maps.generate.resultNone")
-              : pickable
-                ? t("maps.generate.choicesNote", { count: results.length })
-                : t("maps.generate.resultNote", { count: results.length })}
+              : isSingle
+                ? pickable
+                  ? "Your map has been generated and installed. Select it to continue."
+                  : "Your map has been generated and installed in your user maps folder."
+                : pickable
+                  ? t("maps.generate.choicesNote", { count: results.length })
+                  : t("maps.generate.resultNote", { count: results.length })}
           </p>
         </div>
-        <div className="generate-map-choices-grid">
-          {results.map((map) => {
-            const previewUrl = previews[map];
-            const facts = state.decoded?.[map];
-            const body = (
-              <>
-                <div className="generate-map-card-thumb">
-                  {previewUrl ? (
-                    <img src={previewUrl} alt={map} className="generate-map-card-img" />
-                  ) : (
-                    <div className="generate-map-card-placeholder">
-                      <Icon name="maps" size={32} />
-                    </div>
-                  )}
-                </div>
-                <div className="generate-map-card-meta">
-                  <span className="generate-map-card-name" title={map}>
-                    {map}
-                  </span>
-                  {facts && (
-                    <span className="generate-map-card-facts">
-                      {summariseDecodedName(facts).join(" · ")}
+
+        {isSingle ? (
+          <SingleMapResult
+            map={singleMap}
+            previewUrl={previews[singleMap]}
+            facts={state.decoded?.[singleMap]}
+          />
+        ) : (
+          <div className="generate-map-choices-grid">
+            {results.map((map) => {
+              const previewUrl = previews[map];
+              const facts = state.decoded?.[map];
+              const body = (
+                <>
+                  <div className="generate-map-card-thumb">
+                    {previewUrl ? (
+                      <img src={previewUrl} alt={map} className="generate-map-card-img" />
+                    ) : (
+                      <div className="generate-map-card-placeholder">
+                        <Icon name="maps" size={32} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="generate-map-card-meta">
+                    <span className="generate-map-card-name" title={map}>
+                      {map}
                     </span>
-                  )}
+                    {facts && (
+                      <span className="generate-map-card-facts">
+                        {summariseDecodedName(facts).join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                </>
+              );
+              // Only a caller that can accept a map gets a clickable card;
+              // elsewhere a button that does nothing would just be a lie.
+              return pickable ? (
+                <button key={map} type="button" className="generate-map-card" onClick={() => pick(map)}>
+                  {body}
+                </button>
+              ) : (
+                <div key={map} className="generate-map-card is-static">
+                  {body}
                 </div>
-              </>
-            );
-            // Only a caller that can accept a map gets a clickable card;
-            // elsewhere a button that does nothing would just be a lie.
-            return pickable ? (
-              <button key={map} type="button" className="generate-map-card" onClick={() => pick(map)}>
-                {body}
-              </button>
-            ) : (
-              <div key={map} className="generate-map-card is-static">
-                {body}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="generate-map-actions">
           <Button type="button" onClick={() => setResults(null)}>
             {t("maps.generate.backToOptions")}
           </Button>
-          <Button type="button" variant="primary" onClick={onClose}>
-            {t("maps.generate.done")}
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => {
+              if (pickable && results && results.length > 0) {
+                pick(results[0]);
+              } else {
+                onClose();
+              }
+            }}
+          >
+            {pickable
+              ? t("maps.generate.chooseMap")
+              : t("maps.generate.done")}
           </Button>
         </div>
       </Modal>
@@ -744,7 +863,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           </div>
         )}
 
-        {state.predictedName && !reproducing && (
+        {state.predictedName && !reproducing && state.status.type !== "generated" && (
           <p className="generate-map-predicted">
             <span className="generate-map-row-label">{t("maps.generate.willBeCalled")}</span>
             <code>{state.predictedName}</code>
@@ -783,7 +902,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 }
 
 /** Whether a run is in flight. Mirrors `GeneratorStatus::is_busy` in faf-domain. */
-function stillRunning(status: GeneratorStatus): boolean {
+export function stillRunning(status: GeneratorStatus): boolean {
   return (
     status.type === "preparing" ||
     status.type === "resolvingVersion" ||

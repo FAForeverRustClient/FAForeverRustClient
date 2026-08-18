@@ -1254,6 +1254,24 @@ fn cases() -> Vec<Case> {
                     reason: "not uploaded yet".into(),
                 }
                 .into(),
+                // Watching a vault replay downloads it as part of playback, so
+                // the download ends at `Playing` or `Failed` and never at
+                // `VaultDownloaded`. Both reducers have to drop the transient
+                // indicator there. Only the TypeScript one did not, and nothing
+                // caught it because this pairing was not in the fixture: the
+                // status bar showed "Downloading <uid>" for the rest of the
+                // session after every watched replay.
+                ReplayEvent::VaultDownloadStarted { uid: 44 }.into(),
+                ReplayEvent::Playing {
+                    uid: Some(44),
+                    warning: None,
+                }
+                .into(),
+                ReplayEvent::VaultDownloadStarted { uid: 45 }.into(),
+                ReplayEvent::Failed {
+                    reason: "could not update game to version 3701".into(),
+                }
+                .into(),
             ],
         ),
         // ── reporting ────────────────────────────────────────────────────
@@ -1635,7 +1653,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Replays:localLoadFailed",
     "Replays:localLoaded",
     "Replays:localLoading",
-    "Replays:playing",
     "Replays:vaultLoadFailed",
     "Replays:vaultLoaded",
     "Replays:vaultLoading",

@@ -20,6 +20,8 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 /** Distance from the bottom, in px, still counted as "at the bottom". */
 const STICK_THRESHOLD = 48;
+const INITIAL_VISIBLE_MESSAGES = 80;
+const PREPEND_CHUNK_SIZE = 60;
 
 interface Props {
   messages: ChatMessage[];
@@ -85,8 +87,12 @@ export const MessageList = memo(function MessageList({
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [activeMatch, setActiveMatch] = useState(0);
+  const [visibleLimit, setVisibleLimit] = useState(INITIAL_VISIBLE_MESSAGES);
+  const prevScrollHeightRef = useRef<number | null>(null);
+  const prevScrollTopRef = useRef<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+
   // Stable, so `Line`'s `memo` actually holds. This used to be an inline
   // `rowRef={(node) => …}`, a fresh function on every render, which gave all
   // ~500 rows a changed prop for every incoming message: the whole scrollback
@@ -104,6 +110,34 @@ export const MessageList = memo(function MessageList({
     () => new Map(social.players.map((profile) => [profile.login.toLocaleLowerCase(), profile])),
     [social.players],
   );
+
+  const isFiltered = searchOpen && search.trim().length > 0;
+  const displayedMessages = isFiltered
+    ? messages
+    : messages.slice(Math.max(0, messages.length - visibleLimit));
+  const hasOlder = !isFiltered && displayedMessages.length < messages.length;
+
+  const loadOlder = useCallback(() => {
+    if (scrollRef.current) {
+      prevScrollHeightRef.current = scrollRef.current.scrollHeight;
+      prevScrollTopRef.current = scrollRef.current.scrollTop;
+      setVisibleLimit((current) => Math.min(messages.length, current + PREPEND_CHUNK_SIZE));
+    }
+  }, [messages.length]);
+
+  useLayoutEffect(() => {
+    if (
+      prevScrollHeightRef.current !== null &&
+      prevScrollTopRef.current !== null &&
+      scrollRef.current
+    ) {
+      const heightDiff = scrollRef.current.scrollHeight - prevScrollHeightRef.current;
+      scrollRef.current.scrollTop = prevScrollTopRef.current + heightDiff;
+      prevScrollHeightRef.current = null;
+      prevScrollTopRef.current = null;
+    }
+  }, [displayedMessages.length]);
+
   const matchingIds = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     if (!query) return [];
@@ -139,6 +173,7 @@ export const MessageList = memo(function MessageList({
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    if (prevScrollHeightRef.current !== null) return;
     if (pinnedRef.current) {
       el.scrollTop = el.scrollHeight;
       setMissed(false);
@@ -152,6 +187,9 @@ export const MessageList = memo(function MessageList({
     if (!el) return;
     pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_THRESHOLD;
     if (pinnedRef.current) setMissed(false);
+    if (el.scrollTop < 100 && hasOlder) {
+      loadOlder();
+    }
   };
 
   const jumpToLatest = () => {
@@ -203,17 +241,24 @@ export const MessageList = memo(function MessageList({
         </div>
       )}
       <div className="chat-messages surface-panel" ref={scrollRef} onScroll={onScroll}>
-        {messages.length === 0 ? (
+        {hasOlder && (
+          <div className="chat-older-messages">
+            <button type="button" className="chat-older-btn" onClick={loadOlder}>
+              {t("chat.loadOlder", { count: messages.length - displayedMessages.length })}
+            </button>
+          </div>
+        )}
+        {displayedMessages.length === 0 ? (
           <p className="muted chat-empty">{emptyLabel}</p>
         ) : (
-          messages.map((message, i) => (
+          displayedMessages.map((message, i) => (
             <Line
               key={message.id}
               message={message}
               self={self}
               withTime={
                 showTimestamps
-                && showsTime(message.timestamp, messages[i - 1]?.timestamp, use24HourTime)
+                && showsTime(message.timestamp, displayedMessages[i - 1]?.timestamp, use24HourTime)
               }
               use24HourTime={use24HourTime}
               user={usersByName.get(message.sender.toLocaleLowerCase())}
@@ -296,7 +341,7 @@ const Line = memo(function Line({
   const body = renderBody(message.content, self, search, onGameLink);
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
-  const nameStyle = resolvedNickStyle(message.sender, user, social, preferences);
+  const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
 
   const nick = (
     <button

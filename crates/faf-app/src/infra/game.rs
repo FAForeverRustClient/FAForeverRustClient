@@ -273,6 +273,10 @@ impl ProcessPort for GameProcess {
         managed_install_dir_of(&self.config.lock().unwrap().game_path)
     }
 
+    fn replay_install_dir(&self) -> Option<PathBuf> {
+        managed_install_dir_of(&self.config.lock().unwrap().replay_game_path)
+    }
+
     fn installs_present(&self) -> InstallPresence {
         let config = self.config.lock().unwrap();
         let present = managed_executable_is_present;
@@ -520,6 +524,10 @@ impl ProcessPort for FakeGame {
     fn set_additional_arguments(&self, _arguments: Vec<String>) {}
 
     fn game_install_dir(&self) -> Option<PathBuf> {
+        None
+    }
+
+    fn replay_install_dir(&self) -> Option<PathBuf> {
         None
     }
 

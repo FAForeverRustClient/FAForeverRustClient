@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
+import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
 import type { MatchmakerQueue, MatchmakingState, PartyState } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -158,7 +158,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   };
 
   if (queues.length === 0) {
-    return <div className="play-empty-state"><Icon name="users" size={24} /><h3>{t("lobby.matchmaker.loading")}</h3><p>{t("lobby.matchmaker.loadingHint")}</p></div>;
+    return <EmptyState icon="users" title={t("lobby.matchmaker.loading")} hint={t("lobby.matchmaker.loadingHint")} />;
   }
 
   const canSearch = !partyNeedsLeader && compatibleQueues.length > 0 && !searchLocked;

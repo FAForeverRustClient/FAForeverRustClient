@@ -117,10 +117,12 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         SettingsCommand::SetChat { preferences } => {
             let mut next = out.with_state(|state| state.settings.clone());
-            next.chat = preferences;
+            next.chat = *preferences;
             let preferences = next.normalized().chat;
             let show_joins_parts = preferences.show_joins_parts;
-            out.emit(SettingsEvent::ChatChanged { preferences });
+            out.emit(SettingsEvent::ChatChanged {
+                preferences: Box::new(preferences),
+            });
             out.emit(ChatEvent::JoinsPartsToggled {
                 enabled: show_joins_parts,
             });
@@ -206,6 +208,13 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
     ctx.ports
         .process
         .set_paths(settings.game_path, settings.replay_game_path);
+    // The replay preparation steps patch the install they are about to launch,
+    // so they follow the configured path rather than a startup environment
+    // variable. Without this a replay install chosen in Settings left the
+    // engine version unmatched and FA opened on the main menu.
+    ctx.ports
+        .replay
+        .set_install_dir(ctx.ports.process.replay_install_dir());
     let present = ctx.ports.process.installs_present();
     out.emit(InstallEvent::Checked {
         game_ready: present.game,

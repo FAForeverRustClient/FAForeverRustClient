@@ -18,13 +18,11 @@ import {
   normalizeBrowsingPreferences,
 } from "./shared/browsingPreferences";
 
-/** Never let a zoom failure take the shell down with it; the UI is still usable
- *  at 100%, and there is nothing the user could do about it here anyway. */
-async function applyWebviewZoom(factor: number): Promise<void> {
-  try {
-    await native.setZoom(factor);
-  } catch (error) {
-    console.warn("could not apply the interface scale", error);
+function applyInterfaceScale(scale: number): void {
+  if (scale === 100) {
+    document.documentElement.style.zoom = "";
+  } else {
+    document.documentElement.style.zoom = `${scale}%`;
   }
 }
 
@@ -59,15 +57,20 @@ export function App() {
     document.documentElement.dataset.reducedMotion = String(appearance.reduceMotion);
   }, [appearance.density, appearance.reduceMotion, theme]);
 
-  // Whole-interface zoom, applied at the webview rather than with a CSS
-  // transform. A CSS `zoom` on the root scales layout but leaves
-  // `window.innerWidth` in unscaled pixels, which silently breaks everything
-  // that mixes the two: the portal-positioned roster popover and the rating
-  // chart's pointer mapping both do exactly that. Webview zoom keeps one
-  // coordinate space, and media queries still see the scaled viewport.
+  // Apply interface scale at the document root to avoid native WebView2 HWND clipping on Windows.
   useEffect(() => {
-    void applyWebviewZoom(appearance.uiScale / 100);
+    applyInterfaceScale(appearance.uiScale);
   }, [appearance.uiScale]);
+
+  // Keep webview layout and DOM container dimensions synchronized with native window resizing.
+  useEffect(() => {
+    const unlistenPromise = native.onWindowResized(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
 
   useEffect(() => {
     // The shell only announces the backend as connected after persisted

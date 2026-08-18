@@ -37,10 +37,9 @@ export function RatingSummaryCard({ rating, onOpenHistory }: {
   );
 }
 
-export function PlayerOverview({ profile, note, onEditNote, onOpenHistory }: {
+export function PlayerOverview({ profile, note, onOpenHistory }: {
   profile: PlayerCardProfile;
   note: string;
-  onEditNote: () => void;
   onOpenHistory: (rating: PlayerRatingSummary) => void;
 }) {
   const { t } = useTranslation();
@@ -54,13 +53,18 @@ export function PlayerOverview({ profile, note, onEditNote, onOpenHistory }: {
       )}
 
       <section>
-        <div className="player-card-section-heading"><div><span className="player-card-eyebrow">{t("playerCard.overview.ratingsEyebrow")}</span><h3>{t("playerCard.overview.ratingsTitle")}</h3></div><span className="muted">{t("playerCard.overview.ratingsHint")}</span></div>
+        <div className="player-card-section-heading">
+          <div>
+            <span className="player-card-eyebrow">{t("playerCard.overview.ratingsEyebrow")}</span>
+            <h3>{t("playerCard.overview.ratingsTitle")}</h3>
+          </div>
+        </div>
         <div className="player-rating-grid">
           {profile.ratings.map((rating) => <RatingSummaryCard key={rating.leaderboardId} rating={rating} onOpenHistory={onOpenHistory} />)}
         </div>
       </section>
 
-      <PlayerNoteCard note={note} onEdit={onEditNote} />
+      <PlayerNoteCard playerId={profile.playerId} login={profile.login} note={note} />
       <section className="player-account-card surface-panel">
         <div>
           <span className="player-card-eyebrow">{t("playerCard.overview.accountEyebrow")}</span>

@@ -3,7 +3,7 @@
    of stacking a second scrollbar on `.content`. */
 .chat {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, min(var(--chat-roster-width, 236px), 50%));
+  grid-template-columns: minmax(0, 1fr) minmax(200px, min(var(--chat-roster-width, 280px), 50%));
   gap: var(--space-3);
   height: 100%;
   min-height: 0;
@@ -318,6 +318,36 @@ html.is-resizing-chat-roster * {
   scrollbar-gutter: stable;
 }
 
+.chat-older-messages {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+}
+
+.chat-older-btn {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-subtle);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.chat-older-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.chat-older-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
 .chat-conversation-search {
   display: flex;
   align-items: center;
@@ -563,10 +593,7 @@ html.is-resizing-chat-roster * {
   }
 }
 
-.chat-message.is-self .chat-nick {
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
+
 
 .chat-mention {
   background: var(--color-accent-glow);
@@ -958,7 +985,7 @@ html.is-resizing-chat-roster * {
   min-width: 0;
   padding: 5px 0;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text);
   background: transparent;
   border: none;
@@ -970,19 +997,41 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-roster-list {
+  /* The roster is virtualised: `UserList` places rows by arithmetic on this
+     exact height, so every row has to actually be this tall, headers included.
+     It is declared once, here, and read back by the component rather than
+     repeated as a JavaScript constant: the two drifted apart the first time
+     (26 px assumed against 24 px rows, 28 px for anyone in a game), which
+     desynchronised the scrollbar from the names under it. */
+  --roster-row-height: 26px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: var(--space-1);
+  contain: strict;
 }
 
-.chat-roster-group ul {
+.chat-roster-virtual-track {
+  position: relative;
+  width: 100%;
+}
+
+.chat-roster-virtual-window {
   list-style: none;
-  margin: 0 0 var(--space-2);
+  margin: 0;
+  padding: 0;
+  will-change: transform;
+}
+
+.chat-roster-group-header,
+.chat-roster-item {
+  height: var(--roster-row-height);
+  list-style: none;
+  margin: 0;
   padding: 0;
 }
 
-.chat-roster-group h3 {
+.chat-roster-group-header h3 {
   margin: 0;
   font: inherit;
 }
@@ -1004,7 +1053,7 @@ html.is-resizing-chat-roster * {
   border: 0;
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -1049,12 +1098,12 @@ html.is-resizing-chat-roster * {
 
 .chat-roster-user {
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px var(--space-1);
+  gap: 6px;
+  padding: 2px 6px;
   background: transparent;
   border-radius: var(--radius-sm);
 }
@@ -1078,6 +1127,17 @@ html.is-resizing-chat-roster * {
   text-align: left;
 }
 
+/* In the roster this has to fit inside one virtualised row (the row height less
+   `.chat-roster-user`'s vertical padding), or a player in a game makes their row
+   taller than every other one and the whole list's positions drift. */
+.chat-roster-user .chat-game-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs, 2px);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+
 .chat-game-badge {
   flex: none;
   display: flex;
@@ -1088,7 +1148,7 @@ html.is-resizing-chat-roster * {
   padding: 0;
   background: transparent;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-xs, 2px);
   cursor: help;
 }
 
@@ -1099,6 +1159,13 @@ html.is-resizing-chat-roster * {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+img.chat-game-map {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .chat-game-map-placeholder {
@@ -1270,6 +1337,7 @@ html.is-resizing-chat-roster * {
 .chat-clan {
   color: var(--color-muted);
   font-weight: 500;
+  margin-right: 4px;
 }
 
 /* ── User context menu ────────────────────────────────────────────────── */

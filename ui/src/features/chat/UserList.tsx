@@ -12,7 +12,7 @@
 //
 // Double-click opens a private conversation; right-click opens the user menu.
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, VaultMap } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
@@ -43,6 +43,27 @@ interface Props {
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
 }
 
+/**
+ * Row height, if the stylesheet cannot be read for some reason. Only a fallback:
+ * the real value is `--roster-row-height` on `.chat-roster-list`, which is also
+ * what makes the rows that tall. Hard-coding it here instead is what broke this
+ * list before, because a row is 24 px and a row for someone in a game was 28 px,
+ * against an assumed 26 px.
+ */
+const FALLBACK_ITEM_HEIGHT = 26;
+const OVERSCAN = 10; // extra rows to render above and below visible viewport
+
+/** The single row height every roster row is laid out at, from the stylesheet. */
+function measureItemHeight(list: HTMLElement): number {
+  const declared = getComputedStyle(list).getPropertyValue("--roster-row-height");
+  const parsed = Number.parseFloat(declared);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_ITEM_HEIGHT;
+}
+
+type RosterFlatItem =
+  | { type: "header"; category: UserCategory; count: number; collapsed: boolean; key: string }
+  | { type: "user"; user: ChatUser; category: UserCategory; key: string };
+
 export const UserList = memo(function UserList({
   users,
   self,
@@ -56,6 +77,11 @@ export const UserList = memo(function UserList({
 }: Props) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState("");
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(600);
+  const [itemHeight, setItemHeight] = useState(FALLBACK_ITEM_HEIGHT);
+  const listRef = useRef<HTMLDivElement>(null);
+
   const presences = useMemo(
     () => gamePresenceIndex(openGames, liveGames),
     [liveGames, openGames],
@@ -68,6 +94,7 @@ export const UserList = memo(function UserList({
     () => new Set(preferences.hiddenRosterCategories),
     [preferences.hiddenRosterCategories],
   );
+
   const toggleCategory = useCallback(
     (category: UserCategory) => {
       const current = useAppStore.getState().state.settings.chat;
@@ -121,6 +148,56 @@ export const UserList = memo(function UserList({
     return buckets;
   }, [users, self, social, friendsSet, profilesByLogin, filter]);
 
+  // Flatten ordered categories and users into a unified virtualization list.
+  const flatItems = useMemo<RosterFlatItem[]>(() => {
+    const list: RosterFlatItem[] = [];
+    for (const category of USER_CATEGORY_ORDER) {
+      const bucket = groups.get(category) ?? [];
+      if (bucket.length === 0) continue;
+      const collapsed = hidden.has(category) && filter.trim() === "";
+      list.push({
+        type: "header",
+        category,
+        count: bucket.length,
+        collapsed,
+        key: `hdr-${category}`,
+      });
+      if (!collapsed) {
+        for (const user of bucket) {
+          list.push({
+            type: "user",
+            user,
+            category,
+            key: `usr-${user.name}`,
+          });
+        }
+      }
+    }
+    return list;
+  }, [groups, hidden, filter]);
+
+  useLayoutEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    setViewportHeight(el.clientHeight || 600);
+    setItemHeight(measureItemHeight(el));
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setViewportHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const totalHeight = flatItems.length * itemHeight;
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - OVERSCAN);
+  const endIndex = Math.min(flatItems.length, Math.ceil((scrollTop + viewportHeight) / itemHeight) + OVERSCAN);
+  const topPadding = startIndex * itemHeight;
+  const visibleItems = flatItems.slice(startIndex, endIndex);
+
   return (
     <div className="chat-roster surface-panel" id="chat-roster">
       <div className="chat-roster-search">
@@ -131,59 +208,81 @@ export const UserList = memo(function UserList({
             value={filter}
             placeholder={`${users.length} ${users.length === 1 ? "user" : "users"} · type to filter…`}
             aria-label={`Filter users (${users.length} ${users.length === 1 ? "user" : "users"})`}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setScrollTop(0);
+              if (listRef.current) listRef.current.scrollTop = 0;
+            }}
           />
         </label>
       </div>
 
-      <div className="chat-roster-list">
-        {USER_CATEGORY_ORDER.map((category) => {
-          const bucket = groups.get(category) ?? [];
-          if (bucket.length === 0) return null;
-          // A filter is a search: honouring a collapsed section while one is
-          // active would hide the very match the user is looking for.
-          const collapsed = hidden.has(category) && filter.trim() === "";
-          return (
-            <section key={category} className="chat-roster-group">
-              <h3>
-                <button
-                  type="button"
-                  className="chat-roster-heading"
-                  aria-expanded={!collapsed}
-                  title={collapsed ? `Show ${t(USER_CATEGORY_LABELS[category])}` : `Hide ${t(USER_CATEGORY_LABELS[category])}`}
-                  onClick={() => toggleCategory(category)}
-                >
-                  {/* One glyph, rotated: expanded points down, collapsed
-                      points right. The Java header uses the same two states. */}
-                  <Icon
-                    name="chevronRight"
-                    size={15}
-                    className={collapsed ? "chat-roster-chevron" : "chat-roster-chevron is-open"}
-                  />
-                  <span className="chat-roster-heading-label">{t(USER_CATEGORY_LABELS[category])}</span>
-                  <span className="chat-roster-count">{bucket.length}</span>
-                </button>
-              </h3>
-              <ul hidden={collapsed}>
-                {bucket.map((user) => (
+      <div
+        className="chat-roster-list"
+        ref={listRef}
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      >
+        {flatItems.length === 0 ? (
+          users.length > 0 && (
+            <p className="muted chat-empty">No user matches “{filter.trim()}”.</p>
+          )
+        ) : (
+          <div className="chat-roster-virtual-track" style={{ height: totalHeight }}>
+            <ul
+              className="chat-roster-virtual-window"
+              style={{ transform: `translateY(${topPadding}px)` }}
+            >
+              {visibleItems.map((item) => {
+                if (item.type === "header") {
+                  return (
+                    <li key={item.key} className="chat-roster-group-header">
+                      <h3>
+                        <button
+                          type="button"
+                          className="chat-roster-heading"
+                          aria-expanded={!item.collapsed}
+                          title={
+                            item.collapsed
+                              ? `Show ${t(USER_CATEGORY_LABELS[item.category])}`
+                              : `Hide ${t(USER_CATEGORY_LABELS[item.category])}`
+                          }
+                          onClick={() => toggleCategory(item.category)}
+                        >
+                          <Icon
+                            name="chevronRight"
+                            size={15}
+                            className={
+                              item.collapsed
+                                ? "chat-roster-chevron"
+                                : "chat-roster-chevron is-open"
+                            }
+                          />
+                          <span className="chat-roster-heading-label">
+                            {t(USER_CATEGORY_LABELS[item.category])}
+                          </span>
+                          <span className="chat-roster-count">{item.count}</span>
+                        </button>
+                      </h3>
+                    </li>
+                  );
+                }
+                return (
                   <RosterRow
-                    key={user.name}
-                    user={user}
-                    profile={profilesByLogin.get(user.name.toLowerCase())}
+                    key={item.key}
+                    user={item.user}
+                    profile={profilesByLogin.get(item.user.name.toLowerCase())}
                     social={social}
-                    presence={presences.get(user.name.toLocaleLowerCase()) ?? null}
+                    presence={presences.get(item.user.name.toLocaleLowerCase()) ?? null}
                     mapVault={mapVault}
                     preferences={preferences}
+                    self={self}
                     onOpenConversation={onOpenConversation}
                     onContextMenu={onContextMenu}
                   />
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-        {users.length > 0 && [...groups.values()].every((b) => b.length === 0) && (
-          <p className="muted chat-empty">No user matches “{filter.trim()}”.</p>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </div>
     </div>
@@ -197,6 +296,7 @@ const RosterRow = memo(function RosterRow({
   presence,
   mapVault,
   preferences,
+  self,
   onOpenConversation,
   onContextMenu,
 }: {
@@ -206,12 +306,13 @@ const RosterRow = memo(function RosterRow({
   presence: GamePresence | null;
   mapVault: VaultMap[];
   preferences: ChatPreferences;
+  self: string;
   onOpenConversation: (nick: string) => void;
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
 }) {
-  const nameStyle = resolvedNickStyle(user.name, user, social, preferences);
+  const nameStyle = resolvedNickStyle(user.name, user, social, preferences, self);
   return (
-    <li>
+    <li className="chat-roster-item">
       <div
         className="chat-roster-user"
         onContextMenu={(e) => onContextMenu(user.name, e)}

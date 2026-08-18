@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
 import type { CoopMission, CoopResult, CoopScenario, CoopStatus, Game, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -256,14 +257,16 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
         {/* Left Column (Priority #1): Open Co-op Games Browser */}
         <section className={`coop-games-main surface-panel game-browser-${viewMode}`}>
           {games.length === 0 ? (
-            <div className="coop-games-empty">
-              <Icon name="users" size={32} />
-              <h4>{t("lobby.coop.noOpenGames")}</h4>
-              <p>{t("lobby.coop.hostToPlay")}</p>
+            <EmptyState
+              icon="users"
+              title={t("lobby.coop.noOpenGames")}
+              hint={t("lobby.coop.hostToPlay")}
+              className="coop-games-empty"
+            >
               <Button variant="primary" disabled={!connected} onClick={() => onHost(selected ?? undefined)}>
                 <Icon name="plus" size={16} /> {t("lobby.toolbar.hostGame")}
               </Button>
-            </div>
+            </EmptyState>
           ) : viewMode === "list" ? (
             <div className="game-browser-list">
               <div className="game-browser-head">

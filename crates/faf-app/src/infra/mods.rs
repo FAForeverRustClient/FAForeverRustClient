@@ -51,7 +51,8 @@ use serde_json::Value;
 
 use crate::infra::env_or;
 use crate::infra::jsonapi::{
-    fetch_document, rel_target, resource_index, value_bool, value_i32, JsonApiDoc,
+    fetch_all_pages, fetch_document, find_rel_resource, rel_target, resource_index, value_bool,
+    value_f64, value_i32, JsonApiDoc, JsonApiResource,
 };
 use crate::infra::vault_install::{
     bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
@@ -61,7 +62,7 @@ use crate::ports::ModsPort;
 /// Mods per vault page fetched in [`ModsClient::list_vault`]: mirrors
 /// `infra::maps`'s identical pagination constants.
 const VAULT_PAGE_SIZE: usize = 100;
-const MAX_VAULT_PAGES: u32 = 50;
+const MAX_VAULT_PAGES: u32 = 200;
 
 #[derive(Debug, Clone)]
 pub struct ModsConfig {
@@ -141,27 +142,32 @@ impl ModsPort for ModsClient {
             .get()
             .ok_or_else(|| "not logged in".to_string())?;
 
-        // Same "fetch every page up front" reasoning as `MapsClient::list_vault`
-        //: no paging UI yet, and a mod search is useless if most of the
-        // vault is missing.
+        // Same "fetch every page up front" reasoning as `MapsClient::list_vault`,
+        // minus its lookup-index duty: a mod search is useless if most of the
+        // vault is missing and there is no paging UI yet.
+        let api_base = self.config.api_base.clone();
+        let docs = fetch_all_pages(
+            &self.http,
+            &token,
+            MAX_VAULT_PAGES,
+            VAULT_PAGE_SIZE,
+            |page| {
+                let mut url = url::Url::parse(&format!("{api_base}/data/mod"))
+                    .map_err(|e| format!("invalid API base: {e}"))?;
+                url.query_pairs_mut()
+                    .append_pair("filter", "latestVersion.hidden=='false'")
+                    .append_pair("sort", "-latestVersion.createTime")
+                    .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
+                    .append_pair("page[number]", &page.to_string())
+                    .append_pair("include", "latestVersion,reviewsSummary,uploader");
+                Ok(url)
+            },
+        )
+        .await?;
+
         let mut all_mods = Vec::new();
-        for page in 1..=MAX_VAULT_PAGES {
-            let mut url = url::Url::parse(&format!("{}/data/mod", self.config.api_base))
-                .map_err(|e| format!("invalid API base: {e}"))?;
-            url.query_pairs_mut()
-                .append_pair("filter", "latestVersion.hidden=='false'")
-                .append_pair("sort", "-latestVersion.createTime")
-                .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
-                .append_pair("page[number]", &page.to_string())
-                .append_pair("include", "latestVersion,reviewsSummary,uploader");
-
-            let doc = fetch_document(&self.http, url, &token).await?;
-            let page_len = doc.data.len();
-            all_mods.extend(parse_vault_mods(&doc));
-
-            if page_len < VAULT_PAGE_SIZE {
-                break;
-            }
+        for doc in &docs {
+            all_mods.extend(parse_vault_mods(doc));
         }
         Ok(all_mods)
     }
@@ -596,6 +602,29 @@ fn build_active_mods_block(uids: &[String]) -> String {
     format!("active_mods = {{\n{}\n}}", entries.join(",\n"))
 }
 
+fn parse_reviews_summary(summary: &JsonApiResource) -> (i32, i32) {
+    let reviews = value_i32(&summary.attributes, "reviews")
+        .or_else(|| value_i32(&summary.attributes, "numReviews"))
+        .or_else(|| value_i32(&summary.attributes, "totalReviews"))
+        .or_else(|| value_i32(&summary.attributes, "count"))
+        .unwrap_or(0);
+
+    let avg_score = value_f64(&summary.attributes, "averageScore")
+        .or_else(|| {
+            let score = value_f64(&summary.attributes, "score")?;
+            if reviews > 0 {
+                Some(score / f64::from(reviews))
+            } else {
+                Some(score)
+            }
+        })
+        .or_else(|| value_f64(&summary.attributes, "rating"))
+        .unwrap_or(0.0);
+
+    let rating_tenths = (avg_score * 10.0).round() as i32;
+    (rating_tenths, reviews)
+}
+
 fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
     let index = resource_index(&doc.included);
     doc.data
@@ -604,24 +633,41 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
             let (_, version_id) = rel_target(&mod_res.relationships, "latestVersion")?;
             let version = index.get(&("modVersion".to_string(), version_id))?;
             let uploader = rel_target(&mod_res.relationships, "uploader")
-                .and_then(|key| index.get(&key))
+                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)))
                 .and_then(|player| player.attributes.get("login"))
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
             let reviews_summary = rel_target(&mod_res.relationships, "reviewsSummary")
-                .and_then(|key| index.get(&key));
-            let rating_tenths = reviews_summary
-                .and_then(|summary| summary.attributes.get("averageScore"))
-                .and_then(Value::as_f64)
-                .map(|rating| (rating * 10.0).round() as i32)
-                .unwrap_or(0);
-            let reviews = reviews_summary
-                .and_then(|summary| {
-                    value_i32(&summary.attributes, "reviews")
-                        .or_else(|| value_i32(&summary.attributes, "numReviews"))
-                })
-                .unwrap_or(0);
+                .or_else(|| rel_target(&mod_res.relationships, "modReviewsSummary"))
+                .or_else(|| rel_target(&version.relationships, "reviewsSummary"))
+                .or_else(|| rel_target(&version.relationships, "modVersionReviewsSummary"))
+                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)));
+
+            let (rating_tenths, reviews) = if let Some(summary) = reviews_summary {
+                parse_reviews_summary(summary)
+            } else if let Some(summary_attr) = mod_res
+                .attributes
+                .get("reviewsSummary")
+                .or_else(|| version.attributes.get("reviewsSummary"))
+            {
+                let r = value_i32(summary_attr, "reviews")
+                    .or_else(|| value_i32(summary_attr, "numReviews"))
+                    .unwrap_or(0);
+                let score = value_f64(summary_attr, "averageScore")
+                    .or_else(|| {
+                        let s = value_f64(summary_attr, "score")?;
+                        if r > 0 {
+                            Some(s / f64::from(r))
+                        } else {
+                            Some(s)
+                        }
+                    })
+                    .unwrap_or(0.0);
+                ((score * 10.0).round() as i32, r)
+            } else {
+                (0, 0)
+            };
 
             // The exact wire value for `modType` (`"UI"`/`"SIM"` or
             // something else) couldn't be verified against a live

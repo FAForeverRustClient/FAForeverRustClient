@@ -7,6 +7,7 @@ export type CategoryColorKey = Exclude<keyof ChatNameColors, "players">;
 export const DEFAULT_COLOR_PICKER_VALUE = "#808080";
 
 export const STANDARD_CATEGORY_COLORS: Record<CategoryColorKey, string> = {
+  selfColor: "#ffdd00",
   friends: "#87cefa",
   foes: "#dc143c",
   moderators: "#32cd32",
@@ -103,11 +104,16 @@ export function resolvePlayerStyle(
   name: string,
   social: SocialState,
   preferences: ChatPreferences,
+  selfName?: string,
 ): CSSProperties | undefined {
   if (!name) return undefined;
 
   const assignedColor = assignedPlayerColor(preferences.nameColors.players, name);
   if (assignedColor) return { color: assignedColor };
+
+  if (selfName && name.toLowerCase() === selfName.toLowerCase() && preferences.nameColors.selfColor) {
+    return { color: preferences.nameColors.selfColor };
+  }
 
   if (includesName(social.friends, name) && preferences.nameColors.friends) {
     return { color: preferences.nameColors.friends };

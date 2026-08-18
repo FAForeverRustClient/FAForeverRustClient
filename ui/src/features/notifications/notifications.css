@@ -44,7 +44,7 @@
   padding: 0 4px;
   color: var(--color-accent-contrast);
   background: var(--color-accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-sm);
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;

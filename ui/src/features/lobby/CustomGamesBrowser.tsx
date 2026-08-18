@@ -2,6 +2,7 @@ import { memo, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { EmptyState } from "../../design-system/EmptyState";
 import { Modal } from "../../design-system/Modal";
 import type { Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -55,16 +56,18 @@ function useGameLineupPosition() {
 
   const showLineup = (target: HTMLElement) => {
     const bounds = target.getBoundingClientRect();
-    const tooltipWidth = Math.min(430, window.innerWidth - 32);
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    const tooltipWidth = Math.min(430, viewportWidth - 32);
     const halfWidth = tooltipWidth / 2;
     const left = Math.min(
-      window.innerWidth - 16 - halfWidth,
+      viewportWidth - 16 - halfWidth,
       Math.max(16 + halfWidth, bounds.left + bounds.width / 2),
     );
-    const hasRoomBelow = window.innerHeight - bounds.bottom >= 260;
+    const hasRoomBelow = viewportHeight - bounds.bottom >= 260;
     setTooltipPosition(hasRoomBelow
       ? { left, top: bounds.bottom + 6 }
-      : { left, bottom: window.innerHeight - bounds.top + 6 });
+      : { left, bottom: viewportHeight - bounds.top + 6 });
   };
 
   return {
@@ -575,11 +578,11 @@ export function CustomGamesBrowser({
       )}
       <div className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}>
         {games.length === 0 ? (
-          <div className="play-empty-state">
-            <Icon name="search" size={22} />
-            <h3>{t("lobby.browser.noMatch")}</h3>
-            <p>{t("lobby.browser.noMatchHint")}</p>
-          </div>
+          <EmptyState
+            icon="search"
+            title={t("lobby.browser.noMatch")}
+            hint={t("lobby.browser.noMatchHint")}
+          />
         ) : viewMode === "tiles" ? (
           games.map((game) => (
             <GameTile

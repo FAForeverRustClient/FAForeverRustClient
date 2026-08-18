@@ -160,7 +160,9 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             if let Some((key, timestamp)) = marker {
                 let mut preferences = out.with_state(|state| state.settings.chat.clone());
                 preferences.read_markers.insert(key, timestamp);
-                out.emit(SettingsEvent::ChatChanged { preferences });
+                out.emit(SettingsEvent::ChatChanged {
+                    preferences: Box::new(preferences),
+                });
                 persist_read_markers_after_quiet_period(ctx, out);
             }
         }

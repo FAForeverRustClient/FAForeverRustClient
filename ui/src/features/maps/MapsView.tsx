@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { EmptyState } from "../../design-system/EmptyState";
 import { SectionTabs } from "../../design-system/SectionTabs";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
@@ -13,24 +14,26 @@ import {
   SearchPanelSubmit,
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
-import { openUpload } from "../uploads/UploadDialog";
 import { Modal } from "../../design-system/Modal";
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { loadStatusNote } from "../../shared/loadStatusNote";
-import { includesNormalized, isWithinDateRange, isWithinNumberRange } from "../../shared/filterRanges";
+import { isWithinDateRange, isWithinNumberRange, sortByDateDesc } from "../../shared/filterRanges";
 import { useAppStore } from "../../store/store";
 import {
   installNote,
+  isOfficialMap,
   MapCard,
   MapDetailPanel,
   mapInstalled,
   MapPreview,
   MapUninstallDialog,
+  ratingLabel,
   sizeLabel,
 } from "./MapVaultComponents";
-import { GenerateMapModal, GeneratorProgress } from "./GenerateMapModal";
+import { GenerateMapModal, GeneratorProgress, stillRunning } from "./GenerateMapModal";
+import { MapUploadModal } from "./MapUploadModal";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -59,6 +62,22 @@ const uninstallMap = (folderName: string) =>
     command: { type: "uninstallMap", payload: { folderName } },
   });
 
+interface MapFilterState {
+  search: string;
+  author: string;
+  sort: VaultSort;
+  ranked: RankedFilter;
+  installFilter: InstallFilter;
+  createdAfter: string;
+  createdBefore: string;
+  minimumRating: number | null;
+  maximumRating: number | null;
+  minimumPlayers: number | null;
+  maximumPlayers: number | null;
+  width: number;
+  height: number;
+}
+
 function VaultView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
@@ -68,13 +87,14 @@ function VaultView({ busy }: { busy: boolean }) {
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const preset = (browsing.mapVaultPreset as VaultPreset) || "recommended";
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<VaultSort>(() => {
+  const initialSort: VaultSort = (() => {
     if (preset === "newest") return "newest";
     if (preset === "played") return "played";
     if (preset === "all") return "name";
     return "rating";
-  });
+  })();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<VaultSort>(initialSort);
   const [ranked, setRanked] = useState<RankedFilter>("all");
   const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
   const [author, setAuthor] = useState("");
@@ -91,6 +111,23 @@ function VaultView({ busy }: { busy: boolean }) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
   const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
+
+  const [applied, setApplied] = useState<MapFilterState>({
+    search: "",
+    author: "",
+    sort: initialSort,
+    ranked: "all",
+    installFilter: "all",
+    createdAfter: "",
+    createdBefore: "",
+    minimumRating: null,
+    maximumRating: null,
+    minimumPlayers: null,
+    maximumPlayers: null,
+    width: 0,
+    height: 0,
+  });
+
   const note = loadStatusNote(vaultStatus, t("maps.view.loadingVault"), t("maps.view.vaultFailed"));
   const installedFolders = useMemo(
     () => new Set(installed.map((map) => map.folderName.toLocaleLowerCase())),
@@ -118,22 +155,49 @@ function VaultView({ busy }: { busy: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (preset === "newest") setSort("newest");
-    else if (preset === "played") setSort("played");
-    else if (preset === "all") setSort("name");
-    else if (preset === "rating" || preset === "recommended" || preset === "favorites") setSort("rating");
+    if (preset === "newest") {
+      setSort("newest");
+      setApplied((prev) => ({ ...prev, sort: "newest" }));
+    } else if (preset === "played") {
+      setSort("played");
+      setApplied((prev) => ({ ...prev, sort: "played" }));
+    } else if (preset === "all") {
+      setSort("name");
+      setApplied((prev) => ({ ...prev, sort: "name" }));
+    } else if (preset === "rating" || preset === "recommended" || preset === "favorites") {
+      setSort("rating");
+      setApplied((prev) => ({ ...prev, sort: "rating" }));
+    }
   }, [preset]);
 
-  useEffect(() => setPage(1), [
-    search, preset, sort, ranked, installFilter, author, createdAfter, createdBefore, browsing.favoriteMaps,
-    minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height,
-  ]);
+  const applySearch = () => {
+    setApplied({
+      search,
+      author,
+      sort,
+      ranked,
+      installFilter,
+      createdAfter,
+      createdBefore,
+      minimumRating,
+      maximumRating,
+      minimumPlayers,
+      maximumPlayers,
+      width,
+      height,
+    });
+    setPage(1);
+  };
 
   const choosePreset = (next: VaultPreset) => {
-    if (next === "rating" || next === "recommended" || next === "favorites") setSort("rating");
-    if (next === "newest") setSort("newest");
-    if (next === "played") setSort("played");
-    if (next === "all") setSort("name");
+    let nextSort: VaultSort = sort;
+    if (next === "rating" || next === "recommended" || next === "favorites") nextSort = "rating";
+    if (next === "newest") nextSort = "newest";
+    if (next === "played") nextSort = "played";
+    if (next === "all") nextSort = "name";
+    setSort(nextSort);
+    setApplied((prev) => ({ ...prev, sort: nextSort }));
+    setPage(1);
     if (browsing.mapVaultPreset !== next) {
       ipc.send({
         kind: "Settings",
@@ -142,37 +206,82 @@ function VaultView({ busy }: { busy: boolean }) {
     }
   };
 
+  const clearSearch = () => {
+    setSearch("");
+    setAuthor("");
+    setRanked("all");
+    setInstallFilter("all");
+    setCreatedAfter("");
+    setCreatedBefore("");
+    setMinimumRating(null);
+    setMaximumRating(null);
+    setMinimumPlayers(null);
+    setMaximumPlayers(null);
+    setWidth(0);
+    setHeight(0);
+    setApplied({
+      search: "",
+      author: "",
+      sort: "rating",
+      ranked: "all",
+      installFilter: "all",
+      createdAfter: "",
+      createdBefore: "",
+      minimumRating: null,
+      maximumRating: null,
+      minimumPlayers: null,
+      maximumPlayers: null,
+      width: 0,
+      height: 0,
+    });
+    setPage(1);
+    choosePreset("recommended");
+  };
+
   const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return vault
-      .filter((map) => preset !== "recommended" || map.recommended)
-      .filter((map) => preset !== "favorites" || favoriteFolders.has(map.folderName.toLocaleLowerCase()))
-      .filter((map) => ranked === "all" || map.ranked === (ranked === "ranked"))
-      .filter((map) => includesNormalized(map.author, author))
-      .filter((map) => isWithinDateRange(map.createdAt, createdAfter, createdBefore))
-      .filter((map) => isWithinNumberRange(map.ratingTenths / 10, minimumRating, maximumRating))
-      .filter((map) => isWithinNumberRange(map.maxPlayers, minimumPlayers, maximumPlayers))
-      .filter((map) => width === 0 || map.width === width)
-      .filter((map) => height === 0 || map.height === height)
-      .filter((map) => {
-        const isInstalled = mapInstalled(map, installedFolders);
-        return installFilter === "all" || isInstalled === (installFilter === "installed");
-      })
-      .filter((map) => !query || [map.displayName, map.author ?? "", map.folderName, map.description, map.mapType]
-        .some((value) => value.toLocaleLowerCase().includes(query)))
-      .slice()
-      .sort((left, right) => {
-        switch (sort) {
-          case "rating": return right.ratingTenths - left.ratingTenths || right.reviews - left.reviews;
-          case "newest": return (Date.parse(right.createdAt) || 0) - (Date.parse(left.createdAt) || 0);
-          case "played": return right.gamesPlayed - left.gamesPlayed;
-          case "size": return right.width * right.height - left.width * left.height;
-          case "name": return left.displayName.localeCompare(right.displayName);
-        }
-      });
+    const query = applied.search.trim().toLocaleLowerCase();
+    // Hoisted out of the loop: the shared range helpers normalise their query
+    // on every call, which over 5005 maps is 5005 identical trims.
+    const authorQuery = applied.author.trim().toLocaleLowerCase();
+    const hasDateFilter = Boolean(applied.createdAfter || applied.createdBefore);
+
+    // One pass rather than a chain of `.filter()` calls. Each link in that chain
+    // allocated a fresh array of up to 5005 maps, and the search predicate built
+    // a five-element array per map on top of it.
+    const matches: VaultMap[] = [];
+    for (const map of vault) {
+      if (preset === "recommended" && !map.recommended) continue;
+      if (preset === "favorites" && !favoriteFolders.has(map.folderName.toLocaleLowerCase())) continue;
+      if (applied.ranked !== "all" && map.ranked !== (applied.ranked === "ranked")) continue;
+      if (authorQuery && !(map.author ?? "").toLocaleLowerCase().includes(authorQuery)) continue;
+      if (hasDateFilter && !isWithinDateRange(map.createdAt, applied.createdAfter, applied.createdBefore)) continue;
+      if (!isWithinNumberRange(map.ratingTenths / 10, applied.minimumRating, applied.maximumRating)) continue;
+      if (!isWithinNumberRange(map.maxPlayers, applied.minimumPlayers, applied.maximumPlayers)) continue;
+      if (applied.width !== 0 && map.width !== applied.width) continue;
+      if (applied.height !== 0 && map.height !== applied.height) continue;
+      if (applied.installFilter !== "all"
+        && mapInstalled(map, installedFolders) !== (applied.installFilter === "installed")) continue;
+      if (query
+        && !map.displayName.toLocaleLowerCase().includes(query)
+        && !(map.author ?? "").toLocaleLowerCase().includes(query)
+        && !map.folderName.toLocaleLowerCase().includes(query)
+        && !map.description.toLocaleLowerCase().includes(query)
+        && !map.mapType.toLocaleLowerCase().includes(query)) continue;
+      matches.push(map);
+    }
+
+    if (applied.sort === "newest") return sortByDateDesc(matches, (map) => map.createdAt);
+    return matches.sort((left, right) => {
+      switch (applied.sort) {
+        case "rating": return right.ratingTenths - left.ratingTenths || right.reviews - left.reviews;
+        case "played": return right.gamesPlayed - left.gamesPlayed;
+        case "size": return right.width * right.height - left.width * left.height;
+        case "name": return left.displayName.localeCompare(right.displayName);
+        default: return 0;
+      }
+    });
   }, [
-    vault, preset, favoriteFolders, ranked, author, createdAfter, createdBefore, minimumRating, maximumRating,
-    minimumPlayers, maximumPlayers, width, height, installFilter, installedFolders, search, sort,
+    vault, preset, favoriteFolders, applied, installedFolders,
   ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -184,31 +293,14 @@ function VaultView({ busy }: { busy: boolean }) {
     + Number(width > 0)
     + Number(height > 0);
 
-  const resetFilters = () => {
-    setRanked("all");
-    setInstallFilter("all");
-    setAuthor("");
-    setCreatedAfter("");
-    setCreatedBefore("");
-    setMinimumRating(null);
-    setMaximumRating(null);
-    setMinimumPlayers(null);
-    setMaximumPlayers(null);
-    setWidth(0);
-    setHeight(0);
-  };
-
-  const clearSearch = () => {
-    setSearch("");
-    choosePreset("recommended");
-    resetFilters();
-  };
-
   return (
     <>
       <SearchPanel
         className="map-search-panel"
-        onSubmit={(event) => { event.preventDefault(); setPage(1); }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          applySearch();
+        }}
         secondary={(
           <>
             {([
@@ -242,10 +334,28 @@ function VaultView({ busy }: { busy: boolean }) {
         ) : undefined}
       >
         <SearchField label={t("maps.view.map")} className="search-panel-field-grow map-search-query">
-          <input className="search-panel-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("maps.view.nameDescriptionFolder")} />
+          <input
+            className="search-panel-control"
+            value={search}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSearch(value);
+              if (value.trim() && preset === "recommended") choosePreset("all");
+            }}
+            placeholder={t("maps.view.nameDescriptionFolder")}
+          />
         </SearchField>
         <SearchField label={t("maps.view.author")} className="search-panel-field-grow map-search-author">
-          <input className="search-panel-control" value={author} onChange={(event) => setAuthor(event.target.value)} placeholder={t("maps.view.anyAuthor")} />
+          <input
+            className="search-panel-control"
+            value={author}
+            onChange={(event) => {
+              const value = event.target.value;
+              setAuthor(value);
+              if (value.trim() && preset === "recommended") choosePreset("all");
+            }}
+            placeholder={t("maps.view.anyAuthor")}
+          />
         </SearchField>
         <RangeSlider
           label={t("maps.view.reviewScore")}
@@ -277,7 +387,12 @@ function VaultView({ busy }: { busy: boolean }) {
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("maps.view.detectionUnavailable")}</p>}
       {vaultStatus.type === "ready" && filtered.length === 0 ? (
-        <div className="vault-empty"><Icon name={vault.length === 0 ? "maps" : "search"} size={24} /><h3>{t(vault.length === 0 ? "maps.view.emptyVault" : "maps.view.noMatch")}</h3><p>{t(vault.length === 0 ? "maps.view.emptyVaultHint" : "maps.view.noMatchHint")}</p></div>
+        <EmptyState
+          bordered
+          icon={vault.length === 0 ? "maps" : "search"}
+          title={t(vault.length === 0 ? "maps.view.emptyVault" : "maps.view.noMatch")}
+          hint={t(vault.length === 0 ? "maps.view.emptyVaultHint" : "maps.view.noMatchHint")}
+        />
       ) : pageMaps.length > 0 && (
         <>
           <div className="vault-results-head"><span>{filtered.length} {filtered.length === 1 ? "map" : "maps"}</span><span>Page {currentPage} of {totalPages}</span></div>
@@ -308,23 +423,38 @@ function VaultView({ busy }: { busy: boolean }) {
   );
 }
 
+type InstalledPreset = "all" | "favorites" | "ranked" | "custom" | "builtin";
+type InstalledSort = "name" | "size" | "players" | "newest" | "rating";
+
 function InstalledView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const installed = useAppStore((state) => state.state.maps.installed);
   const installedStatus = useAppStore((state) => state.state.maps.installedStatus);
   const vault = useAppStore((state) => state.state.maps.vault);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
+  const browsing = useAppStore((state) => state.state.settings.browsing);
+  const favoriteFolders = useMemo(
+    () => new Set(browsing.favoriteMaps.map((folder) => folder.toLocaleLowerCase())),
+    [browsing.favoriteMaps],
+  );
+
   const [search, setSearch] = useState("");
+  const [author, setAuthor] = useState("");
+  const [preset, setPreset] = useState<InstalledPreset>("all");
+  const [sort, setSort] = useState<InstalledSort>("name");
+  const [ranked, setRanked] = useState<RankedFilter>("all");
+  const [minimumRating, setMinimumRating] = useState<number | null>(null);
+  const [maximumRating, setMaximumRating] = useState<number | null>(null);
+  const [minimumPlayers, setMinimumPlayers] = useState<number | null>(null);
+  const [maximumPlayers, setMaximumPlayers] = useState<number | null>(null);
+  const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMap | null>(null);
+
   const note = loadStatusNote(installedStatus, t("maps.view.scanning"), t("maps.view.scanFailed"));
   const vaultByFolder = useMemo(() => new Map(vault.map((map) => [map.folderName.toLocaleLowerCase(), map])), [vault]);
-  const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return installed
-      .filter((map) => !query || map.displayName.toLocaleLowerCase().includes(query) || map.folderName.toLocaleLowerCase().includes(query))
-      .slice()
-      .sort((left, right) => left.displayName.localeCompare(right.displayName));
-  }, [installed, search]);
 
   useEffect(() => {
     const maps = useAppStore.getState().state.maps;
@@ -332,37 +462,282 @@ function InstalledView({ busy }: { busy: boolean }) {
     if (maps.vaultStatus.type === "idle") loadVault();
   }, []);
 
+  const choosePreset = (next: InstalledPreset) => {
+    setPreset(next);
+    if (next === "all") setSort("name");
+  };
+
+  const hiddenFilterCount = Number(ranked !== "all")
+    + Number(minimumRating !== null || maximumRating !== null)
+    + Number(minimumPlayers !== null || maximumPlayers !== null)
+    + Number(width !== 0 || height !== 0);
+
+  const clearSearch = () => {
+    setSearch("");
+    setAuthor("");
+    setPreset("all");
+    setSort("name");
+    setRanked("all");
+    setMinimumRating(null);
+    setMaximumRating(null);
+    setMinimumPlayers(null);
+    setMaximumPlayers(null);
+    setWidth(0);
+    setHeight(0);
+    setPage(1);
+  };
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    const authorQuery = author.trim().toLocaleLowerCase();
+    return installed
+      .filter((map) => {
+        const meta = vaultByFolder.get(map.folderName.toLocaleLowerCase());
+        const isFav = favoriteFolders.has(map.folderName.toLocaleLowerCase());
+        const isOfficial = isOfficialMap(map.folderName);
+        const isRankedMap = meta?.ranked ?? false;
+
+        if (preset === "favorites" && !isFav) return false;
+        if (preset === "ranked" && !isRankedMap) return false;
+        if (preset === "custom" && isOfficial) return false;
+        if (preset === "builtin" && !isOfficial) return false;
+
+        if (ranked === "ranked" && !isRankedMap) return false;
+        if (ranked === "unranked" && isRankedMap) return false;
+
+        if (authorQuery) {
+          const mapAuthor = (meta?.author ?? "").toLocaleLowerCase();
+          if (!mapAuthor.includes(authorQuery)) return false;
+        }
+
+        if (minimumRating !== null || maximumRating !== null) {
+          if (!meta) return false;
+          if (!isWithinNumberRange(meta.ratingTenths / 10, minimumRating, maximumRating)) return false;
+        }
+
+        const effectivePlayers = map.maxPlayers ?? meta?.maxPlayers;
+        if (effectivePlayers !== undefined && !isWithinNumberRange(effectivePlayers, minimumPlayers, maximumPlayers)) {
+          return false;
+        }
+
+        const effectiveWidth = map.width ?? meta?.width;
+        const effectiveHeight = map.height ?? meta?.height;
+        if (width !== 0 && effectiveWidth !== undefined && effectiveWidth !== width) return false;
+        if (height !== 0 && effectiveHeight !== undefined && effectiveHeight !== height) return false;
+
+        if (query) {
+          const matches = [
+            map.displayName,
+            map.folderName,
+            meta?.displayName ?? "",
+            meta?.description ?? "",
+            map.description ?? "",
+          ].some((val) => val.toLocaleLowerCase().includes(query));
+          if (!matches) return false;
+        }
+
+        return true;
+      })
+      .slice()
+      .sort((left, right) => {
+        const metaLeft = vaultByFolder.get(left.folderName.toLocaleLowerCase());
+        const metaRight = vaultByFolder.get(right.folderName.toLocaleLowerCase());
+        switch (sort) {
+          case "name":
+            return left.displayName.localeCompare(right.displayName);
+          case "size": {
+            const sizeLeft = (left.width ?? metaLeft?.width ?? 0) * (left.height ?? metaLeft?.height ?? 0);
+            const sizeRight = (right.width ?? metaRight?.width ?? 0) * (right.height ?? metaRight?.height ?? 0);
+            return sizeRight - sizeLeft;
+          }
+          case "players":
+            return (right.maxPlayers ?? metaRight?.maxPlayers ?? 0) - (left.maxPlayers ?? metaLeft?.maxPlayers ?? 0);
+          case "newest":
+            return (Date.parse(metaRight?.createdAt ?? "") || 0) - (Date.parse(metaLeft?.createdAt ?? "") || 0);
+          case "rating":
+            return (metaRight?.ratingTenths ?? 0) - (metaLeft?.ratingTenths ?? 0);
+        }
+      });
+  }, [
+    installed, search, author, preset, sort, ranked, minimumRating, maximumRating,
+    minimumPlayers, maximumPlayers, width, height, vaultByFolder, favoriteFolders,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageMaps = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
     <>
-      <div className="vault-toolbar">
-        <label className="search-field vault-search-field"><Icon name="search" size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("maps.view.searchInstalledMaps")} /></label>
-        <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}><Icon name="refresh" size={15} /> {t("maps.view.rescan")}</Button>
-      </div>
+      <SearchPanel
+        className="installed-map-search-panel"
+        onSubmit={(event) => { event.preventDefault(); setPage(1); }}
+        secondary={(
+          <>
+            {([
+              ["all", t("maps.view.preset.all")],
+              ["favorites", t("maps.view.preset.favorites")],
+              ["ranked", t("maps.view.ranked")],
+              ["custom", "Custom"],
+              ["builtin", "Built-in"],
+            ] as Array<[InstalledPreset, string]>).map(([key, label]) => (
+              <Button
+                key={key}
+                className={preset === key ? "active" : ""}
+                onClick={() => choosePreset(key)}
+                title={key === "favorites" ? `Show ${favoriteFolders.size} favorited maps` : undefined}
+              >
+                {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />} {label}
+              </Button>
+            ))}
+            <span className="spacer" />
+            <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
+            <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
+            <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}>
+              <Icon name="refresh" size={15} /> {t("maps.view.rescan")}
+            </Button>
+          </>
+        )}
+        advanced={filtersOpen ? (
+          <div className="search-panel-advanced">
+            <div className="search-panel-advanced-grid">
+              <SearchField label={t("maps.view.width")}>
+                <select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}>
+                  <option value={0}>{t("maps.view.any")}</option>
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}
+                </select>
+              </SearchField>
+              <SearchField label={t("maps.view.height")}>
+                <select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}>
+                  <option value={0}>{t("maps.view.any")}</option>
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}
+                </select>
+              </SearchField>
+            </div>
+          </div>
+        ) : undefined}
+      >
+        <SearchField label={t("maps.view.map")} className="search-panel-field-grow map-search-query">
+          <input
+            className="search-panel-control"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder={t("maps.view.searchInstalledMaps")}
+          />
+        </SearchField>
+        <SearchField label={t("maps.view.author")} className="search-panel-field-grow map-search-author">
+          <input
+            className="search-panel-control"
+            value={author}
+            onChange={(event) => {
+              setAuthor(event.target.value);
+              setPage(1);
+            }}
+            placeholder={t("maps.view.anyAuthor")}
+          />
+        </SearchField>
+        <RangeSlider
+          label={t("maps.view.reviewScore")}
+          min={0}
+          max={5}
+          step={0.5}
+          low={minimumRating}
+          high={maximumRating}
+          format={(value) => `${value}★`}
+          onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); setPage(1); }}
+        />
+        <RangeSlider
+          label={t("maps.view.playerSlots")}
+          min={1}
+          max={16}
+          step={1}
+          low={minimumPlayers}
+          high={maximumPlayers}
+          format={(value) => `${value}`}
+          onChange={(low, high) => { setMinimumPlayers(low); setMaximumPlayers(high); setPage(1); }}
+        />
+        <SearchField label={t("maps.view.ranking")} className="search-panel-field-compact">
+          <select className="search-panel-control" value={ranked} onChange={(event) => { setRanked(event.target.value as RankedFilter); setPage(1); }}>
+            <option value="all">{t("maps.view.any")}</option>
+            <option value="ranked">{t("maps.view.ranked")}</option>
+            <option value="unranked">{t("maps.view.unranked")}</option>
+          </select>
+        </SearchField>
+        <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
+          <select className="search-panel-control" value={sort} onChange={(event) => setSort(event.target.value as InstalledSort)}>
+            <option value="name">{t("maps.view.sort.name")}</option>
+            <option value="size">{t("maps.view.sort.size")}</option>
+            <option value="players">Players</option>
+            <option value="rating">{t("maps.view.preset.rating")}</option>
+            <option value="newest">{t("maps.view.preset.newest")}</option>
+          </select>
+        </SearchField>
+      </SearchPanel>
+
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "ready" && filtered.length === 0 ? (
-        <div className="vault-empty"><Icon name={installed.length === 0 ? "maps" : "search"} size={24} /><h3>{t(installed.length === 0 ? "maps.view.noneInstalled" : "maps.view.noInstalledMatch")}</h3><p>{t(installed.length === 0 ? "maps.view.noneInstalledHint" : "maps.view.noInstalledMatchHint")}</p></div>
+        <EmptyState
+          bordered
+          icon={installed.length === 0 ? "maps" : "search"}
+          title={t(installed.length === 0 ? "maps.view.noneInstalled" : "maps.view.noInstalledMatch")}
+          hint={t(installed.length === 0 ? "maps.view.noneInstalledHint" : "maps.view.noInstalledMatchHint")}
+        />
       ) : filtered.length > 0 && (
         <section className="installed-map-library">
-          <div className="vault-results-head"><span>{t("maps.view.installedCount", { count: filtered.length })}</span><span>{t("maps.view.userMapsFolder")}</span></div>
+          <div className="vault-results-head">
+            <span>{t("maps.view.installedCount", { count: filtered.length })}</span>
+            <span>{t("maps.view.userMapsFolder")}</span>
+          </div>
           <div className="installed-map-grid">
-            {filtered.map((map) => {
+            {pageMaps.map((map) => {
               const metadata = vaultByFolder.get(map.folderName.toLocaleLowerCase());
               const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
               return (
                 <article className="installed-map-card surface-panel" key={map.folderName}>
-                  {metadata ? <MapPreview map={metadata} /> : <span className="map-vault-thumb map-vault-preview-empty" aria-hidden="true"><Icon name="maps" size={24} /></span>}
-                  <span><strong>{metadata?.displayName || map.displayName}</strong><small>{map.folderName}</small>{metadata && <small>{sizeLabel(metadata)} · {metadata.maxPlayers} players</small>}</span>
+                  <MapPreview map={metadata ?? map} />
+                  <span>
+                    <strong>{metadata?.displayName || map.displayName}</strong>
+                    <small>{map.folderName}</small>
+                    <small>
+                      {sizeLabel(metadata ?? { width: map.width ?? 512, height: map.height ?? 512 })} · {map.maxPlayers ?? metadata?.maxPlayers ?? 2} players
+                      {metadata && metadata.reviews > 0 && ` · ${ratingLabel(metadata)}`}
+                    </small>
+                  </span>
                   <span className="installed-map-actions">
-                    <Button disabled={isBusy} onClick={() => openUpload("map", map.folderName, metadata?.displayName || map.displayName)}>{t("maps.view.publish")}</Button>
-                    <Button className="map-vault-uninstall" disabled={isBusy} onClick={() => setPendingUninstall(map)}>{t(isBusy ? "maps.view.removing" : "maps.view.uninstall")}</Button>
+                    <Button
+                      className="map-vault-uninstall"
+                      disabled={isBusy}
+                      onClick={() => setPendingUninstall(map)}
+                    >
+                      {t(isBusy ? "maps.view.removing" : "maps.view.uninstall")}
+                    </Button>
                   </span>
                 </article>
               );
             })}
           </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          )}
         </section>
       )}
-      {pendingUninstall && <MapUninstallDialog mapName={pendingUninstall.displayName} onCancel={() => setPendingUninstall(null)} onConfirm={() => { uninstallMap(pendingUninstall.folderName); setPendingUninstall(null); }} />}
+      {pendingUninstall && (
+        <MapUninstallDialog
+          mapName={pendingUninstall.displayName}
+          onCancel={() => setPendingUninstall(null)}
+          onConfirm={() => {
+            uninstallMap(pendingUninstall.folderName);
+            setPendingUninstall(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -379,8 +754,10 @@ export function MapsView() {
   const { t } = useTranslation();
   const [subView, setSubView] = useState<SubView>("vault");
   const [generating, setGenerating] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const installed = useAppStore((state) => state.state.maps.installed);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
-  const generatorBusy = useAppStore((state) => state.state.mapGenerator.status.type);
+  const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
   const note = installNote(installStatus);
   const busy = installStatus.type === "installing";
   const { Component } = SUB_VIEWS[subView];
@@ -395,22 +772,33 @@ export function MapsView() {
           items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
           onChange={setSubView}
         />
-        {subView === "installed" && (
-          <>
-            {/* Generated maps are reproducible from their name, so removing them
-                costs nothing but reclaims the disk a season of ladder accumulates. */}
-            <Button onClick={cleanUpGeneratedMaps}>{t("maps.view.clearGenerated")}</Button>
-            <Button variant="primary" onClick={() => setGenerating(true)}>
-              <Icon name="plus" size={15} /> {t("maps.view.generateMap")}
-            </Button>
-          </>
-        )}
+        <div className="vault-subnav-actions">
+          <Button variant="ghost" onClick={() => setUploadModalOpen(true)}>
+            <Icon name="upload" size={15} /> {t("uploads.title.map")}
+          </Button>
+          {subView === "installed" && (
+            <>
+              {/* Generated maps are reproducible from their name, so removing them
+                  costs nothing but reclaims the disk a season of ladder accumulates. */}
+              <Button onClick={cleanUpGeneratedMaps}>{t("maps.view.clearGenerated")}</Button>
+              <Button variant="primary" onClick={() => setGenerating(true)}>
+                <Icon name="plus" size={15} /> {t("maps.view.generateMap")}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       <Component busy={busy} />
       {generating && <GenerateMapModal onClose={() => setGenerating(false)} />}
+      {uploadModalOpen && (
+        <MapUploadModal
+          installed={installed}
+          onClose={() => setUploadModalOpen(false)}
+        />
+      )}
       {/* Progress stays visible after the dialog closes: a run started here
           keeps going, and it is slow enough that the user will navigate away. */}
-      {!generating && generatorBusy !== "idle" && (
+      {!generating && stillRunning(generatorStatus) && (
         <div className="maps-generator-status surface"><GeneratorProgress /></div>
       )}
     </div>

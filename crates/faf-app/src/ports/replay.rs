@@ -65,4 +65,17 @@ pub trait ReplayPort: Send + Sync {
 
     /// Delete a replay previously returned by [`Self::list_local`].
     async fn delete_local(&self, path: PathBuf) -> Result<(), String>;
+
+    /// Point the replay preparation steps at the install that will actually be
+    /// launched. `None` when no replay install is configured.
+    ///
+    /// Called by the settings service whenever the paths change, for the same
+    /// reason [`crate::ports::ProcessPort::game_install_dir`] exists: before
+    /// this, the directory came from `FAF_REPLAY_GAME_PATH` read once at
+    /// startup, so a user who chose their replay install in Settings (the only
+    /// way the UI offers) left it `None`. Every preparation step, the engine
+    /// version match included, is skipped when it is `None`, and FA then opens
+    /// a replay it cannot load and drops the user on the main menu with no
+    /// error anywhere.
+    fn set_install_dir(&self, dir: Option<PathBuf>);
 }

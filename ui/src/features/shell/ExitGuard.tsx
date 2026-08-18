@@ -13,8 +13,10 @@ import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { native } from "../../ipc/native";
+import { useTranslation } from "../../i18n/useTranslation";
 
 export function ExitGuard() {
+  const { t } = useTranslation();
   const [asking, setAsking] = useState(false);
 
   useEffect(() => {
@@ -33,14 +35,10 @@ export function ExitGuard() {
 
   return (
     <Modal onClose={() => setAsking(false)}>
-      <h2 className="exit-guard-title">Forged Alliance is still running</h2>
-      <p className="muted exit-guard-body">
-        Closing the client now also shuts down the connection to the game, so
-        you would drop out of the match. Quit the game first if it is still in
-        progress.
-      </p>
+      <h2 className="exit-guard-title">{t("shell.exitGuard.title")}</h2>
+      <p className="muted exit-guard-body">{t("shell.exitGuard.body")}</p>
       <div className="exit-guard-actions">
-        <Button onClick={() => setAsking(false)}>Keep the client open</Button>
+        <Button onClick={() => setAsking(false)}>{t("shell.exitGuard.keepOpen")}</Button>
         <Button
           variant="primary"
           onClick={() => {
@@ -48,7 +46,7 @@ export function ExitGuard() {
             void native.exitApp();
           }}
         >
-          Close anyway
+          {t("shell.exitGuard.closeAnyway")}
         </Button>
       </div>
     </Modal>
