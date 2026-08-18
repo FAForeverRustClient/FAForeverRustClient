@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -6,6 +6,7 @@ import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatDate, formatDateTime, formatShortDate } from "../../shared/dates";
 import { formatDuration, formatRelativeDuration } from "../../shared/durations";
+import { baseMapName, normalizeMapName } from "../../shared/mapPresentation";
 import { onlineReplayLink } from "../../shared/replayLinks";
 import {
   isObserverTeam,
@@ -113,6 +114,73 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
   );
 }
 
+function ReplayMapThumb({
+  url,
+  mapName,
+  className,
+  emptyClassName,
+  iconSize = 24,
+  large = false,
+}: {
+  url: string | null | undefined;
+  mapName: string;
+  className: string;
+  emptyClassName: string;
+  iconSize?: number;
+  large?: boolean;
+}) {
+  const normalized = mapName ? normalizeMapName(mapName) : "";
+  const baseName = mapName ? baseMapName(mapName) : "";
+  const size = large ? "large" : "small";
+  const cdnFallback = normalized && !normalized.includes(" ")
+    ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(normalized)}.png`
+    : undefined;
+  const baseFallback = baseName && baseName !== normalized && !baseName.includes(" ")
+    ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
+    : undefined;
+
+  const [currentUrl, setCurrentUrl] = useState(url || cdnFallback || baseFallback || null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setCurrentUrl(url || cdnFallback || baseFallback || null);
+    setFailed(false);
+  }, [url, cdnFallback, baseFallback]);
+
+  const handleError = () => {
+    if (currentUrl === url && cdnFallback && currentUrl !== cdnFallback) {
+      setCurrentUrl(cdnFallback);
+    } else if (
+      (currentUrl === url || currentUrl === cdnFallback) &&
+      baseFallback &&
+      currentUrl !== baseFallback
+    ) {
+      setCurrentUrl(baseFallback);
+    } else {
+      setFailed(true);
+    }
+  };
+
+  if (!currentUrl || failed) {
+    return (
+      <div className={`${className} ${emptyClassName}`} aria-hidden="true">
+        <Icon name="maps" size={iconSize} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      className={className}
+      src={currentUrl}
+      alt={`${mapName} preview`}
+      loading="lazy"
+      decoding="async"
+      onError={handleError}
+    />
+  );
+}
+
 export function ReplayLibraryCard({
   replay,
   watched,
@@ -139,11 +207,13 @@ export function ReplayLibraryCard({
       onDoubleClick={onDoubleClick}
     >
       <div className="replay-card-left">
-        {replay.mapThumbnailUrl ? (
-          <img className="replay-card-thumb" src={replay.mapThumbnailUrl} alt={replay.map} />
-        ) : (
-          <div className="replay-card-thumb" />
-        )}
+        <ReplayMapThumb
+          url={replay.mapThumbnailUrl}
+          mapName={replay.map}
+          className="replay-card-thumb"
+          emptyClassName="replay-card-thumb-empty"
+          iconSize={32}
+        />
         <ReplayStars replay={replay} />
         <ReplayMetaGrid replay={replay} />
       </div>
@@ -333,11 +403,14 @@ export function ReplayDetailPanel({
   return (
     <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: replay.title || replay.map })} onClose={onClose}>
       <header className="replay-detail-head">
-        {replay.mapThumbnailUrl ? (
-          <img className="replay-detail-thumb" src={replay.mapThumbnailUrl} alt={replay.map} />
-        ) : (
-          <div className="replay-detail-thumb replay-detail-thumb-empty"><Icon name="maps" size={34} /></div>
-        )}
+        <ReplayMapThumb
+          url={replay.mapThumbnailUrl}
+          mapName={replay.map}
+          className="replay-detail-thumb"
+          emptyClassName="replay-detail-thumb-empty"
+          iconSize={40}
+          large
+        />
         <div className="replay-detail-headtext">
           <div className="replay-detail-eyebrow">
             <span>{t("replays.detail.eyebrow", { uid: replay.uid })}{age && <> · {age}</>}</span>

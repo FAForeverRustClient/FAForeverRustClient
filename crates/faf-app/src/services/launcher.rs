@@ -19,9 +19,9 @@ use faf_domain::state::{
 use serde_json::Value;
 use tokio::sync::mpsc;
 
-use crate::infra::replay::LOCAL_REPLAY_PAGE_LIMIT;
 use crate::ports::{
     GameLaunchParams, GamePreparation, IceParams, RelayMsg, ReplayMetadata, UpdateProgress,
+    DEFAULT_LOCAL_REPLAY_LIMIT,
 };
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::notifications;
@@ -174,7 +174,11 @@ pub async fn start(
         // now. Re-listing here is what makes it appear in the Local tab without
         // the user knowing to press refresh: the scan is a directory read, and
         // it only happens once per game.
-        match exit_ports.replay.list_local(LOCAL_REPLAY_PAGE_LIMIT).await {
+        match exit_ports
+            .replay
+            .list_local(DEFAULT_LOCAL_REPLAY_LIMIT)
+            .await
+        {
             Ok(replays) => exit_sink.emit(ReplayEvent::LocalLoaded { replays }),
             Err(reason) => {
                 tracing::warn!(%reason, "could not refresh the local replay list after the game")

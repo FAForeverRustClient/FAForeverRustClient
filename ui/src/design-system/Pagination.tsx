@@ -92,15 +92,16 @@ export function Pagination({
   if (!unknownTotal && totalPages <= 1 && !hasMore) return null;
   if (unknownTotal && currentPage <= 1 && !hasMore) return null;
 
-  // The reported count is a floor, not a ceiling.
+  // The reported count is a floor, not a ceiling, but only by one page.
   //
-  // `hasMore` outranks it: the API's totals for a very large collection can be
-  // capped or estimated, and a full page of results is direct evidence another
-  // exists. Clamping the window to the reported count is what left the replay
-  // vault showing five buttons and no way past them; when the source says there
-  // is more, the window keeps a full run of pages ahead of wherever the user
-  // has reached, so clicking 10 offers up to 15 rather than dead-ending.
-  const reach = hasMore ? currentPage + maxVisiblePages : currentPage;
+  // `hasMore` means the last page came back full. That is evidence one more
+  // page exists, and evidence of nothing beyond it. Offering a whole run ahead,
+  // as this briefly did, advertised pages the server had never claimed:
+  // searching a player and clicking page 5 landed on "No replays match this
+  // search", because pages 5 onward did not exist. One page at a time still
+  // walks past a total the API under-reports, since each full page reveals the
+  // next.
+  const reach = hasMore ? currentPage + 1 : currentPage;
   const effectiveTotal = unknownTotal ? reach : Math.max(totalPages, reach);
   const items = getPageItems(currentPage, effectiveTotal, maxVisiblePages);
   // Shown whenever the range is longer than the window, including when the

@@ -698,12 +698,7 @@ async fn list_local_dir(dir: &std::path::Path, limit: usize) -> Result<Vec<Local
     Ok(replays)
 }
 
-/// How many of the newest local replays to read headers for by default.
-///
-/// Ten pages at the Local tab.s page size. The view raises this when the user
-/// pages past it, so the whole archive stays reachable without every session
-/// paying for three thousand file reads it will not look at.
-pub const LOCAL_REPLAY_PAGE_LIMIT: usize = 360;
+pub const LOCAL_REPLAY_PAGE_LIMIT: usize = crate::ports::DEFAULT_LOCAL_REPLAY_LIMIT;
 
 /// How many local replay headers to read at once.
 ///

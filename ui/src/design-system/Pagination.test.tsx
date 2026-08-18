@@ -70,7 +70,10 @@ describe("unknown total pages", () => {
     );
 
     expect(markup).toContain('Page 3');
-    expect(markup).toContain('aria-label="Page 9"');
+    expect(markup).toContain('aria-label="Page 4"');
+    // One page beyond the current, not a run of them: anything further is a
+    // page the source has never claimed exists.
+    expect(markup).not.toContain('aria-label="Page 5"');
   });
 
   it("grows the run as the user advances past a reported total", () => {
@@ -79,7 +82,8 @@ describe("unknown total pages", () => {
     const markup = renderToStaticMarkup(
       <Pagination currentPage={10} totalPages={5} hasMore onPageChange={() => {}} />,
     );
-    expect(markup).toContain('aria-label="Page 14"');
+    expect(markup).toContain('aria-label="Page 11"');
+    expect(markup).not.toContain('aria-label="Page 12"');
     expect(markup).toContain('aria-current="page"');
   });
 

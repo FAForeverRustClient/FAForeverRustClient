@@ -4,7 +4,7 @@ import type { ReplayQuery } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { loadStatusNote } from "../../shared/loadStatusNote";
-import { personalReplayQuery } from "../../shared/replayQuery";
+import { isoDaysAgo, personalReplayQuery } from "../../shared/replayQuery";
 import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { OnlineReplayList, ReplayCard, ReplayDetailPanel } from "./OnlineReplayPresentation";
 import { ReplayViewSwitch, type ReplayViewMode } from "./ReplayViewSwitch";
@@ -56,7 +56,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     const state = useAppStore.getState().state;
     if (state.replays.vaultStatus.type === "idle") {
-      searchVault(personalReplayQuery(self));
+      searchVault(personalReplayQuery(self, isoDaysAgo(365)));
     }
     // The two dropdowns' contents. Both are cheap and cached in state, so
     // this is a no-op on every visit after the first.
@@ -92,6 +92,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // you paged. When the API does not report a total, the control now says which
   // page you are on instead of guessing how many there are.
   const totalPages = useAppStore((s) => s.state.replays.vaultTotalPages);
+  const totalRecords = useAppStore((s) => s.state.replays.vaultTotalRecords);
 
   return (
     <>
@@ -99,18 +100,33 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         featuredMods={featuredMods}
         leagues={leagues}
         self={self}
-        initialQuery={vaultStatus.type === "idle" ? personalReplayQuery(self) : query}
+        initialQuery={vaultStatus.type === "idle" ? personalReplayQuery(self, isoDaysAgo(365)) : query}
         onSearch={searchVault}
       />
       <div className="online-replay-view-bar">
         <div className="online-replay-view-bar-left">
-          <span className="muted">{vault.length} {vault.length === 1 ? "replay" : "replays"} on this page</span>
+          {/* The server's own totals, not a count of what is on screen. Both
+              reference clients show the size of the result set, and it is the
+              only way to tell a genuinely small match from a pager that is
+              misreading the page count. */}
+          <span className="muted">
+            {t("replays.vault.resultCount", {
+              shown: vault.length,
+              total: totalRecords ?? vault.length,
+              pages: totalPages ?? 1,
+            })}
+          </span>
           {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
       {vaultStatus.type === "ready" && vault.length === 0 && (
-        <p className="muted">{t("replays.vault.noMatch")}</p>
+        /* Past the end is not the same as no matches. Landing on an empty page
+           after paging forward means the search worked and this page is beyond
+           its results, which is what a full last page cannot distinguish. */
+        <p className="muted">
+          {t(query.page > 1 ? "replays.vault.pastEnd" : "replays.vault.noMatch")}
+        </p>
       )}
       {vault.length > 0 && viewMode === "tiles" && (
         <div className="replay-grid">

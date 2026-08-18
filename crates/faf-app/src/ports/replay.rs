@@ -10,6 +10,9 @@ use async_trait::async_trait;
 use faf_domain::state::{LiveReplayTarget, LocalReplay, ReplayQuery, VaultReplay};
 use serde::{Deserialize, Serialize};
 
+/// How many of the newest local replays to read headers for by default.
+pub const DEFAULT_LOCAL_REPLAY_LIMIT: usize = 360;
+
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultSearchResult {

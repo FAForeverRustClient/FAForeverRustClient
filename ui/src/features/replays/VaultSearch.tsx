@@ -30,7 +30,12 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { MultiSelect, type MultiSelectOption } from "../../design-system/MultiSelect";
 import { RangeSlider } from "../../design-system/RangeSlider";
-import { advancedReplayFilterCount, EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
+import {
+  advancedReplayFilterCount,
+  ALL_TIME_AFTER,
+  EMPTY_REPLAY_QUERY,
+  isoDaysAgo,
+} from "../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
 import "../../design-system/search-panel.css";
 import type { MessageKey } from "../../i18n";
@@ -50,7 +55,7 @@ const SORT_LABELS: Record<ReplaySortField, MessageKey> = {
 };
 
 /** The Java client's show-room categories, as one-click presets. */
-type Preset = "newest" | "highestRated" | "own" | "lastYear";
+type Preset = "newest" | "highestRated" | "own";
 
 interface Props {
   /** Featured mod technical names from the API. */
@@ -63,13 +68,15 @@ interface Props {
   onSearch: (query: ReplayQuery) => void;
 }
 
-const isoDaysAgo = (days: number) =>
-  new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
-
 export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
   const [advanced, setAdvanced] = useState(false);
+  // Reflects the date bound already in the query, so the button matches what is
+  // actually being searched rather than a separate opinion about it.
+  const [recentOnly, setRecentOnly] = useState(
+    () => initialQuery.after !== ALL_TIME_AFTER,
+  );
 
   // `page` is not part of the form: a new search always starts at page 1, and
   // paging is driven from the executed query instead.
@@ -119,9 +126,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
               // date shows up in the form instead of being invisible.
               after: isoDaysAgo(365 * 3),
             }
-          : preset === "lastYear"
-            ? { ...base, after: isoDaysAgo(365) }
-            : base;
+          : base;
     setForm(query);
     onSearch(query);
   };
@@ -236,8 +241,29 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         <Button type="button" onClick={() => applyPreset("highestRated")}>
           {t("replays.search.preset.bestReviewed")}
         </Button>
-        <Button type="button" onClick={() => applyPreset("lastYear")}>
-          {t("replays.search.preset.lastYear")}
+        {/* A toggle, not a preset. The backend silently floors any narrowing
+            search to the last few months, which is right for speed and wrong
+            when it is invisible; this is that floor made into a control the user
+            can see and switch off. On by default, because the unbounded query is
+            the slow one. */}
+        <Button
+          type="button"
+          className={recentOnly ? "active" : ""}
+          aria-pressed={recentOnly}
+          title={t("replays.search.recentOnlyHint")}
+          onClick={() => {
+            const next = !recentOnly;
+            setRecentOnly(next);
+            const query = {
+              ...form,
+              after: next ? isoDaysAgo(365) : ALL_TIME_AFTER,
+              page: 1,
+            };
+            setForm(query);
+            onSearch(query);
+          }}
+        >
+          {t("replays.search.recentOnly")}
         </Button>
         <Button type="button" disabled={!self} onClick={() => applyPreset("own")}>
           {t("replays.search.preset.myReplays")}

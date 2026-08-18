@@ -1256,7 +1256,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.search.openFile": "Открыть файл…",
   "replays.search.preset.newest": "Самые новые",
   "replays.search.preset.bestReviewed": "С лучшей оценкой",
-  "replays.search.preset.lastYear": "За последний год",
   "replays.search.preset.myReplays": "Мои реплеи",
   "replays.search.sort.datePlayed": "Дата игры",
   "replays.search.sort.dateFinished": "Дата завершения",

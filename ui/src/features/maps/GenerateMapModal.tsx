@@ -122,6 +122,42 @@ function Select({
   );
 }
 
+function GeneratePreviewImg({
+  url,
+  alt,
+  className,
+  placeholderClassName,
+  iconSize,
+}: {
+  url: string | undefined;
+  alt: string;
+  className: string;
+  placeholderClassName: string;
+  iconSize: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+
+  if (!url || failed) {
+    return (
+      <div className={placeholderClassName}>
+        <Icon name="maps" size={iconSize} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface SingleMapResultProps {
   map: string;
   previewUrl: string | undefined;
@@ -141,13 +177,13 @@ function SingleMapResult({ map, previewUrl, facts }: SingleMapResultProps) {
   return (
     <div className="generate-map-single-result surface-panel">
       <div className="generate-map-single-preview">
-        {previewUrl ? (
-          <img src={previewUrl} alt={map} className="generate-map-single-img" />
-        ) : (
-          <div className="generate-map-single-placeholder">
-            <Icon name="maps" size={48} />
-          </div>
-        )}
+        <GeneratePreviewImg
+          url={previewUrl}
+          alt={map}
+          className="generate-map-single-img"
+          placeholderClassName="generate-map-single-placeholder"
+          iconSize={48}
+        />
       </div>
 
       <div className="generate-map-single-info">
@@ -394,13 +430,13 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               const body = (
                 <>
                   <div className="generate-map-card-thumb">
-                    {previewUrl ? (
-                      <img src={previewUrl} alt={map} className="generate-map-card-img" />
-                    ) : (
-                      <div className="generate-map-card-placeholder">
-                        <Icon name="maps" size={32} />
-                      </div>
-                    )}
+                    <GeneratePreviewImg
+                      url={previewUrl}
+                      alt={map}
+                      className="generate-map-card-img"
+                      placeholderClassName="generate-map-card-placeholder"
+                      iconSize={32}
+                    />
                   </div>
                   <div className="generate-map-card-meta">
                     <span className="generate-map-card-name" title={map}>
