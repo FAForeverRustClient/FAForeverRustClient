@@ -13,6 +13,7 @@
 //! draft order are the server's business, and anything that depends on their
 //! exact behaviour has to be checked against a real instance.
 
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -1699,7 +1700,7 @@ impl TourneyPort for FakeTourney {
             .filter(|event| event.series_id.as_deref() == Some(series_id))
             .map(edition_of)
             .collect();
-        editions.sort_by(|left, right| right.event_date.cmp(&left.event_date));
+        editions.sort_by_key(|edition| Reverse(edition.event_date));
         Ok(SeriesDetail {
             id: held.id.clone(),
             name: held.name.clone(),
@@ -2266,7 +2267,7 @@ fn apply(event: &mut Tourney, draft: &TourneyDraft) {
 /// `formTeamsGrouped` does for a solo event.
 fn form_teams(event: &mut Tourney) {
     let mut entrants: Vec<TourneyPlayer> = event.players.clone();
-    entrants.sort_by(|left, right| right.rating.cmp(&left.rating));
+    entrants.sort_by_key(|entrant| Reverse(entrant.rating));
     event.teams = entrants
         .iter()
         .enumerate()
