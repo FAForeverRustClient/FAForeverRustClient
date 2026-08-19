@@ -30,6 +30,7 @@ import {
   isOfficialMap,
   MapCard,
   MapDetailPanel,
+  MapHideDialog,
   mapInstalled,
   MapPreview,
   MapUninstallDialog,
@@ -46,7 +47,7 @@ type SubView = "vault" | "installed";
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
 type RankedFilter = "all" | "ranked" | "unranked";
 type InstallFilter = "all" | "installed" | "available";
-type VaultPreset = "recommended" | "favorites" | "rating" | "newest" | "played" | "all";
+type VaultPreset = "recommended" | "favorites" | "mine" | "rating" | "newest" | "played" | "all";
 
 const PAGE_SIZE = 36;
 const MAP_SIZES = [64, 128, 256, 512, 1024, 2048, 4096];
@@ -64,6 +65,12 @@ const uninstallMap = (folderName: string) =>
   ipc.send({
     kind: "Maps",
     command: { type: "uninstallMap", payload: { folderName } },
+  });
+
+const setMapVersionHidden = (versionId: number, hidden: boolean) =>
+  ipc.send({
+    kind: "Maps",
+    command: { type: "setMapVersionHidden", payload: { versionId, hidden } },
   });
 
 interface MapFilterState {
@@ -85,19 +92,32 @@ interface MapFilterState {
 /**
  * The tab's filter state as the API query it stands for.
  *
- * The presets are sorts plus, for `recommended`, a flag the API models on the
- * map itself. `favorites` has no server equivalent and is handled by the caller.
+ * The presets are sorts plus two flags the API models elsewhere: `recommended`
+ * on the map itself, and `mine`, which narrows to one author and is the only
+ * view that asks for hidden versions (mirrors Java's `SearchType.OWN`, which
+ * filters `map.author.id`). `favorites` has no server equivalent and is handled
+ * by the caller.
  */
-function mapVaultQuery(applied: MapFilterState, preset: VaultPreset, page: number): MapVaultQuery {
+function mapVaultQuery(
+  applied: MapFilterState,
+  preset: VaultPreset,
+  page: number,
+  playerId: number | null,
+): MapVaultQuery {
   const sortBy: MapVaultQuery["sortBy"] = applied.sort === "size" ? "size"
     : applied.sort === "name" ? "name"
       : applied.sort === "played" ? "played"
         : applied.sort === "newest" ? "newest"
           : "rating";
+  const mine = preset === "mine" && playerId !== null;
   return {
     ...EMPTY_MAP_QUERY,
     search: applied.search.trim(),
     author: applied.author.trim(),
+    authorId: mine ? playerId : null,
+    // Only here: an author is the one person who still needs to see what they
+    // withdrew, and neither reference client can show them.
+    includeHidden: mine,
     ranked: applied.ranked === "all" ? null : applied.ranked === "ranked",
     recommended: preset === "recommended",
     // The domain carries review scores in tenths so the whole state stays
@@ -132,9 +152,15 @@ function VaultView({ busy }: { busy: boolean }) {
   const installedStatus = useAppStore((state) => state.state.maps.installedStatus);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const browsing = useAppStore((state) => state.state.settings.browsing);
-  const preset = (browsing.mapVaultPreset as VaultPreset) || "recommended";
+  const visibilityStatus = useAppStore((state) => state.state.maps.visibilityStatus);
+  // Who "my maps" and the hide buttons are about. Null until login, which is
+  // why the preset is not offered before then: without an id the query would
+  // silently widen to the whole vault.
+  const playerId = useAppStore((state) => state.state.auth.player?.id ?? null);
+  const storedPreset = (browsing.mapVaultPreset as VaultPreset) || "recommended";
+  const preset: VaultPreset = storedPreset === "mine" && playerId === null ? "recommended" : storedPreset;
   const initialSort: VaultSort = (() => {
-    if (preset === "newest") return "newest";
+    if (preset === "newest" || preset === "mine") return "newest";
     if (preset === "played") return "played";
     if (preset === "all") return "name";
     return "rating";
@@ -156,6 +182,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const [page, setPage] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
+  const [pendingHide, setPendingHide] = useState<VaultMap | null>(null);
   const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
 
   const [applied, setApplied] = useState<MapFilterState>({
@@ -201,7 +228,10 @@ function VaultView({ busy }: { busy: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (preset === "newest") {
+    // "My maps" has no natural ranking of its own (Java's own-maps query sends
+    // no sort at all), and newest-first is what an author wants: the upload
+    // they just made is the one they came to look at.
+    if (preset === "newest" || preset === "mine") {
       setSort("newest");
       setApplied((prev) => ({ ...prev, sort: "newest" }));
     } else if (preset === "played") {
@@ -238,7 +268,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const choosePreset = (next: VaultPreset) => {
     let nextSort: VaultSort = sort;
     if (next === "rating" || next === "recommended" || next === "favorites") nextSort = "rating";
-    if (next === "newest") nextSort = "newest";
+    if (next === "newest" || next === "mine") nextSort = "newest";
     if (next === "played") nextSort = "played";
     if (next === "all") nextSort = "name";
     setSort(nextSort);
@@ -287,8 +317,8 @@ function VaultView({ busy }: { busy: boolean }) {
   // The search runs on the server, as it does in both reference clients. What
   // the user typed goes out as a query; the results come back as one page.
   const query = useMemo(
-    () => mapVaultQuery(applied, preset, page),
-    [applied, preset, page],
+    () => mapVaultQuery(applied, preset, page, playerId),
+    [applied, preset, page, playerId],
   );
 
   // `favorites` is the one preset the API cannot answer: it is local state the
@@ -346,13 +376,16 @@ function VaultView({ busy }: { busy: boolean }) {
             {([
               ["recommended", t("maps.view.preset.recommended")],
               ["favorites", t("maps.view.preset.favorites")],
+              // Only once there is an id to filter on: see `mapVaultQuery`.
+              ...(playerId === null ? [] : [["mine", t("maps.view.preset.mine")] as [VaultPreset, string]]),
               ["rating", t("maps.view.preset.rating")],
               ["newest", t("maps.view.preset.newest")],
               ["played", t("maps.view.preset.played")],
               ["all", t("maps.view.preset.all")],
             ] as Array<[VaultPreset, string]>).map(([key, label]) => (
-            <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)} title={key === "favorites" ? `Show ${favoriteFolders.size} favorited maps` : undefined}>
-              {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />} {label}
+            <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)} title={key === "favorites" ? t("maps.view.preset.favoritesTitle", { count: favoriteFolders.size }) : key === "mine" ? t("maps.view.preset.mineTitle") : undefined}>
+              {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />}
+              {key === "mine" && <Icon name="maps" size={14} />} {label}
             </Button>
             ))}
             <span className="spacer" />
@@ -435,13 +468,28 @@ function VaultView({ busy }: { busy: boolean }) {
 
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("maps.view.detectionUnavailable")}</p>}
+      {/* The refusal an author meets when they try to undo a hide: FAF allows
+          only a map administrator to do that, so the reason has to be read. */}
+      {visibilityStatus.type === "failed" && <p className="vault-note is-warn">{visibilityStatus.payload.reason}</p>}
       {browseStatus.type === "ready" && pageMaps.length === 0 ? (
-        <EmptyState
-          bordered
-          icon={vault.length === 0 ? "maps" : "search"}
-          title={t(vault.length === 0 ? "maps.view.emptyVault" : "maps.view.noMatch")}
-          hint={t(vault.length === 0 ? "maps.view.emptyVaultHint" : "maps.view.noMatchHint")}
-        />
+        // An empty "my maps" is the ordinary state for most players rather
+        // than a failed search, so it says so instead of suggesting the
+        // filters be widened.
+        preset === "mine" ? (
+          <EmptyState
+            bordered
+            icon="maps"
+            title={t("maps.view.emptyMine")}
+            hint={t("maps.view.emptyMineHint")}
+          />
+        ) : (
+          <EmptyState
+            bordered
+            icon={vault.length === 0 ? "maps" : "search"}
+            title={t(vault.length === 0 ? "maps.view.emptyVault" : "maps.view.noMatch")}
+            hint={t(vault.length === 0 ? "maps.view.emptyVaultHint" : "maps.view.noMatchHint")}
+          />
+        )
       ) : pageMaps.length > 0 && (
         <>
           <div className="vault-results-head">
@@ -464,12 +512,28 @@ function VaultView({ busy }: { busy: boolean }) {
                 </div>
               )}
             </section>
-            {selected && <MapDetailPanel map={selected} installed={mapInstalled(selected, installedFolders)} busy={busy && installStatus.type === "installing" && installStatus.payload.folderName === selected.folderName} favorite={favoriteFolders.has(selected.folderName.toLocaleLowerCase())} onInstall={() => installMap(selected.folderName, selected.downloadUrl)} onUninstall={() => setPendingUninstall(selected)} onPreview={() => setPreviewMap(selected)} onToggleFavorite={() => toggleFavorite(selected.folderName)} />}
+            {selected && (
+              <MapDetailPanel
+                map={selected}
+                installed={mapInstalled(selected, installedFolders)}
+                busy={busy && installStatus.type === "installing" && installStatus.payload.folderName === selected.folderName}
+                favorite={favoriteFolders.has(selected.folderName.toLocaleLowerCase())}
+                mine={playerId !== null && selected.authorId === playerId}
+                visibilityBusy={visibilityStatus.type === "working" && visibilityStatus.payload.versionId === selected.versionId}
+                onInstall={() => installMap(selected.folderName, selected.downloadUrl)}
+                onUninstall={() => setPendingUninstall(selected)}
+                onHide={() => setPendingHide(selected)}
+                onUnhide={() => setMapVersionHidden(selected.versionId, false)}
+                onPreview={() => setPreviewMap(selected)}
+                onToggleFavorite={() => toggleFavorite(selected.folderName)}
+              />
+            )}
           </div>
         </>
       )}
 
       {pendingUninstall && <MapUninstallDialog mapName={pendingUninstall.displayName} onCancel={() => setPendingUninstall(null)} onConfirm={() => { uninstallMap(pendingUninstall.folderName); setPendingUninstall(null); }} />}
+      {pendingHide && <MapHideDialog mapName={pendingHide.displayName} onCancel={() => setPendingHide(null)} onConfirm={() => { setMapVersionHidden(pendingHide.versionId, true); setPendingHide(null); }} />}
       {previewMap && <Modal onClose={() => setPreviewMap(null)}><div className="map-preview-dialog"><h2>{previewMap.displayName}</h2><MapPreview map={previewMap} large /><p>{sizeLabel(previewMap)} · {previewMap.maxPlayers} players</p></div></Modal>}
     </>
   );

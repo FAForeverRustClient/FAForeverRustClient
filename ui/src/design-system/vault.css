@@ -179,6 +179,12 @@
   font-size: 12px;
 }
 
+/* A note the user has to actually read, not a status line: the vault refusing a
+   change says something they cannot work out from the screen. */
+.vault-note.is-warn {
+  color: var(--color-warn);
+}
+
 .vault-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);

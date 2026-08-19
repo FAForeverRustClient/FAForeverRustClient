@@ -59,6 +59,10 @@ impl MapsPort for CountingMaps {
     async fn uninstall_map(&self, _folder_name: String) -> Result<Vec<InstalledMap>, String> {
         unreachable!()
     }
+
+    async fn set_map_version_hidden(&self, _version_id: i32, _hidden: bool) -> Result<(), String> {
+        unreachable!("this test only drives the catalogue crawl")
+    }
 }
 
 fn app_with(fail: bool) -> (App, Arc<AtomicUsize>) {

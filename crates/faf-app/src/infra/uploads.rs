@@ -3,12 +3,14 @@
 //! Zip the installed folder, then send it: but by two different routes,
 //! because the server offers two:
 //!
-//! **Maps**: one multipart request, mirroring Java's `MapUploadTask`:
+//! **Maps**: one multipart request, mirroring Java's `MapUploadTask`. Both
+//! parts are typed, because Spring binds them by their own content type and
+//! reads an untyped part as `application/octet-stream`:
 //!
 //! ```text
 //! POST {api}/maps/upload      multipart/form-data
-//!   file     = <archive>
-//!   metadata = {"isRanked": <bool>}
+//!   file     = <archive>            Content-Type: application/zip
+//!   metadata = {"isRanked": <bool>} Content-Type: application/json
 //! ```
 //!
 //! **Mods**: a three-step handshake with object storage, mirroring Java's
@@ -28,6 +30,7 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use faf_domain::state::{is_safe_folder_name, UploadKind, UploadRequest, UploadStatus};
 use serde_json::Value;
+use tokio::io::AsyncReadExt as _;
 use tokio::sync::mpsc;
 
 use crate::infra::jsonapi::api_error_detail;
@@ -335,69 +338,162 @@ async fn send(
     archive: &Path,
     tx: &mpsc::Sender<UploadStatus>,
 ) -> Result<(), String> {
-    let bytes = tokio::fs::read(archive)
+    let total_bytes = tokio::fs::metadata(archive)
         .await
-        .map_err(|error| format!("could not read the archive: {error}"))?;
-    let total_bytes = u32::try_from(bytes.len()).unwrap_or(u32::MAX);
+        .map_err(|error| format!("could not read the archive: {error}"))?
+        .len();
 
-    // Reported once up front rather than streamed: `reqwest` gives no progress
-    // callback for a buffered body, and inventing one would be a lie. The
-    // stage still tells the user what is happening.
     let _ = tx
         .send(UploadStatus::Uploading {
             sent_bytes: 0,
-            total_bytes,
+            total_bytes: clamp(total_bytes),
         })
         .await;
 
     match request.kind {
-        UploadKind::Map => upload_map(config, http, token, request, bytes).await?,
-        UploadKind::Mod => upload_mod(config, http, token, bytes, tx).await?,
+        UploadKind::Map => {
+            upload_map(config, http, token, request, archive, total_bytes, tx).await?
+        }
+        UploadKind::Mod => upload_mod(config, http, token, archive, total_bytes, tx).await?,
     }
 
     let _ = tx
         .send(UploadStatus::Uploading {
-            sent_bytes: total_bytes,
-            total_bytes,
+            sent_bytes: clamp(total_bytes),
+            total_bytes: clamp(total_bytes),
         })
         .await;
     Ok(())
 }
 
+fn clamp(bytes: u64) -> u32 {
+    u32::try_from(bytes).unwrap_or(u32::MAX)
+}
+
+/// The archive as a request body: read from disk as it is sent, counting what
+/// has gone out.
+///
+/// This is Java's `CountingFileSystemResource`. The file is streamed rather
+/// than loaded, so a 300 MB map is never held in memory, and every read moves
+/// the progress bar. The stream yields exactly `total_bytes`, which is what
+/// lets both callers declare a `Content-Length`.
+fn counting_body(
+    file: tokio::fs::File,
+    total_bytes: u64,
+    tx: mpsc::Sender<UploadStatus>,
+) -> reqwest::Body {
+    reqwest::Body::wrap_stream(counting_stream(file, total_bytes, tx))
+}
+
+/// The chunks `counting_body` sends, separated out so a test can drain them
+/// without a socket.
+fn counting_stream(
+    file: tokio::fs::File,
+    total_bytes: u64,
+    tx: mpsc::Sender<UploadStatus>,
+) -> impl futures_util::Stream<Item = std::io::Result<Vec<u8>>> {
+    /// Close enough to Java's copy buffer; the wire does the pacing.
+    const CHUNK: usize = 64 * 1024;
+    /// A progress event per chunk would be thousands of them for one map.
+    const REPORT_EVERY: u64 = 512 * 1024;
+
+    struct Progress {
+        file: tokio::fs::File,
+        sent: u64,
+        reported: u64,
+        total: u64,
+        tx: mpsc::Sender<UploadStatus>,
+    }
+
+    futures_util::stream::try_unfold(
+        Progress {
+            file,
+            sent: 0,
+            reported: 0,
+            total: total_bytes,
+            tx,
+        },
+        |mut progress| async move {
+            let mut buffer = vec![0u8; CHUNK];
+            let read = progress.file.read(&mut buffer).await?;
+            if read == 0 {
+                return Ok::<_, std::io::Error>(None);
+            }
+            buffer.truncate(read);
+            progress.sent += read as u64;
+            if progress.sent - progress.reported >= REPORT_EVERY {
+                progress.reported = progress.sent;
+                // Dropped rather than awaited: a full channel means the UI is
+                // behind, and a coarser bar beats a stalled upload.
+                let _ = progress.tx.try_send(UploadStatus::Uploading {
+                    sent_bytes: clamp(progress.sent),
+                    total_bytes: clamp(progress.total),
+                });
+            }
+            Ok(Some((buffer, progress)))
+        },
+    )
+}
+
+/// One multipart request, part for part what `MapUploadTask` sends.
+///
+/// Both parts carry a content type, and the metadata one has to: the endpoint
+/// binds it with `@RequestPart MapUploadMetadata`, which picks a converter by
+/// the part's own content type. A part sent without one counts as
+/// `application/octet-stream`, and the request is then refused before the
+/// handler runs, with `Content-Type 'application/octet-stream' is not
+/// supported`.
 async fn upload_map(
     config: &UploadsConfig,
     http: &reqwest::Client,
     token: &str,
     request: &UploadRequest,
-    bytes: Vec<u8>,
+    archive: &Path,
+    total_bytes: u64,
+    tx: &mpsc::Sender<UploadStatus>,
 ) -> Result<(), String> {
-    let part = reqwest::multipart::Part::bytes(bytes)
-        .file_name(format!("{}.zip", archive_file_name(&request.folder_name)))
-        .mime_str("application/zip")
-        .map_err(|error| format!("could not build the upload: {error}"))?;
+    let file = tokio::fs::File::open(archive)
+        .await
+        .map_err(|error| format!("could not read the archive: {error}"))?;
+
+    // The length is declared so the whole multipart body gets a
+    // `Content-Length`: the vault's gateway will not take a chunked upload.
+    let part = reqwest::multipart::Part::stream_with_length(
+        counting_body(file, total_bytes, tx.clone()),
+        total_bytes,
+    )
+    // The server reads the extension off this name and only accepts `.zip`.
+    .file_name(format!("{}.zip", archive_file_name(&request.folder_name)))
+    .mime_str("application/zip")
+    .map_err(|error| format!("could not build the upload: {error}"))?;
+
+    let metadata = reqwest::multipart::Part::text(
+        serde_json::json!({ "isRanked": request.ranked }).to_string(),
+    )
+    .mime_str("application/json")
+    .map_err(|error| format!("could not build the upload: {error}"))?;
+
     let form = reqwest::multipart::Form::new()
         .part("file", part)
-        // The server reads this as JSON, not as a plain form field.
-        .text(
-            "metadata",
-            serde_json::json!({ "isRanked": request.ranked }).to_string(),
-        );
+        .part("metadata", metadata);
 
     let response = http
         .post(format!("{}/maps/upload", config.api_base))
         .bearer_auth(token)
+        .header(reqwest::header::ACCEPT, "application/json")
         .multipart(form)
         .send()
         .await
         .map_err(|error| format!("upload failed: {error}"))?;
-    check(response, "the map upload").await
+    check_upload(response, "the map upload", total_bytes).await
 }
 
 async fn upload_mod(
     config: &UploadsConfig,
     http: &reqwest::Client,
     token: &str,
-    bytes: Vec<u8>,
+    archive: &Path,
+    total_bytes: u64,
     tx: &mpsc::Sender<UploadStatus>,
 ) -> Result<(), String> {
     // 1. Ask FAF where to put it.
@@ -423,14 +519,21 @@ async fn upload_mod(
 
     // 2. PUT straight to storage. Deliberately *no* bearer auth: the URL
     //    carries its own signature, and this host is not FAF.
+    let file = tokio::fs::File::open(archive)
+        .await
+        .map_err(|error| format!("could not read the archive: {error}"))?;
     let stored = http
         .put(upload_url)
+        .header(reqwest::header::ACCEPT, "application/json")
         .header(reqwest::header::CONTENT_TYPE, "application/zip")
-        .body(bytes)
+        // Set by hand because the body is a stream: object storage rejects a
+        // chunked PUT, and the signature covers the declared length.
+        .header(reqwest::header::CONTENT_LENGTH, total_bytes)
+        .body(counting_body(file, total_bytes, tx.clone()))
         .send()
         .await
         .map_err(|error| format!("could not upload the archive: {error}"))?;
-    check(stored, "the archive upload").await?;
+    check_upload(stored, "the archive upload", total_bytes).await?;
 
     // 3. Tell FAF it landed. Until this, the upload does not exist as far as
     //    the vault is concerned.
@@ -438,7 +541,14 @@ async fn upload_mod(
     let completed = http
         .post(format!("{}/mods/upload/complete", config.api_base))
         .bearer_auth(token)
-        .json(&serde_json::json!({ "requestId": request_id }))
+        .header(reqwest::header::ACCEPT, "application/json")
+        // The three fields `ModUploadMetadata` carries. The other two stay
+        // null until the dialog can ask for them, as they do in Java.
+        .json(&serde_json::json!({
+            "requestId": request_id,
+            "licenseId": Value::Null,
+            "repositoryUrl": Value::Null,
+        }))
         .send()
         .await
         .map_err(|error| format!("could not complete the upload: {error}"))?;
@@ -456,14 +566,55 @@ async fn check_body(response: reqwest::Response, what: &str) -> Result<String, S
     if status.is_success() {
         return Ok(body);
     }
-    Err(match api_error_detail(&body) {
-        Some(detail) => detail,
-        None if body.trim().is_empty() => format!("{what} failed: {status}"),
-        None => format!(
-            "{what} failed: {status}: {}",
-            body.chars().take(240).collect::<String>()
-        ),
-    })
+    Err(explain(status, &body, what, None))
+}
+
+/// As `check`, but able to say how big the archive was: of the rejections a
+/// publish can draw, the one about its size is the one the user can act on.
+async fn check_upload(
+    response: reqwest::Response,
+    what: &str,
+    archive_bytes: u64,
+) -> Result<(), String> {
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    if status.is_success() {
+        return Ok(());
+    }
+    Err(explain(status, &body, what, Some(archive_bytes)))
+}
+
+fn explain(
+    status: reqwest::StatusCode,
+    body: &str,
+    what: &str,
+    archive_bytes: Option<u64>,
+) -> String {
+    if let Some(detail) = api_error_detail(body) {
+        return detail;
+    }
+    // This one never reaches the vault: the gateway in front of it caps the
+    // request and answers with its own HTML error page.
+    if status == reqwest::StatusCode::PAYLOAD_TOO_LARGE {
+        return match archive_bytes {
+            Some(bytes) => format!(
+                "{what} failed: at {} MB the archive is too large for the vault's upload \
+                 gateway, which refuses anything much over 100 MB",
+                bytes / (1024 * 1024)
+            ),
+            None => format!("{what} failed: the archive is too large for the vault"),
+        };
+    }
+    let body = body.trim();
+    // An HTML page is a gateway talking, not the vault, and pasting its markup
+    // into the dialog tells the user nothing.
+    if body.is_empty() || body.starts_with('<') {
+        return format!("{what} failed: {status}");
+    }
+    format!(
+        "{what} failed: {status}: {}",
+        body.chars().take(240).collect::<String>()
+    )
 }
 
 /// Inert uploads client: used offline and in tests. Walks the same stages so
@@ -712,5 +863,177 @@ mod tests {
             "maps are one request, not three"
         );
         assert_eq!(seen.last(), Some(&UploadStatus::Succeeded));
+    }
+
+    /// Answer one request with `200`, and hand back everything that was sent.
+    ///
+    /// The point of the next test is the wire, so nothing is stubbed above the
+    /// socket: what it inspects is the request the vault would receive.
+    async fn capture_one_request() -> (String, tokio::task::JoinHandle<Vec<u8>>) {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+        const END_OF_HEADERS: &[u8] = b"\r\n\r\n";
+        const OK_RESPONSE: &[u8] =
+            b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut seen = Vec::new();
+            let mut buffer = vec![0u8; 16 * 1024];
+            // Read the headers, then exactly the body they declare: reading to
+            // end-of-stream would wait for a keep-alive connection to close.
+            let mut want = None;
+            loop {
+                if let Some(total) = want {
+                    if seen.len() >= total {
+                        break;
+                    }
+                } else if let Some(end) = find(&seen, END_OF_HEADERS) {
+                    let headers = String::from_utf8_lossy(&seen[..end]).to_lowercase();
+                    let declared = headers
+                        .lines()
+                        .find_map(|line| line.strip_prefix("content-length:"))
+                        .and_then(|value| value.trim().parse::<usize>().ok())
+                        .unwrap_or(0);
+                    want = Some(end + END_OF_HEADERS.len() + declared);
+                    continue;
+                }
+                match socket.read(&mut buffer).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(read) => seen.extend_from_slice(&buffer[..read]),
+                }
+            }
+            let _ = socket.write_all(OK_RESPONSE).await;
+            let _ = socket.flush().await;
+            seen
+        });
+        (format!("http://127.0.0.1:{port}"), server)
+    }
+
+    fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+        haystack
+            .windows(needle.len())
+            .position(|window| window == needle)
+    }
+
+    fn scratch_archive(tag: &str, bytes: &[u8]) -> (PathBuf, PathBuf) {
+        let root = temp_dir(tag);
+        let archive = root.join("upload.zip");
+        std::fs::write(&archive, bytes).unwrap();
+        (root, archive)
+    }
+
+    #[tokio::test]
+    async fn the_metadata_part_is_typed_as_json() {
+        // Without this the vault answers "Content-Type 'application/octet-stream'
+        // is not supported": the endpoint binds the part with
+        // `@RequestPart MapUploadMetadata`, which chooses its converter by the
+        // part's own content type, and an untyped part has none.
+        let (root, archive) = scratch_archive("metadata", b"PK\x03\x04 pretend archive");
+        let (base, server) = capture_one_request().await;
+
+        let (tx, mut rx) = mpsc::channel(16);
+        let request = UploadRequest {
+            kind: UploadKind::Map,
+            folder_name: "scmp_test.v0001".into(),
+            display_name: "Test".into(),
+            ranked: true,
+            source_path: None,
+        };
+        let total = std::fs::metadata(&archive).unwrap().len();
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(20),
+            upload_map(
+                &UploadsConfig { api_base: base },
+                &reqwest::Client::new(),
+                "token",
+                &request,
+                &archive,
+                total,
+                &tx,
+            ),
+        )
+        .await
+        .expect("the upload should not hang");
+        assert!(result.is_ok(), "{result:?}");
+        while rx.try_recv().is_ok() {}
+
+        let sent = String::from_utf8_lossy(
+            &tokio::time::timeout(std::time::Duration::from_secs(20), server)
+                .await
+                .expect("the server should have answered")
+                .unwrap(),
+        )
+        .to_string();
+        assert!(
+            sent.contains("Content-Type: application/json"),
+            "the metadata part must be typed: {sent}"
+        );
+        assert!(
+            sent.contains("Content-Type: application/zip"),
+            "the file part keeps its zip type: {sent}"
+        );
+        assert!(
+            sent.contains(r#"name="metadata""#) && sent.contains(r#"{"isRanked":true}"#),
+            "the metadata is the JSON the vault reads: {sent}"
+        );
+        assert!(
+            sent.contains(r#"filename="scmp_test.v0001.zip""#),
+            "the vault takes the extension off this name: {sent}"
+        );
+        // Streamed, but with a length: neither the vault's gateway nor object
+        // storage will take a chunked upload.
+        let head = sent
+            .split("\r\n\r\n")
+            .next()
+            .unwrap_or_default()
+            .to_lowercase();
+        assert!(
+            head.contains("content-length:"),
+            "the request declares its own length: {head}"
+        );
+        assert!(
+            !head.contains("transfer-encoding: chunked"),
+            "and is not sent chunked: {head}"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn progress_is_reported_from_the_bytes_actually_written() {
+        // Java's `CountingFileSystemResource` counts as it reads; the archive is
+        // never held in memory, so the bar has to come from the stream.
+        let (root, archive) = scratch_archive("progress", &vec![7u8; 3 * 1024 * 1024]);
+        let file = tokio::fs::File::open(&archive).await.unwrap();
+        let total = std::fs::metadata(&archive).unwrap().len();
+
+        let (tx, mut rx) = mpsc::channel(64);
+        // Drive the body to exhaustion the way the request writer would.
+        let mut stream = Box::pin(counting_stream(file, total, tx));
+        let mut written = 0u64;
+        while let Some(chunk) = futures_util::StreamExt::next(&mut stream).await {
+            written += chunk.unwrap().len() as u64;
+        }
+        assert_eq!(written, total, "every byte of the archive is sent once");
+
+        let mut last = 0u32;
+        while let Ok(status) = rx.try_recv() {
+            if let UploadStatus::Uploading {
+                sent_bytes,
+                total_bytes,
+            } = status
+            {
+                assert_eq!(total_bytes, total as u32);
+                assert!(sent_bytes > last, "progress only moves forward");
+                last = sent_bytes;
+            }
+        }
+        assert!(last > 0, "the bar moved while the archive was streamed");
+        assert!(last <= total as u32);
+
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

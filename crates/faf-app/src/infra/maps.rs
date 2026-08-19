@@ -36,9 +36,9 @@ use serde_json::Value;
 
 use crate::infra::env_or;
 use crate::infra::jsonapi::{
-    fetch_all_pages, fetch_document, find_rel_resource, meta_page_i32, rel_target, rel_targets,
-    resource_index, total_pages, value_bool, value_f64, value_i32, value_string, JsonApiDoc,
-    JsonApiResource,
+    fetch_all_pages, fetch_document, find_rel_resource, meta_page_i32, patch_resource, rel_target,
+    rel_targets, resource_index, total_pages, value_bool, value_f64, value_i32, value_string,
+    JsonApiDoc, JsonApiResource,
 };
 use crate::infra::vault_install::{
     bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
@@ -246,6 +246,51 @@ impl MapsPort for MapsClient {
         }
         list_installed_dir(&dir).await
     }
+
+    async fn set_map_version_hidden(&self, version_id: i32, hidden: bool) -> Result<(), String> {
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let url = url::Url::parse(&format!(
+            "{}/data/mapVersion/{version_id}",
+            self.config.api_base
+        ))
+        .map_err(|e| format!("invalid API base: {e}"))?;
+
+        patch_resource(
+            &self.http,
+            url,
+            &token,
+            "mapVersion",
+            &version_id.to_string(),
+            serde_json::json!({ "hidden": hidden }),
+        )
+        .await
+        .map_err(|error| explain_visibility_refusal(&error, hidden))
+    }
+}
+
+/// Say why the vault refused, when the reason is one the API models as
+/// permission rather than wording.
+///
+/// The asymmetry is worth spelling out: the API's `hidden` field is writable by
+/// its owner *only in the direction of `true`* (`MapVersion.isHidden` is guarded
+/// by `IsEntityOwner and boolean changed to true`), and putting a version back
+/// needs the `ADMIN_MAP` role together with the `manage_vault` OAuth scope,
+/// which no FAF client requests. "403" on its own reads like a bug in the
+/// client; this reads like the rule it is.
+fn explain_visibility_refusal(error: &str, hidden: bool) -> String {
+    let refused = error.contains("403") || error.to_lowercase().contains("forbidden");
+    if refused && !hidden {
+        return "FAF only lets a map administrator put a hidden version back in the vault: \
+                an author can withdraw one, but not restore it. Ask a moderator to unhide it."
+            .to_string();
+    }
+    if refused {
+        return format!("FAF refused the change: {error}");
+    }
+    error.to_string()
 }
 
 /// Resolve a user-controlled vault folder without allowing it to escape the
@@ -622,7 +667,14 @@ fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
             let (_, version_id) = rel_target(&map_res.relationships, "latestVersion")?;
             let version = index.get(&("mapVersion".to_string(), version_id))?;
 
-            let author = rel_target(&map_res.relationships, "author")
+            let author_rel = rel_target(&map_res.relationships, "author");
+            // The relationship's own id, so ownership does not depend on the
+            // `author` resource having been included: it is in the linkage
+            // either way.
+            let author_id = author_rel
+                .as_ref()
+                .and_then(|(_, id)| id.parse::<i32>().ok());
+            let author = author_rel
                 .and_then(|rel| find_rel_resource(doc, &index, Some(rel)))
                 .and_then(|a| a.attributes.get("login"))
                 .and_then(Value::as_str)
@@ -668,6 +720,7 @@ fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
                     .unwrap_or("unknown map")
                     .to_string(),
                 author,
+                author_id,
                 folder_name: version
                     .attributes
                     .get("folderName")
@@ -715,6 +768,11 @@ fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
                 ranked: version
                     .attributes
                     .get("ranked")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                hidden: version
+                    .attributes
+                    .get("hidden")
                     .and_then(Value::as_bool)
                     .unwrap_or(false),
                 recommended: value_bool(&map_res.attributes, "recommended"),
@@ -802,6 +860,10 @@ impl MapsPort for FakeMaps {
 
     async fn uninstall_map(&self, _folder_name: String) -> Result<Vec<InstalledMap>, String> {
         Err("map uninstall is unavailable in offline mode".to_string())
+    }
+
+    async fn set_map_version_hidden(&self, _version_id: i32, _hidden: bool) -> Result<(), String> {
+        Err("the map vault is unavailable in offline mode".to_string())
     }
 }
 
@@ -918,6 +980,15 @@ mod tests {
         assert_eq!(maps[0].description, "A classic team map.");
         assert_eq!(maps[0].map_type, "skirmish");
         assert_eq!(maps[0].author, Some("Rackover".to_string()));
+        assert_eq!(
+            maps[0].author_id,
+            Some(1),
+            "ownership is decided by the author's id, not their current login"
+        );
+        assert!(
+            !maps[0].hidden,
+            "absent means visible: the vault only sends `hidden` as true for a withdrawn version"
+        );
         assert_eq!(maps[0].max_players, 8);
         assert_eq!(maps[0].games_played, 12345);
         assert_eq!(maps[0].version_games_played, 12000);
@@ -927,6 +998,55 @@ mod tests {
         assert_eq!(maps[0].reviews, 27);
         assert_eq!(maps[0].created_at, "2021-02-03T04:05:06Z");
         assert!(maps[0].thumbnail_url_large.ends_with("large.png"));
+    }
+
+    #[test]
+    fn a_withdrawn_version_is_read_as_hidden() {
+        // Only "my maps" ever sees one of these: every other search filters
+        // hidden versions out server side.
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "map",
+                "id": "77",
+                "attributes": { "displayName": "Withdrawn" },
+                "relationships": {
+                    "latestVersion": { "data": { "type": "mapVersion", "id": "9" } },
+                    "author": { "data": { "type": "player", "id": "4711" } },
+                },
+            }],
+            "included": [{
+                "type": "mapVersion",
+                "id": "9",
+                "attributes": { "folderName": "withdrawn.v0001", "hidden": true },
+            }],
+        }))
+        .unwrap();
+
+        let maps = parse_vault_maps(&doc);
+        assert!(maps[0].hidden);
+        // The author resource was not included, and the id still arrives: it is
+        // in the relationship linkage rather than the included document.
+        assert_eq!(maps[0].author_id, Some(4711));
+        assert_eq!(maps[0].author, None);
+    }
+
+    #[test]
+    fn a_refused_unhide_says_who_can_do_it_instead_of_showing_a_status() {
+        // FAF guards `hidden` asymmetrically: its owner may set it to `true`,
+        // and only ADMIN_MAP may set it back. "403" alone reads like our bug.
+        let refusal =
+            explain_visibility_refusal("/data/mapVersion/9 returned 403 Forbidden", false);
+        assert!(refusal.contains("map administrator"), "{refusal}");
+        assert!(!refusal.contains("403"), "{refusal}");
+
+        // Hiding is the author's own right, so a refusal there is unexpected
+        // and the server's own words are worth keeping.
+        let hiding = explain_visibility_refusal("/data/mapVersion/9 returned 403 Forbidden", true);
+        assert!(hiding.contains("403"), "{hiding}");
+
+        // Anything that is not a refusal passes through untouched.
+        let offline = explain_visibility_refusal("request failed: dns error", false);
+        assert_eq!(offline, "request failed: dns error");
     }
 
     #[test]

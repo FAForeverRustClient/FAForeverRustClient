@@ -65,6 +65,9 @@ export const VALID_LEADERBOARD_RATING_COLUMNS = [
 export const VALID_MAP_VAULT_PRESETS = [
   "recommended",
   "favorites",
+  // Kept even when signed out: the preset outlives the session it was chosen
+  // in, and the tab decides whether it can be honoured.
+  "mine",
   "rating",
   "newest",
   "played",
@@ -73,6 +76,8 @@ export const VALID_MAP_VAULT_PRESETS = [
 
 export const VALID_MOD_VAULT_PRESETS = [
   "recommended",
+  // See VALID_MAP_VAULT_PRESETS.
+  "mine",
   "rating",
   "ui",
   "newest",

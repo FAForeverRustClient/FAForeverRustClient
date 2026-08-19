@@ -1206,6 +1206,11 @@ impl BrowsingPreferences {
             .collect();
         self.map_vault_preset = match self.map_vault_preset.trim().to_ascii_lowercase().as_str() {
             "favorites" => "favorites".into(),
+            // Kept even when signed out: the preset outlives the session it was
+            // chosen in, and the tab decides whether it can be honoured. Folding
+            // it to "recommended" here would silently undo the user's choice on
+            // every round trip through the settings service.
+            "mine" => "mine".into(),
             "rating" => "rating".into(),
             "newest" => "newest".into(),
             "played" => "played".into(),
@@ -1214,6 +1219,10 @@ impl BrowsingPreferences {
         };
         self.mod_vault_preset = match self.mod_vault_preset.trim().to_ascii_lowercase().as_str() {
             "rating" => "rating".into(),
+            // Same reasoning as the map preset above: kept even when signed
+            // out, because the tab, not this function, decides whether it can
+            // be honoured.
+            "mine" => "mine".into(),
             "ui" => "ui".into(),
             "newest" => "newest".into(),
             "all" => "all".into(),
@@ -1866,6 +1875,37 @@ mod tests {
             ["rating", "mean"]
         );
         assert!(settings.browsing.legacy_storage_migrated);
+    }
+
+    #[test]
+    fn the_my_maps_preset_survives_normalisation() {
+        // The bug this pins: "mine" was missing from the whitelist, so every
+        // round trip through the settings service folded it to "recommended"
+        // and the tab snapped back the instant it was chosen.
+        let mut browsing = BrowsingPreferences {
+            map_vault_preset: "  MINE  ".into(),
+            ..BrowsingPreferences::default()
+        };
+        browsing = browsing.normalized();
+        assert_eq!(browsing.map_vault_preset, "mine");
+
+        // Still nothing else gets through.
+        let junk = BrowsingPreferences {
+            map_vault_preset: "not-a-preset".into(),
+            mod_vault_preset: "not-a-preset".into(),
+            ..BrowsingPreferences::default()
+        }
+        .normalized();
+        assert_eq!(junk.map_vault_preset, "recommended");
+        assert_eq!(junk.mod_vault_preset, "recommended");
+
+        // The mod vault has the same preset, and had the same bug.
+        let mods = BrowsingPreferences {
+            mod_vault_preset: "Mine".into(),
+            ..BrowsingPreferences::default()
+        }
+        .normalized();
+        assert_eq!(mods.mod_vault_preset, "mine");
     }
 
     #[test]

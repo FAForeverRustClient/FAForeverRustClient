@@ -108,5 +108,23 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(MapsEvent::UninstallFailed { reason }),
             }
         }
+        MapsCommand::SetMapVersionHidden { version_id, hidden } => {
+            // One at a time: a second click while the first `PATCH` is in
+            // flight would race the reducer's in-place correction, and the two
+            // could settle on opposite flags.
+            if out.with_state(|state| state.maps.visibility_status.working_on().is_some()) {
+                return;
+            }
+            out.emit(MapsEvent::MapVisibilityChanging { version_id });
+            match ctx
+                .ports
+                .maps
+                .set_map_version_hidden(version_id, hidden)
+                .await
+            {
+                Ok(()) => out.emit(MapsEvent::MapVisibilityChanged { version_id, hidden }),
+                Err(reason) => out.emit(MapsEvent::MapVisibilityFailed { reason }),
+            }
+        }
     }
 }

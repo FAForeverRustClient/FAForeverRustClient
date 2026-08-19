@@ -104,3 +104,6 @@ FAForeverRustClient.code-workspace
 
 # Local working notes, deliberately untracked so they can stay blunt.
 TODO.md
+
+# Maps the generator writes beside the binary during development.
+src-tauri/neroxis_map_generator_*/

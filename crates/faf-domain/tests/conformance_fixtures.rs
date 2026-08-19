@@ -2671,6 +2671,35 @@ fn helper_fixture() -> HelperFixture {
     }
 }
 
+/// A vault map with just enough shape to be identified by version id.
+fn conformance_vault_map(map_id: i32, version_id: i32, folder_name: &str) -> VaultMap {
+    VaultMap {
+        map_id,
+        version_id,
+        display_name: folder_name.into(),
+        author: Some("Rackover".into()),
+        author_id: Some(4711),
+        folder_name: folder_name.into(),
+        version: "1".into(),
+        description: String::new(),
+        map_type: "skirmish".into(),
+        max_players: 8,
+        width: 1024,
+        height: 1024,
+        games_played: 0,
+        version_games_played: 0,
+        ranked: false,
+        hidden: false,
+        recommended: false,
+        rating_tenths: 0,
+        reviews: 0,
+        created_at: "2026-01-01T00:00:00Z".into(),
+        download_url: String::new(),
+        thumbnail_url: String::new(),
+        thumbnail_url_large: String::new(),
+    }
+}
+
 fn case(name: &str, events: Vec<AppEvent>) -> Case {
     let mut state = AppState::default();
     let steps = events
@@ -3690,6 +3719,41 @@ fn cases() -> Vec<Case> {
                     }],
                 }
                 .into(),
+            ],
+        ),
+        case(
+            "an author hides one of their own map versions, then is refused the way back",
+            vec![
+                MapsEvent::VaultSearched {
+                    maps: vec![
+                        conformance_vault_map(1, 11, "scmp_009.v0001"),
+                        conformance_vault_map(2, 22, "open_palms.v0001"),
+                    ],
+                    query: faf_domain::protocol::vault_query::MapVaultQuery {
+                        author_id: Some(4711),
+                        include_hidden: true,
+                        ..Default::default()
+                    },
+                    total_pages: Some(1),
+                    total_records: Some(2),
+                }
+                .into(),
+                MapsEvent::MapVisibilityChanging { version_id: 22 }.into(),
+                // Only the named version changes, and it changes in place: a
+                // refetch would move the page under the user.
+                MapsEvent::MapVisibilityChanged {
+                    version_id: 22,
+                    hidden: true,
+                }
+                .into(),
+                MapsEvent::MapVisibilityChanging { version_id: 22 }.into(),
+                MapsEvent::MapVisibilityFailed {
+                    reason: "only a map administrator can unhide a version".into(),
+                }
+                .into(),
+                // The refusal belongs to the page it happened on, so the next
+                // search clears it rather than leaving it above every later one.
+                MapsEvent::VaultSearching.into(),
             ],
         ),
         case(
