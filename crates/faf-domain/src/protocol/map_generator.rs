@@ -63,6 +63,41 @@ pub const MIN_COMPONENT_STYLE_VERSION: GeneratorVersion = GeneratorVersion {
     patch: 0,
 };
 
+/// The generator's command line is not one command line: it grew flag by flag
+/// over five years, and a flag sent to a release that predates it is either
+/// refused outright (picocli, from 1.9.0) or silently ignored (the
+/// hand-written parser before it, which then generates something other than
+/// what was asked for). Every boundary below is the first release whose
+/// `--help` lists the flag, read off the published JARs under Temurin 25.
+///
+/// `--map-size`, and with it any control over how big the map is.
+pub const MIN_MAP_SIZE_VERSION: GeneratorVersion = GeneratorVersion {
+    major: 1,
+    minor: 1,
+    patch: 0,
+};
+
+/// `--num-teams`, and the three visibility flags as a complete set
+/// (`--tournament-style`, `--blind`, `--unexplored`).
+pub const MIN_NUM_TEAMS_VERSION: GeneratorVersion = GeneratorVersion {
+    major: 1,
+    minor: 3,
+    patch: 0,
+};
+
+/// `--style`, `--preview-path` and `--num-to-gen`: the same release that first
+/// answers a list query, which is not a coincidence, the two arrived together.
+pub const MIN_STYLE_VERSION: GeneratorVersion = MIN_OPTION_LIST_VERSION;
+
+/// The picocli rewrite: `--out-path` replaces `--folder-path`,
+/// `--num-to-generate` replaces `--num-to-gen`, and `--terrain-symmetry`,
+/// `--visibility` and `--visualize` appear.
+pub const MIN_MODERN_CLI_VERSION: GeneratorVersion = GeneratorVersion {
+    major: 1,
+    minor: 9,
+    patch: 0,
+};
+
 /// First release with `--parse`, which resolves options to the map name they
 /// would produce without generating anything.
 ///
@@ -202,6 +237,56 @@ impl GeneratorVersion {
     /// configured window use [`VersionPolicy::support`] instead.
     pub fn support(self) -> VersionSupport {
         VersionPolicy::default().support(self)
+    }
+
+    /// Whether the map size can be chosen at all. 1.0.x generates whatever
+    /// size it likes.
+    pub fn supports_map_size(self) -> bool {
+        self >= MIN_MAP_SIZE_VERSION
+    }
+
+    /// Whether teams, and the visibility presets, can be asked for.
+    pub fn supports_num_teams(self) -> bool {
+        self >= MIN_NUM_TEAMS_VERSION
+    }
+
+    /// Whether a whole-map style and a preview path can be asked for.
+    pub fn supports_style(self) -> bool {
+        self >= MIN_STYLE_VERSION
+    }
+
+    /// Whether this release has the picocli command line: `--out-path`,
+    /// `--terrain-symmetry`, `--visualize` and the rest.
+    pub fn uses_modern_cli(self) -> bool {
+        self >= MIN_MODERN_CLI_VERSION
+    }
+
+    /// Where the generated map goes. Every release understands
+    /// `--folder-path`; only the picocli ones understand `--out-path`, which
+    /// is the name their own help gives.
+    pub fn output_path_flag(self) -> &'static str {
+        if self.uses_modern_cli() {
+            "--out-path"
+        } else {
+            "--folder-path"
+        }
+    }
+
+    /// 1.0.x refuses to start without an output folder: its `--folder-path` is
+    /// documented "mandatory", and every later release makes it optional.
+    pub fn requires_output_path(self) -> bool {
+        self < MIN_MAP_SIZE_VERSION
+    }
+
+    /// How this release spells "generate several maps", if it can at all.
+    pub fn map_count_flag(self) -> Option<&'static str> {
+        if self.uses_modern_cli() {
+            Some("--num-to-generate")
+        } else if self.supports_style() {
+            Some("--num-to-gen")
+        } else {
+            None
+        }
     }
 
     /// Whether this release can resolve options to a map name without
@@ -577,7 +662,15 @@ pub fn build_arguments(
 
     // Reproducing a known map: the name alone determines the terrain.
     if let Some(name) = map_name {
-        return Ok(vec!["--map-name".to_string(), name.to_string()]);
+        let mut args = vec!["--map-name".to_string(), name.to_string()];
+        // Except on 1.0.x, which will not start without being told where to
+        // write. The run's working directory is the maps folder, so "." is
+        // the same place every other release would have chosen by itself.
+        if version.requires_output_path() {
+            args.push("--folder-path".to_string());
+            args.push(".".to_string());
+        }
+        return Ok(args);
     }
 
     let (Some(size), Some(spawns), Some(teams)) =
@@ -586,26 +679,37 @@ pub fn build_arguments(
         return Err(CommandError::MissingParameters);
     };
 
-    let mut args = vec![
-        "--map-size".to_string(),
-        size.to_string(),
-        "--spawn-count".to_string(),
-        spawns.to_string(),
-        "--num-teams".to_string(),
-        teams.to_string(),
-    ];
+    // Only the parts of the triple this release has a flag for. A spawn count
+    // is the one every version back to 1.0.0 understands.
+    let mut args = Vec::new();
+    if version.supports_map_size() {
+        args.push("--map-size".to_string());
+        args.push(size.to_string());
+    }
+    args.push("--spawn-count".to_string());
+    args.push(spawns.to_string());
+    if version.supports_num_teams() {
+        args.push("--num-teams".to_string());
+        args.push(teams.to_string());
+    }
+    if version.requires_output_path() && options.output_path.is_empty() {
+        args.push("--folder-path".to_string());
+        args.push(".".to_string());
+    }
 
     // Paths and diagnostics sit outside the style/visibility exclusivity, so
     // they are emitted before the early returns below rather than after: a
     // tournament map still gets written where the caller asked for it.
     if !options.output_path.is_empty() {
-        args.push("--out-path".to_string());
+        args.push(version.output_path_flag().to_string());
         args.push(options.output_path.clone());
     }
     if options.debug {
         args.push("--debug".to_string());
     }
-    if options.visualize {
+    // The viewer window is picocli-era. Older releases have no such flag, and
+    // the ones that ignore it would go on to generate without it anyway.
+    if options.visualize && version.uses_modern_cli() {
         args.push("--visualize".to_string());
     }
 
@@ -614,23 +718,30 @@ pub fn build_arguments(
     // `GenerateMapController.onGenerateMap`, which forces its map count to 1
     // whenever a seed is set.
     if options.seed.is_empty() {
-        if let Some(count) = options.num_to_generate.filter(|n| *n > 1) {
-            args.push("--num-to-generate".to_string());
+        if let (Some(count), Some(flag)) = (
+            options.num_to_generate.filter(|n| *n > 1),
+            version.map_count_flag(),
+        ) {
+            args.push(flag.to_string());
             args.push(count.to_string());
         }
     }
 
     // A generation type is a whole-map preset: it replaces the style and
-    // density options rather than combining with them.
+    // density options rather than combining with them. Before 1.3.0 the set is
+    // incomplete, and a preset silently downgraded to an ordinary map would be
+    // worse than one that was never offered.
     if let Some(flag) = options.generation_type.flag() {
-        args.push(flag.to_string());
+        if version.supports_num_teams() {
+            args.push(flag.to_string());
+        }
         return Ok(args);
     }
 
     // Only reachable for casual maps, which is the only kind that has a
     // preview: tournament, blind and unexplored maps deliberately have none,
     // and the generator skips the export for them anyway.
-    if !options.preview_path.is_empty() {
+    if !options.preview_path.is_empty() && version.supports_style() {
         args.push("--preview-path".to_string());
         args.push(options.preview_path.clone());
     }
@@ -651,7 +762,12 @@ pub fn build_arguments(
         symmetry_fits_teams(symmetry, teams)
     });
     if let Some(symmetry) = pick_choice(&options.symmetry, &symmetries, &options.seed) {
-        push_flag("--terrain-symmetry", &symmetry);
+        // Named `--symmetry` in 1.1 and 1.2 and absent either side of that, but
+        // those releases cannot list their symmetries either, so there is
+        // nothing for a user to have picked.
+        if version.uses_modern_cli() {
+            push_flag("--terrain-symmetry", &symmetry);
+        }
     }
 
     // A whole-map style likewise supersedes the four component styles. Styles
@@ -661,8 +777,10 @@ pub fn build_arguments(
         style_constraints(style).matches(size, spawns, teams)
     });
     if let Some(style) = pick_choice(&options.style, &styles, &options.seed) {
-        args.push("--style".to_string());
-        args.push(style);
+        if version.supports_style() {
+            args.push("--style".to_string());
+            args.push(style);
+        }
         return Ok(args);
     }
 
@@ -1603,8 +1721,13 @@ mod tests {
             visualize: true,
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            MIN_MODERN_CLI_VERSION,
+            None,
+            &options,
+            VersionPolicy::default(),
+        )
+        .unwrap();
         assert!(args.windows(2).any(|w| w == ["--out-path", "D:/maps"]));
         assert!(args
             .windows(2)
@@ -1624,8 +1747,13 @@ mod tests {
             output_path: "D:/maps".into(),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            MIN_MODERN_CLI_VERSION,
+            None,
+            &options,
+            VersionPolicy::default(),
+        )
+        .unwrap();
         assert!(!args.contains(&"--preview-path".to_string()), "{args:?}");
         // The output path is not style-dependent and must survive.
         assert!(args.windows(2).any(|w| w == ["--out-path", "D:/maps"]));
@@ -1643,7 +1771,7 @@ mod tests {
         };
         for seed in ["1", "2", "3", "4", "5", "6", "7"] {
             let args = build_arguments(
-                version(1, 7, 7),
+                MIN_MODERN_CLI_VERSION,
                 None,
                 &GeneratorOptions {
                     seed: seed.to_string(),
@@ -1669,8 +1797,13 @@ mod tests {
             symmetries: vec!["POINT3".into()],
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            MIN_MODERN_CLI_VERSION,
+            None,
+            &options,
+            VersionPolicy::default(),
+        )
+        .unwrap();
         assert!(args
             .windows(2)
             .any(|w| w == ["--terrain-symmetry", "POINT3"]));
@@ -1686,7 +1819,7 @@ mod tests {
         };
         for seed in ["1", "2", "3", "4", "5"] {
             let args = build_arguments(
-                version(1, 7, 7),
+                MIN_MODERN_CLI_VERSION,
                 None,
                 &GeneratorOptions {
                     seed: seed.to_string(),
@@ -1878,7 +2011,7 @@ mod tests {
             ..Default::default()
         };
         assert!(
-            !build_arguments(version(1, 7, 7), None, &one, VersionPolicy::default())
+            !build_arguments(MIN_MODERN_CLI_VERSION, None, &one, VersionPolicy::default())
                 .unwrap()
                 .contains(&"--num-to-generate".to_string())
         );
@@ -1887,8 +2020,13 @@ mod tests {
             num_to_generate: Some(4),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &many, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            MIN_MODERN_CLI_VERSION,
+            None,
+            &many,
+            VersionPolicy::default(),
+        )
+        .unwrap();
         assert!(args.windows(2).any(|w| w == ["--num-to-generate", "4"]));
     }
 
@@ -2022,6 +2160,85 @@ mod tests {
         assert!(!args.contains(&"--reclaim-density".to_string()));
         // The size/spawn/team triple every release understands still goes out.
         assert!(args.starts_with(&["--map-size".to_string()]));
+    }
+
+    #[test]
+    fn the_oldest_releases_get_only_the_flags_they_have() {
+        // 1.0.x has no map size, no teams and no style, and refuses to start
+        // without being told where to write. Sending it the modern triple
+        // would not fail loudly: its parser ignores what it does not know and
+        // generates something else entirely.
+        let options = GeneratorOptions {
+            map_size: Some(512),
+            spawn_count: Some(4),
+            num_teams: Some(2),
+            style: "BIG_ISLANDS".into(),
+            ..Default::default()
+        };
+        let args =
+            build_arguments(version(1, 0, 0), None, &options, VersionPolicy::default()).unwrap();
+        assert_eq!(
+            args,
+            vec!["--spawn-count", "4", "--folder-path", "."],
+            "1.0.0 takes a spawn count and an output folder, and nothing else here"
+        );
+
+        // 1.1.0 gained the size, 1.3.0 the teams.
+        let sized =
+            build_arguments(version(1, 1, 0), None, &options, VersionPolicy::default()).unwrap();
+        assert!(sized.starts_with(&["--map-size".to_string(), "512".to_string()]));
+        assert!(!sized.contains(&"--num-teams".to_string()));
+        let teamed =
+            build_arguments(version(1, 3, 0), None, &options, VersionPolicy::default()).unwrap();
+        assert!(teamed.contains(&"--num-teams".to_string()));
+        // The whole-map style is 1.4.0 and later, so neither of these gets one.
+        assert!(!teamed.contains(&"--style".to_string()));
+    }
+
+    #[test]
+    fn the_flag_names_follow_the_release_that_will_run() {
+        let options = GeneratorOptions {
+            map_size: Some(512),
+            spawn_count: Some(2),
+            num_teams: Some(2),
+            output_path: "D:/maps".into(),
+            num_to_generate: Some(3),
+            ..Default::default()
+        };
+        let old =
+            build_arguments(version(1, 5, 0), None, &options, VersionPolicy::default()).unwrap();
+        assert!(old.windows(2).any(|w| w == ["--folder-path", "D:/maps"]));
+        assert!(old.windows(2).any(|w| w == ["--num-to-gen", "3"]));
+
+        let modern =
+            build_arguments(version(1, 9, 0), None, &options, VersionPolicy::default()).unwrap();
+        assert!(modern.windows(2).any(|w| w == ["--out-path", "D:/maps"]));
+        assert!(modern.windows(2).any(|w| w == ["--num-to-generate", "3"]));
+
+        // Before 1.4.0 there is no way to ask for several maps at all.
+        let ancient =
+            build_arguments(version(1, 3, 0), None, &options, VersionPolicy::default()).unwrap();
+        assert!(!ancient.iter().any(|arg| arg.starts_with("--num-to-gen")));
+    }
+
+    #[test]
+    fn reproducing_on_a_1_0_release_still_says_where_to_write() {
+        let args = build_arguments(
+            version(1, 0, 0),
+            Some("neroxis_map_generator_1.0.0_abc"),
+            &GeneratorOptions::default(),
+            VersionPolicy::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            args,
+            vec![
+                "--map-name",
+                "neroxis_map_generator_1.0.0_abc",
+                "--folder-path",
+                "."
+            ]
+        );
     }
 
     #[test]

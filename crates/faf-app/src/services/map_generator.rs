@@ -313,8 +313,12 @@ async fn refresh_installed_maps(ctx: &ServiceCtx, out: &EventSink) {
 
 /// Fetch available versions and option lists the generator reports.
 async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &EventSink) {
-    if let Ok(versions) = ctx.ports.map_generator.available_versions().await {
-        out.emit(MapGeneratorEvent::VersionsLoaded { versions });
+    match ctx.ports.map_generator.available_versions().await {
+        Ok(versions) => out.emit(MapGeneratorEvent::VersionsLoaded { versions }),
+        // Not notified here: resolving the newest release is about to fail the
+        // same way and reports it. Logged, because "the picker offers only
+        // Latest" otherwise leaves nothing to look at.
+        Err(reason) => tracing::warn!(%reason, "could not list the map generator releases"),
     }
 
     let resolved_version = if let Some(v) = explicit_version.clone() {
