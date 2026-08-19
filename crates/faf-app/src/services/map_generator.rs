@@ -322,14 +322,42 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
         }
     };
 
+    // Without a version there is nothing to query: every list would resolve
+    // the version again, fail the same way, and spend six more GitHub requests
+    // against an hourly budget of sixty per address. The error is already
+    // reported above.
+    let Some(_) = resolved_version.as_ref() else {
+        return;
+    };
+
+    // A failed list is not skipped silently. Every one of these needs a JAR
+    // download and a JVM, so on a machine without a usable Java the dialog
+    // would otherwise open with six empty pickers and no explanation: the
+    // shape of the bug this reporting exists for.
+    let mut failure: Option<String> = None;
     for query in GeneratorOptionQuery::ALL {
-        if let Ok(values) = ctx
+        match ctx
             .ports
             .map_generator
             .query_options(query, resolved_version.clone())
             .await
         {
-            out.emit(MapGeneratorEvent::OptionListLoaded { query, values });
+            Ok(values) => out.emit(MapGeneratorEvent::OptionListLoaded { query, values }),
+            Err(reason) => {
+                tracing::warn!(flag = query.flag(), %reason, "map generator option list failed");
+                // The first reason is the informative one: the rest are the
+                // same failure repeated once per list.
+                failure.get_or_insert(reason);
+            }
         }
+    }
+    if let Some(reason) = failure {
+        services::notifications::add(
+            out,
+            NotificationKind::Error,
+            "Could not read the map generator options",
+            reason,
+            None,
+        );
     }
 }

@@ -46,7 +46,13 @@ use crate::ports::{GeneratorUpdate, MapGeneratorPort};
 
 /// How long an option query (`--styles` etc.) may take. Much shorter than a
 /// generation run: it only prints a list. The Java client uses six seconds.
-const OPTION_QUERY_TIMEOUT: Duration = Duration::from_secs(15);
+///
+/// Generous against that, because the *first* query on a machine runs against
+/// a 24 MB JAR that was downloaded seconds ago: on a spinning disk, with a
+/// virus scanner reading every entry, the JVM start alone can outlast a tight
+/// limit. Six lists time out one after another and the dialog opens with six
+/// empty pickers, which is indistinguishable from having no Java at all.
+const OPTION_QUERY_TIMEOUT: Duration = Duration::from_secs(45);
 
 /// How long `--parse` may take. It resolves options and prints JSON without
 /// generating anything, so this is a JVM startup and little else.
@@ -601,12 +607,27 @@ impl NeroxisMapGenerator {
         )
         .await
         .map_err(|_| "the map generator did not answer in time".to_string())?
-        .map_err(|e| format!("could not run the map generator: {e}"))?;
+        .map_err(|e| {
+            format!(
+                "could not start the map generator ({}): {e}. Java is required to generate maps.",
+                self.config.java_path
+            )
+        })?;
 
         if output.status.success() {
             return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
+        // A JVM older than the release needs is reported as a linkage error
+        // several lines in, under a generic "a JNI error has occurred" banner
+        // that says nothing about the cause. Naming it is the difference
+        // between a fixable report and a mystery.
+        if stderr.contains("UnsupportedClassVersionError") {
+            return Err(format!(
+                "the Java runtime at {} is too old for this map generator release: install a newer Java, or point FAF_JAVA_PATH at one",
+                self.config.java_path
+            ));
+        }
         // picocli colours its errors; the escape sequences are noise in a
         // message that is about to be shown in a web view.
         let detail = stderr
