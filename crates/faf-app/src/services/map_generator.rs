@@ -116,6 +116,24 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         }
         MapGeneratorCommand::Preflight { options } => {
             match ctx.ports.map_generator.preflight(options).await {
+                // Empty means the release cannot resolve a name at all. Worth
+                // saying: the button was pressed, and would otherwise appear
+                // to do nothing.
+                Ok(map_name) if map_name.is_empty() => {
+                    out.emit(MapGeneratorEvent::NamePredicted {
+                        map_name: String::new(),
+                    });
+                    services::notifications::add(
+                        out,
+                        NotificationKind::Error,
+                        "This generator cannot resolve a name",
+                        format!(
+                            "Working the map name out from the options needs generator {} or newer. Generating still works.",
+                            map_generator::MIN_PARSE_VERSION
+                        ),
+                        None,
+                    );
+                }
                 Ok(map_name) => out.emit(MapGeneratorEvent::NamePredicted { map_name }),
                 Err(reason) => {
                     // Not a generation failure: nothing was started. Clearing
@@ -295,8 +313,12 @@ async fn refresh_installed_maps(ctx: &ServiceCtx, out: &EventSink) {
 
 /// Fetch available versions and option lists the generator reports.
 async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &EventSink) {
-    if let Ok(versions) = ctx.ports.map_generator.available_versions().await {
-        out.emit(MapGeneratorEvent::VersionsLoaded { versions });
+    match ctx.ports.map_generator.available_versions().await {
+        Ok(versions) => out.emit(MapGeneratorEvent::VersionsLoaded { versions }),
+        // Not notified here: resolving the newest release is about to fail the
+        // same way and reports it. Logged, because "the picker offers only
+        // Latest" otherwise leaves nothing to look at.
+        Err(reason) => tracing::warn!(%reason, "could not list the map generator releases"),
     }
 
     let resolved_version = if let Some(v) = explicit_version.clone() {

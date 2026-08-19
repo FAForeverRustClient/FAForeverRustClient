@@ -53,6 +53,16 @@ use crate::ports::{GeneratorUpdate, MapGeneratorPort};
 /// limit, and the cost is paid six times over before the dialog is usable.
 const OPTION_QUERY_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// How long a fetched release list stays fresh.
+///
+/// GitHub allows sixty unauthenticated requests an hour per address, and the
+/// generate dialog spends four of them every time it opens or changes release:
+/// two to list the versions, two to resolve the newest. A few minutes of
+/// clicking through releases exhausts the budget, and then the version picker
+/// has nothing to offer and no way to say why. The list barely changes in a
+/// month, so ten minutes of reuse costs nothing.
+const RELEASE_LIST_TTL: Duration = Duration::from_secs(600);
+
 /// How long `--parse` may take. It resolves options and prints JSON without
 /// generating anything, so this is a JVM startup and little else.
 const PREFLIGHT_TIMEOUT: Duration = Duration::from_secs(20);
@@ -216,6 +226,10 @@ fn user_maps_dir() -> PathBuf {
     crate::infra::maps::maps_dir()
 }
 
+/// The release list as it is held between fetches: when it arrived, and the
+/// tags themselves.
+type RememberedReleases = Arc<tokio::sync::Mutex<Option<(std::time::Instant, Vec<String>)>>>;
+
 pub struct NeroxisMapGenerator {
     config: MapGeneratorConfig,
     http: reqwest::Client,
@@ -223,6 +237,21 @@ pub struct NeroxisMapGenerator {
     /// JVM, which is why it is behind an `Arc`: the run happens on a spawned
     /// task that outlives the call which started it.
     cancel: Arc<CancelSignal>,
+    /// Serialises JAR installs.
+    ///
+    /// Every command is dispatched on its own task, so two of them can want
+    /// the same release at the same moment: the dialog loading its option
+    /// lists while the preview button starts a preflight is the everyday case,
+    /// and selecting a release the client has never run makes it certain.
+    /// Both downloaded to the same temporary file and both then renamed it, so
+    /// the loser reported "could not install the generator: the system cannot
+    /// find the file specified", having also fetched the same twenty-four
+    /// megabytes twice.
+    installing: Arc<tokio::sync::Mutex<()>>,
+    /// The last release list and when it arrived. Guarded rather than atomic
+    /// because the lock is held across the fetch itself: two commands asking
+    /// at once should cost one round trip, not two.
+    releases: RememberedReleases,
 }
 
 impl NeroxisMapGenerator {
@@ -232,6 +261,8 @@ impl NeroxisMapGenerator {
             // The shared transport supplies the User-Agent GitHub requires.
             http: super::http::shared_http_client(),
             cancel: Arc::new(CancelSignal::default()),
+            installing: Arc::new(tokio::sync::Mutex::new(())),
+            releases: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -254,6 +285,8 @@ impl NeroxisMapGenerator {
             config: self.config.clone(),
             http: self.http.clone(),
             cancel: Arc::clone(&self.cancel),
+            installing: Arc::clone(&self.installing),
+            releases: Arc::clone(&self.releases),
         }
     }
 
@@ -307,6 +340,11 @@ impl NeroxisMapGenerator {
         progress: &mpsc::Sender<GeneratorUpdate>,
     ) -> Result<PathBuf, String> {
         let target = self.jar_path(version);
+        if target.is_file() {
+            return Ok(target);
+        }
+        let _installing = self.installing.lock().await;
+        // Whoever held the lock may have been fetching exactly this release.
         if target.is_file() {
             return Ok(target);
         }
@@ -603,6 +641,12 @@ impl NeroxisMapGenerator {
                 .arg("-jar")
                 .arg(jar)
                 .args(args)
+                // None of these queries writes anything, but a release that
+                // does not know the flag it was given answers by generating a
+                // map into its working directory. Beside the JAR that is at
+                // least findable; in the client's own working directory it is
+                // litter nobody would connect to the map generator.
+                .current_dir(&self.config.generator_dir)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .output(),
@@ -651,6 +695,13 @@ impl NeroxisMapGenerator {
     /// having the newest hundred releases and losing the tail beats showing
     /// nothing because page three timed out.
     async fn fetch_releases(&self) -> Result<Vec<GitHubRelease>, String> {
+        let mut remembered = self.releases.lock().await;
+        if let Some((fetched_at, tags)) = remembered.as_ref() {
+            if fetched_at.elapsed() < RELEASE_LIST_TTL {
+                return Ok(releases_from_tags(tags));
+            }
+        }
+
         let mut all: Vec<GitHubRelease> = Vec::new();
         for page in 1..=MAX_RELEASE_PAGES {
             let separator = if self.config.releases_url.contains('?') {
@@ -691,15 +742,52 @@ impl NeroxisMapGenerator {
                         break;
                     }
                 }
-                // The first page failing means we have nothing to offer.
-                Err(error) if all.is_empty() => return Err(error),
+                // The first page failing leaves nothing to offer *now*, but
+                // the list of releases barely moves, and a rate limit or a
+                // dropped connection is no reason to empty the version picker.
+                Err(error) if all.is_empty() => {
+                    return match self.stored_release_tags().await {
+                        Some(tags) => {
+                            tracing::warn!(%error, "serving the stored map generator release list");
+                            Ok(releases_from_tags(&tags))
+                        }
+                        None => Err(error),
+                    }
+                }
                 Err(error) => {
                     tracing::warn!(%error, page, "stopping map generator release paging early");
                     break;
                 }
             }
         }
+
+        if !all.is_empty() {
+            let tags: Vec<String> = all.iter().map(|r| r.tag_name.clone()).collect();
+            self.store_release_tags(&tags).await;
+            *remembered = Some((std::time::Instant::now(), tags));
+        }
         Ok(all)
+    }
+
+    fn releases_cache_path(&self) -> PathBuf {
+        self.config.generator_dir.join("releases_cache.json")
+    }
+
+    /// The last release list that reached us, if one ever did.
+    async fn stored_release_tags(&self) -> Option<Vec<String>> {
+        let raw = tokio::fs::read_to_string(self.releases_cache_path())
+            .await
+            .ok()?;
+        let tags: Vec<String> = serde_json::from_str(&raw).ok()?;
+        (!tags.is_empty()).then_some(tags)
+    }
+
+    async fn store_release_tags(&self, tags: &[String]) {
+        let Ok(serialized) = serde_json::to_string(tags) else {
+            return;
+        };
+        let _ = tokio::fs::create_dir_all(&self.config.generator_dir).await;
+        let _ = tokio::fs::write(self.releases_cache_path(), serialized).await;
     }
 
     /// The newest release whose major version this client supports.
@@ -732,21 +820,13 @@ impl NeroxisMapGenerator {
         self.resolve_latest().await
     }
 
-    /// Every release the *dialog* can drive, newest first.
-    ///
-    /// Narrower than the version policy on purpose. The policy governs which
-    /// releases may be run at all, and reproducing a map by name still uses
-    /// all of it, because an old lobby is not negotiable. This list feeds the
-    /// version picker, and offering a release there that answers no option
-    /// list and silently ignores half the flags would be offering a control
-    /// that cannot work.
+    /// Every supported release, newest first.
     async fn available_versions(&self) -> Result<Vec<String>, String> {
         let releases = self.fetch_releases().await?;
         let mut versions: Vec<GeneratorVersion> = releases
             .into_iter()
             .filter_map(|r| GeneratorVersion::parse(r.tag_name.trim_start_matches('v')))
             .filter(|v| self.config.version_policy.allows_major(v.major))
-            .filter(|v| *v >= map_generator::MIN_OPTION_LIST_VERSION)
             .collect();
         versions.sort();
         versions.dedup();
@@ -905,6 +985,13 @@ impl NeroxisMapGenerator {
     /// start and produces no map.
     async fn preflight_inner(&self, options: &GeneratorOptions) -> Result<String, String> {
         let version = self.resolve_version(options.version.as_deref()).await?;
+        // No `--parse` before 1.22.0, and an older release does not refuse the
+        // flag: it ignores it and generates a map. An empty name means "this
+        // release cannot answer that", which is not a fault in the options and
+        // must not be reported as one: the run that follows is still fine.
+        if !version.supports_parse() {
+            return Ok(String::new());
+        }
         let (tx, _rx) = mpsc::channel(8);
         let jar = self.ensure_jar(version, &tx).await?;
 
@@ -1050,6 +1137,16 @@ fn shell_quote_all(args: &[String]) -> String {
 #[derive(Debug, Deserialize)]
 struct GitHubRelease {
     tag_name: String,
+}
+
+/// Rebuild release records from remembered tags. Only the tag is ever read out
+/// of a release, so a cached list is as good as a fetched one.
+fn releases_from_tags(tags: &[String]) -> Vec<GitHubRelease> {
+    tags.iter()
+        .map(|tag_name| GitHubRelease {
+            tag_name: tag_name.clone(),
+        })
+        .collect()
 }
 
 #[async_trait]
