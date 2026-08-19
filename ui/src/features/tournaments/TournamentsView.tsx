@@ -20,11 +20,13 @@ import type {
   BracketConfig,
   MatchReport,
   SeedOrder,
+  Tourney,
   TourneyCommand,
   TourneyDraft,
   TourneyMatch,
   TourneyPhase,
 } from "../../ipc/bindings";
+import type { MessageKey } from "../../i18n";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
@@ -32,7 +34,15 @@ import { matchTitle } from "./matchTitle";
 import { MatchReportDialog } from "./MatchReportDialog";
 import { TournamentDetailPane } from "./TournamentDetailPane";
 import { TournamentForm } from "./TournamentForm";
-import { STATUS_LABELS, formatDay } from "./tourneyPresentation";
+import { SignUpDialog } from "./SignUpDialog";
+import {
+  STATUS_LABELS,
+  countdownTo,
+  formatDay,
+  groupOf,
+  groupedEvents,
+  type ListGroup,
+} from "./tourneyPresentation";
 import { busyMatchId, openEvent } from "../../shared/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -41,7 +51,33 @@ import { useTranslation } from "../../i18n/useTranslation";
 const send = (command: TourneyCommand) =>
   ipc.send({ kind: "Tourney", command } satisfies AppCommand);
 
-const load = () => send({ type: "load" });
+/**
+ * Reload what the tab shows.
+ *
+ * Hosting rides along rather than being asked once at startup. It is granted
+ * per account by the site admin, so it changes *while* the client runs, and a
+ * refresh that left it alone meant the create button stayed missing until the
+ * whole client was restarted, with no way to tell that from being refused.
+ */
+const load = () => {
+  send({ type: "load" });
+  send({ type: "loadHosting" });
+};
+
+/**
+ * The three groups that are always open, in the order they are read.
+ *
+ * The fourth, the finished and abandoned, folds away behind a disclosure and is
+ * rendered on its own below.
+ */
+const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey][] = [
+  ["drafts", "tournaments.list.drafts"],
+  ["upcoming", "tournaments.list.upcoming"],
+  ["ongoing", "tournaments.list.ongoing"],
+];
+
+/** How often the countdowns are recomputed. Minute resolution, minute ticks. */
+const TICK_MS = 60_000;
 
 export function TournamentsView() {
   const { t } = useTranslation();
@@ -50,6 +86,16 @@ export function TournamentsView() {
   const vaultStatus = useAppStore((store) => store.state.maps.vaultStatus);
   const [reporting, setReporting] = useState<TourneyMatch | null>(null);
   const [editing, setEditing] = useState<"create" | "edit" | null>(null);
+  /** The event whose signup dialog is open, if any. */
+  const [entering, setEntering] = useState<string | null>(null);
+  const [showPast, setShowPast] = useState(false);
+  // A countdown drawn once is wrong within the minute, and this tab is one
+  // people leave open waiting for exactly the thing it counts down to.
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), TICK_MS);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (useAppStore.getState().state.tourney.status.type === "idle") {
@@ -60,16 +106,35 @@ export function TournamentsView() {
       // Hosting is approval-only, granted per account. Asked once, because the
       // alternative is a create button that answers "not approved yet".
       send({ type: "loadHosting" });
-    }
-    // The map vault, which this tab reads but never used to ask for. It was
-    // loaded only by the Maps tab, so an organiser who came straight here saw
-    // every map in their own database marked "not in the vault" and no preview
-    // beside any of it. It is the whole catalogue, cached in the slice, so this
-    // costs one request per session and nothing per tournament.
-    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
-      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+      // This account's own Discord handle, so the signup dialog opens on what
+      // the service already has rather than on an empty field that would clear
+      // it if anybody pressed save.
+      send({ type: "loadProfile" });
     }
   }, []);
+
+  /**
+   * Ask for FAF's map catalogue, once, and only when something needs it.
+   *
+   * This tab does read it: the map database, the pools, the veto grids and the
+   * bracket's map previews all resolve a tournament's own map names against the
+   * vault, and without it an organiser sees "not in the vault" beside every one.
+   *
+   * It used to be asked for when the tab mounted, and that was too eager by a
+   * long way. The vault is the largest thing the client holds: up to twenty
+   * thousand maps, which measures at about twelve megabytes of heap and
+   * seventeen as JSON, and a full state snapshot carries all of it. A player
+   * opening the tab to see whether their match is up was paying that price for
+   * nothing. It is now asked for by the two sections that show a preview.
+   */
+  const needVault = () => {
+    // Idle or failed, not just idle: one lost request must not leave every map
+    // in the event marked "not in the vault" for the rest of the session.
+    const status = useAppStore.getState().state.maps.vaultStatus.type;
+    if (status === "idle" || status === "failed") {
+      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    }
+  };
 
   // Never show one tournament's bracket under another's name: the pane waits
   // for the detail that belongs to the row that is open.
@@ -81,6 +146,88 @@ export function TournamentsView() {
   const busyMatch = busyMatchId(state.pending);
 
   const act = (command: TourneyCommand) => send(command);
+
+  const groups = groupedEvents(state.events);
+
+  // An event that was running when it was opened moves into the archive the
+  // moment it finishes. Folding it away under the reader, with its own detail
+  // still on screen beside the gap, reads as the row having vanished.
+  const selectedIsPast =
+    state.selectedId !== null &&
+    state.events.some((event) => event.id === state.selectedId && groupOf(event) === "past");
+  useEffect(() => {
+    if (selectedIsPast) setShowPast(true);
+  }, [selectedIsPast]);
+
+  /**
+   * One row of the list.
+   *
+   * The badge is the event's status, except where the status is not the whole
+   * truth. An event whose signups have not opened yet still says `signup`, and
+   * saying "Signups open" over a date three weeks out is the client telling
+   * somebody to go and enter something they cannot enter. An abandoned one says
+   * `signup` or `running` too, and is neither.
+   */
+  const row = (event: Tourney) => {
+    const untilSignups =
+      event.status === "signup" && !event.abandoned
+        ? countdownTo(event.signupOpensAt, now)
+        : null;
+    return (
+      <li key={event.id}>
+        <button
+          type="button"
+          className={
+            event.id === state.selectedId
+              ? "surface surface-interactive tournament-row is-active"
+              : "surface surface-interactive tournament-row"
+          }
+          aria-current={event.id === state.selectedId}
+          onClick={() => send({ type: "select", payload: { tournamentId: event.id } })}
+        >
+          {/* No "you are entered" badge here, however useful it would be.
+              `GET /api/tournaments` sends no viewer block, so the answer is
+              known only for whichever event happens to be open, and a badge
+              that appears on a row the moment you click it reads as the client
+              having just signed you up. A wrong answer about your own entry is
+              worse than none. */}
+          <span className="tournament-row-name">{event.name || t("tournaments.untitled")}</span>
+          {/* Official or community, on the row rather than only inside. It is
+              the first thing a player wants to know about an event they have
+              not heard of: an official one is run by the tournament team under
+              FAF's own rules and pays from FAF's fund. The service sends it with
+              the list, so this costs nothing. */}
+          {/* One line for both marks: what the event is, then where it is up
+              to. Stacked they made every row three lines tall. */}
+          <span className="tournament-row-marks">
+            <span className={`tournament-tag is-${event.category}`}>
+              {t(
+                event.category === "official"
+                  ? "tournaments.list.official"
+                  : "tournaments.list.community",
+              )}
+            </span>
+            {event.abandoned ? (
+              <span className="tournament-badge">{t("tournaments.list.abandoned")}</span>
+            ) : untilSignups !== null ? (
+              <span className="tournament-badge">
+                {t("tournaments.list.signupsIn", { time: untilSignups })}
+              </span>
+            ) : (
+              <span className={`tournament-badge is-${event.status}`}>
+                {t(STATUS_LABELS[event.status])}
+              </span>
+            )}
+          </span>
+          <span className="tournament-row-when muted">
+            {formatDay(event.eventDate, t("tournaments.noDate"))}
+            {event.playerCount > 0 &&
+              ` · ${t("tournaments.list.entrants", { count: event.playerCount })}`}
+          </span>
+        </button>
+      </li>
+    );
+  };
 
   // Open the host dialog on the Play tab with the match's title filled in.
   // Not "host it outright": the map and the featured mod are still the host's
@@ -103,7 +250,14 @@ export function TournamentsView() {
         </div>
         <div className="tournament-detail-actions">
           {state.hosting.allowed && (
-            <Button variant="primary" onClick={() => setEditing("create")} disabled={busy}>
+            <Button
+              variant="primary"
+              onClick={() => {
+                act({ type: "loadSeries" });
+                setEditing("create");
+              }}
+              disabled={busy}
+            >
               <Icon name="plus" size={16} /> {t("tournaments.form.createTitle")}
             </Button>
           )}
@@ -157,40 +311,40 @@ export function TournamentsView() {
 
       {state.events.length > 0 && (
         <div className="tournaments-body">
-          <ul className="tournaments-list">
-            {state.events.map((event) => (
-              <li key={event.id}>
+          <div className="tournaments-list">
+            {LIVE_GROUPS.map(([group, heading]) =>
+              groups[group].length === 0 ? null : (
+                <section className="tournaments-group" key={group}>
+                  <h3>
+                    {t(heading)} <span className="muted">({groups[group].length})</span>
+                  </h3>
+                  <ul>{groups[group].map(row)}</ul>
+                </section>
+              ),
+            )}
+
+            {/* The archive, folded. Every event FAF has ever run is in this
+                list, and the finished ones outnumber the live ones by an order
+                of magnitude within a season: unfolded, they are a scroll with
+                the useful part off the top of it. Kept rather than filtered
+                out, because an organiser reruns a series by reading last
+                year's, and that is a real thing people do here. */}
+            {groups.past.length > 0 && (
+              <section className="tournaments-group">
                 <button
                   type="button"
-                  className={
-                    event.id === state.selectedId
-                      ? "surface surface-interactive tournament-row is-active"
-                      : "surface surface-interactive tournament-row"
-                  }
-                  aria-current={event.id === state.selectedId}
-                  onClick={() => send({ type: "select", payload: { tournamentId: event.id } })}
+                  className="tournaments-archive-toggle"
+                  aria-expanded={showPast}
+                  onClick={() => setShowPast((open) => !open)}
                 >
-                  {/* No "you are entered" badge here, however useful it would
-                      be. `GET /api/tournaments` sends no viewer block, so the
-                      answer is known only for whichever event happens to be
-                      open, and a badge that appears on a row the moment you
-                      click it reads as the client having just signed you up.
-                      A wrong answer about your own entry is worse than none. */}
-                  <span className="tournament-row-name">
-                    {event.name || t("tournaments.untitled")}
-                  </span>
-                  <span className={`tournament-badge is-${event.status}`}>
-                    {t(STATUS_LABELS[event.status])}
-                  </span>
-                  <span className="tournament-row-when muted">
-                    {formatDay(event.eventDate, t("tournaments.noDate"))}
-                    {event.playerCount > 0 &&
-                      ` · ${t("tournaments.list.entrants", { count: event.playerCount })}`}
-                  </span>
+                  <Icon name={showPast ? "chevronDown" : "chevronRight"} size={14} />
+                  <span>{t("tournaments.list.past")}</span>
+                  <span className="muted">({groups.past.length})</span>
                 </button>
-              </li>
-            ))}
-          </ul>
+                {showPast && <ul>{groups.past.map(row)}</ul>}
+              </section>
+            )}
+          </div>
 
           {open !== null ? (
             <TournamentDetailPane
@@ -200,6 +354,8 @@ export function TournamentsView() {
               events={state.events}
               profiles={state.entrantProfiles}
               articles={state.articles}
+              assetBase={state.assetBase}
+              onNeedVault={needVault}
               vault={vault}
               vaultStatus={vaultStatus}
               chatRooms={state.chatRooms}
@@ -210,7 +366,7 @@ export function TournamentsView() {
               busyMatchId={busyMatch}
               accountSearch={state.accountSearch}
               onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
-              onSignUp={() => act({ type: "signUp", payload: { tournamentId: open.id } })}
+              onSignUp={() => setEntering(open.id)}
               onWithdraw={() => act({ type: "withdraw", payload: { tournamentId: open.id } })}
               onCheckIn={() => act({ type: "checkIn", payload: { tournamentId: open.id } })}
               onReport={setReporting}
@@ -238,7 +394,9 @@ export function TournamentsView() {
               onOpenUrl={(url) => {
                 void openHttpsUrl(url);
               }}
-              onEdit={() => setEditing("edit")}
+              onEditInfo={(draft: TourneyDraft) =>
+                act({ type: "editInfo", payload: { tournamentId: open.id, draft } })
+              }
               onPublish={() => act({ type: "publish", payload: { tournamentId: open.id } })}
               onAdvance={(phase: TourneyPhase, config?: BracketConfig) =>
                 act({
@@ -432,6 +590,7 @@ export function TournamentsView() {
       {editing !== null && (
         <TournamentForm
           event={editing === "edit" ? open : null}
+          series={state.series}
           busy={busy}
           onSubmit={(draft: TourneyDraft) => {
             if (editing === "edit" && open !== null) {
@@ -442,6 +601,22 @@ export function TournamentsView() {
             setEditing(null);
           }}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {entering !== null && (
+        <SignUpDialog
+          name={state.events.find((event) => event.id === entering)?.name ?? ""}
+          discord={state.discord}
+          busy={busy}
+          onConfirm={(discord) => {
+            // The handle first, so an organiser reading the entrant list sees
+            // it against the entry rather than a minute later.
+            if (discord !== null) act({ type: "setDiscord", payload: { handle: discord } });
+            act({ type: "signUp", payload: { tournamentId: entering } });
+            setEntering(null);
+          }}
+          onClose={() => setEntering(null)}
         />
       )}
 

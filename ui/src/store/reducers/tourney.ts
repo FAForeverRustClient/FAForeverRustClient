@@ -23,6 +23,16 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
   switch (event.type) {
     case "loading":
       return { ...state, status: { type: "loading" } };
+    // Where the service lives, so an organiser's uploaded image can be found.
+    // Sent with every load rather than once, because it costs nothing and a tab
+    // whose pictures work only on one code path is worse than one that pays it.
+    // One event for both directions: reading the handle at startup and writing
+    // it from the signup dialog land the same fact, and the write answers with
+    // what the service actually stored rather than with what was typed.
+    case "discordLoaded":
+      return { ...state, discord: event.payload.discord };
+    case "assetBase":
+      return { ...state, assetBase: event.payload.base.replace(/\/+$/, "") };
     case "loaded": {
       // Keep the open event across a refresh, but never leave a selection
       // pointing at a tournament that has gone.

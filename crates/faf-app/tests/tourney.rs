@@ -44,6 +44,18 @@ impl RefusingTourney {
 
 #[async_trait]
 impl TourneyPort for RefusingTourney {
+    fn asset_base(&self) -> String {
+        String::new()
+    }
+
+    async fn profile(&self) -> Result<String, RequestError> {
+        Ok(String::new())
+    }
+
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
+        Ok(handle.trim().to_string())
+    }
+
     async fn list(&self) -> Result<Vec<Tourney>, RequestError> {
         self.inner.list().await
     }
@@ -353,6 +365,14 @@ async fn loading_announces_itself_then_lands_a_sorted_list() {
     app.dispatch(TourneyCommand::Load.into()).await.unwrap();
 
     assert_eq!(next_event(&mut events).await, TourneyEvent::Loading);
+    // Where the service lives, sent with every load: the tab resolves the
+    // organiser's uploaded images against it, and offline there is none.
+    assert_eq!(
+        next_event(&mut events).await,
+        TourneyEvent::AssetBase {
+            base: String::new()
+        }
+    );
     match next_event(&mut events).await {
         TourneyEvent::Loaded { events } => {
             // Sorting is the service's job, not the view's, so every consumer of
@@ -1497,6 +1517,18 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
 
     #[async_trait]
     impl TourneyPort for Offline {
+        fn asset_base(&self) -> String {
+            String::new()
+        }
+
+        async fn profile(&self) -> Result<String, RequestError> {
+            Ok(String::new())
+        }
+
+        async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
+            Ok(handle.trim().to_string())
+        }
+
         async fn list(&self) -> Result<Vec<Tourney>, RequestError> {
             Err(RequestError::offline("no route to host"))
         }

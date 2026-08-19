@@ -209,6 +209,8 @@ const INITIAL: AppState = {
   },
   tourney: {
     events: [],
+    assetBase: "",
+    discord: "",
     status: { type: "idle" },
     selectedId: null,
     detail: null,

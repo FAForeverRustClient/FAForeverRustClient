@@ -16,8 +16,10 @@
 // that turns `Setons Clutch`, `scmp_009` and `SCMP_009.v0001` into the same
 // vault entry, so a preview appears without anyone maintaining a lookup table.
 
+import { useState } from "react";
 import { Button } from "../../design-system/Button";
-import type { MapPool, Tourney, VaultMap } from "../../ipc/bindings";
+import { Modal } from "../../design-system/Modal";
+import type { MapPool, PoolDraft, Tourney, VaultMap } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { BRACKET_LABELS } from "./tourneyPresentation";
@@ -28,12 +30,52 @@ interface MapPoolPanelProps {
   vault: VaultMap[];
   busy: boolean;
   onAssign: (roundKey: string, poolId: string) => void;
+  /** Create the pool a combination needs. The same write the pool editor makes. */
+  onSavePool: (pool: PoolDraft) => void;
 }
 
-export function MapPoolPanel({ event, vault, busy, onAssign }: MapPoolPanelProps) {
+export function MapPoolPanel({ event, vault, busy, onAssign, onSavePool }: MapPoolPanelProps) {
   const { t } = useTranslation();
   const plan = roundPlan(event);
   const rounds = plan.keys;
+  /**
+   * The round whose combine chooser is open, by key, or null.
+   *
+   * A round holds *one* pool: `pool_assign` stores `poolAssign[round] = poolId`,
+   * a single id, and there is no second field to put another in. So picking two
+   * cannot bind two. What it can do is make a pool that holds exactly what the
+   * round should play, which is what the chooser below writes.
+   */
+  const [combining, setCombining] = useState<string | null>(null);
+  /** The pools ticked in the open chooser. */
+  const [ticked, setTicked] = useState<string[]>([]);
+
+  /**
+   * Write the ticked pools as one pool of their own.
+   *
+   * The union of their maps, in the order they were ticked, with no ban and pick
+   * order: inventing a sequence over maps from two different plans would fail
+   * the service's own counting rules, and a pool without one is a valid list of
+   * maps. It appears in the tag row like any other pool, and one click binds it.
+   */
+  const combine = (label: string) => {
+    const maps: string[] = [];
+    for (const poolId of ticked) {
+      const held = event.mapPools.find((candidate) => candidate.id === poolId);
+      for (const mapId of held?.mapIds ?? []) {
+        if (!maps.includes(mapId)) maps.push(mapId);
+      }
+    }
+    onSavePool({
+      id: "",
+      name: t("tournaments.pools.combinedName", { round: label }),
+      mapIds: maps,
+      sequence: [],
+      bestOf: null,
+    });
+    setCombining(null);
+    setTicked([]);
+  };
 
   if (event.mapPools.length === 0) {
     return <p className="muted">{t("tournaments.pools.none")}</p>;
@@ -58,29 +100,26 @@ export function MapPoolPanel({ event, vault, busy, onAssign }: MapPoolPanelProps
       )}
 
       {/* One pool for the whole event is the common case by a distance: most
-          tournaments play the same maps every round, and setting that as eight
-          separate dropdowns is eight chances to miss one. */}
+          tournaments play the same maps every round, and setting that round by
+          round is eight chances to miss one. */}
       {rounds.length > 1 && (
         <div className="tournament-pool-all surface">
-          <label className="tournament-field">
-            <span>{t("tournaments.pools.everyRound")}</span>
-            <select
-              value=""
-              disabled={busy}
-              onChange={(changed) => {
-                const poolId = changed.target.value;
-                if (poolId === "") return;
-                for (const round of rounds) onAssign(round.key, poolId);
-              }}
-            >
-              <option value="">{t("tournaments.pools.everyRoundPick")}</option>
-              {event.mapPools.map((candidate) => (
-                <option value={candidate.id} key={candidate.id}>
-                  {candidate.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <span className="tournament-cell-label">{t("tournaments.pools.everyRound")}</span>
+          <div className="tournament-pool-tags">
+            {event.mapPools.map((candidate) => (
+              <button
+                type="button"
+                className="tournament-pool-tag"
+                key={candidate.id}
+                disabled={busy}
+                onClick={() => {
+                  for (const round of rounds) onAssign(round.key, candidate.id);
+                }}
+              >
+                {candidate.name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -99,24 +138,102 @@ export function MapPoolPanel({ event, vault, busy, onAssign }: MapPoolPanelProps
           <section className="surface tournament-pool-round" key={key}>
             <header className="tournament-pool-header">
               <h5>{roundLabel(t, bracket, round, lastRound)}</h5>
-              <label className="tournament-field">
-                <span className="visually-hidden">{t("tournaments.pools.assign")}</span>
-                <select
-                  value={pool?.id ?? ""}
-                  disabled={busy}
-                  onChange={(changed) => onAssign(key, changed.target.value)}
-                >
-                  {/* An empty value clears the binding, which is how a round
-                      goes back to having no pool at all. */}
-                  <option value="">{t("tournaments.pools.unassigned")}</option>
-                  {event.mapPools.map((candidate) => (
-                    <option value={candidate.id} key={candidate.id}>
+              {/* Tags rather than a dropdown. Every pool is on screen, the one
+                  in use is filled in, and binding a round is one click on the
+                  thing itself instead of opening a list to find it. Clicking the
+                  filled one clears the round again.
+
+                  One tag at a time, and that is the service's shape, not a
+                  simplification: `pool_assign` stores `poolAssign[round] =
+                  poolId`, a single id. A round that should play the maps of two
+                  pools needs a pool that holds both, which is what step two is
+                  for. */}
+              <div className="tournament-pool-tags">
+                {event.mapPools.map((candidate) => {
+                  const bound = pool?.id === candidate.id;
+                  return (
+                    <button
+                      type="button"
+                      className={
+                        bound ? "tournament-pool-tag is-bound" : "tournament-pool-tag"
+                      }
+                      key={candidate.id}
+                      aria-pressed={bound}
+                      disabled={busy}
+                      onClick={() => onAssign(key, bound ? "" : candidate.id)}
+                    >
                       {candidate.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                    </button>
+                  );
+                })}
+                {/* The one tag that is not a pool: it makes one. Dashed, because
+                    it is an outline of a pool rather than a pool, which is the
+                    same convention as an empty slot anywhere else. */}
+                {event.mapPools.length > 1 && (
+                  <button
+                    type="button"
+                    className="tournament-pool-tag is-add"
+                    disabled={busy}
+                    onClick={() => {
+                      setCombining(key);
+                      setTicked(pool === null ? [] : [pool.id]);
+                    }}
+                  >
+                    + {t("tournaments.pools.combine")}
+                  </button>
+                )}
+              </div>
             </header>
+
+            {combining === key && (
+              <Modal
+                onClose={() => setCombining(null)}
+                ariaLabel={t("tournaments.pools.combine")}
+                className="tournament-combine-modal"
+              >
+                <h4>{t("tournaments.pools.combineTitle", {
+                  round: roundLabel(t, bracket, round, lastRound),
+                })}</h4>
+                <p className="muted">{t("tournaments.pools.combineHint")}</p>
+                <ul className="tournament-combine-list">
+                  {event.mapPools.map((candidate) => (
+                    <li key={candidate.id}>
+                      <label className="tournament-check">
+                        <input
+                          type="checkbox"
+                          checked={ticked.includes(candidate.id)}
+                          onChange={(changed) =>
+                            setTicked((held) =>
+                              changed.target.checked
+                                ? [...held, candidate.id]
+                                : held.filter((id) => id !== candidate.id),
+                            )
+                          }
+                        />
+                        <span>{candidate.name}</span>
+                        <span className="muted">
+                          {t("tournaments.bracket.poolCount", {
+                            count: candidate.mapIds.length,
+                          })}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <div className="tournament-form-actions">
+                  <Button disabled={busy} onClick={() => setCombining(null)}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    disabled={busy || ticked.length < 2}
+                    onClick={() => combine(roundLabel(t, bracket, round, lastRound))}
+                  >
+                    {t("tournaments.pools.combineAction", { count: ticked.length })}
+                  </Button>
+                </div>
+              </Modal>
+            )}
 
             {pool !== null && (
               <ul className="tournament-pool-maps">

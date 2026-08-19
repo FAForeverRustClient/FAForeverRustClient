@@ -77,6 +77,7 @@ struct HelperFixture {
     tourney_rounds: Vec<TourneyRoundCase>,
     tourney_chat_rooms: Vec<TourneyChatRoomCase>,
     tourney_bracket_configs: Vec<TourneyBracketConfigCase>,
+    tourney_match_plans: Vec<TourneyMatchPlanCase>,
 }
 
 #[derive(Serialize)]
@@ -303,6 +304,20 @@ struct TourneyLifecycleCase {
 /// projection uses and are wrong in the same quiet way: the service pads or
 /// trims the list to the length the bracket really has, so a client that
 /// offered one row too few would drop a round's setting without saying so.
+/// The best-of template a bracket type starts from.
+///
+/// The service's own defaults, and they exist twice: the create form offers
+/// them, and `MatchPlan::default_for` states them. A drift here would give the
+/// organiser a form that disagrees with what the service would have done on its
+/// own, which is exactly the kind of difference nobody notices until a final is
+/// a Bo3.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyMatchPlanCase {
+    kind: BracketKind,
+    expected: MatchPlan,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TourneyBracketConfigCase {
@@ -2646,6 +2661,13 @@ fn helper_fixture() -> HelperFixture {
         tourney_rounds: tourney_round_cases(),
         tourney_chat_rooms: tourney_chat_room_cases(),
         tourney_bracket_configs: tourney_bracket_config_cases(),
+        tourney_match_plans: [BracketKind::Single, BracketKind::Double, BracketKind::Swiss]
+            .into_iter()
+            .map(|kind| TourneyMatchPlanCase {
+                kind,
+                expected: MatchPlan::default_for(kind),
+            })
+            .collect(),
     }
 }
 
@@ -3289,6 +3311,42 @@ fn cases() -> Vec<Case> {
             ],
         ),
         // ── tournaments / tutorials ──────────────────────────────────────
+        case(
+            "the account's Discord handle is read, then changed",
+            vec![
+                TourneyEvent::DiscordLoaded {
+                    discord: "olduser".into(),
+                }
+                .into(),
+                TourneyEvent::ActionStarted {
+                    action: TourneyAction::SavingProfile,
+                }
+                .into(),
+                // The service answers with what it stored, not with what was
+                // typed: it strips what it will not keep and cuts the rest.
+                TourneyEvent::DiscordLoaded {
+                    discord: "newuser".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "the service's own address arrives with the list",
+            vec![
+                TourneyEvent::Loading.into(),
+                // A trailing slash is the difference between an image url with
+                // one slash in it and one with two, and both reducers have to
+                // drop it the same way or the frontend's twin is not one.
+                TourneyEvent::AssetBase {
+                    base: "https://tournaments.example.invalid/".into(),
+                }
+                .into(),
+                TourneyEvent::Loaded {
+                    events: vec![tourney("e1")],
+                }
+                .into(),
+            ],
+        ),
         case(
             "a player enters a tournament and is refused",
             vec![

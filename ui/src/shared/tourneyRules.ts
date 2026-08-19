@@ -19,6 +19,8 @@ import type {
   Competition,
   FfaReport,
   MapDraft,
+  MapPool,
+  MatchPlan,
   MatchVeto,
   PoolAction,
   PoolSide,
@@ -669,9 +671,27 @@ const BRACKET_WIRE: Record<BracketSide, string> = {
   freeForAll: "ffa",
 };
 
+/**
+ * The service's own key for one round: `{bracket}:{round}`, e.g. `wb:2`.
+ *
+ * Exported because two places need the same string and must not spell it twice:
+ * the round plan, which offers the rounds a pool can be bound to, and the
+ * bracket, which shows which pool a round ended up with.
+ */
+export function roundKeyOf(bracket: BracketSide, round: number): string {
+  return `${BRACKET_WIRE[bracket]}:${round}`;
+}
+
+/** The pool bound to a round, or null where the organiser bound none. */
+export function poolForRound(event: Tourney, key: string): MapPool | null {
+  const bound = event.poolAssign.find((assignment) => assignment.round === key);
+  if (bound === undefined) return null;
+  return event.mapPools.find((pool) => pool.id === bound.poolId) ?? null;
+}
+
 function roundKeys(pairs: [BracketSide, number][]): RoundKey[] {
   return pairs.map(([bracket, round]) => ({
-    key: `${BRACKET_WIRE[bracket]}:${round}`,
+    key: roundKeyOf(bracket, round),
     bracket,
     round,
     lastRound: Math.max(
@@ -1144,4 +1164,30 @@ export function roomBadge(room: ChatRoom): RoomBadge {
 export function openEvent(detail: Tourney | null, selectedId: string | null): Tourney | null {
   if (detail === null) return null;
   return detail.id === selectedId ? detail : null;
+}
+
+/**
+ * Twin of `MatchPlan::default_for`: the best-of template a bracket type starts
+ * from.
+ *
+ * These are the service's own defaults, mirrored so the create form opens on
+ * what would happen anyway rather than on a blank set of selects. Pinned by the
+ * conformance harness, because a drift would hand the organiser a form that
+ * quietly disagrees with the service: a final that says Bo5 here and is played
+ * as Bo3 there.
+ */
+export function defaultPlanFor(kind: BracketKind): MatchPlan {
+  if (kind === "double") {
+    return {
+      type: "double",
+      payload: { wb: 3, wbFinal: 3, lb: 3, lbFinal: 3, gf: 5, lbHandicap: true },
+    };
+  }
+  if (kind === "swiss") {
+    return {
+      type: "swiss",
+      payload: { bestOf: 3, finalMatch: true, finalBestOf: 5, fast: false },
+    };
+  }
+  return { type: "single", payload: { early: 3, semi: 3, finalBo: 5 } };
 }

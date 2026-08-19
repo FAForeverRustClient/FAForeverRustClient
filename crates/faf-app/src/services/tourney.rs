@@ -184,6 +184,22 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             Err(error) => tracing::warn!(%error, "could not read the hosting status"),
         },
 
+        TourneyCommand::LoadProfile => match ctx.ports.tourney.profile().await {
+            Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
+            // Silent, like the hosting status: not knowing the handle only means
+            // the signup dialog opens on an empty field, and saying so would be
+            // an error banner about something nobody asked for.
+            Err(error) => tracing::warn!(%error, "could not read the tournament profile"),
+        },
+
+        TourneyCommand::SetDiscord { handle } => {
+            match ctx.ports.tourney.set_discord(&handle).await {
+                Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
+                // Loud, unlike the read: somebody typed this and pressed save.
+                Err(error) => out.emit(failed(TourneyAction::SavingProfile, &error)),
+            }
+        }
+
         TourneyCommand::SearchAccounts { query } => search_accounts(&query, ctx, out).await,
 
         TourneyCommand::ClearAccountSearch => {
@@ -1242,6 +1258,12 @@ fn my_player_id(tournament_id: &str, out: &EventSink) -> Option<String> {
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(TourneyEvent::Loading);
+    // Sent with every load rather than once at startup: it costs nothing, and
+    // the alternative is a tab whose images work only if the list was loaded
+    // through the one path that happened to announce it.
+    out.emit(TourneyEvent::AssetBase {
+        base: ctx.ports.tourney.asset_base(),
+    });
     match ctx.ports.tourney.list().await {
         Ok(mut events) => {
             // Sorted here rather than in the view, because ordering is part of

@@ -40,11 +40,13 @@ import type {
   UploadsState,
   VaultMap,
 } from "../ipc/bindings";
+import type { BracketKind, MatchPlan } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/galacticWarActions";
 import { noteForPlayer } from "../shared/playerNotes";
 import {
   bracketConfigOf,
+  defaultPlanFor,
   busyMatchId,
   chatGroups,
   configIsSubmittable,
@@ -229,6 +231,10 @@ interface HelperFixture {
     candidate: Tourney;
     rule: QualifierRule;
     rejection: QualifierRejection | null;
+  }>;
+  tourneyMatchPlans: Array<{
+    kind: BracketKind;
+    expected: MatchPlan;
   }>;
   tourneyBracketConfigs: Array<{
     name: string;
@@ -456,6 +462,12 @@ describe("tournament rule twins match Rust", () => {
   // The same arithmetic the round projection uses, and wrong in the same quiet
   // way: the service trims the list to the bracket's real length, so one row
   // too few loses a round's setting without saying so.
+  // The defaults the create form opens on. Pinned because they exist twice and
+  // a difference between them is invisible until an event is played.
+  it.each(helpers.tourneyMatchPlans)("defaults the match plan for $kind", (recorded) => {
+    expect(defaultPlanFor(recorded.kind)).toEqual(recorded.expected);
+  });
+
   it.each(helpers.tourneyBracketConfigs)("plans the draw: $name", (recorded) => {
     const config = bracketConfigOf(recorded.event);
     expect({ config, submittable: configIsSubmittable(config, recorded.event.teams.length) }).toEqual(

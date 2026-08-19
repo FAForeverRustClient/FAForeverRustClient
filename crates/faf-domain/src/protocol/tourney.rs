@@ -26,11 +26,11 @@ use serde_json::{json, Value};
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
-    ChatRoom, Competition, Formation, HostingStatus, InviteStatus, MapPool, MatchLink, MatchStatus,
-    NewsPost, Organiser, PendingReport, PoolAction, PoolAssignment, PoolSide, PoolStep, RatingGate,
-    RatingKind, SignupMode, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
-    TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus,
-    TourneyTeam, TourneyViewer,
+    ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MatchLink,
+    MatchPlan, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction, PoolAssignment,
+    PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream, TeamExit,
+    TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap, TourneyMatch,
+    TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -88,6 +88,90 @@ fn flag_or_true(value: &Value, name: &str) -> bool {
         None | Some(Value::Null) => true,
         _ => flag(value, name),
     }
+}
+
+/// The headline cash prize, or `None` where the pair is not a whole one.
+///
+/// `cleanPrize` stores `{currency: null, amount: null}` for anything it refuses,
+/// and the list endpoint sends the key as `null` outright, so three spellings of
+/// "no prize" arrive here and all three have to mean the same thing. The amount
+/// is read through `f64` because that is what JSON gives, then rounded to cents
+/// the same way the service rounds it before storing.
+fn prize(value: &Value, name: &str) -> Option<Prize> {
+    let held = value.get(name)?;
+    let currency = Currency::from_wire(held.get("currency")?.as_str()?)?;
+    let amount = match held.get("amount")? {
+        Value::Number(number) => number.as_f64()?,
+        Value::String(text) => text.trim().parse().ok()?,
+        _ => return None,
+    };
+    if !amount.is_finite() || amount < 0.0 {
+        return None;
+    }
+    Some(Prize {
+        currency,
+        amount_cents: (amount * 100.0).round().clamp(0.0, i32::MAX as f64) as i32,
+    })
+}
+
+/// The stream links, in the order the organiser listed them.
+///
+/// The scheme is checked again here, though the service checks it on the way in:
+/// these end up in `openUrl`, and a state that can only hold `http(s)` is one
+/// fewer place for a `javascript:` url to be waiting.
+fn streams(value: &Value, name: &str) -> Vec<Stream> {
+    array(value, name)
+        .iter()
+        .filter_map(|held| {
+            let url = text(held, "url");
+            let url = url.trim();
+            if !(url.starts_with("https://") || url.starts_with("http://")) {
+                return None;
+            }
+            Some(Stream {
+                url: url.to_string(),
+                info: text(held, "info"),
+            })
+        })
+        .collect()
+}
+
+/// The best-of template, where the event stores one.
+///
+/// Which shape to read is decided by the bracket type rather than by which keys
+/// are present: an event that was switched from double to single keeps the old
+/// object until something writes over it, so the keys alone would answer with a
+/// plan the bracket does not use.
+fn plan(document: &Value, kind: BracketKind, competition: Competition) -> Option<MatchPlan> {
+    if competition == Competition::FreeForAll {
+        return None;
+    }
+    let held = document.get("plan").filter(|value| value.is_object())?;
+    let best_of = |name: &str, fallback: i32| int(held, name).unwrap_or(fallback);
+    Some(match kind {
+        BracketKind::Single => MatchPlan::Single {
+            early: best_of("early", 3),
+            semi: best_of("semi", 3),
+            final_bo: best_of("final", 5),
+        },
+        BracketKind::Double => MatchPlan::Double {
+            wb: best_of("wb", 3),
+            wb_final: best_of("wbFinal", 3),
+            lb: best_of("lb", 3),
+            lb_final: best_of("lbFinal", 3),
+            gf: best_of("gf", 5),
+            lb_handicap: flag(held, "lbHandicap"),
+        },
+        // Swiss keeps its round count in `ffaCfg`-free territory: the number of
+        // rounds is the organiser's, but it lives on the draw config rather
+        // than in the plan, which holds only the lengths.
+        BracketKind::Swiss => MatchPlan::Swiss {
+            best_of: if best_of("bo", 3) == 1 { 1 } else { 3 },
+            final_match: flag(held, "final"),
+            final_best_of: best_of("finalBo", 5),
+            fast: flag(held, "fast"),
+        },
+    })
 }
 
 /// A JavaScript millisecond timestamp as Unix seconds.
@@ -152,7 +236,17 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         // Reduced here rather than in the view. The organiser writes this and
         // it is third-party markup; keeping it out of the state means it can
         // never be rendered as markup by mistake later.
-        description: to_plain_text(&text(document, "description")),
+        // Markdown source, not plain text. See `Tourney::description` for why
+        // that reversal is safe: the service deletes every angle bracket, and
+        // the renderer emits elements rather than markup.
+        description: text(document, "description"),
+        rewards: text(document, "rewards"),
+        sponsors: text(document, "sponsors"),
+        prize: prize(document, "prize"),
+        streams: streams(document, "streams"),
+        lobby_options: text(document, "lobbyOptions"),
+        mods: text(document, "mods"),
+        desc_images: string_list(document, "descImages"),
         status: TourneyStatus::from_wire(&text(document, "status")),
         category: TourneyCategory::from_wire(&text(document, "category")),
         competition: Competition::from_wire(&text(document, "competition")),
@@ -163,6 +257,13 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         player_reporting: flag_or_true(document, "playerReporting"),
         signup_mode: SignupMode::from_wire(&text(document, "signupMode")),
         max_teams: int(document, "maxTeams").unwrap_or(0).max(0),
+        min_teams: int(document, "minTeams").unwrap_or(0).max(0),
+        seeding: Seeding::from_wire(&text(document, "seeding")),
+        plan: plan(
+            document,
+            BracketKind::from_wire(&text(document, "bracketType")),
+            Competition::from_wire(&text(document, "competition")),
+        ),
         veto_enabled: document
             .get("veto")
             .is_some_and(|veto| flag(veto, "enabled")),
@@ -243,6 +344,7 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .iter()
             .filter_map(parse_team)
             .collect(),
+        subs: string_list(document, "subs"),
         matches: array(document, "matches")
             .iter()
             .filter_map(parse_match)
@@ -749,12 +851,30 @@ pub fn parse_hosting(document: &Value) -> HostingStatus {
     }
 }
 
+/// The Discord handle out of `GET /auth/faf/me`.
+///
+/// Nested under `user`, which is `null` for a caller with no session. Empty
+/// means "not given", which is also what clearing it stores, so the two are the
+/// same state and the UI does not need to tell them apart.
+pub fn parse_profile(document: &Value) -> String {
+    document
+        .get("user")
+        .filter(|held| held.is_object())
+        .map(|held| text(held, "discord"))
+        .unwrap_or_default()
+}
+
+/// The handle `POST /api/my/profile` says it stored.
+pub fn parse_discord(document: &Value) -> String {
+    text(document, "discord")
+}
+
 /// The body for `POST /api/tournaments`.
 ///
-/// Deliberately short of everything the endpoint accepts. The server defaults
-/// the best-of plan, the veto configuration and the free-text fields, and those
-/// defaults are the tournament team's own; an absent key takes them, while a
-/// blank one would overwrite them.
+/// The whole of what the endpoint accepts for a team event now, minus the
+/// free-for-all block. Everything here is read back off the event, which is the
+/// rule this file lives by: a key the client cannot see is a key it overwrites
+/// with a guess.
 pub fn create_body(draft: &TourneyDraft) -> Value {
     let mut body = json!({
         "name": draft.name.trim(),
@@ -782,9 +902,69 @@ pub fn create_body(draft: &TourneyDraft) -> Value {
         "ratingType": draft.rating_kind.as_wire(),
         "signupMode": draft.signup_mode.as_wire(),
         "maxTeams": draft.max_teams,
+        "minTeams": draft.min_teams,
+        "veto": {
+            "enabled": draft.veto.enabled,
+            "mode": draft.veto.mode.as_wire(),
+        },
     });
+    // Only for a captains draft. The service stores `draftOrder` whatever the
+    // formation, and sending it from a form that never showed the choice would
+    // write a guess into an event that has no draft to order.
+    if draft.effective_formation() == Formation::Draft {
+        body["draftOrder"] = json!(if draft.draft_snakes {
+            "snake"
+        } else {
+            "linear"
+        });
+    }
+    // Unknown ids are ignored server-side, but an absent key is cleaner than a
+    // blank one: the field is optional and most events are not in a series.
+    if let Some(series) = draft.series_id.as_ref().filter(|id| !id.trim().is_empty()) {
+        body["seriesId"] = json!(series.trim());
+    }
+    if let Some(plan) = draft.plan {
+        body["plan"] = plan_body(plan);
+    }
     merge_shared(&mut body, draft);
     body
+}
+
+/// The best-of template, in the shape the service stores for this bracket type.
+fn plan_body(plan: MatchPlan) -> Value {
+    match plan {
+        MatchPlan::Single {
+            early,
+            semi,
+            final_bo,
+        } => json!({ "early": early, "semi": semi, "final": final_bo }),
+        MatchPlan::Double {
+            wb,
+            wb_final,
+            lb,
+            lb_final,
+            gf,
+            lb_handicap,
+        } => json!({
+            "wb": wb,
+            "wbFinal": wb_final,
+            "lb": lb,
+            "lbFinal": lb_final,
+            "gf": gf,
+            "lbHandicap": lb_handicap,
+        }),
+        MatchPlan::Swiss {
+            best_of,
+            final_match,
+            final_best_of,
+            fast,
+        } => json!({
+            "bo": best_of,
+            "final": final_match,
+            "finalBo": final_best_of,
+            "fast": fast,
+        }),
+    }
 }
 
 /// The body for `POST /api/t/{id}/edit_info`.
@@ -804,6 +984,31 @@ pub fn edit_info_body(draft: &TourneyDraft) -> Value {
 /// The fields creation and editing spell the same way.
 fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
     body["description"] = json!(draft.description.trim());
+    body["rewards"] = json!(draft.rewards.trim());
+    body["sponsors"] = json!(draft.sponsors.trim());
+    body["lobbyOptions"] = json!(draft.lobby_options.trim());
+    body["mods"] = json!(draft.mods.trim());
+    // Two keys for one value, and both are always sent: `cleanPrize` needs the
+    // pair to agree, and sending only the amount would take the currency from
+    // whatever is stored, which for a prize being cleared is the old one.
+    body["prizeCurrency"] = draft
+        .prize
+        .map_or(Value::Null, |prize| json!(prize.currency.as_wire()));
+    body["prizeAmount"] = draft.prize.map_or(Value::Null, |prize| {
+        // Whole units on the wire, which is what the form collects and what
+        // `cleanPrize` rounds back to cents anyway.
+        if prize.amount_cents % 100 == 0 {
+            json!(prize.amount_cents / 100)
+        } else {
+            json!(prize.amount_cents as f64 / 100.0)
+        }
+    });
+    body["streams"] = json!(draft
+        .streams
+        .iter()
+        .filter(|stream| !stream.url.trim().is_empty())
+        .map(|stream| json!({ "url": stream.url.trim(), "info": stream.info.trim() }))
+        .collect::<Vec<_>>());
     // Always off, and always sent. The client has no player reporting path at
     // all: `report_submit` was removed, and the organiser records every result.
     // The key has to be present to say so, because the service reads an absent
@@ -1201,11 +1406,56 @@ mod tests {
 
     /// A document shaped like `publicView`, with the conventions that matter:
     /// string ids, 0/1 flags, millisecond timestamps.
+    /// A full detail response.
+    ///
+    /// Built in two halves rather than one literal: `json!` is a single
+    /// recursive expansion and one object with every field of a tournament in
+    /// it reaches the macro's recursion limit.
     fn document() -> Value {
+        let mut document = core_document();
+        for (key, value) in [
+            (
+                "description",
+                json!(
+                    "## Rules
+- Best of three
+
+See the [rules](https://x.invalid/r)."
+                ),
+            ),
+            ("rewards", json!("**1st** an avatar")),
+            (
+                "sponsors",
+                json!("Powered by [Nobody](https://x.invalid/s)"),
+            ),
+            ("prize", json!({ "currency": "usd", "amount": 150 })),
+            (
+                "streams",
+                json!([
+                    { "url": "https://twitch.tv/faflive", "info": "Main stream" },
+                    { "url": "javascript:alert(1)", "info": "Refused" }
+                ]),
+            ),
+            ("lobbyOptions", json!("- Full share")),
+            ("mods", json!("No game mods")),
+            ("descImages", json!(["a1b2.png", "c3d4.png"])),
+            ("minTeams", json!(4)),
+            ("seeding", json!("random")),
+            (
+                "plan",
+                json!({ "wb": 3, "wbFinal": 5, "lb": 1, "lbFinal": 3, "gf": 7, "lbHandicap": 1 }),
+            ),
+            ("subs", json!(["p9", "p8"])),
+        ] {
+            document[key] = value;
+        }
+        document
+    }
+
+    fn core_document() -> Value {
         json!({
             "id": "e1a2b",
             "name": "Weekend Cup",
-            "description": "<p>Best of three</p>",
             "status": "signup",
             "competition": "team",
             "formation": "open",
@@ -1256,7 +1506,11 @@ mod tests {
         let event = parse_tourney(&document()).expect("a tournament");
         assert_eq!(event.id, "e1a2b");
         assert_eq!(event.name, "Weekend Cup");
-        assert_eq!(event.description, "Best of three", "markup is stripped");
+        assert!(
+            event.description.starts_with("## Rules"),
+            "markdown reaches the state as its source: {}",
+            event.description
+        );
         assert_eq!(event.status, TourneyStatus::Signup);
         assert_eq!(event.bracket_kind, BracketKind::Double);
         assert_eq!(event.team_size, 2);
@@ -1273,6 +1527,82 @@ mod tests {
         let event = parse_tourney(&document()).unwrap();
         assert_eq!(event.created_at, Some(1_785_000_000));
         assert_eq!(event.players[0].signed_at, Some(1_785_100_000));
+    }
+
+    #[test]
+    fn the_overview_fields_are_read() {
+        // Every one of these was sent with every answer and read by nothing,
+        // which is why the overview had a prize-money event with no prize on it.
+        let event = parse_tourney(&document()).unwrap();
+        assert_eq!(event.rewards, "**1st** an avatar");
+        assert!(event.sponsors.starts_with("Powered by"));
+        assert_eq!(event.lobby_options, "- Full share");
+        assert_eq!(event.mods, "No game mods");
+        assert_eq!(event.desc_images, vec!["a1b2.png", "c3d4.png"]);
+        assert_eq!(event.min_teams, 4);
+        assert_eq!(event.seeding, Seeding::Random);
+        assert_eq!(event.subs, vec!["p9".to_string(), "p8".to_string()]);
+    }
+
+    #[test]
+    fn a_prize_is_read_in_cents_and_case_folded() {
+        let event = parse_tourney(&document()).unwrap();
+        let prize = event.prize.expect("a prize");
+        assert_eq!(prize.currency, Currency::Usd, "sent lowercase here");
+        assert_eq!(prize.amount_cents, 15_000);
+
+        // The three spellings of "no prize" the service actually sends, all of
+        // which have to mean the same thing.
+        for empty in [
+            json!(null),
+            json!({ "currency": null, "amount": null }),
+            json!({ "currency": "USD", "amount": null }),
+        ] {
+            let mut without = document();
+            without["prize"] = empty;
+            assert_eq!(parse_tourney(&without).unwrap().prize, None);
+        }
+    }
+
+    #[test]
+    fn a_stream_that_is_not_http_never_reaches_the_state() {
+        // The service filters these on the way in, and this filters them again:
+        // the url ends up in `openUrl`, and the cheapest place to stop a
+        // `javascript:` one is before it is ever stored.
+        let event = parse_tourney(&document()).unwrap();
+        assert_eq!(event.streams.len(), 1);
+        assert_eq!(event.streams[0].url, "https://twitch.tv/faflive");
+        assert_eq!(event.streams[0].info, "Main stream");
+    }
+
+    #[test]
+    fn the_plan_is_read_in_the_shape_the_bracket_uses() {
+        let event = parse_tourney(&document()).unwrap();
+        assert_eq!(
+            event.plan,
+            Some(MatchPlan::Double {
+                wb: 3,
+                wb_final: 5,
+                lb: 1,
+                lb_final: 3,
+                gf: 7,
+                lb_handicap: true,
+            })
+        );
+
+        // The trap this guards: the service keeps whatever plan object was
+        // stored last, so an event switched to Swiss still carries the double
+        // one. Reading by key would answer with a plan the bracket cannot use.
+        let mut swiss = document();
+        swiss["bracketType"] = json!("swiss");
+        let event = parse_tourney(&swiss).unwrap();
+        assert!(matches!(event.plan, Some(MatchPlan::Swiss { .. })));
+
+        // A free-for-all has no bracket and therefore no plan, whatever is
+        // sitting in the field.
+        let mut ffa = document();
+        ffa["competition"] = json!("ffa");
+        assert_eq!(parse_tourney(&ffa).unwrap().plan, None);
     }
 
     #[test]

@@ -76,9 +76,18 @@ impl TourneyClient {
     }
 
     /// The URL for one API path, e.g. `t/e1a2b/signup`.
+    ///
+    /// A path that begins with `/` is taken from the root of the deployment
+    /// instead, which exactly one route needs: the session endpoint is
+    /// `/auth/faf/me` rather than `/api/auth/faf/me`, because it belongs to the
+    /// login flow rather than to the API.
     fn url(&self, path: &str) -> Result<url::Url, RequestError> {
         let base = self.config.api_base.trim_end_matches('/');
-        url::Url::parse(&format!("{base}/api/{path}"))
+        let full = match path.strip_prefix('/') {
+            Some(rooted) => format!("{base}/{rooted}"),
+            None => format!("{base}/api/{path}"),
+        };
+        url::Url::parse(&full)
             .map_err(|error| RequestError::unexpected(format!("invalid API base: {error}")))
     }
 
@@ -150,6 +159,12 @@ impl TourneyClient {
 
     async fn get(&self, path: &str, query: &[(&str, &str)]) -> Result<Value, RequestError> {
         self.send(reqwest::Method::GET, path, query, None).await
+    }
+
+    /// A write that is not addressed to any one tournament.
+    async fn post(&self, path: &str, body: Value) -> Result<Value, RequestError> {
+        self.send(reqwest::Method::POST, path, &[], Some(body))
+            .await
     }
 
     /// One write against a tournament. Every one of them is a `POST` to
@@ -225,9 +240,29 @@ fn error_detail(body: &str) -> Option<String> {
 
 #[async_trait]
 impl TourneyPort for TourneyClient {
+    fn asset_base(&self) -> String {
+        self.config.api_base.trim_end_matches('/').to_string()
+    }
+
     async fn hosting(&self) -> Result<HostingStatus, RequestError> {
         let document = self.get("host_status", &[]).await?;
         Ok(tourney::parse_hosting(&document))
+    }
+
+    async fn profile(&self) -> Result<String, RequestError> {
+        let document = self.get("/auth/faf/me", &[]).await?;
+        Ok(tourney::parse_profile(&document))
+    }
+
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
+        // The service answers with what it stored, which is not what was sent:
+        // it strips the characters it will not keep and cuts the rest at forty.
+        // Reading the answer back is how the field ends up showing the handle
+        // that other players will actually see.
+        let document = self
+            .post("my/profile", json!({ "discord": handle.trim() }))
+            .await?;
+        Ok(tourney::parse_discord(&document))
     }
 
     async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError> {

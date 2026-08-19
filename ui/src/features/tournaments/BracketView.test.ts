@@ -3,7 +3,7 @@
 // pure, and both are the part that used to be guessed at from column geometry.
 
 import { describe, expect, it } from "vitest";
-import { feedsForward, groupIntoSides } from "./BracketView";
+import { columnLayouts, feedsForward, groupIntoSides } from "./BracketView";
 import { match } from "./fixtures";
 
 /** A four-team double-elimination draw, as the server links it. */
@@ -98,5 +98,63 @@ describe("feedsForward", () => {
 
   it("is true for a single column, which has nothing to join to", () => {
     expect(feedsForward(groupIntoSides([match()])[0].columns)).toBe(true);
+  });
+});
+
+describe("columnLayouts", () => {
+  /** `count` matches in each round, linked forward, as one side. */
+  const side = (counts: number[]) => {
+    const matches = counts.flatMap((count, round) =>
+      Array.from({ length: count }, (_unused, index) =>
+        match({
+          id: `r${round}m${index}`,
+          round: round + 1,
+          index,
+          // Every match feeds *some* match in the next round; which one does not
+          // matter to the layout, only that the round progresses.
+          winnerTo:
+            round + 1 < counts.length
+              ? { matchId: `r${round + 1}m${Math.floor(index / 2)}`, slot: 1 }
+              : null,
+        }),
+      ),
+    );
+    return groupIntoSides(matches)[0].columns;
+  };
+
+  it("spaces a winners bracket by doubling, which is what halving looks like", () => {
+    expect(columnLayouts(side([8, 4, 2, 1])).map((held) => held.pitch)).toEqual([1, 2, 4, 8]);
+  });
+
+  it("does not double a losers bracket, whose minor rounds keep their count", () => {
+    // The bug this exists for. A losers round 2 takes the winners of losers
+    // round 1 *and* the losers of winners round 2, so it has as many matches as
+    // the round before it. Spacing it at twice the pitch scattered its cards
+    // down the column, nowhere near the ones they came from, and that is exactly
+    // what "round 2 suddenly has many more entries" looked like on screen.
+    expect(columnLayouts(side([4, 4, 2, 2, 1])).map((held) => held.pitch)).toEqual([
+      1, 1, 2, 2, 4,
+    ]);
+  });
+
+  it("draws a bracket where two became one and a straight run where they did not", () => {
+    expect(columnLayouts(side([4, 4, 2, 2, 1])).map((held) => held.link)).toEqual([
+      "none",
+      "straight",
+      "bracket",
+      "straight",
+      "bracket",
+    ]);
+  });
+
+  it("draws nothing at all where the format does not progress", () => {
+    // Swiss: everybody keeps playing, so the counts are equal but no match
+    // feeds another. `feedsForward` is false and no line may be drawn.
+    const swiss = groupIntoSides([
+      match({ id: "s1", bracket: "swiss", round: 1 }),
+      match({ id: "s2", bracket: "swiss", round: 2 }),
+    ])[0].columns;
+    expect(columnLayouts(swiss).map((held) => held.link)).toEqual(["none", "none"]);
+    expect(columnLayouts(swiss).map((held) => held.pitch)).toEqual([1, 1]);
   });
 });
