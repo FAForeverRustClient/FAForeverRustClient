@@ -662,7 +662,14 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
         .filter_map(|mod_res| {
             let (_, version_id) = rel_target(&mod_res.relationships, "latestVersion")?;
             let version = index.get(&("modVersion".to_string(), version_id))?;
-            let uploader = rel_target(&mod_res.relationships, "uploader")
+            let uploader_rel = rel_target(&mod_res.relationships, "uploader");
+            // The relationship's own id, so ownership does not depend on the
+            // `player` resource having been included: it is in the linkage
+            // either way.
+            let uploader_id = uploader_rel
+                .as_ref()
+                .and_then(|(_, id)| id.parse::<i32>().ok());
+            let uploader = uploader_rel
                 .and_then(|rel| find_rel_resource(doc, &index, Some(rel)))
                 .and_then(|player| player.attributes.get("login"))
                 .and_then(Value::as_str)
@@ -741,6 +748,7 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
                     .unwrap_or("")
                     .to_string(),
                 uploader,
+                uploader_id,
                 uid: version
                     .attributes
                     .get("uid")
@@ -1037,6 +1045,36 @@ mod tests {
     }
 
     #[test]
+    fn the_uploader_id_arrives_even_when_the_player_is_not_included() {
+        // It is in the relationship linkage rather than the included document,
+        // so "is this mine" does not depend on the include list.
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "mod",
+                "id": "3",
+                "attributes": { "displayName": "Total Mayhem", "author": "Someone Else" },
+                "relationships": {
+                    "latestVersion": { "data": { "type": "modVersion", "id": "9" } },
+                    "uploader": { "data": { "type": "player", "id": "4711" } },
+                },
+            }],
+            "included": [{
+                "type": "modVersion",
+                "id": "9",
+                "attributes": { "uid": "abc-123" },
+            }],
+        }))
+        .unwrap();
+
+        let mods = parse_vault_mods(&doc);
+        assert_eq!(mods[0].uploader_id, Some(4711));
+        assert_eq!(mods[0].uploader, "");
+        // And it is not the declared author, which anyone can write into
+        // `mod_info.lua`.
+        assert_eq!(mods[0].author, "Someone Else");
+    }
+
+    #[test]
     fn parses_vault_mods_resolving_version_through_included() {
         let doc: JsonApiDoc = serde_json::from_value(json!({
             "data": [
@@ -1093,6 +1131,11 @@ mod tests {
         assert_eq!(mods[0].version_id, 9);
         assert_eq!(mods[0].author, "Some Author");
         assert_eq!(mods[0].uploader, "VaultUploader");
+        assert_eq!(
+            mods[0].uploader_id,
+            Some(5),
+            "ownership is decided by the uploader's id, not their current login"
+        );
         assert_eq!(mods[0].uid, "dcd9a5e5-5444-4266-a016-ccbbff528268");
         assert_eq!(mods[0].version, "12");
         assert_eq!(mods[0].description, "Adds new units and experimentals.");

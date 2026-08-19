@@ -65,6 +65,7 @@ const INITIAL: AppState = {
     installed: [],
     installedStatus: { type: "idle" },
     installStatus: { type: "idle" },
+    visibilityStatus: { type: "idle" },
     matchmakerPools: {},
     matchmakerPoolsStatus: { type: "idle" },
   },

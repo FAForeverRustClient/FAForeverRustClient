@@ -28,6 +28,14 @@ pub struct VaultMap {
     /// `None` for maps without an uploader on record (mirrors `Map.author`
     /// being optional in the Python model).
     pub author: Option<String>,
+    /// The uploader's player id, for deciding whether this is the signed-in
+    /// player's own upload.
+    ///
+    /// By id rather than by login, which is what the Python client compares
+    /// (`int(item_data.author.xd) == player.id`) before it offers the hide
+    /// button: a login can be changed, and "is this mine" then silently stops
+    /// being true.
+    pub author_id: Option<i32>,
     /// The directory name this version installs as, e.g. `scmp_009.v0001`,
     /// the install/uninstall/"is this installed" key everywhere (mirrors
     /// `MapVersion.folder_name`).
@@ -41,6 +49,13 @@ pub struct VaultMap {
     pub games_played: i32,
     pub version_games_played: i32,
     pub ranked: bool,
+    /// Whether the author has withdrawn this version from the vault.
+    ///
+    /// Always `false` in an ordinary search, which filters hidden versions out
+    /// server side; only "my maps" asks for them, so only there is this ever
+    /// `true` (mirrors `MapVersion.hidden`, which both reference clients read
+    /// on the detail view).
+    pub hidden: bool,
     pub recommended: bool,
     /// Average community review score in tenths (for example, `43` = 4.3).
     pub rating_tenths: i32,
@@ -115,6 +130,34 @@ pub enum MapListStatus {
     },
 }
 
+/// Status of a hide/unhide action for one map version.
+///
+/// Its own status rather than a reuse of [`MapInstallStatus`]: this touches the
+/// vault, not the disk, and the two can be in flight at once.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum MapVisibilityStatus {
+    #[default]
+    Idle,
+    #[serde(rename_all = "camelCase")]
+    Working {
+        version_id: i32,
+    },
+    Failed {
+        reason: String,
+    },
+}
+
+impl MapVisibilityStatus {
+    /// The version a change is in flight for, if any.
+    pub fn working_on(&self) -> Option<i32> {
+        match self {
+            Self::Working { version_id } => Some(*version_id),
+            _ => None,
+        }
+    }
+}
+
 /// Status of an install/uninstall action for one map folder.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
@@ -150,6 +193,7 @@ pub struct MapsState {
     pub installed: Vec<InstalledMap>,
     pub installed_status: MapListStatus,
     pub install_status: MapInstallStatus,
+    pub visibility_status: MapVisibilityStatus,
     pub matchmaker_pools: BTreeMap<String, Vec<MatchmakerMapPool>>,
     pub matchmaker_pools_status: MapListStatus,
 }
@@ -215,6 +259,22 @@ pub enum MapsEvent {
     UninstallFailed {
         reason: String,
     },
+    #[serde(rename_all = "camelCase")]
+    MapVisibilityChanging {
+        version_id: i32,
+    },
+    /// The vault accepted the change. Carries the version and its new state so
+    /// the reducer can correct the lists in place: re-running the search would
+    /// move the page under the user, and for a freshly hidden map the entry
+    /// would vanish from any view but "my maps".
+    #[serde(rename_all = "camelCase")]
+    MapVisibilityChanged {
+        version_id: i32,
+        hidden: bool,
+    },
+    MapVisibilityFailed {
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -238,6 +298,16 @@ pub enum MapsCommand {
     /// Delete a map folder (mirrors `MapsManagerDialog::delete_map`).
     #[serde(rename_all = "camelCase")]
     UninstallMap { folder_name: String },
+    /// Withdraw a map version from the vault, or put it back (mirrors
+    /// `MapService.hideMapVersion`, which only ever hides).
+    ///
+    /// Both reference clients offer this on your own uploads only, and neither
+    /// offers the way back: the API lets an author set `hidden` to `true` and
+    /// nothing else, so `hidden: false` needs a map administrator. The command
+    /// carries the flag rather than assuming, because the client is not the
+    /// authority on that: the server is.
+    #[serde(rename_all = "camelCase")]
+    SetMapVersionHidden { version_id: i32, hidden: bool },
 }
 
 pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
@@ -247,7 +317,14 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             state.vault = maps.clone();
             state.vault_status = MapListStatus::Ready;
         }
-        MapsEvent::VaultSearching => state.browse_status = MapListStatus::Loading,
+        MapsEvent::VaultSearching => {
+            state.browse_status = MapListStatus::Loading;
+            // A refusal belongs to the page it happened on. Without this it
+            // would sit above every later search for the rest of the session.
+            if matches!(state.visibility_status, MapVisibilityStatus::Failed { .. }) {
+                state.visibility_status = MapVisibilityStatus::Idle;
+            }
+        }
         MapsEvent::VaultSearched {
             maps,
             query,
@@ -317,6 +394,30 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
                 reason: reason.clone(),
             }
         }
+        MapsEvent::MapVisibilityChanging { version_id } => {
+            state.visibility_status = MapVisibilityStatus::Working {
+                version_id: *version_id,
+            }
+        }
+        MapsEvent::MapVisibilityChanged { version_id, hidden } => {
+            state.visibility_status = MapVisibilityStatus::Idle;
+            // Both lists: `browse` is what the tab shows, `vault` is the
+            // folder-name index nine other features read, and a stale `hidden`
+            // there would outlive the page the change was made on.
+            for map in state
+                .browse
+                .iter_mut()
+                .chain(state.vault.iter_mut())
+                .filter(|map| map.version_id == *version_id)
+            {
+                map.hidden = *hidden;
+            }
+        }
+        MapsEvent::MapVisibilityFailed { reason } => {
+            state.visibility_status = MapVisibilityStatus::Failed {
+                reason: reason.clone(),
+            }
+        }
     }
 }
 
@@ -330,6 +431,7 @@ mod tests {
             version_id: 1,
             display_name: "Seton's Clutch".into(),
             author: Some("Rackover".into()),
+            author_id: Some(4711),
             folder_name: folder_name.into(),
             version: "1".into(),
             description: "A classic team map.".into(),
@@ -340,6 +442,7 @@ mod tests {
             games_played: 42,
             version_games_played: 40,
             ranked: true,
+            hidden: false,
             recommended: false,
             rating_tenths: 45,
             reviews: 12,
@@ -394,6 +497,89 @@ mod tests {
                 reason: "offline".into()
             }
         );
+    }
+
+    #[test]
+    fn hiding_a_version_updates_both_the_page_and_the_lookup_index() {
+        // The index is what nine other features resolve a map through, so
+        // leaving it stale there would outlive the page this was done on.
+        let mut s = MapsState {
+            browse: vec![vault_map("scmp_009.v0001")],
+            vault: vec![vault_map("scmp_009.v0001")],
+            ..MapsState::default()
+        };
+
+        reduce(&mut s, &MapsEvent::MapVisibilityChanging { version_id: 1 });
+        assert_eq!(
+            s.visibility_status,
+            MapVisibilityStatus::Working { version_id: 1 }
+        );
+        assert_eq!(s.visibility_status.working_on(), Some(1));
+
+        reduce(
+            &mut s,
+            &MapsEvent::MapVisibilityChanged {
+                version_id: 1,
+                hidden: true,
+            },
+        );
+        assert_eq!(s.visibility_status, MapVisibilityStatus::Idle);
+        assert!(s.browse[0].hidden);
+        assert!(s.vault[0].hidden, "the lookup index is corrected too");
+
+        // And back again, so the state carries no assumption that this is a
+        // one-way door: the server decides that, not the reducer.
+        reduce(
+            &mut s,
+            &MapsEvent::MapVisibilityChanged {
+                version_id: 1,
+                hidden: false,
+            },
+        );
+        assert!(!s.browse[0].hidden);
+    }
+
+    #[test]
+    fn a_visibility_change_leaves_other_versions_alone() {
+        let other = VaultMap {
+            version_id: 2,
+            ..vault_map("open_palms.v0001")
+        };
+        let mut s = MapsState {
+            browse: vec![vault_map("scmp_009.v0001"), other],
+            ..MapsState::default()
+        };
+
+        reduce(
+            &mut s,
+            &MapsEvent::MapVisibilityChanged {
+                version_id: 2,
+                hidden: true,
+            },
+        );
+        assert!(!s.browse[0].hidden);
+        assert!(s.browse[1].hidden);
+    }
+
+    #[test]
+    fn a_refused_visibility_change_keeps_the_servers_wording() {
+        // The one refusal an author will actually meet: unhiding is a map
+        // administrator's action, so the reason has to survive to the dialog.
+        let mut s = MapsState::default();
+        reduce(&mut s, &MapsEvent::MapVisibilityChanging { version_id: 7 });
+        reduce(
+            &mut s,
+            &MapsEvent::MapVisibilityFailed {
+                reason: "only a map administrator can unhide a version".into(),
+            },
+        );
+        assert_eq!(
+            s.visibility_status,
+            MapVisibilityStatus::Failed {
+                reason: "only a map administrator can unhide a version".into()
+            }
+        );
+        assert_eq!(s.visibility_status.working_on(), None);
     }
 
     #[test]

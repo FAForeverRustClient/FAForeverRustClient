@@ -10,6 +10,8 @@ import type { MapVaultQuery, ModVaultQuery } from "../ipc/bindings";
 export const EMPTY_MAP_QUERY: MapVaultQuery = {
   search: "",
   author: "",
+  authorId: null,
+  includeHidden: false,
   ranked: null,
   recommended: false,
   minRatingTenths: null,
@@ -29,6 +31,7 @@ export const EMPTY_MAP_QUERY: MapVaultQuery = {
 export const EMPTY_MOD_QUERY: ModVaultQuery = {
   search: "",
   author: "",
+  uploaderId: null,
   modType: "",
   ranked: null,
   recommended: false,

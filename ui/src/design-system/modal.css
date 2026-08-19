@@ -60,6 +60,13 @@
   line-height: 1.5;
 }
 
+/* The part of a confirmation that must not read as body copy: what the user
+   cannot undo afterwards. */
+.confirm-dialog-warning {
+  color: var(--color-warn);
+  font-weight: 600;
+}
+
 .confirm-dialog-actions {
   display: flex;
   justify-content: flex-end;

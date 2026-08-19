@@ -50,4 +50,11 @@ pub trait MapsPort: Send + Sync {
     /// Delete a map folder (mirrors `MapsManagerDialog::delete_map`). Returns
     /// the refreshed installed list.
     async fn uninstall_map(&self, folder_name: String) -> Result<Vec<InstalledMap>, String>;
+
+    /// Withdraw a map version from the vault, or put it back (mirrors
+    /// `MapService.hideMapVersion`, a `PATCH` of the version's `hidden` flag).
+    ///
+    /// The server authorises this, and it does not authorise the two directions
+    /// alike: an author may hide, and only a map administrator may unhide.
+    async fn set_map_version_hidden(&self, version_id: i32, hidden: bool) -> Result<(), String>;
 }

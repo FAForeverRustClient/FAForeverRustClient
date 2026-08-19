@@ -94,6 +94,22 @@ describe("browsing preferences", () => {
     expect(normalized.leaderboardRatingColumns).toEqual(["rating", "mean"]);
   });
 
+  it("keeps the my-maps preset, and still rejects anything unknown", () => {
+    // The bug this pins: "mine" was missing from the whitelist, so every round
+    // trip folded it to "recommended" and the tab snapped back at once.
+    const withPreset = (mapVaultPreset: string) =>
+      normalizeBrowsingPreferences({ ...DEFAULT_BROWSING_PREFERENCES, mapVaultPreset })
+        .mapVaultPreset;
+    expect(withPreset("  MINE  ")).toBe("mine");
+    expect(withPreset("not-a-preset")).toBe("recommended");
+
+    const withModPreset = (modVaultPreset: string) =>
+      normalizeBrowsingPreferences({ ...DEFAULT_BROWSING_PREFERENCES, modVaultPreset })
+        .modVaultPreset;
+    expect(withModPreset("Mine")).toBe("mine");
+    expect(withModPreset("not-a-preset")).toBe("recommended");
+  });
+
   it("merges all four legacy keys and rejects malformed values", () => {
     const storage = memoryStorage({
       [LEGACY_CUSTOM_GAMES_VIEW_KEY]: "list",

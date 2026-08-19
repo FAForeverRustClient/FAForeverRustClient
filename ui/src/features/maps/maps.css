@@ -167,6 +167,14 @@
   border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
 
+/* Only reachable through "my maps": a withdrawn version is invisible to
+   everyone else, so this pill is the author's own view of their upload. */
+.map-vault-type.is-hidden {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
+}
+
 .map-vault-fact {
   display: inline-flex;
   min-width: 0;
@@ -280,14 +288,19 @@
 }
 
 .map-vault-uninstall,
-.map-vault-uninstall-confirm {
+.map-vault-uninstall-confirm,
+/* Withdrawing a version is the destructive one of the pair, and the one the
+   author cannot undo: it reads like uninstalling, not like a toggle. */
+.map-vault-hide {
   color: var(--color-error);
 }
 
 .map-vault-uninstall:hover,
 .map-vault-uninstall:focus-visible,
 .map-vault-uninstall-confirm:hover,
-.map-vault-uninstall-confirm:focus-visible {
+.map-vault-uninstall-confirm:focus-visible,
+.map-vault-hide:hover,
+.map-vault-hide:focus-visible {
   border-color: var(--color-error);
 }
 

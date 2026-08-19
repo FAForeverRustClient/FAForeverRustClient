@@ -2300,6 +2300,24 @@ export type MapVaultQuery = {
 	/**  Free text, matched against the map's display name. */
 	search: string,
 	author: string,
+	/**
+	 *  The author's player id, for the "my maps" category.
+	 *
+	 *  Separate from `author` on purpose: that one is a name glob a user types,
+	 *  this one is an exact identity, and a login can be changed. It is the
+	 *  filter Java's `MapService.getOwnedMapsWithPageCount` uses, which spells
+	 *  it `map.author.id` because it queries from the version collection.
+	 */
+	authorId: number | null,
+	/**
+	 *  Include versions the author has hidden.
+	 *
+	 *  Off everywhere except "my maps": hidden versions are withdrawn from the
+	 *  vault, and an author looking at their own uploads is the one person who
+	 *  still needs to see them (both reference clients hide them
+	 *  unconditionally, and so cannot show an author what they withdrew).
+	 */
+	includeHidden: boolean,
 	/**  `None` = either; `Some(true)` = ranked only. */
 	ranked: boolean | null,
 	/**  The "recommended" preset, which the API models as a flag on the map. */
@@ -2321,6 +2339,18 @@ export type MapVaultQuery = {
 	page: number,
 	pageSize: number,
 };
+
+/**
+ *  Status of a hide/unhide action for one map version.
+ *
+ *  Its own status rather than a reuse of [`MapInstallStatus`]: this touches the
+ *  vault, not the disk, and the two can be in flight at once.
+ */
+export type MapVisibilityStatus = { type: "idle" } | { type: "working"; payload: {
+	versionId: number,
+} } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 export type MapsCommand =
 /**  Fetch the whole catalogue once, as the folder-name lookup index. */
@@ -2344,6 +2374,20 @@ export type MapsCommand =
 /**  Delete a map folder (mirrors `MapsManagerDialog::delete_map`). */
 { type: "uninstallMap"; payload: {
 	folderName: string,
+} } |
+/**
+ *  Withdraw a map version from the vault, or put it back (mirrors
+ *  `MapService.hideMapVersion`, which only ever hides).
+ *
+ *  Both reference clients offer this on your own uploads only, and neither
+ *  offers the way back: the API lets an author set `hidden` to `true` and
+ *  nothing else, so `hidden: false` needs a map administrator. The command
+ *  carries the flag rather than assuming, because the client is not the
+ *  authority on that: the server is.
+ */
+{ type: "setMapVersionHidden"; payload: {
+	versionId: number,
+	hidden: boolean,
 } };
 
 export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
@@ -2387,6 +2431,20 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
 	installed: InstalledMap[],
 } } | { type: "uninstallFailed"; payload: {
 	reason: string,
+} } | { type: "mapVisibilityChanging"; payload: {
+	versionId: number,
+} } |
+/**
+ *  The vault accepted the change. Carries the version and its new state so
+ *  the reducer can correct the lists in place: re-running the search would
+ *  move the page under the user, and for a freshly hidden map the entry
+ *  would vanish from any view but "my maps".
+ */
+{ type: "mapVisibilityChanged"; payload: {
+	versionId: number,
+	hidden: boolean,
+} } | { type: "mapVisibilityFailed"; payload: {
+	reason: string,
 } };
 
 export type MapsState = {
@@ -2411,6 +2469,7 @@ export type MapsState = {
 	installed: InstalledMap[],
 	installedStatus: MapListStatus,
 	installStatus: MapInstallStatus,
+	visibilityStatus: MapVisibilityStatus,
 	matchmakerPools: { [key in string]: MatchmakerMapPool[] },
 	matchmakerPoolsStatus: MapListStatus,
 };
@@ -2660,6 +2719,16 @@ export type ModVaultQuery = {
 	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
 	 */
 	author: string,
+	/**
+	 *  The uploader's player id, for the "my mods" category.
+	 *
+	 *  Note which of the two this is: `author` above is free text the mod's own
+	 *  `mod_info.lua` declares and anybody can write, while `uploader` is the
+	 *  account that pushed it and is what the API treats as the owner
+	 *  (`Mod.getEntityOwner` returns `uploader`). Only the latter answers "is
+	 *  this mine".
+	 */
+	uploaderId: number | null,
 	/**  `ui` or `sim`; empty for either. */
 	modType: string,
 	ranked: boolean | null,
@@ -5765,6 +5834,16 @@ export type VaultMap = {
 	 */
 	author: string | null,
 	/**
+	 *  The uploader's player id, for deciding whether this is the signed-in
+	 *  player's own upload.
+	 *
+	 *  By id rather than by login, which is what the Python client compares
+	 *  (`int(item_data.author.xd) == player.id`) before it offers the hide
+	 *  button: a login can be changed, and "is this mine" then silently stops
+	 *  being true.
+	 */
+	authorId: number | null,
+	/**
 	 *  The directory name this version installs as, e.g. `scmp_009.v0001`,
 	 *  the install/uninstall/"is this installed" key everywhere (mirrors
 	 *  `MapVersion.folder_name`).
@@ -5779,6 +5858,15 @@ export type VaultMap = {
 	gamesPlayed: number,
 	versionGamesPlayed: number,
 	ranked: boolean,
+	/**
+	 *  Whether the author has withdrawn this version from the vault.
+	 *
+	 *  Always `false` in an ordinary search, which filters hidden versions out
+	 *  server side; only "my maps" asks for them, so only there is this ever
+	 *  `true` (mirrors `MapVersion.hidden`, which both reference clients read
+	 *  on the detail view).
+	 */
+	hidden: boolean,
 	recommended: boolean,
 	/**  Average community review score in tenths (for example, `43` = 4.3). */
 	ratingTenths: number,
@@ -5806,6 +5894,16 @@ export type VaultMod = {
 	 */
 	author: string,
 	uploader: string,
+	/**
+	 *  The uploader's player id, for deciding whether this is the signed-in
+	 *  player's own upload.
+	 *
+	 *  The uploader rather than `author`, because only this one is evidence:
+	 *  `author` is free text the mod's `mod_info.lua` declares, while the API
+	 *  treats `uploader` as the owner (`Mod.getEntityOwner`). By id rather than
+	 *  by login, because a login can be changed.
+	 */
+	uploaderId: number | null,
 	/**
 	 *  `latestVersion.uid`: the stable id matched against locally
 	 *  installed mods and `game.prefs`'s `active_mods` table. Distinct

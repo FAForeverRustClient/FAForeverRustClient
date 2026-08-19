@@ -43,6 +43,14 @@ pub struct VaultMod {
     /// relationship): confirmed against the Java client's `Mod.author`.
     pub author: String,
     pub uploader: String,
+    /// The uploader's player id, for deciding whether this is the signed-in
+    /// player's own upload.
+    ///
+    /// The uploader rather than `author`, because only this one is evidence:
+    /// `author` is free text the mod's `mod_info.lua` declares, while the API
+    /// treats `uploader` as the owner (`Mod.getEntityOwner`). By id rather than
+    /// by login, because a login can be changed.
+    pub uploader_id: Option<i32>,
     /// `latestVersion.uid`: the stable id matched against locally
     /// installed mods and `game.prefs`'s `active_mods` table. Distinct
     /// from the numeric JSON:API resource `id`.
@@ -324,6 +332,7 @@ mod tests {
             display_name: "Total Mayhem".into(),
             author: "Some Author".into(),
             uploader: "Uploader".into(),
+            uploader_id: Some(4711),
             uid: uid.into(),
             version: "12".into(),
             description: "Adds new units and experimentals.".into(),

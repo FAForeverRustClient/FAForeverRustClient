@@ -86,6 +86,20 @@ pub struct MapVaultQuery {
     /// Free text, matched against the map's display name.
     pub search: String,
     pub author: String,
+    /// The author's player id, for the "my maps" category.
+    ///
+    /// Separate from `author` on purpose: that one is a name glob a user types,
+    /// this one is an exact identity, and a login can be changed. It is the
+    /// filter Java's `MapService.getOwnedMapsWithPageCount` uses, which spells
+    /// it `map.author.id` because it queries from the version collection.
+    pub author_id: Option<i32>,
+    /// Include versions the author has hidden.
+    ///
+    /// Off everywhere except "my maps": hidden versions are withdrawn from the
+    /// vault, and an author looking at their own uploads is the one person who
+    /// still needs to see them (both reference clients hide them
+    /// unconditionally, and so cannot show an author what they withdrew).
+    pub include_hidden: bool,
     /// `None` = either; `Some(true)` = ranked only.
     pub ranked: Option<bool>,
     /// The "recommended" preset, which the API models as a flag on the map.
@@ -113,6 +127,8 @@ impl Default for MapVaultQuery {
         Self {
             search: String::new(),
             author: String::new(),
+            author_id: None,
+            include_hidden: false,
             ranked: None,
             recommended: false,
             min_rating_tenths: None,
@@ -139,6 +155,14 @@ pub struct ModVaultQuery {
     /// Matched against the mod's author, which on this endpoint is a plain
     /// string field rather than a related player (`MOD_PROPERTY_MAPPING`).
     pub author: String,
+    /// The uploader's player id, for the "my mods" category.
+    ///
+    /// Note which of the two this is: `author` above is free text the mod's own
+    /// `mod_info.lua` declares and anybody can write, while `uploader` is the
+    /// account that pushed it and is what the API treats as the owner
+    /// (`Mod.getEntityOwner` returns `uploader`). Only the latter answers "is
+    /// this mine".
+    pub uploader_id: Option<i32>,
     /// `ui` or `sim`; empty for either.
     pub mod_type: String,
     pub ranked: Option<bool>,
@@ -160,6 +184,7 @@ impl Default for ModVaultQuery {
         Self {
             search: String::new(),
             author: String::new(),
+            uploader_id: None,
             mod_type: String::new(),
             ranked: None,
             recommended: false,
@@ -192,11 +217,14 @@ impl MapVaultQuery {
 
     /// The RSQL `filter`, or `None` when nothing narrows the search.
     pub fn build_filter(&self) -> Option<String> {
-        let mut clauses = vec![
-            // Hidden versions are never browsable, which is why this is not
-            // conditional: it is the same clause the catalogue crawl uses.
-            "latestVersion.hidden=='false'".to_string(),
-        ];
+        let mut clauses = Vec::new();
+        // Hidden versions are withdrawn from the vault, so this is the default
+        // rather than a filter the user sets: it is the same clause the
+        // catalogue crawl uses. `include_hidden` lifts it for "my maps", the
+        // one view whose whole point is what the author themselves uploaded.
+        if !self.include_hidden {
+            clauses.push("latestVersion.hidden=='false'".to_string());
+        }
         if self.recommended {
             clauses.push(r#"recommended=="true""#.to_string());
         }
@@ -205,6 +233,9 @@ impl MapVaultQuery {
         }
         if !self.author.is_empty() {
             clauses.push(format!(r#"author.login=="{}""#, glob(&self.author)));
+        }
+        if let Some(author_id) = self.author_id {
+            clauses.push(format!(r#"author.id=="{author_id}""#));
         }
         if let Some(ranked) = self.ranked {
             clauses.push(format!(r#"latestVersion.ranked=="{ranked}""#));
@@ -233,7 +264,10 @@ impl MapVaultQuery {
             &self.after,
             &self.before,
         );
-        Some(clauses.join(";"))
+        // Empty only when `include_hidden` removed the one unconditional
+        // clause and nothing else narrows the search. An empty `filter=` is
+        // not the same as no filter: the API rejects it.
+        (!clauses.is_empty()).then(|| clauses.join(";"))
     }
 }
 
@@ -252,6 +286,9 @@ impl ModVaultQuery {
         }
         if !self.author.is_empty() {
             clauses.push(format!(r#"author=="{}""#, glob(&self.author)));
+        }
+        if let Some(uploader_id) = self.uploader_id {
+            clauses.push(format!(r#"uploader.id=="{uploader_id}""#));
         }
         if !self.mod_type.is_empty() {
             // The API spells these upper case (`ModVaultController` filters
@@ -357,6 +394,31 @@ mod tests {
     }
 
     #[test]
+    fn my_maps_asks_for_one_authors_uploads_including_the_hidden_ones() {
+        // Java's own-maps category filters `map.author.id`; it queries from the
+        // version collection, so the path is one hop longer there than here.
+        // The hidden clause is dropped, which Java cannot do: its global filter
+        // means an author never sees what they withdrew.
+        let query = MapVaultQuery {
+            author_id: Some(4711),
+            include_hidden: true,
+            ..MapVaultQuery::default()
+        };
+        assert_eq!(query.build_filter().unwrap(), r#"author.id=="4711""#);
+    }
+
+    #[test]
+    fn an_empty_filter_is_left_off_rather_than_sent_blank() {
+        // `filter=` with nothing after it is rejected, and dropping the hidden
+        // clause is the one way to reach that.
+        let query = MapVaultQuery {
+            include_hidden: true,
+            ..MapVaultQuery::default()
+        };
+        assert_eq!(query.build_filter(), None);
+    }
+
+    #[test]
     fn map_filters_use_the_java_clients_property_names() {
         let query = MapVaultQuery {
             search: "seton".into(),
@@ -435,6 +497,23 @@ mod tests {
         };
         let filter = query.build_filter().unwrap();
         assert!(filter.contains(r#"displayName=="*ab==c*""#), "{filter}");
+    }
+
+    #[test]
+    fn my_mods_filters_on_the_uploader_rather_than_the_declared_author() {
+        // `author` is free text out of the mod's own `mod_info.lua`, so it is
+        // not evidence of ownership; `uploader` is the account that pushed it,
+        // and is what the API calls the owner. The two are filtered separately
+        // and can both be set.
+        let query = ModVaultQuery {
+            uploader_id: Some(4711),
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert!(filter.contains(r#"uploader.id=="4711""#), "{filter}");
+        // Withdrawn versions stay out: unlike maps, nothing here can put one
+        // back, so showing them would only be a dead end.
+        assert!(filter.contains("latestVersion.hidden=='false'"), "{filter}");
     }
 
     #[test]

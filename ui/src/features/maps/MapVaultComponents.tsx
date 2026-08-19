@@ -153,6 +153,13 @@ export function MapCard({
           </small>
         </span>
         <span className="map-vault-card-facts">
+          {/* Only ever set in "my maps": every other search filters withdrawn
+              versions out server side. */}
+          {map.hidden && (
+            <span className="map-vault-type is-hidden" title={t("maps.vault.hiddenTitle")}>
+              {t("maps.vault.hidden")}
+            </span>
+          )}
           <span className={map.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
             {t(map.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
           </span>
@@ -199,8 +206,12 @@ export function MapDetailPanel({
   installed,
   busy,
   favorite,
+  mine,
+  visibilityBusy,
   onInstall,
   onUninstall,
+  onHide,
+  onUnhide,
   onPreview,
   onToggleFavorite,
 }: {
@@ -208,8 +219,13 @@ export function MapDetailPanel({
   installed: boolean;
   busy: boolean;
   favorite: boolean;
+  /** Whether the signed-in player uploaded this map, by author id. */
+  mine: boolean;
+  visibilityBusy: boolean;
   onInstall: () => void;
   onUninstall: () => void;
+  onHide: () => void;
+  onUnhide: () => void;
   onPreview: () => void;
   onToggleFavorite: () => void;
 }) {
@@ -272,6 +288,16 @@ export function MapDetailPanel({
             <span className="vault-prop-label">{t("maps.vault.uploaded")}</span>
             <span className="vault-prop-value">{formatShortDate(map.createdAt)}</span>
           </div>
+          {/* Shown to the author only, the way both reference clients do it:
+              to anyone else every listed version is visible by definition. */}
+          {mine && (
+            <div className="vault-prop-row">
+              <span className="vault-prop-label">{t("maps.vault.inVault")}</span>
+              <span className="vault-prop-value">
+                {t(map.hidden ? "maps.vault.withdrawn" : "maps.vault.listed")}
+              </span>
+            </div>
+          )}
         </div>
 
         <section className="vault-detail-description map-vault-description">
@@ -295,6 +321,27 @@ export function MapDetailPanel({
           </div>
 
           <div className="vault-detail-actions-right">
+            {mine && (
+              map.hidden ? (
+                <Button
+                  className="map-vault-unhide"
+                  disabled={visibilityBusy}
+                  title={t("maps.vault.unhideTitle")}
+                  onClick={onUnhide}
+                >
+                  {t(visibilityBusy ? "maps.vault.visibilityWorking" : "maps.vault.unhide")}
+                </Button>
+              ) : (
+                <Button
+                  className="map-vault-hide"
+                  disabled={visibilityBusy}
+                  title={t("maps.vault.hideTitle")}
+                  onClick={onHide}
+                >
+                  {t(visibilityBusy ? "maps.vault.visibilityWorking" : "maps.vault.hide")}
+                </Button>
+              )
+            )}
             {removable ? (
               <Button className="map-vault-uninstall" disabled={busy} onClick={onUninstall}>
                 {t("maps.vault.uninstall")}
@@ -314,6 +361,40 @@ export function MapDetailPanel({
         </div>
       </div>
     </aside>
+  );
+}
+
+/**
+ * Confirms withdrawing a version, and says up front that it is a one-way door.
+ *
+ * The Python client's dialog carries the same warning in the same place, for the
+ * same reason: FAF's API lets the author set `hidden` to `true` and only a map
+ * administrator set it back, so this is the last moment the warning is useful.
+ */
+export function MapHideDialog({
+  mapName,
+  onCancel,
+  onConfirm,
+}: {
+  mapName: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useLocale();
+  return (
+    <Modal className="confirm-modal" onClose={onCancel}>
+      <div className="confirm-dialog-content">
+        <h2>{t("maps.vault.hideTitle")}</h2>
+        <p>{t("maps.vault.hideBody", { map: mapName })}</p>
+        <p className="confirm-dialog-warning">{t("maps.vault.hideWarning")}</p>
+        <div className="confirm-dialog-actions">
+          <Button onClick={onCancel}>{t("maps.vault.cancel")}</Button>
+          <Button className="btn-danger" onClick={onConfirm}>
+            {t("maps.vault.hideConfirm")}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

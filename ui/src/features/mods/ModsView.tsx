@@ -42,12 +42,14 @@ type ModSort = "rating" | "newest" | "updated" | "name";
 type ModTypeFilter = "all" | "ui" | "sim";
 type RankedFilter = "all" | "ranked" | "unranked";
 type InstallFilter = "all" | "installed" | "available" | "updates";
-type ModPreset = "recommended" | "rating" | "ui" | "newest" | "all";
+type ModPreset = "recommended" | "mine" | "rating" | "ui" | "newest" | "all";
 type DateField = "updated" | "uploaded";
 
 const PAGE_SIZE = 36;
 const MOD_PRESETS: Array<[ModPreset, MessageKey]> = [
   ["recommended", "mods.view.preset.recommended"],
+  // Only once there is an id to filter on: see `modVaultQuery`.
+  ["mine", "mods.view.preset.mine"],
   ["rating", "mods.view.preset.rating"],
   ["ui", "mods.view.preset.ui"],
   ["newest", "mods.view.preset.newest"],
@@ -77,7 +79,12 @@ interface ModFilterState {
 /**
  * The tab.s filter state as the API query it stands for. See `MapsView`.
  */
-function modVaultQuery(applied: ModFilterState, preset: ModPreset, page: number): ModVaultQuery {
+function modVaultQuery(
+  applied: ModFilterState,
+  preset: ModPreset,
+  page: number,
+  playerId: number | null,
+): ModVaultQuery {
   const sortBy: ModVaultQuery["sortBy"] = applied.sort === "newest" ? "newest"
     : applied.sort === "updated" ? "updated"
       : applied.sort === "name" ? "name"
@@ -88,6 +95,11 @@ function modVaultQuery(applied: ModFilterState, preset: ModPreset, page: number)
     ...EMPTY_MOD_QUERY,
     search: applied.search.trim(),
     author: applied.creator.trim(),
+    // The uploader, not the declared author: see `ModVaultQuery::uploader_id`.
+    // Unlike the map vault this asks for no hidden versions, because nothing
+    // here could put one back (`ModVersion.hidden` is an administrator's field
+    // alone), so listing them would only be a dead end.
+    uploaderId: preset === "mine" && playerId !== null ? playerId : null,
     modType,
     ranked: applied.ranked === "all" ? null : applied.ranked === "ranked",
     recommended: preset === "recommended",
@@ -115,9 +127,14 @@ function VaultView({ busy }: { busy: boolean }) {
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const browsing = useAppStore((state) => state.state.settings.browsing);
-  const preset = (browsing.modVaultPreset as ModPreset) || "recommended";
+  // Who "my mods" is about. Null until login, which is why the preset is not
+  // offered before then: without an id the query would silently widen to the
+  // whole vault.
+  const playerId = useAppStore((state) => state.state.auth.player?.id ?? null);
+  const storedPreset = (browsing.modVaultPreset as ModPreset) || "recommended";
+  const preset: ModPreset = storedPreset === "mine" && playerId === null ? "recommended" : storedPreset;
   const initialSort: ModSort = (() => {
-    if (preset === "newest") return "newest";
+    if (preset === "newest" || preset === "mine") return "newest";
     if (preset === "all") return "name";
     return "rating";
   })();
@@ -161,7 +178,9 @@ function VaultView({ busy }: { busy: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (preset === "newest") {
+    // "My mods" has no ranking of its own worth defaulting to, and newest
+    // first is what an uploader wants: the release they just pushed.
+    if (preset === "newest" || preset === "mine") {
       setSort("newest");
       setApplied((prev) => ({ ...prev, sort: "newest" }));
     } else if (preset === "all") {
@@ -193,7 +212,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const choosePreset = (next: ModPreset) => {
     let nextSort: ModSort = sort;
     if (next === "recommended" || next === "rating" || next === "ui") nextSort = "rating";
-    if (next === "newest") nextSort = "newest";
+    if (next === "newest" || next === "mine") nextSort = "newest";
     if (next === "all") nextSort = "name";
     setSort(nextSort);
     setApplied((prev) => ({ ...prev, sort: nextSort }));
@@ -236,7 +255,10 @@ function VaultView({ busy }: { busy: boolean }) {
 
   // Server-side search, as in both reference clients: the filters go out as a
   // query and one page comes back.
-  const query = useMemo(() => modVaultQuery(applied, preset, page), [applied, preset, page]);
+  const query = useMemo(
+    () => modVaultQuery(applied, preset, page, playerId),
+    [applied, preset, page, playerId],
+  );
 
   useEffect(() => {
     ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } });
@@ -272,8 +294,10 @@ function VaultView({ busy }: { busy: boolean }) {
         }}
         secondary={(
           <>
-            {MOD_PRESETS.map(([key, label]) => (
-              <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)}>{t(label)}</Button>
+            {MOD_PRESETS.filter(([key]) => key !== "mine" || playerId !== null).map(([key, label]) => (
+              <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)} title={key === "mine" ? t("mods.view.preset.mineTitle") : undefined}>
+                {key === "mine" && <Icon name="mods" size={14} />} {t(label)}
+              </Button>
             ))}
             <span className="spacer" />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
@@ -347,12 +371,24 @@ function VaultView({ busy }: { busy: boolean }) {
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("mods.view.detectionUnavailable")}</p>}
       {browseStatus.type === "ready" && pageMods.length === 0 ? (
-        <EmptyState
-          bordered
-          icon={vault.length === 0 ? "mods" : "search"}
-          title={t(vault.length === 0 ? "mods.view.emptyVault" : "mods.view.noMatch")}
-          hint={t(vault.length === 0 ? "mods.view.emptyVaultHint" : "mods.view.noMatchHint")}
-        />
+        // An empty "my mods" is the ordinary state for most players rather
+        // than a failed search, so it says so instead of suggesting the
+        // filters be widened.
+        preset === "mine" ? (
+          <EmptyState
+            bordered
+            icon="mods"
+            title={t("mods.view.emptyMine")}
+            hint={t("mods.view.emptyMineHint")}
+          />
+        ) : (
+          <EmptyState
+            bordered
+            icon={vault.length === 0 ? "mods" : "search"}
+            title={t(vault.length === 0 ? "mods.view.emptyVault" : "mods.view.noMatch")}
+            hint={t(vault.length === 0 ? "mods.view.emptyVaultHint" : "mods.view.noMatchHint")}
+          />
+        )
       ) : pageMods.length > 0 ? (
         <>
           <div className="vault-results-head">
