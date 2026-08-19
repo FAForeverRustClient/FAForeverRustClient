@@ -50,9 +50,8 @@ use crate::ports::{GeneratorUpdate, MapGeneratorPort};
 /// Generous against that, because the *first* query on a machine runs against
 /// a 24 MB JAR that was downloaded seconds ago: on a spinning disk, with a
 /// virus scanner reading every entry, the JVM start alone can outlast a tight
-/// limit. Six lists time out one after another and the dialog opens with six
-/// empty pickers, which is indistinguishable from having no Java at all.
-const OPTION_QUERY_TIMEOUT: Duration = Duration::from_secs(45);
+/// limit, and the cost is paid six times over before the dialog is usable.
+const OPTION_QUERY_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// How long `--parse` may take. It resolves options and prints JSON without
 /// generating anything, so this is a JVM startup and little else.
@@ -316,13 +315,18 @@ impl NeroxisMapGenerator {
             .config
             .download_url_format
             .replace("{version}", &version.to_string());
-        let _ = progress
-            .send(GeneratorUpdate::Status(GeneratorStatus::Downloading {
-                version: version.to_string(),
-                downloaded_bytes: 0,
-                total_bytes: None,
-            }))
-            .await;
+        // `try_send`, not `send`: a progress frame must never be able to block
+        // the download it is reporting on. With an awaited send, a caller that
+        // holds a receiver without draining it (an option query, a preflight,
+        // a `--help`) wedges the whole transfer once the channel fills, a few
+        // kilobytes in, with no error and no timeout. Dropping a frame when
+        // the consumer is behind costs nothing: the next one carries the same
+        // running total.
+        let _ = progress.try_send(GeneratorUpdate::Status(GeneratorStatus::Downloading {
+            version: version.to_string(),
+            downloaded_bytes: 0,
+            total_bytes: None,
+        }));
 
         let response = self
             .http
@@ -376,13 +380,11 @@ impl NeroxisMapGenerator {
                 file.write_all(&chunk)
                     .await
                     .map_err(|e| format!("could not write the generator: {e}"))?;
-                let _ = progress
-                    .send(GeneratorUpdate::Status(GeneratorStatus::Downloading {
-                        version: version.to_string(),
-                        downloaded_bytes: u32::try_from(downloaded).unwrap_or(u32::MAX),
-                        total_bytes,
-                    }))
-                    .await;
+                let _ = progress.try_send(GeneratorUpdate::Status(GeneratorStatus::Downloading {
+                    version: version.to_string(),
+                    downloaded_bytes: u32::try_from(downloaded).unwrap_or(u32::MAX),
+                    total_bytes,
+                }));
             }
             file.flush()
                 .await
@@ -730,12 +732,21 @@ impl NeroxisMapGenerator {
         self.resolve_latest().await
     }
 
+    /// Every release the *dialog* can drive, newest first.
+    ///
+    /// Narrower than the version policy on purpose. The policy governs which
+    /// releases may be run at all, and reproducing a map by name still uses
+    /// all of it, because an old lobby is not negotiable. This list feeds the
+    /// version picker, and offering a release there that answers no option
+    /// list and silently ignores half the flags would be offering a control
+    /// that cannot work.
     async fn available_versions(&self) -> Result<Vec<String>, String> {
         let releases = self.fetch_releases().await?;
         let mut versions: Vec<GeneratorVersion> = releases
             .into_iter()
             .filter_map(|r| GeneratorVersion::parse(r.tag_name.trim_start_matches('v')))
             .filter(|v| self.config.version_policy.allows_major(v.major))
+            .filter(|v| *v >= map_generator::MIN_OPTION_LIST_VERSION)
             .collect();
         versions.sort();
         versions.dedup();
@@ -1070,8 +1081,18 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         &self,
         query: GeneratorOptionQuery,
         version: Option<String>,
+        progress: Option<mpsc::Sender<GeneratorUpdate>>,
     ) -> Result<Vec<String>, String> {
         let ver = self.resolve_version(version.as_deref()).await?;
+        // A release that does not know this flag has no list to give, and
+        // asking anyway is not free: the pre-picocli generators treat an
+        // unknown flag as "generate a map", so six queries against an old
+        // release would write six random maps. An empty list is the honest
+        // answer, and it also clears whatever the previously selected release
+        // had put in the picker.
+        if !query.supported_by(ver) {
+            return Ok(Vec::new());
+        }
         let version_key = ver.to_string();
         // An option list is fixed within a release, so a cache hit spares a
         // whole JVM start. Six of them open the dialog.
@@ -1083,9 +1104,11 @@ impl MapGeneratorPort for NeroxisMapGenerator {
             }
         }
 
-        // The download reporter is discarded: an option query is a background
-        // detail of opening a dialog, not something to narrate.
-        let (tx, _rx) = mpsc::channel(8);
+        // The first query on a machine pays for the JAR: 24 MB, which the
+        // caller can forward as download progress rather than leaving the
+        // dialog looking hung.
+        let (fallback, _drain) = mpsc::channel(8);
+        let tx = progress.unwrap_or(fallback);
         let jar = self.ensure_jar(ver, &tx).await?;
         let stdout = self
             .run_query(&jar, &[query.flag()], OPTION_QUERY_TIMEOUT)
@@ -1261,6 +1284,7 @@ impl MapGeneratorPort for FakeMapGenerator {
         &self,
         query: GeneratorOptionQuery,
         _version: Option<String>,
+        _progress: Option<mpsc::Sender<GeneratorUpdate>>,
     ) -> Result<Vec<String>, String> {
         // Representative values so the host dialog's pickers aren't empty offline.
         Ok(match query {
