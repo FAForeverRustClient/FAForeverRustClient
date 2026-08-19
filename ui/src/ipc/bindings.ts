@@ -112,6 +112,8 @@ export type AuthCommand =
 { type: "login"; payload: {
 	remember: boolean,
 } } |
+/**  Cancel an in-flight browser login attempt and return to logged-out state. */
+{ type: "cancelLogin" } |
 /**  Try a previously remembered refresh token. No-op when none is stored. */
 { type: "restore" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
@@ -233,6 +235,11 @@ export type BrowsingPreferences = {
 	modPresets: ModPreset[],
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
+	/**
+	 *  Last searched player username in the replay vault. When empty, defaults
+	 *  to the currently authenticated player name.
+	 */
+	replayVaultPlayer: string,
 	/**
 	 *  Set after the webview has offered its pre-0.2 browser-storage values to
 	 *  the backend. Kept in the settings file so the compatibility read really
@@ -696,6 +703,13 @@ export type ChatPreferences = {
 	 */
 	autoJoinLanguageChannel: boolean,
 	/**
+	 *  Automatically join `#newbie` for accounts with fewer than
+	 *  `newbie_channel_game_threshold` completed games.
+	 */
+	autoJoinNewbieChannel: boolean,
+	/**  Maximum total game count below which `#newbie` is automatically joined. */
+	newbieChannelGameThreshold: number,
+	/**
 	 *  Locally ignored IRC nicknames. Muting is deliberately independent of
 	 *  the server-backed friend/foe relation lists.
 	 */
@@ -1081,7 +1095,7 @@ export type CustomGameBrowserPreferences = {
 
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";
 
-export type CustomGameFilterField = "title" | "host" | "map" | "mod" | "rating";
+export type CustomGameFilterField = "titleOrMap" | "title" | "host" | "map" | "mod" | "rating";
 
 export type CustomGameFilterRule = {
 	field: CustomGameFilterField,

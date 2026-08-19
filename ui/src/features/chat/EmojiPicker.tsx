@@ -128,7 +128,7 @@ export function EmojiPicker({ disabled, onPick }: Props) {
             {results.length === 0 ? (
               <p className="emoji-empty">{t("chat.emoji.noResults")}</p>
             ) : searching ? (
-              <Grid entries={results} selected={selected} onPick={pick} onHover={setActive} />
+              <Grid entries={results} selected={selected} onPick={pick} />
             ) : (
               EMOJI_GROUPS.map((group, index) => (
                 <section className="emoji-group" key={group.id}>
@@ -138,7 +138,6 @@ export function EmojiPicker({ disabled, onPick }: Props) {
                     selected={selected}
                     offset={offsets[index]}
                     onPick={pick}
-                    onHover={setActive}
                   />
                 </section>
               ))
@@ -155,14 +154,12 @@ function Grid({
   selected,
   offset = 0,
   onPick,
-  onHover,
 }: {
   entries: readonly EmojiEntry[];
   selected: number;
   /** Where this block starts in the flat result list the arrow keys walk. */
   offset?: number;
   onPick: (entry: EmojiEntry, keepOpen: boolean) => void;
-  onHover: (index: number) => void;
 }) {
   return (
     <div className="emoji-grid">
@@ -175,7 +172,6 @@ function Grid({
             className={`emoji-tile${flat === selected ? " is-active" : ""}`}
             title={entry.name}
             aria-label={entry.name}
-            onMouseEnter={() => onHover(flat)}
             onClick={(event) => onPick(entry, event.shiftKey || event.ctrlKey)}
           >
             {entry.char}

@@ -162,7 +162,7 @@ pub fn preset_file_name(name: &str) -> Option<String> {
 /// Queried from the JAR rather than hardcoded, because they change between
 /// generator releases: the Java client's `GeneratorOptionsTask` does the same.
 /// Empty until [`MapGeneratorCommand::LoadOptions`] has run.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GeneratorOptionLists {
     pub symmetries: Vec<String>,
@@ -173,7 +173,132 @@ pub struct GeneratorOptionLists {
     pub prop_styles: Vec<String>,
 }
 
+impl Default for GeneratorOptionLists {
+    fn default() -> Self {
+        Self::fallback()
+    }
+}
+
 impl GeneratorOptionLists {
+    pub fn empty() -> Self {
+        Self {
+            symmetries: Vec::new(),
+            styles: Vec::new(),
+            terrain_styles: Vec::new(),
+            texture_styles: Vec::new(),
+            resource_styles: Vec::new(),
+            prop_styles: Vec::new(),
+        }
+    }
+
+    /// Pre-populated standard built-in option lists for Neroxis map generator.
+    ///
+    /// Available from millisecond zero even on fresh installations, and
+    /// updated dynamically when [`MapGeneratorCommand::LoadOptions`] queries
+    /// the specific JAR release.
+    pub fn fallback() -> Self {
+        Self {
+            symmetries: vec![
+                "POINT2", "POINT3", "POINT4", "POINT5", "POINT6", "POINT7", "POINT8", "POINT9",
+                "POINT10", "POINT11", "POINT12", "POINT13", "POINT14", "POINT15", "POINT16", "XZ",
+                "ZX", "X", "Z", "QUAD", "DIAG", "NONE",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+            styles: vec![
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+            terrain_styles: vec![
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+            texture_styles: vec![
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+            resource_styles: vec!["BASIC", "DENSE", "EXPANSIVE", "SPARSE"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+            prop_styles: vec![
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+        }
+    }
+
     /// Whether anything has been loaded yet.
     pub fn is_empty(&self) -> bool {
         self.symmetries.is_empty()
@@ -378,6 +503,11 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
             state.selected_version = Some(version.clone());
         }
         MapGeneratorEvent::VersionsLoaded { versions } => {
+            if state.latest_version.is_empty() {
+                if let Some(first) = versions.first() {
+                    state.latest_version = first.clone();
+                }
+            }
             state.available_versions = versions.clone();
         }
         MapGeneratorEvent::OptionListLoaded { query, values } => {
@@ -409,7 +539,8 @@ mod tests {
         let s = MapGeneratorState::default();
         assert_eq!(s.status, GeneratorStatus::Idle);
         assert!(s.latest_version.is_empty());
-        assert!(s.option_lists.is_empty());
+        assert!(!s.option_lists.is_empty());
+        assert!(GeneratorOptionLists::empty().is_empty());
         assert!(!s.status.is_busy());
     }
 

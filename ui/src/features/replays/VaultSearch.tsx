@@ -24,7 +24,7 @@
 // *executed* lives in `state.replays.vaultQuery`, so the results and their
 // description can't drift.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { League, ReplayQuery, ReplaySortField } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -77,6 +77,11 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
   const [recentOnly, setRecentOnly] = useState(
     () => initialQuery.after !== ALL_TIME_AFTER,
   );
+
+  useEffect(() => {
+    setForm(initialQuery);
+    setRecentOnly(initialQuery.after !== ALL_TIME_AFTER);
+  }, [initialQuery]);
 
   // `page` is not part of the form: a new search always starts at page 1, and
   // paging is driven from the executed query instead.

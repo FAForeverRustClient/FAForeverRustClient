@@ -436,6 +436,11 @@ pub struct ChatPreferences {
     /// default, as in the Python client, and off is a real choice: plenty of
     /// non-English speakers prefer `#aeolus`.
     pub auto_join_language_channel: bool,
+    /// Automatically join `#newbie` for accounts with fewer than
+    /// `newbie_channel_game_threshold` completed games.
+    pub auto_join_newbie_channel: bool,
+    /// Maximum total game count below which `#newbie` is automatically joined.
+    pub newbie_channel_game_threshold: u32,
     /// Locally ignored IRC nicknames. Muting is deliberately independent of
     /// the server-backed friend/foe relation lists.
     pub muted_players: Vec<String>,
@@ -467,6 +472,8 @@ impl Default for ChatPreferences {
             visible_message_limit: 500,
             auto_join_channels: Vec::new(),
             auto_join_language_channel: true,
+            auto_join_newbie_channel: true,
+            newbie_channel_game_threshold: 50,
             muted_players: Vec::new(),
             read_markers: BTreeMap::new(),
             hidden_roster_categories: Vec::new(),
@@ -495,6 +502,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
             visible_message_limit: u16,
             auto_join_channels: Vec<String>,
             auto_join_language_channel: bool,
+            auto_join_newbie_channel: bool,
+            newbie_channel_game_threshold: u32,
             muted_players: Vec<String>,
             read_markers: BTreeMap<String, String>,
             hidden_roster_categories: Vec<String>,
@@ -514,6 +523,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
                     visible_message_limit: defaults.visible_message_limit,
                     auto_join_channels: defaults.auto_join_channels,
                     auto_join_language_channel: defaults.auto_join_language_channel,
+                    auto_join_newbie_channel: defaults.auto_join_newbie_channel,
+                    newbie_channel_game_threshold: defaults.newbie_channel_game_threshold,
                     muted_players: defaults.muted_players,
                     read_markers: defaults.read_markers,
                     hidden_roster_categories: defaults.hidden_roster_categories,
@@ -533,6 +544,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
             visible_message_limit: wire.visible_message_limit,
             auto_join_channels: wire.auto_join_channels,
             auto_join_language_channel: wire.auto_join_language_channel,
+            auto_join_newbie_channel: wire.auto_join_newbie_channel,
+            newbie_channel_game_threshold: wire.newbie_channel_game_threshold,
             muted_players: wire.muted_players,
             read_markers: wire.read_markers,
             hidden_roster_categories: wire.hidden_roster_categories,
@@ -840,6 +853,7 @@ pub enum CustomGameSort {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum CustomGameFilterField {
+    TitleOrMap,
     Title,
     Host,
     Map,
@@ -1069,6 +1083,9 @@ pub struct BrowsingPreferences {
     pub mod_presets: Vec<ModPreset>,
     /// Visible column keys in the rating leaderboard table.
     pub leaderboard_rating_columns: Vec<String>,
+    /// Last searched player username in the replay vault. When empty, defaults
+    /// to the currently authenticated player name.
+    pub replay_vault_player: String,
     /// Set after the webview has offered its pre-0.2 browser-storage values to
     /// the backend. Kept in the settings file so the compatibility read really
     /// is one-time and the old keys can be removed on a later confirmed load.
@@ -1108,6 +1125,7 @@ impl Default for BrowsingPreferences {
                 .iter()
                 .map(|col| (*col).to_owned())
                 .collect(),
+            replay_vault_player: String::new(),
             legacy_storage_migrated: false,
         }
     }
@@ -1133,6 +1151,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             mod_vault_preset: String,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
+            replay_vault_player: String,
             legacy_storage_migrated: bool,
         }
 
@@ -1152,6 +1171,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     mod_vault_preset: defaults.mod_vault_preset,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
+                    replay_vault_player: defaults.replay_vault_player,
                     legacy_storage_migrated: defaults.legacy_storage_migrated,
                 }
             }
@@ -1171,6 +1191,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             mod_vault_preset: wire.mod_vault_preset,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
+            replay_vault_player: wire.replay_vault_player,
             legacy_storage_migrated: wire.legacy_storage_migrated,
         })
     }
@@ -1262,6 +1283,7 @@ impl BrowsingPreferences {
         } else {
             selected_columns
         };
+        self.replay_vault_player = truncate_trimmed(self.replay_vault_player, 64);
         self
     }
 }
@@ -1874,6 +1896,7 @@ mod tests {
                     "MEAN".into(),
                     "invalid_col".into(),
                 ],
+                replay_vault_player: "  VindexNoob  ".into(),
                 legacy_storage_migrated: true,
             },
             ..SettingsState::default()
@@ -1922,6 +1945,7 @@ mod tests {
             settings.browsing.leaderboard_rating_columns,
             ["rating", "mean"]
         );
+        assert_eq!(settings.browsing.replay_vault_player, "VindexNoob");
         assert!(settings.browsing.legacy_storage_migrated);
     }
 

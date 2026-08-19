@@ -39,6 +39,7 @@ export function LoginView() {
   const busy = auth.status === "loggingIn";
 
   const login = () => ipc.send({ kind: "Auth", command: { type: "login", payload: { remember } } });
+  const cancelLogin = () => ipc.send({ kind: "Auth", command: { type: "cancelLogin" } });
   const loginTest = () => ipc.send({ kind: "Auth", command: { type: "loginTest" } });
 
   return (
@@ -50,9 +51,20 @@ export function LoginView() {
           <p>{t("auth.subtitle")}</p>
         </div>
 
-        <Button className="login-button" variant="primary" onClick={login} disabled={busy}>
-          {busy ? t("auth.signingIn") : t("auth.login")}
-        </Button>
+        {busy ? (
+          <div className="login-in-progress">
+            <Button className="login-button" variant="primary" disabled>
+              {t("auth.signingIn")}
+            </Button>
+            <Button className="login-cancel-button" variant="ghost" onClick={cancelLogin}>
+              {t("auth.cancel")}
+            </Button>
+          </div>
+        ) : (
+          <Button className="login-button" variant="primary" onClick={login}>
+            {t("auth.login")}
+          </Button>
+        )}
         <p className="login-hint">{t("auth.hint")}</p>
 
         <label className="login-remember">

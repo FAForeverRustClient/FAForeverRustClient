@@ -16,7 +16,11 @@ export function reduceMapGenerator(
         selectedVersion: event.payload.version,
       };
     case "versionsLoaded":
-      return { ...state, availableVersions: event.payload.versions };
+      return {
+        ...state,
+        latestVersion: state.latestVersion || event.payload.versions[0] || "",
+        availableVersions: event.payload.versions,
+      };
     case "optionListLoaded": {
       // Each query fills its own list; the key mapping matches the Rust
       // `GeneratorOptionLists::set`.

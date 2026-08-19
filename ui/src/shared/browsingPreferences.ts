@@ -109,6 +109,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   modVaultPreset: "recommended",
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
+  replayVaultPlayer: "",
   legacyStorageMigrated: false,
 };
 
@@ -151,6 +152,7 @@ export function normalizeBrowsingPreferences(
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
+    replayVaultPlayer: truncateTrimmed(preferences.replayVaultPlayer ?? "", 64),
   };
 }
 

@@ -573,7 +573,7 @@ impl ReplayPort for ReplayClient {
                 .append_key_only("page[totals]")
                 .append_pair(
                     "include",
-                    "mapVersion.map,featuredMod,playerStats.player,playerStats.ratingChanges,reviewsSummary",
+                    "mapVersion,mapVersion.map,featuredMod,playerStats.player,playerStats.ratingChanges,reviewsSummary",
                 );
             // The date floor that keeps an otherwise unbounded filtered search
             // off the slow path: the rule lives in the query, the clock here.
@@ -1214,18 +1214,85 @@ async fn delete_local_file(dir: &std::path::Path, path: &std::path::Path) -> Res
 }
 
 /// `game.relationships.mapVersion -> mapVersion.relationships.map -> map.attributes.displayName`.
+/// Falls back to `mapVersion.attributes.folderName`, `mapVersion.attributes.description`,
+/// `mapVersion.attributes.filename`, or `game.attributes.mapFolderName` / `mapName` when the
+/// map relationship is absent (such as for generated mapgen maps or custom scenarios).
 fn resolve_map_name(
+    game_attributes: &Value,
     relationships: &Value,
     index: &HashMap<(String, String), &JsonApiResource>,
 ) -> String {
-    rel_target(relationships, "mapVersion")
-        .and_then(|k| index.get(&k))
-        .and_then(|mv| rel_target(&mv.relationships, "map"))
-        .and_then(|k| index.get(&k))
-        .and_then(|m| m.attributes.get("displayName"))
-        .and_then(Value::as_str)
-        .unwrap_or("unknown map")
-        .to_string()
+    if let Some(mv) = rel_target(relationships, "mapVersion").and_then(|k| index.get(&k)) {
+        if let Some(map_name) = rel_target(&mv.relationships, "map")
+            .and_then(|k| index.get(&k))
+            .and_then(|m| m.attributes.get("displayName"))
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            return map_name.to_string();
+        }
+
+        if let Some(folder_name) = mv
+            .attributes
+            .get("folderName")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            return folder_name.to_string();
+        }
+
+        if let Some(desc) = mv
+            .attributes
+            .get("description")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            return desc.to_string();
+        }
+
+        if let Some(filename) = mv
+            .attributes
+            .get("filename")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            return filename.to_string();
+        }
+    }
+
+    for key in [
+        "mapFolderName",
+        "mapName",
+        "map",
+        "map_folder_name",
+        "map_name",
+    ] {
+        if let Some(val) = game_attributes.get(key) {
+            if let Some(s) = val.as_str().filter(|s| !s.is_empty()) {
+                return s.to_string();
+            }
+            if let Some(obj) = val.as_object() {
+                if let Some(name) = obj
+                    .get("displayName")
+                    .or_else(|| obj.get("folderName"))
+                    .or_else(|| obj.get("mapName"))
+                    .or_else(|| obj.get("name"))
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.is_empty())
+                {
+                    return name.to_string();
+                }
+            }
+        }
+    }
+
+    if let Some(title) = game_attributes.get("name").and_then(Value::as_str) {
+        if title.to_ascii_lowercase().starts_with("neroxis") {
+            return title.to_string();
+        }
+    }
+
+    "unknown map".to_string()
 }
 
 /// `game.relationships.featuredMod -> featuredMod.attributes.technicalName`.
@@ -1437,11 +1504,16 @@ fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
+            let map = resolve_map_name(&game.attributes, &game.relationships, &index);
+            let mut map_thumbnail_url = resolve_map_thumbnail(&game.relationships, &index);
+            if map_thumbnail_url.is_empty() && map.to_ascii_lowercase().starts_with("neroxis") {
+                map_thumbnail_url = "/generated-map.svg".to_string();
+            }
             Some(VaultReplay {
                 uid,
                 title,
-                map: resolve_map_name(&game.relationships, &index),
-                map_thumbnail_url: resolve_map_thumbnail(&game.relationships, &index),
+                map,
+                map_thumbnail_url,
                 mod_name: resolve_mod_name(&game.relationships, &index),
                 duration_seconds: duration_between(&start_time, end_time),
                 game_duration_seconds: value_i32(&game.attributes, "replayTicks")
@@ -2322,6 +2394,45 @@ mod tests {
         assert_eq!(replay.average_rating, None);
         assert_eq!(replay.reviews_average, None);
         assert_eq!(replay.reviews_count, None);
+    }
+
+    #[test]
+    fn parse_vault_replays_resolves_generated_map() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "game",
+                "id": "27634581",
+                "attributes": {
+                    "name": "2v2",
+                    "replayAvailable": true
+                },
+                "relationships": {
+                    "mapVersion": { "data": { "type": "mapVersion", "id": "999" } }
+                }
+            }],
+            "included": [
+                {
+                    "type": "mapVersion",
+                    "id": "999",
+                    "attributes": {
+                        "folderName": "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko"
+                    },
+                    "relationships": {}
+                }
+            ]
+        }))
+        .unwrap();
+
+        let replays = parse_vault_replays(&doc);
+        assert_eq!(replays.len(), 1);
+        let replay = &replays[0];
+        assert_eq!(replay.uid, 27634581);
+        assert_eq!(replay.title, "2v2");
+        assert_eq!(
+            replay.map,
+            "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko"
+        );
+        assert_eq!(replay.map_thumbnail_url, "/generated-map.svg");
     }
 
     #[test]

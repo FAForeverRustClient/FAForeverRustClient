@@ -43,6 +43,7 @@ export type IconName =
   | "hourglass"
   | "upload"
   | "copy"
+  | "edit"
   | "check";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
@@ -90,6 +91,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     hourglass: <><path d="M7 3h10M7 21h10" /><path d="M7 3v3.5c0 2 2.5 3.6 5 5.5 2.5-1.9 5-3.5 5-5.5V3" /><path d="M7 21v-3.5c0-2 2.5-3.6 5-5.5 2.5 1.9 5 3.5 5 5.5V21" /></>,
     upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>,
     copy: <><rect width="13" height="13" x="9" y="9" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
+    edit: <><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></>,
     check: <polyline points="20 6 9 17 4 12" />,
   };
 

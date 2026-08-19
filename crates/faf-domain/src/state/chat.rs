@@ -491,12 +491,46 @@ pub fn language_channel(os_language: &str, country: &str) -> Option<&'static str
     lookup(&LANGUAGE_CHANNELS, language)
 }
 
+pub const NEWBIE_CHANNEL: &str = "#newbie";
+pub const DEFAULT_NEWBIE_THRESHOLD: u32 = 50;
+
+/// Total completed/played games known for the given player account.
+///
+/// Sources ratings from the live lobby snapshot (`state.social`), falling back
+/// to the player-card profile (`state.player_card`) if loaded for this account.
+/// Returns `None` if the account is unknown or unannounced, so callers can avoid
+/// guessing when ratings are unavailable.
+pub fn player_total_games(state: &super::AppState, login: &str) -> Option<u32> {
+    if login.is_empty() {
+        return None;
+    }
+    if let Some(profile) = state.social.player(login) {
+        let total = profile
+            .ratings
+            .iter()
+            .map(|r| r.games_played.max(0) as u32)
+            .sum::<u32>();
+        return Some(total);
+    }
+    if let Some(card) = &state.player_card.profile {
+        if card.login.eq_ignore_ascii_case(login) {
+            let total = card
+                .ratings
+                .iter()
+                .map(|r| r.games_played.max(0) as u32)
+                .sum::<u32>();
+            return Some(total);
+        }
+    }
+    None
+}
+
 /// Every channel this account should be in, in reference-client join order.
 ///
 /// This is a pure state projection shared by the lobby and chat services. The
 /// lobby server contributes account-specific channels, while the client adds
-/// the optional language channel and the user's saved channels. IRC channel
-/// names are case-insensitive, so duplicates are removed without reordering.
+/// the optional newbie channel, language channel and the user's saved channels.
+/// IRC channel names are case-insensitive, so duplicates are removed without reordering.
 pub fn auto_join_channels(state: &super::AppState, os_language: &str) -> Vec<String> {
     let mut channels = state.chat.server_auto_join.clone();
     let mut push = |channel: String| {
@@ -508,17 +542,26 @@ pub fn auto_join_channels(state: &super::AppState, os_language: &str) -> Vec<Str
         }
     };
 
+    let login = if state.chat.username.is_empty() {
+        state
+            .auth
+            .player
+            .as_ref()
+            .map(|player| player.name.as_str())
+            .unwrap_or_default()
+    } else {
+        state.chat.username.as_str()
+    };
+
+    if state.settings.chat.auto_join_newbie_channel {
+        if let Some(games) = player_total_games(state, login) {
+            if games < state.settings.chat.newbie_channel_game_threshold {
+                push(NEWBIE_CHANNEL.to_string());
+            }
+        }
+    }
+
     if state.settings.chat.auto_join_language_channel {
-        let login = if state.chat.username.is_empty() {
-            state
-                .auth
-                .player
-                .as_ref()
-                .map(|player| player.name.as_str())
-                .unwrap_or_default()
-        } else {
-            state.chat.username.as_str()
-        };
         let country = state
             .social
             .player(login)
@@ -1827,5 +1870,110 @@ mod tests {
             .unwrap()
             .reactions_for("srv-nope")
             .is_empty());
+    }
+
+    #[test]
+    fn auto_join_channels_joins_newbie_when_game_count_under_threshold() {
+        use crate::state::{
+            AppState, AuthState, ChatPreferences, Player, PlayerLobbyRating, PlayerProfile,
+            SocialState,
+        };
+
+        let mut state = AppState {
+            auth: AuthState {
+                player: Some(Player::new(100, "NewbiePlayer")),
+                ..Default::default()
+            },
+            social: SocialState {
+                players: vec![PlayerProfile {
+                    id: 100,
+                    login: "NewbiePlayer".into(),
+                    ratings: vec![
+                        PlayerLobbyRating {
+                            leaderboard: "global".into(),
+                            games_played: 10,
+                            ..Default::default()
+                        },
+                        PlayerLobbyRating {
+                            leaderboard: "ladder_1v1".into(),
+                            games_played: 5,
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+            settings: crate::state::SettingsState {
+                chat: ChatPreferences {
+                    auto_join_newbie_channel: true,
+                    newbie_channel_game_threshold: 50,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let channels = auto_join_channels(&state, "en");
+        assert!(
+            channels.contains(&"#newbie".to_string()),
+            "account with 15 games should join #newbie"
+        );
+
+        // Boundary: 49 games joins
+        state.social.players[0].ratings[0].games_played = 44;
+        state.social.players[0].ratings[1].games_played = 5;
+        let channels = auto_join_channels(&state, "en");
+        assert!(
+            channels.contains(&"#newbie".to_string()),
+            "account with 49 games should join #newbie"
+        );
+
+        // Boundary: 50 games does not join
+        state.social.players[0].ratings[0].games_played = 45;
+        state.social.players[0].ratings[1].games_played = 5;
+        let channels = auto_join_channels(&state, "en");
+        assert!(
+            !channels.contains(&"#newbie".to_string()),
+            "account with 50 games should not join #newbie"
+        );
+
+        // Veteran: 100 games does not join
+        state.social.players[0].ratings[0].games_played = 100;
+        let channels = auto_join_channels(&state, "en");
+        assert!(
+            !channels.contains(&"#newbie".to_string()),
+            "account with 100+ games should not join #newbie"
+        );
+
+        // Setting disabled: low game count does not join
+        state.social.players[0].ratings[0].games_played = 2;
+        state.social.players[0].ratings[1].games_played = 0;
+        state.settings.chat.auto_join_newbie_channel = false;
+        let channels = auto_join_channels(&state, "en");
+        assert!(
+            !channels.contains(&"#newbie".to_string()),
+            "should not join #newbie when setting is disabled"
+        );
+    }
+
+    #[test]
+    fn auto_join_channels_does_not_join_newbie_when_account_unknown() {
+        use crate::state::{AppState, AuthState, Player};
+
+        let state = AppState {
+            auth: AuthState {
+                player: Some(Player::new(101, "UnknownVeteran")),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let channels = auto_join_channels(&state, "en");
+        assert!(
+            !channels.contains(&"#newbie".to_string()),
+            "should not join #newbie when game count is unknown"
+        );
     }
 }

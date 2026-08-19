@@ -1,7 +1,7 @@
 .custom-games-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(520px, 1fr) 300px;
+  grid-template-columns: minmax(460px, 1fr) minmax(260px, 300px);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
@@ -186,6 +186,7 @@
   position: relative;
   width: 100%;
   flex: 0 0 auto;
+  max-height: min(280px, 35vh);
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--color-sidebar);
@@ -311,12 +312,37 @@
   line-height: 1.4;
 }
 
+.game-team-player {
+  all: unset;
+  cursor: pointer;
+  display: inline;
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), text-decoration-color var(--transition-fast);
+}
+
+.game-team-player:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.game-team-player:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.game-detail-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: none;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
 .game-detail-join {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
   width: 100%;
-  margin-top: auto;
   padding-top: 9px;
   padding-bottom: 9px;
 }

@@ -18,7 +18,7 @@ use faf_domain::state::{
     GeneratorOptionQuery, GeneratorStatus, MapGeneratorCommand, MapGeneratorEvent, MapsCommand,
     NotificationKind, SettingsEvent,
 };
-use tokio::sync::mpsc;
+
 
 use crate::ports::GeneratorUpdate;
 use crate::runtime::{EventSink, ServiceCtx};
@@ -321,8 +321,7 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
         Err(reason) => tracing::warn!(%reason, "could not list the map generator releases"),
     }
 
-    let resolved_version = if let Some(v) = explicit_version.clone() {
-        out.emit(MapGeneratorEvent::VersionResolved { version: v.clone() });
+    let resolved_version = if let Some(v) = explicit_version {
         Some(v)
     } else {
         match ctx.ports.map_generator.latest_version().await {
@@ -353,40 +352,27 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
         return;
     };
 
-    // The first query on a machine pays for the JAR, and picking a different
-    // release pays for that one: 24 MB either way. Forwarding the download as
-    // a status is what keeps "I clicked a release and nothing happened" from
-    // being the whole user experience. Skipped while a real run owns the
-    // status, and the run's own status is put back afterwards.
-    let resting_status = out.with_state(|state| state.map_generator.status.clone());
-    let narrate = !resting_status.is_busy();
-    let mut narrated = false;
-
-    // A failed list is not skipped silently. Every one of these needs a JAR
-    // download and a JVM, so on a machine without a usable Java the dialog
-    // would otherwise open with six empty pickers and no explanation: the
-    // shape of the bug this reporting exists for.
+    // Run all option-list queries in parallel. A failed list is not skipped
+    // silently: on a machine without a usable Java the dialog would otherwise
+    // open with six empty pickers and no explanation.
     let mut failure: Option<String> = None;
-    for query in GeneratorOptionQuery::ALL {
-        let (progress, mut updates) = mpsc::channel(32);
-        let pending =
-            ctx.ports
-                .map_generator
-                .query_options(query, resolved_version.clone(), Some(progress));
-        tokio::pin!(pending);
-        let outcome = loop {
-            tokio::select! {
-                Some(GeneratorUpdate::Status(status)) = updates.recv() => {
-                    if narrate {
-                        narrated = true;
-                        out.emit(MapGeneratorEvent::StatusChanged { status });
-                    }
-                }
-                outcome = &mut pending => break outcome,
+    let queries = GeneratorOptionQuery::ALL;
+    let futures = queries.into_iter().map(|query| {
+        let map_gen = ctx.ports.map_generator.clone();
+        let ver = resolved_version.clone();
+        async move {
+            let res = map_gen.query_options(query, ver, None).await;
+            (query, res)
+        }
+    });
+
+    let results = futures_util::future::join_all(futures).await;
+    for (query, res) in results {
+        match res {
+            Ok(values) if !values.is_empty() => {
+                out.emit(MapGeneratorEvent::OptionListLoaded { query, values });
             }
-        };
-        match outcome {
-            Ok(values) => out.emit(MapGeneratorEvent::OptionListLoaded { query, values }),
+            Ok(_) => {}
             Err(reason) => {
                 tracing::warn!(flag = query.flag(), %reason, "map generator option list failed");
                 // The first reason is the informative one: the rest are the
@@ -394,11 +380,6 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
                 failure.get_or_insert(reason);
             }
         }
-    }
-    if narrated {
-        out.emit(MapGeneratorEvent::StatusChanged {
-            status: resting_status,
-        });
     }
     if let Some(reason) = failure {
         services::notifications::add(

@@ -47,9 +47,9 @@ use crate::infra::{env_or, fetch_access_url, validated_ws_url};
 use crate::ports::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 
 const MAX_SERVER_MESSAGE_CHARS: usize = 4_000;
-// Keep the protocol identifier aligned with the established FAF client
-// handshake. This value is stored by the lobby and shown on player cards.
-const LOBBY_USER_AGENT: &str = "faf-client";
+// Protocol identifier sent in the lobby handshake. This value is stored by
+// the lobby server and shown on player cards to distinguish client types.
+const LOBBY_USER_AGENT: &str = "faf-rust-client";
 
 /// Configuration for the real lobby client.
 #[derive(Debug, Clone)]

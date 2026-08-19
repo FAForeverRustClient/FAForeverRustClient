@@ -49,6 +49,10 @@
 }
 
 .play-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   padding-right: 32px;
 }
 
@@ -62,6 +66,17 @@
   margin-top: 4px;
   color: var(--color-muted);
   font-size: 12px;
+}
+
+.filter-dialog-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .play-dialog-actions {
@@ -85,18 +100,129 @@
   margin-right: auto;
 }
 
-.filter-rule-builder {
+.game-filters-dialog {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.filter-grid-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.3fr auto;
+  grid-template-columns: minmax(130px, 1.1fr) minmax(130px, 1.1fr) minmax(160px, 1.8fr) 88px;
+  align-items: center;
   gap: 8px;
+  box-sizing: border-box;
+}
+
+.filter-rule-builder {
   margin-top: 20px;
 }
 
-.filter-rule-list { margin-top: 12px; }
-.filter-rule { display: grid; grid-template-columns: 1fr 1fr 1.4fr 28px; align-items: center; gap: 8px; min-height: 42px; padding: 6px 10px; border-bottom: 1px solid var(--color-border); font-size: 11px; }
-.filter-rule:last-child { border: 0; }
-.filter-rule strong { font-weight: 550; }
-.filter-rule button { display: grid; width: 26px; height: 26px; place-items: center; padding: 0; color: var(--color-muted); background: transparent; border: 0; cursor: pointer; }
+.filter-rule-builder .filter-add-btn {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  justify-content: center;
+}
+
+.filter-rule-list {
+  margin-top: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.filter-rule {
+  min-height: 42px;
+  height: 42px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  transition: background 120ms ease;
+}
+
+.filter-rule:last-child {
+  border-bottom: 0;
+}
+
+.filter-rule:not(.is-editing):hover {
+  background: var(--color-surface-hover);
+}
+
+.filter-rule.is-editing {
+  background: var(--color-surface);
+}
+
+.filter-rule-cell {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.filter-rule-cell.filter-rule-val {
+  padding: 0 6px;
+}
+
+.filter-rule strong {
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-rule.is-editing select,
+.filter-rule.is-editing input {
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.filter-rule.is-editing select:focus,
+.filter-rule.is-editing input:focus {
+  border-color: var(--color-accent);
+}
+
+.filter-rule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.filter-rule button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.filter-rule button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.filter-rule button.filter-rule-save:hover {
+  color: var(--color-ok);
+}
 .play-empty { margin: 0; padding: 18px; color: var(--color-subtle); font-size: 12px; text-align: center; }
 
 /* Top Game Configuration Row */

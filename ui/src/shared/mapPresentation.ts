@@ -172,7 +172,14 @@ function vaultMapLookup(vault: VaultMap[]): VaultMapLookup {
 
 /** Twin of `faf_domain::protocol::map_generator::is_generated_map`. */
 export function isGeneratedMap(mapName: string): boolean {
-  return /^neroxis_map_generator_\d{1,3}\.\d{1,3}\.\d{1,3}_.+/i.test(normalizeMapName(mapName));
+  if (!mapName) return false;
+  const trimmed = mapName.trim();
+  const normalized = normalizeMapName(mapName);
+  return (
+    /^neroxis_map_generator_.+/i.test(normalized) ||
+    /^(neroxis_map_generator_|neroxis\s+map\s+generator\s+).+/i.test(trimmed) ||
+    trimmed.toLowerCase().startsWith("neroxis")
+  );
 }
 
 function fallbackDisplayName(mapName: string): string {
@@ -196,28 +203,35 @@ export function mapThumbnailCandidates(
   large = false,
   missions?: CoopMission[],
   customGeneratedPreview?: string,
+  customUrl?: string,
 ): string[] {
+  const isGen = isGeneratedMap(mapName);
+  const normalized = normalizeMapName(mapName);
+
+  if (isGen) {
+    const generatedPreview =
+      customGeneratedPreview ??
+      (typeof window !== "undefined"
+        ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName] ||
+          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[normalized]
+        : undefined);
+
+    return uniqueUrls([
+      generatedPreview,
+      "/generated-map.svg",
+    ]);
+  }
+
   const vaultMap = findVaultMap(vault, mapName);
   const coopMission = findCoopMission(mapName, missions);
-  const normalized = normalizeMapName(mapName);
   const baseName = baseMapName(mapName);
   const officialKey = OFFICIAL_MAPS[baseName]
     ? baseName
     : OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
   const size = large ? "large" : "small";
 
-  const isGen = isGeneratedMap(mapName);
-  const generatedPreview =
-    customGeneratedPreview ??
-    (isGen
-      ? typeof window !== "undefined"
-        ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName] ||
-          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[normalized]
-        : undefined
-      : undefined);
-
   return uniqueUrls([
-    generatedPreview,
+    customUrl,
     large ? coopMission?.thumbnailUrlLarge : coopMission?.thumbnailUrlSmall,
     large ? coopMission?.thumbnailUrlSmall : coopMission?.thumbnailUrlLarge,
     large ? vaultMap?.thumbnailUrlLarge : vaultMap?.thumbnailUrl,
@@ -231,7 +245,6 @@ export function mapThumbnailCandidates(
     baseName !== normalized && !baseName.includes(" ")
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
       : undefined,
-    isGen ? "/assets/mapgen-placeholder.png" : undefined,
   ]);
 }
 

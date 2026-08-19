@@ -75,6 +75,18 @@ export function ChatSettingsSection() {
           label={t("settings.chat.joinMyLanguage")}
         />
       </SettingRow>
+      <SettingRow
+        label={t("settings.chat.autoJoinNewbie")}
+        hint={t("settings.chat.autoJoinNewbieHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.autoJoinNewbieChannel}
+          onChange={(autoJoinNewbieChannel) =>
+            void save({ ...preferences, autoJoinNewbieChannel })
+          }
+          label={t("settings.chat.autoJoinNewbie")}
+        />
+      </SettingRow>
       <div className="setting-block settings-muted-players">
         <span className="setting-label">{t("settings.chat.mutedLabel")}</span>
         <span className="muted">{t("settings.chat.mutedHint")}</span>

@@ -70,6 +70,7 @@ describe("browsing preferences", () => {
         { name: "   ", uids: ["c"] },
       ],
       leaderboardRatingColumns: ["rating", "MEAN", "invalid_column"],
+      replayVaultPlayer: "  VindexNoob  ",
       legacyStorageMigrated: true,
     });
 
@@ -104,6 +105,7 @@ describe("browsing preferences", () => {
     expect(normalized.mapVaultPreset).toBe("newest");
     expect(normalized.modVaultPreset).toBe("ui");
     expect(normalized.leaderboardRatingColumns).toEqual(["rating", "mean"]);
+    expect(normalized.replayVaultPlayer).toBe("VindexNoob");
   });
 
   it("keeps the my-maps preset, and still rejects anything unknown", () => {

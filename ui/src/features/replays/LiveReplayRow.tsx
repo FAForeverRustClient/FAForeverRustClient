@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useState } from "react";
+import { Fragment, memo, useEffect, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { PlayerName } from "../../shared/nameColors";
@@ -49,23 +49,56 @@ function LiveWatchButton({
   game,
   tracking,
   waitSeconds,
+  onMenuToggle,
 }: {
   busy: boolean;
   game: Game;
   tracking: LiveReplayTracking | null;
   waitSeconds: number;
+  onMenuToggle?: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
   const waiting = waitSeconds > 0;
   const tracked = tracking?.target.uid === game.id ? tracking : null;
   const target = { uid: game.id, modName: game.modName, map: game.map };
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (detailsRef.current && !detailsRef.current.contains(event.target as Node)) {
+        detailsRef.current.removeAttribute("open");
+        setOpen(false);
+        onMenuToggle?.(false);
+      }
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [open, onMenuToggle]);
+
+  const closeMenu = () => {
+    if (detailsRef.current) {
+      detailsRef.current.removeAttribute("open");
+    }
+    setOpen(false);
+    onMenuToggle?.(false);
+  };
 
   if (waiting) {
     const trackedLabel = t(tracked?.action === "notify"
       ? "replays.live.notificationSet"
       : "replays.live.autoWatchSet");
     return (
-      <details className={`live-delay-actions${tracked ? " is-tracked" : ""}`}>
+      <details
+        ref={detailsRef}
+        className={`live-delay-actions${tracked ? " is-tracked" : ""}`}
+        onToggle={(e) => {
+          const isOpen = e.currentTarget.open;
+          setOpen(isOpen);
+          onMenuToggle?.(isOpen);
+        }}
+      >
         <summary
           className="live-delay-trigger"
           title={t("replays.live.delayHint")}
@@ -76,24 +109,35 @@ function LiveWatchButton({
           <strong>{t("replays.live.whenReady")}</strong>
           <Button
             disabled={busy || tracked?.action === "notify"}
-            onClick={() => ipc.send({
-              kind: "Replays",
-              command: { type: "trackLive", payload: { target, action: "notify" } },
-            })}
+            onClick={() => {
+              ipc.send({
+                kind: "Replays",
+                command: { type: "trackLive", payload: { target, action: "notify" } },
+              });
+              closeMenu();
+            }}
           >
             {t("replays.live.notifyMe")}
           </Button>
           <Button
             disabled={busy || tracked?.action === "watch"}
-            onClick={() => ipc.send({
-              kind: "Replays",
-              command: { type: "trackLive", payload: { target, action: "watch" } },
-            })}
+            onClick={() => {
+              ipc.send({
+                kind: "Replays",
+                command: { type: "trackLive", payload: { target, action: "watch" } },
+              });
+              closeMenu();
+            }}
           >
             {t("replays.live.watchAutomatically")}
           </Button>
           {tracked && (
-            <Button onClick={() => ipc.send({ kind: "Replays", command: { type: "cancelLiveTracking" } })}>
+            <Button
+              onClick={() => {
+                ipc.send({ kind: "Replays", command: { type: "cancelLiveTracking" } });
+                closeMenu();
+              }}
+            >
               {t("replays.live.cancelTracking")}
             </Button>
           )}
@@ -146,6 +190,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
 }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const started = gameStartedAt(game);
   const simMods = Object.values(game.simMods);
   const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
@@ -153,7 +198,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   return (
     <>
       <tr
-        className={expanded ? "live-replay-row expanded" : "live-replay-row"}
+        className={`live-replay-row${expanded ? " expanded" : ""}${menuOpen ? " is-menu-open" : ""}`}
         onDoubleClick={() => {
           if (!busy && waitSeconds <= 0) {
             ipc.send({
@@ -194,7 +239,15 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                 : t("replays.live.moreSimMods", { first: simMods[0], count: simMods.length - 1 })}
           </small>
         </td>
-        <td><LiveWatchButton busy={busy} game={game} tracking={tracking} waitSeconds={waitSeconds} /></td>
+        <td className="live-watch-column-cell">
+          <LiveWatchButton
+            busy={busy}
+            game={game}
+            tracking={tracking}
+            waitSeconds={waitSeconds}
+            onMenuToggle={setMenuOpen}
+          />
+        </td>
       </tr>
       {expanded && (
         <tr className="live-replay-detail-row">

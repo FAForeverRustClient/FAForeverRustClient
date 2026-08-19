@@ -4281,6 +4281,7 @@ fn cases() -> Vec<Case> {
                             "winRate".into(),
                             "updated".into(),
                         ],
+                        replay_vault_player: String::new(),
                         legacy_storage_migrated: true,
                     }),
                 }
