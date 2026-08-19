@@ -36,6 +36,42 @@ pub const GENERATED_MAP_PREFIX: &str = "neroxis_map_generator_";
 pub const MIN_SUPPORTED_MAJOR: u32 = 0;
 pub const MAX_SUPPORTED_MAJOR: u32 = 1;
 
+/// First release that answers a list flag (`--styles`, `--symmetries`) with a
+/// list.
+///
+/// Measured against the published JARs, all run under Temurin 25: 1.3.0 and
+/// older do not know the flag, and because their hand-written parser ignores
+/// what it does not recognise, they *generate a map* instead of printing
+/// anything. Opening the dialog on such a release would drop up to six random
+/// maps into the client's working directory, so this floor is a guard against
+/// a side effect as much as against an empty picker.
+pub const MIN_OPTION_LIST_VERSION: GeneratorVersion = GeneratorVersion {
+    major: 1,
+    minor: 4,
+    patch: 0,
+};
+
+/// First release with the four component styles: the `--terrain-styles` family
+/// of lists, and the `--terrain-style` family of flags that set them.
+///
+/// Measured: 1.11.0 answers `--terrain-styles` with picocli's "Unknown
+/// option", 1.12.0 lists them. Before this, a map has one whole-map `--style`
+/// and nothing finer.
+pub const MIN_COMPONENT_STYLE_VERSION: GeneratorVersion = GeneratorVersion {
+    major: 1,
+    minor: 12,
+    patch: 0,
+};
+
+/// `--symmetries` is the one list with a hole in the middle of its history:
+/// the picocli rewrite dropped it and 1.12.0 brought it back, so 1.4.0-1.8.x
+/// print it, 1.9.0-1.11.x reject it, and 1.12.0 onwards print it again.
+const SYMMETRY_LIST_GAP_START: GeneratorVersion = GeneratorVersion {
+    major: 1,
+    minor: 9,
+    patch: 0,
+};
+
 /// Generators from version 1 onward take named flags; older ones take four
 /// positional arguments. The Java client's `GeneratorCommand` branches on the
 /// same boundary.
@@ -152,6 +188,12 @@ impl GeneratorVersion {
     /// configured window use [`VersionPolicy::support`] instead.
     pub fn support(self) -> VersionSupport {
         VersionPolicy::default().support(self)
+    }
+
+    /// Whether this release takes the four component-style flags. Older ones
+    /// understand `--style` alone; see [`MIN_COMPONENT_STYLE_VERSION`].
+    pub fn supports_component_styles(self) -> bool {
+        self >= MIN_COMPONENT_STYLE_VERSION
     }
 
     /// Whether this version takes named flags rather than positional arguments.
@@ -600,6 +642,15 @@ pub fn build_arguments(
     if let Some(style) = pick_choice(&options.style, &styles, &options.seed) {
         args.push("--style".to_string());
         args.push(style);
+        return Ok(args);
+    }
+
+    // Everything past here is a flag the component-style releases introduced.
+    // Sending one to an older generator either fails the run outright (picocli
+    // refuses an unknown option) or, worse, is silently ignored by the
+    // hand-written parser, so the map that comes back is not the map that was
+    // asked for. Falling back to the release's defaults is the honest option.
+    if !version.supports_component_styles() {
         return Ok(args);
     }
 
@@ -1058,6 +1109,28 @@ impl GeneratorOptionQuery {
         }
     }
 
+    /// Whether `version` answers this list flag.
+    ///
+    /// Asking a release that does not is worse than useless: the pre-picocli
+    /// parser ignores the flag and generates a map instead of refusing, and
+    /// picocli releases fail the query outright. Both end with an empty picker
+    /// and no way for the user to tell why, which is exactly what selecting an
+    /// old release used to look like.
+    pub fn supported_by(self, version: GeneratorVersion) -> bool {
+        match self {
+            GeneratorOptionQuery::Styles => version >= MIN_OPTION_LIST_VERSION,
+            GeneratorOptionQuery::Symmetries => {
+                version >= MIN_OPTION_LIST_VERSION
+                    && !(version >= SYMMETRY_LIST_GAP_START
+                        && version < MIN_COMPONENT_STYLE_VERSION)
+            }
+            GeneratorOptionQuery::TerrainStyles
+            | GeneratorOptionQuery::TextureStyles
+            | GeneratorOptionQuery::ResourceStyles
+            | GeneratorOptionQuery::PropStyles => version.supports_component_styles(),
+        }
+    }
+
     pub const ALL: [GeneratorOptionQuery; 6] = [
         GeneratorOptionQuery::Symmetries,
         GeneratorOptionQuery::Styles,
@@ -1399,8 +1472,13 @@ mod tests {
             resource_density: Some(0.0),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            MIN_COMPONENT_STYLE_VERSION,
+            None,
+            &options,
+            VersionPolicy::default(),
+        )
+        .unwrap();
         for expected in [
             "--seed",
             "42",
@@ -1439,8 +1517,13 @@ mod tests {
                 resource_density: Some(bin),
                 ..Default::default()
             };
-            let args = build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default())
-                .unwrap();
+            let args = build_arguments(
+                MIN_COMPONENT_STYLE_VERSION,
+                None,
+                &options,
+                VersionPolicy::default(),
+            )
+            .unwrap();
             let emitted: Vec<f32> = args
                 .windows(2)
                 .filter(|w| w[0] == "--reclaim-density" || w[0] == "--resource-density")
@@ -1463,8 +1546,13 @@ mod tests {
             reclaim_density: Some(NUM_BINS as f32),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            MIN_COMPONENT_STYLE_VERSION,
+            None,
+            &options,
+            VersionPolicy::default(),
+        )
+        .unwrap();
         assert!(args
             .windows(2)
             .any(|w| w[0] == "--reclaim-density" && w[1].parse::<f32>().unwrap() == 1.0));
@@ -1859,6 +1947,60 @@ mod tests {
             parse_option_list(stdout),
             vec!["BIG_ISLANDS", "LAND", "MOUNTAIN_RANGE"]
         );
+    }
+
+    #[test]
+    fn a_list_is_only_asked_of_a_release_that_answers_it() {
+        // Read off the published JARs, run under Temurin 25. The gap in the
+        // middle of `--symmetries` is real: the picocli rewrite dropped it and
+        // 1.12.0 brought it back.
+        let cases = [
+            (version(1, 3, 0), GeneratorOptionQuery::Styles, false),
+            (version(1, 4, 0), GeneratorOptionQuery::Styles, true),
+            (version(1, 9, 0), GeneratorOptionQuery::Styles, true),
+            (version(1, 3, 0), GeneratorOptionQuery::Symmetries, false),
+            (version(1, 8, 0), GeneratorOptionQuery::Symmetries, true),
+            (version(1, 9, 0), GeneratorOptionQuery::Symmetries, false),
+            (version(1, 11, 0), GeneratorOptionQuery::Symmetries, false),
+            (version(1, 12, 0), GeneratorOptionQuery::Symmetries, true),
+            (
+                version(1, 11, 0),
+                GeneratorOptionQuery::TerrainStyles,
+                false,
+            ),
+            (version(1, 12, 0), GeneratorOptionQuery::TerrainStyles, true),
+            (version(1, 22, 1), GeneratorOptionQuery::PropStyles, true),
+        ];
+        for (release, query, expected) in cases {
+            assert_eq!(
+                query.supported_by(release),
+                expected,
+                "{} on {release}",
+                query.flag()
+            );
+        }
+    }
+
+    #[test]
+    fn a_release_without_component_styles_gets_none_of_their_flags() {
+        // The flags would not be refused by every old generator: the ones
+        // before picocli ignore what they do not know, so the run succeeds and
+        // quietly produces a different map. Leaving them off is the only way
+        // the result matches what was asked for.
+        let options = GeneratorOptions {
+            terrain_style: "T".into(),
+            texture_style: "X".into(),
+            resource_style: "R".into(),
+            prop_style: "P".into(),
+            reclaim_density: Some(64.0),
+            ..Default::default()
+        };
+        let args =
+            build_arguments(version(1, 9, 0), None, &options, VersionPolicy::default()).unwrap();
+        assert!(!args.iter().any(|arg| arg.ends_with("-style")));
+        assert!(!args.contains(&"--reclaim-density".to_string()));
+        // The size/spawn/team triple every release understands still goes out.
+        assert!(args.starts_with(&["--map-size".to_string()]));
     }
 
     #[test]

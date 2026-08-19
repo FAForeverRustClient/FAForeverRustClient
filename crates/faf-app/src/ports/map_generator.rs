@@ -34,10 +34,16 @@ pub trait MapGeneratorPort: Send + Sync {
 
     /// Ask the generator for one of its option lists (`--styles`, …).
     /// Downloads the specified (or newest supported) release first if necessary.
+    ///
+    /// `progress` carries that download, so switching to a release the client
+    /// has never run says so instead of appearing to do nothing for a minute.
+    /// A release that does not know the flag answers with an empty list rather
+    /// than an error: see `GeneratorOptionQuery::supported_by`.
     async fn query_options(
         &self,
         query: GeneratorOptionQuery,
         version: Option<String>,
+        progress: Option<mpsc::Sender<GeneratorUpdate>>,
     ) -> Result<Vec<String>, String>;
 
     /// Resolve options through the generator's `--parse`, yielding the map name

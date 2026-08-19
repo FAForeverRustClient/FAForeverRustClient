@@ -18,6 +18,7 @@ use faf_domain::state::{
     GeneratorOptionQuery, GeneratorStatus, MapGeneratorCommand, MapGeneratorEvent, MapsCommand,
     NotificationKind, SettingsEvent,
 };
+use tokio::sync::mpsc;
 
 use crate::ports::GeneratorUpdate;
 use crate::runtime::{EventSink, ServiceCtx};
@@ -322,14 +323,68 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
         }
     };
 
+    // Without a version there is nothing to query: every list would resolve
+    // the version again, fail the same way, and spend six more GitHub requests
+    // against an hourly budget of sixty per address. The error is already
+    // reported above.
+    let Some(_) = resolved_version.as_ref() else {
+        return;
+    };
+
+    // The first query on a machine pays for the JAR, and picking a different
+    // release pays for that one: 24 MB either way. Forwarding the download as
+    // a status is what keeps "I clicked a release and nothing happened" from
+    // being the whole user experience. Skipped while a real run owns the
+    // status, and the run's own status is put back afterwards.
+    let resting_status = out.with_state(|state| state.map_generator.status.clone());
+    let narrate = !resting_status.is_busy();
+    let mut narrated = false;
+
+    // A failed list is not skipped silently. Every one of these needs a JAR
+    // download and a JVM, so on a machine without a usable Java the dialog
+    // would otherwise open with six empty pickers and no explanation: the
+    // shape of the bug this reporting exists for.
+    let mut failure: Option<String> = None;
     for query in GeneratorOptionQuery::ALL {
-        if let Ok(values) = ctx
-            .ports
-            .map_generator
-            .query_options(query, resolved_version.clone())
-            .await
-        {
-            out.emit(MapGeneratorEvent::OptionListLoaded { query, values });
+        let (progress, mut updates) = mpsc::channel(32);
+        let pending =
+            ctx.ports
+                .map_generator
+                .query_options(query, resolved_version.clone(), Some(progress));
+        tokio::pin!(pending);
+        let outcome = loop {
+            tokio::select! {
+                Some(GeneratorUpdate::Status(status)) = updates.recv() => {
+                    if narrate {
+                        narrated = true;
+                        out.emit(MapGeneratorEvent::StatusChanged { status });
+                    }
+                }
+                outcome = &mut pending => break outcome,
+            }
+        };
+        match outcome {
+            Ok(values) => out.emit(MapGeneratorEvent::OptionListLoaded { query, values }),
+            Err(reason) => {
+                tracing::warn!(flag = query.flag(), %reason, "map generator option list failed");
+                // The first reason is the informative one: the rest are the
+                // same failure repeated once per list.
+                failure.get_or_insert(reason);
+            }
         }
+    }
+    if narrated {
+        out.emit(MapGeneratorEvent::StatusChanged {
+            status: resting_status,
+        });
+    }
+    if let Some(reason) = failure {
+        services::notifications::add(
+            out,
+            NotificationKind::Error,
+            "Could not read the map generator options",
+            reason,
+            None,
+        );
     }
 }
