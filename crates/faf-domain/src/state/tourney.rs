@@ -314,6 +314,13 @@ pub enum VetoMode {
 }
 
 impl VetoMode {
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Upfront => "upfront",
+            Self::Continuous => "continuous",
+        }
+    }
+
     pub fn from_wire(raw: &str) -> Self {
         match raw.trim().to_ascii_lowercase().as_str() {
             "continuous" => Self::Continuous,
@@ -982,15 +989,182 @@ pub struct RatingGate {
     pub cap: Option<i32>,
 }
 
+/// The three currencies a cash prize may be named in.
+///
+/// The service's own list (`PRIZE_CURRENCIES`), and closed rather than a free
+/// string: it decides which symbol is drawn, and an unknown code would render
+/// as a bare number that reads as dollars to half the audience.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum Currency {
+    Usd,
+    Eur,
+    Rub,
+}
+
+impl Currency {
+    pub fn from_wire(raw: &str) -> Option<Self> {
+        match raw.trim().to_ascii_uppercase().as_str() {
+            "USD" => Some(Self::Usd),
+            "EUR" => Some(Self::Eur),
+            "RUB" => Some(Self::Rub),
+            _ => None,
+        }
+    }
+
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Usd => "USD",
+            Self::Eur => "EUR",
+            Self::Rub => "RUB",
+        }
+    }
+}
+
+/// The headline cash prize, where an event has one.
+///
+/// A pair rather than a formatted string: the service stores the two halves and
+/// formatting them is the client's job, since doing it here would freeze one
+/// locale's punctuation into the state. Both halves are always present or the
+/// whole thing is `None`, which mirrors `cleanPrize`: it answers
+/// `{currency: null, amount: null}` for any pair it does not like, and half a
+/// prize is not a prize.
+///
+/// The amount is held in cents rather than as a float. The service rounds to
+/// two decimals (`Math.round(n * 100) / 100`), so cents are exact, and an
+/// integer keeps the whole state tree comparable by `Eq` for a field that is
+/// `$100` in practice. `i32` rather than `i64` because the bindings generator
+/// refuses 64-bit integers, and it caps this at twenty-one million dollars.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Prize {
+    pub currency: Currency,
+    pub amount_cents: i32,
+}
+
+/// A livestream the organiser named, with an optional word about it.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Stream {
+    /// Always `http(s)`: the service refuses every other scheme on the way in,
+    /// and the frontend's own allow-list refuses it again on the way out.
+    pub url: String,
+    /// What this stream is, e.g. "Main stream (English)". Often empty.
+    pub info: String,
+}
+
+/// The best-of template an event is created with.
+///
+/// Not the same thing as [`BracketConfig`], which is the per-round list settled
+/// at the draw. This is the shape the organiser fills in *before* there are any
+/// rounds to list, and the service expands it into that list when the bracket
+/// is built. One variant per bracket type, because the service stores one of
+/// three differently shaped objects under the same `plan` key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum MatchPlan {
+    #[serde(rename_all = "camelCase")]
+    Single {
+        early: i32,
+        semi: i32,
+        final_bo: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    Double {
+        wb: i32,
+        wb_final: i32,
+        lb: i32,
+        lb_final: i32,
+        gf: i32,
+        /// Whether the winners finalist starts the grand final one game up.
+        lb_handicap: bool,
+    },
+    #[serde(rename_all = "camelCase")]
+    Swiss {
+        /// 1 or 3; the service accepts nothing else for an ordinary round.
+        best_of: i32,
+        /// Whether the top two play a final after the last round.
+        final_match: bool,
+        final_best_of: i32,
+        /// Whether a pairing starts as soon as two teams are free.
+        fast: bool,
+    },
+}
+
+impl MatchPlan {
+    /// The service's own defaults for a bracket type, mirrored so the create
+    /// dialog opens on what would happen anyway rather than on a blank form.
+    pub fn default_for(kind: BracketKind) -> Self {
+        match kind {
+            BracketKind::Single => Self::Single {
+                early: 3,
+                semi: 3,
+                final_bo: 5,
+            },
+            BracketKind::Double => Self::Double {
+                wb: 3,
+                wb_final: 3,
+                lb: 3,
+                lb_final: 3,
+                gf: 5,
+                lb_handicap: true,
+            },
+            BracketKind::Swiss => Self::Swiss {
+                best_of: 3,
+                final_match: true,
+                final_best_of: 5,
+                fast: false,
+            },
+        }
+    }
+
+    /// The bracket type this plan belongs to, so a changed bracket can swap it.
+    pub fn kind(&self) -> BracketKind {
+        match self {
+            Self::Single { .. } => BracketKind::Single,
+            Self::Double { .. } => BracketKind::Double,
+            Self::Swiss { .. } => BracketKind::Swiss,
+        }
+    }
+}
+
 /// A complete tournament, as `GET /api/t/{id}` returns it.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Tourney {
     pub id: String,
     pub name: String,
-    /// The rules, as the organiser wrote them. Reduced to plain text on the way
-    /// in: it is third-party markup and must never reach the document.
+    /// The briefing: rules, schedule, whatever the organiser wrote.
+    ///
+    /// Held as its **source**, not as plain text, which is a deliberate reversal
+    /// of what this field used to do. The service's rich fields are markdown
+    /// that a person typed into its own editor, not third-party HTML: `cleanName`
+    /// deletes every `<` and `>` on the way in, so a tag cannot survive storage.
+    /// The client's second guarantee is the renderer, which builds React elements
+    /// out of the subset it understands and never `dangerouslySetInnerHTML`. Any
+    /// markup that somehow got here therefore renders as the text it is.
+    ///
+    /// The same applies to [`Self::rewards`], [`Self::sponsors`],
+    /// [`Self::lobby_options`] and [`Self::mods`].
     pub description: String,
+    /// What the winners get, beyond the cash: avatars, credits, a trophy.
+    pub rewards: String,
+    /// Who paid for it, in the organiser's own words.
+    pub sponsors: String,
+    /// The headline cash prize, shown in its own box above the rewards.
+    pub prize: Option<Prize>,
+    /// Where to watch. Up to ten, in the order the organiser listed them.
+    pub streams: Vec<Stream>,
+    /// The lobby settings every host in the event is expected to set.
+    pub lobby_options: String,
+    /// Which mods are required, allowed or banned.
+    pub mods: String,
+    /// Images uploaded for the briefing, as bare file names.
+    ///
+    /// Referenced from the rich fields as `/desc-images/{name}`; any that no
+    /// field mentions are drawn as a gallery underneath, which is how a
+    /// pasted-in screenshot that never got placed still gets shown.
+    pub desc_images: Vec<String>,
     pub status: TourneyStatus,
     pub category: TourneyCategory,
     pub competition: Competition,
@@ -1005,6 +1179,18 @@ pub struct Tourney {
     /// a cap is the only thing that says how large the bracket will be, and
     /// preparing map pools during signups turns on knowing that.
     pub max_teams: i32,
+    /// The number of entrants below which the organiser would call it off, or 0.
+    /// Display only, on both sides: the service never enforces it.
+    pub min_teams: i32,
+    /// How the field is ordered when teams are locked.
+    ///
+    /// Read, which it was not before, and the reason is the trap this field is
+    /// famous for here: `edit_format` treats a present key as an instruction, so
+    /// a client that could not see the seeding policy had to either resend a
+    /// guess or omit it. Now it can send back what is actually set.
+    pub seeding: Seeding,
+    /// The best-of template, where the event has one. Free-for-alls have none.
+    pub plan: Option<MatchPlan>,
     /// Whether players may report their own results, or only organisers can.
     ///
     /// Read but never written as true: the client has no player reporting path,
@@ -1080,6 +1266,13 @@ pub struct Tourney {
     pub team_count: i32,
     pub players: Vec<TourneyPlayer>,
     pub teams: Vec<TourneyTeam>,
+    /// Entrants who ended up without a team when the field was locked.
+    ///
+    /// The service calls them subs. They are the free agents: everyone whose
+    /// team never filled up, plus the members of any team the entrant cap
+    /// pushed out. Before that moment the same people are simply players with
+    /// no `team_id`, so the Teams section works both out from the phase.
+    pub subs: Vec<String>,
     pub matches: Vec<TourneyMatch>,
     pub map_db: Vec<TourneyMap>,
     pub map_pools: Vec<MapPool>,
@@ -2575,17 +2768,43 @@ impl Seeding {
 
 /// A tournament as the organiser filled it in.
 ///
-/// Deliberately short of what `POST /api/tournaments` accepts. The server
-/// defaults the best-of plan, the veto configuration and the free-text fields,
-/// and those defaults are the tournament team's own. Asking an organiser for
-/// six best-of numbers before their event has a single entrant is the wrong
-/// first question; the plan is edited later, once the shape of the field is
-/// known.
+/// The whole of what `POST /api/tournaments` accepts for a team event, which it
+/// was not always: the first version left the rich fields, the prize, the
+/// streams and the best-of plan to the service's defaults, on the reasoning that
+/// six best-of numbers are the wrong first question. That reasoning was wrong
+/// about where the answers come from. Everything the overview shows is typed
+/// here, so a create form that skips a field is an overview with a hole in it
+/// and an organiser sent to the website to fill it.
+///
+/// Two things are still not here, and for the same reason as before: the
+/// free-for-all configuration, which has a shape of its own, and per-round
+/// best-of overrides, which cannot be asked about before the rounds exist.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TourneyDraft {
     pub name: String,
+    /// The briefing, as markdown source. See [`Tourney::description`].
     pub description: String,
+    pub rewards: String,
+    pub sponsors: String,
+    pub lobby_options: String,
+    pub mods: String,
+    /// The headline cash prize, or `None` for an event without one.
+    pub prize: Option<Prize>,
+    /// Up to ten stream links. Anything that is not `http(s)` is dropped by the
+    /// service without a word, so the form refuses it first.
+    pub streams: Vec<Stream>,
+    /// The series this edition belongs to, where the organiser picked one.
+    pub series_id: Option<String>,
+    /// The best-of template. `None` for a free-for-all, which has no bracket.
+    pub plan: Option<MatchPlan>,
+    /// Whether the captains ban and pick maps, and how.
+    pub veto: VetoConfig,
+    /// The lower bound the organiser wants, or 0. Display only.
+    pub min_teams: i32,
+    /// Whether the draft snakes back on every other pass. Only read for a
+    /// captains draft, and sent only then.
+    pub draft_snakes: bool,
     pub category: TourneyCategory,
     pub competition: Competition,
     /// 1 to 6. A size of one makes the formation solo whatever is asked for.
@@ -2615,10 +2834,11 @@ pub struct TourneyDraft {
 
 impl TourneyDraft {
     /// The defaults a new event starts from: a 2v2 community cup with open
-    /// signups.
+    /// signups, single elimination, and the service's own best-of template.
     pub fn new() -> Self {
         Self {
             team_size: 2,
+            plan: Some(MatchPlan::default_for(BracketKind::default())),
             ..Self::default()
         }
     }
@@ -3221,6 +3441,8 @@ pub enum TourneyLoadStatus {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum TourneyAction {
     AddingPlayer,
+    /// Saving this account's own Discord handle.
+    SavingProfile,
     #[serde(rename_all = "camelCase")]
     AnsweringSignup {
         player_id: String,
@@ -3410,6 +3632,21 @@ pub struct TourneyState {
     pub series_status: TourneyLoadStatus,
     /// The open series with its editions, or `None` while the list is showing.
     pub open_series: Option<SeriesDetail>,
+    /// The Discord handle this account has given the tournament service.
+    ///
+    /// Empty for an account that has not given one, which is the same state as
+    /// having cleared it. Held per session rather than per event, because that
+    /// is how the service stores it: one handle per FAF id, shown to the
+    /// organisers and teammates of every event that account enters.
+    pub discord: String,
+    /// Where the service lives, so a relative image url can be resolved.
+    ///
+    /// The organiser's uploads come back as `/desc-images/{file}`, which is a
+    /// path on the tournament server and nothing at all inside a desktop
+    /// client. The base is a deployment setting rather than a fact about any
+    /// one event, so it is carried once here rather than pasted onto every
+    /// image on the way through the codec.
+    pub asset_base: String,
 }
 
 /// A name-to-account search, as the organiser types.
@@ -3742,6 +3979,12 @@ pub enum TourneyCommand {
     LoadArticles,
     /// Ask whether this account may host, which gates the create button.
     LoadHosting,
+    /// Read this account's own Discord handle off the service.
+    LoadProfile,
+    /// Set or clear the Discord handle. Empty clears it.
+    SetDiscord {
+        handle: String,
+    },
     /// Find FAF accounts whose name starts with what has been typed.
     ///
     /// Reuses the same batch account lookup the player card and the leaderboard
@@ -3993,6 +4236,14 @@ pub enum TourneyEvent {
     Loaded {
         events: Vec<Tourney>,
     },
+    /// Where the service lives, so the tab can resolve an image path.
+    ///
+    /// Its own event rather than a field on `Loaded`: it is a deployment
+    /// setting that cannot change while the client runs, so it is sent once
+    /// with the first load and has nothing to do with what that load found.
+    AssetBase {
+        base: String,
+    },
     LoadFailed {
         reason: String,
         kind: RequestFailureKind,
@@ -4051,6 +4302,14 @@ pub enum TourneyEvent {
     HostingLoaded {
         hosting: HostingStatus,
     },
+    /// This account's Discord handle, as the service holds it.
+    ///
+    /// One event for both directions: reading it at startup and writing it from
+    /// the signup dialog land the same fact, and the write answers with what was
+    /// actually stored rather than with what was typed.
+    DiscordLoaded {
+        discord: String,
+    },
     /// An account search started; the field carries the query it is for.
     AccountSearchStarted {
         query: String,
@@ -4086,6 +4345,9 @@ pub enum TourneyEvent {
 pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
     match event {
         TourneyEvent::Loading => state.status = TourneyLoadStatus::Loading,
+        TourneyEvent::AssetBase { base } => {
+            state.asset_base = base.trim_end_matches('/').to_string()
+        }
         TourneyEvent::Loaded { events } => {
             // Keep the open event selected across a refresh: a reload should
             // not throw the reader back to the top of the list. But a selection
@@ -4203,6 +4465,7 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::ArticlesLoaded { articles } => state.articles = articles.clone(),
         TourneyEvent::HostingLoaded { hosting } => state.hosting = hosting.clone(),
+        TourneyEvent::DiscordLoaded { discord } => state.discord = discord.clone(),
 
         // A search's own query moves with it. Starting one claims the field, so
         // the results already on screen belong to the older word and go: showing

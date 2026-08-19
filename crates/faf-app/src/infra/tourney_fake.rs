@@ -26,8 +26,8 @@ use faf_domain::state::{
     TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 use faf_domain::state::{
-    BracketConfig, Caster, FormatDraft, Qualifier, QualifierRule, SeriesColour, SeriesDetail,
-    SeriesDraft, SeriesEdition, TourneySeries,
+    BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
+    SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
@@ -180,6 +180,10 @@ pub struct FakeTourney {
     /// is counted off the events on read rather than stored here.
     series: Mutex<Vec<FakeSeries>>,
     next_series: Mutex<u32>,
+    /// This account's Discord handle, which the service keys on the FAF id
+    /// rather than on any tournament. Seeded empty, so the signup dialog opens
+    /// the way it does for somebody who has never given one.
+    discord: Mutex<String>,
 }
 
 /// A series as the fake stores it: the four fields the organiser sets, and
@@ -220,6 +224,7 @@ impl FakeTourney {
                 category: Some(TourneyCategory::Official),
             }]),
             next_series: Mutex::new(1),
+            discord: Mutex::new(String::new()),
         }
     }
 
@@ -239,6 +244,29 @@ impl FakeTourney {
 
 #[async_trait]
 impl TourneyPort for FakeTourney {
+    /// Empty: there is no server offline, so an image path resolves to nothing
+    /// and the gallery is simply absent rather than broken.
+    fn asset_base(&self) -> String {
+        String::new()
+    }
+
+    async fn profile(&self) -> Result<String, RequestError> {
+        Ok(self.discord.lock().expect("fake profile poisoned").clone())
+    }
+
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
+        // The service's own cleaning, mirrored: it strips the characters it
+        // will not store and cuts the rest at forty, then answers with that.
+        let stored: String = handle
+            .trim()
+            .chars()
+            .filter(|held| !"<>\"'&\\".contains(*held))
+            .take(40)
+            .collect();
+        *self.discord.lock().expect("fake profile poisoned") = stored.clone();
+        Ok(stored)
+    }
+
     async fn hosting(&self) -> Result<HostingStatus, RequestError> {
         // Allowed offline, because the alternative is a create button nobody
         // can press and a feature nobody can develop.
@@ -268,6 +296,17 @@ impl TourneyPort for FakeTourney {
         event.formation = draft.effective_formation();
         event.bracket_kind = draft.bracket_kind;
         event.team_size = draft.team_size.clamp(1, 6);
+        // Structural settings, which `edit_info` may not touch and `apply`
+        // therefore leaves alone: they are only ever set at creation here.
+        event.seeding = draft.seeding;
+        event.signup_mode = draft.signup_mode;
+        event.rating_kind = draft.rating_kind;
+        event.max_teams = draft.max_teams.max(0);
+        event.draft_snakes = draft.draft_snakes;
+        event.veto = draft.veto.clone();
+        event.veto_enabled = draft.veto.enabled;
+        event.plan = draft.plan;
+        event.series_id = draft.series_id.clone();
         self.events
             .lock()
             .expect("fake tournaments poisoned")
@@ -2250,9 +2289,20 @@ fn leave(event: &mut Tourney, player_id: &str, team_id: &str) {
 }
 
 /// Copy a draft's settings onto an event.
+///
+/// Every field the create and edit bodies send, so what an organiser typed here
+/// comes back the way the service would send it. A field missing from this list
+/// is a field the offline flow silently drops, which reads as the write path
+/// being broken when it is only the fake being incomplete.
 fn apply(event: &mut Tourney, draft: &TourneyDraft) {
     event.name = draft.name.trim().to_string();
     event.description = draft.description.trim().to_string();
+    event.rewards = draft.rewards.trim().to_string();
+    event.sponsors = draft.sponsors.trim().to_string();
+    event.lobby_options = draft.lobby_options.trim().to_string();
+    event.mods = draft.mods.trim().to_string();
+    event.prize = draft.prize;
+    event.streams = draft.streams.clone();
     // Always off, as the real body says: the client has no player reporting
     // path, and the service would default an absent key to *on*.
     event.player_reporting = false;
@@ -2261,6 +2311,7 @@ fn apply(event: &mut Tourney, draft: &TourneyDraft) {
     event.signup_closes_at = draft.signup_closes_at;
     event.rating_date = draft.rating_date;
     event.rating = draft.rating.clone();
+    event.min_teams = draft.min_teams;
 }
 
 /// Put every entrant in a team of one, seeded by rating, as
@@ -2587,9 +2638,53 @@ fn audit(text: &str, at: u32) -> AuditEntry {
 /// An event taking signups, so entering and withdrawing can be exercised.
 fn signup_event() -> FakeEvent {
     let mut event = empty_event("e1a2b", "Weekend Ladder Cup", TourneyStatus::Signup);
-    event.description =
-        "A best-of-three 1v1 cup. Signups close on the Friday; check in on the day.".into();
+    // Written as the website's own editor writes it: markdown source, with the
+    // subset the renderer understands. The overview cannot be developed against
+    // a one-line description, because every rule it has is about the formatting.
+    event.description = "## Schedule\n\
+        Sunday 19:00 CEST. Check-in opens an hour before, in Discord.\n\n\
+        ## Rules\n\
+        - Best of three, **all rounds**\n\
+        - Report the score in your match chat\n\
+        - No pausing past 30 seconds without asking\n\n\
+        Questions go to the organisers, or type `!organizer` in chat. \
+        The full ruleset is in the [FAF tournament rules](https://tournaments.doodlepros.com/faq)."
+        .into();
+    event.rewards = "**1st** Champion avatar + 500 credits\n\
+        **2nd** Faction avatar\n\
+        **3rd** Faction logo\n\n\
+        *Prizes come from the FAF tournament fund and may change with the signup count.*"
+        .into();
+    event.sponsors = "Powered by [The Working Man](https://example.invalid/working-man), \
+        a close-knit group of players who balance the game with the rest of life."
+        .into();
+    event.prize = Some(Prize {
+        currency: Currency::Usd,
+        amount_cents: 15_000,
+    });
+    event.streams = vec![
+        Stream {
+            url: "https://twitch.tv/faflive".into(),
+            info: "Main stream (English)".into(),
+        },
+        Stream {
+            url: "https://twitch.tv/fafrussia".into(),
+            info: String::new(),
+        },
+    ];
+    event.lobby_options = "- Title: `Tournament name - Round X - Team A vs. Team B`\n\
+        - Password: yes, announced in match chat\n\
+        - Victory: assassination\n\
+        - Share: full share\n\
+        - Observers: casters and organisers only\n\
+        - Unrated: no\n\n\
+        *Anything not named here stays on its default.*"
+        .into();
+    event.mods = "All **game** mods must be off, AI mods included.\n\
+        UI mods from the official vault are fine."
+        .into();
     event.event_date = Some(1_787_421_600);
+    event.min_teams = 4;
     event.signup_closes_at = Some(1_787_270_400);
     event.rating = RatingGate {
         min: Some(800),

@@ -37,11 +37,29 @@ use super::RequestError;
 
 #[async_trait]
 pub trait TourneyPort: Send + Sync {
+    /// Where the service lives, for resolving an image path against.
+    ///
+    /// Not a request: it is the deployment this client was pointed at, and the
+    /// organiser's uploads come back as bare paths on that host. Answering it
+    /// from the port keeps the base where every other detail of the deployment
+    /// already is, rather than teaching the service to read an environment.
+    fn asset_base(&self) -> String;
+
     /// Whether this account may host a tournament at all.
     ///
     /// Hosting is approval-only, granted per account by the site admin, so the
     /// answer is a property of the session rather than of any one event.
     async fn hosting(&self) -> Result<HostingStatus, RequestError>;
+
+    /// The Discord handle this account has given the tournament service, if any.
+    ///
+    /// A property of the account rather than of any tournament: the service
+    /// stores one handle per FAF id and shows it to the organisers and teammates
+    /// of every event that account enters.
+    async fn profile(&self) -> Result<String, RequestError>;
+
+    /// Set or clear the Discord handle, answering with what was stored.
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError>;
 
     /// Create an event, answering with its new id.
     async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError>;

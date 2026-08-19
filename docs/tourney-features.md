@@ -5,7 +5,7 @@ and the website's own `public/app*.js` (~8,500 lines). The point of the list is
 that "build the rest of the website" is otherwise unanswerable: there is no
 schema, no API document, and no feature list on the far side.
 
-Last checked against the tree on 2026-08-18, by tracing every `TourneyCommand`
+Last checked against the tree on 2026-08-19, by tracing every `TourneyCommand`
 back to a sender in the UI. Four rows had said **Done** for a command nothing
 sent; two had said **Todo** for one that had shipped. A status here means
 reachable, not merely implemented.
@@ -30,7 +30,7 @@ sections of it rather than places of their own.
 | `/host` (create) | The create dialog | **Done** |
 | `/series` and `/series/{id}` | Part of Manage: the series picker, a series editor, and the qualifier links | **Done** (2026-08-18). The browsing half (a series page of its own, listing every edition) is loaded and held in the slice but has no page yet |
 | `/hall` (Hall of Fame) | A section | **Todo** |
-| `/faq` | Folded into Rules | **Done** |
+| `/faq` | Folded into the Overview, under the briefing | **Done** (2026-08-19). The Rules tab is gone: the website has no such page, its rules *are* the briefing, and the three site-wide articles are a disclosure under it |
 | `/siteadmin` | none | **Out**: needs the site-admin password, and it administers the *site*, not a tournament |
 | `/editor` (articles) | none | **Out**: an editor for site-wide prose, used by two people |
 | `/importer` (Challonge import) | none | **Out**: Challonge was just removed |
@@ -39,11 +39,11 @@ sections of it rather than places of their own.
 
 | Section | Status | What is missing |
 |---|---|---|
-| Overview | **Done** | Prize, rewards, sponsors, streams, lobby options and mods are not shown |
-| Rules / FAQ | **Done** | Description images |
+| Overview | **Done** (rebuilt 2026-08-19) | Built in the website's own order: date, streams, the latest announcement, champion, rewards and sponsors with the prize cell, game setup (format, rating requirements, lobby options, mods, briefing, the unplaced-image gallery), qualification, series, rules, status. Rich text is rendered from markdown source through `RichText`, which emits elements and never `innerHTML`. **Missing**: uploading an image from the client (`add_desc_image`) |
+| Rules / FAQ | **Folded into Overview** (2026-08-19) | Was a tab of our own invention. Description images are shown now, both placed and unplaced; uploading one is still website-only |
 | News | **Done** | Posting, correcting, deleting, an important flag, and an unread badge per account that clears on every device |
-| Entrants | **Done** | Shows people, teams, seeds, check-in and placings |
-| Teams | **Done** | Form one, ask to join, answer requests, invite, leave, rename, disband. Only shown where there are teams to form |
+| Players | **Done** (renamed and rebuilt 2026-08-19) | A table like the website's: rank by rating, name, rating, team where the size is above one, and seed/check-in/placing once there is any. Was a list of team cards, which printed every solo entrant's name twice |
+| Teams | **Done** | Form one, ask to join, answer requests, invite, leave, rename, disband. Every team is listed, and under them the free agents in the same table the Players section uses: before the lock everyone without a team, afterwards the service's own `subs` |
 | Bracket | **Done** | Drawn from `winnerTo`/`loserTo`. Swiss and FFA rounds render as one column but have no standings table |
 | Standings | **Done** (2026-08-18) | Swiss records, elimination placings with shared ranks, free-for-all points, and an import's own final table. **Missing**: imported *group* tables (`importedGroups`) |
 | Chat | **Done** | Rooms split into live and completed, badges for `@mention` and the organiser ping, moderation on the post itself, a closed composer for a silenced account, and the silenced list in Manage. Polled while a room is open, because the service has no push. **Missing**: the organiser callout with Discord handles, the pre-start note, and a button for `!organizer` (typing it works) |
@@ -61,12 +61,12 @@ Standings are computed, not fetched: the service sends no table, so `Tourney::st
 
 | Endpoint | Status |
 |---|---|
-| `POST /api/tournaments` | **Done** |
+| `POST /api/tournaments` | **Done**, and the whole team-event field set as of 2026-08-19: the four dates, the rich text, the prize, streams, the series, the best-of plan, seeding, min/max entrants, the rating kind and its three limits, the veto and the draft order. The free-for-all block is the one part still website-only |
 | `publish` | **Done** (2026-08-18). Shipped unreachable: the command, port, fake and service arm existed, and nothing sent it, so every event created here stayed a draft only its organiser could see |
 | `phase` → `form_teams`, `start_bracket`, `reopen_signups` | **Done** |
 | `phase` → `set_captains`, `start_draft` | **Done** (2026-08-18) |
 | `delete` (archives for a non-admin) | **Done** |
-| `edit_info` | **Partial**: name, description, all three dates (event, signup close, rating date), rating gate, signup mode. Missing rewards, prize, sponsors, streams, lobby options, mods, check-in deadline, veto |
+| `edit_info` | **Done** (2026-08-19): name, description, all four dates, the rating gate including the team cap and the clamp, signup mode, rewards, the prize, sponsors, streams, lobby options and mods. **Missing**: the check-in deadline and the veto, both of which the create form sets but this path does not resend |
 | `reseed`, `split_divisions` | **Done** |
 | `set_division` | **Done** (2026-08-18): a per-team picker in the team admin, shown once the field is split |
 | `edit_format` | **Done** (2026-08-18): competition, team size, formation, draft order, bracket type. The best-of plan stays on the website. The two locks are mirrored rather than discovered: the whole format closes at the draw, the team setup one step earlier at the end of signups |
@@ -74,7 +74,7 @@ Standings are computed, not fetched: the service sends no table, so `Tourney::st
 | `report_submit` (the player path) | **Out, and now actively closed.** Both write bodies send `playerReporting: false` rather than leaving the key out, because the service reads an absent one as *on*. Every event created here is organiser-reported |
 | `abandon` | **Done** (2026-08-18): reversible, and set apart from archiving because it leaves the event visible |
 | `set_category`, `restore` | **Out**: both are site-admin-only, and nothing the service sends says whether this account is a site admin (`viewer.admin` is an *admin-token* holder). The button would answer "Site admin only" for every ordinary organiser |
-| `set_plan_round_bo`, `set_round_bo` | **Todo** |
+| `set_plan_round_bo`, `set_round_bo` | **Todo**: the per-round overrides. The plan itself is set at creation now; these change one round of a drawn bracket |
 
 ### Signups
 
@@ -147,7 +147,7 @@ exercised without a server.
 | `chat_mute`, `chat_delete` | **Done** (2026-08-18): both on the post that prompted them, and the silenced list with a way back in Manage |
 | `chat_rooms`, `chat_read` | **Done**, and re-read every five seconds while a room is open. Silent: a poll that announced itself would blink the room out from under whoever is reading it |
 | `!organizer`, `!roll` | **Done differently**: both are the service's, triggered by what is typed, so they need nothing from the client but the message. The composer names them in a tooltip. The website's bell button is not built |
-| `add_desc_image`, `remove_desc_image` | **Todo** |
+| `add_desc_image`, `remove_desc_image` | **Todo**: uploading. The images themselves are *shown* as of 2026-08-19, placed inline or as a gallery of whatever no field referenced |
 | `secrets` (admin, late-signup and streamer tokens) | **Out**: three tokens whose only use is a URL handed to somebody else, and the website already does that with the copy buttons and the wording that goes with them |
 
 ### Site-wide reads
@@ -160,7 +160,7 @@ exercised without a server.
 | `GET /api/series`, `/api/series/{id}`, `set_series`, `qualifier_add`, `qualifier_remove` | **Done** (2026-08-18): file an event under a series, create and rename one, and link the events that feed it. Series and qualifiers are separate mechanisms and are drawn apart: a series is a browsing label, a qualifier sends invitations |
 | `GET /api/my_tournaments` | **Todo** |
 | `GET /api/my/pending` (invites awaiting you) | **Todo** |
-| `POST /api/my/profile` (Discord handle), `my/dismiss_requests` | **Todo** |
+| `POST /api/my/profile` (Discord handle) | **Done** (2026-08-19): asked once, in the signup dialog, and skippable. Read back from `/auth/faf/me` so the field opens on what is stored rather than clearing it. `my/dismiss_requests` is still **Todo** |
 | `editor_status`, `importer_status`, `*_request`, `admin_lookup`, `siteadmin/*`, `import_challonge` | **Out**: site administration |
 
 ## 3.05 The chat, checked against what the tournament team asked for

@@ -17,6 +17,7 @@ import { Icon } from "../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerChip } from "./PlayerChip";
+import { PlayerTable } from "./PlayerTable";
 import { mayRename, myInvites, profileOf, selfOrganised, teamMembers, teamRating, wouldExceedCap } from "../../shared/tourneyRules";
 
 interface TeamsPanelProps {
@@ -47,6 +48,14 @@ export function TeamsPanel(props: TeamsPanelProps) {
   const askedFor = (team: TourneyTeam) =>
     myPlayerId !== null && team.joinRequests.some((ask) => ask.playerId === myPlayerId);
   const unteamed = event.players.filter((player) => player.teamId === null && !player.pending);
+  // Once the field is locked the service names the reserves itself, and its
+  // list is the authority: `finalizeOpenTeams` dissolves every team that never
+  // filled and every one the entrant cap pushed out, and puts their players
+  // here. Before that nobody has been named yet, so it is whoever has no team.
+  const freeAgents =
+    event.subs.length > 0
+      ? event.players.filter((player) => event.subs.includes(player.id))
+      : unteamed;
   const invites = myInvites(event);
   const canForm = selfOrganised(event) && event.viewer.signedUpPlayerId !== null && mine === null;
 
@@ -122,7 +131,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
         <p className="muted">{t("tournaments.teams.enterFirst")}</p>
       )}
 
-      <ul className="tournament-team-list">
+      <ul className="tournament-team-grid">
         {event.teams.map((team) => {
           const isMine = team.id === mine?.id;
           const captain = captainOf(team);
@@ -133,24 +142,37 @@ export function TeamsPanel(props: TeamsPanelProps) {
               className={isMine ? "surface tournament-team is-mine" : "surface tournament-team"}
               key={team.id}
             >
+              {/* The card's three parts, in the order a reader wants them: who
+                  this is, who is on it, and what can be done about that. The
+                  tile only works if the middle part is the tallest, so the
+                  roster grows and the footer stays at the bottom. */}
+              {/* Two fixed rows rather than one wrapping one. With everything
+                  on a single line the check-in badge sat beside the name on a
+                  short team name and under it on a long one, so no two cards in
+                  the grid lined up. The name owns the first row; the facts about
+                  the team own the second. */}
               <div className="tournament-team-header">
-                <span className="tournament-team-name">{nameOf(team)}</span>
-                <span className="muted">
-                  {t("tournaments.teams.size", {
-                    have: team.playerIds.length,
-                    want: event.teamSize,
-                  })}
-                </span>
-                {event.rating.maxTeam !== null && (
-                  <span className="muted">
-                    {t("tournaments.teams.combined", { rating: teamRating(event, team) })}
+                <div className="tournament-team-title">
+                  <span className="tournament-team-name">{nameOf(team)}</span>
+                  {team.checkedIn && (
+                    <span className="tournament-badge is-signup">
+                      {t("tournaments.entrants.checkedIn")}
+                    </span>
+                  )}
+                </div>
+                <div className="tournament-team-meta muted">
+                  <span>
+                    {t("tournaments.teams.size", {
+                      have: team.playerIds.length,
+                      want: event.teamSize,
+                    })}
                   </span>
-                )}
-                {team.checkedIn && (
-                  <span className="tournament-badge is-signup">
-                    {t("tournaments.entrants.checkedIn")}
-                  </span>
-                )}
+                  {event.rating.maxTeam !== null && (
+                    <span>
+                      {t("tournaments.teams.combined", { rating: teamRating(event, team) })}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <ul className="tournament-entrant-list">
@@ -295,17 +317,25 @@ export function TeamsPanel(props: TeamsPanelProps) {
 
       {event.teams.length === 0 && <p className="muted">{t("tournaments.teams.none")}</p>}
 
-      {unteamed.length > 0 && (
-        <section>
-          <h5>{t("tournaments.entrants.unteamed")}</h5>
-          <ul className="tournament-entrant-list">
-            {unteamed.map((player) => (
-              <li className="tournament-entrant" key={player.id}>
-                <span className="tournament-entrant-name">{player.name}</span>
-                {player.rating !== null && <span className="muted">{player.rating}</span>}
-              </li>
-            ))}
-          </ul>
+      {/* The free agents: everyone who has entered and has no team.
+          Before the field is locked they are players still looking, and the
+          captains above can invite them from here. Afterwards they are the
+          service's `subs`, which is the same people under a different name:
+          a team that never filled up is dissolved and its members land here,
+          as do the members of any team the entrant cap pushed out. Either way
+          the answer to "who is still free" is the same query, so it is one
+          list, in the same table the Players section uses. */}
+      {freeAgents.length > 0 && (
+        <section className="tournament-free-agents">
+          <h5>{t("tournaments.teams.freeAgents", { count: freeAgents.length })}</h5>
+          <p className="muted">
+            {t(
+              event.status === "signup"
+                ? "tournaments.teams.freeAgentsLooking"
+                : "tournaments.teams.freeAgentsReserve",
+            )}
+          </p>
+          <PlayerTable event={event} profiles={props.profiles} players={freeAgents} />
         </section>
       )}
     </div>

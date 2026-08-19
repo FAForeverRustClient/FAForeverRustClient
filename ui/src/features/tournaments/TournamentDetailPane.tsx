@@ -7,7 +7,7 @@
 // Entering is the primary action and sits in the header, not in a section. It
 // is the one thing a player opens this tab to do.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type {
@@ -27,6 +27,7 @@ import type {
   SeriesDraft,
   Tourney,
   TourneyLoadStatus,
+  TourneyDraft,
   TourneyMatch,
   TourneyPhase,
   TourneySeries,
@@ -42,15 +43,15 @@ import { EntrantsPanel } from "./EntrantsPanel";
 import { TeamsPanel } from "./TeamsPanel";
 import { ManagePanel } from "./ManagePanel";
 import { NewsPanel } from "./NewsPanel";
+import { OverviewPanel } from "./OverviewPanel";
 import { StandingsPanel } from "./StandingsPanel";
-import { formatDay, formatMoment, formatOf, ratingGateOf } from "./tourneyPresentation";
+import { formatMoment, formatOf } from "./tourneyPresentation";
 import { selfOrganised, standingsKind, unreadNews, unreadTotal } from "../../shared/tourneyRules";
 
 type Section =
   | "overview"
   | "news"
-  | "rules"
-  | "entrants"
+  | "players"
   | "teams"
   | "draft"
   | "bracket"
@@ -62,8 +63,7 @@ type Section =
 const SECTION_LABELS: Record<Section, MessageKey> = {
   overview: "tournaments.section.overview",
   news: "tournaments.section.news",
-  rules: "tournaments.section.rules",
-  entrants: "tournaments.section.entrants",
+  players: "tournaments.section.players",
   teams: "tournaments.section.teams",
   draft: "tournaments.section.draft",
   bracket: "tournaments.section.bracket",
@@ -82,6 +82,10 @@ interface TournamentDetailPaneProps {
   events: Tourney[];
   profiles: PlayerSummary[];
   articles: Article[];
+  /** Where the tournament service lives, for its own image paths. */
+  assetBase: string;
+  /** Ask for the map vault, if it has not been loaded yet. */
+  onNeedVault: () => void;
   vault: VaultMap[];
   vaultStatus: MapListStatus;
   chatRooms: ChatRoom[];
@@ -104,7 +108,8 @@ interface TournamentDetailPaneProps {
   onPost: (body: string) => void;
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
-  onEdit: () => void;
+  /** Save the settings, from the form Manage now shows inline. */
+  onEditInfo: (draft: TourneyDraft) => void;
   onPublish: () => void;
   onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
   onArchive: () => void;
@@ -184,6 +189,25 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
 
   const unread = unreadTotal(props.chatRooms);
 
+  /*
+   * FAF's whole map catalogue, asked for by the sections that draw a preview
+   * rather than when the tab mounts. It is the largest thing the client holds:
+   * twenty thousand maps, measured at about twelve megabytes of heap, and a
+   * player who came to look at a bracket was paying for all of it.
+   *
+   * An effect rather than the click handler, which is where this started and was
+   * wrong: a section can be open without having been clicked. Switching from one
+   * tournament to another while standing on Manage left every map without a
+   * preview, and so did anything that re-mounted the pane.
+   */
+  const needsVault = section === "manage" || section === "bracket";
+  useEffect(() => {
+    if (needsVault) props.onNeedVault();
+    // The callback is stable per render of the view above; re-running on it
+    // would ask again on every keystroke anywhere in the pane.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsVault, event.id]);
+
   const openSection = (next: Section) => {
     setSection(next);
     // The rooms are loaded on demand rather than with the detail: chat is
@@ -192,6 +216,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     if (next === "chat" && props.chatRooms.length === 0) props.onOpenChat();
     // The series list is a second endpoint, and most visits never open Manage.
     if (next === "manage" && props.series.length === 0) props.onLoadSeries();
+
     // Opening the announcements is what reading them means. The service keeps
     // the mark, so the badge clears on every device rather than once here.
     if (next === "news" && unreadNews(event) > 0) props.onMarkNewsRead();
@@ -275,7 +300,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               onClick={() => openSection(candidate)}
             >
               {t(SECTION_LABELS[candidate])}
-              {candidate === "entrants" && ` (${event.playerCount})`}
+              {candidate === "players" && ` (${event.playerCount})`}
               {candidate === "news" && event.news.length > 0 && ` (${event.news.length})`}
               {/* Two different counts on purpose: the news tab says how many
                   announcements there are, and the badge beside it how many are
@@ -292,7 +317,28 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
 
       {props.detailLoading && <p className="muted">{t("tournaments.detailLoading")}</p>}
 
-      {section === "overview" && <Overview event={event} />}
+      {/* Everything but the bracket reads at a measure rather than at the
+          window's width. The pane is as wide as the client, which on a wide
+          monitor put a label on the far left and its own control a thousand
+          pixels away. The bracket is the exception because it is a *diagram*:
+          it has to be able to use every pixel and scroll sideways past them. */}
+      <div
+        className={
+          section === "bracket"
+            ? "tournament-section-body is-wide"
+            : "tournament-section-body"
+        }
+      >
+
+      {section === "overview" && (
+        <OverviewPanel
+          event={event}
+          articles={props.articles}
+          assetBase={props.assetBase}
+          onOpenSection={openSection}
+          onOpenUrl={props.onOpenUrl}
+        />
+      )}
 
       {section === "news" && (
         <NewsPanel
@@ -304,29 +350,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         />
       )}
 
-      {section === "rules" && (
-        <div className="tournament-rules">
-          {event.description.trim() !== "" && (
-            <p className="tournament-description">{event.description}</p>
-          )}
-          {/* The site-wide pages, shown for an official event: they are what the
-              tournament team actually maintains, and every official tournament
-              points at the same text. */}
-          {event.category === "official" &&
-            props.articles.map((article) => (
-              <section key={article.id}>
-                <h5>{article.title}</h5>
-                <p className="tournament-description">{article.body}</p>
-              </section>
-            ))}
-          {event.description.trim() === "" &&
-            (event.category !== "official" || props.articles.length === 0) && (
-              <p className="muted">{t("tournaments.rules.none")}</p>
-            )}
-        </div>
-      )}
 
-      {section === "entrants" && <EntrantsPanel event={event} profiles={props.profiles} />}
+      {section === "players" && <EntrantsPanel event={event} profiles={props.profiles} />}
 
       {section === "teams" && (
         <TeamsPanel
@@ -406,7 +431,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           accountSearch={props.accountSearch}
           onSearchAccounts={props.onSearchAccounts}
           busy={busy}
-          onEdit={props.onEdit}
+          onEditInfo={props.onEditInfo}
           onPublish={props.onPublish}
           onAdvance={props.onAdvance}
           onArchive={props.onArchive}
@@ -441,42 +466,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onSplitDivisions={props.onSplitDivisions}
         />
       )}
+      </div>
     </div>
   );
 }
 
-function Overview({ event }: { event: Tourney }) {
-  const { t } = useTranslation();
-  const gate = ratingGateOf(event, t);
-  const fact = (label: MessageKey, value: string) =>
-    value === "" ? null : (
-      <div key={label}>
-        <dt className="muted">{t(label)}</dt>
-        <dd>{value}</dd>
-      </div>
-    );
-
-  return (
-    <>
-      <dl className="tournament-facts">
-        {fact("tournaments.overview.eventDate", formatMoment(event.eventDate, ""))}
-        {fact("tournaments.overview.signupCloses", formatDay(event.signupClosesAt, ""))}
-        {fact("tournaments.overview.checkIn", formatMoment(event.checkInDeadline, ""))}
-        {fact("tournaments.overview.entrants", String(event.playerCount))}
-        {fact("tournaments.overview.ratingGate", gate)}
-        {fact("tournaments.overview.organisers", event.organisers.join(", "))}
-        {fact(
-          "tournaments.overview.reporting",
-          t(
-            event.playerReporting
-              ? "tournaments.overview.reportingPlayers"
-              : "tournaments.overview.reportingOrganiser",
-          ),
-        )}
-      </dl>
-      {event.description.trim() !== "" && (
-        <p className="tournament-description">{event.description}</p>
-      )}
-    </>
-  );
-}

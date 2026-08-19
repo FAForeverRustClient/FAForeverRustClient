@@ -921,6 +921,15 @@ export type CoopStatus = { type: "idle" } | { type: "loading" } | { type: "ready
 	kind: RequestFailureKind,
 } };
 
+/**
+ *  The three currencies a cash prize may be named in.
+ *
+ *  The service's own list (`PRIZE_CURRENCIES`), and closed rather than a free
+ *  string: it decides which symbol is drawn, and an unknown code would render
+ *  as a bare number that reads as dollars to half the audience.
+ */
+export type Currency = "usd" | "eur" | "rub";
+
 export type CustomGameBrowserPreferences = {
 	sort: CustomGameSort,
 	hidePrivate: boolean,
@@ -2419,6 +2428,37 @@ export type MatchLink = {
 };
 
 /**
+ *  The best-of template an event is created with.
+ *
+ *  Not the same thing as [`BracketConfig`], which is the per-round list settled
+ *  at the draw. This is the shape the organiser fills in *before* there are any
+ *  rounds to list, and the service expands it into that list when the bracket
+ *  is built. One variant per bracket type, because the service stores one of
+ *  three differently shaped objects under the same `plan` key.
+ */
+export type MatchPlan = { type: "single"; payload: {
+	early: number,
+	semi: number,
+	finalBo: number,
+} } | { type: "double"; payload: {
+	wb: number,
+	wbFinal: number,
+	lb: number,
+	lbFinal: number,
+	gf: number,
+	/**  Whether the winners finalist starts the grand final one game up. */
+	lbHandicap: boolean,
+} } | { type: "swiss"; payload: {
+	/**  1 or 3; the service accepts nothing else for an ordinary round. */
+	bestOf: number,
+	/**  Whether the top two play a final after the last round. */
+	finalMatch: boolean,
+	finalBestOf: number,
+	/**  Whether a pairing starts as soon as two teams are free. */
+	fast: boolean,
+} };
+
+/**
  *  A result the organiser sets on a match.
  *
  *  The replay id lists stay on the type because `report` accepts them and an
@@ -3198,6 +3238,27 @@ export type PoolStep = {
 	 *  match, from the pool's `abMode`.
 	 */
 	team: PoolSide,
+};
+
+/**
+ *  The headline cash prize, where an event has one.
+ *
+ *  A pair rather than a formatted string: the service stores the two halves and
+ *  formatting them is the client's job, since doing it here would freeze one
+ *  locale's punctuation into the state. Both halves are always present or the
+ *  whole thing is `None`, which mirrors `cleanPrize`: it answers
+ *  `{currency: null, amount: null}` for any pair it does not like, and half a
+ *  prize is not a prize.
+ *
+ *  The amount is held in cents rather than as a float. The service rounds to
+ *  two decimals (`Math.round(n * 100) / 100`), so cents are exact, and an
+ *  integer keeps the whole state tree comparable by `Eq` for a field that is
+ *  `$100` in practice. `i32` rather than `i64` because the bindings generator
+ *  refuses 64-bit integers, and it caps this at twenty-one million dollars.
+ */
+export type Prize = {
+	currency: Currency,
+	amountCents: number,
 };
 
 /**
@@ -4081,6 +4142,17 @@ export type StatisticsStatus = { type: "idle" } | { type: "loading" } | { type: 
 	reason: string,
 } };
 
+/**  A livestream the organiser named, with an optional word about it. */
+export type Stream = {
+	/**
+	 *  Always `http(s)`: the service refuses every other scheme on the way in,
+	 *  and the frontend's own allow-list refuses it again on the way out.
+	 */
+	url: string,
+	/**  What this stream is, e.g. "Main stream (English)". Often empty. */
+	info: string,
+};
+
 /**  The size, spawn and team window a whole-map style is designed for. */
 export type StyleConstraints = {
 	minMapSize: number,
@@ -4136,10 +4208,40 @@ export type Tourney = {
 	id: string,
 	name: string,
 	/**
-	 *  The rules, as the organiser wrote them. Reduced to plain text on the way
-	 *  in: it is third-party markup and must never reach the document.
+	 *  The briefing: rules, schedule, whatever the organiser wrote.
+	 *
+	 *  Held as its **source**, not as plain text, which is a deliberate reversal
+	 *  of what this field used to do. The service's rich fields are markdown
+	 *  that a person typed into its own editor, not third-party HTML: `cleanName`
+	 *  deletes every `<` and `>` on the way in, so a tag cannot survive storage.
+	 *  The client's second guarantee is the renderer, which builds React elements
+	 *  out of the subset it understands and never `dangerouslySetInnerHTML`. Any
+	 *  markup that somehow got here therefore renders as the text it is.
+	 *
+	 *  The same applies to [`Self::rewards`], [`Self::sponsors`],
+	 *  [`Self::lobby_options`] and [`Self::mods`].
 	 */
 	description: string,
+	/**  What the winners get, beyond the cash: avatars, credits, a trophy. */
+	rewards: string,
+	/**  Who paid for it, in the organiser's own words. */
+	sponsors: string,
+	/**  The headline cash prize, shown in its own box above the rewards. */
+	prize: Prize | null,
+	/**  Where to watch. Up to ten, in the order the organiser listed them. */
+	streams: Stream[],
+	/**  The lobby settings every host in the event is expected to set. */
+	lobbyOptions: string,
+	/**  Which mods are required, allowed or banned. */
+	mods: string,
+	/**
+	 *  Images uploaded for the briefing, as bare file names.
+	 *
+	 *  Referenced from the rich fields as `/desc-images/{name}`; any that no
+	 *  field mentions are drawn as a gallery underneath, which is how a
+	 *  pasted-in screenshot that never got placed still gets shown.
+	 */
+	descImages: string[],
 	status: TourneyStatus,
 	category: TourneyCategory,
 	competition: Competition,
@@ -4156,6 +4258,22 @@ export type Tourney = {
 	 *  preparing map pools during signups turns on knowing that.
 	 */
 	maxTeams: number,
+	/**
+	 *  The number of entrants below which the organiser would call it off, or 0.
+	 *  Display only, on both sides: the service never enforces it.
+	 */
+	minTeams: number,
+	/**
+	 *  How the field is ordered when teams are locked.
+	 *
+	 *  Read, which it was not before, and the reason is the trap this field is
+	 *  famous for here: `edit_format` treats a present key as an instruction, so
+	 *  a client that could not see the seeding policy had to either resend a
+	 *  guess or omit it. Now it can send back what is actually set.
+	 */
+	seeding: Seeding,
+	/**  The best-of template, where the event has one. Free-for-alls have none. */
+	plan: MatchPlan | null,
 	/**
 	 *  Whether players may report their own results, or only organisers can.
 	 *
@@ -4255,6 +4373,15 @@ export type Tourney = {
 	teamCount: number,
 	players: TourneyPlayer[],
 	teams: TourneyTeam[],
+	/**
+	 *  Entrants who ended up without a team when the field was locked.
+	 *
+	 *  The service calls them subs. They are the free agents: everyone whose
+	 *  team never filled up, plus the members of any team the entrant cap
+	 *  pushed out. Before that moment the same people are simply players with
+	 *  no `team_id`, so the Teams section works both out from the phase.
+	 */
+	subs: string[],
 	matches: TourneyMatch[],
 	mapDb: TourneyMap[],
 	mapPools: MapPool[],
@@ -4335,7 +4462,9 @@ export type Tourney = {
  *  Each variant names the thing it is acting on, so a spinner can sit on the
  *  one match being reported instead of over the whole bracket.
  */
-export type TourneyAction = { type: "addingPlayer" } | { type: "answeringSignup"; payload: {
+export type TourneyAction = { type: "addingPlayer" } |
+/**  Saving this account's own Discord handle. */
+{ type: "savingProfile" } | { type: "answeringSignup"; payload: {
 	playerId: string,
 } } | { type: "removingPlayer"; payload: {
 	playerId: string,
@@ -4618,6 +4747,12 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 } } | { type: "loadArticles" } |
 /**  Ask whether this account may host, which gates the create button. */
 { type: "loadHosting" } |
+/**  Read this account's own Discord handle off the service. */
+{ type: "loadProfile" } |
+/**  Set or clear the Discord handle. Empty clears it. */
+{ type: "setDiscord"; payload: {
+	handle: string,
+} } |
 /**
  *  Find FAF accounts whose name starts with what has been typed.
  *
@@ -4848,16 +4983,46 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 /**
  *  A tournament as the organiser filled it in.
  *
- *  Deliberately short of what `POST /api/tournaments` accepts. The server
- *  defaults the best-of plan, the veto configuration and the free-text fields,
- *  and those defaults are the tournament team's own. Asking an organiser for
- *  six best-of numbers before their event has a single entrant is the wrong
- *  first question; the plan is edited later, once the shape of the field is
- *  known.
+ *  The whole of what `POST /api/tournaments` accepts for a team event, which it
+ *  was not always: the first version left the rich fields, the prize, the
+ *  streams and the best-of plan to the service's defaults, on the reasoning that
+ *  six best-of numbers are the wrong first question. That reasoning was wrong
+ *  about where the answers come from. Everything the overview shows is typed
+ *  here, so a create form that skips a field is an overview with a hole in it
+ *  and an organiser sent to the website to fill it.
+ *
+ *  Two things are still not here, and for the same reason as before: the
+ *  free-for-all configuration, which has a shape of its own, and per-round
+ *  best-of overrides, which cannot be asked about before the rounds exist.
  */
 export type TourneyDraft = {
 	name: string,
+	/**  The briefing, as markdown source. See [`Tourney::description`]. */
 	description: string,
+	rewards: string,
+	sponsors: string,
+	lobbyOptions: string,
+	mods: string,
+	/**  The headline cash prize, or `None` for an event without one. */
+	prize: Prize | null,
+	/**
+	 *  Up to ten stream links. Anything that is not `http(s)` is dropped by the
+	 *  service without a word, so the form refuses it first.
+	 */
+	streams: Stream[],
+	/**  The series this edition belongs to, where the organiser picked one. */
+	seriesId: string | null,
+	/**  The best-of template. `None` for a free-for-all, which has no bracket. */
+	plan: MatchPlan | null,
+	/**  Whether the captains ban and pick maps, and how. */
+	veto: VetoConfig,
+	/**  The lower bound the organiser wants, or 0. Display only. */
+	minTeams: number,
+	/**
+	 *  Whether the draft snakes back on every other pass. Only read for a
+	 *  captains draft, and sent only then.
+	 */
+	draftSnakes: boolean,
 	category: TourneyCategory,
 	competition: Competition,
 	/**  1 to 6. A size of one makes the formation solo whatever is asked for. */
@@ -4889,6 +5054,16 @@ export type TourneyDraft = {
 
 export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	events: Tourney[],
+} } |
+/**
+ *  Where the service lives, so the tab can resolve an image path.
+ *
+ *  Its own event rather than a field on `Loaded`: it is a deployment
+ *  setting that cannot change while the client runs, so it is sent once
+ *  with the first load and has nothing to do with what that load found.
+ */
+{ type: "assetBase"; payload: {
+	base: string,
 } } | { type: "loadFailed"; payload: {
 	reason: string,
 	kind: RequestFailureKind,
@@ -4930,6 +5105,16 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	articles: Article[],
 } } | { type: "hostingLoaded"; payload: {
 	hosting: HostingStatus,
+} } |
+/**
+ *  This account's Discord handle, as the service holds it.
+ *
+ *  One event for both directions: reading it at startup and writing it from
+ *  the signup dialog land the same fact, and the write answers with what was
+ *  actually stored rather than with what was typed.
+ */
+{ type: "discordLoaded"; payload: {
+	discord: string,
 } } |
 /**  An account search started; the field carries the query it is for. */
 { type: "accountSearchStarted"; payload: {
@@ -5211,6 +5396,25 @@ export type TourneyState = {
 	seriesStatus: TourneyLoadStatus,
 	/**  The open series with its editions, or `None` while the list is showing. */
 	openSeries: SeriesDetail | null,
+	/**
+	 *  The Discord handle this account has given the tournament service.
+	 *
+	 *  Empty for an account that has not given one, which is the same state as
+	 *  having cleared it. Held per session rather than per event, because that
+	 *  is how the service stores it: one handle per FAF id, shown to the
+	 *  organisers and teammates of every event that account enters.
+	 */
+	discord: string,
+	/**
+	 *  Where the service lives, so a relative image url can be resolved.
+	 *
+	 *  The organiser's uploads come back as `/desc-images/{file}`, which is a
+	 *  path on the tournament server and nothing at all inside a desktop
+	 *  client. The base is a deployment setting rather than a fact about any
+	 *  one event, so it is carried once here rather than pasted onto every
+	 *  image on the way through the codec.
+	 */
+	assetBase: string,
 };
 
 /**

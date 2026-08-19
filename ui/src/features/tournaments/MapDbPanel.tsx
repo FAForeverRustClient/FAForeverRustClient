@@ -185,13 +185,15 @@ export function MapDbPanel(props: MapDbPanelProps) {
 
       {draft !== null && editor}
 
+      {/* One way in: FAF's own vault. Typing a name by hand was the second
+          button, and it produced the one kind of entry that cannot show a
+          preview, cannot be matched to a real map and cannot be checked for
+          spelling. The editor below still opens for a map already in the list,
+          which is where a name typed on the website gets corrected. */}
       {draft === null && !picking && (
         <div className="tournament-detail-actions">
           <Button variant="primary" disabled={busy} onClick={() => setPicking(true)}>
             <Icon name="search" size={16} /> {t("tournaments.maps.addFromVault")}
-          </Button>
-          <Button disabled={busy} onClick={() => setDraft(BLANK)}>
-            <Icon name="plus" size={16} /> {t("tournaments.maps.add")}
           </Button>
         </div>
       )}

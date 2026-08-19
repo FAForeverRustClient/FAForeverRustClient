@@ -122,9 +122,9 @@ pub use tourney::{
     TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 pub use tourney::{
-    BracketConfig, Caster, FeedsInto, FormatDraft, Qualifier, QualifierKind, QualifierRejection,
-    QualifierRule, RoomBadge, RoundKey, RoundPlan, SeriesColour, SeriesDetail, SeriesDraft,
-    SeriesEdition, TourneySeries, BEST_OF_CHOICES,
+    BracketConfig, Caster, Currency, FeedsInto, FormatDraft, MatchPlan, Prize, Qualifier,
+    QualifierKind, QualifierRejection, QualifierRule, RoomBadge, RoundKey, RoundPlan, SeriesColour,
+    SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries, BEST_OF_CHOICES,
 };
 pub use tourney::{
     Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,

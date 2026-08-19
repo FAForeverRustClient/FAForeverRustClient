@@ -87,6 +87,18 @@ export function EntrantAdmin(props: EntrantAdminProps) {
         </section>
       )}
 
+      {/* Adding somebody outright is a signups-only act, and the service says
+          so: `org_add_player` answers "Signups are closed, use the late-signup
+          link instead" from every other status. The field used to vanish at that
+          point, which reads as the client having lost a feature. It says why
+          instead, and points at the one thing that does still work. */}
+      {!signupsOpen && (
+        <section>
+          <h5>{t("tournaments.admin.addHeading")}</h5>
+          <p className="muted">{t("tournaments.admin.addClosed")}</p>
+        </section>
+      )}
+
       {signupsOpen && (
         <section>
           <h5>{t("tournaments.admin.addHeading")}</h5>
