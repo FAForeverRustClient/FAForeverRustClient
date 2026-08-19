@@ -116,6 +116,24 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         }
         MapGeneratorCommand::Preflight { options } => {
             match ctx.ports.map_generator.preflight(options).await {
+                // Empty means the release cannot resolve a name at all. Worth
+                // saying: the button was pressed, and would otherwise appear
+                // to do nothing.
+                Ok(map_name) if map_name.is_empty() => {
+                    out.emit(MapGeneratorEvent::NamePredicted {
+                        map_name: String::new(),
+                    });
+                    services::notifications::add(
+                        out,
+                        NotificationKind::Error,
+                        "This generator cannot resolve a name",
+                        format!(
+                            "Working the map name out from the options needs generator {} or newer. Generating still works.",
+                            map_generator::MIN_PARSE_VERSION
+                        ),
+                        None,
+                    );
+                }
                 Ok(map_name) => out.emit(MapGeneratorEvent::NamePredicted { map_name }),
                 Err(reason) => {
                     // Not a generation failure: nothing was started. Clearing

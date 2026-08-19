@@ -223,6 +223,17 @@ pub struct NeroxisMapGenerator {
     /// JVM, which is why it is behind an `Arc`: the run happens on a spawned
     /// task that outlives the call which started it.
     cancel: Arc<CancelSignal>,
+    /// Serialises JAR installs.
+    ///
+    /// Every command is dispatched on its own task, so two of them can want
+    /// the same release at the same moment: the dialog loading its option
+    /// lists while the preview button starts a preflight is the everyday case,
+    /// and selecting a release the client has never run makes it certain.
+    /// Both downloaded to the same temporary file and both then renamed it, so
+    /// the loser reported "could not install the generator: the system cannot
+    /// find the file specified", having also fetched the same twenty-four
+    /// megabytes twice.
+    installing: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl NeroxisMapGenerator {
@@ -232,6 +243,7 @@ impl NeroxisMapGenerator {
             // The shared transport supplies the User-Agent GitHub requires.
             http: super::http::shared_http_client(),
             cancel: Arc::new(CancelSignal::default()),
+            installing: Arc::new(tokio::sync::Mutex::new(())),
         }
     }
 
@@ -254,6 +266,7 @@ impl NeroxisMapGenerator {
             config: self.config.clone(),
             http: self.http.clone(),
             cancel: Arc::clone(&self.cancel),
+            installing: Arc::clone(&self.installing),
         }
     }
 
@@ -307,6 +320,11 @@ impl NeroxisMapGenerator {
         progress: &mpsc::Sender<GeneratorUpdate>,
     ) -> Result<PathBuf, String> {
         let target = self.jar_path(version);
+        if target.is_file() {
+            return Ok(target);
+        }
+        let _installing = self.installing.lock().await;
+        // Whoever held the lock may have been fetching exactly this release.
         if target.is_file() {
             return Ok(target);
         }
@@ -603,6 +621,12 @@ impl NeroxisMapGenerator {
                 .arg("-jar")
                 .arg(jar)
                 .args(args)
+                // None of these queries writes anything, but a release that
+                // does not know the flag it was given answers by generating a
+                // map into its working directory. Beside the JAR that is at
+                // least findable; in the client's own working directory it is
+                // litter nobody would connect to the map generator.
+                .current_dir(&self.config.generator_dir)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .output(),
@@ -905,6 +929,13 @@ impl NeroxisMapGenerator {
     /// start and produces no map.
     async fn preflight_inner(&self, options: &GeneratorOptions) -> Result<String, String> {
         let version = self.resolve_version(options.version.as_deref()).await?;
+        // No `--parse` before 1.22.0, and an older release does not refuse the
+        // flag: it ignores it and generates a map. An empty name means "this
+        // release cannot answer that", which is not a fault in the options and
+        // must not be reported as one: the run that follows is still fine.
+        if !version.supports_parse() {
+            return Ok(String::new());
+        }
         let (tx, _rx) = mpsc::channel(8);
         let jar = self.ensure_jar(version, &tx).await?;
 

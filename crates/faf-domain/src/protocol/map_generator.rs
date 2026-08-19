@@ -63,6 +63,20 @@ pub const MIN_COMPONENT_STYLE_VERSION: GeneratorVersion = GeneratorVersion {
     patch: 0,
 };
 
+/// First release with `--parse`, which resolves options to the map name they
+/// would produce without generating anything.
+///
+/// Measured: 1.22.0 prints the JSON, 1.21.2 does not refuse the flag but
+/// ignores it and generates a whole map instead. That is minutes of work, a
+/// map folder nobody asked for, and still no name in the output, which is
+/// where both "the map generator did not report a map name" and "the map
+/// generator did not answer in time" come from on an older release.
+pub const MIN_PARSE_VERSION: GeneratorVersion = GeneratorVersion {
+    major: 1,
+    minor: 22,
+    patch: 0,
+};
+
 /// `--symmetries` is the one list with a hole in the middle of its history:
 /// the picocli rewrite dropped it and 1.12.0 brought it back, so 1.4.0-1.8.x
 /// print it, 1.9.0-1.11.x reject it, and 1.12.0 onwards print it again.
@@ -188,6 +202,13 @@ impl GeneratorVersion {
     /// configured window use [`VersionPolicy::support`] instead.
     pub fn support(self) -> VersionSupport {
         VersionPolicy::default().support(self)
+    }
+
+    /// Whether this release can resolve options to a map name without
+    /// generating one. See [`MIN_PARSE_VERSION`] for what happens if it is
+    /// asked anyway.
+    pub fn supports_parse(self) -> bool {
+        self >= MIN_PARSE_VERSION
     }
 
     /// Whether this release takes the four component-style flags. Older ones
@@ -2001,6 +2022,16 @@ mod tests {
         assert!(!args.contains(&"--reclaim-density".to_string()));
         // The size/spawn/team triple every release understands still goes out.
         assert!(args.starts_with(&["--map-size".to_string()]));
+    }
+
+    #[test]
+    fn only_the_releases_with_parse_are_asked_to_resolve_a_name() {
+        // 1.21.2 does not refuse `--parse`, it generates a map instead, so
+        // "can I ask this release" is not a question the generator answers for
+        // us: the boundary has to be known here.
+        assert!(!version(1, 21, 2).supports_parse());
+        assert!(version(1, 22, 0).supports_parse());
+        assert!(version(1, 22, 1).supports_parse());
     }
 
     #[test]
