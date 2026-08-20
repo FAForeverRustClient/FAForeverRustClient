@@ -105,5 +105,21 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
                 }
             }
         }
+        PlayerCardCommand::LoadMapStats { player_id } => {
+            // Guarded by its own generation: opening one profile after another
+            // must not let the slower first scan land under the second name.
+            let generation = ctx.player_card_map_stats_generation.begin();
+            out.emit(PlayerCardEvent::MapStatsLoading { player_id });
+            let result = ctx.ports.player_card.load_map_stats(player_id).await;
+            if !ctx.player_card_map_stats_generation.is_current(generation) {
+                return;
+            }
+            match result {
+                Ok(stats) => out.emit(PlayerCardEvent::MapStatsLoaded {
+                    stats: Box::new(stats),
+                }),
+                Err(reason) => out.emit(PlayerCardEvent::MapStatsLoadFailed { reason }),
+            }
+        }
     }
 }

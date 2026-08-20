@@ -83,6 +83,24 @@ export function reducePlayerCard(state: PlayerCardState, event: PlayerCardEvent)
         : state.matchmakerProfile;
       return { ...state, profile, matchmakerProfile };
     }
+    case "mapStatsLoading":
+      // Cleared rather than kept: these belong to whichever profile is open,
+      // and showing the previous player's maps under a new name would be a lie.
+      return { ...state, mapStats: null, mapStatsStatus: "loading", mapStatsError: "" };
+    case "mapStatsLoaded":
+      return {
+        ...state,
+        mapStats: event.payload.stats,
+        mapStatsStatus: "ready",
+        mapStatsError: "",
+      };
+    case "mapStatsLoadFailed":
+      return {
+        ...state,
+        mapStats: null,
+        mapStatsStatus: "failed",
+        mapStatsError: event.payload.reason,
+      };
     case "matchmakerProfileLoading":
       return {
         ...state,

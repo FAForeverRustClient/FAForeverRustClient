@@ -1,5 +1,7 @@
 //! Player investigation: the combined Python player-card and Java user-info feature.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -241,6 +243,11 @@ pub struct PlayerCardState {
     pub matchmaker_profile: Option<MatchmakerPlayerProfile>,
     pub matchmaker_profile_status: PlayerCardStatus,
     pub matchmaker_profile_error: String,
+    /// Per-map record, loaded separately from the profile because it scans
+    /// the player's whole game history and should not hold up their identity.
+    pub map_stats: Option<PlayerMapStats>,
+    pub map_stats_status: PlayerCardStatus,
+    pub map_stats_error: String,
 }
 
 impl Default for PlayerCardState {
@@ -266,6 +273,9 @@ impl Default for PlayerCardState {
             matchmaker_profile: None,
             matchmaker_profile_status: PlayerCardStatus::default(),
             matchmaker_profile_error: String::new(),
+            map_stats: None,
+            map_stats_status: PlayerCardStatus::default(),
+            map_stats_error: String::new(),
         }
     }
 }
@@ -292,6 +302,11 @@ pub enum PlayerCardCommand {
     LoadMatchmakerProfile {
         player_id: i32,
         login: String,
+    },
+    /// Scan this player's games and fold them into per-map records.
+    #[serde(rename_all = "camelCase")]
+    LoadMapStats {
+        player_id: i32,
     },
 }
 
@@ -346,6 +361,18 @@ pub enum PlayerCardEvent {
     #[serde(rename_all = "camelCase")]
     MatchmakerProfileLoadFailed {
         player_id: i32,
+        reason: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    MapStatsLoading {
+        player_id: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    MapStatsLoaded {
+        stats: Box<PlayerMapStats>,
+    },
+    #[serde(rename_all = "camelCase")]
+    MapStatsLoadFailed {
         reason: String,
     },
 }
@@ -448,6 +475,24 @@ pub fn reduce(state: &mut PlayerCardState, event: &PlayerCardEvent) {
                 profile.avatar_url = url.clone().unwrap_or_default();
                 profile.avatar_tooltip = tooltip.clone();
             }
+        }
+        PlayerCardEvent::MapStatsLoading { player_id: _ } => {
+            // Cleared rather than kept: unlike the matchmaker projection,
+            // these belong to whichever profile is open, and showing the
+            // previous player's maps under a new name would be a lie.
+            state.map_stats = None;
+            state.map_stats_status = PlayerCardStatus::Loading;
+            state.map_stats_error.clear();
+        }
+        PlayerCardEvent::MapStatsLoaded { stats } => {
+            state.map_stats = Some((**stats).clone());
+            state.map_stats_status = PlayerCardStatus::Ready;
+            state.map_stats_error.clear();
+        }
+        PlayerCardEvent::MapStatsLoadFailed { reason } => {
+            state.map_stats = None;
+            state.map_stats_status = PlayerCardStatus::Failed;
+            state.map_stats_error = reason.clone();
         }
         PlayerCardEvent::MatchmakerProfileLoading { player_id } => {
             if state
@@ -675,5 +720,200 @@ mod tests {
         let profile = state.matchmaker_profile.unwrap();
         assert_eq!(profile.avatar_url, "new");
         assert_eq!(profile.avatar_tooltip, "New");
+    }
+}
+
+/// One game from a player's history, reduced to what map statistics need.
+///
+/// Produced by the infrastructure from `gamePlayerStats` rows and folded by
+/// [`aggregate_map_stats`]. A separate type so the folding is testable without
+/// a JSON:API document in the way.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayedGame {
+    pub map: String,
+    /// `false` for a draw, an unfinished game, or a result the API did not state.
+    pub decided: bool,
+    pub won: bool,
+    /// ISO timestamp, or empty when the API did not state one.
+    pub played_at: String,
+}
+
+/// A player's record on one map.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerMapStat {
+    pub map: String,
+    pub games: i32,
+    pub wins: i32,
+    pub losses: i32,
+    /// Most recent appearance, ISO. Empty when no game on this map stated one.
+    pub last_played: String,
+}
+
+/// How often a player has played, and on what.
+///
+/// Deliberately narrow. The profile already reports games and wins **per
+/// leaderboard** (from `PlayerRatingSummary`) and plays and wins **per faction**
+/// (from the achievement events), so neither is repeated here. What was missing,
+/// and what this exists for, is the per-map picture a host wants when judging
+/// whether a rating means much on the map they are about to host.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerMapStats {
+    /// Games actually counted, which is every game the scan returned.
+    pub total_games: i32,
+    pub wins: i32,
+    pub losses: i32,
+    /// Games the API returned without a decided result (draws, unfinished).
+    pub undecided: i32,
+    /// Every map played, most played first.
+    pub maps: Vec<PlayerMapStat>,
+    /// Set when the scan hit its safety limit, so the view can say the numbers
+    /// cover a prefix of the history rather than all of it.
+    pub truncated: bool,
+}
+
+/// Fold a player's games into per-map records, most played first.
+///
+/// Ties break on the map name so the order is stable between two loads of the
+/// same profile; without that, two maps with equal counts could swap places and
+/// look like the data changed.
+pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapStats {
+    let mut by_map: BTreeMap<String, PlayerMapStat> = BTreeMap::new();
+    let mut stats = PlayerMapStats {
+        truncated,
+        ..PlayerMapStats::default()
+    };
+
+    for game in games {
+        stats.total_games += 1;
+        match (game.decided, game.won) {
+            (true, true) => stats.wins += 1,
+            (true, false) => stats.losses += 1,
+            (false, _) => stats.undecided += 1,
+        }
+
+        // A game whose map the API did not name still counts towards the
+        // totals; it simply cannot be attributed to a map.
+        if game.map.is_empty() {
+            continue;
+        }
+
+        let entry = by_map
+            .entry(game.map.clone())
+            .or_insert_with(|| PlayerMapStat {
+                map: game.map.clone(),
+                games: 0,
+                wins: 0,
+                losses: 0,
+                last_played: String::new(),
+            });
+        entry.games += 1;
+        if game.decided {
+            if game.won {
+                entry.wins += 1;
+            } else {
+                entry.losses += 1;
+            }
+        }
+        if game.played_at > entry.last_played {
+            entry.last_played = game.played_at.clone();
+        }
+    }
+
+    stats.maps = by_map.into_values().collect();
+    stats
+        .maps
+        .sort_by(|a, b| b.games.cmp(&a.games).then_with(|| a.map.cmp(&b.map)));
+    stats
+}
+
+#[cfg(test)]
+mod map_stats_tests {
+    use super::*;
+
+    fn game(map: &str, decided: bool, won: bool, played_at: &str) -> PlayedGame {
+        PlayedGame {
+            map: map.into(),
+            decided,
+            won,
+            played_at: played_at.into(),
+        }
+    }
+
+    #[test]
+    fn maps_are_ordered_by_how_often_they_were_played() {
+        let stats = aggregate_map_stats(
+            &[
+                game("Setons Clutch", true, true, "2026-01-01"),
+                game("Dual Gap", true, false, "2026-01-02"),
+                game("Setons Clutch", true, false, "2026-01-03"),
+                game("Setons Clutch", true, true, "2026-01-04"),
+            ],
+            false,
+        );
+
+        assert_eq!(stats.total_games, 4);
+        assert_eq!(stats.wins, 2);
+        assert_eq!(stats.losses, 2);
+        assert_eq!(
+            stats
+                .maps
+                .iter()
+                .map(|m| m.map.as_str())
+                .collect::<Vec<_>>(),
+            ["Setons Clutch", "Dual Gap"],
+            "most played first, which is the question a host is asking"
+        );
+
+        let setons = &stats.maps[0];
+        assert_eq!((setons.games, setons.wins, setons.losses), (3, 2, 1));
+        assert_eq!(
+            setons.last_played, "2026-01-04",
+            "the newest appearance wins"
+        );
+    }
+
+    #[test]
+    fn equal_counts_keep_a_stable_order() {
+        let first = aggregate_map_stats(
+            &[game("Beta", true, true, ""), game("Alpha", true, true, "")],
+            false,
+        );
+        let second = aggregate_map_stats(
+            &[game("Alpha", true, true, ""), game("Beta", true, true, "")],
+            false,
+        );
+        assert_eq!(first.maps, second.maps, "order must not depend on arrival");
+    }
+
+    #[test]
+    fn undecided_games_count_towards_the_total_but_not_the_record() {
+        let stats = aggregate_map_stats(
+            &[
+                game("Loki", true, true, "2026-01-01"),
+                game("Loki", false, false, "2026-01-02"),
+            ],
+            false,
+        );
+        assert_eq!(stats.total_games, 2);
+        assert_eq!(stats.wins, 1);
+        assert_eq!(stats.losses, 0);
+        assert_eq!(stats.undecided, 1);
+
+        let loki = &stats.maps[0];
+        assert_eq!(loki.games, 2, "a draw is still a game played there");
+        assert_eq!((loki.wins, loki.losses), (1, 0));
+    }
+
+    #[test]
+    fn a_game_without_a_map_still_counts_towards_the_totals() {
+        let stats = aggregate_map_stats(&[game("", true, true, "2026-01-01")], false);
+        assert_eq!(stats.total_games, 1);
+        assert_eq!(stats.wins, 1);
+        assert!(
+            stats.maps.is_empty(),
+            "but it cannot be attributed to a map"
+        );
     }
 }

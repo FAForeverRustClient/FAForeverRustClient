@@ -4,10 +4,10 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    ClanMember, MatchmakerPlayerProfile, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
-    PlayerCardProfile, PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerNameRecord,
-    PlayerRatingSummary, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint,
-    RatingHistoryQuery,
+    aggregate_map_stats, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
+    PlayerAchievementState, PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount,
+    PlayerLeaguePlacement, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
+    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 use serde_json::Value;
 
@@ -19,6 +19,17 @@ use crate::infra::jsonapi::{
 use crate::ports::{PlayerCardPort, RequestError};
 
 const MAX_PAGE_SIZE: usize = 10_000;
+
+/// Rows per request when scanning a player's history.
+///
+/// Large on purpose: the whole point is to cover every game, and at the
+/// default page size a ten-thousand-game veteran would cost a hundred round
+/// trips. Sparse fieldsets keep each row small enough for this to be sane.
+const HISTORY_PAGE_SIZE: usize = 2_000;
+
+/// Safety limit on a single scan. Beyond this the statistics are reported as
+/// truncated rather than the client quietly paging forever against the API.
+const MAX_HISTORY_GAMES: usize = 30_000;
 
 #[derive(Debug, Clone)]
 pub struct PlayerCardConfig {
@@ -453,6 +464,95 @@ impl PlayerCardPort for PlayerCardClient {
             Ok(parse_history(&self.get(url, &token).await?, query))
         }
     }
+
+    async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String> {
+        let token = self.token()?;
+        let mut games: Vec<PlayedGame> = Vec::new();
+        let mut page = 1usize;
+        let mut truncated = false;
+
+        loop {
+            let mut url = self.url("gamePlayerStats")?;
+            url.query_pairs_mut()
+                .append_pair("filter", &format!("player.id=={player_id}"))
+                .append_pair("include", "game.mapVersion.map")
+                // Only the fields the fold reads. Without this each row drags
+                // along the full game and map resources, and a long history
+                // turns into tens of megabytes.
+                .append_pair("fields[gamePlayerStats]", "result,scoreTime,game")
+                .append_pair("fields[game]", "startTime,mapVersion")
+                .append_pair("fields[mapVersion]", "map")
+                .append_pair("fields[map]", "displayName")
+                .append_pair("sort", "-scoreTime")
+                .append_pair("page[number]", &page.to_string())
+                .append_pair("page[size]", &HISTORY_PAGE_SIZE.to_string());
+
+            let document = self.get(url, &token).await?;
+            let batch = parse_played_games(&document);
+            let exhausted = batch.len() < HISTORY_PAGE_SIZE;
+            games.extend(batch);
+
+            if games.len() >= MAX_HISTORY_GAMES {
+                games.truncate(MAX_HISTORY_GAMES);
+                truncated = true;
+                break;
+            }
+            if exhausted {
+                break;
+            }
+            page += 1;
+        }
+
+        Ok(aggregate_map_stats(&games, truncated))
+    }
+}
+
+/// Turn `gamePlayerStats` rows into the flat shape the fold consumes.
+///
+/// The map is reached through `game -> mapVersion -> map`, so a row whose
+/// game or map the API omitted still yields a game with an empty map name:
+/// it counts towards the record, it just cannot be attributed.
+fn parse_played_games(document: &JsonApiDoc) -> Vec<PlayedGame> {
+    let included = index(document);
+    document
+        .data
+        .iter()
+        .map(|row| {
+            let map = rel_one(row, "game")
+                .and_then(|key| included.get(&key))
+                .and_then(|game| rel_one(game, "mapVersion"))
+                .and_then(|key| included.get(&key))
+                .and_then(|version| rel_one(version, "map"))
+                .and_then(|key| included.get(&key))
+                .and_then(|map| map.attributes.get("displayName"))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+
+            // The API states the result in capitals; anything other than a
+            // win or a loss (a draw, or a game that never finished) is not a
+            // decided game and must not move the record either way.
+            let result = row
+                .attributes
+                .get("result")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_ascii_uppercase();
+            let decided = result == "VICTORY" || result == "DEFEAT";
+
+            PlayedGame {
+                map,
+                decided,
+                won: result == "VICTORY",
+                played_at: row
+                    .attributes
+                    .get("scoreTime")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            }
+        })
+        .collect()
 }
 
 fn section(
@@ -958,6 +1058,10 @@ fn fake_summary((id, login, rating): (i32, &str, Option<i32>)) -> PlayerSummary 
 
 #[async_trait]
 impl PlayerCardPort for FakePlayerCard {
+    async fn load_map_stats(&self, _player_id: i32) -> Result<PlayerMapStats, String> {
+        Err("map statistics are unavailable in offline mode".into())
+    }
+
     async fn search_players(
         &self,
         query: &str,
@@ -1322,5 +1426,125 @@ mod tests {
         let placements = parse_placements(&doc);
         assert_eq!(placements[0].division, "Diamond I");
         assert_eq!(placements[1].division, "Bronze Ii");
+    }
+}
+
+#[cfg(test)]
+mod map_stats_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// Shaped like the API's answer to
+    /// `gamePlayerStats?filter=player.id==7&include=game.mapVersion.map`:
+    /// the map hangs three relationships deep, and the rows carry the result.
+    fn document() -> JsonApiDoc {
+        serde_json::from_value(json!({
+            "data": [
+                {
+                    "type": "gamePlayerStats", "id": "1",
+                    "attributes": { "result": "VICTORY", "scoreTime": "2026-01-04T20:00:00Z" },
+                    "relationships": { "game": { "data": { "type": "game", "id": "100" } } }
+                },
+                {
+                    "type": "gamePlayerStats", "id": "2",
+                    "attributes": { "result": "DEFEAT", "scoreTime": "2026-01-03T20:00:00Z" },
+                    "relationships": { "game": { "data": { "type": "game", "id": "101" } } }
+                },
+                {
+                    "type": "gamePlayerStats", "id": "3",
+                    "attributes": { "result": "VICTORY", "scoreTime": "2026-01-02T20:00:00Z" },
+                    "relationships": { "game": { "data": { "type": "game", "id": "102" } } }
+                },
+                // A draw, and a row whose game the API did not include.
+                {
+                    "type": "gamePlayerStats", "id": "4",
+                    "attributes": { "result": "DRAW", "scoreTime": "2026-01-01T20:00:00Z" },
+                    "relationships": { "game": { "data": { "type": "game", "id": "100" } } }
+                },
+                {
+                    "type": "gamePlayerStats", "id": "5",
+                    "attributes": { "result": "VICTORY", "scoreTime": "2025-12-31T20:00:00Z" },
+                    "relationships": { "game": { "data": { "type": "game", "id": "999" } } }
+                }
+            ],
+            "included": [
+                { "type": "game", "id": "100", "attributes": {},
+                  "relationships": { "mapVersion": { "data": { "type": "mapVersion", "id": "10" } } } },
+                { "type": "game", "id": "101", "attributes": {},
+                  "relationships": { "mapVersion": { "data": { "type": "mapVersion", "id": "11" } } } },
+                { "type": "game", "id": "102", "attributes": {},
+                  "relationships": { "mapVersion": { "data": { "type": "mapVersion", "id": "10" } } } },
+                { "type": "mapVersion", "id": "10", "attributes": {},
+                  "relationships": { "map": { "data": { "type": "map", "id": "20" } } } },
+                { "type": "mapVersion", "id": "11", "attributes": {},
+                  "relationships": { "map": { "data": { "type": "map", "id": "21" } } } },
+                { "type": "map", "id": "20", "attributes": { "displayName": "Setons Clutch" },
+                  "relationships": {} },
+                { "type": "map", "id": "21", "attributes": { "displayName": "Dual Gap" },
+                  "relationships": {} }
+            ]
+        }))
+        .expect("fixture must parse")
+    }
+
+    #[test]
+    fn rows_resolve_their_map_through_game_and_map_version() {
+        let games = parse_played_games(&document());
+        assert_eq!(games.len(), 5);
+
+        assert_eq!(games[0].map, "Setons Clutch");
+        assert!(games[0].decided && games[0].won);
+        assert_eq!(games[0].played_at, "2026-01-04T20:00:00Z");
+
+        assert_eq!(games[1].map, "Dual Gap");
+        assert!(games[1].decided && !games[1].won);
+
+        // A draw is a game played, but it decides nothing.
+        assert!(!games[3].decided, "a draw must not move the record");
+
+        // The API omitted game 999 from `included`; the row survives without a
+        // map rather than being dropped.
+        assert_eq!(games[4].map, "");
+        assert!(games[4].decided && games[4].won);
+    }
+
+    #[test]
+    fn the_fold_answers_the_question_a_host_is_asking() {
+        let stats = aggregate_map_stats(&parse_played_games(&document()), false);
+
+        assert_eq!(stats.total_games, 5);
+        assert_eq!(stats.wins, 3);
+        assert_eq!(stats.losses, 1);
+        assert_eq!(stats.undecided, 1);
+
+        // Most played first: Setons three times (two decided), Dual Gap once.
+        // The map-less row is in the totals but not in this list.
+        assert_eq!(
+            stats
+                .maps
+                .iter()
+                .map(|entry| (entry.map.as_str(), entry.games, entry.wins, entry.losses))
+                .collect::<Vec<_>>(),
+            [("Setons Clutch", 3, 2, 0), ("Dual Gap", 1, 0, 1)]
+        );
+        assert_eq!(stats.maps[0].last_played, "2026-01-04T20:00:00Z");
+    }
+
+    #[test]
+    fn an_unknown_result_is_not_silently_a_loss() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "gamePlayerStats", "id": "1",
+                "attributes": { "scoreTime": "2026-01-01T00:00:00Z" },
+                "relationships": {}
+            }],
+            "included": []
+        }))
+        .expect("fixture must parse");
+
+        let stats = aggregate_map_stats(&parse_played_games(&doc), false);
+        assert_eq!(stats.total_games, 1);
+        assert_eq!((stats.wins, stats.losses), (0, 0));
+        assert_eq!(stats.undecided, 1);
     }
 }

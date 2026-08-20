@@ -13,6 +13,7 @@ import { PlayerAchievements } from "./PlayerAchievements";
 import { PlayerClanView } from "./PlayerClanView";
 import { PlayerOverview } from "./PlayerOverview";
 import { OwnAvatarPicker } from "./OwnAvatarPicker";
+import { PlayerMapStatistics } from "./PlayerMapStatistics";
 import { PlayerStatistics } from "./PlayerStatistics";
 import { RatingHistoryChart } from "./RatingHistoryChart";
 import { closePlayerCard, openPlayerCard } from "./playerCardActions";
@@ -22,7 +23,7 @@ import { formatNumber, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDateTime } from "../../shared/dates";
 
-type PlayerCardTab = "overview" | "ratings" | "statistics" | "achievements" | "names" | "clan";
+type PlayerCardTab = "overview" | "ratings" | "statistics" | "maps" | "achievements" | "names" | "clan";
 
 // Message *keys*, not text: these registries are module-level constants, so a
 // literal would be captured once at import time and would not follow a language
@@ -31,6 +32,7 @@ const TABS: Array<{ id: PlayerCardTab; label: MessageKey }> = [
   { id: "overview", label: "playerCard.tab.overview" },
   { id: "ratings", label: "playerCard.tab.ratings" },
   { id: "statistics", label: "playerCard.tab.statistics" },
+  { id: "maps", label: "playerCard.tab.maps" },
   { id: "achievements", label: "playerCard.tab.achievements" },
   { id: "names", label: "playerCard.tab.names" },
   { id: "clan", label: "playerCard.tab.clan" },
@@ -429,6 +431,7 @@ export function PlayerCardModal() {
             {tab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
             {tab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
             {tab === "statistics" && <PlayerStatistics profile={profile} />}
+            {tab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
             {tab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
             {tab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
             {tab === "clan" && <PlayerClanView clan={profile.clan} selfLogin={me?.name ?? ""} onMessageLeader={messagePlayer} />}

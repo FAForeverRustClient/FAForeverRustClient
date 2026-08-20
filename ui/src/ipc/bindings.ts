@@ -3221,6 +3221,10 @@ export type PlayerCardCommand = { type: "open"; payload: {
 } } | { type: "loadMatchmakerProfile"; payload: {
 	playerId: number,
 	login: string,
+} } |
+/**  Scan this player's games and fold them into per-map records. */
+{ type: "loadMapStats"; payload: {
+	playerId: number,
 } };
 
 export type PlayerCardEvent = { type: "loading"; payload: {
@@ -3254,6 +3258,12 @@ export type PlayerCardEvent = { type: "loading"; payload: {
 	profile: MatchmakerPlayerProfile,
 } } | { type: "matchmakerProfileLoadFailed"; payload: {
 	playerId: number,
+	reason: string,
+} } | { type: "mapStatsLoading"; payload: {
+	playerId: number,
+} } | { type: "mapStatsLoaded"; payload: {
+	stats: PlayerMapStats,
+} } | { type: "mapStatsLoadFailed"; payload: {
 	reason: string,
 } };
 
@@ -3291,6 +3301,13 @@ export type PlayerCardState = {
 	matchmakerProfile: MatchmakerPlayerProfile | null,
 	matchmakerProfileStatus: PlayerCardStatus,
 	matchmakerProfileError: string,
+	/**
+	 *  Per-map record, loaded separately from the profile because it scans
+	 *  the player's whole game history and should not hold up their identity.
+	 */
+	mapStats: PlayerMapStats | null,
+	mapStatsStatus: PlayerCardStatus,
+	mapStatsError: string,
 };
 
 export type PlayerCardStatus = "idle" | "loading" | "ready" | "failed";
@@ -3336,6 +3353,41 @@ export type PlayerLobbyRating = {
 	deviation: number,
 	/**  Zero when the lobby omitted the count. */
 	gamesPlayed: number,
+};
+
+/**  A player's record on one map. */
+export type PlayerMapStat = {
+	map: string,
+	games: number,
+	wins: number,
+	losses: number,
+	/**  Most recent appearance, ISO. Empty when no game on this map stated one. */
+	lastPlayed: string,
+};
+
+/**
+ *  How often a player has played, and on what.
+ *
+ *  Deliberately narrow. The profile already reports games and wins **per
+ *  leaderboard** (from `PlayerRatingSummary`) and plays and wins **per faction**
+ *  (from the achievement events), so neither is repeated here. What was missing,
+ *  and what this exists for, is the per-map picture a host wants when judging
+ *  whether a rating means much on the map they are about to host.
+ */
+export type PlayerMapStats = {
+	/**  Games actually counted, which is every game the scan returned. */
+	totalGames: number,
+	wins: number,
+	losses: number,
+	/**  Games the API returned without a decided result (draws, unfinished). */
+	undecided: number,
+	/**  Every map played, most played first. */
+	maps: PlayerMapStat[],
+	/**
+	 *  Set when the scan hit its safety limit, so the view can say the numbers
+	 *  cover a prefix of the history rather than all of it.
+	 */
+	truncated: boolean,
 };
 
 export type PlayerNameRecord = {

@@ -1257,3 +1257,93 @@
     margin: 0;
   }
 }
+
+/* ── Per-map record ────────────────────────────────────────────────────── */
+.player-maps-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* The four figures a host reads first, before scanning the table below. */
+.player-maps-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+}
+
+.player-maps-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.player-maps-value {
+  font-size: 18px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.player-maps-label {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.player-maps-note {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.player-maps-search {
+  flex-shrink: 0;
+}
+
+.player-maps-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.player-maps-table th,
+.player-maps-table td {
+  padding: 7px 10px;
+  font-size: 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-maps-table th {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+/* The map name is the row's identity, so it leads and takes the slack. */
+.player-maps-table th:first-child,
+.player-maps-table td:first-child {
+  width: 100%;
+  text-align: left;
+}
+
+.player-maps-name {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-maps-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .player-maps-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

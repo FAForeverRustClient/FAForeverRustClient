@@ -84,10 +84,11 @@ pub use notifications::{
     NotificationKind, NotificationState,
 };
 pub use player_card::{
-    ClanMember, MatchmakerPlayerProfile, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
-    PlayerCardCommand, PlayerCardEvent, PlayerCardProfile, PlayerCardState, PlayerCardStatus,
-    PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerNameRecord, PlayerRatingSummary,
-    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
+    PlayerAchievementState, PlayerAvatar, PlayerCardCommand, PlayerCardEvent, PlayerCardProfile,
+    PlayerCardState, PlayerCardStatus, PlayerClan, PlayerEventCount, PlayerLeaguePlacement,
+    PlayerMapStat, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
+    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,

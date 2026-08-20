@@ -39,6 +39,7 @@ pub struct ServiceCtx {
     /// Generations cancel stale player-card requests when users rapidly switch players/queues.
     pub player_card_profile_generation: LatestRequest,
     pub player_card_matchmaker_generation: LatestRequest,
+    pub player_card_map_stats_generation: LatestRequest,
     pub player_card_history_generation: LatestRequest,
     /// Global single-flight guards for operations whose adapters use a shared
     /// temporary file or whose state machine only represents one operation.
@@ -226,6 +227,7 @@ impl App {
             chat_active: SingleFlight::default(),
             player_card_profile_generation: LatestRequest::default(),
             player_card_matchmaker_generation: LatestRequest::default(),
+            player_card_map_stats_generation: LatestRequest::default(),
             player_card_history_generation: LatestRequest::default(),
             uploads_active: SingleFlight::default(),
             client_update_active: SingleFlight::default(),
