@@ -108,7 +108,7 @@ export function AppShell() {
     <div className={`app-shell${isResizingSidebar ? " is-resizing-sidebar" : ""}`} style={shellStyle}>
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark"><BrandMark className="brand-mark-image" size={38} /></span>
+          <span className="brand-mark"><BrandMark size={38} /></span>
           <span className="brand-copy">
             <strong>FAForever</strong>
             <small>{t("shell.sidebar.desktopClient")}</small>

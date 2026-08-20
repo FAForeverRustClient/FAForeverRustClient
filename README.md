@@ -66,7 +66,7 @@ Env toggles for local dev:
 - `FAF_GAME_PATH`: path to `ForgedAlliance.exe` (its folder must hold `init_<mod>.lua`)
 - `FAF_CLIENT_VERSION`: client version reported to the lobby (defaults to the crate version)
 - `FAF_LOG`: optional `tracing` filter for client diagnostics (for example
-  `faf_app=debug,forge_client_lib=info,warn`); the default records client info and all warnings
+  `faf_app=debug,faforever_rust_client_lib=info,warn`); the default records client info and all warnings
 - `FAF_USER_API_BASE` / `FAF_API_BASE` / `FAF_HYDRA_BASE` / `FAF_LOBBY_URL`: endpoint overrides (e.g. staging)
 
 Packaged and development builds write daily `faforever-client.*.log` files to

@@ -25,8 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # src-tauri (forge-client) links against the system webview stack, so the
-      # workspace build needs these even though the logic crates are pure.
+      # src-tauri (faforever-rust-client) links against the system webview stack,
+      # so the workspace build needs these even though the logic crates are pure.
       - name: Install Tauri system dependencies
         run: |
           sudo apt-get update

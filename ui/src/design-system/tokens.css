@@ -30,6 +30,11 @@
   --color-accent: #f3f3f3;
   --color-accent-contrast: #171717;
   --color-accent-glow: rgba(255, 255, 255, 0.12);
+
+  /* Ink for the FAF wordmark, which ships as a single-colour mask rather than
+     a fixed-colour image so it survives a light theme. See BrandMark.tsx. */
+  --color-brand-mark: #ffffff;
+
   --color-ok: #70b98a;
   --color-warn: #d6a35d;
   --color-error: #e06c75;
@@ -87,6 +92,7 @@
   --color-accent: #1b1b1b;
   --color-accent-contrast: #ffffff;
   --color-accent-glow: rgba(0, 0, 0, 0.12);
+  --color-brand-mark: #000000;
   --color-ok: #3f8f5d;
   --color-warn: #a66d21;
   --color-error: #c24d57;

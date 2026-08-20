@@ -24,9 +24,15 @@
   place-items: center;
 }
 
-.entry-brand-image {
+/*
+ * The FAF wordmark. Painted as a mask (BrandMark.tsx supplies the mask-image),
+ * so the ink is a theme decision and the one SVG in the repository works on a
+ * dark sidebar and a light one alike.
+ */
+.brand-glyph {
   display: block;
-  object-fit: contain;
+  flex: none;
+  background-color: var(--color-brand-mark);
   user-select: none;
 }
 

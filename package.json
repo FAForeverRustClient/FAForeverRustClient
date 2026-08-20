@@ -1,5 +1,5 @@
 {
-  "name": "forge-client",
+  "name": "faforever-rust-client",
   "private": true,
   "version": "0.4.0-pre.2",
   "type": "module",
@@ -17,6 +17,7 @@
     "prepare:native": "node scripts/require-pnpm.mjs && node scripts/ensure-faf-uid.mjs && node scripts/ensure-java-runtime.mjs && node scripts/ensure-java-ice-adapter.mjs",
     "tauri": "node scripts/require-pnpm.mjs && pnpm run prepare:native && tauri",
     "bindings": "node scripts/require-pnpm.mjs && cargo run -q -p faf-ipc --bin export-bindings",
+    "icons": "node scripts/require-pnpm.mjs && node scripts/generate-app-icon.mjs",
     "measure:state-sync": "node scripts/require-pnpm.mjs && node scripts/measure-state-sync.mjs",
     "test": "node scripts/require-pnpm.mjs && vitest run",
     "test:watch": "node scripts/require-pnpm.mjs && vitest"

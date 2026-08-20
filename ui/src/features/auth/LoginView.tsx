@@ -44,7 +44,7 @@ export function LoginView() {
   return (
     <main className="centered login-screen">
       <div className="entry-card surface-panel login-card">
-        <div className="entry-brand"><BrandMark className="entry-brand-image" size={68} /></div>
+        <div className="entry-brand"><BrandMark size={68} /></div>
         <div className="entry-heading">
           <h1>{t("auth.welcome")}</h1>
           <p>{t("auth.subtitle")}</p>
