@@ -1,5 +1,7 @@
 //! Player investigation: the combined Python player-card and Java user-info feature.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -241,6 +243,11 @@ pub struct PlayerCardState {
     pub matchmaker_profile: Option<MatchmakerPlayerProfile>,
     pub matchmaker_profile_status: PlayerCardStatus,
     pub matchmaker_profile_error: String,
+    /// Per-map record, loaded separately from the profile because it scans
+    /// the player's whole game history and should not hold up their identity.
+    pub map_stats: Option<PlayerMapStats>,
+    pub map_stats_status: PlayerCardStatus,
+    pub map_stats_error: String,
 }
 
 impl Default for PlayerCardState {
@@ -266,6 +273,9 @@ impl Default for PlayerCardState {
             matchmaker_profile: None,
             matchmaker_profile_status: PlayerCardStatus::default(),
             matchmaker_profile_error: String::new(),
+            map_stats: None,
+            map_stats_status: PlayerCardStatus::default(),
+            map_stats_error: String::new(),
         }
     }
 }
@@ -292,6 +302,11 @@ pub enum PlayerCardCommand {
     LoadMatchmakerProfile {
         player_id: i32,
         login: String,
+    },
+    /// Scan this player's games and fold them into per-map records.
+    #[serde(rename_all = "camelCase")]
+    LoadMapStats {
+        player_id: i32,
     },
 }
 
@@ -346,6 +361,18 @@ pub enum PlayerCardEvent {
     #[serde(rename_all = "camelCase")]
     MatchmakerProfileLoadFailed {
         player_id: i32,
+        reason: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    MapStatsLoading {
+        player_id: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    MapStatsLoaded {
+        stats: Box<PlayerMapStats>,
+    },
+    #[serde(rename_all = "camelCase")]
+    MapStatsLoadFailed {
         reason: String,
     },
 }
@@ -448,6 +475,24 @@ pub fn reduce(state: &mut PlayerCardState, event: &PlayerCardEvent) {
                 profile.avatar_url = url.clone().unwrap_or_default();
                 profile.avatar_tooltip = tooltip.clone();
             }
+        }
+        PlayerCardEvent::MapStatsLoading { player_id: _ } => {
+            // Cleared rather than kept: unlike the matchmaker projection,
+            // these belong to whichever profile is open, and showing the
+            // previous player's maps under a new name would be a lie.
+            state.map_stats = None;
+            state.map_stats_status = PlayerCardStatus::Loading;
+            state.map_stats_error.clear();
+        }
+        PlayerCardEvent::MapStatsLoaded { stats } => {
+            state.map_stats = Some((**stats).clone());
+            state.map_stats_status = PlayerCardStatus::Ready;
+            state.map_stats_error.clear();
+        }
+        PlayerCardEvent::MapStatsLoadFailed { reason } => {
+            state.map_stats = None;
+            state.map_stats_status = PlayerCardStatus::Failed;
+            state.map_stats_error = reason.clone();
         }
         PlayerCardEvent::MatchmakerProfileLoading { player_id } => {
             if state
@@ -675,5 +720,345 @@ mod tests {
         let profile = state.matchmaker_profile.unwrap();
         assert_eq!(profile.avatar_url, "new");
         assert_eq!(profile.avatar_tooltip, "New");
+    }
+}
+
+/// One game from a player's history, reduced to what map statistics need.
+///
+/// Produced by the infrastructure from `gamePlayerStats` rows and folded by
+/// [`aggregate_map_stats`]. A separate type so the folding is testable without
+/// a JSON:API document in the way.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayedGame {
+    pub map: String,
+    /// `false` for a draw, an unfinished game, or a result the API did not state.
+    pub decided: bool,
+    pub won: bool,
+    /// ISO timestamp, or empty when the API did not state one.
+    pub played_at: String,
+}
+
+/// A player's record on one map.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerMapStat {
+    /// Empty for the generated-map row, which the view names itself.
+    pub map: String,
+    /// Every Neroxis-generated map folded together.
+    ///
+    /// Each generated map carries its seed in its name, so it is played
+    /// once and never again. Listed individually they would be hundreds of
+    /// one-game rows burying the maps a host can actually judge, while
+    /// saying nothing: "has played this exact seed once" is not a fact
+    /// anyone needs.
+    pub generated: bool,
+    pub games: i32,
+    pub wins: i32,
+    pub losses: i32,
+    /// Most recent appearance, ISO. Empty when no game on this map stated one.
+    pub last_played: String,
+}
+
+/// How often a player has played, and on what.
+///
+/// Deliberately narrow. The profile already reports games and wins **per
+/// leaderboard** (from `PlayerRatingSummary`) and plays and wins **per faction**
+/// (from the achievement events), so neither is repeated here. What was missing,
+/// and what this exists for, is the per-map picture a host wants when judging
+/// whether a rating means much on the map they are about to host.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerMapStats {
+    /// Games actually counted, which is every game the scan returned.
+    pub total_games: i32,
+    pub wins: i32,
+    pub losses: i32,
+    /// Games the API returned without a decided result (draws, unfinished).
+    pub undecided: i32,
+    /// How many of the generated row's games got there by having no map name
+    /// at all, rather than by carrying a recognisable generated one.
+    ///
+    /// Kept for honesty rather than for display: the bucket is named after
+    /// what these games overwhelmingly are, and this says how much of that
+    /// naming is inference.
+    pub unattributed: i32,
+    /// Every map played, most played first.
+    pub maps: Vec<PlayerMapStat>,
+    /// Set when the scan hit its safety limit, so the view can say the numbers
+    /// cover a prefix of the history rather than all of it.
+    pub truncated: bool,
+}
+
+/// Whether a map name came out of the Neroxis generator.
+///
+/// A prefix test rather than a full decode: a generated name with a segment
+/// this client cannot parse is still a generated map, and bucketing it is
+/// more useful than listing it.
+pub fn is_generated_map_name(map: &str) -> bool {
+    map.to_ascii_lowercase()
+        .starts_with("neroxis_map_generator_")
+}
+
+/// Key the generated bucket under something no real map name can collide
+/// with, since map names are what the rest of the fold groups by.
+const GENERATED_BUCKET: &str = "\u{0}generated";
+
+/// Fold a player's games into per-map records, most played first.
+///
+/// Ties break on the map name so the order is stable between two loads of the
+/// same profile; without that, two maps with equal counts could swap places and
+/// look like the data changed.
+pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapStats {
+    let mut by_map: BTreeMap<String, PlayerMapStat> = BTreeMap::new();
+    let mut stats = PlayerMapStats {
+        truncated,
+        ..PlayerMapStats::default()
+    };
+
+    for game in games {
+        stats.total_games += 1;
+        match (game.decided, game.won) {
+            (true, true) => stats.wins += 1,
+            (true, false) => stats.losses += 1,
+            (false, _) => stats.undecided += 1,
+        }
+
+        // A game the API names no map for is a generated one.
+        //
+        // Inferred, and worth stating why. FAF does not hold generated maps
+        // in its map table, since they are produced locally from a seed, so a
+        // game played on one has no map version to point at and arrives here
+        // nameless. faftracker.xyz resolves the same games the same way and
+        // labels them "Mapgen / generated map"; against a real account the
+        // counts agree. Left unattributed instead, these are simply missing
+        // from the table while still counting in the header, which is what
+        // made a player with many generated games look like they had none.
+        let nameless = game.map.is_empty();
+        if nameless {
+            stats.unattributed += 1;
+        }
+
+        let generated = nameless || is_generated_map_name(&game.map);
+        let key = if generated {
+            GENERATED_BUCKET.to_string()
+        } else {
+            game.map.clone()
+        };
+        let entry = by_map.entry(key).or_insert_with(|| PlayerMapStat {
+            map: if generated {
+                String::new()
+            } else {
+                game.map.clone()
+            },
+            generated,
+            games: 0,
+            wins: 0,
+            losses: 0,
+            last_played: String::new(),
+        });
+        entry.games += 1;
+        if game.decided {
+            if game.won {
+                entry.wins += 1;
+            } else {
+                entry.losses += 1;
+            }
+        }
+        if game.played_at > entry.last_played {
+            entry.last_played = game.played_at.clone();
+        }
+    }
+
+    stats.maps = by_map.into_values().collect();
+    stats
+        .maps
+        .sort_by(|a, b| b.games.cmp(&a.games).then_with(|| a.map.cmp(&b.map)));
+    stats
+}
+
+#[cfg(test)]
+mod map_stats_tests {
+    use super::*;
+
+    fn game(map: &str, decided: bool, won: bool, played_at: &str) -> PlayedGame {
+        PlayedGame {
+            map: map.into(),
+            decided,
+            won,
+            played_at: played_at.into(),
+        }
+    }
+
+    #[test]
+    fn maps_are_ordered_by_how_often_they_were_played() {
+        let stats = aggregate_map_stats(
+            &[
+                game("Setons Clutch", true, true, "2026-01-01"),
+                game("Dual Gap", true, false, "2026-01-02"),
+                game("Setons Clutch", true, false, "2026-01-03"),
+                game("Setons Clutch", true, true, "2026-01-04"),
+            ],
+            false,
+        );
+
+        assert_eq!(stats.total_games, 4);
+        assert_eq!(stats.wins, 2);
+        assert_eq!(stats.losses, 2);
+        assert_eq!(
+            stats
+                .maps
+                .iter()
+                .map(|m| m.map.as_str())
+                .collect::<Vec<_>>(),
+            ["Setons Clutch", "Dual Gap"],
+            "most played first, which is the question a host is asking"
+        );
+
+        let setons = &stats.maps[0];
+        assert_eq!((setons.games, setons.wins, setons.losses), (3, 2, 1));
+        assert_eq!(
+            setons.last_played, "2026-01-04",
+            "the newest appearance wins"
+        );
+    }
+
+    #[test]
+    fn equal_counts_keep_a_stable_order() {
+        let first = aggregate_map_stats(
+            &[game("Beta", true, true, ""), game("Alpha", true, true, "")],
+            false,
+        );
+        let second = aggregate_map_stats(
+            &[game("Alpha", true, true, ""), game("Beta", true, true, "")],
+            false,
+        );
+        assert_eq!(first.maps, second.maps, "order must not depend on arrival");
+    }
+
+    #[test]
+    fn undecided_games_count_towards_the_total_but_not_the_record() {
+        let stats = aggregate_map_stats(
+            &[
+                game("Loki", true, true, "2026-01-01"),
+                game("Loki", false, false, "2026-01-02"),
+            ],
+            false,
+        );
+        assert_eq!(stats.total_games, 2);
+        assert_eq!(stats.wins, 1);
+        assert_eq!(stats.losses, 0);
+        assert_eq!(stats.undecided, 1);
+
+        let loki = &stats.maps[0];
+        assert_eq!(loki.games, 2, "a draw is still a game played there");
+        assert_eq!((loki.wins, loki.losses), (1, 0));
+    }
+
+    #[test]
+    fn a_game_the_api_names_no_map_for_is_a_generated_one() {
+        // FAF holds no map version for a locally generated map, so these
+        // arrive nameless. Dropping them made a heavy mapgen player look like
+        // they had never played one.
+        let stats = aggregate_map_stats(
+            &[
+                game("", true, true, "2026-01-01"),
+                game("", true, false, "2026-01-02"),
+                game("Loki", true, true, "2026-01-03"),
+            ],
+            false,
+        );
+        assert_eq!(stats.total_games, 3);
+        assert_eq!(stats.wins, 2);
+
+        let generated = stats
+            .maps
+            .iter()
+            .find(|entry| entry.generated)
+            .expect("the nameless games become the generated row");
+        assert_eq!(
+            (generated.games, generated.wins, generated.losses),
+            (2, 1, 1)
+        );
+        assert_eq!(stats.unattributed, 2, "and the inference is recorded");
+
+        assert_eq!(stats.maps.iter().filter(|e| !e.generated).count(), 1);
+    }
+
+    #[test]
+    fn nameless_and_named_generated_games_share_one_row() {
+        let stats = aggregate_map_stats(
+            &[
+                game("", true, true, "2026-01-01"),
+                game("neroxis_map_generator_1.8.0_abcd", true, true, "2026-01-02"),
+            ],
+            false,
+        );
+        assert_eq!(stats.maps.len(), 1, "both spellings are the same thing");
+        assert_eq!(stats.maps[0].games, 2);
+        assert_eq!(stats.unattributed, 1, "only one of them was inferred");
+    }
+}
+
+#[cfg(test)]
+mod generated_map_tests {
+    use super::*;
+
+    fn generated(seed: &str) -> PlayedGame {
+        PlayedGame {
+            map: format!("neroxis_map_generator_1.8.0_{seed}"),
+            decided: true,
+            won: true,
+            played_at: "2026-01-01".into(),
+        }
+    }
+
+    #[test]
+    fn generated_maps_collapse_into_one_row() {
+        // Each generated map carries its own seed, so listed individually a
+        // player who likes them would push every real map off the list with
+        // rows that each say "played once".
+        let stats = aggregate_map_stats(
+            &[
+                generated("aaaa"),
+                generated("bbbb"),
+                generated("cccc"),
+                PlayedGame {
+                    map: "Setons Clutch".into(),
+                    decided: true,
+                    won: false,
+                    played_at: "2026-01-02".into(),
+                },
+            ],
+            false,
+        );
+
+        assert_eq!(stats.total_games, 4);
+        assert_eq!(stats.maps.len(), 2, "three seeds are one entry");
+
+        let bucket = stats
+            .maps
+            .iter()
+            .find(|entry| entry.generated)
+            .expect("a generated row");
+        assert_eq!(bucket.games, 3);
+        assert_eq!(bucket.wins, 3);
+        assert!(
+            bucket.map.is_empty(),
+            "no single seed may stand in for the group; the view names it"
+        );
+
+        let setons = stats.maps.iter().find(|entry| !entry.generated).unwrap();
+        assert_eq!(setons.map, "Setons Clutch");
+        assert_eq!(setons.games, 1);
+    }
+
+    #[test]
+    fn a_generated_name_this_client_cannot_decode_is_still_generated() {
+        assert!(is_generated_map_name(
+            "neroxis_map_generator_99.0.0_zzz_broken"
+        ));
+        assert!(is_generated_map_name("NEROXIS_MAP_GENERATOR_1.8.0_AAA"));
+        assert!(!is_generated_map_name("Setons Clutch"));
+        assert!(!is_generated_map_name("neroxis something else"));
     }
 }

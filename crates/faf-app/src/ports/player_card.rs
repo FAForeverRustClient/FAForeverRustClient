@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use faf_domain::state::{
-    MatchmakerPlayerProfile, PlayerCardProfile, PlayerSummary, RatingHistoryPage,
+    MatchmakerPlayerProfile, PlayerCardProfile, PlayerMapStats, PlayerSummary, RatingHistoryPage,
     RatingHistoryQuery,
 };
 
@@ -44,4 +44,11 @@ pub trait PlayerCardPort: Send + Sync {
         &self,
         query: &RatingHistoryQuery,
     ) -> Result<RatingHistoryPage, String>;
+
+    /// Every game this player has finished, folded into per-map records.
+    ///
+    /// Separate from [`Self::load_profile`] because it walks the whole history
+    /// rather than reading one document, and the profile's identity should not
+    /// wait for it.
+    async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String>;
 }

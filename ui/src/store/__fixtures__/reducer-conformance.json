@@ -414,7 +414,10 @@
       "historyError": "",
       "matchmakerProfile": null,
       "matchmakerProfileStatus": "idle",
-      "matchmakerProfileError": ""
+      "matchmakerProfileError": "",
+      "mapStats": null,
+      "mapStatsStatus": "idle",
+      "mapStatsError": ""
     },
     "reporting": {
       "open": false,
@@ -704,6 +707,169 @@
     }
   },
   "cases": [
+    {
+      "name": "map statistics load, and a second player's scan replaces the first",
+      "steps": [
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "mapStatsLoading",
+              "payload": {
+                "playerId": 7
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "loading",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "mapStatsLoaded",
+              "payload": {
+                "stats": {
+                  "totalGames": 3,
+                  "wins": 2,
+                  "losses": 1,
+                  "undecided": 0,
+                  "unattributed": 0,
+                  "maps": [
+                    {
+                      "map": "Setons Clutch",
+                      "generated": false,
+                      "games": 3,
+                      "wins": 2,
+                      "losses": 1,
+                      "lastPlayed": "2026-01-04T20:00:00Z"
+                    }
+                  ],
+                  "truncated": false
+                }
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": {
+              "losses": 1,
+              "maps": [
+                {
+                  "games": 3,
+                  "generated": false,
+                  "lastPlayed": "2026-01-04T20:00:00Z",
+                  "losses": 1,
+                  "map": "Setons Clutch",
+                  "wins": 2
+                }
+              ],
+              "totalGames": 3,
+              "truncated": false,
+              "unattributed": 0,
+              "undecided": 0,
+              "wins": 2
+            },
+            "mapStatsError": "",
+            "mapStatsStatus": "ready",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "mapStatsLoading",
+              "payload": {
+                "playerId": 8
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "loading",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "mapStatsLoadFailed",
+              "payload": {
+                "reason": "offline"
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "offline",
+            "mapStatsStatus": "failed",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        }
+      ]
+    },
     {
       "name": "a patch note is selected before it arrives, and earlier ones are kept",
       "steps": [
@@ -17758,6 +17924,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": null,
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
@@ -17786,6 +17955,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": null,
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
@@ -17811,6 +17983,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": null,
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
@@ -17866,6 +18041,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": null,
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
@@ -17918,6 +18096,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": null,
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
@@ -17976,6 +18157,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": null,
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
@@ -18037,6 +18221,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": null,
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "loading",
@@ -18076,6 +18263,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": {
               "avatarTooltip": "Champion",
               "avatarUrl": "avatar",
@@ -18116,6 +18306,9 @@
             "historyQuery": null,
             "historyStatus": "idle",
             "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
             "matchmakerProfile": {
               "avatarTooltip": "Champion",
               "avatarUrl": "avatar",

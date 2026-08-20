@@ -2771,6 +2771,39 @@ fn local_replay(uid: i32) -> LocalReplay {
 
 fn cases() -> Vec<Case> {
     vec![
+        // ── player card: per-map record ──────────────────────────────────
+        case(
+            "map statistics load, and a second player's scan replaces the first",
+            vec![
+                PlayerCardEvent::MapStatsLoading { player_id: 7 }.into(),
+                PlayerCardEvent::MapStatsLoaded {
+                    stats: Box::new(PlayerMapStats {
+                        total_games: 3,
+                        wins: 2,
+                        losses: 1,
+                        undecided: 0,
+                        unattributed: 0,
+                        maps: vec![PlayerMapStat {
+                            map: "Setons Clutch".into(),
+                            generated: false,
+                            games: 3,
+                            wins: 2,
+                            losses: 1,
+                            last_played: "2026-01-04T20:00:00Z".into(),
+                        }],
+                        truncated: false,
+                    }),
+                }
+                .into(),
+                // Opening another profile must not leave the first one's maps
+                // sitting under a different name.
+                PlayerCardEvent::MapStatsLoading { player_id: 8 }.into(),
+                PlayerCardEvent::MapStatsLoadFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── changelog ────────────────────────────────────────────────────
         case(
             "a patch note is selected before it arrives, and earlier ones are kept",

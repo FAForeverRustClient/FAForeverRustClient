@@ -203,6 +203,9 @@ const INITIAL: AppState = {
     matchmakerProfile: null,
     matchmakerProfileStatus: "idle",
     matchmakerProfileError: "",
+    mapStats: null,
+    mapStatsStatus: "idle",
+    mapStatsError: "",
   },
   reporting: {
     open: false,
