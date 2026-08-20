@@ -10,6 +10,7 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { MapThumbnail } from "../../shared/MapThumbnail";
 import { formatDateTime } from "../../shared/dates";
 
 interface Props {
@@ -25,6 +26,8 @@ function winRate(wins: number, losses: number): number | null {
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
   const stats = useAppStore((state) => state.state.playerCard.mapStats);
+  // The vault supplies map art; without it every thumbnail is a placeholder.
+  const vault = useAppStore((state) => state.state.maps.vault);
   const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
   const error = useAppStore((state) => state.state.playerCard.mapStatsError);
   const [search, setSearch] = useState("");
@@ -36,11 +39,18 @@ export function PlayerMapStatistics({ playerId }: Props) {
     ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: { playerId } } });
   }, [playerId]);
 
+  const generatedLabel = t("playerCard.maps.generated");
+  const label = (entry: { map: string; generated: boolean }) =>
+    entry.generated ? generatedLabel : entry.map;
+
   const maps = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     const all = stats?.maps ?? [];
-    return query ? all.filter((entry) => entry.map.toLocaleLowerCase().includes(query)) : all;
-  }, [search, stats]);
+    if (!query) return all;
+    return all.filter((entry) =>
+      (entry.generated ? generatedLabel : entry.map).toLocaleLowerCase().includes(query),
+    );
+  }, [generatedLabel, search, stats]);
 
   if (status === "loading") {
     return <div className="player-card-empty muted">{t("playerCard.maps.loading")}</div>;
@@ -108,8 +118,20 @@ export function PlayerMapStatistics({ playerId }: Props) {
           {maps.map((entry) => {
             const rate = winRate(entry.wins, entry.losses);
             return (
-              <tr key={entry.map}>
-                <td className="player-maps-name" title={entry.map}>{entry.map}</td>
+              <tr key={entry.generated ? "@generated" : entry.map}>
+                <td className="player-maps-name">
+                  <span className="player-maps-map">
+                    <MapThumbnail
+                      mapName={entry.map}
+                      vault={vault}
+                      className="player-maps-thumb"
+                      placeholderClassName="player-maps-thumb player-maps-thumb-empty"
+                    />
+                    <span className="player-maps-map-name" title={label(entry)}>
+                      {label(entry)}
+                    </span>
+                  </span>
+                </td>
                 <td>{formatNumber(entry.games)}</td>
                 <td>
                   {formatNumber(entry.wins)} / {formatNumber(entry.losses)}

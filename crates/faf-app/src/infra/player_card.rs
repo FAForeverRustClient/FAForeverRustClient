@@ -20,12 +20,17 @@ use crate::ports::{PlayerCardPort, RequestError};
 
 const MAX_PAGE_SIZE: usize = 10_000;
 
-/// Rows per request when scanning a player's history.
+/// Rows asked for per request when scanning a player's history.
 ///
-/// Large on purpose: the whole point is to cover every game, and at the
-/// default page size a ten-thousand-game veteran would cost a hundred round
-/// trips. Sparse fieldsets keep each row small enough for this to be sane.
-const HISTORY_PAGE_SIZE: usize = 2_000;
+/// A request, not a promise: the API is free to return fewer, and it does.
+/// Nothing downstream may assume a full page came back, which is exactly the
+/// bug this replaced: treating a short page as the end of the history capped
+/// every player at the server's own page limit.
+const HISTORY_PAGE_SIZE: usize = 1_000;
+
+/// Hard stop on the paging loop, so a server that keeps answering with rows
+/// cannot spin this forever.
+const MAX_HISTORY_PAGES: usize = 400;
 
 /// Safety limit on a single scan. Beyond this the statistics are reported as
 /// truncated rather than the client quietly paging forever against the API.
@@ -489,7 +494,14 @@ impl PlayerCardPort for PlayerCardClient {
 
             let document = self.get(url, &token).await?;
             let batch = parse_played_games(&document);
-            let exhausted = batch.len() < HISTORY_PAGE_SIZE;
+
+            // The history ends when a page comes back empty, never when it
+            // comes back short. The API clamps `page[size]` to its own limit
+            // and says so nowhere in the payload, so comparing against what
+            // was *asked for* stopped after the very first page.
+            if batch.is_empty() {
+                break;
+            }
             games.extend(batch);
 
             if games.len() >= MAX_HISTORY_GAMES {
@@ -497,7 +509,8 @@ impl PlayerCardPort for PlayerCardClient {
                 truncated = true;
                 break;
             }
-            if exhausted {
+            if page >= MAX_HISTORY_PAGES {
+                truncated = true;
                 break;
             }
             page += 1;

@@ -650,6 +650,7 @@
                   "maps": [
                     {
                       "map": "Setons Clutch",
+                      "generated": false,
                       "games": 3,
                       "wins": 2,
                       "losses": 1,
@@ -674,6 +675,7 @@
               "maps": [
                 {
                   "games": 3,
+                  "generated": false,
                   "lastPlayed": "2026-01-04T20:00:00Z",
                   "losses": 1,
                   "map": "Setons Clutch",

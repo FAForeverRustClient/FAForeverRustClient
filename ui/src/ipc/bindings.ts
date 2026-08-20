@@ -3357,7 +3357,18 @@ export type PlayerLobbyRating = {
 
 /**  A player's record on one map. */
 export type PlayerMapStat = {
+	/**  Empty for the generated-map row, which the view names itself. */
 	map: string,
+	/**
+	 *  Every Neroxis-generated map folded together.
+	 *
+	 *  Each generated map carries its seed in its name, so it is played
+	 *  once and never again. Listed individually they would be hundreds of
+	 *  one-game rows burying the maps a host can actually judge, while
+	 *  saying nothing: "has played this exact seed once" is not a fact
+	 *  anyone needs.
+	 */
+	generated: boolean,
 	games: number,
 	wins: number,
 	losses: number,

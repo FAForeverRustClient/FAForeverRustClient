@@ -742,7 +742,16 @@ pub struct PlayedGame {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerMapStat {
+    /// Empty for the generated-map row, which the view names itself.
     pub map: String,
+    /// Every Neroxis-generated map folded together.
+    ///
+    /// Each generated map carries its seed in its name, so it is played
+    /// once and never again. Listed individually they would be hundreds of
+    /// one-game rows burying the maps a host can actually judge, while
+    /// saying nothing: "has played this exact seed once" is not a fact
+    /// anyone needs.
+    pub generated: bool,
     pub games: i32,
     pub wins: i32,
     pub losses: i32,
@@ -773,6 +782,20 @@ pub struct PlayerMapStats {
     pub truncated: bool,
 }
 
+/// Whether a map name came out of the Neroxis generator.
+///
+/// A prefix test rather than a full decode: a generated name with a segment
+/// this client cannot parse is still a generated map, and bucketing it is
+/// more useful than listing it.
+pub fn is_generated_map_name(map: &str) -> bool {
+    map.to_ascii_lowercase()
+        .starts_with("neroxis_map_generator_")
+}
+
+/// Key the generated bucket under something no real map name can collide
+/// with, since map names are what the rest of the fold groups by.
+const GENERATED_BUCKET: &str = "\u{0}generated";
+
 /// Fold a player's games into per-map records, most played first.
 ///
 /// Ties break on the map name so the order is stable between two loads of the
@@ -799,15 +822,24 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
             continue;
         }
 
-        let entry = by_map
-            .entry(game.map.clone())
-            .or_insert_with(|| PlayerMapStat {
-                map: game.map.clone(),
-                games: 0,
-                wins: 0,
-                losses: 0,
-                last_played: String::new(),
-            });
+        let generated = is_generated_map_name(&game.map);
+        let key = if generated {
+            GENERATED_BUCKET.to_string()
+        } else {
+            game.map.clone()
+        };
+        let entry = by_map.entry(key).or_insert_with(|| PlayerMapStat {
+            map: if generated {
+                String::new()
+            } else {
+                game.map.clone()
+            },
+            generated,
+            games: 0,
+            wins: 0,
+            losses: 0,
+            last_played: String::new(),
+        });
         entry.games += 1;
         if game.decided {
             if game.won {
@@ -915,5 +947,69 @@ mod map_stats_tests {
             stats.maps.is_empty(),
             "but it cannot be attributed to a map"
         );
+    }
+}
+
+#[cfg(test)]
+mod generated_map_tests {
+    use super::*;
+
+    fn generated(seed: &str) -> PlayedGame {
+        PlayedGame {
+            map: format!("neroxis_map_generator_1.8.0_{seed}"),
+            decided: true,
+            won: true,
+            played_at: "2026-01-01".into(),
+        }
+    }
+
+    #[test]
+    fn generated_maps_collapse_into_one_row() {
+        // Each generated map carries its own seed, so listed individually a
+        // player who likes them would push every real map off the list with
+        // rows that each say "played once".
+        let stats = aggregate_map_stats(
+            &[
+                generated("aaaa"),
+                generated("bbbb"),
+                generated("cccc"),
+                PlayedGame {
+                    map: "Setons Clutch".into(),
+                    decided: true,
+                    won: false,
+                    played_at: "2026-01-02".into(),
+                },
+            ],
+            false,
+        );
+
+        assert_eq!(stats.total_games, 4);
+        assert_eq!(stats.maps.len(), 2, "three seeds are one entry");
+
+        let bucket = stats
+            .maps
+            .iter()
+            .find(|entry| entry.generated)
+            .expect("a generated row");
+        assert_eq!(bucket.games, 3);
+        assert_eq!(bucket.wins, 3);
+        assert!(
+            bucket.map.is_empty(),
+            "no single seed may stand in for the group; the view names it"
+        );
+
+        let setons = stats.maps.iter().find(|entry| !entry.generated).unwrap();
+        assert_eq!(setons.map, "Setons Clutch");
+        assert_eq!(setons.games, 1);
+    }
+
+    #[test]
+    fn a_generated_name_this_client_cannot_decode_is_still_generated() {
+        assert!(is_generated_map_name(
+            "neroxis_map_generator_99.0.0_zzz_broken"
+        ));
+        assert!(is_generated_map_name("NEROXIS_MAP_GENERATOR_1.8.0_AAA"));
+        assert!(!is_generated_map_name("Setons Clutch"));
+        assert!(!is_generated_map_name("neroxis something else"));
     }
 }
