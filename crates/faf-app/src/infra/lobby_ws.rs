@@ -379,6 +379,19 @@ async fn run_session(
     // what chat needs to rank its roster. See `PlayerDirectory`.
     let mut directory = PlayerDirectory::default();
     let mut matchmaking = MatchmakingState::Idle;
+    // The machine proof is computed off this loop. `faf-uid` needs seconds on a
+    // cold first run (15s measured on a freshly installed client, ~2.4s warm),
+    // and awaiting it inline left the connection unable to answer the server's
+    // keepalive for that entire window. The server dropped us, and the client
+    // only read the rejection once the helper returned: hence a "command
+    // rejected" error timestamped seconds after the command it blamed.
+    let (proof_tx, mut proof_rx) = mpsc::channel::<Result<String, String>>(1);
+    // The session id the pending proof was computed for, sent back in `auth`.
+    let mut session_id = String::new();
+    // Gates client→server frames. The lobby only tolerates the handshake before
+    // authentication and aborts the connection on anything else, so queued
+    // frames wait in `outgoing` until `welcome` rather than racing `auth`.
+    let mut authenticated = false;
     'connection: loop {
         tokio::select! {
             _ = cancel.cancelled() => {
@@ -386,8 +399,9 @@ async fn run_session(
                 break;
             }
             // Client→server frames (e.g. game_join from `join`). `None` means the
-            // sender was dropped by `disconnect`: tear down gracefully.
-            frame = outgoing.recv() => {
+            // sender was dropped by `disconnect`: tear down gracefully. Disabled
+            // until `welcome`: see `authenticated`.
+            frame = outgoing.recv(), if authenticated => {
                 let Some(frame) = frame else {
                     let _ = write.send(Message::Close(None)).await;
                     break;
@@ -398,6 +412,33 @@ async fn run_session(
                     .is_err()
                 {
                     break;
+                }
+            }
+            // The machine proof finished: authenticate. A branch of its own so
+            // the seconds it takes cost the connection nothing.
+            proof = proof_rx.recv() => {
+                let Some(proof) = proof else { break 'connection };
+                let unique_id = match proof {
+                    Ok(uid) => uid,
+                    Err(e) => {
+                        // Can't authenticate: end the stream (service emits
+                        // Disconnected). Surfaced for the dev console.
+                        tracing::error!(error = %e, "machine proof generation failed");
+                        break 'connection;
+                    }
+                };
+                let auth = json!({
+                    "command": "auth",
+                    "token": access_token,
+                    "unique_id": unique_id,
+                    "session": session_id,
+                });
+                if write
+                    .send(Message::binary(encode_lobby_message(&auth).into_bytes()))
+                    .await
+                    .is_err()
+                {
+                    break 'connection;
                 }
             }
             incoming = read.next() => {
@@ -436,36 +477,21 @@ async fn run_session(
                         }
                     }
                     "session" => {
-                        // Compute the machine fingerprint and authenticate.
+                        // Start the machine fingerprint; `auth` goes out from the
+                        // proof branch below once the helper returns, so this loop
+                        // keeps serving the socket in the meantime.
                         tracing::debug!("lobby session received; generating machine proof");
                         let session = value.get("session").cloned().unwrap_or(Value::Null);
                         // The Python client normalizes the server's numeric
                         // session id to a string before sending `auth`.
-                        let session_id = session_to_string(&session);
-                        let unique_id =
-                            match generate_unique_id(&config.uid_path, &session_id).await
-                            {
-                                Ok(uid) => uid,
-                                Err(e) => {
-                                    // Can't authenticate: end the stream (service
-                                    // emits Disconnected). Surfaced for the dev console.
-                                    tracing::error!(error = %e, "machine proof generation failed");
-                                    break 'connection;
-                                }
-                            };
-                        let auth = json!({
-                            "command": "auth",
-                            "token": access_token,
-                            "unique_id": unique_id,
-                            "session": session_id,
+                        session_id = session_to_string(&session);
+                        let proof_tx = proof_tx.clone();
+                        let uid_path = config.uid_path.clone();
+                        let session_arg = session_id.clone();
+                        tokio::spawn(async move {
+                            let proof = generate_unique_id(&uid_path, &session_arg).await;
+                            let _ = proof_tx.send(proof).await;
                         });
-                        if write
-                            .send(Message::binary(encode_lobby_message(&auth).into_bytes()))
-                            .await
-                            .is_err()
-                        {
-                            break 'connection;
-                        }
                     }
                     "authentication_failed" => {
                         let reason = server_text(
@@ -478,6 +504,10 @@ async fn run_session(
                     }
                     "welcome" => {
                         tracing::info!("lobby authenticated");
+                        authenticated = true;
+                        if tx.send(LobbyUpdate::Authenticated).await.is_err() {
+                            break 'connection;
+                        }
                         if let Some(player) = value.get("me") {
                             update_player_ratings(&mut player_ratings, player);
                             if let Some(profile) = directory.observe(player) {
@@ -557,7 +587,11 @@ async fn run_session(
                             &value,
                             "The lobby server rejected an invalid client command.",
                         );
-                        tracing::error!(%reason, "lobby protocol command rejected");
+                        // FAF sends a bare `{"command": "invalid"}`, so `reason`
+                        // is usually the fallback above and names nothing. Log the
+                        // frame too: without it a field report cannot tell a
+                        // malformed command from an abort we were too slow to stop.
+                        tracing::error!(%reason, frame = %value, "lobby protocol command rejected");
                         let _ = tx.send(LobbyUpdate::ConnectionRejected { reason }).await;
                         break 'connection;
                     }

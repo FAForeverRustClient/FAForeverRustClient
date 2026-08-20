@@ -69,6 +69,12 @@ impl LobbyPort for FakeLobby {
         *self.matchmaking.lock().unwrap() = MatchmakingState::Idle;
         tokio::spawn(async move {
             let mut games = seed_games();
+            // The real transport only reports this once the server has accepted
+            // the handshake; the fake has no handshake, but the service must not
+            // be able to tell the two apart.
+            if tx.send(LobbyUpdate::Authenticated).await.is_err() {
+                return;
+            }
             // Immediate first snapshot so the UI fills instantly.
             if tx.send(LobbyUpdate::Games(games.clone())).await.is_err() {
                 return;
