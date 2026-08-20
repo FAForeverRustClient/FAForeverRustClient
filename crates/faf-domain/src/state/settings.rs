@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use crate::protocol::map_generator::GeneratorOptions;
 
 use super::chat::normalize_channels;
+use super::mods::ModPreset;
 use super::Tab;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -1061,6 +1062,11 @@ pub struct BrowsingPreferences {
     pub map_vault_preset: String,
     /// Active preset filter in the mod vault ("recommended", "rating", "ui", "newest", "all").
     pub mod_vault_preset: String,
+    /// Named mod sets the host dialog can re-apply in one click.
+    ///
+    /// Only the word is shared with `mod_vault_preset` above, which is a vault
+    /// *filter*. These are the user's own saved selections.
+    pub mod_presets: Vec<ModPreset>,
     /// Visible column keys in the rating leaderboard table.
     pub leaderboard_rating_columns: Vec<String>,
     /// Set after the webview has offered its pre-0.2 browser-storage values to
@@ -1097,6 +1103,7 @@ impl Default for BrowsingPreferences {
             favorite_maps: Vec::new(),
             map_vault_preset: "recommended".into(),
             mod_vault_preset: "recommended".into(),
+            mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
                 .map(|col| (*col).to_owned())
@@ -1124,6 +1131,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             favorite_maps: Vec<String>,
             map_vault_preset: String,
             mod_vault_preset: String,
+            mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             legacy_storage_migrated: bool,
         }
@@ -1142,6 +1150,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     favorite_maps: defaults.favorite_maps,
                     map_vault_preset: defaults.map_vault_preset,
                     mod_vault_preset: defaults.mod_vault_preset,
+                    mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     legacy_storage_migrated: defaults.legacy_storage_migrated,
                 }
@@ -1160,6 +1169,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             favorite_maps: wire.favorite_maps,
             map_vault_preset: wire.map_vault_preset,
             mod_vault_preset: wire.mod_vault_preset,
+            mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             legacy_storage_migrated: wire.legacy_storage_migrated,
         })
@@ -1167,6 +1177,12 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
 }
 
 const MATCHMAKER_FACTIONS: [&str; 4] = ["UEF", "Aeon", "Cybran", "Seraphim"];
+
+/// Caps for saved mod sets. Generous enough that no real user meets them, small
+/// enough that a corrupt settings file cannot grow the state without limit.
+const MAX_MOD_PRESETS: usize = 64;
+const MAX_MOD_PRESET_NAME_CHARS: usize = 64;
+const MAX_MODS_PER_PRESET: usize = 512;
 
 impl BrowsingPreferences {
     fn normalized(mut self) -> Self {
@@ -1228,6 +1244,7 @@ impl BrowsingPreferences {
             "all" => "all".into(),
             _ => "recommended".into(),
         };
+        self.mod_presets = normalize_mod_presets(std::mem::take(&mut self.mod_presets));
         let selected_columns: Vec<String> = VALID_LEADERBOARD_RATING_COLUMNS
             .iter()
             .filter(|canonical| {
@@ -1490,6 +1507,36 @@ fn normalize_player_count(value: String) -> String {
         .filter(|count| (1..=64).contains(count))
         .map(|count| count.to_string())
         .unwrap_or_default()
+}
+
+/// Bound the user's saved mod sets the way every other list here is bounded.
+///
+/// Names are compared case-insensitively and the first wins, so a settings file
+/// that somehow holds two "Replay" presets keeps the older one rather than
+/// silently swapping which one a button applies. Saving over a name is the UI's
+/// job and replaces in place; this is only the repair path for a corrupt file.
+fn normalize_mod_presets(presets: Vec<ModPreset>) -> Vec<ModPreset> {
+    let mut normalized: Vec<ModPreset> = Vec::new();
+    for preset in presets {
+        let name = truncate_trimmed(preset.name, MAX_MOD_PRESET_NAME_CHARS);
+        if name.is_empty()
+            || normalized
+                .iter()
+                .any(|existing| existing.name.eq_ignore_ascii_case(&name))
+        {
+            continue;
+        }
+        normalized.push(ModPreset {
+            name,
+            // An empty preset is meaningful: it is "no mods at all", which is
+            // exactly what someone wants before watching an old replay.
+            uids: normalize_labels(preset.uids, MAX_MODS_PER_PRESET, 128),
+        });
+        if normalized.len() == MAX_MOD_PRESETS {
+            break;
+        }
+    }
+    normalized
 }
 
 fn normalize_labels(values: Vec<String>, limit: usize, max_chars: usize) -> Vec<String> {
@@ -1821,6 +1868,7 @@ mod tests {
                 ],
                 map_vault_preset: "  NEWEST  ".into(),
                 mod_vault_preset: "  UI  ".into(),
+                mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
                     "rating".into(),
                     "MEAN".into(),
@@ -1875,6 +1923,49 @@ mod tests {
             ["rating", "mean"]
         );
         assert!(settings.browsing.legacy_storage_migrated);
+    }
+
+    #[test]
+    fn mod_presets_are_bounded_and_deduplicated_but_may_be_empty() {
+        let mut settings = SettingsState::default();
+        settings.browsing.mod_presets = vec![
+            ModPreset {
+                name: "  Replay watching  ".into(),
+                uids: vec!["  a  ".into(), "A".into(), String::new(), "b".into()],
+            },
+            // An empty selection is a legitimate preset: "no mods at all".
+            ModPreset {
+                name: "Vanilla".into(),
+                uids: Vec::new(),
+            },
+            // Same name in a different case: the first one wins, so a button
+            // does not silently start applying a different set.
+            ModPreset {
+                name: "REPLAY WATCHING".into(),
+                uids: vec!["z".into()],
+            },
+            ModPreset {
+                name: "   ".into(),
+                uids: vec!["c".into()],
+            },
+        ];
+
+        let settings = settings.normalized();
+
+        let presets = &settings.browsing.mod_presets;
+        assert_eq!(
+            presets.len(),
+            2,
+            "unnamed and duplicate presets are dropped"
+        );
+        assert_eq!(presets[0].name, "Replay watching");
+        assert_eq!(
+            presets[0].uids,
+            ["a", "b"],
+            "uids are trimmed and deduplicated"
+        );
+        assert_eq!(presets[1].name, "Vanilla");
+        assert!(presets[1].uids.is_empty());
     }
 
     #[test]

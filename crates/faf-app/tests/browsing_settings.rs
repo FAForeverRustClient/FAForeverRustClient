@@ -68,6 +68,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 favorite_maps: vec!["adaptive_tabula.v0006".into()],
                 map_vault_preset: "newest".into(),
                 mod_vault_preset: "rating".into(),
+                mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec!["rating".into(), "GAMES".into(), "invalid".into()],
                 legacy_storage_migrated: true,
             }),

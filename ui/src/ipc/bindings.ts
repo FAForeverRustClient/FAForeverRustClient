@@ -223,6 +223,13 @@ export type BrowsingPreferences = {
 	mapVaultPreset: string,
 	/**  Active preset filter in the mod vault ("recommended", "rating", "ui", "newest", "all"). */
 	modVaultPreset: string,
+	/**
+	 *  Named mod sets the host dialog can re-apply in one click.
+	 *
+	 *  Only the word is shared with `mod_vault_preset` above, which is a vault
+	 *  *filter*. These are the user's own saved selections.
+	 */
+	modPresets: ModPreset[],
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
 	/**
@@ -2690,6 +2697,22 @@ export type ModListStatus = { type: "idle" } | { type: "loading" } | { type: "re
 	reason: string,
 } };
 
+/**
+ *  A named set of mods the user can put back in one click.
+ *
+ *  Keyed by `uid` rather than folder name, because `uid` is what `game.prefs`'s
+ *  `active_mods` table stores and what survives a mod being reinstalled from the
+ *  vault under a different folder.
+ *
+ *  A preset describes the *complete* wanted state, so applying one also disables
+ *  every mod it does not name. That is the point of it: turn everything off to
+ *  watch an old replay, then get exactly the previous set back afterwards.
+ */
+export type ModPreset = {
+	name: string,
+	uids: string[],
+};
+
 export type ModSortField = "rating" | "newest" | "updated" | "name";
 
 /**
@@ -2789,6 +2812,17 @@ export type ModsCommand =
 { type: "toggleMod"; payload: {
 	uid: string,
 	enabled: boolean,
+} } |
+/**
+ *  Replace the active set with exactly `uids`.
+ *
+ *  Deliberately not a loop over [`Self::ToggleMod`]: every toggle rewrites
+ *  `game.prefs` *and* rescans the whole mods folder, so applying a preset one
+ *  mod at a time costs a rescan per mod and walks the list through every
+ *  intermediate state on screen. This is one write and one rescan.
+ */
+{ type: "setActiveMods"; payload: {
+	uids: string[],
 } };
 
 export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | { type: "vaultSearched"; payload: {

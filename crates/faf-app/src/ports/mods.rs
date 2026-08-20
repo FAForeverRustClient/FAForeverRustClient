@@ -49,6 +49,10 @@ pub trait ModsPort: Send + Sync {
     /// the refreshed installed list.
     async fn toggle_mod(&self, uid: String, enabled: bool) -> Result<Vec<InstalledMod>, String>;
 
+    /// Replace the active set with exactly `uids`, and return the refreshed
+    /// installed list. Bulk on purpose: see `ModsCommand::SetActiveMods`.
+    async fn set_active_mods(&self, uids: Vec<String>) -> Result<Vec<InstalledMod>, String>;
+
     /// Install missing simulation mods required by a game and enable them.
     /// Already-installed versions are retained: this is compatibility
     /// preparation, not the intentionally excluded automatic mod updater.

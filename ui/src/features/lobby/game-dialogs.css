@@ -207,10 +207,12 @@
   border-color: var(--color-error);
 }
 
-/* 4-Column Grid Layout (Game Type | Mods | Map | Preview) */
+/* 4-Column Grid Layout (Game Type | Mods | Map | Preview)
+   The mods column is the widest of the fixed three: it carries the preset row,
+   a search field and the kind toggle above its list. */
 .host-game-grid {
   display: grid;
-  grid-template-columns: 225px 285px minmax(340px, 1fr) 330px;
+  grid-template-columns: 205px 360px minmax(280px, 1fr) 330px;
   gap: 12px;
   height: 550px;
 }
@@ -697,3 +699,199 @@
 
 
 
+
+/* ── Mods column: preset row, kind toggle, bulk actions ────────────────── */
+.host-preset-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.host-preset-label {
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.host-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* Apply and delete read as one control, so they share a border rather than
+   sitting next to each other as two. */
+.host-preset-chip {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.host-preset-apply,
+.host-preset-save {
+  min-width: 0;
+  padding: 4px 9px;
+  overflow: hidden;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.host-preset-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.host-preset-apply:hover,
+.host-preset-save:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.host-preset-save:disabled {
+  color: var(--color-subtle);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.host-preset-delete {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  padding: 0;
+  color: var(--color-subtle);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--color-border);
+}
+
+.host-preset-delete:hover {
+  color: var(--color-error);
+}
+
+.host-mod-version {
+  flex: none;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-subtle);
+}
+
+/* Two actions share the footer row; the reload button keeps its own. */
+.host-mod-actions {
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* ── Create-preset dialog ──────────────────────────────────────────────── */
+.mod-preset-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.preset-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+}
+
+.preset-name-label {
+  flex: none;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.preset-mod-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  height: 340px;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+}
+
+.preset-mod-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.preset-mod-column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.preset-mod-column-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.preset-mod-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.preset-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.preset-footer-hint {
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--color-muted);
+}
+
+.preset-footer-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+@media (max-width: 680px) {
+  .preset-mod-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+}

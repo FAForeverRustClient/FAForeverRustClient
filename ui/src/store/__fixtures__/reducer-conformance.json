@@ -543,6 +543,7 @@
         "favoriteMaps": [],
         "mapVaultPreset": "recommended",
         "modVaultPreset": "recommended",
+        "modPresets": [],
         "leaderboardRatingColumns": [
           "rating",
           "games",
@@ -18576,6 +18577,7 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modPresets": [],
               "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
@@ -18742,6 +18744,7 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modPresets": [],
               "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
@@ -18931,6 +18934,7 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modPresets": [],
               "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
@@ -19111,6 +19115,7 @@
                 "Seraphim"
               ],
               "matchmakerUnselectedQueues": [],
+              "modPresets": [],
               "modVaultPreset": "recommended",
               "replaysView": "tiles"
             },
@@ -19286,6 +19291,7 @@
                   ],
                   "mapVaultPreset": "recommended",
                   "modVaultPreset": "recommended",
+                  "modPresets": [],
                   "leaderboardRatingColumns": [
                     "rating",
                     "games",
@@ -19358,6 +19364,7 @@
               "matchmakerUnselectedQueues": [
                 "ladder_1v1"
               ],
+              "modPresets": [],
               "modVaultPreset": "recommended",
               "replaysView": "list"
             },

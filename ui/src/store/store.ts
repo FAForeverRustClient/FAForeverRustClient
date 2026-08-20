@@ -373,6 +373,7 @@ const INITIAL: AppState = {
       favoriteMaps: [],
       mapVaultPreset: "recommended",
       modVaultPreset: "recommended",
+      modPresets: [],
       leaderboardRatingColumns: ["rating", "games", "wins", "winRate", "updated"],
       legacyStorageMigrated: false,
     },

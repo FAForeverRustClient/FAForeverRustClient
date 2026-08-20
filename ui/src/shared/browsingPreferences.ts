@@ -4,6 +4,7 @@ import type {
   CustomGameFilterRule,
   HostGamePreferences,
   LiveReplayFilters,
+  ModPreset,
 } from "../ipc/bindings";
 
 export const LEGACY_CUSTOM_GAMES_VIEW_KEY = "faf-custom-games-view";
@@ -12,6 +13,11 @@ export const LEGACY_MATCHMAKER_FACTIONS_KEY = "faf-matchmaker-factions";
 export const LEGACY_LIVE_REPLAY_FILTERS_KEY = "faf-live-replay-filters";
 
 const MATCHMAKER_FACTIONS = ["UEF", "Aeon", "Cybran", "Seraphim"] as const;
+
+// Same caps as faf-domain's settings slice.
+const MAX_MOD_PRESETS = 64;
+const MAX_MOD_PRESET_NAME_CHARS = 64;
+const MAX_MODS_PER_PRESET = 512;
 const LEGACY_KEYS = [
   LEGACY_CUSTOM_GAMES_VIEW_KEY,
   LEGACY_MATCHMAKER_QUEUES_KEY,
@@ -101,6 +107,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   favoriteMaps: [],
   mapVaultPreset: "recommended",
   modVaultPreset: "recommended",
+  modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   legacyStorageMigrated: false,
 };
@@ -141,9 +148,28 @@ export function normalizeBrowsingPreferences(
     favoriteMaps: normalizeLabels(preferences.favoriteMaps ?? [], 512, 256).map(asciiLower),
     mapVaultPreset: normalizeMapVaultPreset(preferences.mapVaultPreset),
     modVaultPreset: normalizeModVaultPreset(preferences.modVaultPreset),
+    modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   };
+}
+
+/**
+ * Mirrors `normalize_mod_presets` in faf-domain's settings slice: names are
+ * compared case-insensitively and the first wins, and an empty selection stays,
+ * because "no mods at all" is a preset someone deliberately saves.
+ */
+function normalizeModPresets(presets: ModPreset[]): ModPreset[] {
+  const normalized: ModPreset[] = [];
+  for (const preset of presets) {
+    const name = truncateTrimmed(preset.name ?? "", MAX_MOD_PRESET_NAME_CHARS);
+    if (!name || normalized.some((existing) => asciiLower(existing.name) === asciiLower(name))) {
+      continue;
+    }
+    normalized.push({ name, uids: normalizeLabels(preset.uids ?? [], MAX_MODS_PER_PRESET, 128) });
+    if (normalized.length === MAX_MOD_PRESETS) break;
+  }
+  return normalized;
 }
 
 function normalizeMapVaultPreset(preset: string | undefined): string {
