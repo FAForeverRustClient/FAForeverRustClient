@@ -218,7 +218,7 @@ export function RatingLeaderboardPanel() {
         </SearchField>
         <SearchField label={t("leaderboard.ratings.rows")} className="leaderboard-search-rows">
           <select className="search-panel-control" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-            {[25, 50, 100, 250, 500, 1000].map((size) => <option key={size} value={size}>{size}</option>)}
+            {[25, 50, 75, 100].map((size) => <option key={size} value={size}>{size}</option>)}
           </select>
         </SearchField>
         <SearchPanelSubmit disabled={state.ratingsStatus.type === "loading"} />

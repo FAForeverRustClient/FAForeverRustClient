@@ -34,6 +34,14 @@ export function formatShortDate(value: string | number, fallback = t("common.unk
   return formatDate(value, fallback, SHORT_DATE_OPTIONS);
 }
 
+export function formatTime(value: string | number, fallback = t("common.unknown")): string {
+  if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? fallback
+    : date.toLocaleTimeString(clientIntlTag(), { timeStyle: "short" });
+}
+
 export function formatDateTime(value: string | number, fallback = t("common.unknown")): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);

@@ -1,19 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { formatDate, formatDateTime, formatShortDate } from "../../shared/dates";
+import { formatDate, formatShortDate, formatTime } from "../../shared/dates";
 import { formatDuration, formatRelativeDuration } from "../../shared/durations";
-import { baseMapName, normalizeMapName } from "../../shared/mapPresentation";
+import {
+  extractGeneratedMapSeed,
+  effectiveReplayMapName,
+  findVaultMap,
+  isGeneratedMap,
+  isGeneratedMapPlaceholderUrl,
+  mapPresentation,
+  mapThumbnailCandidates,
+  normalizeMapName,
+} from "../../shared/mapPresentation";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import { useAppStore } from "../../store/store";
 import {
   isObserverTeam,
   outcomeLabel,
   playerCount,
   ReplayCardRoster,
   ReplayDetailRoster,
+  mergeReplayTeamsWithLocal,
 } from "./ReplayRoster";
 import {
   formatReplayListTime,
@@ -129,39 +140,29 @@ function ReplayMapThumb({
   iconSize?: number;
   large?: boolean;
 }) {
-  const normalized = mapName ? normalizeMapName(mapName) : "";
-  const baseName = mapName ? baseMapName(mapName) : "";
-  const size = large ? "large" : "small";
-  const cdnFallback = normalized && !normalized.includes(" ")
-    ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(normalized)}.png`
-    : undefined;
-  const baseFallback = baseName && baseName !== normalized && !baseName.includes(" ")
-    ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
-    : undefined;
+  const vault = useAppStore((state) => state.state.maps.vault);
+  const isGenerated =
+    isGeneratedMap(mapName) ||
+    isGeneratedMapPlaceholderUrl(url);
+  const normalized = normalizeMapName(mapName);
+  const generatedPreview = useAppStore((state) =>
+    isGenerated
+      ? state.state.mapGenerator.previews?.[mapName] ||
+        state.state.mapGenerator.previews?.[normalized] ||
+        state.state.mapGenerator.previews?.[mapName.toLowerCase()]
+      : undefined,
+  );
+  const candidates = useMemo(
+    () => mapThumbnailCandidates(vault, mapName, large, undefined, generatedPreview, url || undefined),
+    [generatedPreview, large, mapName, url, vault],
+  );
+  const [candidateIndex, setCandidateIndex] = useState(0);
 
-  const [currentUrl, setCurrentUrl] = useState(url || cdnFallback || baseFallback || null);
-  const [failed, setFailed] = useState(false);
+  useEffect(() => setCandidateIndex(0), [candidates]);
 
-  useEffect(() => {
-    setCurrentUrl(url || cdnFallback || baseFallback || null);
-    setFailed(false);
-  }, [url, cdnFallback, baseFallback]);
+  const currentUrl = candidates[candidateIndex];
 
-  const handleError = () => {
-    if (currentUrl === url && cdnFallback && currentUrl !== cdnFallback) {
-      setCurrentUrl(cdnFallback);
-    } else if (
-      (currentUrl === url || currentUrl === cdnFallback) &&
-      baseFallback &&
-      currentUrl !== baseFallback
-    ) {
-      setCurrentUrl(baseFallback);
-    } else {
-      setFailed(true);
-    }
-  };
-
-  if (!currentUrl || failed) {
+  if (!currentUrl) {
     return (
       <div className={`${className} ${emptyClassName}`} aria-hidden="true">
         <Icon name="maps" size={iconSize} />
@@ -176,7 +177,7 @@ function ReplayMapThumb({
       alt={`${mapName} preview`}
       loading="lazy"
       decoding="async"
-      onError={handleError}
+      onError={() => setCandidateIndex((index) => index + 1)}
     />
   );
 }
@@ -195,7 +196,9 @@ export function ReplayLibraryCard({
   onDoubleClick?: () => void;
 }) {
   const { t } = useTranslation();
-  const cardTitle = replayCardTitle(replay.title, replay.map);
+  const vault = useAppStore((state) => state.state.maps.vault);
+  const presentation = mapPresentation(vault, replay.map);
+  const cardTitle = replayCardTitle(replay.title, presentation.displayName || replay.map);
   const stateClasses = [watched && "replay-card-watched", selected && "replay-card-selected"]
     .filter(Boolean)
     .join(" ");
@@ -220,7 +223,7 @@ export function ReplayLibraryCard({
       <div className="replay-card-right">
         <div className="replay-card-header">
           <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-          <span className="replay-card-submap muted">{t("replays.card.onMap", { map: replay.map })}</span>
+          <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
         </div>
         <ReplayCardRoster teams={replay.teams} />
         <div className="replay-card-footer muted">
@@ -244,16 +247,19 @@ export function ReplayCard({
   onDoubleClick?: () => void;
 }) {
   const { t } = useTranslation();
+  const localReplays = useAppStore((state) => state.state.replays.local);
+  const localMatch = localReplays.find((local) => local.uid === replay.uid);
+  const map = effectiveReplayMapName(replay.map, localMatch?.map);
   return (
     <ReplayLibraryCard
       replay={{
         idLabel: `#${replay.uid}`,
         title: replay.title,
-        map: replay.map,
+        map,
         mapThumbnailUrl: replay.mapThumbnailUrl,
         modName: replay.modName,
         startTime: replay.startTime,
-        teams: replay.teams,
+        teams: mergeReplayTeamsWithLocal(replay.teams, localMatch?.teams),
         averageRating: replay.averageRating,
         gameDurationSeconds: replay.gameDurationSeconds,
         durationSeconds: replay.durationSeconds,
@@ -286,56 +292,62 @@ export function OnlineReplayList({
   onWatch?: (uid: number) => void;
 }) {
   const { t } = useTranslation();
+  const vault = useAppStore((state) => state.state.maps.vault);
+  const localReplays = useAppStore((state) => state.state.replays.local);
   const groups = groupByDate
     ? groupReplaysByDate(replays)
     : [{ label: t("replays.list.results"), replays }];
 
   const listGroups: ReplayListGroup[] = groups.map((group) => ({
     label: group.label,
-    rows: group.replays.map((replay) => ({
-      key: String(replay.uid),
-      mapName: replay.map,
-      mapThumbnailUrl: replay.mapThumbnailUrl,
-      game: {
-        primary: replay.title || replay.map,
-        secondary: replay.map || t("replays.list.mapUnavailable"),
-      },
-      played: {
-        primary: formatReplayListTime(replay.startTime),
-        secondary: replayAge(replay.startTime) || "N/A",
-      },
-      players: { primary: String(playerCount(replay.teams)) },
-      rating: { primary: replay.averageRating === null ? "N/A" : String(replay.averageRating) },
-      mod: {
-        primary: replay.modName || "faf",
-        secondary: replay.reviewsCount
-          ? `★ ${replay.reviewsAverage?.toFixed(1) ?? "N/A"} (${replay.reviewsCount})`
-          : undefined,
-      },
-      duration: {
-        primary: replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : "N/A",
-        secondary: replay.durationSeconds !== null
-          ? t("replays.list.realTimeSuffix", { duration: formatDuration(replay.durationSeconds) })
-          : t("replays.list.realTimeUnavailable"),
-      },
-      replay: {
-        primary: t(replay.replayAvailable ? "replays.list.available" : "replays.list.processing"),
-        secondary: `#${replay.uid}`,
-        tone: replay.replayAvailable ? "ok" : "warn",
-      },
-      selected: selectedUid === replay.uid,
-      watched: watchedUids.has(replay.uid),
-      onSelect: () => onSelect(replay.uid),
-      onActivate: () => {
-        if (onWatch && replay.replayAvailable) onWatch(replay.uid);
-        else onOpen(replay.uid);
-      },
-      action: {
-        label: t("replays.list.details"),
-        ariaLabel: t("replays.list.detailsAria", { uid: replay.uid }),
-        onClick: () => onOpen(replay.uid),
-      },
-    })),
+    rows: group.replays.map((replay) => {
+      const map = effectiveReplayMapName(replay.map, localReplays.find((local) => local.uid === replay.uid)?.map);
+      const presentation = mapPresentation(vault, map);
+      return {
+        key: String(replay.uid),
+        mapName: map,
+        mapThumbnailUrl: replay.mapThumbnailUrl,
+        game: {
+          primary: replay.title || presentation.displayName || map,
+          secondary: presentation.displayName || map || t("replays.list.mapUnavailable"),
+        },
+        played: {
+          primary: formatReplayListTime(replay.startTime),
+          secondary: replayAge(replay.startTime) || "N/A",
+        },
+        players: { primary: String(playerCount(replay.teams)) },
+        rating: { primary: replay.averageRating === null ? "N/A" : String(replay.averageRating) },
+        mod: {
+          primary: replay.modName || "faf",
+          secondary: replay.reviewsCount
+            ? `★ ${replay.reviewsAverage?.toFixed(1) ?? "N/A"} (${replay.reviewsCount})`
+            : undefined,
+        },
+        duration: {
+          primary: replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : "N/A",
+          secondary: replay.durationSeconds !== null
+            ? t("replays.list.realTimeSuffix", { duration: formatDuration(replay.durationSeconds) })
+            : t("replays.list.realTimeUnavailable"),
+        },
+        replay: {
+          primary: t(replay.replayAvailable ? "replays.list.available" : "replays.list.processing"),
+          secondary: `#${replay.uid}`,
+          tone: replay.replayAvailable ? "ok" : "warn",
+        },
+        selected: selectedUid === replay.uid,
+        watched: watchedUids.has(replay.uid),
+        onSelect: () => onSelect(replay.uid),
+        onActivate: () => {
+          if (onWatch && replay.replayAvailable) onWatch(replay.uid);
+          else onOpen(replay.uid);
+        },
+        action: {
+          label: t("replays.list.details"),
+          ariaLabel: t("replays.list.detailsAria", { uid: replay.uid }),
+          onClick: () => onOpen(replay.uid),
+        },
+      };
+    }),
   }));
 
   return (
@@ -357,6 +369,13 @@ function groupReplaysByDate(replays: VaultReplay[]): Array<{ label: string; repl
   return groups;
 }
 
+function formatChatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function ReplayDetailPanel({
   replay,
   busy,
@@ -375,11 +394,124 @@ export function ReplayDetailPanel({
   downloadError: string;
 }) {
   const { t } = useTranslation();
+  const maps = useAppStore((state) => state.state.maps);
+  const socialPlayers = useAppStore((state) => state.state.social.players);
+  const localReplays = useAppStore((state) => state.state.replays.local);
+  const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
+  const replayDetails = useAppStore((state) => state.state.replays.replayDetails);
+  const detailsLoading = useAppStore((state) => state.state.replays.detailsLoading);
+  const detailsError = useAppStore((state) => state.state.replays.detailsError);
+  const avatarByLogin = useMemo(() => {
+    const avatars = new Map<string, string>();
+    for (const player of socialPlayers) {
+      if (player.avatarUrl) avatars.set(player.login.toLocaleLowerCase(), player.avatarUrl);
+    }
+    return avatars;
+  }, [socialPlayers]);
+
+  const localMatch = localReplays.find((local) => local.uid === replay.uid);
+  const detailTeams = mergeReplayTeamsWithLocal(replay.teams, localMatch?.teams);
+  const localPath = localMatch?.path;
+  const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
+  const isLoadingDetails = detailsLoading === replay.uid;
+  const [optionFilter, setOptionFilter] = useState("");
+
+  const filteredOptions = useMemo(() => {
+    if (!details?.gameOptions) return [];
+    if (!optionFilter.trim()) return details.gameOptions;
+    const query = optionFilter.toLowerCase();
+    return details.gameOptions.filter(
+      (option) => option.key.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
+    );
+  }, [details?.gameOptions, optionFilter]);
+
+  const loadDetails = () => {
+    ipc.send({
+      kind: "Replays",
+      command: {
+        type: "loadDetails",
+        payload: {
+          uid: replay.uid,
+          localPath,
+        },
+      },
+    });
+  };
+
+  const effectiveMap = effectiveReplayMapName(replay.map, localMatch?.map);
+  const isGenerated = isGeneratedMap(effectiveMap);
+  const seed = extractGeneratedMapSeed(effectiveMap);
+
+  const installed = maps.installed.some(
+    (map) =>
+      map.folderName.toLowerCase() === effectiveMap.toLowerCase() ||
+      map.folderName.toLowerCase().startsWith(`${effectiveMap.toLowerCase()}.`),
+  );
+  const isGeneratingThisMap =
+    mapGenStatus.type === "generating" ||
+    mapGenStatus.type === "downloading" ||
+    mapGenStatus.type === "resolvingVersion" ||
+    mapGenStatus.type === "preparing";
+
+  const generatorProgress = (() => {
+    switch (mapGenStatus.type) {
+      case "resolvingVersion":
+      case "preparing":
+        return {
+          label: t("replays.detail.preparingGenerator"),
+          percent: null,
+        };
+      case "downloading": {
+        const { version, downloadedBytes, totalBytes } = mapGenStatus.payload;
+        if (totalBytes && totalBytes > 0) {
+          const pct = Math.min(100, Math.round((downloadedBytes / totalBytes) * 100));
+          const dlMb = (downloadedBytes / (1024 * 1024)).toFixed(1);
+          const totMb = (totalBytes / (1024 * 1024)).toFixed(1);
+          return {
+            label: `${t("replays.detail.downloadingGenerator", { version })} (${dlMb}/${totMb} MB)`,
+            percent: pct,
+          };
+        }
+        return {
+          label: t("replays.detail.downloadingGenerator", { version }),
+          percent: null,
+        };
+      }
+      case "generating": {
+        const { detail } = mapGenStatus.payload;
+        return {
+          label: detail && detail.trim().length > 0
+            ? detail
+            : t("lobby.details.generatingMap"),
+          percent: null,
+        };
+      }
+      default:
+        return null;
+    }
+  })();
+  const vaultMap = findVaultMap(maps.vault, effectiveMap);
+  const presentation = mapPresentation(maps.vault, effectiveMap);
+
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [copiedSeed, setCopiedSeed] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const totalPlayers = playerCount(replay.teams);
-  const hasResults = replay.teams.some((team) =>
+
+  useEffect(() => {
+    if (isGenerated && !seed && replay.replayAvailable && !localMatch && downloadState === "idle") {
+      ipc.send({
+        kind: "Replays",
+        command: {
+          type: "downloadVault",
+          payload: { uid: replay.uid },
+        },
+      });
+    }
+  }, [isGenerated, seed, replay.replayAvailable, replay.uid, localMatch, downloadState]);
+
+  const totalPlayers = playerCount(detailTeams);
+  const hasResults = detailTeams.some((team) =>
     team.players.some((player) => Boolean(outcomeLabel(player.outcome))),
   );
   const copyLink = () =>
@@ -395,17 +527,17 @@ export function ReplayDetailPanel({
         .then(() => setCopiedId(true)),
     );
   const age = replayAge(replay.startTime);
-  const competingTeams = replay.teams.filter((team) => !isObserverTeam(team.team)).length;
+  const competingTeams = detailTeams.filter((team) => !isObserverTeam(team.team)).length;
   const players = t("replays.detail.playerCount", { count: totalPlayers });
   const lineupSummary = competingTeams > 1
     ? t("replays.detail.teamSummary", { teams: competingTeams, players })
     : players;
   return (
-    <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: replay.title || replay.map })} onClose={onClose}>
+    <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: replay.title || presentation.displayName || effectiveMap })} onClose={onClose}>
       <header className="replay-detail-head">
         <ReplayMapThumb
           url={replay.mapThumbnailUrl}
-          mapName={replay.map}
+          mapName={effectiveMap}
           className="replay-detail-thumb"
           emptyClassName="replay-detail-thumb-empty"
           iconSize={40}
@@ -423,8 +555,29 @@ export function ReplayDetailPanel({
               {t(copiedId ? "replays.detail.copiedShort" : "replays.detail.copyIdShort")}
             </Button>
           </div>
-          <h2>{replay.title || replay.map}</h2>
-          <p className="replay-detail-map"><Icon name="maps" size={15} /> {replay.map}</p>
+          <h2>{replay.title || presentation.displayName || effectiveMap}</h2>
+          <p className="replay-detail-map"><Icon name="maps" size={15} /> <span>{presentation.displayName || effectiveMap}</span></p>
+          {seed && (
+            <div className="replay-detail-seed">
+              <span className="replay-seed-label">{t("replays.detail.mapSeed")}:</span>
+              <code className="replay-fact-seed-code" title={seed}>{seed}</code>
+              <button
+                type="button"
+                className="replay-fact-copy-seed-btn"
+                aria-label={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
+                title={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
+                onClick={() =>
+                  ipc.run(
+                    navigator.clipboard
+                      .writeText(seed)
+                      .then(() => setCopiedSeed(true)),
+                  )
+                }
+              >
+                <Icon name={copiedSeed ? "check" : "copy"} size={12} />
+              </button>
+            </div>
+          )}
           <div className="replay-detail-badges">
             <span className={replay.replayAvailable ? "replay-availability ready" : "replay-availability pending"}>
               {t(replay.replayAvailable ? "replays.detail.available" : "replays.detail.processing")}
@@ -436,8 +589,7 @@ export function ReplayDetailPanel({
             ) : null}
           </div>
         </div>
-        {/* Watch leads; the two file actions sit under it as a secondary pair
-            so three same-width buttons no longer read as a menu. */}
+        {/* Watch leads; the file actions sit under it as a compact secondary pair. */}
         <div className="replay-detail-actions">
           <Button
             className="replay-watch-button"
@@ -447,55 +599,261 @@ export function ReplayDetailPanel({
           >
             <Icon name="play" size={15} /> {t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}
           </Button>
+          {!installed && isGenerated && (
+            <Button
+              disabled={isGeneratingThisMap || (!seed && downloadState === "downloading")}
+              onClick={() => {
+                if (seed) {
+                  ipc.send({
+                    kind: "MapGenerator",
+                    command: {
+                      type: "generateNamed",
+                      payload: {
+                        mapName: effectiveMap,
+                      },
+                    },
+                  });
+                } else if (replay.replayAvailable) {
+                  ipc.send({
+                    kind: "Replays",
+                    command: {
+                      type: "downloadVault",
+                      payload: { uid: replay.uid },
+                    },
+                  });
+                }
+              }}
+            >
+              {isGeneratingThisMap ? (
+                <Icon name="refresh" size={13} className="spin" />
+              ) : (
+                <Icon name="plus" size={13} />
+              )}
+              {isGeneratingThisMap
+                ? t("lobby.details.generatingMap")
+                : !seed && downloadState === "downloading"
+                  ? t("replays.detail.resolvingMap")
+                  : t("lobby.details.generateMap")}
+            </Button>
+          )}
+          {!installed && !isGenerated && vaultMap && (
+            <Button
+              onClick={() =>
+                ipc.send({
+                  kind: "Maps",
+                  command: {
+                    type: "installMap",
+                    payload: {
+                      folderName: vaultMap.folderName,
+                      downloadUrl: vaultMap.downloadUrl,
+                    },
+                  },
+                })
+              }
+            >
+              <Icon name="plus" size={13} />
+              {t("lobby.details.downloadMap")}
+            </Button>
+          )}
           <div className="replay-detail-actions-secondary">
             <Button
-              disabled={!replay.replayAvailable || downloadState === "downloading"}
+              className="replay-secondary-btn replay-download-button"
+              disabled={!replay.replayAvailable || downloadState === "downloading" || downloadState === "downloaded"}
               onClick={onDownload}
+              title={t("replays.detail.download")}
             >
-              {t(downloadState === "downloading"
+              <Icon name="download" size={13} />
+              <span>{t(downloadState === "downloading"
                 ? "replays.detail.downloading"
                 : downloadState === "downloaded"
                   ? "replays.detail.downloaded"
-                  : "replays.detail.download")}
+                  : "replays.detail.downloadShort")}</span>
             </Button>
-            <Button onClick={copyLink}>{t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}</Button>
+            <Button
+              className="replay-secondary-btn"
+              onClick={copyLink}
+              title={t("replays.detail.copyLink")}
+            >
+              <Icon name={copied ? "check" : "copy"} size={13} />
+              <span>{t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}</span>
+            </Button>
           </div>
         </div>
       </header>
+      {isGeneratingThisMap && generatorProgress && (
+        <div className="replay-generation-banner">
+          <div className="replay-generation-banner-content">
+            <Icon name="refresh" size={14} className="spin replay-generation-spinner" />
+            <span className="replay-generation-banner-text">{generatorProgress.label}</span>
+            {generatorProgress.percent !== null && (
+              <span className="replay-generation-banner-pct">{generatorProgress.percent}%</span>
+            )}
+          </div>
+          {generatorProgress.percent !== null ? (
+            <div className="replay-generation-progress-track">
+              <div
+                className="replay-generation-progress-fill"
+                style={{ width: `${generatorProgress.percent}%` }}
+              />
+            </div>
+          ) : (
+            <div className="replay-generation-progress-track indeterminate">
+              <div className="replay-generation-progress-fill" />
+            </div>
+          )}
+        </div>
+      )}
+      {mapGenStatus.type === "failed" && (
+        <p className="replay-download-error surface-error">
+          {t("replays.detail.generationFailed", { error: mapGenStatus.payload.reason })}
+        </p>
+      )}
       {downloadState === "failed" && (
         <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
       )}
 
-      {/* One dense row of facts instead of a six-cell boxed grid: the values are
-          all short, and the grid spent ~120px of modal height saying very
-          little. Mirrors the icon meta row in the Java client's detail view. */}
+      {/* Java's detail view keeps the eight core facts in two balanced rows. */}
       <dl className="replay-detail-facts">
-        <div><dt>{t("replays.detail.played")}</dt><dd>{formatDateTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-        <div><dt>{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
+        <div><dt>{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
+        <div><dt>{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
         <div><dt>{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
-        <div><dt>{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
+        <div><dt>{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
         <div><dt>{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
+        <div><dt>{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
+        <div><dt>{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
+        <div><dt>{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
       </dl>
-
       <section className="replay-detail-lineup">
         <div className="replay-detail-section-head">
           <div>
-            <span className="replay-detail-eyebrow">{t("replays.detail.lineup")}</span>
             <h3>{lineupSummary}</h3>
           </div>
           {hasResults && (
-            <Button aria-pressed={showResults} onClick={() => setShowResults((visible) => !visible)}>
+            <Button
+              className="replay-detail-reveal-btn"
+              aria-pressed={showResults}
+              onClick={() => setShowResults((visible) => !visible)}
+            >
               {t(showResults ? "replays.detail.hideResults" : "replays.detail.revealResults")}
             </Button>
           )}
         </div>
-        {replay.teams.length > 0 ? (
-          <ReplayDetailRoster teams={replay.teams} showResults={showResults} />
+        {detailTeams.length > 0 ? (
+          <ReplayDetailRoster teams={detailTeams} showResults={showResults} avatarByLogin={avatarByLogin} />
         ) : (
           <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
         )}
       </section>
+
+      {!details && (
+        <div className="replay-detail-more-info-trigger">
+          <Button
+            disabled={isLoadingDetails}
+            onClick={loadDetails}
+            title={t("replays.detail.loadDetails")}
+          >
+            {isLoadingDetails ? (
+              <Icon name="refresh" size={14} className="spin" />
+            ) : (
+              <Icon name="list" size={14} />
+            )}
+            <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetails")}</span>
+          </Button>
+        </div>
+      )}
+
+      {details && (
+        <>
+          <section className="replay-detail-more-info">
+            <div className="replay-more-info-grid">
+              <div className="replay-more-info-col">
+                <div className="replay-more-info-header">
+                  <h3 className="replay-more-info-title">{t("replays.detail.gameOptions")}</h3>
+                  <input
+                    type="search"
+                    className="vault-input replay-options-filter"
+                    placeholder={t("replays.detail.filterOptions")}
+                    value={optionFilter}
+                    onChange={(event) => setOptionFilter(event.target.value)}
+                  />
+                </div>
+                <div className="replay-table-scroll">
+                  <table className="replay-data-table replay-options-table">
+                    <thead>
+                      <tr>
+                        <th>{t("replays.detail.optionName")}</th>
+                        <th>{t("replays.detail.optionValue")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOptions.length > 0 ? (
+                        filteredOptions.map((option) => (
+                          <tr key={option.key}>
+                            <td><strong>{option.key}</strong></td>
+                            <td>{option.value}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={2} className="replay-table-empty muted">
+                            {t("replays.detail.noOptionsMatch")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="replay-more-info-col">
+                <div className="replay-more-info-header">
+                  <h3 className="replay-more-info-title">
+                    {t("replays.detail.chat")}
+                    {details.chatMessages.length > 0 && (
+                      <span className="muted replay-more-info-count">
+                        ({details.chatMessages.length})
+                      </span>
+                    )}
+                  </h3>
+                </div>
+                <div className="replay-table-scroll">
+                  <table className="replay-data-table">
+                    <thead>
+                      <tr>
+                        <th>{t("replays.detail.chatTime")}</th>
+                        <th>{t("replays.detail.chatSender")}</th>
+                        <th>{t("replays.detail.chatMessage")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {details.chatMessages.length > 0 ? (
+                        details.chatMessages.map((message, index) => (
+                          <tr key={`${message.timeSeconds}-${message.sender}-${index}`}>
+                            <td className="replay-chat-time">{formatChatTime(message.timeSeconds)}</td>
+                            <td className="replay-chat-sender" title={message.sender}>{message.sender}</td>
+                            <td className="replay-chat-message">{message.message}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="replay-table-empty muted">
+                            {t("replays.detail.noChat")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+      {detailsError && (
+        <p className="replay-download-error surface-error" style={{ marginTop: "12px" }}>
+          {detailsError}
+        </p>
+      )}
     </Modal>
   );
 }

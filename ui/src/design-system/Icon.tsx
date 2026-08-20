@@ -42,7 +42,10 @@ export type IconName =
   // to each other on a replay card and are routinely minutes apart.
   | "hourglass"
   | "upload"
+  | "download"
   | "copy"
+  | "edit"
+  | "info"
   | "check";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
@@ -89,7 +92,10 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5.2l3.4 2" /></>,
     hourglass: <><path d="M7 3h10M7 21h10" /><path d="M7 3v3.5c0 2 2.5 3.6 5 5.5 2.5-1.9 5-3.5 5-5.5V3" /><path d="M7 21v-3.5c0-2 2.5-3.6 5-5.5 2.5 1.9 5 3.5 5 5.5V21" /></>,
     upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>,
+    download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="3" x2="12" y2="15" /></>,
     copy: <><rect width="13" height="13" x="9" y="9" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
+    edit: <><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></>,
+    info: <><circle cx="12" cy="12" r="9" /><path d="M12 8h.01M11 12h1v4h1" /></>,
     check: <polyline points="20 6 9 17 4 12" />,
   };
 

@@ -17,6 +17,7 @@ import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
 import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
 import { noteForPlayer } from "../../shared/playerNotes";
+import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { useAppStore } from "../../store/store";
 import { Icon } from "../../design-system/Icon";
 import type { ChatChannel, ChatStatus, Game, PlayerProfile, Reaction } from "../../ipc/bindings";
@@ -101,8 +102,6 @@ const watchGame = (game: Game) =>
     kind: "Replays",
     command: { type: "watchLive", payload: { uid: game.id, modName: game.modName, map: game.map } },
   });
-const openTab = (tab: "replays") =>
-  ipc.send({ kind: "Nav", command: { type: "select", payload: { tab } } });
 
 export function ChatView() {
   const { t } = useTranslation();
@@ -319,7 +318,16 @@ export function ChatView() {
             copyUsername: (nickname) => void navigator.clipboard?.writeText(nickname),
             joinGame: (game) => void joinGame(game),
             watchGame: (game) => void watchGame(game),
-            viewReplays: () => void openTab("replays"),
+            viewReplays: (username) => {
+              ipc.send({
+                kind: "Replays",
+                command: {
+                  type: "searchVault",
+                  payload: { query: { ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true } },
+                },
+              });
+              ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
+            },
             inviteToParty: (id) => void inviteToParty(id),
             setRelation: (profile, relation, member) =>
               void setRelation(profile, relation, member),

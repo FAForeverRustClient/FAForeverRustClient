@@ -10,16 +10,29 @@ use crate::runtime::{EventSink, ServiceCtx};
 pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         AuthCommand::Login { remember } => {
+            let token = tokio_util::sync::CancellationToken::new();
+            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+                if let Some(prev) = slot.replace(token.clone()) {
+                    prev.cancel();
+                }
+            }
             let generation = next_generation(ctx);
             let _guard = ctx.auth_mutation.acquire().await;
-            if !is_current(ctx, generation) {
+            if !is_current(ctx, generation) || token.is_cancelled() {
                 return;
             }
             out.emit(AuthEvent::LoginStarted);
-            let result = ctx.ports.auth.login(remember).await;
+            let result = tokio::select! {
+                res = ctx.ports.auth.login(remember) => Some(res),
+                _ = token.cancelled() => None,
+            };
             if !is_current(ctx, generation) {
                 return;
             }
+            let Some(result) = result else {
+                out.emit(AuthEvent::LoggedOut);
+                return;
+            };
             match result {
                 Ok(player) => out.emit(AuthEvent::LoggedIn { player }),
                 Err(err) => out.emit(AuthEvent::LoginFailed {
@@ -27,10 +40,22 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
                 }),
             }
         }
+        AuthCommand::CancelLogin => {
+            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+                if let Some(token) = slot.take() {
+                    token.cancel();
+                }
+            }
+            next_generation(ctx);
+            out.emit(AuthEvent::LoggedOut);
+        }
         AuthCommand::Restore => {
             let generation = next_generation(ctx);
             let _guard = ctx.auth_mutation.acquire().await;
             if !is_current(ctx, generation) {
+                return;
+            }
+            if !out.with_state(|state| state.settings.general.auto_login) {
                 return;
             }
             // A missing or temporarily unavailable refresh token should leave
@@ -43,6 +68,11 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         AuthCommand::LoginTest => {
+            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+                if let Some(token) = slot.take() {
+                    token.cancel();
+                }
+            }
             next_generation(ctx);
             out.emit(AuthEvent::LoginStarted);
             out.emit(AuthEvent::TestLoggedIn {
@@ -53,6 +83,11 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
         }
         AuthCommand::Logout => {
+            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+                if let Some(token) = slot.take() {
+                    token.cancel();
+                }
+            }
             let generation = next_generation(ctx);
             let _guard = ctx.auth_mutation.acquire().await;
             if !is_current(ctx, generation) {
@@ -65,6 +100,11 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         AuthCommand::LogoutTest => {
+            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+                if let Some(token) = slot.take() {
+                    token.cancel();
+                }
+            }
             next_generation(ctx);
             out.emit(AuthEvent::LoggedOut);
         }

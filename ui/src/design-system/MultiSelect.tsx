@@ -28,6 +28,8 @@ interface Props {
   onChange: (selected: string[]) => void;
   /** Trigger text when nothing is selected. */
   anyLabel?: string;
+  /** Whether options are currently being loaded in the background. */
+  loading?: boolean;
 }
 
 export function MultiSelect({
@@ -36,6 +38,7 @@ export function MultiSelect({
   selected,
   onChange,
   anyLabel,
+  loading = false,
 }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -64,7 +67,9 @@ export function MultiSelect({
 
   const summary =
     selected.length === 0
-      ? anyLabel ?? t("common.any")
+      ? loading && options.length === 0
+        ? t("designSystem.multiSelect.loading")
+        : anyLabel ?? t("common.any")
       : selected.length === 1
         ? (options.find((o) => o.value === selected[0])?.label ?? selected[0])
         : `${selected.length} selected`;
@@ -85,7 +90,9 @@ export function MultiSelect({
 
       {open && (
         <div className="multi-select-popover" role="group" aria-label={label}>
-          {options.length === 0 ? (
+          {loading && options.length === 0 ? (
+            <p className="muted multi-select-empty">{t("designSystem.multiSelect.loading")}</p>
+          ) : options.length === 0 ? (
             <p className="muted multi-select-empty">{t("designSystem.multiSelect.empty")}</p>
           ) : (
             options.map((option) => (

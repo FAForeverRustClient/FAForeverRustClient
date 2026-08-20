@@ -1,6 +1,14 @@
 import type { CoopFaction, CoopMission, VaultMap } from "../ipc/bindings";
 import { useAppStore } from "../store/store";
 
+/** Preview used when a generated map has no rendered map image yet. */
+export const GENERATED_MAP_PLACEHOLDER_URL = "/assets/mapgen-placeholder.png";
+const LEGACY_GENERATED_MAP_PLACEHOLDER_URL = "/generated-map.svg";
+
+export function isGeneratedMapPlaceholderUrl(url: string | null | undefined): boolean {
+  return url === GENERATED_MAP_PLACEHOLDER_URL || url === LEGACY_GENERATED_MAP_PLACEHOLDER_URL;
+}
+
 export type MapPresentation = {
   displayName: string;
   thumbnailUrl: string;
@@ -172,7 +180,47 @@ function vaultMapLookup(vault: VaultMap[]): VaultMapLookup {
 
 /** Twin of `faf_domain::protocol::map_generator::is_generated_map`. */
 export function isGeneratedMap(mapName: string): boolean {
-  return /^neroxis_map_generator_\d{1,3}\.\d{1,3}\.\d{1,3}_.+/i.test(normalizeMapName(mapName));
+  if (!mapName) return false;
+  const trimmed = mapName.trim();
+  const normalized = normalizeMapName(mapName);
+  return (
+    /^neroxis_map_generator_.+/i.test(normalized) ||
+    /^(neroxis_map_generator_|neroxis\s+map\s+generator\s+).+/i.test(trimmed) ||
+    trimmed.toLowerCase().startsWith("neroxis") ||
+    trimmed.toLowerCase().includes("neroxis_map_generator")
+  );
+}
+
+export function extractGeneratedMapSeed(mapName: string): string | undefined {
+  if (!mapName) return undefined;
+  const clean = mapName.trim().replace(/\.(zip|fafmap)$/i, "");
+  const stdMatch = clean.match(/^neroxis_map_generator_[0-9.]+(?:-pre\d+)?_(.+)$/i);
+  if (stdMatch && stdMatch[1]) {
+    return stdMatch[1];
+  }
+  const spaceMatch = clean.match(/^neroxis\s+map\s+generator\s+[0-9.]+(?:-pre\d+)?\s+(.+)$/i);
+  if (spaceMatch && spaceMatch[1]) {
+    return spaceMatch[1];
+  }
+  const shortMatch = clean.match(/^neroxis[_\s]+([0-9.]+[_\s]+)?(.+)$/i);
+  if (shortMatch && shortMatch[2]) {
+    const candidate = shortMatch[2].trim();
+    if (candidate.toLowerCase() !== "map generator" && candidate.toLowerCase() !== "map_generator") {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Prefer the technical map name from a matching local replay when a vault
+ * replay only contains the generic Neroxis display name. The technical name
+ * is the key used by the locally generated preview cache.
+ */
+export function effectiveReplayMapName(replayMap: string, localMap?: string | null): string {
+  return localMap && isGeneratedMap(localMap) && Boolean(extractGeneratedMapSeed(localMap))
+    ? localMap
+    : replayMap;
 }
 
 function fallbackDisplayName(mapName: string): string {
@@ -196,28 +244,37 @@ export function mapThumbnailCandidates(
   large = false,
   missions?: CoopMission[],
   customGeneratedPreview?: string,
+  customUrl?: string,
 ): string[] {
+  const isGen = isGeneratedMap(mapName);
+  const normalized = normalizeMapName(mapName);
+
+  if (isGen) {
+    const generatedPreview =
+      customGeneratedPreview ??
+      (typeof window !== "undefined"
+        ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName] ||
+          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[normalized] ||
+          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName.toLowerCase()]
+        : undefined);
+
+    return uniqueUrls([
+      generatedPreview,
+      customUrl && !isGeneratedMapPlaceholderUrl(customUrl) ? customUrl : undefined,
+      GENERATED_MAP_PLACEHOLDER_URL,
+    ]);
+  }
+
   const vaultMap = findVaultMap(vault, mapName);
   const coopMission = findCoopMission(mapName, missions);
-  const normalized = normalizeMapName(mapName);
   const baseName = baseMapName(mapName);
   const officialKey = OFFICIAL_MAPS[baseName]
     ? baseName
     : OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
   const size = large ? "large" : "small";
 
-  const isGen = isGeneratedMap(mapName);
-  const generatedPreview =
-    customGeneratedPreview ??
-    (isGen
-      ? typeof window !== "undefined"
-        ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName] ||
-          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[normalized]
-        : undefined
-      : undefined);
-
   return uniqueUrls([
-    generatedPreview,
+    customUrl,
     large ? coopMission?.thumbnailUrlLarge : coopMission?.thumbnailUrlSmall,
     large ? coopMission?.thumbnailUrlSmall : coopMission?.thumbnailUrlLarge,
     large ? vaultMap?.thumbnailUrlLarge : vaultMap?.thumbnailUrl,
@@ -231,7 +288,6 @@ export function mapThumbnailCandidates(
     baseName !== normalized && !baseName.includes(" ")
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
       : undefined,
-    isGen ? "/assets/mapgen-placeholder.png" : undefined,
   ]);
 }
 
@@ -282,6 +338,14 @@ export function mapPresentation(vault: VaultMap[], mapName: string, missions?: C
         return key ? ([key, OFFICIAL_MAPS[key]] as const) : undefined;
       })();
   const thumbnailUrls = mapThumbnailCandidates(vault, mapName, false, missions);
+
+  if (isGeneratedMap(mapName)) {
+    return {
+      displayName: "Neroxis Map Generator",
+      thumbnailUrl: thumbnailUrls[0] || GENERATED_MAP_PLACEHOLDER_URL,
+      thumbnailUrls: thumbnailUrls.length > 0 ? thumbnailUrls : [GENERATED_MAP_PLACEHOLDER_URL],
+    };
+  }
 
   if (coopMission) {
     const coopFaction = coopMission.scenarioId

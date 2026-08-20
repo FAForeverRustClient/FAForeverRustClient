@@ -663,6 +663,10 @@ pub fn build_arguments(
     // Reproducing a known map: the name alone determines the terrain.
     if let Some(name) = map_name {
         let mut args = vec!["--map-name".to_string(), name.to_string()];
+        if !options.preview_path.is_empty() && version.supports_style() {
+            args.push("--preview-path".to_string());
+            args.push(options.preview_path.clone());
+        }
         // Except on 1.0.x, which will not start without being told where to
         // write. The run's working directory is the maps folder, so "." is
         // the same place every other release would have chosen by itself.

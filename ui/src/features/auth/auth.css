@@ -17,6 +17,24 @@
   font-size: 15px;
 }
 
+.login-in-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.login-cancel-button {
+  width: 100%;
+  min-height: 36px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.login-cancel-button:hover {
+  color: var(--color-text);
+}
+
 /* Says what pressing it actually does. The browser handoff surprises people
    who expect an in-client password field, and "we never see your password" is
    the reassuring half of that. */

@@ -53,16 +53,32 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     loadStoredSet(WATCHED_STORAGE_KEY, (value): value is number => typeof value === "number"),
   );
 
+  const initialPlayer = browsing.replayVaultPlayer || self;
+
   useEffect(() => {
     const state = useAppStore.getState().state;
-    if (state.replays.vaultStatus.type === "idle") {
-      searchVault(personalReplayQuery(self, isoDaysAgo(365)));
+    const playerToSearch = state.settings.browsing.replayVaultPlayer || self;
+    if (state.replays.vaultStatus.type === "idle" && playerToSearch) {
+      searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
     }
     // The two dropdowns' contents. Both are cheap and cached in state, so
     // this is a no-op on every visit after the first.
     if (state.replays.featuredMods.length === 0) loadFeaturedMods();
     if (state.leaderboard.catalogStatus.type === "idle") loadLeaderboards();
-  }, [self]);
+  }, [self, browsing.replayVaultPlayer]);
+
+  const handleSearch = (newQuery: ReplayQuery) => {
+    if (newQuery.player !== browsing.replayVaultPlayer) {
+      void ipc.send({
+        kind: "Settings",
+        command: {
+          type: "setBrowsing",
+          payload: { preferences: { ...browsing, replayVaultPlayer: newQuery.player } },
+        },
+      });
+    }
+    searchVault(newQuery);
+  };
 
   const openReplay = vault.find((r) => r.uid === openUid) ?? null;
   let openDownloadState: "idle" | "downloading" | "downloaded" | "failed" = "idle";
@@ -100,8 +116,8 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         featuredMods={featuredMods}
         leagues={leagues}
         self={self}
-        initialQuery={vaultStatus.type === "idle" ? personalReplayQuery(self, isoDaysAgo(365)) : query}
-        onSearch={searchVault}
+        initialQuery={vaultStatus.type === "idle" ? personalReplayQuery(initialPlayer, isoDaysAgo(365)) : query}
+        onSearch={handleSearch}
       />
       <div className="online-replay-view-bar">
         <div className="online-replay-view-bar-left">

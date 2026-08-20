@@ -53,6 +53,9 @@ const INITIAL: AppState = {
     featuredMods: [],
     local: [],
     localStatus: { type: "idle" },
+    replayDetails: {},
+    detailsLoading: null,
+    detailsError: null,
   },
   maps: {
     vault: [],
@@ -75,12 +78,31 @@ const INITIAL: AppState = {
     availableVersions: [],
     selectedVersion: null,
     optionLists: {
-      symmetries: [],
-      styles: [],
-      terrainStyles: [],
-      textureStyles: [],
-      resourceStyles: [],
-      propStyles: [],
+      symmetries: [
+        "POINT2", "POINT3", "POINT4", "POINT5", "POINT6", "POINT7", "POINT8", "POINT9",
+        "POINT10", "POINT11", "POINT12", "POINT13", "POINT14", "POINT15", "POINT16",
+        "XZ", "ZX", "X", "Z", "QUAD", "DIAG", "NONE",
+      ],
+      styles: [
+        "ACCEL", "BIG_ISLANDS", "CENTER_ISLAND", "CLEAN", "CORRIDOR", "DROP_PLATEAU",
+        "DUAL_GAP", "FLOODED", "GAP", "GLACIER", "HILLY", "ISLANDS", "LAND",
+        "LOW_PLATEAU", "MOUNTAIN_RANGE", "ONE_ISLAND", "PASSES", "PLATEAU",
+        "RAMP_PLATEAU", "RIVERS", "SCARRED", "SLOPE", "TUNDRA", "VALLEY", "WATER",
+      ],
+      terrainStyles: [
+        "BIG_ISLANDS", "CENTER_ISLAND", "CLEAN", "CORRIDOR", "DROP_PLATEAU", "DUAL_GAP",
+        "FLOODED", "GAP", "GLACIER", "HILLY", "ISLANDS", "LAND", "LOW_PLATEAU",
+        "MOUNTAIN_RANGE", "ONE_ISLAND", "PASSES", "PLATEAU", "RAMP_PLATEAU", "RIVERS",
+        "SCARRED", "SLOPE", "TUNDRA", "VALLEY", "WATER",
+      ],
+      textureStyles: [
+        "BRIMSTONE", "DESERT", "FROST", "LUSH", "MARS", "MOON", "SAVANNAH", "STEPPE",
+        "TUNDRA", "WONDER",
+      ],
+      resourceStyles: ["BASIC", "DENSE", "EXPANSIVE", "SPARSE"],
+      propStyles: [
+        "BASIC", "BOULDERS", "FOREST", "ROCKS", "ROCK_FIELD", "TREE_FIELD", "WRECKAGE",
+      ],
     },
     // Mirrors `impl Default for GeneratorOptions` in faf-domain.
     options: {
@@ -296,7 +318,7 @@ const INITIAL: AppState = {
     theme: "forgeDark",
     gamePath: "",
     replayGamePath: "",
-    general: { startPage: "news" },
+    general: { startPage: "news", autoLogin: true },
     appearance: { density: "comfortable", reduceMotion: false, uiScale: 100 },
     social: { playerNotes: [] },
     notifications: {
@@ -336,6 +358,8 @@ const INITIAL: AppState = {
       visibleMessageLimit: 500,
       autoJoinChannels: [],
       autoJoinLanguageChannel: true,
+      autoJoinNewbieChannel: true,
+      newbieChannelGameThreshold: 50,
       mutedPlayers: [],
       hiddenRosterCategories: [],
       readMarkers: {},
@@ -382,6 +406,7 @@ const INITIAL: AppState = {
       modVaultPreset: "recommended",
       modPresets: [],
       leaderboardRatingColumns: ["rating", "games", "wins", "winRate", "updated"],
+      replayVaultPlayer: "",
       legacyStorageMigrated: false,
     },
   },

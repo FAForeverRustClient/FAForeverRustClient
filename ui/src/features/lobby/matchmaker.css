@@ -46,8 +46,15 @@
   font: inherit;
   font-size: 13px;
   font-weight: 550;
+  line-height: 1;
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.faction-chip span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .faction-chip[data-faction="uef"] { --faction: var(--color-faction-uef); }
@@ -58,6 +65,7 @@
 /* Desaturated rather than hidden while off, so the row still reads as four
    known factions instead of four unlabelled buttons. */
 .faction-chip svg {
+  display: block;
   flex: 0 0 auto;
   opacity: 0.4;
   filter: saturate(0.25);

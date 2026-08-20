@@ -204,9 +204,24 @@
 .live-replay-row td {
   height: 62px;
   padding: 8px;
-  overflow: hidden;
   vertical-align: middle;
   border-bottom: 1px solid var(--color-border);
+}
+
+.live-replay-row td:not(.live-watch-column-cell):not(:last-child) {
+  overflow: hidden;
+}
+
+.live-replay-row .live-watch-column-cell,
+.live-replay-row td:last-child {
+  overflow: visible;
+  position: relative;
+}
+
+.live-replay-row.is-menu-open,
+.live-replay-row:has(.live-delay-actions[open]) {
+  position: relative;
+  z-index: 30;
 }
 
 .live-replay-row:hover td,
@@ -368,13 +383,16 @@
 
 .live-delay-menu {
   position: absolute;
-  z-index: 20;
+  z-index: 100;
   top: calc(100% + var(--space-1));
   right: 0;
   display: grid;
   width: 190px;
   gap: var(--space-1);
   padding: var(--space-2);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-popover);
 }
 

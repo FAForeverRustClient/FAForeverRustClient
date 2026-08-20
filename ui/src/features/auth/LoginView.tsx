@@ -31,14 +31,27 @@ function AccountLink({ href, children }: { href: string; children: string }) {
 export function LoginView() {
   const { t } = useTranslation();
   const auth = useAppStore((s) => s.state.auth);
+  const generalPreferences = useAppStore((s) => s.state.settings.general);
   // Whether this process was built with the offline development ports. The
   // credential-free login only produces a working session there; see
   // `SessionState::offline_auth`.
   const offlineAuth = useAppStore((s) => s.state.session.offlineAuth);
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(generalPreferences.autoLogin ?? true);
   const busy = auth.status === "loggingIn";
 
-  const login = () => ipc.send({ kind: "Auth", command: { type: "login", payload: { remember } } });
+  const login = () => {
+    if (remember !== (generalPreferences.autoLogin ?? true)) {
+      ipc.send({
+        kind: "Settings",
+        command: {
+          type: "setGeneral",
+          payload: { preferences: { ...generalPreferences, autoLogin: remember } },
+        },
+      });
+    }
+    ipc.send({ kind: "Auth", command: { type: "login", payload: { remember } } });
+  };
+  const cancelLogin = () => ipc.send({ kind: "Auth", command: { type: "cancelLogin" } });
   const loginTest = () => ipc.send({ kind: "Auth", command: { type: "loginTest" } });
 
   return (
@@ -50,13 +63,38 @@ export function LoginView() {
           <p>{t("auth.subtitle")}</p>
         </div>
 
-        <Button className="login-button" variant="primary" onClick={login} disabled={busy}>
-          {busy ? t("auth.signingIn") : t("auth.login")}
-        </Button>
+        {busy ? (
+          <div className="login-in-progress">
+            <Button className="login-button" variant="primary" disabled>
+              {t("auth.signingIn")}
+            </Button>
+            <Button className="login-cancel-button" variant="ghost" onClick={cancelLogin}>
+              {t("auth.cancel")}
+            </Button>
+          </div>
+        ) : (
+          <Button className="login-button" variant="primary" onClick={login}>
+            {t("auth.login")}
+          </Button>
+        )}
         <p className="login-hint">{t("auth.hint")}</p>
 
         <label className="login-remember">
-          <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(event) => {
+              const checked = event.target.checked;
+              setRemember(checked);
+              ipc.send({
+                kind: "Settings",
+                command: {
+                  type: "setGeneral",
+                  payload: { preferences: { ...generalPreferences, autoLogin: checked } },
+                },
+              });
+            }}
+          />
           <span>{t("auth.staySignedIn")}</span>
         </label>
 

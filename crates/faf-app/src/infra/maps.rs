@@ -34,7 +34,6 @@ use faf_domain::state::{
 };
 use serde_json::Value;
 
-use crate::infra::env_or;
 use crate::infra::jsonapi::{
     fetch_all_pages, fetch_document, find_rel_resource, meta_page_i32, patch_resource, rel_target,
     rel_targets, resource_index, total_pages, value_bool, value_f64, value_i32, value_string,
@@ -43,6 +42,7 @@ use crate::infra::jsonapi::{
 use crate::infra::vault_install::{
     bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
+use crate::infra::{env_or, GENERATED_MAP_PLACEHOLDER_URL};
 use crate::ports::{MapSearchPage, MapsPort};
 
 /// Maps per vault page fetched in [`MapsClient::list_vault`].
@@ -188,7 +188,7 @@ impl MapsPort for MapsClient {
         url.query_pairs_mut()
             .append_pair(
                 "include",
-                "mapPool.mapPoolAssignments,mapPool.mapVersions,mapPool.mapVersions.map,matchmakerQueue",
+                "mapPool.mapPoolAssignments.mapVersion.map,matchmakerQueue",
             )
             .append_pair(
                 "filter",
@@ -584,30 +584,62 @@ fn parse_matchmaker_pools(doc: &JsonApiDoc) -> Vec<MatchmakerMapPool> {
                         });
                     }
 
-                    let params_key = rel_target(&assignment.relationships, "mapParams")?;
-                    let params = index.get(&params_key)?;
-                    let generator_type = params
+                    let empty_map = serde_json::Map::new();
+                    let params_attrs = if let Some(obj) = assignment
                         .attributes
+                        .get("mapParams")
+                        .and_then(Value::as_object)
+                    {
+                        obj
+                    } else {
+                        let params_key = rel_target(&assignment.relationships, "mapParams")?;
+                        index
+                            .get(&params_key)
+                            .map(|p| &p.attributes)
+                            .and_then(Value::as_object)
+                            .unwrap_or(&empty_map)
+                    };
+
+                    let generator_type = params_attrs
                         .get("type")
+                        .or_else(|| params_attrs.get("name"))
                         .and_then(Value::as_str)
                         .unwrap_or("Generated map");
-                    let version = params
-                        .attributes
+                    let version = params_attrs
                         .get("version")
                         .and_then(Value::as_str)
                         .unwrap_or_default();
-                    let spawns = value_i32(&params.attributes, "spawns").unwrap_or(0);
-                    let size = value_i32(&params.attributes, "size").unwrap_or(0);
+                    let spawns = params_attrs
+                        .get("spawns")
+                        .and_then(Value::as_i64)
+                        .unwrap_or(0) as i32;
+                    let size = params_attrs
+                        .get("size")
+                        .and_then(Value::as_i64)
+                        .unwrap_or(0) as i32;
+                    let display_name = if generator_type.to_ascii_lowercase().starts_with("neroxis")
+                    {
+                        generator_type.to_string()
+                    } else {
+                        let mut chars = generator_type.chars();
+                        let cap = match chars.next() {
+                            None => String::new(),
+                            Some(first) => {
+                                first.to_uppercase().collect::<String>() + chars.as_str()
+                            }
+                        };
+                        format!("Neroxis {cap}")
+                    };
                     Some(MatchmakerPoolMap {
                         assignment_id,
-                        display_name: generator_type.to_string(),
+                        display_name,
                         folder_name: format!(
                             "neroxis_map_generator_{version}_{generator_type}_{spawns}_{size}"
                         ),
                         max_players: spawns,
                         width: size,
                         height: size,
-                        thumbnail_url: String::new(),
+                        thumbnail_url: GENERATED_MAP_PLACEHOLDER_URL.to_string(),
                     })
                 })
                 .collect();
@@ -1114,6 +1146,123 @@ mod tests {
         assert_eq!(pools[0].veto_tokens_per_player, 3);
         assert_eq!(pools[0].maps[0].assignment_id, 91);
         assert_eq!(pools[0].maps[0].display_name, "Open Palms");
+    }
+
+    #[test]
+    fn parses_matchmaker_pool_with_generated_maps() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "matchmakerQueueMapPool",
+                "id": "13",
+                "attributes": {
+                    "minRating": 0,
+                    "maxRating": 500,
+                    "vetoTokensPerPlayer": 1,
+                    "maxTokensPerMap": 1,
+                    "minimumMapsAfterVeto": 1
+                },
+                "relationships": { "mapPool": { "data": { "type": "mapPool", "id": "5" } } }
+            }],
+            "included": [
+                {
+                    "type": "mapPool",
+                    "id": "5",
+                    "attributes": { "name": "Generated 3v3 pool" },
+                    "relationships": { "mapPoolAssignments": { "data": [{ "type": "mapPoolAssignment", "id": "105" }] } }
+                },
+                {
+                    "type": "mapPoolAssignment",
+                    "id": "105",
+                    "relationships": { "mapParams": { "data": { "type": "mapParams", "id": "22" } } }
+                },
+                {
+                    "type": "mapParams",
+                    "id": "22",
+                    "attributes": {
+                        "type": "casual",
+                        "version": "1.22.1",
+                        "spawns": 6,
+                        "size": 512
+                    }
+                }
+            ]
+        }))
+        .unwrap();
+
+        let pools = parse_matchmaker_pools(&doc);
+        assert_eq!(pools.len(), 1);
+        assert_eq!(pools[0].id, 13);
+        assert_eq!(pools[0].maps.len(), 1);
+        assert_eq!(pools[0].maps[0].assignment_id, 105);
+        assert_eq!(pools[0].maps[0].display_name, "Neroxis Casual");
+        assert_eq!(
+            pools[0].maps[0].folder_name,
+            "neroxis_map_generator_1.22.1_casual_6_512"
+        );
+        assert_eq!(pools[0].maps[0].height, 512);
+        assert_eq!(
+            pools[0].maps[0].thumbnail_url,
+            GENERATED_MAP_PLACEHOLDER_URL
+        );
+    }
+
+    #[test]
+    fn parses_matchmaker_pool_with_embedded_map_params_attribute() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "matchmakerQueueMapPool",
+                "id": "14",
+                "attributes": {
+                    "minRating": 0,
+                    "maxRating": 500,
+                    "vetoTokensPerPlayer": 1,
+                    "maxTokensPerMap": 1,
+                    "minimumMapsAfterVeto": 1
+                },
+                "relationships": { "mapPool": { "data": { "type": "mapPool", "id": "6" } } }
+            }],
+            "included": [
+                {
+                    "type": "mapPool",
+                    "id": "6",
+                    "attributes": { "name": "Generated 2v2 pool" },
+                    "relationships": { "mapPoolAssignments": { "data": [{ "type": "mapPoolAssignment", "id": "106" }] } }
+                },
+                {
+                    "type": "mapPoolAssignment",
+                    "id": "106",
+                    "attributes": {
+                        "weight": 1,
+                        "mapParams": {
+                            "type": "blind",
+                            "version": "1.21.2",
+                            "spawns": 4,
+                            "size": 512
+                        }
+                    },
+                    "relationships": {}
+                }
+            ]
+        }))
+        .unwrap();
+
+        let pools = parse_matchmaker_pools(&doc);
+        assert_eq!(pools.len(), 1);
+        assert_eq!(pools[0].id, 14);
+        assert_eq!(pools[0].maps.len(), 1);
+        assert_eq!(pools[0].maps[0].assignment_id, 106);
+        assert_eq!(pools[0].maps[0].display_name, "Neroxis Blind");
+        assert_eq!(
+            pools[0].maps[0].folder_name,
+            "neroxis_map_generator_1.21.2_blind_4_512"
+        );
+        assert_eq!(pools[0].maps[0].max_players, 4);
+        assert_eq!(pools[0].maps[0].width, 512);
+        assert_eq!(pools[0].maps[0].height, 512);
+        assert_eq!(
+            pools[0].maps[0].thumbnail_url,
+            GENERATED_MAP_PLACEHOLDER_URL
+        );
     }
 
     #[test]

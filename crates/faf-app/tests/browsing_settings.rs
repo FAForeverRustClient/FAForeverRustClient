@@ -70,6 +70,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 mod_vault_preset: "rating".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec!["rating".into(), "GAMES".into(), "invalid".into()],
+                replay_vault_player: "VindexNoob".into(),
                 legacy_storage_migrated: true,
             }),
         }
@@ -99,6 +100,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.map_vault_preset, "newest");
     assert_eq!(state.mod_vault_preset, "rating");
     assert_eq!(state.leaderboard_rating_columns, ["rating", "games"]);
+    assert_eq!(state.replay_vault_player, "VindexNoob");
     assert!(state.legacy_storage_migrated);
     assert_eq!(saved.lock().unwrap().last().unwrap().browsing, state);
 }

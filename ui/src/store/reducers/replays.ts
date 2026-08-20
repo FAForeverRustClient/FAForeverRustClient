@@ -96,5 +96,27 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         ...state,
         localStatus: { type: "failed", payload: { reason: event.payload.reason } },
       };
+    case "detailsLoading":
+      return {
+        ...state,
+        detailsLoading: event.payload.uid,
+        detailsError: null,
+      };
+    case "detailsLoaded":
+      return {
+        ...state,
+        detailsLoading: state.detailsLoading === event.payload.uid ? null : state.detailsLoading,
+        replayDetails: {
+          ...state.replayDetails,
+          [event.payload.uid]: event.payload.details,
+        },
+        detailsError: null,
+      };
+    case "detailsFailed":
+      return {
+        ...state,
+        detailsLoading: state.detailsLoading === event.payload.uid ? null : state.detailsLoading,
+        detailsError: event.payload.reason,
+      };
   }
 }

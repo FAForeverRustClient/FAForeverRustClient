@@ -62,6 +62,15 @@ pub trait ReplayPort: Send + Sync {
     /// launching the game, returning its lightweight library metadata.
     async fn download_vault(&self, uid: i32) -> Result<LocalReplay, String>;
 
+    /// Load the deferred game options, in-game chat, and FAF version metadata
+    /// for a replay by uid or local file path. Online replays may need a full
+    /// download when the replay is not cached locally.
+    async fn load_details(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayDetails, String>;
+
     /// List `.fafreplay` files in the shared FAF replay folder (mirrors the
     /// Java client's `LocalReplayVaultController`).
     /// `limit` bounds how many of the newest files have their headers read.

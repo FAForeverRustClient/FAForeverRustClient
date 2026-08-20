@@ -64,7 +64,16 @@ impl ReplayPort for DownloadReplay {
             sim_mods: Vec::new(),
             status: LocalReplayStatus::Complete,
             watchable: true,
+            game_version: None,
         })
+    }
+
+    async fn load_details(
+        &self,
+        _uid: i32,
+        _local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayDetails, String> {
+        Ok(faf_domain::state::ReplayDetails::default())
     }
 
     async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {

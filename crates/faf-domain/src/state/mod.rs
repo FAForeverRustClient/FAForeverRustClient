@@ -35,9 +35,10 @@ pub use changelog::{
     ChangelogCommand, ChangelogEntryStatus, ChangelogEvent, ChangelogState, ChangelogStatus,
 };
 pub use chat::{
-    auto_join_channels, language_channel, mentions, normalize_channels, read_marker_key,
-    ChatChannel, ChatCommand, ChatEvent, ChatMessage, ChatMessageKind, ChatState, ChatStatus,
-    ChatUser, MessageReactions, Reaction, TypingNotice, DEFAULT_CHANNEL, TYPING_TIMEOUT_SECONDS,
+    auto_join_channels, language_channel, mentions, normalize_channels, player_total_games,
+    read_marker_key, ChatChannel, ChatCommand, ChatEvent, ChatMessage, ChatMessageKind, ChatState,
+    ChatStatus, ChatUser, MessageReactions, Reaction, TypingNotice, DEFAULT_CHANNEL,
+    DEFAULT_NEWBIE_THRESHOLD, NEWBIE_CHANNEL, TYPING_TIMEOUT_SECONDS,
 };
 pub use client_update::{
     compare_versions, is_release_version, should_update, strip_version_prefix, ClientRelease,
@@ -91,9 +92,10 @@ pub use player_card::{
 };
 pub use replays::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
-    LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam, ReplayCommand, ReplayEvent,
-    ReplayPlayer, ReplayQuery, ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, VaultReplay,
-    VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
+    LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam, ReplayChatMessage,
+    ReplayCommand, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayPlayer, ReplayQuery,
+    ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, VaultReplay, VaultStatus,
+    LIVE_REPLAY_DELAY_SECONDS,
 };
 pub use reporting::{
     ModerationReportSummary, ReportHistoryStatus, ReportStatus, ReportingCommand, ReportingEvent,

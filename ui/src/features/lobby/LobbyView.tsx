@@ -1,9 +1,9 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { PlayerName } from "../../shared/nameColors";
 import { ipc } from "../../ipc/client";
-import type { CoopMission, Game } from "../../ipc/bindings";
+import type { CoopMission, Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GameFiltersModal, type GameFilterRule } from "./GameFiltersModal";
 import { HostGameModal } from "./HostGameModal";
@@ -16,6 +16,13 @@ import { GameMapImage } from "./GameMapImage";
 import { PlayModeTabs } from "./PlayModeTabs";
 import { PrivateGameDialog } from "./PrivateGameDialog";
 import { findVaultMap, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
+import { openPlayerCard } from "../player-card/playerCardActions";
+import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
+import { UserMenu, type UserMenuTarget } from "../chat/UserMenu";
+import { findPlayer } from "../../store/reducer";
+import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
+import { noteForPlayer } from "../../shared/playerNotes";
+import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import "./custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
@@ -24,23 +31,45 @@ import { useTranslation } from "../../i18n/useTranslation";
 const connect = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
 const join = (id: number, password: string | null = null) => ipc.send({ kind: "Lobby", command: { type: "join", payload: { id, password } } });
 
-function matchesRule(game: Game, rule: GameFilterRule) {
-  const raw = rule.field === "title" ? game.title : rule.field === "host" ? game.host : rule.field === "map" ? game.map : rule.field === "mod" ? game.modName : game.averageRating;
+function matchesRule(game: Game, rule: GameFilterRule, vault: VaultMap[]) {
   if (rule.field === "rating") {
     const target = Number(rule.value);
     if (!Number.isFinite(target)) return false;
-    if (rule.constraint === "above") return Number(raw) > target;
-    if (rule.constraint === "below") return Number(raw) < target;
-    if (rule.constraint === "notEquals") return Number(raw) !== target;
-    return Number(raw) === target;
+    if (rule.constraint === "above") return Number(game.averageRating) > target;
+    if (rule.constraint === "below") return Number(game.averageRating) < target;
+    if (rule.constraint === "notEquals") return Number(game.averageRating) !== target;
+    return Number(game.averageRating) === target;
   }
-  const value = String(raw).toLocaleLowerCase();
-  const target = rule.value.toLocaleLowerCase();
-  if (rule.constraint === "starts") return value.startsWith(target);
-  if (rule.constraint === "ends") return value.endsWith(target);
-  if (rule.constraint === "equals") return value === target;
-  if (rule.constraint === "notEquals") return value !== target;
-  return value.includes(target);
+  const target = rule.value.replace(/^["']|["']$/g, "").trim().toLocaleLowerCase();
+  if (!target) return false;
+
+  const testString = (val: string) => {
+    const value = val.toLocaleLowerCase();
+    if (rule.constraint === "starts") return value.startsWith(target);
+    if (rule.constraint === "ends") return value.endsWith(target);
+    if (rule.constraint === "equals") return value === target;
+    if (rule.constraint === "notEquals") return value !== target;
+    return value.includes(target);
+  };
+
+  if (rule.field === "title") {
+    return testString(game.title);
+  }
+  if (rule.field === "host") {
+    return testString(game.host);
+  }
+  if (rule.field === "map") {
+    const mapDisplay = mapPresentation(vault, game.map).displayName;
+    return testString(game.map) || testString(mapDisplay);
+  }
+  if (rule.field === "titleOrMap") {
+    const mapDisplay = mapPresentation(vault, game.map).displayName;
+    return testString(game.title) || testString(game.map) || testString(mapDisplay);
+  }
+  if (rule.field === "mod") {
+    return testString(game.modName);
+  }
+  return false;
 }
 
 function compareGames(sort: SortMode, left: Game, right: Game): number {
@@ -58,10 +87,19 @@ function compareGames(sort: SortMode, left: Game, right: Game): number {
   }
 }
 
-function GameDetails({ game, onJoin }: { game: Game; onJoin: () => void }) {
+function GameDetails({
+  game,
+  onJoin,
+  onOpenUserMenu,
+}: {
+  game: Game;
+  onJoin: () => void;
+  onOpenUserMenu: (nickname: string, event: React.MouseEvent) => void;
+}) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
   const lobby = useAppStore((state) => state.state.lobby);
+  const social = useAppStore((state) => state.state.social);
   const player = useAppStore((state) => state.state.auth.player);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const vaultMap = findVaultMap(maps.vault, game.map);
@@ -111,6 +149,8 @@ function GameDetails({ game, onJoin }: { game: Game; onJoin: () => void }) {
     joinTitle = t("lobby.details.alreadyInGame");
   }
 
+  const hostProfile = findPlayer(social, game.host);
+
   return (
     <aside className="game-detail-panel surface-panel">
       <div className="game-map-preview">
@@ -128,7 +168,22 @@ function GameDetails({ game, onJoin }: { game: Game; onJoin: () => void }) {
         )}
       </div>
       <div className="game-detail-content">
-        <div className="game-detail-title"><span>{game.modName || "faf"}</span><h2>{game.title}</h2><p>{t("lobby.details.hostLabel")} <PlayerName name={game.host} /></p></div>
+        <div className="game-detail-title">
+          <span>{game.modName || "faf"}</span>
+          <h2>{game.title}</h2>
+          <p>
+            {t("lobby.details.hostLabel")}{" "}
+            <button
+              type="button"
+              className="game-team-player"
+              onClick={() => openPlayerCard(hostProfile?.id ?? null, game.host)}
+              onContextMenu={(e) => onOpenUserMenu(game.host, e)}
+              title={`Open ${game.host}'s profile`}
+            >
+              <PlayerName name={game.host} />
+            </button>
+          </p>
+        </div>
         <dl className="game-summary-list">
           <div><dt>{t("lobby.details.map")}</dt><dd>{presentation.displayName}</dd></div>
           <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
@@ -136,6 +191,42 @@ function GameDetails({ game, onJoin }: { game: Game; onJoin: () => void }) {
           <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} – ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
           <div><dt>{t("lobby.details.visibility")}</dt><dd>{game.visibility || t("lobby.details.public")}</dd></div>
         </dl>
+        {simMods.length > 0 && (
+          <div className="game-detail-section">
+            <h3>{t("lobby.details.simMods")}</h3>
+            {simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}
+          </div>
+        )}
+        {teams.length > 0 && (
+          <div className="game-detail-section">
+            {teams.map(([team, players]) => (
+              <div className="game-team" key={team}>
+                <span>{team === "-1" || team === "null" ? t("lobby.details.observers") : t("lobby.details.team", { id: team })}</span>
+                <small>
+                  {players.map((p, i) => {
+                    const profile = findPlayer(social, p);
+                    return (
+                      <Fragment key={p}>
+                        {i > 0 && ", "}
+                        <button
+                          type="button"
+                          className="game-team-player"
+                          onClick={() => openPlayerCard(profile?.id ?? null, p)}
+                          onContextMenu={(e) => onOpenUserMenu(p, e)}
+                          title={`Open ${p}'s profile`}
+                        >
+                          <PlayerName name={p} />
+                        </button>
+                      </Fragment>
+                    );
+                  })}
+                </small>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="game-detail-footer surface">
         {!installed && isGenerated && (
           <Button
             disabled={isGeneratingThisMap}
@@ -170,31 +261,9 @@ function GameDetails({ game, onJoin }: { game: Game; onJoin: () => void }) {
               })
             }
           >
+            <Icon name="plus" size={13} />
             {t("lobby.details.downloadMap")}
           </Button>
-        )}
-        {simMods.length > 0 && (
-          <div className="game-detail-section">
-            <h3>{t("lobby.details.simMods")}</h3>
-            {simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}
-          </div>
-        )}
-        {teams.length > 0 && (
-          <div className="game-detail-section">
-            {teams.map(([team, players]) => (
-              <div className="game-team" key={team}>
-                <span>{team === "-1" || team === "null" ? t("lobby.details.observers") : t("lobby.details.team", { id: team })}</span>
-                <small>
-                  {players.map((p, i) => (
-                    <Fragment key={p}>
-                      {i > 0 && ", "}
-                      <PlayerName name={p} />
-                    </Fragment>
-                  ))}
-                </small>
-              </div>
-            ))}
-          </div>
         )}
         <Button className="game-detail-join" variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
       </div>
@@ -206,6 +275,13 @@ export function LobbyView() {
   const { t } = useTranslation();
   const lobby = useAppStore((state) => state.state.lobby);
   const maps = useAppStore((state) => state.state.maps);
+  const social = useAppStore((state) => state.state.social);
+  const chatPreferences = useAppStore((state) => state.state.settings.chat);
+  const player = useAppStore((state) => state.state.auth.player);
+  const self = player?.name ?? "";
+  const liveGames = useAppStore((state) => state.state.lobby.liveGames);
+  const party = useAppStore((state) => state.state.lobby.party);
+  const playerNotes = useAppStore((state) => state.state.settings.social.playerNotes);
   const galacticWar = useAppStore((state) => state.state.galacticWar);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const gameBrowser = browsing.customGamesBrowser;
@@ -221,6 +297,66 @@ export function LobbyView() {
   const [hostOpen, setHostOpen] = useState(false);
   const [passwordGame, setPasswordGame] = useState<Game | null>(null);
   const [password, setPassword] = useState("");
+  const [menu, setMenu] = useState<UserMenuTarget | null>(null);
+  const [noteTarget, setNoteTarget] = useState<PlayerProfile | null>(null);
+
+  const openUserMenu = useCallback((nickname: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    setMenu({
+      nickname,
+      profile: findPlayer(useAppStore.getState().state.social, nickname),
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }, []);
+  const closeUserMenu = useCallback(() => setMenu(null), []);
+
+  const openConversation = useCallback((user: string) => {
+    if (!user) return;
+    ipc.send({ kind: "Chat", command: { type: "joinChannel", payload: { channel: user } } });
+    ipc.send({ kind: "Chat", command: { type: "selectChannel", payload: { channel: user } } });
+    ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
+  }, []);
+
+  const setPlayerNameColor = useCallback((nickname: string, color: string | null) => {
+    const preferences = useAppStore.getState().state.settings.chat;
+    const key = nickKey(nickname);
+    const players = Object.fromEntries(
+      Object.entries(preferences.nameColors.players).filter(([p]) => nickKey(p) !== key),
+    );
+    if (color) players[nickname] = color;
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "setChat",
+        payload: {
+          preferences: {
+            ...preferences,
+            nameColors: { ...preferences.nameColors, players },
+          },
+        },
+      },
+    });
+  }, []);
+
+  const setMuted = useCallback((nickname: string, muted: boolean) => {
+    const preferences = useAppStore.getState().state.settings.chat;
+    const withoutPlayer = preferences.mutedPlayers.filter(
+      (p) => p.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0,
+    );
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "setChat",
+        payload: {
+          preferences: {
+            ...preferences,
+            mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
+          },
+        },
+      },
+    });
+  }, []);
 
   useEffect(() => {
     if (useAppStore.getState().state.lobby.status === "disconnected") connect();
@@ -240,25 +376,55 @@ export function LobbyView() {
     const query = search.trim().toLocaleLowerCase();
     return customGames
       .slice()
-      .filter((game) => !query || [game.title, game.host, game.map, game.modName].some((value) => value.toLocaleLowerCase().includes(query)))
+      .filter(
+        (game) =>
+          !query ||
+          [
+            game.title,
+            game.host,
+            game.map,
+            mapPresentation(maps.vault, game.map).displayName,
+            game.modName,
+          ].some((value) => value.toLocaleLowerCase().includes(query)),
+      )
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
-      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule)))
+      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
       .sort((left, right) => compareGames(sort, left, right));
-  }, [applyFilters, customGames, hideModded, hidePrivate, rules, search, sort]);
+  }, [applyFilters, customGames, hideModded, hidePrivate, maps.vault, rules, search, sort]);
 
   const filteredCoopGames = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return coopGames
       .slice()
-      .filter((game) => !query || [game.title, game.host, game.map, game.modName].some((value) => value.toLocaleLowerCase().includes(query)))
+      .filter(
+        (game) =>
+          !query ||
+          [
+            game.title,
+            game.host,
+            game.map,
+            mapPresentation(maps.vault, game.map).displayName,
+            game.modName,
+          ].some((value) => value.toLocaleLowerCase().includes(query)),
+      )
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
-      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule)))
+      .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
       .sort((left, right) => compareGames(sort, left, right));
-  }, [applyFilters, coopGames, hideModded, hidePrivate, rules, search, sort]);
+  }, [applyFilters, coopGames, hideModded, hidePrivate, maps.vault, rules, search, sort]);
 
   const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
+  const inGame = (list: Game[], nickname: string) =>
+    list.find((g) => Object.values(g.teams).some((team) => team.includes(nickname)));
+  const menuHostedGame = menu && customGames.find((g) => g.host === menu.nickname);
+  const menuLiveGame = menu ? inGame(liveGames, menu.nickname) : undefined;
+  const inParty = (id: number) => party.members.some((m) => m.playerId === id);
+  const menuNameColor = menu
+    ? assignedPlayerColor(chatPreferences.nameColors.players, menu.nickname)
+    : undefined;
+  const menuIsMuted = !!menu && includesName(chatPreferences.mutedPlayers, menu.nickname);
+
   const connected = lobby.status === "connected";
   const inMatchmaker = lobby.playMode === "matchmaking";
   const inCoop = lobby.playMode === "coop";
@@ -282,14 +448,15 @@ export function LobbyView() {
   };
 
   const updateGameBrowser = (changes: Partial<typeof gameBrowser>) => {
+    const current = useAppStore.getState().state.settings.browsing;
     ipc.send({
       kind: "Settings",
       command: {
         type: "setBrowsing",
         payload: {
           preferences: {
-            ...browsing,
-            customGamesBrowser: { ...gameBrowser, ...changes },
+            ...current,
+            customGamesBrowser: { ...current.customGamesBrowser, ...changes },
           },
         },
       },
@@ -399,7 +566,7 @@ export function LobbyView() {
             onJoin={requestJoin}
           />
           {selected ? (
-            <GameDetails game={selected} onJoin={() => requestJoin(selected)} />
+            <GameDetails game={selected} onJoin={() => requestJoin(selected)} onOpenUserMenu={openUserMenu} />
           ) : (
             <aside className="game-detail-panel surface-panel empty">
               <Icon name="play" size={24} />
@@ -409,7 +576,20 @@ export function LobbyView() {
         </div>
       )}
 
-      {filtersOpen && <GameFiltersModal rules={rules} onChange={(nextRules) => updateGameBrowser({ rules: nextRules })} onClose={() => setFiltersOpen(false)} />}
+      {filtersOpen && (
+        <GameFiltersModal
+          rules={rules}
+          applyFilters={applyFilters}
+          onApplyFiltersChange={(value) => updateGameBrowser({ applyFilters: value })}
+          onChange={(nextRules) =>
+            updateGameBrowser({
+              rules: nextRules,
+              applyFilters: nextRules.length > 0 ? true : applyFilters,
+            })
+          }
+          onClose={() => setFiltersOpen(false)}
+        />
+      )}
       {hostOpen && (
         <HostGameModal
           forcedFeaturedMod={inCoop ? "coop" : undefined}
@@ -438,6 +618,75 @@ export function LobbyView() {
             join(passwordGame.id, password);
             setPasswordGame(null);
           }}
+        />
+      )}
+
+      {menu && (
+        <UserMenu
+          target={menu}
+          self={self}
+          isFriend={social.friends.includes(menu.nickname)}
+          isFoe={social.foes.includes(menu.nickname)}
+          isMuted={menuIsMuted}
+          hostedGame={menuHostedGame ?? undefined}
+          liveGame={menuLiveGame}
+          canInvite={!!menu.profile && !inParty(menu.profile.id)}
+          canKickFromParty={
+            !!menu.profile &&
+            party.ownerId === (player?.id ?? -1) &&
+            inParty(menu.profile.id)
+          }
+          nameColor={menuNameColor}
+          actions={{
+            privateMessage: openConversation,
+            viewProfile: (playerId, nickname) => void openPlayerCard(playerId, nickname),
+            copyUsername: (nickname) => void navigator.clipboard?.writeText(nickname),
+            joinGame: (game) => void requestJoin(game),
+            watchGame: (game) =>
+              ipc.send({
+                kind: "Replays",
+                command: { type: "watchLive", payload: { uid: game.id, modName: game.modName, map: game.map } },
+              }),
+            viewReplays: (username) => {
+              ipc.send({
+                kind: "Replays",
+                command: {
+                  type: "searchVault",
+                  payload: { query: { ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true } },
+                },
+              });
+              ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
+            },
+            inviteToParty: (id) =>
+              ipc.send({ kind: "Lobby", command: { type: "inviteToParty", payload: { playerId: id } } }),
+            setRelation: (profile, relation, member) =>
+              ipc.send({
+                kind: "Social",
+                command: {
+                  type: "setRelation",
+                  payload: { playerId: profile.id, login: profile.login, relation, member },
+                },
+              }),
+            kickFromParty: (id) =>
+              ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: id } } }),
+            setNameColor: setPlayerNameColor,
+            setMuted,
+            editNote: setNoteTarget,
+            reportPlayer: (profile) =>
+              ipc.send({
+                kind: "Reporting",
+                command: { type: "open", payload: { playerId: profile.id, login: profile.login } },
+              }),
+          }}
+          onClose={closeUserMenu}
+        />
+      )}
+      {noteTarget && (
+        <PlayerNoteModal
+          playerId={noteTarget.id}
+          login={noteTarget.login}
+          initialNote={noteForPlayer(playerNotes, noteTarget.id)}
+          onClose={() => setNoteTarget(null)}
         />
       )}
     </div>

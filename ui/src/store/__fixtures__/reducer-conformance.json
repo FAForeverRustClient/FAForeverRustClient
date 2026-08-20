@@ -119,7 +119,10 @@
       "local": [],
       "localStatus": {
         "type": "idle"
-      }
+      },
+      "replayDetails": {},
+      "detailsLoading": null,
+      "detailsError": null
     },
     "maps": {
       "vault": [],
@@ -175,12 +178,110 @@
       "availableVersions": [],
       "selectedVersion": null,
       "optionLists": {
-        "symmetries": [],
-        "styles": [],
-        "terrainStyles": [],
-        "textureStyles": [],
-        "resourceStyles": [],
-        "propStyles": []
+        "symmetries": [
+          "POINT2",
+          "POINT3",
+          "POINT4",
+          "POINT5",
+          "POINT6",
+          "POINT7",
+          "POINT8",
+          "POINT9",
+          "POINT10",
+          "POINT11",
+          "POINT12",
+          "POINT13",
+          "POINT14",
+          "POINT15",
+          "POINT16",
+          "XZ",
+          "ZX",
+          "X",
+          "Z",
+          "QUAD",
+          "DIAG",
+          "NONE"
+        ],
+        "styles": [
+          "ACCEL",
+          "BIG_ISLANDS",
+          "CENTER_ISLAND",
+          "CLEAN",
+          "CORRIDOR",
+          "DROP_PLATEAU",
+          "DUAL_GAP",
+          "FLOODED",
+          "GAP",
+          "GLACIER",
+          "HILLY",
+          "ISLANDS",
+          "LAND",
+          "LOW_PLATEAU",
+          "MOUNTAIN_RANGE",
+          "ONE_ISLAND",
+          "PASSES",
+          "PLATEAU",
+          "RAMP_PLATEAU",
+          "RIVERS",
+          "SCARRED",
+          "SLOPE",
+          "TUNDRA",
+          "VALLEY",
+          "WATER"
+        ],
+        "terrainStyles": [
+          "BIG_ISLANDS",
+          "CENTER_ISLAND",
+          "CLEAN",
+          "CORRIDOR",
+          "DROP_PLATEAU",
+          "DUAL_GAP",
+          "FLOODED",
+          "GAP",
+          "GLACIER",
+          "HILLY",
+          "ISLANDS",
+          "LAND",
+          "LOW_PLATEAU",
+          "MOUNTAIN_RANGE",
+          "ONE_ISLAND",
+          "PASSES",
+          "PLATEAU",
+          "RAMP_PLATEAU",
+          "RIVERS",
+          "SCARRED",
+          "SLOPE",
+          "TUNDRA",
+          "VALLEY",
+          "WATER"
+        ],
+        "textureStyles": [
+          "BRIMSTONE",
+          "DESERT",
+          "FROST",
+          "LUSH",
+          "MARS",
+          "MOON",
+          "SAVANNAH",
+          "STEPPE",
+          "TUNDRA",
+          "WONDER"
+        ],
+        "resourceStyles": [
+          "BASIC",
+          "DENSE",
+          "EXPANSIVE",
+          "SPARSE"
+        ],
+        "propStyles": [
+          "BASIC",
+          "BOULDERS",
+          "FOREST",
+          "ROCKS",
+          "ROCK_FIELD",
+          "TREE_FIELD",
+          "WRECKAGE"
+        ]
       },
       "options": {
         "version": null,
@@ -435,7 +536,8 @@
       "gamePath": "",
       "replayGamePath": "",
       "general": {
-        "startPage": "news"
+        "startPage": "news",
+        "autoLogin": true
       },
       "appearance": {
         "density": "comfortable",
@@ -482,6 +584,8 @@
         "visibleMessageLimit": 500,
         "autoJoinChannels": [],
         "autoJoinLanguageChannel": true,
+        "autoJoinNewbieChannel": true,
+        "newbieChannelGameThreshold": 50,
         "mutedPlayers": [],
         "readMarkers": {},
         "hiddenRosterCategories": []
@@ -551,6 +655,7 @@
           "winRate",
           "updated"
         ],
+        "replayVaultPlayer": "",
         "legacyStorageMigrated": false
       },
       "mapGenerator": {
@@ -15356,12 +15461,110 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15425,15 +15628,87 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
               "styles": [
                 "LAND",
                 "BASIC"
               ],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15500,15 +15775,87 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
               "styles": [
                 "LAND",
                 "BASIC"
               ],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15586,12 +15933,110 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15659,12 +16104,110 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15724,12 +16267,110 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15791,12 +16432,110 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15891,12 +16630,110 @@
             "helpText": "",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -15971,12 +16808,110 @@
             "helpText": "Usage: generate [-hV]",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -16124,12 +17059,110 @@
             "helpText": "Usage: generate [-hV]",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -16314,12 +17347,110 @@
             "helpText": "Usage: generate [-hV]",
             "latestVersion": "",
             "optionLists": {
-              "propStyles": [],
-              "resourceStyles": [],
-              "styles": [],
-              "symmetries": [],
-              "terrainStyles": [],
-              "textureStyles": []
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
             },
             "options": {
               "commandLineArgs": "",
@@ -17019,6 +18150,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17029,6 +18162,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "connecting"
             },
@@ -17083,6 +18217,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17093,6 +18229,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "reason": "delayed by five minutes"
@@ -17147,6 +18284,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17157,6 +18296,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17220,6 +18360,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17239,6 +18381,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17290,6 +18433,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17300,6 +18445,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17351,6 +18497,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17361,6 +18509,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17449,6 +18598,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17459,6 +18610,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17513,6 +18665,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 42
@@ -17526,6 +18680,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17592,12 +18747,15 @@
                   "averageRating": null,
                   "simMods": [],
                   "status": "complete",
-                  "watchable": true
+                  "watchable": true,
+                  "gameVersion": null
                 }
               }
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "path": "/replays/42.fafreplay",
@@ -17613,6 +18771,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -17631,6 +18790,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17685,6 +18845,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 43
@@ -17699,6 +18861,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -17717,6 +18880,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17772,6 +18936,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "reason": "not uploaded yet",
@@ -17787,6 +18953,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -17805,6 +18972,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17859,6 +19027,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 44
@@ -17873,6 +19043,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -17891,6 +19062,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -17946,6 +19118,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -17957,6 +19131,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -17975,6 +19150,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "uid": 44
@@ -18032,6 +19208,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 45
@@ -18046,6 +19224,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -18064,6 +19243,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "uid": 44
@@ -18121,6 +19301,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18132,6 +19314,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -18150,6 +19333,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "reason": "could not update game to version 3701"
@@ -18793,11 +19977,13 @@
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
               "coloredNames": false,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
@@ -18810,6 +19996,7 @@
                 "players": {},
                 "selfColor": "#ffdd00"
               },
+              "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
               "showJoinsParts": false,
@@ -18831,6 +20018,7 @@
             },
             "gamePath": "",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -18960,11 +20148,13 @@
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
               "coloredNames": false,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
@@ -18977,6 +20167,7 @@
                 "players": {},
                 "selfColor": "#ffdd00"
               },
+              "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
               "showJoinsParts": false,
@@ -18998,6 +20189,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -19150,11 +20342,13 @@
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
               "coloredNames": false,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
@@ -19167,6 +20361,7 @@
                 "players": {},
                 "selfColor": "#ffdd00"
               },
+              "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
               "showJoinsParts": false,
@@ -19188,6 +20383,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -19331,11 +20527,13 @@
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
               "coloredNames": false,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
@@ -19348,6 +20546,7 @@
                 "players": {},
                 "selfColor": "#ffdd00"
               },
+              "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
               "showJoinsParts": false,
@@ -19369,6 +20568,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -19513,6 +20713,7 @@
                     "winRate",
                     "updated"
                   ],
+                  "replayVaultPlayer": "",
                   "legacyStorageMigrated": true
                 }
               }
@@ -19580,11 +20781,13 @@
               ],
               "modPresets": [],
               "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
               "replaysView": "list"
             },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
               "coloredNames": false,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
@@ -19597,6 +20800,7 @@
                 "players": {},
                 "selfColor": "#ffdd00"
               },
+              "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
               "showJoinsParts": false,
@@ -19618,6 +20822,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {

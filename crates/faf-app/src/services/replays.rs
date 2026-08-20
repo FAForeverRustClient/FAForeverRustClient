@@ -223,5 +223,13 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ReplayEvent::LocalLoadFailed { reason }),
             }
         }
+        ReplayCommand::LoadDetails { uid, local_path } => {
+            out.emit(ReplayEvent::DetailsLoading { uid });
+            let path_buf = local_path.map(PathBuf::from);
+            match ctx.ports.replay.load_details(uid, path_buf).await {
+                Ok(details) => out.emit(ReplayEvent::DetailsLoaded { uid, details }),
+                Err(reason) => out.emit(ReplayEvent::DetailsFailed { uid, reason }),
+            }
+        }
     }
 }

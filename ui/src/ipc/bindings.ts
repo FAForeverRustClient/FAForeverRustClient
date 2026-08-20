@@ -112,6 +112,8 @@ export type AuthCommand =
 { type: "login"; payload: {
 	remember: boolean,
 } } |
+/**  Cancel an in-flight browser login attempt and return to logged-out state. */
+{ type: "cancelLogin" } |
 /**  Try a previously remembered refresh token. No-op when none is stored. */
 { type: "restore" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
@@ -233,6 +235,11 @@ export type BrowsingPreferences = {
 	modPresets: ModPreset[],
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
+	/**
+	 *  Last searched player username in the replay vault. When empty, defaults
+	 *  to the currently authenticated player name.
+	 */
+	replayVaultPlayer: string,
 	/**
 	 *  Set after the webview has offered its pre-0.2 browser-storage values to
 	 *  the backend. Kept in the settings file so the compatibility read really
@@ -696,6 +703,13 @@ export type ChatPreferences = {
 	 */
 	autoJoinLanguageChannel: boolean,
 	/**
+	 *  Automatically join `#newbie` for accounts with fewer than
+	 *  `newbie_channel_game_threshold` completed games.
+	 */
+	autoJoinNewbieChannel: boolean,
+	/**  Maximum total game count below which `#newbie` is automatically joined. */
+	newbieChannelGameThreshold: number,
+	/**
 	 *  Locally ignored IRC nicknames. Muting is deliberately independent of
 	 *  the server-backed friend/foe relation lists.
 	 */
@@ -1081,7 +1095,7 @@ export type CustomGameBrowserPreferences = {
 
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";
 
-export type CustomGameFilterField = "title" | "host" | "map" | "mod" | "rating";
+export type CustomGameFilterField = "titleOrMap" | "title" | "host" | "map" | "mod" | "rating";
 
 export type CustomGameFilterRule = {
 	field: CustomGameFilterField,
@@ -1501,6 +1515,8 @@ export type GamePreferences = {
 export type GeneralPreferences = {
 	/**  Destination selected when the persisted settings are loaded. */
 	startPage: Tab,
+	/**  Automatically restore the saved session at startup. */
+	autoLogin?: boolean,
 };
 
 /**
@@ -2186,6 +2202,7 @@ export type LocalReplay = {
 	simMods: string[],
 	status: LocalReplayStatus,
 	watchable: boolean,
+	gameVersion: number | null,
 };
 
 export type LocalReplayPlayer = {
@@ -3641,6 +3658,13 @@ export type Reaction = {
  */
 export type Relation = "friend" | "foe";
 
+export type ReplayChatMessage = {
+	/**  In-game simulation time in seconds. */
+	timeSeconds: number,
+	sender: string,
+	message: string,
+};
+
 export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | { type: "trackLive"; payload: {
 	target: LiveReplayTarget,
 	action: LiveReplayTrackingAction,
@@ -3679,6 +3703,14 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	uid: number,
 } } |
 /**
+ *  Load the deferred game options, in-game chat, and FAF version from a
+ *  replay body.
+ */
+{ type: "loadDetails"; payload: {
+	uid: number,
+	localPath?: string | null,
+} } |
+/**
  *  Scan the shared FAF replay folder for local `.fafreplay` files.
  *  Scan the shared replay folder. `limit` bounds how many of the newest
  *  files have their headers read, which is the expensive part; the view
@@ -3694,6 +3726,17 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 { type: "deleteLocal"; payload: {
 	path: string,
 } };
+
+export type ReplayDetails = {
+	gameOptions: ReplayGameOption[],
+	chatMessages: ReplayChatMessage[],
+	/**
+	 *  SupCom patch number parsed from the replay body header. The API game
+	 *  resource does not expose this value reliably, so detailed parsing is
+	 *  the source of truth when the listing has no version yet.
+	 */
+	gameVersion: number | null,
+};
 
 /**
  *  The independent download-to-library lifecycle. Downloading a replay must
@@ -3762,10 +3805,28 @@ export type ReplayEvent = { type: "connecting" } |
 	reason: string,
 } } | { type: "localLoadFailed"; payload: {
 	reason: string,
+} } | { type: "detailsLoading"; payload: {
+	uid: number,
+} } | { type: "detailsLoaded"; payload: {
+	uid: number,
+	details: ReplayDetails,
+} } | { type: "detailsFailed"; payload: {
+	uid: number,
+	reason: string,
 } };
+
+export type ReplayGameOption = {
+	key: string,
+	value: string,
+};
 
 export type ReplayPlayer = {
 	name: string,
+	/**
+	 *  Absolute URL of the player's selected avatar, when the vault response
+	 *  includes the player's avatar assignment.
+	 */
+	avatarUrl?: string | null,
 	/**
 	 *  1=UEF, 2=Aeon, 3=Cybran, 4=Seraphim, 5=Random: the lobby selection
 	 *  recorded by `playerStats.faction`, not the faction Random resolved to.
@@ -3897,6 +3958,13 @@ export type ReplayState = {
 	featuredMods: string[],
 	local: LocalReplay[],
 	localStatus: VaultStatus,
+	/**
+	 *  Deferred replay metadata keyed by replay uid. Details are loaded only
+	 *  when requested because parsing the command stream can be expensive.
+	 */
+	replayDetails?: { [key in number]: ReplayDetails },
+	detailsLoading?: number | null,
+	detailsError?: string | null,
 };
 
 export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
@@ -6145,8 +6213,15 @@ export type VaultReplay = {
 	 *  player's rating could be resolved.
 	 */
 	averageRating: number | null,
+	/**
+	 *  TrueSkill match quality as a percentage for exactly two rated teams.
+	 *  `None` when the replay is not a two-team match or a rating journal is
+	 *  missing the values required to calculate it.
+	 */
+	quality: number | null,
 	reviewsAverage: number | null,
 	reviewsCount: number | null,
+	gameVersion: number | null,
 };
 
 /**

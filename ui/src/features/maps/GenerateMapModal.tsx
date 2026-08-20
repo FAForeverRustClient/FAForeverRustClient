@@ -532,11 +532,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               >
                 <option value="">
                   {t("maps.generate.latestVersion", {
-                    version: state.latestVersion || t("maps.generate.auto"),
+                    version: state.latestVersion || availableVersions[0] || t("maps.generate.auto"),
                   })}
                 </option>
                 {availableVersions
-                  .filter((v) => v !== state.latestVersion)
+                  .filter((v) => v !== (state.latestVersion || availableVersions[0]))
                   .map((v) => (
                     <option key={v} value={v}>
                       {v}

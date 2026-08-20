@@ -9,6 +9,22 @@ function displayDate(value: string): string {
   return formatDateTime(value, "N/A");
 }
 
+export function formatUserAgent(userAgent?: string | null): string {
+  if (!userAgent || !userAgent.trim()) return "N/A";
+  const trimmed = userAgent.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("rust") || lower.includes("forge")) {
+    return "Rust client";
+  }
+  if (lower.includes("python")) {
+    return "Python client";
+  }
+  if (lower.includes("faf-client") || lower.includes("java") || lower.includes("downlord")) {
+    return "Java client";
+  }
+  return trimmed;
+}
+
 export function RatingSummaryCard({ rating, onOpenHistory }: {
   rating: PlayerRatingSummary;
   onOpenHistory: (rating: PlayerRatingSummary) => void;
@@ -72,7 +88,7 @@ export function PlayerOverview({ profile, note, onOpenHistory }: {
             <div><dt>{t("playerCard.overview.playerId")}</dt><dd>{profile.playerId}</dd></div>
             <div><dt>{t("playerCard.overview.registered")}</dt><dd>{displayDate(profile.registeredAt)}</dd></div>
             <div><dt>{t("playerCard.overview.lastSeen")}</dt><dd>{displayDate(profile.lastSeenAt)}</dd></div>
-            <div><dt>{t("playerCard.overview.userAgent")}</dt><dd>{profile.userAgent || "N/A"}</dd></div>
+            <div><dt>{t("playerCard.overview.userAgent")}</dt><dd title={profile.userAgent || undefined}>{formatUserAgent(profile.userAgent)}</dd></div>
             <div><dt>{t("playerCard.overview.clan")}</dt><dd>{profile.clan ? `[${profile.clan.tag}] ${profile.clan.name}` : t("playerCard.overview.noClan")}</dd></div>
             <div><dt>{t("playerCard.overview.clanJoined")}</dt><dd>{profile.clan ? displayDate(profile.clan.joinedAt) : "N/A"}</dd></div>
           </dl>

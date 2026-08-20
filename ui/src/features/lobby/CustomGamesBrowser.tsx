@@ -13,6 +13,7 @@ import { flagSrc } from "../../shared/countryFlags";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
+import { openPlayerCard } from "../player-card/playerCardActions";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
@@ -253,7 +254,14 @@ function GameLineupTeam({
                   draggable={false}
                 />
               ) : <i className="game-lineup-flag-placeholder" />}
-              <PlayerName name={login} className="game-lineup-player" />
+              <button
+                type="button"
+                className="game-team-player"
+                onClick={() => openPlayerCard(profile?.id ?? null, login)}
+                title={`Open ${login}'s profile`}
+              >
+                <PlayerName name={login} className="game-lineup-player" />
+              </button>
               <span className="game-lineup-rating">{rating === null ? "N/A" : rating}</span>
             </li>
           );
@@ -464,7 +472,14 @@ function GamePreviewDialog({
         <section className="game-preview-dialog-info" aria-label={t("lobby.browser.gameDetails")}>
           <div className="game-preview-dialog-host">
             <span>{t("lobby.browser.hostedBy")}</span>
-            <strong><PlayerName name={game.host} /></strong>
+            <button
+              type="button"
+              className="game-team-player"
+              onClick={() => openPlayerCard(findPlayer(useAppStore.getState().state.social, game.host)?.id ?? null, game.host)}
+              title={`Open ${game.host}'s profile`}
+            >
+              <strong><PlayerName name={game.host} /></strong>
+            </button>
           </div>
           <dl className="game-preview-dialog-summary">
             <div><dt>{t("lobby.browser.players")}</dt><dd>{players} / {game.maxPlayers}</dd></div>

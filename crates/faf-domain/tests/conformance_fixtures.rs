@@ -2765,6 +2765,7 @@ fn local_replay(uid: i32) -> LocalReplay {
         sim_mods: Vec::new(),
         status: LocalReplayStatus::Complete,
         watchable: true,
+        game_version: None,
     }
 }
 
@@ -4281,6 +4282,7 @@ fn cases() -> Vec<Case> {
                             "winRate".into(),
                             "updated".into(),
                         ],
+                        replay_vault_player: String::new(),
                         legacy_storage_migrated: true,
                     }),
                 }
@@ -4476,6 +4478,9 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "PlayerCard:historyLoadFailed",
     "PlayerCard:historyLoaded",
     "PlayerCard:historyLoading",
+    "Replays:detailsFailed",
+    "Replays:detailsLoaded",
+    "Replays:detailsLoading",
     "Replays:featuredModsLoaded",
     "Replays:localDeleted",
     "Replays:localLoadFailed",

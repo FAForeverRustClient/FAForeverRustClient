@@ -123,6 +123,8 @@ pub enum AuthCommand {
     Login {
         remember: bool,
     },
+    /// Cancel an in-flight browser login attempt and return to logged-out state.
+    CancelLogin,
     /// Try a previously remembered refresh token. No-op when none is stored.
     Restore,
     LoginTest,

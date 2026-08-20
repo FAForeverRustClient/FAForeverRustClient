@@ -134,6 +134,9 @@ pub(crate) const APP_NAME: &str = "FAForever Client";
 /// directories, the keyring service, and the HTTP user agent.
 pub(crate) const APP_SLUG: &str = "faforever-client";
 
+/// Frontend asset used for generated maps until a generated preview is ready.
+pub(crate) const GENERATED_MAP_PLACEHOLDER_URL: &str = "/assets/mapgen-placeholder.png";
+
 /// What the client called itself before the rename. Only
 /// [`migrate_legacy_directories`] and the keyring fallback read these.
 const LEGACY_ORGANIZATION: &str = "forgeclient";

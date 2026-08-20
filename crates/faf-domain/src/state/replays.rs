@@ -110,8 +110,40 @@ pub struct VaultReplay {
     /// Average of all resolvable player ratings on the card: `None` if no
     /// player's rating could be resolved.
     pub average_rating: Option<i32>,
+    /// TrueSkill match quality as a percentage for exactly two rated teams.
+    /// `None` when the replay is not a two-team match or a rating journal is
+    /// missing the values required to calculate it.
+    pub quality: Option<i32>,
     pub reviews_average: Option<f32>,
     pub reviews_count: Option<i32>,
+    pub game_version: Option<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayGameOption {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayChatMessage {
+    /// In-game simulation time in seconds.
+    pub time_seconds: u32,
+    pub sender: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayDetails {
+    pub game_options: Vec<ReplayGameOption>,
+    pub chat_messages: Vec<ReplayChatMessage>,
+    /// SupCom patch number parsed from the replay body header. The API game
+    /// resource does not expose this value reliably, so detailed parsing is
+    /// the source of truth when the listing has no version yet.
+    pub game_version: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -125,6 +157,10 @@ pub struct ReplayTeam {
 #[serde(rename_all = "camelCase")]
 pub struct ReplayPlayer {
     pub name: String,
+    /// Absolute URL of the player's selected avatar, when the vault response
+    /// includes the player's avatar assignment.
+    #[serde(default)]
+    pub avatar_url: Option<String>,
     /// 1=UEF, 2=Aeon, 3=Cybran, 4=Seraphim, 5=Random: the lobby selection
     /// recorded by `playerStats.faction`, not the faction Random resolved to.
     pub faction: Option<i32>,
@@ -163,6 +199,7 @@ pub struct LocalReplay {
     pub sim_mods: Vec<String>,
     pub status: LocalReplayStatus,
     pub watchable: bool,
+    pub game_version: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -283,6 +320,14 @@ pub struct ReplayState {
     pub featured_mods: Vec<String>,
     pub local: Vec<LocalReplay>,
     pub local_status: VaultStatus,
+    /// Deferred replay metadata keyed by replay uid. Details are loaded only
+    /// when requested because parsing the command stream can be expensive.
+    #[serde(default)]
+    pub replay_details: std::collections::HashMap<i32, ReplayDetails>,
+    #[serde(default)]
+    pub details_loading: Option<i32>,
+    #[serde(default)]
+    pub details_error: Option<String>,
 }
 
 // No `Eq`: `VaultLoaded` carries `VaultReplay`, which has an `f32` field.
@@ -356,6 +401,17 @@ pub enum ReplayEvent {
     LocalLoadFailed {
         reason: String,
     },
+    DetailsLoading {
+        uid: i32,
+    },
+    DetailsLoaded {
+        uid: i32,
+        details: ReplayDetails,
+    },
+    DetailsFailed {
+        uid: i32,
+        reason: String,
+    },
 }
 
 // No `Eq`: `ReplayQuery` carries an `f32` (minimum review score).
@@ -392,6 +448,14 @@ pub enum ReplayCommand {
     /// launching Forged Alliance.
     DownloadVault {
         uid: i32,
+    },
+    /// Load the deferred game options, in-game chat, and FAF version from a
+    /// replay body.
+    #[serde(rename_all = "camelCase")]
+    LoadDetails {
+        uid: i32,
+        #[serde(default)]
+        local_path: Option<String>,
     },
     /// Scan the shared FAF replay folder for local `.fafreplay` files.
     /// Scan the shared replay folder. `limit` bounds how many of the newest
@@ -495,6 +559,23 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             state.local_status = VaultStatus::Failed {
                 reason: reason.clone(),
             }
+        }
+        ReplayEvent::DetailsLoading { uid } => {
+            state.details_loading = Some(*uid);
+            state.details_error = None;
+        }
+        ReplayEvent::DetailsLoaded { uid, details } => {
+            if state.details_loading == Some(*uid) {
+                state.details_loading = None;
+            }
+            state.replay_details.insert(*uid, details.clone());
+            state.details_error = None;
+        }
+        ReplayEvent::DetailsFailed { uid, reason } => {
+            if state.details_loading == Some(*uid) {
+                state.details_loading = None;
+            }
+            state.details_error = Some(reason.clone());
         }
     }
 }
@@ -681,8 +762,10 @@ mod tests {
             game_duration_seconds: None,
             teams: Vec::new(),
             average_rating: None,
+            quality: None,
             reviews_average: None,
             reviews_count: None,
+            game_version: None,
         }
     }
 
@@ -779,6 +862,7 @@ mod tests {
             sim_mods: vec![],
             status: LocalReplayStatus::Complete,
             watchable: true,
+            game_version: None,
         }
     }
 

@@ -43,7 +43,7 @@ export interface UserMenuActions {
   viewProfile: (playerId: number | null, nickname: string) => void;
   joinGame: (game: Game) => void;
   watchGame: (game: Game) => void;
-  viewReplays: () => void;
+  viewReplays: (username: string) => void;
   inviteToParty: (playerId: number) => void;
   setRelation: (profile: PlayerProfile, relation: "friend" | "foe", member: boolean) => void;
   kickFromParty: (playerId: number) => void;
@@ -119,7 +119,7 @@ export function UserMenu({
     separator();
     if (hostedGame) item(t("chat.menu.joinGame"), () => actions.joinGame(hostedGame));
     if (liveGame) item(t("chat.menu.watchLive"), () => actions.watchGame(liveGame));
-    item(t("chat.menu.viewReplays"), actions.viewReplays);
+    item(t("chat.menu.viewReplays"), () => actions.viewReplays(profile.login || nickname));
   }
 
   if (profile && !isSelf) {

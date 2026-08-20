@@ -1,8 +1,13 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "../../design-system/Icon";
-import { baseMapName, normalizeMapName } from "../../shared/mapPresentation";
+import {
+  isGeneratedMap,
+  mapThumbnailCandidates,
+  normalizeMapName,
+} from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { clientIntlTag } from "../../shared/dates";
+import { useAppStore } from "../../store/store";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -143,38 +148,27 @@ function ReplayListStatus({
 }
 
 function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string }) {
-  const normalized = mapName ? normalizeMapName(mapName) : "";
-  const baseName = mapName ? baseMapName(mapName) : "";
-  const cdnFallback = normalized && !normalized.includes(" ")
-    ? `https://content.faforever.com/maps/previews/small/${encodeURIComponent(normalized)}.png`
-    : undefined;
-  const baseFallback = baseName && baseName !== normalized && !baseName.includes(" ")
-    ? `https://content.faforever.com/maps/previews/small/${encodeURIComponent(baseName)}.png`
-    : undefined;
+  const vault = useAppStore((state) => state.state.maps.vault);
+  const isGenerated = isGeneratedMap(mapName);
+  const normalized = normalizeMapName(mapName);
+  const generatedPreview = useAppStore((state) =>
+    isGenerated
+      ? state.state.mapGenerator.previews?.[mapName] ||
+        state.state.mapGenerator.previews?.[normalized] ||
+        state.state.mapGenerator.previews?.[mapName.toLowerCase()]
+      : undefined,
+  );
+  const candidates = useMemo(
+    () => mapThumbnailCandidates(vault, mapName, false, undefined, generatedPreview, url || undefined),
+    [generatedPreview, mapName, url, vault],
+  );
+  const [candidateIndex, setCandidateIndex] = useState(0);
 
-  const [currentUrl, setCurrentUrl] = useState(url || cdnFallback || baseFallback || "");
-  const [failed, setFailed] = useState(false);
+  useEffect(() => setCandidateIndex(0), [candidates]);
 
-  useEffect(() => {
-    setCurrentUrl(url || cdnFallback || baseFallback || "");
-    setFailed(false);
-  }, [url, cdnFallback, baseFallback]);
+  const currentUrl = candidates[candidateIndex];
 
-  const handleError = () => {
-    if (currentUrl === url && cdnFallback && currentUrl !== cdnFallback) {
-      setCurrentUrl(cdnFallback);
-    } else if (
-      (currentUrl === url || currentUrl === cdnFallback) &&
-      baseFallback &&
-      currentUrl !== baseFallback
-    ) {
-      setCurrentUrl(baseFallback);
-    } else {
-      setFailed(true);
-    }
-  };
-
-  if (!currentUrl || failed) {
+  if (!currentUrl) {
     return (
       <span className="replay-list-thumb replay-list-thumb-empty" aria-label={`${mapName} preview unavailable`}>
         <Icon name="maps" size={17} />
@@ -189,7 +183,7 @@ function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string })
       alt={`${mapName} preview`}
       loading="lazy"
       decoding="async"
-      onError={handleError}
+      onError={() => setCandidateIndex((index) => index + 1)}
     />
   );
 }

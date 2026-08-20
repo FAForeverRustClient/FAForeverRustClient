@@ -13,6 +13,14 @@ if (favicon) favicon.href = FAF_LOGO_URL;
 
 installDesktopContextMenuPolicy(document);
 
+// Fixed-viewport desktop app: lock document scroll coordinates to 0,0
+// to prevent any native browser focus actions from scrolling the root window.
+window.addEventListener("scroll", () => {
+  if (window.scrollX !== 0 || window.scrollY !== 0) {
+    window.scrollTo(0, 0);
+  }
+});
+
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

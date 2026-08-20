@@ -3,7 +3,12 @@ import { Icon } from "../design-system/Icon";
 import type { VaultMap } from "../ipc/bindings";
 import { useAppStore } from "../store/store";
 import { FactionIcon } from "./FactionIcon";
-import { isGeneratedMap, mapPresentation, mapThumbnailCandidates } from "./mapPresentation";
+import {
+  isGeneratedMap,
+  mapPresentation,
+  mapThumbnailCandidates,
+  normalizeMapName,
+} from "./mapPresentation";
 
 const COOP_FACTION_IDS: Record<string, number> = {
   uef: 1,
@@ -31,9 +36,11 @@ export function MapThumbnail({
 }: Props) {
   const presentation = mapPresentation(vault, mapName);
   const isGenerated = isGeneratedMap(mapName);
+  const normalized = normalizeMapName(mapName);
   const generatedPreview = useAppStore((state) =>
     isGenerated
       ? state.state.mapGenerator.previews?.[mapName] ||
+        state.state.mapGenerator.previews?.[normalized] ||
         state.state.mapGenerator.previews?.[mapName.toLowerCase()]
       : undefined,
   );

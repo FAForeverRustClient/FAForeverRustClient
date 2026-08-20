@@ -372,14 +372,35 @@ const Line = memo(function Line({
           they get no nickname column: the way the Python client renders its
           INFO type. Actions fold the nick into the sentence. */}
       {message.kind === "info" || message.kind === "error" ? (
-        <span className="chat-message-body">
-          {message.sender && <span className="chat-message-actor">{message.sender} </span>}
-          {body}
-        </span>
+        <>
+          <span className="chat-message-avatar" aria-hidden="true" />
+          <span className="chat-info-prefix" aria-hidden="true" />
+          <span className="chat-message-body">
+            {message.sender && <span className="chat-message-actor">{message.sender} </span>}
+            {body}
+          </span>
+        </>
       ) : message.kind === "action" ? (
-        <span className="chat-message-body" style={nameStyle}>
-          <span className="chat-action-star">*</span> {nick} {body}
-        </span>
+        <>
+          <span className="chat-message-avatar">
+            {profile?.avatarUrl && (
+              <img
+                src={profile.avatarUrl}
+                alt=""
+                title={profile.avatarTooltip}
+                width={40}
+                height={20}
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+              />
+            )}
+          </span>
+          <span className="chat-action-star" aria-hidden="true">*</span>
+          <span className="chat-message-body" style={nameStyle}>
+            {nick} {body}
+          </span>
+        </>
       ) : (
         <>
           <span className="chat-message-avatar">

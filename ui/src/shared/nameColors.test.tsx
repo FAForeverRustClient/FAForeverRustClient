@@ -26,6 +26,8 @@ const DEFAULT_CHAT_PREFS: ChatPreferences = {
   visibleMessageLimit: 500,
   autoJoinChannels: [],
   autoJoinLanguageChannel: true,
+  autoJoinNewbieChannel: true,
+  newbieChannelGameThreshold: 50,
   mutedPlayers: [],
   readMarkers: {},
   hiddenRosterCategories: [],
