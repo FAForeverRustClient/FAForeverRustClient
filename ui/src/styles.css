@@ -171,18 +171,42 @@ html[data-reduced-motion="true"] *::after {
 
 /* Embedded external sites (Units and News). Size to 100% of the
    workspace container without forcing an outer window scrollbar. */
-.units-embed,
-.news-embed {
+.embed-view {
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.units-embed-frame,
-.news-embed-frame {
+/* Slim strip above the frame: it names the origin the page comes from and
+   keeps a real browser one click away, which is the only reliable fallback
+   when the system webview renders someone else's page wrongly. */
+.embed-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.embed-toolbar-source {
+  font-size: 11px;
+}
+
+.embed-open-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.embed-frame {
   width: 100%;
-  height: 100%;
   flex: 1;
+  /* Without this a flex child refuses to shrink below its content height and
+     the frame pushes the toolbar off the top of the workspace. */
+  min-height: 0;
   border: none;
 }

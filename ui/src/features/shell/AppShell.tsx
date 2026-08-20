@@ -10,6 +10,7 @@ import { TabBar } from "../nav/TabBar";
 import { TABS } from "../nav/tabs";
 import { ClientStatusBar } from "../status/ClientStatusBar";
 import { InstallBanner } from "./InstallBanner";
+import { WebviewEngineBanner } from "./WebviewEngineBanner";
 import { UpdateBanner } from "../updates/UpdateBanner";
 import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
@@ -155,6 +156,7 @@ export function AppShell() {
         <div className="workspace-banners">
           <UpdateBanner />
           <InstallBanner />
+          <WebviewEngineBanner />
         </div>
         <section className={`content content-tab-${activeTab}`} aria-label={t("nav.content.aria", { tab: t(TABS[activeTab].label) })}>
           <div className={`content-inner content-${activeTab}`}>

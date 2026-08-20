@@ -1,4 +1,5 @@
 import { native } from "../ipc/native";
+import { isDesktopShell } from "./webviewEngine";
 
 const FAF_HOSTS = ["faforever.com", "www.faforever.com"];
 const FORUM_HOSTS = ["forum.faforever.com"];
@@ -39,7 +40,7 @@ export function validateExternalUrl(value: string, allowedHosts: readonly string
 }
 
 async function openValidatedUrl(safeUrl: string): Promise<void> {
-  if ("__TAURI_INTERNALS__" in window) {
+  if (isDesktopShell()) {
     // Never fall back to webview navigation in the desktop shell. If the OS
     // opener capability fails, propagating that failure is safer than replacing
     // the application with an attacker-controlled remote document.

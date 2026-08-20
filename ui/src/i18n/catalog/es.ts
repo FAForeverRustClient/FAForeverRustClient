@@ -189,6 +189,13 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "units.frameTitle": "Base de datos de unidades ETFreeman",
   "news.frameTitle": "Noticias de FAF",
+  "embed.openExternal": "Abrir en el navegador",
+  "embed.openExternalTitle": "Abrir esta página en el navegador del sistema",
+  "shell.webview.outdated": "Webview del sistema obsoleta",
+  "shell.webview.outdatedHintVersion": "Este cliente se muestra en WebKitGTK {version}, que no admite {features}. Partes de la interfaz y de las páginas incrustadas se verán mal. Actualiza los paquetes webkit2gtk de tu distribución a {recommended} o posterior, o usa el botón del navegador en las pestañas Unidades y Noticias.",
+  "shell.webview.outdatedHint": "La webview del sistema no admite {features}. Partes de la interfaz y de las páginas incrustadas se verán mal. Actualiza la webview de tu sistema, o usa el botón del navegador en las pestañas Unidades y Noticias.",
+  "shell.webview.dismiss": "Ocultar",
+  "shell.webview.dismissTitle": "Ocultar este aviso hasta que cambie la webview",
 
   "common.unknown": "Desconocido",
   "common.now": "Ahora",

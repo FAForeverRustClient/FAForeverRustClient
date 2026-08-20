@@ -184,6 +184,73 @@ fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Which rendering engine the client actually ended up in.
+///
+/// Only Linux reports a version, because only Linux can surprise us: Windows
+/// and macOS roll their webview forward with the operating system, while a GTK
+/// build renders in whatever WebKitGTK the distribution happens to ship. An
+/// old-stable release there can predate the CSS this client is written in.
+///
+/// Facts only. Which release is new enough is deliberately a frontend
+/// decision, because the features at stake are the ones its stylesheets use.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WebviewEngine {
+    platform: &'static str,
+    webkit_version: Option<String>,
+}
+
+/// The three accessors are public webkit2gtk C API and the library is already
+/// linked into this binary by wry, so asking it its own version costs neither
+/// a dependency nor a process.
+#[cfg(target_os = "linux")]
+fn webkit_version() -> Option<String> {
+    extern "C" {
+        fn webkit_get_major_version() -> u32;
+        fn webkit_get_minor_version() -> u32;
+        fn webkit_get_micro_version() -> u32;
+    }
+
+    // Sound: three argument-less accessors that return a constant compiled into
+    // the library. They touch no state and cannot fail.
+    let (major, minor, micro) = unsafe {
+        (
+            webkit_get_major_version(),
+            webkit_get_minor_version(),
+            webkit_get_micro_version(),
+        )
+    };
+    Some(format!("{major}.{minor}.{micro}"))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn webkit_version() -> Option<String> {
+    None
+}
+
+fn platform_name() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "linux") {
+        "linux"
+    } else {
+        "other"
+    }
+}
+
+/// Report the rendering engine so the frontend can warn about one too old for
+/// its own stylesheets, and so a bug report carries the version without asking
+/// the reporter to run `pkg-config` first.
+#[tauri::command]
+fn webview_engine() -> WebviewEngine {
+    WebviewEngine {
+        platform: platform_name(),
+        webkit_version: webkit_version(),
+    }
+}
+
 #[cfg(windows)]
 fn trim_working_set() {
     unsafe {
@@ -420,6 +487,7 @@ pub fn run() {
             open_client_folder,
             reveal_replay,
             read_latest_log,
+            webview_engine,
             exit_app
         ])
         .run(tauri::generate_context!())
@@ -435,6 +503,29 @@ mod tests {
     fn capabilities() -> serde_json::Value {
         serde_json::from_str(include_str!("../capabilities/default.json"))
             .expect("valid capabilities")
+    }
+
+    #[test]
+    fn webview_engine_reports_a_platform_the_frontend_knows() {
+        let engine = super::webview_engine();
+        assert!(matches!(
+            engine.platform,
+            "windows" | "macos" | "linux" | "other"
+        ));
+    }
+
+    /// Also proves the FFI declaration links: a renamed or missing symbol fails
+    /// this crate's build on the one platform where the call is compiled in.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_reports_a_plausible_webkitgtk_version() {
+        let version = super::webkit_version().expect("linux must report a version");
+        let major: u32 = version
+            .split('.')
+            .next()
+            .and_then(|part| part.parse().ok())
+            .expect("major version");
+        assert!(major >= 2, "unexpected WebKitGTK version {version}");
     }
 
     #[test]
