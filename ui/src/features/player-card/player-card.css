@@ -1300,13 +1300,22 @@
   line-height: 1.5;
 }
 
-/* `.search-field` carries `flex: 1 1 240px`, which is written for a toolbar
-   row. Inside this column that grow factor applies to the *height*, so the
-   filter stretched into a block several times taller than an input. Full width,
-   content height. */
-.player-maps-search {
-  flex: none;
+/* `.search-field` carries `flex: 1 1 240px`, written for a toolbar row. Inside
+   this column the grow factor applies to the *height*, so the filter stretched
+   into a block several times taller than an input.
+   Two class selectors rather than one: `.search-field` is a single class as
+   well, so an equal-specificity override would be decided by stylesheet order,
+   and this feature's CSS arrives in a lazily loaded chunk. That is what let the
+   growth survive the first attempt at this. */
+.player-maps-view .player-maps-search {
+  flex: 0 0 auto;
   width: 100%;
+  min-height: 28px;
+}
+
+.player-maps-view .player-maps-search input {
+  padding: 3px 0;
+  font-size: 12px;
 }
 
 .player-maps-map {
@@ -1344,10 +1353,25 @@
 
 .player-maps-table th,
 .player-maps-table td {
-  padding: 7px 10px;
+  padding: 7px 16px;
   font-size: 12px;
   text-align: right;
+  white-space: nowrap;
   border-bottom: 1px solid var(--color-border);
+}
+
+/* The figures are what a host is reading, and shrink-to-fit columns had them
+   pressed against each other. Given a floor they sit apart; the map column
+   still takes whatever slack is left. */
+.player-maps-table th:not(:first-child),
+.player-maps-table td:not(:first-child) {
+  min-width: 82px;
+}
+
+.player-maps-table th:last-child,
+.player-maps-table td:last-child {
+  min-width: 132px;
+  padding-right: 18px;
 }
 
 .player-maps-table th {

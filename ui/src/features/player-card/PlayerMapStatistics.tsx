@@ -13,6 +13,9 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { MapThumbnail } from "../../shared/MapThumbnail";
 import { formatDateTime } from "../../shared/dates";
 
+/** Shared with the host dialog's generated-map preview. */
+const MAPGEN_ICON = "/assets/mapgen-placeholder.png";
+
 interface Props {
   playerId: number;
 }
@@ -122,12 +125,25 @@ export function PlayerMapStatistics({ playerId }: Props) {
               <tr key={entry.generated ? "@generated" : entry.map}>
                 <td className="player-maps-name">
                   <span className="player-maps-map">
-                    <MapThumbnail
-                      mapName={entry.map}
-                      vault={vault}
-                      className="player-maps-thumb"
-                      placeholderClassName="player-maps-thumb player-maps-thumb-empty"
-                    />
+                    {/* The generated row has no map name to look art up by, so
+                        it carries the generator's own mark rather than the
+                        blank placeholder an empty name would produce. */}
+                    {entry.generated ? (
+                      <img
+                        className="player-maps-thumb"
+                        src={MAPGEN_ICON}
+                        alt=""
+                        loading="lazy"
+                        draggable={false}
+                      />
+                    ) : (
+                      <MapThumbnail
+                        mapName={entry.map}
+                        vault={vault}
+                        className="player-maps-thumb"
+                        placeholderClassName="player-maps-thumb player-maps-thumb-empty"
+                      />
+                    )}
                     <span className="player-maps-map-name" title={label(entry)}>
                       {label(entry)}
                     </span>
