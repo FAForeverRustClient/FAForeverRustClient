@@ -591,16 +591,13 @@ fn parse_matchmaker_pools(doc: &JsonApiDoc) -> Vec<MatchmakerMapPool> {
                         .and_then(Value::as_object)
                     {
                         obj
-                    } else if let Some(params_key) =
-                        rel_target(&assignment.relationships, "mapParams")
-                    {
+                    } else {
+                        let params_key = rel_target(&assignment.relationships, "mapParams")?;
                         index
                             .get(&params_key)
                             .map(|p| &p.attributes)
                             .and_then(Value::as_object)
                             .unwrap_or(&empty_map)
-                    } else {
-                        return None;
                     };
 
                     let generator_type = params_attrs
