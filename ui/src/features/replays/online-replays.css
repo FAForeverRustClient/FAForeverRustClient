@@ -373,13 +373,15 @@ button.vault-input {
 
 /* Replay detail modal */
 .replay-detail-modal {
-  max-width: 1040px;
+  width: min(1080px, 94vw);
+  max-width: 1080px;
+  max-height: 92vh;
   padding: var(--space-4);
 }
 
 .replay-detail-head {
   display: grid;
-  grid-template-columns: 144px minmax(0, 1fr) 188px;
+  grid-template-columns: 144px minmax(0, 1fr) 280px;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-1) 28px var(--space-4) 0;
@@ -441,6 +443,111 @@ button.vault-input {
   font-size: 13px;
 }
 
+.replay-generation-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 8px 12px;
+  margin: var(--space-2) 0 var(--space-1);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, var(--color-border));
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.replay-generation-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text);
+  min-height: 20px;
+}
+
+.replay-generation-spinner {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.replay-generation-banner-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.replay-generation-banner-pct {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--color-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.replay-generation-progress-track {
+  height: 3px;
+  background: color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  position: relative;
+}
+
+.replay-generation-progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+  transition: width 0.2s ease;
+}
+
+.replay-generation-progress-track.indeterminate .replay-generation-progress-fill {
+  width: 40%;
+  animation: replay-indeterminate-progress 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes replay-indeterminate-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.replay-fact-seed-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replay-fact-seed-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-fact-copy-seed-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs, 3px);
+  color: var(--color-muted);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.replay-fact-copy-seed-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
 .replay-availability {
   display: inline-flex;
   align-items: center;
@@ -473,13 +580,12 @@ button.vault-input {
   flex-wrap: wrap;
 }
 
-/* Watch is the reason this modal is open, so it gets the full width and the
-   file actions share a row beneath it. */
+/* Actions on top right */
 .replay-detail-actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-width: 188px;
+  min-width: 260px;
 }
 
 .replay-watch-button {
@@ -492,13 +598,48 @@ button.vault-input {
 }
 
 .replay-detail-actions-secondary {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 
-.replay-detail-actions-secondary > * {
-  flex: 1;
-  min-width: 0;
+.replay-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replay-secondary-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-seed-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 6px 12px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.replay-seed-label {
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
 }
 
 .replay-download-error {
@@ -509,21 +650,21 @@ button.vault-input {
 /* One dense row: five short values do not need six boxed cells and two rows of
    modal height. Wraps rather than truncating on narrow widths. */
 .replay-detail-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  row-gap: var(--space-3);
+  column-gap: 0;
   margin: var(--space-3) 0 var(--space-4);
   padding: 0;
 }
 
 .replay-detail-facts > div {
   min-width: 0;
-  flex: 1 1 auto;
   padding: 0 var(--space-4);
   border-left: 1px solid var(--color-border);
 }
 
-.replay-detail-facts > div:first-child {
+.replay-detail-facts > div:nth-child(4n + 1) {
   padding-left: 0;
   border-left: 0;
 }
@@ -555,7 +696,14 @@ button.vault-input {
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-3);
+  min-height: 34px;
   margin-bottom: var(--space-2);
+}
+
+.replay-detail-reveal-btn {
+  min-width: 124px;
+  justify-content: center;
+  text-align: center;
 }
 
 .replay-detail-section-head h3 {
@@ -578,16 +726,29 @@ button.vault-input {
 }
 
 .replay-detail-versus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   align-self: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  user-select: none;
 }
 
 .replay-detail-team {
   min-width: 0;
   padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .replay-detail-team-title {
@@ -595,44 +756,56 @@ button.vault-input {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  min-height: 28px;
   margin: 0;
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--color-border);
   font-size: 13px;
   font-weight: 650;
+  line-height: 1;
 }
 
 .replay-detail-team-summary {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-height: 22px;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 550;
+  line-height: 1;
 }
 
 .replay-team-outcome {
-  padding: 3px 6px;
-  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  line-height: 1;
 }
 
 .replay-team-outcome.victory {
   color: var(--color-ok);
-  background: color-mix(in srgb, var(--color-ok) 10%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
 .replay-team-outcome.defeat {
   color: var(--color-error);
-  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error) 25%, transparent);
 }
 
 .replay-team-outcome.draw {
   color: var(--color-muted);
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .replay-detail-roster {
@@ -643,21 +816,57 @@ button.vault-input {
 }
 
 .replay-detail-player {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  min-height: 38px;
+  justify-content: space-between;
+  height: 34px;
+  box-sizing: border-box;
   gap: var(--space-3);
   padding: 0 8px;
   border-radius: var(--radius-sm);
-  overflow: visible;
-  font-size: 14px;
+  font-size: 13px;
+  transition: background-color 100ms ease;
 }
 
 .replay-player-stats {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 44px;
+  height: 24px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.replay-player-rating {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+  line-height: 1;
+}
+
+.replay-player-score {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 28px;
+  line-height: 1;
+}
+
+.replay-player-score.positive {
+  color: var(--color-ok);
+}
+
+.replay-player-score.negative {
+  color: var(--color-error);
+}
+
+.replay-player-score.zero {
+  color: var(--color-muted);
 }
 
 /* A lone team is the whole lineup, so its roster flows into columns instead of
@@ -672,17 +881,13 @@ button.vault-input {
   background: var(--color-surface-hover);
 }
 
-/* A won/lost row is tinted on its leading edge rather than filled, so a
-   revealed result stays scannable without shouting over the names. */
-.replay-detail-player[data-outcome="victory"] {
-  box-shadow: inset 2px 0 var(--color-ok);
-}
-
-.replay-detail-player[data-outcome="defeat"] {
-  box-shadow: inset 2px 0 var(--color-error);
-}
-
 .replay-player-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  height: 24px;
   font: inherit;
   padding: 0;
   color: inherit;
@@ -705,59 +910,13 @@ button.vault-input {
 /* Matches the detail roster's marker size, so a player whose faction the API
    never recorded does not pull their name out of the column. */
 .replay-player-faction-empty {
-  width: 21px;
-  height: 21px;
+  width: 18px;
+  height: 18px;
 }
 
 .replay-detail-player .replay-player-identity > span {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.replay-player-outcome {
-  min-width: 52px;
-  padding: 3px 6px;
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.replay-player-outcome.victory {
-  color: var(--color-ok);
-  background: color-mix(in srgb, var(--color-ok) 10%, transparent);
-}
-
-.replay-player-outcome.defeat {
-  color: var(--color-error);
-  background: color-mix(in srgb, var(--color-error) 10%, transparent);
-}
-
-.replay-player-outcome.draw {
-  color: var(--color-muted);
-  background: var(--color-surface-raised);
-}
-
-.replay-player-stat {
-  display: flex;
-  min-width: 48px;
-  align-items: flex-end;
-  flex-direction: column;
-  line-height: 1.1;
-}
-
-.replay-player-stat strong {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.replay-player-stat small {
-  color: var(--color-subtle);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .replay-detail-empty {
@@ -785,10 +944,11 @@ button.vault-input {
     min-width: 0;
   }
 
-  /* Facts lose their dividers once they wrap onto several lines, where a
-     left border no longer separates neighbours but decorates line starts. */
+  .replay-detail-facts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .replay-detail-facts > div {
-    flex: 1 0 44%;
     padding-left: 0;
     border-left: 0;
   }
@@ -801,3 +961,114 @@ button.vault-input {
     justify-self: center;
   }
 }
+
+/* Replay detail: Game options & in-game chat tables */
+.replay-detail-more-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.replay-more-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .replay-more-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.replay-more-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.replay-more-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.replay-more-info-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.replay-options-filter {
+  height: 28px;
+  font-size: 12px;
+  max-width: 180px;
+}
+
+.replay-table-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.replay-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.replay-data-table th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-hover);
+  color: var(--color-muted);
+  font-weight: 600;
+  padding: 6px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 1;
+}
+
+.replay-data-table td {
+  padding: 5px var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle, rgba(255, 255, 255, 0.05));
+  vertical-align: top;
+}
+
+.replay-data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.replay-data-table tr:hover td {
+  background: var(--color-surface-hover);
+}
+
+.replay-chat-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+  white-space: nowrap;
+  width: 70px;
+}
+
+.replay-chat-sender {
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replay-chat-message {
+  color: var(--color-text);
+  word-break: break-word;
+}
+

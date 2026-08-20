@@ -56,10 +56,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use faf_domain::protocol::map_generator::is_generated_map;
 use faf_domain::protocol::replay_query;
 use faf_domain::state::{
     LiveReplayTarget, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam, ModType,
-    ReplayPlayer, ReplayQuery, ReplayTeam, VaultReplay,
+    ReplayChatMessage, ReplayDetails, ReplayGameOption, ReplayPlayer, ReplayQuery, ReplayTeam,
+    VaultReplay,
 };
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -620,6 +622,35 @@ impl ReplayPort for ReplayClient {
         local_metadata_for_path(&path).await
     }
 
+    async fn load_details(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<ReplayDetails, String> {
+        let path = if let Some(path) = local_path.filter(|p| p.exists()) {
+            path
+        } else {
+            let cached_scfa = cache_dir()?.join(format!("{uid}.scfareplay"));
+            if cached_scfa.exists() {
+                cached_scfa
+            } else {
+                let local_faf = local_replays_dir().join(format!("{uid}.fafreplay"));
+                if local_faf.exists() {
+                    local_faf
+                } else {
+                    let cached_faf = cache_dir()?.join(format!("{uid}.fafreplay"));
+                    if cached_faf.exists() {
+                        cached_faf
+                    } else {
+                        self.download_vault_to(uid, cache_dir()?).await?
+                    }
+                }
+            }
+        };
+
+        read_detailed_info(&path).await
+    }
+
     async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String> {
         list_local_dir(&local_replays_dir(), limit).await
     }
@@ -794,10 +825,36 @@ const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
 /// Read the compact FA replay header from a compressed local replay body. The
 /// JSON envelope has player names, but faction and displayed rating are stored
 /// in the binary Lua army table that follows it.
-fn local_body_player_stats(
-    body: &[u8],
-    compression: &str,
-) -> HashMap<String, (Option<i32>, Option<i32>)> {
+#[derive(Default)]
+struct LocalBodyInfo {
+    player_stats: HashMap<String, (Option<i32>, Option<i32>)>,
+    map_name: Option<String>,
+    game_version: Option<i32>,
+}
+
+fn extract_map_folder(path: &str) -> String {
+    let normalized = path.replace('\\', "/");
+    let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty()).collect();
+    if parts.len() >= 2 && parts[0].eq_ignore_ascii_case("maps") {
+        return parts[1].to_string();
+    }
+    if let Some(folder) = parts
+        .iter()
+        .find(|p| p.to_ascii_lowercase().starts_with("neroxis_map_generator_"))
+    {
+        return folder.to_string();
+    }
+    if let Some(first) = parts.first() {
+        return first.replace("_scenario.lua", "").replace(".scmap", "");
+    }
+    String::new()
+}
+
+/// Read the compact FA replay header from a compressed local replay body. The
+/// JSON envelope has player names, but faction and displayed rating are stored
+/// in the binary Lua army table that follows it, and the scenario file path is
+/// in the game options table.
+fn local_body_player_stats(body: &[u8], compression: &str) -> LocalBodyInfo {
     let prefix = if compression.eq_ignore_ascii_case("zstd") {
         zstd::stream::read::Decoder::new(body)
             .map(read_replay_body_prefix)
@@ -807,14 +864,14 @@ fn local_body_player_stats(
             base64::read::DecoderReader::new(body, &base64::engine::general_purpose::STANDARD);
         let mut uncompressed_size = [0; 4];
         if decoded.read_exact(&mut uncompressed_size).is_err() {
-            return HashMap::new();
+            return LocalBodyInfo::default();
         }
         read_replay_body_prefix(flate2::read::ZlibDecoder::new(decoded))
     };
     if prefix.is_empty() {
-        return HashMap::new();
+        return LocalBodyInfo::default();
     }
-    parse_local_body_player_stats(&prefix)
+    parse_local_body_info(&prefix)
 }
 
 fn read_replay_body_prefix(mut reader: impl Read) -> Vec<u8> {
@@ -831,51 +888,100 @@ fn read_replay_body_prefix(mut reader: impl Read) -> Vec<u8> {
     prefix
 }
 
-fn parse_local_body_player_stats(body: &[u8]) -> HashMap<String, (Option<i32>, Option<i32>)> {
+fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
     let mut cursor = Cursor::new(body);
-    let Some(_) = replay_string(&mut cursor) else {
-        return HashMap::new();
-    };
+    let version_str = replay_string(&mut cursor);
+    let game_version = version_str.as_deref().and_then(|v| {
+        if v.starts_with("Supreme Commander v1") {
+            v.rsplit('.').next()?.parse().ok()
+        } else {
+            None
+        }
+    });
     if !skip_replay_bytes(&mut cursor, 3) {
-        return HashMap::new();
+        return LocalBodyInfo {
+            game_version,
+            ..Default::default()
+        };
     }
-    let Some(_) = replay_string(&mut cursor) else {
-        return HashMap::new();
-    };
+    let raw_map = replay_string(&mut cursor);
     if !skip_replay_bytes(&mut cursor, 4) {
-        return HashMap::new();
+        return LocalBodyInfo {
+            game_version,
+            ..Default::default()
+        };
     }
     let Some(_) = replay_u32(&mut cursor) else {
-        return HashMap::new();
+        return LocalBodyInfo {
+            game_version,
+            ..Default::default()
+        };
     };
     if parse_replay_lua(&mut cursor, 0).is_none() {
-        return HashMap::new();
+        return LocalBodyInfo {
+            game_version,
+            ..Default::default()
+        };
     }
     let Some(_) = replay_u32(&mut cursor) else {
-        return HashMap::new();
+        return LocalBodyInfo {
+            game_version,
+            ..Default::default()
+        };
     };
-    if parse_replay_lua(&mut cursor, 0).is_none() {
-        return HashMap::new();
-    }
+    let game_options = parse_replay_lua(&mut cursor, 0);
+
+    let map_name = game_options
+        .as_ref()
+        .and_then(|opts| opts.get("ScenarioFile"))
+        .and_then(Value::as_str)
+        .map(extract_map_folder)
+        .filter(|m| !m.is_empty())
+        .or_else(|| {
+            raw_map
+                .as_deref()
+                .map(extract_map_folder)
+                .filter(|m| !m.is_empty())
+        });
 
     let Some(source_count) = replay_u8(&mut cursor) else {
-        return HashMap::new();
+        return LocalBodyInfo {
+            player_stats: HashMap::new(),
+            map_name,
+            game_version,
+        };
     };
     let mut sources = Vec::with_capacity(source_count as usize);
     for _ in 0..source_count {
         let Some(name) = replay_string(&mut cursor) else {
-            return HashMap::new();
+            return LocalBodyInfo {
+                player_stats: HashMap::new(),
+                map_name,
+                game_version,
+            };
         };
         let Some(_) = replay_u32(&mut cursor) else {
-            return HashMap::new();
+            return LocalBodyInfo {
+                player_stats: HashMap::new(),
+                map_name,
+                game_version,
+            };
         };
         sources.push(name);
     }
     if replay_u8(&mut cursor).is_none() {
-        return HashMap::new();
+        return LocalBodyInfo {
+            player_stats: HashMap::new(),
+            map_name,
+            game_version,
+        };
     }
     let Some(army_count) = replay_u8(&mut cursor) else {
-        return HashMap::new();
+        return LocalBodyInfo {
+            player_stats: HashMap::new(),
+            map_name,
+            game_version,
+        };
     };
     let mut stats = HashMap::new();
     for _ in 0..army_count {
@@ -901,7 +1007,324 @@ fn parse_local_body_player_stats(body: &[u8]) -> HashMap<String, (Option<i32>, O
         let rating = replay_displayed_rating(&data);
         stats.insert(name, (faction, rating));
     }
-    stats
+    LocalBodyInfo {
+        player_stats: stats,
+        map_name,
+        game_version,
+    }
+}
+
+async fn read_detailed_info(path: &Path) -> Result<ReplayDetails, String> {
+    let bytes = tokio::fs::read(path)
+        .await
+        .map_err(|e| format!("could not read replay file {}: {e}", path.display()))?;
+
+    let is_fafreplay = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("fafreplay"));
+
+    let body_bytes = if is_fafreplay {
+        let (meta, body) = split_fafreplay_bytes(&bytes)?;
+        let compression = meta
+            .get("compression")
+            .and_then(Value::as_str)
+            .unwrap_or("qtcompress");
+        decompress_replay_body(body, compression)?
+    } else {
+        bytes
+    };
+
+    Ok(parse_detailed_info_from_body(&body_bytes))
+}
+
+fn split_fafreplay_bytes(bytes: &[u8]) -> Result<(Value, &[u8]), String> {
+    let newline_idx = bytes
+        .iter()
+        .position(|&b| b == b'\n')
+        .ok_or_else(|| "corrupted fafreplay: missing newline delimiter".to_string())?;
+    let header_slice = &bytes[..newline_idx];
+    let body_slice = &bytes[newline_idx + 1..];
+    let meta: Value = serde_json::from_slice(header_slice)
+        .map_err(|e| format!("corrupted fafreplay header: {e}"))?;
+    Ok((meta, body_slice))
+}
+
+fn decompress_replay_body(body: &[u8], compression: &str) -> Result<Vec<u8>, String> {
+    if compression.eq_ignore_ascii_case("zstd") {
+        let mut decoder = zstd::stream::read::Decoder::new(body)
+            .map_err(|e| format!("could not create zstd decoder: {e}"))?;
+        let mut out = Vec::new();
+        decoder
+            .read_to_end(&mut out)
+            .map_err(|e| format!("could not decompress zstd replay body: {e}"))?;
+        Ok(out)
+    } else {
+        let mut decoded =
+            base64::read::DecoderReader::new(body, &base64::engine::general_purpose::STANDARD);
+        let mut uncompressed_size = [0; 4];
+        decoded
+            .read_exact(&mut uncompressed_size)
+            .map_err(|e| format!("invalid legacy replay body size: {e}"))?;
+        let mut zlib = flate2::read::ZlibDecoder::new(decoded);
+        let mut out = Vec::new();
+        zlib.read_to_end(&mut out)
+            .map_err(|e| format!("could not decompress legacy replay body: {e}"))?;
+        Ok(out)
+    }
+}
+
+pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
+    let mut cursor = Cursor::new(body);
+    let version_str = replay_string(&mut cursor);
+    let game_version = version_str.as_deref().and_then(|v| {
+        if v.starts_with("Supreme Commander v1") {
+            v.rsplit('.').next()?.parse().ok()
+        } else {
+            None
+        }
+    });
+    if !skip_replay_bytes(&mut cursor, 3) {
+        return ReplayDetails::default();
+    }
+    let _raw_map = replay_string(&mut cursor);
+    if !skip_replay_bytes(&mut cursor, 4) {
+        return ReplayDetails::default();
+    }
+    let Some(_) = replay_u32(&mut cursor) else {
+        return ReplayDetails::default();
+    };
+    if parse_replay_lua(&mut cursor, 0).is_none() {
+        return ReplayDetails::default();
+    }
+    let Some(_) = replay_u32(&mut cursor) else {
+        return ReplayDetails::default();
+    };
+    let game_options_lua = parse_replay_lua(&mut cursor, 0);
+
+    let Some(source_count) = replay_u8(&mut cursor) else {
+        return ReplayDetails {
+            game_options: extract_game_options(game_options_lua.as_ref(), game_version),
+            chat_messages: Vec::new(),
+        };
+    };
+
+    let mut sources = Vec::with_capacity(source_count as usize);
+    for _ in 0..source_count {
+        let Some(name) = replay_string(&mut cursor) else {
+            break;
+        };
+        let Some(_) = replay_u32(&mut cursor) else {
+            break;
+        };
+        sources.push(name);
+    }
+    let _ = replay_u8(&mut cursor);
+    let army_count = replay_u8(&mut cursor).unwrap_or(0);
+
+    let mut armies = Vec::with_capacity(army_count as usize);
+    for _ in 0..army_count {
+        if replay_u32(&mut cursor).is_none() {
+            break;
+        }
+        let Some(Value::Object(data)) = parse_replay_lua(&mut cursor, 0) else {
+            break;
+        };
+        let Some(source) = replay_u8(&mut cursor) else {
+            break;
+        };
+        if source != u8::MAX {
+            let _ = replay_u8(&mut cursor);
+        }
+        let name = data
+            .get("PlayerName")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .or_else(|| sources.get(source as usize).cloned())
+            .unwrap_or_else(|| format!("Player {}", armies.len() + 1));
+        armies.push(name);
+    }
+
+    skip_replay_bytes(&mut cursor, 4);
+
+    let game_options = extract_game_options(game_options_lua.as_ref(), game_version);
+    let chat_messages = extract_chat_messages(&mut cursor, &armies, &sources);
+
+    ReplayDetails {
+        game_options,
+        chat_messages,
+    }
+}
+
+fn extract_game_options(
+    game_options_lua: Option<&Value>,
+    game_version: Option<i32>,
+) -> Vec<ReplayGameOption> {
+    let mut options = Vec::new();
+    if let Some(v) = game_version {
+        options.push(ReplayGameOption {
+            key: "FAF Version".to_string(),
+            value: v.to_string(),
+        });
+    }
+
+    let mut collect_options = |map: &serde_json::Map<String, Value>| {
+        for (k, v) in map {
+            if k == "ScenarioFile" || k == "Options" {
+                continue;
+            }
+            let val_str = match v {
+                Value::String(s) => s.clone(),
+                Value::Bool(b) => {
+                    if *b {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    }
+                }
+                Value::Number(n) => n.to_string(),
+                Value::Null => "null".to_string(),
+                Value::Array(_) | Value::Object(_) => format!("{v}"),
+            };
+            options.push(ReplayGameOption {
+                key: k.clone(),
+                value: val_str,
+            });
+        }
+    };
+
+    if let Some(Value::Object(top_map)) = game_options_lua {
+        if let Some(Value::Object(nested)) = top_map.get("Options") {
+            collect_options(nested);
+        } else {
+            collect_options(top_map);
+        }
+    }
+
+    options.sort_by_key(|a| a.key.to_lowercase());
+    options
+}
+
+fn extract_chat_messages(
+    cursor: &mut Cursor<&[u8]>,
+    armies: &[String],
+    sources: &[String],
+) -> Vec<ReplayChatMessage> {
+    let mut current_ticks: u32 = 0;
+    let mut messages: Vec<ReplayChatMessage> = Vec::new();
+    let body = *cursor.get_ref();
+    let len = body.len();
+
+    while (cursor.position() + 3) <= len as u64 {
+        let Some(cmd_type) = replay_u8(cursor) else {
+            break;
+        };
+        let mut len_bytes = [0u8; 2];
+        if Read::read_exact(cursor, &mut len_bytes).is_err() {
+            break;
+        }
+        let cmd_len = u16::from_le_bytes(len_bytes) as usize;
+        if cmd_len < 3 {
+            break;
+        }
+        let payload_len = cmd_len - 3;
+        let pos = cursor.position() as usize;
+        if pos + payload_len > len {
+            break;
+        }
+        let payload = &body[pos..pos + payload_len];
+        cursor.set_position((pos + payload_len) as u64);
+
+        if cmd_type == 0 {
+            // CMDST_ADVANCE
+            if payload.len() >= 4 {
+                let ticks = u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]);
+                current_ticks = current_ticks.saturating_add(ticks);
+            } else {
+                current_ticks = current_ticks.saturating_add(1);
+            }
+        } else if cmd_type == 22 || cmd_type == 0x20 || cmd_type == 0x22 {
+            // 22 (0x16) is CMDST_LuaSimCallback in Forged Alliance
+            if let Some(chat) = try_parse_chat_payload(payload, current_ticks / 10, armies, sources)
+            {
+                if let Some(last) = messages.last() {
+                    if last.sender == chat.sender
+                        && last.message == chat.message
+                        && chat.time_seconds <= last.time_seconds + 2
+                    {
+                        continue;
+                    }
+                }
+                messages.push(chat);
+            }
+        }
+    }
+
+    messages
+}
+
+fn try_parse_chat_payload(
+    payload: &[u8],
+    time_seconds: u32,
+    armies: &[String],
+    sources: &[String],
+) -> Option<ReplayChatMessage> {
+    let mut p_cursor = Cursor::new(payload);
+    let _func = replay_string(&mut p_cursor)?;
+
+    let lua_val = parse_replay_lua(&mut p_cursor, 0)?;
+    let Value::Object(args) = lua_val else {
+        return None;
+    };
+
+    // 1. Check if Msg or text is present
+    let mut message_text: Option<String> = None;
+    if let Some(Value::Object(msg_map)) = args.get("Msg").or_else(|| args.get("msg")) {
+        if let Some(Value::String(s)) = msg_map
+            .get("text")
+            .or_else(|| msg_map.get("Text"))
+            .or_else(|| msg_map.get("msg"))
+        {
+            message_text = Some(s.clone());
+        }
+    } else if let Some(Value::String(s)) = args
+        .get("Msg")
+        .or_else(|| args.get("msg"))
+        .or_else(|| args.get("text"))
+        .or_else(|| args.get("Text"))
+    {
+        message_text = Some(s.clone());
+    }
+
+    let text = message_text?;
+    if text.trim().is_empty() {
+        return None;
+    }
+
+    // 2. Resolve sender
+    let sender = if let Some(Value::String(s)) = args
+        .get("Sender")
+        .or_else(|| args.get("PlayerName"))
+        .or_else(|| args.get("sender"))
+    {
+        s.clone()
+    } else if let Some(n) = args.get("From").and_then(Value::as_i64) {
+        // Lua army indices in GiveResourcesToPlayer: 1-based (or 0-based in some mods)
+        let idx = if n > 0 { (n - 1) as usize } else { n as usize };
+        armies
+            .get(idx)
+            .or_else(|| sources.get(idx))
+            .cloned()
+            .unwrap_or_else(|| format!("Player {}", n))
+    } else {
+        "Unknown".to_string()
+    };
+
+    Some(ReplayChatMessage {
+        time_seconds,
+        sender,
+        message: text,
+    })
 }
 
 fn replay_u8(cursor: &mut Cursor<&[u8]>) -> Option<u8> {
@@ -1037,6 +1460,7 @@ fn empty_local_replay(
         sim_mods: Vec::new(),
         status,
         watchable,
+        game_version: None,
     }
 }
 
@@ -1082,11 +1506,11 @@ async fn read_local_metadata(
         .get("compression")
         .and_then(Value::as_str)
         .unwrap_or("");
-    let player_stats = local_body_player_stats(&body, compression);
+    let body_info = local_body_player_stats(&body, compression);
     let mut teams = local_teams(&header);
     for team in &mut teams {
         for player in &mut team.players {
-            if let Some((faction, rating)) = player_stats.get(&player.name) {
+            if let Some((faction, rating)) = body_info.player_stats.get(&player.name) {
                 player.faction = *faction;
                 player.rating = *rating;
             }
@@ -1117,15 +1541,28 @@ async fn read_local_metadata(
         .filter(|value| *value > 0.0)
         .map(|value| value.min(u32::MAX as f64).round() as u32);
 
+    let header_map = header
+        .get("mapname")
+        .and_then(Value::as_str)
+        .filter(|m| !m.is_empty() && !m.eq_ignore_ascii_case("none"));
+    let map = body_info
+        .map_name
+        .or_else(|| header_map.map(str::to_string))
+        .unwrap_or_default();
+
+    let game_version = header
+        .get("featured_mod_version")
+        .or_else(|| header.get("game_version"))
+        .or_else(|| header.get("version"))
+        .and_then(Value::as_i64)
+        .and_then(|value| i32::try_from(value).ok())
+        .or(body_info.game_version);
+
     LocalReplay {
         path: path.display().to_string(),
         file_name: file_name.clone(),
         uid: replay_uid(&header, &file_name),
-        map: header
-            .get("mapname")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .to_string(),
+        map,
         mod_name: header
             .get("featured_mod")
             .and_then(Value::as_str)
@@ -1168,6 +1605,7 @@ async fn read_local_metadata(
             LocalReplayStatus::Incomplete
         },
         watchable: true,
+        game_version,
     }
 }
 
@@ -1221,8 +1659,24 @@ fn resolve_map_name(
     game_attributes: &Value,
     relationships: &Value,
     index: &HashMap<(String, String), &JsonApiResource>,
+    mod_name: &str,
 ) -> String {
     if let Some(mv) = rel_target(relationships, "mapVersion").and_then(|k| index.get(&k)) {
+        if let Some(folder_name) = mv
+            .attributes
+            .get("folderName")
+            .or_else(|| mv.attributes.get("mapName"))
+            .or_else(|| mv.attributes.get("name"))
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            if is_generated_map(folder_name)
+                || folder_name.to_ascii_lowercase().starts_with("neroxis")
+            {
+                return folder_name.to_string();
+            }
+        }
+
         if let Some(map_name) = rel_target(&mv.relationships, "map")
             .and_then(|k| index.get(&k))
             .and_then(|m| m.attributes.get("displayName"))
@@ -1235,6 +1689,8 @@ fn resolve_map_name(
         if let Some(folder_name) = mv
             .attributes
             .get("folderName")
+            .or_else(|| mv.attributes.get("mapName"))
+            .or_else(|| mv.attributes.get("name"))
             .and_then(Value::as_str)
             .filter(|s| !s.is_empty())
         {
@@ -1266,6 +1722,8 @@ fn resolve_map_name(
         "map",
         "map_folder_name",
         "map_name",
+        "scenarioFile",
+        "scenario_file",
     ] {
         if let Some(val) = game_attributes.get(key) {
             if let Some(s) = val.as_str().filter(|s| !s.is_empty()) {
@@ -1287,9 +1745,16 @@ fn resolve_map_name(
     }
 
     if let Some(title) = game_attributes.get("name").and_then(Value::as_str) {
-        if title.to_ascii_lowercase().starts_with("neroxis") {
+        if is_generated_map(title) || title.to_ascii_lowercase().starts_with("neroxis") {
             return title.to_string();
         }
+    }
+
+    // Mirrors the Python client (src/replays/replayitem.py:257): in FAF API, games played on
+    // generated maps do not have a mapVersion relationship (generated maps are never uploaded
+    // to the map vault). When mapVersion is absent for non-coop games, it was a generated map.
+    if !mod_name.eq_ignore_ascii_case("coop") {
+        return "Neroxis Map Generator".to_string();
     }
 
     "unknown map".to_string()
@@ -1504,17 +1969,23 @@ fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
-            let map = resolve_map_name(&game.attributes, &game.relationships, &index);
+            let mod_name = resolve_mod_name(&game.relationships, &index);
+            let map = resolve_map_name(&game.attributes, &game.relationships, &index, &mod_name);
             let mut map_thumbnail_url = resolve_map_thumbnail(&game.relationships, &index);
-            if map_thumbnail_url.is_empty() && map.to_ascii_lowercase().starts_with("neroxis") {
+            if map_thumbnail_url.is_empty()
+                && (is_generated_map(&map) || map.to_ascii_lowercase().starts_with("neroxis"))
+            {
                 map_thumbnail_url = "/generated-map.svg".to_string();
             }
+            let game_version = value_i32(&game.attributes, "featuredModVersion")
+                .or_else(|| value_i32(&game.attributes, "gameVersion"))
+                .or_else(|| value_i32(&game.attributes, "version"));
             Some(VaultReplay {
                 uid,
                 title,
                 map,
                 map_thumbnail_url,
-                mod_name: resolve_mod_name(&game.relationships, &index),
+                mod_name,
                 duration_seconds: duration_between(&start_time, end_time),
                 game_duration_seconds: value_i32(&game.attributes, "replayTicks")
                     .and_then(|ticks| (ticks >= 0).then_some(ticks / 10)),
@@ -1530,6 +2001,7 @@ fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                 average_rating,
                 reviews_average,
                 reviews_count,
+                game_version,
             })
         })
         .collect()
@@ -1918,6 +2390,49 @@ impl ReplayPort for FakeReplay {
         Err("replay downloading is unavailable in offline mode".to_string())
     }
 
+    async fn load_details(
+        &self,
+        _uid: i32,
+        _local_path: Option<PathBuf>,
+    ) -> Result<ReplayDetails, String> {
+        Ok(ReplayDetails {
+            game_options: vec![
+                ReplayGameOption {
+                    key: "FAF Version".to_string(),
+                    value: "3837".to_string(),
+                },
+                ReplayGameOption {
+                    key: "AllowObservers".to_string(),
+                    value: "true".to_string(),
+                },
+                ReplayGameOption {
+                    key: "AutoTeams".to_string(),
+                    value: "tvsb".to_string(),
+                },
+                ReplayGameOption {
+                    key: "CheatsEnabled".to_string(),
+                    value: "false".to_string(),
+                },
+                ReplayGameOption {
+                    key: "UnitCap".to_string(),
+                    value: "1000".to_string(),
+                },
+            ],
+            chat_messages: vec![
+                ReplayChatMessage {
+                    time_seconds: 13,
+                    sender: "Downlord".to_string(),
+                    message: "gl hf".to_string(),
+                },
+                ReplayChatMessage {
+                    time_seconds: 599,
+                    sender: "Nojoke".to_string(),
+                    message: "gg".to_string(),
+                },
+            ],
+        })
+    }
+
     async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
         Ok(Vec::new())
     }
@@ -2039,7 +2554,10 @@ mod tests {
         qcompressed.extend(encoder.finish().unwrap());
         let encoded = base64::engine::general_purpose::STANDARD.encode(qcompressed);
         let stats = local_body_player_stats(encoded.as_bytes(), "");
-        assert_eq!(stats.get("TestPlayer"), Some(&(Some(1), Some(1200))));
+        assert_eq!(
+            stats.player_stats.get("TestPlayer"),
+            Some(&(Some(1), Some(1200)))
+        );
     }
 
     #[tokio::test]
@@ -2381,8 +2899,8 @@ mod tests {
         assert_eq!(replays.len(), 1);
         let replay = &replays[0];
         assert_eq!(replay.title, "");
-        assert_eq!(replay.map, "unknown map");
-        assert_eq!(replay.map_thumbnail_url, "");
+        assert_eq!(replay.map, "Neroxis Map Generator");
+        assert_eq!(replay.map_thumbnail_url, "/generated-map.svg");
         assert_eq!(replay.mod_name, "faf");
         assert_eq!(replay.start_time, "");
         assert!(
@@ -2557,5 +3075,45 @@ mod tests {
         assert_eq!(written, scfa_body);
 
         let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    #[tokio::test]
+    async fn test_parse_detailed_replay_from_test_file() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
+        let test_file =
+            workspace_root.join("context/java_client/src/test/resources/replay/test.fafreplay");
+        if !test_file.exists() {
+            return;
+        }
+
+        let details = read_detailed_info(&test_file)
+            .await
+            .expect("should parse details");
+        assert!(
+            !details.game_options.is_empty(),
+            "game options should not be empty"
+        );
+        let version_opt = details.game_options.iter().find(|o| o.key == "FAF Version");
+        assert!(version_opt.is_some(), "FAF Version should be present");
+        assert_eq!(version_opt.unwrap().value, "3675");
+
+        println!(
+            "Chat messages count in test.fafreplay: {}",
+            details.chat_messages.len()
+        );
+        for msg in &details.chat_messages {
+            println!(
+                "Chat: [{}] {}: {}",
+                msg.time_seconds, msg.sender, msg.message
+            );
+        }
+
+        // Verify common options are present
+        let allow_observers = details
+            .game_options
+            .iter()
+            .find(|o| o.key == "AllowObservers");
+        assert!(allow_observers.is_some());
     }
 }

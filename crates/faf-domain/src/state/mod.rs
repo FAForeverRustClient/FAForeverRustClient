@@ -92,9 +92,10 @@ pub use player_card::{
 };
 pub use replays::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
-    LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam, ReplayCommand, ReplayEvent,
-    ReplayPlayer, ReplayQuery, ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, VaultReplay,
-    VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
+    LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam, ReplayChatMessage,
+    ReplayCommand, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayPlayer, ReplayQuery,
+    ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, VaultReplay, VaultStatus,
+    LIVE_REPLAY_DELAY_SECONDS,
 };
 pub use reporting::{
     ModerationReportSummary, ReportHistoryStatus, ReportStatus, ReportingCommand, ReportingEvent,

@@ -55,6 +55,9 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             if !is_current(ctx, generation) {
                 return;
             }
+            if !out.with_state(|state| state.settings.general.auto_login) {
+                return;
+            }
             // A missing or temporarily unavailable refresh token should leave
             // the normal login screen usable; only a successful restore changes
             // the authenticated state.

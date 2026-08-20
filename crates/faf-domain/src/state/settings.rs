@@ -38,6 +38,9 @@ pub enum UiDensity {
 pub struct GeneralPreferences {
     /// Destination selected when the persisted settings are loaded.
     pub start_page: Tab,
+    /// Automatically restore the saved session at startup.
+    #[serde(default = "default_true")]
+    pub auto_login: bool,
 }
 
 pub const PLAYER_NOTE_CHARACTER_LIMIT: usize = 150;
@@ -131,6 +134,7 @@ impl Default for GeneralPreferences {
     fn default() -> Self {
         Self {
             start_page: Tab::News,
+            auto_login: true,
         }
     }
 }

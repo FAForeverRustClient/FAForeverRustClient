@@ -27,6 +27,7 @@ function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
     simMods: ["Balance mod"],
     status: "complete",
     watchable: true,
+    gameVersion: null,
     ...overrides,
   };
 }

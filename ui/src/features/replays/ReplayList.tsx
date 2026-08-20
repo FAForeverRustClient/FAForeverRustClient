@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "../../design-system/Icon";
-import { isGeneratedMap, mapThumbnailCandidates } from "../../shared/mapPresentation";
+import {
+  isGeneratedMap,
+  mapThumbnailCandidates,
+  normalizeMapName,
+} from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { clientIntlTag } from "../../shared/dates";
 import { useAppStore } from "../../store/store";
@@ -146,9 +150,11 @@ function ReplayListStatus({
 function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string }) {
   const vault = useAppStore((state) => state.state.maps.vault);
   const isGenerated = isGeneratedMap(mapName);
+  const normalized = normalizeMapName(mapName);
   const generatedPreview = useAppStore((state) =>
     isGenerated
       ? state.state.mapGenerator.previews?.[mapName] ||
+        state.state.mapGenerator.previews?.[normalized] ||
         state.state.mapGenerator.previews?.[mapName.toLowerCase()]
       : undefined,
   );

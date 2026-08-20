@@ -1343,7 +1343,8 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         let mut map = std::collections::HashMap::new();
         for name in map_names {
             if let Some(data_url) = self.read_map_preview(name).await {
-                map.insert(name.clone(), data_url);
+                map.insert(name.clone(), data_url.clone());
+                map.insert(name.to_lowercase(), data_url);
             }
         }
         map

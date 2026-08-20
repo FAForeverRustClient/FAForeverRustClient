@@ -306,6 +306,9 @@ export const en = {
   // Settings: general section.
   "settings.general.startPage.label": "Start page",
   "settings.general.startPage.hint": "Destination selected whenever the client starts.",
+  "settings.general.autoLogin.label": "Auto sign-in",
+  "settings.general.autoLogin.hint":
+    "Automatically sign in with your saved account whenever the client starts.",
   "settings.general.language.label": "Language",
   "settings.general.language.hint":
     "Applies immediately. Untranslated text stays in English.",
@@ -663,6 +666,8 @@ export const en = {
   "replays.roster.defeat": "Defeat",
   "replays.roster.draw": "Draw",
   "replays.roster.combinedRating": "Combined displayed rating",
+  "replays.roster.rating": "Rating",
+  "replays.roster.score": "Score",
 
   // Live replay list.
   "replays.live.connecting": "Connecting to live games",
@@ -1363,7 +1368,7 @@ export const en = {
 
   // Online replay detail dialog.
   "replays.detail.aria": "Replay {name}",
-  "replays.detail.eyebrow": "Replay #{uid}",
+  "replays.detail.eyebrow": "#{uid}",
   "replays.detail.idCopied": "Replay ID copied",
   "replays.detail.copyId": "Copy replay ID",
   "replays.detail.copiedShort": "Copied",
@@ -1379,11 +1384,14 @@ export const en = {
   "replays.detail.copyLink": "Copy link",
   "replays.detail.downloadFailed": "Could not download replay: {error}",
   "replays.detail.played": "Played",
+  "replays.detail.date": "Date",
+  "replays.detail.time": "Time",
   "replays.detail.gameTime": "Game time",
   "replays.detail.realTime": "Real time",
   "replays.detail.players": "Players",
   "replays.detail.avgRating": "Avg rating",
   "replays.detail.featuredMod": "Featured mod",
+  "replays.detail.gameVersion": "Game version",
   "replays.detail.unknown": "Unknown",
   "replays.detail.unrated": "Unrated",
   "replays.detail.lineup": "Lineup",
@@ -1392,6 +1400,28 @@ export const en = {
   "replays.detail.noLineup": "No lineup was recorded for this replay.",
   "replays.detail.playerCount": { one: "{count} player", other: "{count} players" },
   "replays.detail.teamSummary": "{teams} teams · {players}",
+  "replays.detail.mapSeed": "Seed",
+  "replays.detail.copySeed": "Copy seed",
+  "replays.detail.copySeedShort": "Copy",
+  "replays.detail.seedCopied": "Seed copied",
+  "replays.detail.resolvingMap": "Resolving map…",
+  "replays.detail.preparingGenerator": "Preparing generator…",
+  "replays.detail.downloadingGenerator": "Downloading generator v{version}…",
+  "replays.detail.generationFailed": "Could not generate map: {error}",
+  "replays.detail.loadDetails": "More information",
+  "replays.detail.loadDetailsShort": "More info",
+  "replays.detail.downloadShort": "Download",
+  "replays.detail.loadingDetails": "Loading details…",
+  "replays.detail.gameOptions": "Game Options",
+  "replays.detail.filterOptions": "Filter options…",
+  "replays.detail.optionName": "Option",
+  "replays.detail.optionValue": "Value",
+  "replays.detail.chat": "In-game Chat",
+  "replays.detail.chatTime": "Time",
+  "replays.detail.chatSender": "Sender",
+  "replays.detail.chatMessage": "Message",
+  "replays.detail.noChat": "No in-game chat messages recorded.",
+  "replays.detail.noOptionsMatch": "No options match filter.",
 
   // Local replay library.
   "replays.local.status.complete": "Complete",

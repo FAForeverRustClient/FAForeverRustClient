@@ -1,7 +1,7 @@
 import type { GeneralPreferences, Tab } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { SettingRow } from "./SettingControls";
+import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { LOCALES, LOCALE_KEYS, type Locale } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { TABS } from "../nav/tabs";
@@ -43,6 +43,17 @@ export function GeneralSettingsSection() {
             <option key={page} value={page}>{t(TABS[page].label)}</option>
           ))}
         </select>
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.general.autoLogin.label")}
+        hint={t("settings.general.autoLogin.hint")}
+      >
+        <SettingsSwitch
+          checked={preferences.autoLogin ?? true}
+          onChange={(checked) => void save({ ...preferences, autoLogin: checked })}
+          label={t("settings.general.autoLogin.label")}
+        />
       </SettingRow>
 
       {/* Frontend-only for now: the language is read back from localStorage on

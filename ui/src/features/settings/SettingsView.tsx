@@ -44,6 +44,8 @@ const SECTIONS = {
     labels: [
       "settings.general.startPage.label",
       "settings.general.startPage.hint",
+      "settings.general.autoLogin.label",
+      "settings.general.autoLogin.hint",
       "settings.general.language.label",
       "settings.general.language.hint",
     ],

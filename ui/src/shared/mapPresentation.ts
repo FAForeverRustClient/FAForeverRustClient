@@ -178,8 +178,30 @@ export function isGeneratedMap(mapName: string): boolean {
   return (
     /^neroxis_map_generator_.+/i.test(normalized) ||
     /^(neroxis_map_generator_|neroxis\s+map\s+generator\s+).+/i.test(trimmed) ||
-    trimmed.toLowerCase().startsWith("neroxis")
+    trimmed.toLowerCase().startsWith("neroxis") ||
+    trimmed.toLowerCase().includes("neroxis_map_generator")
   );
+}
+
+export function extractGeneratedMapSeed(mapName: string): string | undefined {
+  if (!mapName) return undefined;
+  const clean = mapName.trim().replace(/\.(zip|fafmap)$/i, "");
+  const stdMatch = clean.match(/^neroxis_map_generator_[0-9.]+(?:-pre\d+)?_(.+)$/i);
+  if (stdMatch && stdMatch[1]) {
+    return stdMatch[1];
+  }
+  const spaceMatch = clean.match(/^neroxis\s+map\s+generator\s+[0-9.]+(?:-pre\d+)?\s+(.+)$/i);
+  if (spaceMatch && spaceMatch[1]) {
+    return spaceMatch[1];
+  }
+  const shortMatch = clean.match(/^neroxis[_\s]+([0-9.]+[_\s]+)?(.+)$/i);
+  if (shortMatch && shortMatch[2]) {
+    const candidate = shortMatch[2].trim();
+    if (candidate.toLowerCase() !== "map generator" && candidate.toLowerCase() !== "map_generator") {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 function fallbackDisplayName(mapName: string): string {
@@ -213,11 +235,13 @@ export function mapThumbnailCandidates(
       customGeneratedPreview ??
       (typeof window !== "undefined"
         ? useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName] ||
-          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[normalized]
+          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[normalized] ||
+          useAppStore.getState?.()?.state?.mapGenerator?.previews?.[mapName.toLowerCase()]
         : undefined);
 
     return uniqueUrls([
       generatedPreview,
+      customUrl && customUrl !== "/generated-map.svg" ? customUrl : undefined,
       "/generated-map.svg",
     ]);
   }
@@ -295,6 +319,14 @@ export function mapPresentation(vault: VaultMap[], mapName: string, missions?: C
         return key ? ([key, OFFICIAL_MAPS[key]] as const) : undefined;
       })();
   const thumbnailUrls = mapThumbnailCandidates(vault, mapName, false, missions);
+
+  if (isGeneratedMap(mapName)) {
+    return {
+      displayName: "Neroxis Map Generator",
+      thumbnailUrl: thumbnailUrls[0] || "/generated-map.svg",
+      thumbnailUrls: thumbnailUrls.length > 0 ? thumbnailUrls : ["/generated-map.svg"],
+    };
+  }
 
   if (coopMission) {
     const coopFaction = coopMission.scenarioId

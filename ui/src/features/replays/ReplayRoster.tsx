@@ -33,12 +33,24 @@ function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; 
   ) : null;
 }
 
-export function outcomeLabel(outcome: string): string {
+export type OutcomeKind = "victory" | "defeat" | "draw" | "";
+
+export function parseOutcome(outcome: string): OutcomeKind {
   switch (outcome.toLocaleUpperCase()) {
-    case "VICTORY": return t("replays.roster.victory");
-    case "DEFEAT": return t("replays.roster.defeat");
+    case "VICTORY": return "victory";
+    case "DEFEAT": return "defeat";
     case "DRAW":
-    case "MUTUAL_DRAW": return t("replays.roster.draw");
+    case "MUTUAL_DRAW": return "draw";
+    default: return "";
+  }
+}
+
+export function outcomeLabel(outcome: string): string {
+  const kind = parseOutcome(outcome);
+  switch (kind) {
+    case "victory": return t("replays.roster.victory");
+    case "defeat": return t("replays.roster.defeat");
+    case "draw": return t("replays.roster.draw");
     default: return "";
   }
 }
@@ -101,12 +113,13 @@ export function ReplayDetailRoster({
         const teamRating = ratings.length === 0
           ? null
           : ratings.reduce((sum, rating) => sum + rating, 0);
-        const result = observer
+        const outcomeKind = observer
           ? ""
-          : team.players.map((player) => outcomeLabel(player.outcome)).find(Boolean) ?? "";
+          : team.players.map((player) => parseOutcome(player.outcome)).find(Boolean) ?? "";
+        const outcomeText = outcomeKind ? outcomeLabel(outcomeKind) : "";
         return (
           <Fragment key={team.team}>
-            {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>VS</span>}
+            {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
             <section className="replay-detail-team surface-panel">
               <header className="replay-detail-team-title">
                 <span>{teamName(team.team, soleTeam)}</span>
@@ -114,55 +127,48 @@ export function ReplayDetailRoster({
                   {teamRating !== null && (
                     <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
                   )}
-                  {showResults && result && (
-                    <span className={`replay-team-outcome ${result.toLocaleLowerCase()}`}>{result}</span>
+                  {showResults && outcomeKind && (
+                    <span className={`replay-team-outcome ${outcomeKind}`}>{outcomeText}</span>
                   )}
                 </span>
               </header>
               <div className="replay-detail-roster">
-                {team.players.map((player) => {
-                  const outcome = showResults ? outcomeLabel(player.outcome) : "";
-                  return (
-                    <div
-                      key={player.name}
-                      className="replay-detail-player"
-                      data-outcome={outcome.toLocaleLowerCase() || undefined}
+                {team.players.map((player) => (
+                  <div key={player.name} className="replay-detail-player">
+                    <button
+                      type="button"
+                      className="replay-player-identity replay-player-link"
+                      title={`Open ${player.name}'s profile`}
+                      onClick={() => openPlayerCard(null, player.name)}
                     >
-                      <button
-                        type="button"
-                        className="replay-player-identity replay-player-link"
-                        title={`Open ${player.name}'s profile`}
-                        onClick={() => openPlayerCard(null, player.name)}
-                      >
-                        {observer || player.faction ? (
-                          <ReplayPlayerMarker player={player} observer={observer} size={21} />
-                        ) : (
-                          <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
-                        )}
-                        <PlayerName name={player.name} />
-                      </button>
-                      <span className="replay-player-stats">
-                        {showResults && player.score !== null && (
-                          <span className="replay-player-stat">
-                            <strong>{new Intl.NumberFormat("en-US").format(player.score)}</strong>
-                            <small>score</small>
-                          </span>
-                        )}
-                        {player.rating !== null && (
-                          <span className="replay-player-stat">
-                            <strong>{player.rating}</strong>
-                            <small>rating</small>
-                          </span>
-                        )}
-                        {outcome && (
-                          <span className={`replay-player-outcome ${outcome.toLocaleLowerCase()}`}>
-                            {outcome}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
+                      {observer || player.faction ? (
+                        <ReplayPlayerMarker player={player} observer={observer} size={18} />
+                      ) : (
+                        <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
+                      )}
+                      <PlayerName name={player.name} />
+                    </button>
+                    <span className="replay-player-stats">
+                      {player.rating !== null && (
+                        <span className="replay-player-rating" title={t("replays.roster.rating") || "Rating"}>
+                          {player.rating}
+                        </span>
+                      )}
+                      {showResults && player.score !== null && (
+                        <span
+                          className={`replay-player-score ${
+                            player.score > 0 ? "positive" : player.score < 0 ? "negative" : "zero"
+                          }`}
+                          title={`${t("replays.roster.score") || "Score"}: ${player.score}`}
+                        >
+                          {player.score > 0
+                            ? `+${new Intl.NumberFormat("en-US").format(player.score)}`
+                            : new Intl.NumberFormat("en-US").format(player.score)}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           </Fragment>

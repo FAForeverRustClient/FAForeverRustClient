@@ -19,7 +19,6 @@ use faf_domain::state::{
     NotificationKind, SettingsEvent,
 };
 
-
 use crate::ports::GeneratorUpdate;
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services;

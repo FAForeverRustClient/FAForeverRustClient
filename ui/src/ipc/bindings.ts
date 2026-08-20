@@ -1515,6 +1515,8 @@ export type GamePreferences = {
 export type GeneralPreferences = {
 	/**  Destination selected when the persisted settings are loaded. */
 	startPage: Tab,
+	/**  Automatically restore the saved session at startup. */
+	autoLogin?: boolean,
 };
 
 /**
@@ -2200,6 +2202,7 @@ export type LocalReplay = {
 	simMods: string[],
 	status: LocalReplayStatus,
 	watchable: boolean,
+	gameVersion: number | null,
 };
 
 export type LocalReplayPlayer = {
@@ -3655,6 +3658,13 @@ export type Reaction = {
  */
 export type Relation = "friend" | "foe";
 
+export type ReplayChatMessage = {
+	/**  In-game simulation time in seconds. */
+	timeSeconds: number,
+	sender: string,
+	message: string,
+};
+
 export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | { type: "trackLive"; payload: {
 	target: LiveReplayTarget,
 	action: LiveReplayTrackingAction,
@@ -3692,6 +3702,11 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 { type: "downloadVault"; payload: {
 	uid: number,
 } } |
+/**  Load extra game details (Game Options, In-game Chat) from a replay. */
+{ type: "loadDetails"; payload: {
+	uid: number,
+	localPath?: string | null,
+} } |
 /**
  *  Scan the shared FAF replay folder for local `.fafreplay` files.
  *  Scan the shared replay folder. `limit` bounds how many of the newest
@@ -3708,6 +3723,11 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 { type: "deleteLocal"; payload: {
 	path: string,
 } };
+
+export type ReplayDetails = {
+	gameOptions: ReplayGameOption[],
+	chatMessages: ReplayChatMessage[],
+};
 
 /**
  *  The independent download-to-library lifecycle. Downloading a replay must
@@ -3776,7 +3796,20 @@ export type ReplayEvent = { type: "connecting" } |
 	reason: string,
 } } | { type: "localLoadFailed"; payload: {
 	reason: string,
+} } | { type: "detailsLoading"; payload: {
+	uid: number,
+} } | { type: "detailsLoaded"; payload: {
+	uid: number,
+	details: ReplayDetails,
+} } | { type: "detailsFailed"; payload: {
+	uid: number,
+	reason: string,
 } };
+
+export type ReplayGameOption = {
+	key: string,
+	value: string,
+};
 
 export type ReplayPlayer = {
 	name: string,
@@ -3911,6 +3944,10 @@ export type ReplayState = {
 	featuredMods: string[],
 	local: LocalReplay[],
 	localStatus: VaultStatus,
+	/**  Detailed parsed replay info (Game Options, In-game Chat) keyed by replay uid. */
+	replayDetails?: { [key in number]: ReplayDetails },
+	detailsLoading?: number | null,
+	detailsError?: string | null,
 };
 
 export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
@@ -6161,6 +6198,7 @@ export type VaultReplay = {
 	averageRating: number | null,
 	reviewsAverage: number | null,
 	reviewsCount: number | null,
+	gameVersion: number | null,
 };
 
 /**

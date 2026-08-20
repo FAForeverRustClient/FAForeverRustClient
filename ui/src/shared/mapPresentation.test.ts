@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractGeneratedMapSeed,
   isGeneratedMap,
   mapPresentation,
   mapThumbnailCandidates,
@@ -45,12 +46,41 @@ describe("mapPresentation", () => {
     ]);
   });
 
-  it("formats generated map presentation properly", () => {
+  it("prioritizes generatedPreview over custom replay thumbnail URL for generated maps", () => {
+    const candidates = mapThumbnailCandidates(
+      [],
+      "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko",
+      false,
+      undefined,
+      "data:image/png;base64,previewdata",
+      "/generated-map.svg",
+    );
+    expect(candidates).toEqual([
+      "data:image/png;base64,previewdata",
+      "/generated-map.svg",
+    ]);
+  });
+
+  it("formats generated map presentation using Neroxis Map Generator as displayName", () => {
     const presentation = mapPresentation(
       [],
       "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko",
     );
-    expect(presentation.displayName).toContain("Neroxis Map Generator");
+    expect(presentation.displayName).toBe("Neroxis Map Generator");
     expect(presentation.thumbnailUrl).toBe("/generated-map.svg");
+  });
+
+  it("extracts generated map seed accurately and avoids generic labels", () => {
+    expect(
+      extractGeneratedMapSeed(
+        "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko",
+      ),
+    ).toBe("ybufyzg64pai2_aqfqeai_aaaaaadkqocko");
+    expect(
+      extractGeneratedMapSeed("neroxis_map_generator_1.7.7_abcdef"),
+    ).toBe("abcdef");
+    expect(extractGeneratedMapSeed("Neroxis Map Generator")).toBeUndefined();
+    expect(extractGeneratedMapSeed("neroxis_map_generator")).toBeUndefined();
+    expect(extractGeneratedMapSeed("Seton's Clutch")).toBeUndefined();
   });
 });
