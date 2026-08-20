@@ -10,6 +10,7 @@ import {
   extractGeneratedMapSeed,
   findVaultMap,
   isGeneratedMap,
+  isGeneratedMapPlaceholderUrl,
   mapPresentation,
   mapThumbnailCandidates,
   normalizeMapName,
@@ -138,7 +139,9 @@ function ReplayMapThumb({
   large?: boolean;
 }) {
   const vault = useAppStore((state) => state.state.maps.vault);
-  const isGenerated = isGeneratedMap(mapName) || url === "/generated-map.svg";
+  const isGenerated =
+    isGeneratedMap(mapName) ||
+    isGeneratedMapPlaceholderUrl(url);
   const normalized = normalizeMapName(mapName);
   const generatedPreview = useAppStore((state) =>
     isGenerated
@@ -359,13 +362,6 @@ function groupReplaysByDate(replays: VaultReplay[]): Array<{ label: string; repl
   return groups;
 }
 
-function formatChatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 export function ReplayDetailPanel({
   replay,
   busy,
@@ -392,18 +388,13 @@ export function ReplayDetailPanel({
   const detailsError = useAppStore((state) => state.state.replays.detailsError);
 
   const localMatch = localReplays.find((local) => local.uid === replay.uid);
+  const localPath = localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
   const isLoadingDetails = detailsLoading === replay.uid;
-  const [optionFilter, setOptionFilter] = useState("");
-
-  const filteredOptions = useMemo(() => {
-    if (!details?.gameOptions) return [];
-    if (!optionFilter.trim()) return details.gameOptions;
-    const q = optionFilter.toLowerCase();
-    return details.gameOptions.filter(
-      (opt) => opt.key.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q),
-    );
-  }, [details?.gameOptions, optionFilter]);
+  const detailGameVersion = details?.gameVersion ?? details?.gameOptions
+    .find((option) => option.key.trim().toLowerCase() === "faf version")
+    ?.value.trim()
+    .match(/^\d+$/)?.[0];
 
   const loadDetails = () => {
     ipc.send({
@@ -412,11 +403,12 @@ export function ReplayDetailPanel({
         type: "loadDetails",
         payload: {
           uid: replay.uid,
-          localPath: localMatch?.path,
+          localPath,
         },
       },
     });
   };
+
   const effectiveMap = localMatch?.map && isGeneratedMap(localMatch.map) && Boolean(extractGeneratedMapSeed(localMatch.map))
     ? localMatch.map
     : replay.map;
@@ -549,8 +541,7 @@ export function ReplayDetailPanel({
             ) : null}
           </div>
         </div>
-        {/* Watch leads; the two file actions sit under it as a secondary pair
-            so three same-width buttons no longer read as a menu. */}
+        {/* Watch leads; the file actions sit under it as a compact secondary pair. */}
         <div className="replay-detail-actions">
           <Button
             className="replay-watch-button"
@@ -623,25 +614,12 @@ export function ReplayDetailPanel({
               onClick={onDownload}
               title={t("replays.detail.download")}
             >
-              <Icon name="upload" size={13} />
+              <Icon name="download" size={13} />
               <span>{t(downloadState === "downloading"
                 ? "replays.detail.downloading"
                 : downloadState === "downloaded"
                   ? "replays.detail.downloaded"
                   : "replays.detail.downloadShort")}</span>
-            </Button>
-            <Button
-              className="replay-secondary-btn"
-              disabled={isLoadingDetails}
-              onClick={loadDetails}
-              title={t("replays.detail.loadDetails")}
-            >
-              {isLoadingDetails ? (
-                <Icon name="refresh" size={13} className="spin" />
-              ) : (
-                <Icon name="info" size={13} />
-              )}
-              <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetailsShort")}</span>
             </Button>
             <Button
               className="replay-secondary-btn"
@@ -686,16 +664,16 @@ export function ReplayDetailPanel({
         <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
       )}
 
-      {/* 8 Stats in 2 balanced rows of 4 columns, matching Java client */}
+      {/* Java's detail view keeps the eight core facts in two balanced rows. */}
       <dl className="replay-detail-facts">
         <div><dt>{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
         <div><dt>{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-        <div><dt>{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
         <div><dt>{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
-        <div><dt>{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
+        <div><dt>{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
         <div><dt>{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.gameVersion")}</dt><dd>{replay.gameVersion != null ? replay.gameVersion : t("replays.detail.unknown")}</dd></div>
+        <div><dt>{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
+        <div><dt>{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
+        <div><dt>{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
       </dl>
       {seed && (
         <div className="replay-seed-banner">
@@ -742,90 +720,28 @@ export function ReplayDetailPanel({
         )}
       </section>
 
-      {details && (
-        <section className="replay-detail-more-info">
-          <div className="replay-more-info-grid">
-            <div className="replay-more-info-col">
-              <div className="replay-more-info-header">
-                <h3 className="replay-more-info-title">{t("replays.detail.gameOptions")}</h3>
-                <input
-                  type="search"
-                  className="vault-input replay-options-filter"
-                  placeholder={t("replays.detail.filterOptions")}
-                  value={optionFilter}
-                  onChange={(e) => setOptionFilter(e.target.value)}
-                />
-              </div>
-              <div className="replay-table-scroll">
-                <table className="replay-data-table">
-                  <thead>
-                    <tr>
-                      <th>{t("replays.detail.optionName")}</th>
-                      <th>{t("replays.detail.optionValue")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOptions.length > 0 ? (
-                      filteredOptions.map((opt) => (
-                        <tr key={opt.key}>
-                          <td><strong>{opt.key}</strong></td>
-                          <td>{opt.value}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={2} className="muted" style={{ textAlign: "center", padding: "12px" }}>
-                          {t("replays.detail.noOptionsMatch")}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+      {!details && (
+        <div className="replay-detail-more-info-trigger">
+          <Button
+            disabled={isLoadingDetails}
+            onClick={loadDetails}
+            title={t("replays.detail.loadDetails")}
+          >
+            {isLoadingDetails ? (
+              <Icon name="refresh" size={14} className="spin" />
+            ) : (
+              <Icon name="info" size={14} />
+            )}
+            <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetails")}</span>
+          </Button>
+        </div>
+      )}
 
-            <div className="replay-more-info-col">
-              <div className="replay-more-info-header">
-                <h3 className="replay-more-info-title">
-                  {t("replays.detail.chat")}
-                  {details.chatMessages.length > 0 && (
-                    <span className="muted" style={{ fontWeight: "normal", fontSize: "12px", marginLeft: "6px" }}>
-                      ({details.chatMessages.length})
-                    </span>
-                  )}
-                </h3>
-              </div>
-              <div className="replay-table-scroll">
-                <table className="replay-data-table">
-                  <thead>
-                    <tr>
-                      <th>{t("replays.detail.chatTime")}</th>
-                      <th>{t("replays.detail.chatSender")}</th>
-                      <th>{t("replays.detail.chatMessage")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {details.chatMessages.length > 0 ? (
-                      details.chatMessages.map((msg, idx) => (
-                        <tr key={`${msg.timeSeconds}-${msg.sender}-${idx}`}>
-                          <td className="replay-chat-time">{formatChatTime(msg.timeSeconds)}</td>
-                          <td className="replay-chat-sender" title={msg.sender}>{msg.sender}</td>
-                          <td className="replay-chat-message">{msg.message}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={3} className="muted" style={{ textAlign: "center", padding: "16px" }}>
-                          {t("replays.detail.noChat")}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
+      {details && (
+        <dl className="replay-detail-version-fact replay-detail-version-result">
+          <dt>{t("replays.detail.fafVersion")}</dt>
+          <dd>{detailGameVersion ?? t("replays.detail.unknown")}</dd>
+        </dl>
       )}
       {detailsError && (
         <p className="replay-download-error surface-error" style={{ marginTop: "12px" }}>

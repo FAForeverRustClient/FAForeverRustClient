@@ -34,7 +34,6 @@ use faf_domain::state::{
 };
 use serde_json::Value;
 
-use crate::infra::env_or;
 use crate::infra::jsonapi::{
     fetch_all_pages, fetch_document, find_rel_resource, meta_page_i32, patch_resource, rel_target,
     rel_targets, resource_index, total_pages, value_bool, value_f64, value_i32, value_string,
@@ -43,6 +42,7 @@ use crate::infra::jsonapi::{
 use crate::infra::vault_install::{
     bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
+use crate::infra::{env_or, GENERATED_MAP_PLACEHOLDER_URL};
 use crate::ports::{MapSearchPage, MapsPort};
 
 /// Maps per vault page fetched in [`MapsClient::list_vault`].
@@ -642,7 +642,7 @@ fn parse_matchmaker_pools(doc: &JsonApiDoc) -> Vec<MatchmakerMapPool> {
                         max_players: spawns,
                         width: size,
                         height: size,
-                        thumbnail_url: "/generated-map.svg".to_string(),
+                        thumbnail_url: GENERATED_MAP_PLACEHOLDER_URL.to_string(),
                     })
                 })
                 .collect();
@@ -1203,7 +1203,10 @@ mod tests {
             "neroxis_map_generator_1.22.1_casual_6_512"
         );
         assert_eq!(pools[0].maps[0].height, 512);
-        assert_eq!(pools[0].maps[0].thumbnail_url, "/generated-map.svg");
+        assert_eq!(
+            pools[0].maps[0].thumbnail_url,
+            GENERATED_MAP_PLACEHOLDER_URL
+        );
     }
 
     #[test]
@@ -1259,7 +1262,10 @@ mod tests {
         assert_eq!(pools[0].maps[0].max_players, 4);
         assert_eq!(pools[0].maps[0].width, 512);
         assert_eq!(pools[0].maps[0].height, 512);
-        assert_eq!(pools[0].maps[0].thumbnail_url, "/generated-map.svg");
+        assert_eq!(
+            pools[0].maps[0].thumbnail_url,
+            GENERATED_MAP_PLACEHOLDER_URL
+        );
     }
 
     #[test]

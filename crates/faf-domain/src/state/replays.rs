@@ -110,6 +110,10 @@ pub struct VaultReplay {
     /// Average of all resolvable player ratings on the card: `None` if no
     /// player's rating could be resolved.
     pub average_rating: Option<i32>,
+    /// TrueSkill match quality as a percentage for exactly two rated teams.
+    /// `None` when the replay is not a two-team match or a rating journal is
+    /// missing the values required to calculate it.
+    pub quality: Option<i32>,
     pub reviews_average: Option<f32>,
     pub reviews_count: Option<i32>,
     pub game_version: Option<i32>,
@@ -136,6 +140,10 @@ pub struct ReplayChatMessage {
 pub struct ReplayDetails {
     pub game_options: Vec<ReplayGameOption>,
     pub chat_messages: Vec<ReplayChatMessage>,
+    /// SupCom patch number parsed from the replay body header. The API game
+    /// resource does not expose this value reliably, so detailed parsing is
+    /// the source of truth when the listing has no version yet.
+    pub game_version: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -308,7 +316,8 @@ pub struct ReplayState {
     pub featured_mods: Vec<String>,
     pub local: Vec<LocalReplay>,
     pub local_status: VaultStatus,
-    /// Detailed parsed replay info (Game Options, In-game Chat) keyed by replay uid.
+    /// Deferred replay metadata keyed by replay uid. The detail action currently
+    /// stores only the FAF version to avoid retaining full options and chat.
     #[serde(default)]
     pub replay_details: std::collections::HashMap<i32, ReplayDetails>,
     #[serde(default)]
@@ -436,7 +445,7 @@ pub enum ReplayCommand {
     DownloadVault {
         uid: i32,
     },
-    /// Load extra game details (Game Options, In-game Chat) from a replay.
+    /// Load the deferred FAF version from a replay body.
     #[serde(rename_all = "camelCase")]
     LoadDetails {
         uid: i32,
@@ -748,6 +757,7 @@ mod tests {
             game_duration_seconds: None,
             teams: Vec::new(),
             average_rating: None,
+            quality: None,
             reviews_average: None,
             reviews_count: None,
             game_version: None,
@@ -847,6 +857,7 @@ mod tests {
             sim_mods: vec![],
             status: LocalReplayStatus::Complete,
             watchable: true,
+            game_version: None,
         }
     }
 

@@ -3702,7 +3702,7 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 { type: "downloadVault"; payload: {
 	uid: number,
 } } |
-/**  Load extra game details (Game Options, In-game Chat) from a replay. */
+/**  Load the deferred FAF version from a replay body. */
 { type: "loadDetails"; payload: {
 	uid: number,
 	localPath?: string | null,
@@ -3727,6 +3727,12 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 export type ReplayDetails = {
 	gameOptions: ReplayGameOption[],
 	chatMessages: ReplayChatMessage[],
+	/**
+	 *  SupCom patch number parsed from the replay body header. The API game
+	 *  resource does not expose this value reliably, so detailed parsing is
+	 *  the source of truth when the listing has no version yet.
+	 */
+	gameVersion: number | null,
 };
 
 /**
@@ -3944,7 +3950,10 @@ export type ReplayState = {
 	featuredMods: string[],
 	local: LocalReplay[],
 	localStatus: VaultStatus,
-	/**  Detailed parsed replay info (Game Options, In-game Chat) keyed by replay uid. */
+	/**
+	 *  Deferred replay metadata keyed by replay uid. The detail action currently
+	 *  stores only the FAF version to avoid retaining full options and chat.
+	 */
 	replayDetails?: { [key in number]: ReplayDetails },
 	detailsLoading?: number | null,
 	detailsError?: string | null,
@@ -6196,6 +6205,12 @@ export type VaultReplay = {
 	 *  player's rating could be resolved.
 	 */
 	averageRating: number | null,
+	/**
+	 *  TrueSkill match quality as a percentage for exactly two rated teams.
+	 *  `None` when the replay is not a two-team match or a rating journal is
+	 *  missing the values required to calculate it.
+	 */
+	quality: number | null,
 	reviewsAverage: number | null,
 	reviewsCount: number | null,
 	gameVersion: number | null,

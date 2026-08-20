@@ -119,7 +119,10 @@
       "local": [],
       "localStatus": {
         "type": "idle"
-      }
+      },
+      "replayDetails": {},
+      "detailsLoading": null,
+      "detailsError": null
     },
     "maps": {
       "vault": [],
@@ -533,7 +536,8 @@
       "gamePath": "",
       "replayGamePath": "",
       "general": {
-        "startPage": "news"
+        "startPage": "news",
+        "autoLogin": true
       },
       "appearance": {
         "density": "comfortable",
@@ -18146,6 +18150,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18156,6 +18162,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "connecting"
             },
@@ -18210,6 +18217,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18220,6 +18229,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "reason": "delayed by five minutes"
@@ -18274,6 +18284,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18284,6 +18296,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18347,6 +18360,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18366,6 +18381,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18417,6 +18433,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18427,6 +18445,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18478,6 +18497,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18488,6 +18509,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18576,6 +18598,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -18586,6 +18610,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18640,6 +18665,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 42
@@ -18653,6 +18680,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18719,12 +18747,15 @@
                   "averageRating": null,
                   "simMods": [],
                   "status": "complete",
-                  "watchable": true
+                  "watchable": true,
+                  "gameVersion": null
                 }
               }
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "path": "/replays/42.fafreplay",
@@ -18740,6 +18771,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -18758,6 +18790,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18812,6 +18845,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 43
@@ -18826,6 +18861,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -18844,6 +18880,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18899,6 +18936,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "reason": "not uploaded yet",
@@ -18914,6 +18953,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -18932,6 +18972,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -18986,6 +19027,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 44
@@ -19000,6 +19043,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -19018,6 +19062,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "type": "idle"
             },
@@ -19073,6 +19118,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -19084,6 +19131,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -19102,6 +19150,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "uid": 44
@@ -19159,6 +19208,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "payload": {
                 "uid": 45
@@ -19173,6 +19224,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -19191,6 +19243,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "uid": 44
@@ -19248,6 +19301,8 @@
             }
           },
           "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
             },
@@ -19259,6 +19314,7 @@
                 "averageRating": null,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
+                "gameVersion": null,
                 "map": "scmp_009",
                 "modName": "faf",
                 "modifiedTime": 1,
@@ -19277,6 +19333,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "replayDetails": {},
             "status": {
               "payload": {
                 "reason": "could not update game to version 3701"
@@ -19961,6 +20018,7 @@
             },
             "gamePath": "",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -20131,6 +20189,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -20324,6 +20383,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -20508,6 +20568,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {
@@ -20761,6 +20822,7 @@
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
+              "autoLogin": true,
               "startPage": "news"
             },
             "mapGenerator": {

@@ -53,6 +53,9 @@ const INITIAL: AppState = {
     featuredMods: [],
     local: [],
     localStatus: { type: "idle" },
+    replayDetails: {},
+    detailsLoading: null,
+    detailsError: null,
   },
   maps: {
     vault: [],
@@ -315,7 +318,7 @@ const INITIAL: AppState = {
     theme: "forgeDark",
     gamePath: "",
     replayGamePath: "",
-    general: { startPage: "news" },
+    general: { startPage: "news", autoLogin: true },
     appearance: { density: "comfortable", reduceMotion: false, uiScale: 100 },
     social: { playerNotes: [] },
     notifications: {

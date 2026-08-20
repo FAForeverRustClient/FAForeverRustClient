@@ -599,7 +599,7 @@ button.vault-input {
 
 .replay-detail-actions-secondary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
 }
 
@@ -685,6 +685,29 @@ button.vault-input {
   font-weight: 550;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.replay-detail-version-fact {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: calc(var(--space-3) * -1) 0 var(--space-4);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.replay-detail-version-fact dt {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.replay-detail-version-fact dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 550;
 }
 
 .replay-detail-lineup {
@@ -962,113 +985,21 @@ button.vault-input {
   }
 }
 
-/* Replay detail: Game options & in-game chat tables */
-.replay-detail-more-info {
+.replay-detail-more-info-trigger {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  align-items: center;
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
-.replay-more-info-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: var(--space-4);
-}
-
-@media (max-width: 900px) {
-  .replay-more-info-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.replay-more-info-col {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.replay-more-info-header {
-  display: flex;
+.replay-detail-more-info-trigger button {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
+  min-height: 36px;
 }
 
-.replay-more-info-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
+.replay-detail-version-result {
+  margin-top: var(--space-4);
 }
-
-.replay-options-filter {
-  height: 28px;
-  font-size: 12px;
-  max-width: 180px;
-}
-
-.replay-table-scroll {
-  max-height: 360px;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-}
-
-.replay-data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-  text-align: left;
-}
-
-.replay-data-table th {
-  position: sticky;
-  top: 0;
-  background: var(--color-surface-hover);
-  color: var(--color-muted);
-  font-weight: 600;
-  padding: 6px var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  z-index: 1;
-}
-
-.replay-data-table td {
-  padding: 5px var(--space-2);
-  border-bottom: 1px solid var(--color-border-subtle, rgba(255, 255, 255, 0.05));
-  vertical-align: top;
-}
-
-.replay-data-table tr:last-child td {
-  border-bottom: none;
-}
-
-.replay-data-table tr:hover td {
-  background: var(--color-surface-hover);
-}
-
-.replay-chat-time {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
-  white-space: nowrap;
-  width: 70px;
-}
-
-.replay-chat-sender {
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.replay-chat-message {
-  color: var(--color-text);
-  word-break: break-word;
-}
-

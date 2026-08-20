@@ -1,6 +1,14 @@
 import type { CoopFaction, CoopMission, VaultMap } from "../ipc/bindings";
 import { useAppStore } from "../store/store";
 
+/** Preview used when a generated map has no rendered map image yet. */
+export const GENERATED_MAP_PLACEHOLDER_URL = "/assets/mapgen-placeholder.png";
+const LEGACY_GENERATED_MAP_PLACEHOLDER_URL = "/generated-map.svg";
+
+export function isGeneratedMapPlaceholderUrl(url: string | null | undefined): boolean {
+  return url === GENERATED_MAP_PLACEHOLDER_URL || url === LEGACY_GENERATED_MAP_PLACEHOLDER_URL;
+}
+
 export type MapPresentation = {
   displayName: string;
   thumbnailUrl: string;
@@ -241,8 +249,8 @@ export function mapThumbnailCandidates(
 
     return uniqueUrls([
       generatedPreview,
-      customUrl && customUrl !== "/generated-map.svg" ? customUrl : undefined,
-      "/generated-map.svg",
+      customUrl && !isGeneratedMapPlaceholderUrl(customUrl) ? customUrl : undefined,
+      GENERATED_MAP_PLACEHOLDER_URL,
     ]);
   }
 
@@ -323,8 +331,8 @@ export function mapPresentation(vault: VaultMap[], mapName: string, missions?: C
   if (isGeneratedMap(mapName)) {
     return {
       displayName: "Neroxis Map Generator",
-      thumbnailUrl: thumbnailUrls[0] || "/generated-map.svg",
-      thumbnailUrls: thumbnailUrls.length > 0 ? thumbnailUrls : ["/generated-map.svg"],
+      thumbnailUrl: thumbnailUrls[0] || GENERATED_MAP_PLACEHOLDER_URL,
+      thumbnailUrls: thumbnailUrls.length > 0 ? thumbnailUrls : [GENERATED_MAP_PLACEHOLDER_URL],
     };
   }
 

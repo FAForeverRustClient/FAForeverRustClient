@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  GENERATED_MAP_PLACEHOLDER_URL,
   extractGeneratedMapSeed,
   isGeneratedMap,
   mapPresentation,
@@ -24,12 +25,12 @@ describe("mapPresentation", () => {
     expect(isGeneratedMap("")).toBe(false);
   });
 
-  it("returns /generated-map.svg for generated map candidates", () => {
+  it("returns the mapgen placeholder for generated map candidates", () => {
     const candidates = mapThumbnailCandidates(
       [],
       "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko",
     );
-    expect(candidates).toEqual(["/generated-map.svg"]);
+    expect(candidates).toEqual([GENERATED_MAP_PLACEHOLDER_URL]);
   });
 
   it("includes local generated preview when available", () => {
@@ -42,7 +43,7 @@ describe("mapPresentation", () => {
     );
     expect(candidates).toEqual([
       "data:image/png;base64,previewdata",
-      "/generated-map.svg",
+      GENERATED_MAP_PLACEHOLDER_URL,
     ]);
   });
 
@@ -53,12 +54,24 @@ describe("mapPresentation", () => {
       false,
       undefined,
       "data:image/png;base64,previewdata",
-      "/generated-map.svg",
+      GENERATED_MAP_PLACEHOLDER_URL,
     );
     expect(candidates).toEqual([
       "data:image/png;base64,previewdata",
-      "/generated-map.svg",
+      GENERATED_MAP_PLACEHOLDER_URL,
     ]);
+  });
+
+  it("replaces the deleted SVG placeholder when an older replay payload still references it", () => {
+    const candidates = mapThumbnailCandidates(
+      [],
+      "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko",
+      false,
+      undefined,
+      undefined,
+      "/generated-map.svg",
+    );
+    expect(candidates).toEqual([GENERATED_MAP_PLACEHOLDER_URL]);
   });
 
   it("formats generated map presentation using Neroxis Map Generator as displayName", () => {
@@ -67,7 +80,7 @@ describe("mapPresentation", () => {
       "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko",
     );
     expect(presentation.displayName).toBe("Neroxis Map Generator");
-    expect(presentation.thumbnailUrl).toBe("/generated-map.svg");
+    expect(presentation.thumbnailUrl).toBe(GENERATED_MAP_PLACEHOLDER_URL);
   });
 
   it("extracts generated map seed accurately and avoids generic labels", () => {
