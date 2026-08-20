@@ -243,12 +243,25 @@
   border-radius: var(--radius-md);
 }
 
+/* A header can name a whole unit family, so the icons wrap rather than
+   squeezing the caption out of the row. */
+.changelog-unit-icons {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .changelog-unit-icon {
   flex: none;
   width: 34px;
   height: 34px;
   object-fit: contain;
   user-select: none;
+}
+
+.changelog-unit-icon.is-missing {
+  display: none;
 }
 
 .changelog-unit-name {

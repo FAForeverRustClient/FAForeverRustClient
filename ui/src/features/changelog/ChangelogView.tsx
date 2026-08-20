@@ -101,13 +101,22 @@ function Block({ block }: { block: ChangelogBlock }) {
     case "unit":
       return (
         <div className="changelog-unit">
-          <img
-            className="changelog-unit-icon"
-            src={block.payload.iconUrl}
-            alt=""
-            loading="lazy"
-            draggable={false}
-          />
+          <span className="changelog-unit-icons">
+            {block.payload.units.map((unit) => (
+              <img
+                key={unit.unitId}
+                className="changelog-unit-icon"
+                src={unit.iconUrl}
+                alt=""
+                title={unit.unitId}
+                loading="lazy"
+                draggable={false}
+                /* Older notes name units the site never drew an icon for, and a
+                   missing sprite should leave a gap rather than a broken image. */
+                onError={(event) => event.currentTarget.classList.add("is-missing")}
+              />
+            ))}
+          </span>
           <span className="changelog-unit-name">{block.payload.name}</span>
         </div>
       );

@@ -68,6 +68,14 @@ pub enum ChangelogSpan {
     },
 }
 
+/// One unit named by a header, with the icon the site would show for it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangelogUnit {
+    pub unit_id: String,
+    pub icon_url: String,
+}
+
 /// A `Label: old -> new` line. Split out because these are the substance of a
 /// balance patch and deserve to be read as a diff rather than as prose.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -98,12 +106,14 @@ pub enum ChangelogBlock {
     Paragraph {
         spans: Vec<ChangelogSpan>,
     },
-    /// `{% unit XRL0302 %}Fire Beetle: T2 Mobile Bomb{% endunit %}`: the icon
-    /// and caption that head each unit's changes.
-    #[serde(rename_all = "camelCase")]
+    /// The icon-and-caption header that introduces a unit's changes.
+    ///
+    /// Carries a list because the two spellings differ in arity: the
+    /// `{% unit XRL0302 %}` tag names exactly one, while the older prose form
+    /// `**T3 Mass Fabricators (UEB1303, URB1303, UAB1303, XSB1303):**` names
+    /// a whole family in a single heading.
     Unit {
-        unit_id: String,
-        icon_url: String,
+        units: Vec<ChangelogUnit>,
         name: String,
     },
     List {
@@ -317,8 +327,10 @@ fn parse_blocks(body: &str) -> Vec<ChangelogBlock> {
             }
             index += 1; // consume the closing tag
             blocks.push(ChangelogBlock::Unit {
-                icon_url: unit_icon_url(&unit),
-                unit_id: unit,
+                units: vec![ChangelogUnit {
+                    icon_url: unit_icon_url(&unit),
+                    unit_id: unit,
+                }],
                 name: name.join(" ").trim().to_string(),
             });
             continue;
@@ -372,6 +384,23 @@ fn flush_paragraph(paragraph: &mut Vec<String>, blocks: &mut Vec<ChangelogBlock>
     }
     let text = paragraph.join(" ");
     paragraph.clear();
+
+    // Before the `{% unit %}` tag existed this bold line *was* the unit header,
+    // so reading it gives the archive the same icons the newest patch has.
+    if let Some((name, ids)) = unit_header(&text) {
+        blocks.push(ChangelogBlock::Unit {
+            units: ids
+                .into_iter()
+                .map(|unit_id| ChangelogUnit {
+                    icon_url: unit_icon_url(&unit_id),
+                    unit_id,
+                })
+                .collect(),
+            name,
+        });
+        return;
+    }
+
     blocks.push(ChangelogBlock::Paragraph {
         spans: parse_spans(&text),
     });
@@ -458,7 +487,7 @@ fn build_item(text: &str) -> ChangelogListItem {
 /// ordinary prose containing a colon is left as prose.
 fn parse_change(text: &str) -> Option<ChangelogChange> {
     let (label, values) = text.split_once(':')?;
-    let (old, new) = values.split_once("->")?;
+    let (old, new) = split_on_arrow(values)?;
     let (label, old, new) = (label.trim(), old.trim(), new.trim());
     if label.is_empty() || old.is_empty() || new.is_empty() || label.contains("](") {
         return None;
@@ -468,6 +497,56 @@ fn parse_change(text: &str) -> Option<ChangelogChange> {
         old: old.to_string(),
         new: new.to_string(),
     })
+}
+
+/// Split a value pair on whichever arrow the author used.
+///
+/// These notes are hand-written across more than a decade and spell this
+/// three ways, sometimes within one post. Matching only `->` silently
+/// truncated the old value of every `-->` line to a trailing dash.
+fn split_on_arrow(values: &str) -> Option<(&str, &str)> {
+    // Longest first: `-->` contains `->`, so the short form would split inside it.
+    ["-->", "\u{2192}", "->"]
+        .iter()
+        .find_map(|arrow| values.split_once(arrow))
+}
+
+/// Recognise the older prose form of a unit header, which predates the
+/// `{% unit %}` tag and is all the archive has to identify a unit by.
+///
+/// Shape: a line that is entirely bold and ends in a parenthesised list of
+/// unit ids, e.g. `**Yathsou: T3 Submarine Hunter (XSS0304):**`. Every id
+/// must look like one, so a bold sentence that merely ends in a bracket stays
+/// a sentence.
+fn unit_header(text: &str) -> Option<(String, Vec<String>)> {
+    let inner = text.trim().strip_prefix("**")?.strip_suffix("**")?.trim();
+    let inner = inner.strip_suffix(':').unwrap_or(inner).trim_end();
+    let open = inner.rfind('(')?;
+    let ids = inner[open + 1..].strip_suffix(')')?;
+
+    let ids: Vec<String> = ids.split(',').map(|id| id.trim().to_string()).collect();
+    if !ids.iter().all(|id| is_unit_id(id)) {
+        return None;
+    }
+
+    let name = inner[..open]
+        .trim()
+        .trim_end_matches(':')
+        .trim()
+        .to_string();
+    (!name.is_empty()).then_some((name, ids))
+}
+
+/// Blueprint ids are three letters then four digits (`XSS0304`, `UEB1303`).
+///
+/// The digits matter: allowing letters there made `finally` a unit id, because
+/// it is also seven characters. A looser rule turns any bracketed word into a
+/// unit and asks the site for an icon that does not exist.
+fn is_unit_id(candidate: &str) -> bool {
+    let bytes = candidate.as_bytes();
+    bytes.len() == 7
+        && bytes[..3].iter().all(u8::is_ascii_alphabetic)
+        && bytes[3..].iter().all(u8::is_ascii_digit)
 }
 
 /// Inline parsing for the handful of constructs the patch notes actually use.
@@ -649,8 +728,10 @@ mod tests {
         assert_eq!(
             entry.blocks[0],
             ChangelogBlock::Unit {
-                unit_id: "URL0303".into(),
-                icon_url: "https://faforever.github.io/fa/assets/icons/URL0303_icon.png".into(),
+                units: vec![ChangelogUnit {
+                    unit_id: "URL0303".into(),
+                    icon_url: "https://faforever.github.io/fa/assets/icons/URL0303_icon.png".into(),
+                }],
                 name: "Loyalist: T3 Siege Assault Bot".into(),
             }
         );
@@ -727,6 +808,72 @@ mod tests {
     }
 
     #[test]
+    fn both_arrow_spellings_split_the_same_way() {
+        // The archive is inconsistent about this, and matching only the short
+        // form left the old value as a trailing dash on most of the corpus.
+        for text in [
+            "MaxSpeed: 4.6 --> 4.8",
+            "MaxSpeed: 4.6 -> 4.8",
+            "MaxSpeed: 4.6 \u{2192} 4.8",
+        ] {
+            assert_eq!(
+                parse_change(text),
+                Some(ChangelogChange {
+                    label: "MaxSpeed".into(),
+                    old: "4.6".into(),
+                    new: "4.8".into(),
+                }),
+                "failed on {text}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_prose_unit_header_used_before_the_liquid_tag_still_yields_icons() {
+        let entry = parse_entry(
+            "3836",
+            "**Yathsou: T3 Submarine Hunter (XSS0304):**\n\n- Health: 4000 --> 3600\n",
+        );
+        assert_eq!(
+            entry.blocks[0],
+            ChangelogBlock::Unit {
+                units: vec![ChangelogUnit {
+                    unit_id: "XSS0304".into(),
+                    icon_url: "https://faforever.github.io/fa/assets/icons/XSS0304_icon.png".into(),
+                }],
+                name: "Yathsou: T3 Submarine Hunter".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn a_header_naming_a_family_yields_one_icon_per_unit() {
+        let entry = parse_entry(
+            "x",
+            "**T3 Mass Fabricators (UEB1303, URB1303, UAB1303, XSB1303):**\n",
+        );
+        let ChangelogBlock::Unit { units, name } = &entry.blocks[0] else {
+            panic!("expected a unit header, got {:?}", entry.blocks);
+        };
+        assert_eq!(name, "T3 Mass Fabricators");
+        assert_eq!(units.len(), 4);
+        assert!(units[3].icon_url.ends_with("XSB1303_icon.png"));
+    }
+
+    #[test]
+    fn a_bold_sentence_that_merely_ends_in_a_bracket_stays_a_sentence() {
+        // The id shape is the whole guard here: without it every bold line
+        // ending in brackets would ask the site for an icon that does not exist.
+        for text in [
+            "**Note (see below):**",
+            "**Reworked the chat window (finally)**",
+            "**Fixes (#7121)**",
+        ] {
+            assert!(unit_header(text).is_none(), "wrongly matched {text}");
+        }
+    }
+
+    #[test]
     fn a_page_without_front_matter_is_all_body() {
         let entry = parse_entry("fafdevelop", "## Balance\n\nSome text.\n");
         assert_eq!(entry.title, "fafdevelop");
@@ -743,6 +890,7 @@ mod real_document_tests {
 
     const INDEX_HTML: &str = include_str!("fixtures/changelog-index.html");
     const POST_3837: &str = include_str!("fixtures/changelog-3837.md");
+    const POST_3836: &str = include_str!("fixtures/changelog-3836.md");
 
     #[test]
     fn the_published_index_parses_into_every_release() {
@@ -818,11 +966,14 @@ mod real_document_tests {
 
         // Every unit block resolves to a caption and a fetchable-looking icon.
         for block in &units {
-            let ChangelogBlock::Unit { name, icon_url, .. } = block else {
+            let ChangelogBlock::Unit { name, units } = block else {
                 unreachable!()
             };
             assert!(!name.is_empty(), "a unit block lost its caption");
-            assert!(icon_url.starts_with("https://faforever.github.io/fa/assets/icons/"));
+            assert!(!units.is_empty(), "a unit block named no unit");
+            assert!(units.iter().all(|unit| unit
+                .icon_url
+                .starts_with("https://faforever.github.io/fa/assets/icons/")));
         }
 
         // The Liquid tags are consumed, never left as literal text.
@@ -831,6 +982,59 @@ mod real_document_tests {
         // Balance lines are split into old and new rather than left as prose.
         let changes = count_changes(&entry.blocks);
         assert!(changes >= 20, "expected many value changes, got {changes}");
+    }
+
+    #[test]
+    fn the_older_prose_format_gets_the_same_icons_and_diffs() {
+        // 3836 predates the `{% unit %}` tag: it names units in bold with their
+        // ids, and spells the arrow `-->`. Both are handled, so the archive is
+        // not a second-class citizen next to the newest patch.
+        let entry = parse_entry("3836", POST_3836);
+
+        let units: Vec<&ChangelogBlock> = entry
+            .blocks
+            .iter()
+            .filter(|block| matches!(block, ChangelogBlock::Unit { .. }))
+            .collect();
+        assert!(
+            units.len() >= 8,
+            "expected the prose unit headers to be recognised, got {}",
+            units.len()
+        );
+
+        // At least one of them names a whole family in one heading.
+        assert!(units.iter().any(|block| matches!(
+            block,
+            ChangelogBlock::Unit { units, .. } if units.len() > 1
+        )));
+
+        let changes = count_changes(&entry.blocks);
+        assert!(changes >= 20, "expected value changes, got {changes}");
+
+        // The bug this pins: `-->` used to leave the old value as a dash.
+        assert!(
+            !change_values(&entry.blocks).any(|value| value.ends_with('-')),
+            "an arrow was split in the wrong place"
+        );
+    }
+
+    fn change_values(blocks: &[ChangelogBlock]) -> impl Iterator<Item = String> + '_ {
+        fn walk(items: &[ChangelogListItem], out: &mut Vec<String>) {
+            for item in items {
+                if let Some(change) = &item.change {
+                    out.push(change.old.clone());
+                    out.push(change.new.clone());
+                }
+                walk(&item.children, out);
+            }
+        }
+        let mut out = Vec::new();
+        for block in blocks {
+            if let ChangelogBlock::List { items } = block {
+                walk(items, &mut out);
+            }
+        }
+        out.into_iter()
     }
 
     fn count_changes(blocks: &[ChangelogBlock]) -> usize {

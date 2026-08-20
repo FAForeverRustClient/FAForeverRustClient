@@ -261,12 +261,15 @@ export type ChangelogBlock = { type: "heading"; payload: {
 	spans: ChangelogSpan[],
 } } |
 /**
- *  `{% unit XRL0302 %}Fire Beetle: T2 Mobile Bomb{% endunit %}`: the icon
- *  and caption that head each unit's changes.
+ *  The icon-and-caption header that introduces a unit's changes.
+ *
+ *  Carries a list because the two spellings differ in arity: the
+ *  `{% unit XRL0302 %}` tag names exactly one, while the older prose form
+ *  `**T3 Mass Fabricators (UEB1303, URB1303, UAB1303, XSB1303):**` names
+ *  a whole family in a single heading.
  */
 { type: "unit"; payload: {
-	unitId: string,
-	iconUrl: string,
+	units: ChangelogUnit[],
 	name: string,
 } } | { type: "list"; payload: {
 	items: ChangelogListItem[],
@@ -377,6 +380,12 @@ export type ChangelogState = {
 export type ChangelogStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+/**  One unit named by a header, with the icon the site would show for it. */
+export type ChangelogUnit = {
+	unitId: string,
+	iconUrl: string,
+};
 
 /**  One conversation: a public `#channel` or a private per-user exchange. */
 export type ChatChannel = {
