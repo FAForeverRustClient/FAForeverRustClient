@@ -291,6 +291,14 @@ impl ModsPort for ModsClient {
         list_installed_dir(&mods_dir()).await
     }
 
+    async fn set_active_mods(&self, uids: Vec<String>) -> Result<Vec<InstalledMod>, String> {
+        // Written verbatim rather than filtered against the installed list: the
+        // caller decides what is active, and a uid whose folder is gone is inert
+        // to the game anyway.
+        write_active_mod_uids_to_disk(&uids).await?;
+        list_installed_dir(&mods_dir()).await
+    }
+
     async fn ensure_game_mods(&self, uids: &[String]) -> Result<(), String> {
         if uids.is_empty() {
             return Ok(());
@@ -838,6 +846,10 @@ impl ModsPort for FakeMods {
     }
 
     async fn toggle_mod(&self, _uid: String, _enabled: bool) -> Result<Vec<InstalledMod>, String> {
+        Err("mod toggling is unavailable in offline mode".to_string())
+    }
+
+    async fn set_active_mods(&self, _uids: Vec<String>) -> Result<Vec<InstalledMod>, String> {
         Err("mod toggling is unavailable in offline mode".to_string())
     }
 

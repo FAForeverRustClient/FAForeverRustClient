@@ -89,6 +89,22 @@ pub struct InstalledMod {
     pub enabled: bool,
 }
 
+/// A named set of mods the user can put back in one click.
+///
+/// Keyed by `uid` rather than folder name, because `uid` is what `game.prefs`'s
+/// `active_mods` table stores and what survives a mod being reinstalled from the
+/// vault under a different folder.
+///
+/// A preset describes the *complete* wanted state, so applying one also disables
+/// every mod it does not name. That is the point of it: turn everything off to
+/// watch an old replay, then get exactly the previous set back afterwards.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ModPreset {
+    pub name: String,
+    pub uids: Vec<String>,
+}
+
 /// Status of a list fetch (vault or installed): separate from
 /// [`ModInstallStatus`]/[`ModToggleStatus`], mirrors
 /// [`crate::state::MapListStatus`].
@@ -240,6 +256,13 @@ pub enum ModsCommand {
     /// `game.prefs`'s `active_mods` table).
     #[serde(rename_all = "camelCase")]
     ToggleMod { uid: String, enabled: bool },
+    /// Replace the active set with exactly `uids`.
+    ///
+    /// Deliberately not a loop over [`Self::ToggleMod`]: every toggle rewrites
+    /// `game.prefs` *and* rescans the whole mods folder, so applying a preset one
+    /// mod at a time costs a rescan per mod and walks the list through every
+    /// intermediate state on screen. This is one write and one rescan.
+    SetActiveMods { uids: Vec<String> },
 }
 
 pub fn reduce(state: &mut ModsState, event: &ModsEvent) {

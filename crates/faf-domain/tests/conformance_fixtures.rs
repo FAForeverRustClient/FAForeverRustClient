@@ -4239,6 +4239,7 @@ fn cases() -> Vec<Case> {
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
                         map_vault_preset: "recommended".into(),
                         mod_vault_preset: "recommended".into(),
+                        mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec![
                             "rating".into(),
                             "games".into(),

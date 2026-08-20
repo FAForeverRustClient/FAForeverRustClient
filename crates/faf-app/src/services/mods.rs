@@ -70,5 +70,14 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ModsEvent::ToggleFailed { reason }),
             }
         }
+        ModsCommand::SetActiveMods { uids } => {
+            let _guard = ctx.mods_mutation.acquire().await;
+            // No `Toggling` first: that status names a single uid, and this is
+            // one short write rather than something worth showing progress for.
+            match ctx.ports.mods.set_active_mods(uids).await {
+                Ok(installed) => out.emit(ModsEvent::Toggled { installed }),
+                Err(reason) => out.emit(ModsEvent::ToggleFailed { reason }),
+            }
+        }
     }
 }

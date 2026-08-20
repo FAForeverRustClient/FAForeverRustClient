@@ -61,10 +61,22 @@ describe("browsing preferences", () => {
       favoriteMaps: [" Adaptive_Tabula.v0006 ", "adaptive_tabula.v0006", ""],
       mapVaultPreset: "  NEWEST  ",
       modVaultPreset: "  UI  ",
+      modPresets: [
+        { name: "  Replay watching  ", uids: ["  a  ", "A", "", "b"] },
+        // An empty selection is a legitimate preset: "no mods at all".
+        { name: "Vanilla", uids: [] },
+        // Same name in a different case: the first one wins, matching Rust.
+        { name: "REPLAY WATCHING", uids: ["z"] },
+        { name: "   ", uids: ["c"] },
+      ],
       leaderboardRatingColumns: ["rating", "MEAN", "invalid_column"],
       legacyStorageMigrated: true,
     });
 
+    expect(normalized.modPresets).toEqual([
+      { name: "Replay watching", uids: ["a", "b"] },
+      { name: "Vanilla", uids: [] },
+    ]);
     expect(normalized.customGamesView).toBe("list");
     expect(normalized.replaysView).toBe("list");
     expect(normalized.matchmakerUnselectedQueues).toEqual(["ladder_1v1"]);
