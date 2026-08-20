@@ -34,6 +34,13 @@ pub enum ServerNoticeStyle {
 /// one stream.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LobbyUpdate {
+    /// The server finished the handshake and accepted this client.
+    ///
+    /// Distinct from the socket being open, and the distinction matters: the
+    /// lobby refuses everything but the handshake until this point and drops
+    /// the connection over an early command. This, not `connect` returning, is
+    /// when the lobby becomes usable.
+    Authenticated,
     /// A fresh full snapshot of the open-games list.
     Games(Vec<Game>),
     /// A fresh full snapshot of the in-progress ("playing") games list.
