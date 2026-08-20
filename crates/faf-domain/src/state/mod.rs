@@ -5,6 +5,7 @@
 //! Add a feature by adding a slice module here (see ARCHITECTURE.md §8).
 
 pub mod auth;
+pub mod changelog;
 pub mod chat;
 pub mod client_update;
 pub mod coop;
@@ -30,6 +31,9 @@ pub mod tutorials;
 pub mod uploads;
 
 pub use auth::{AuthCommand, AuthEvent, AuthMode, AuthState, AuthStatus, Player};
+pub use changelog::{
+    ChangelogCommand, ChangelogEntryStatus, ChangelogEvent, ChangelogState, ChangelogStatus,
+};
 pub use chat::{
     auto_join_channels, language_channel, mentions, normalize_channels, read_marker_key,
     ChatChannel, ChatCommand, ChatEvent, ChatMessage, ChatMessageKind, ChatState, ChatStatus,
@@ -170,4 +174,5 @@ pub struct AppState {
     pub galactic_war: GalacticWarState,
     pub client_update: ClientUpdateState,
     pub settings: SettingsState,
+    pub changelog: ChangelogState,
 }

@@ -5,6 +5,7 @@
 //! exhaustively unit-testable with zero setup; `infra` does the actual IO and
 //! calls into these.
 
+pub mod changelog;
 pub mod chat_input;
 pub mod discord;
 pub mod galactic_war;

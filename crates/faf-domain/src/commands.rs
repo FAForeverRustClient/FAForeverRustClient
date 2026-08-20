@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::state::{
-    AuthCommand, ChatCommand, ClientUpdateCommand, CoopCommand, GalacticWarCommand,
-    LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand,
-    NotificationCommand, PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand,
-    SessionCommand, SettingsCommand, SocialCommand, TourneyCommand, TutorialsCommand,
-    UploadsCommand,
+    AuthCommand, ChangelogCommand, ChatCommand, ClientUpdateCommand, CoopCommand,
+    GalacticWarCommand, LeaderboardCommand, LobbyCommand, MapGeneratorCommand, MapsCommand,
+    ModsCommand, NavCommand, NotificationCommand, PlayerCardCommand, ReplayCommand,
+    ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SocialCommand,
+    TourneyCommand, TutorialsCommand, UploadsCommand,
 };
 
 // No `Eq`: `ReplayCommand` carries a `ReplayQuery`, which has an `f32`
@@ -39,6 +39,7 @@ pub enum AppCommand {
     Social(SocialCommand),
     Tourney(TourneyCommand),
     Tutorials(TutorialsCommand),
+    Changelog(ChangelogCommand),
     Uploads(UploadsCommand),
     GalacticWar(GalacticWarCommand),
     ClientUpdate(ClientUpdateCommand),
@@ -150,6 +151,12 @@ impl From<CoopCommand> for AppCommand {
 impl From<TutorialsCommand> for AppCommand {
     fn from(c: TutorialsCommand) -> Self {
         AppCommand::Tutorials(c)
+    }
+}
+
+impl From<ChangelogCommand> for AppCommand {
+    fn from(c: ChangelogCommand) -> Self {
+        AppCommand::Changelog(c)
     }
 }
 

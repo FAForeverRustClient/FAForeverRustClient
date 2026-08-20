@@ -585,9 +585,223 @@
         "outputPath": "",
         "commandLineArgs": ""
       }
+    },
+    "changelog": {
+      "releases": [],
+      "status": {
+        "type": "idle"
+      },
+      "selected": "",
+      "entries": {},
+      "entryStatus": {
+        "type": "idle"
+      }
     }
   },
   "cases": [
+    {
+      "name": "a patch note is selected before it arrives, and earlier ones are kept",
+      "steps": [
+        {
+          "event": {
+            "kind": "Changelog",
+            "event": {
+              "type": "loading"
+            }
+          },
+          "expected": {
+            "entries": {},
+            "entryStatus": {
+              "type": "idle"
+            },
+            "releases": [],
+            "selected": "",
+            "status": {
+              "type": "loading"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Changelog",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "releases": [
+                  {
+                    "id": "3837",
+                    "kind": "Game Patch",
+                    "date": "2026-08-14",
+                    "year": "2026",
+                    "sourceUrl": "https://example.invalid/3837.md",
+                    "webUrl": "https://example.invalid/3837"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "entries": {},
+            "entryStatus": {
+              "type": "idle"
+            },
+            "releases": [
+              {
+                "date": "2026-08-14",
+                "id": "3837",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3837.md",
+                "webUrl": "https://example.invalid/3837",
+                "year": "2026"
+              }
+            ],
+            "selected": "",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Changelog",
+            "event": {
+              "type": "entryLoading",
+              "payload": {
+                "id": "3837"
+              }
+            }
+          },
+          "expected": {
+            "entries": {},
+            "entryStatus": {
+              "payload": {
+                "id": "3837"
+              },
+              "type": "loading"
+            },
+            "releases": [
+              {
+                "date": "2026-08-14",
+                "id": "3837",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3837.md",
+                "webUrl": "https://example.invalid/3837",
+                "year": "2026"
+              }
+            ],
+            "selected": "3837",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Changelog",
+            "event": {
+              "type": "entryLoaded",
+              "payload": {
+                "entry": {
+                  "id": "3837",
+                  "title": "3837 - Game Patch",
+                  "blocks": [
+                    {
+                      "type": "heading",
+                      "payload": {
+                        "level": 1,
+                        "text": "Game version 3837"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 1,
+                      "text": "Game version 3837"
+                    },
+                    "type": "heading"
+                  }
+                ],
+                "id": "3837",
+                "title": "3837 - Game Patch"
+              }
+            },
+            "entryStatus": {
+              "type": "ready"
+            },
+            "releases": [
+              {
+                "date": "2026-08-14",
+                "id": "3837",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3837.md",
+                "webUrl": "https://example.invalid/3837",
+                "year": "2026"
+              }
+            ],
+            "selected": "3837",
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Changelog",
+            "event": {
+              "type": "entryLoadFailed",
+              "payload": {
+                "reason": "offline"
+              }
+            }
+          },
+          "expected": {
+            "entries": {
+              "3837": {
+                "blocks": [
+                  {
+                    "payload": {
+                      "level": 1,
+                      "text": "Game version 3837"
+                    },
+                    "type": "heading"
+                  }
+                ],
+                "id": "3837",
+                "title": "3837 - Game Patch"
+              }
+            },
+            "entryStatus": {
+              "payload": {
+                "reason": "offline"
+              },
+              "type": "failed"
+            },
+            "releases": [
+              {
+                "date": "2026-08-14",
+                "id": "3837",
+                "kind": "Game Patch",
+                "sourceUrl": "https://example.invalid/3837.md",
+                "webUrl": "https://example.invalid/3837",
+                "year": "2026"
+              }
+            ],
+            "selected": "3837",
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "session connects and reports its version",
       "steps": [

@@ -252,6 +252,13 @@ const INITIAL: AppState = {
     release: null,
     dismissedVersion: "",
   },
+  changelog: {
+    releases: [],
+    status: { type: "idle" },
+    selected: "",
+    entries: {},
+    entryStatus: { type: "idle" },
+  },
   settings: {
     // Mirrors `impl Default for GeneratorOptions`, like the working copy above.
     mapGenerator: {

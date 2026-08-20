@@ -3,6 +3,7 @@
 // If you change a slice reducer in Rust, change its twin here (ARCHITECTURE.md §3.6).
 
 import type { AppEvent, AppState } from "../ipc/bindings";
+import { reduceChangelog } from "./reducers/changelog";
 import { reduceChat } from "./reducers/chat";
 import { reduceClientUpdate } from "./reducers/clientUpdate";
 import { reduceCoop } from "./reducers/coop";
@@ -38,6 +39,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, notifications: reduceNotifications(state.notifications, event.event) };
     case "Chat":
       return { ...state, chat: reduceChat(state.chat, event.event) };
+    case "Changelog":
+      return { ...state, changelog: reduceChangelog(state.changelog, event.event) };
     case "Coop":
       return { ...state, coop: reduceCoop(state.coop, event.event) };
     case "Install":

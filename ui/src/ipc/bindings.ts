@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -42,6 +42,7 @@ export type AppState = {
 	galacticWar: GalacticWarState,
 	clientUpdate: ClientUpdateState,
 	settings: SettingsState,
+	changelog: ChangelogState,
 };
 
 export type AppearancePreferences = {
@@ -252,6 +253,130 @@ export type Caster = {
 	fafId: number,
 	name: string,
 };
+
+export type ChangelogBlock = { type: "heading"; payload: {
+	level: number,
+	text: string,
+} } | { type: "paragraph"; payload: {
+	spans: ChangelogSpan[],
+} } |
+/**
+ *  `{% unit XRL0302 %}Fire Beetle: T2 Mobile Bomb{% endunit %}`: the icon
+ *  and caption that head each unit's changes.
+ */
+{ type: "unit"; payload: {
+	unitId: string,
+	iconUrl: string,
+	name: string,
+} } | { type: "list"; payload: {
+	items: ChangelogListItem[],
+} };
+
+/**
+ *  A `Label: old -> new` line. Split out because these are the substance of a
+ *  balance patch and deserve to be read as a diff rather than as prose.
+ */
+export type ChangelogChange = {
+	label: string,
+	old: string,
+	new: string,
+};
+
+export type ChangelogCommand =
+/**  Fetch the release index. The service ignores this once it is `Ready`. */
+{ type: "load" } |
+/**  Show a release, fetching its note unless it is already cached. */
+{ type: "select"; payload: {
+	id: string,
+} };
+
+/**  One fully parsed patch note. */
+export type ChangelogEntry = {
+	id: string,
+	/**  The post's front-matter title, e.g. `"3837 - Game Patch"`. */
+	title: string,
+	blocks: ChangelogBlock[],
+};
+
+/**
+ *  Status of the currently selected note, kept apart from the index status so a
+ *  failed note never makes the list look broken.
+ */
+export type ChangelogEntryStatus = { type: "idle" } | { type: "loading"; payload: {
+	id: string,
+} } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+export type ChangelogEvent = { type: "loading" } | { type: "loaded"; payload: {
+	releases: ChangelogRelease[],
+} } | { type: "loadFailed"; payload: {
+	reason: string,
+} } | { type: "entryLoading"; payload: {
+	id: string,
+} } | { type: "entryLoaded"; payload: {
+	entry: ChangelogEntry,
+} } | { type: "entryLoadFailed"; payload: {
+	reason: string,
+} };
+
+export type ChangelogListItem = {
+	spans: ChangelogSpan[],
+	/**  Set instead of `spans` carrying the whole line when it is a value change. */
+	change: ChangelogChange | null,
+	children: ChangelogListItem[],
+};
+
+/**  One release in the index. */
+export type ChangelogRelease = {
+	/**
+	 *  Game version, e.g. `"3837"`. Also the id the UI selects by, which is why
+	 *  the two rolling branches get the ids `"fafbeta"` and `"fafdevelop"`.
+	 */
+	id: string,
+	/**  `"Game Patch"`, `"Hotfix"`, or the branch name for a rolling entry. */
+	kind: string,
+	/**  ISO `YYYY-MM-DD`, or empty for the rolling branches, which have no date. */
+	date: string,
+	/**  Calendar year as printed on the index, for grouping. Empty for rolling. */
+	year: string,
+	/**  Absolute URL of the Markdown source this release is rendered from. */
+	sourceUrl: string,
+	/**  The page a "view on the website" link should open. */
+	webUrl: string,
+};
+
+/**  An inline run inside a paragraph or list item. */
+export type ChangelogSpan = { type: "text"; payload: string } | { type: "strong"; payload: string } | { type: "code"; payload: string } | { type: "link"; payload: {
+	text: string,
+	url: string,
+} } |
+/**
+ *  A bare `(#7121)`, which the patch notes use constantly to cite the pull
+ *  request a change came from. Resolved to a link so it is followable.
+ */
+{ type: "issue"; payload: {
+	number: string,
+	url: string,
+} };
+
+export type ChangelogState = {
+	releases: ChangelogRelease[],
+	status: ChangelogStatus,
+	/**  Release id currently shown, empty before the first selection. */
+	selected: string,
+	/**
+	 *  Notes fetched this session, by release id. Kept rather than replaced so
+	 *  moving back and forth through the list costs nothing after the first read.
+	 */
+	entries: { [key in string]: ChangelogEntry },
+	entryStatus: ChangelogEntryStatus,
+};
+
+/**  Status of the index fetch. Mirrors the other list statuses in this crate. */
+export type ChangelogStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 /**  One conversation: a public `#channel` or a private per-user exchange. */
 export type ChatChannel = {
@@ -4270,7 +4395,7 @@ export type StyleConstraints = {
  *  A top-level destination. Most are placeholders today; each gets its feature
  *  slice as it lands. The frontend tab registry maps these 1:1 to views.
  */
-export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "tutorials" | "units" | "contribution" | "settings";
+export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "tutorials" | "units" | "changelog" | "contribution" | "settings";
 
 /**
  *  How far a team got: the side and round its last match was in.

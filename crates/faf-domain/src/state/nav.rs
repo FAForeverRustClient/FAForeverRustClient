@@ -24,6 +24,7 @@ pub enum Tab {
     Tournaments,
     Tutorials,
     Units,
+    Changelog,
     Contribution,
     Settings,
 }

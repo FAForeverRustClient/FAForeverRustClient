@@ -17,6 +17,7 @@ pub(crate) fn now_seconds() -> u32 {
 }
 
 pub mod auth;
+pub mod changelog;
 pub mod chat;
 pub mod client_update;
 pub mod coop;
