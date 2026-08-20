@@ -157,6 +157,10 @@ pub struct ReplayTeam {
 #[serde(rename_all = "camelCase")]
 pub struct ReplayPlayer {
     pub name: String,
+    /// Absolute URL of the player's selected avatar, when the vault response
+    /// includes the player's avatar assignment.
+    #[serde(default)]
+    pub avatar_url: Option<String>,
     /// 1=UEF, 2=Aeon, 3=Cybran, 4=Seraphim, 5=Random: the lobby selection
     /// recorded by `playerStats.faction`, not the faction Random resolved to.
     pub faction: Option<i32>,
@@ -316,8 +320,8 @@ pub struct ReplayState {
     pub featured_mods: Vec<String>,
     pub local: Vec<LocalReplay>,
     pub local_status: VaultStatus,
-    /// Deferred replay metadata keyed by replay uid. The detail action currently
-    /// stores only the FAF version to avoid retaining full options and chat.
+    /// Deferred replay metadata keyed by replay uid. Details are loaded only
+    /// when requested because parsing the command stream can be expensive.
     #[serde(default)]
     pub replay_details: std::collections::HashMap<i32, ReplayDetails>,
     #[serde(default)]
@@ -445,7 +449,8 @@ pub enum ReplayCommand {
     DownloadVault {
         uid: i32,
     },
-    /// Load the deferred FAF version from a replay body.
+    /// Load the deferred game options, in-game chat, and FAF version from a
+    /// replay body.
     #[serde(rename_all = "camelCase")]
     LoadDetails {
         uid: i32,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   GENERATED_MAP_PLACEHOLDER_URL,
+  effectiveReplayMapName,
   extractGeneratedMapSeed,
   isGeneratedMap,
   mapPresentation,
@@ -95,5 +96,12 @@ describe("mapPresentation", () => {
     expect(extractGeneratedMapSeed("Neroxis Map Generator")).toBeUndefined();
     expect(extractGeneratedMapSeed("neroxis_map_generator")).toBeUndefined();
     expect(extractGeneratedMapSeed("Seton's Clutch")).toBeUndefined();
+  });
+
+  it("uses a matching local technical map name for generated replay previews", () => {
+    const technicalName = "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai_aaaaaadkqocko";
+    expect(effectiveReplayMapName("Neroxis Map Generator", technicalName)).toBe(technicalName);
+    expect(effectiveReplayMapName("Seton's Clutch", "scmp_009")).toBe("Seton's Clutch");
+    expect(effectiveReplayMapName("Neroxis Map Generator", null)).toBe("Neroxis Map Generator");
   });
 });

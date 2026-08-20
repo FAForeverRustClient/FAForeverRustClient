@@ -1413,7 +1413,7 @@ export const en = {
   "replays.detail.loadDetails": "Load more info",
   "replays.detail.loadDetailsShort": "More info",
   "replays.detail.downloadShort": "Download",
-  "replays.detail.loadingDetails": "Loading FAF Version…",
+  "replays.detail.loadingDetails": "Loading replay details…",
   "replays.detail.gameOptions": "Game Options",
   "replays.detail.filterOptions": "Filter options…",
   "replays.detail.optionName": "Option",

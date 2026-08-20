@@ -1314,7 +1314,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.detail.loadDetails": "Weitere Infos laden",
   "replays.detail.loadDetailsShort": "Weitere Infos",
   "replays.detail.downloadShort": "Laden",
-  "replays.detail.loadingDetails": "FAF-Version wird geladen…",
+  "replays.detail.loadingDetails": "Replay-Details werden geladen…",
   "replays.detail.gameOptions": "Spieloptionen",
   "replays.detail.filterOptions": "Optionen filtern…",
   "replays.detail.optionName": "Option",

@@ -1323,7 +1323,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.detail.loadDetails": "Charger plus d’informations",
   "replays.detail.loadDetailsShort": "Plus d’informations",
   "replays.detail.downloadShort": "Télécharger",
-  "replays.detail.loadingDetails": "Chargement de la version FAF…",
+  "replays.detail.loadingDetails": "Chargement des détails du replay…",
   "replays.detail.gameOptions": "Options de jeu",
   "replays.detail.filterOptions": "Filtrer les options…",
   "replays.detail.optionName": "Option",

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Icon } from "../../design-system/Icon";
-import type { ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
+import type { LocalReplayTeam, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { t } from "../../i18n";
@@ -55,6 +55,45 @@ export function outcomeLabel(outcome: string): string {
   }
 }
 
+/**
+ * Local replay headers can contain the exact rating even when the vault
+ * response has no rating journal included. Keep the richer vault player data
+ * and fill only values that are missing from it.
+ */
+export function mergeReplayTeamsWithLocal(
+  teams: ReplayTeam[],
+  localTeams?: LocalReplayTeam[],
+): ReplayTeam[] {
+  if (!localTeams || localTeams.length === 0) return teams;
+  const localByTeam = new Map(localTeams.map((team) => [team.team, team]));
+  // The JSON header uses the engine's team numbers, while the vault API can
+  // use a different offset for the same teams. Player names are the stable
+  // identity across both sources, so keep a fallback index as well.
+  const localByPlayer = new Map(
+    localTeams.flatMap((team) =>
+      team.players.map((player) => [player.name.toLocaleLowerCase(), player] as const),
+    ),
+  );
+  return teams.map((team) => {
+    const localTeam = localByTeam.get(String(team.team));
+    return {
+      ...team,
+      players: team.players.map((player) => {
+        const key = player.name.toLocaleLowerCase();
+        const localPlayer = localTeam?.players.find(
+          (candidate) => candidate.name.toLocaleLowerCase() === key,
+        ) ?? localByPlayer.get(key);
+        if (!localPlayer) return player;
+        return {
+          ...player,
+          faction: player.faction ?? localPlayer.faction,
+          rating: player.rating ?? localPlayer.rating,
+        };
+      }),
+    };
+  });
+}
+
 export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
   useLocale();
   if (teams.length === 0) return null;
@@ -89,12 +128,40 @@ export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
   );
 }
 
+function ReplayPlayerAvatar({
+  player,
+  avatarByLogin,
+}: {
+  player: ReplayPlayer;
+  avatarByLogin?: ReadonlyMap<string, string>;
+}) {
+  const url = player.avatarUrl || avatarByLogin?.get(player.name.toLocaleLowerCase());
+  return (
+    <span className="replay-player-avatar" aria-hidden="true">
+      {url && (
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          onError={(event) => {
+            event.currentTarget.style.visibility = "hidden";
+          }}
+        />
+      )}
+    </span>
+  );
+}
+
 export function ReplayDetailRoster({
   teams,
   showResults = false,
+  avatarByLogin,
 }: {
   teams: ReplayTeam[];
   showResults?: boolean;
+  avatarByLogin?: ReadonlyMap<string, string>;
 }) {
   useLocale();
   if (teams.length === 0) return null;
@@ -141,19 +208,22 @@ export function ReplayDetailRoster({
                       title={`Open ${player.name}'s profile`}
                       onClick={() => openPlayerCard(null, player.name)}
                     >
+                      <ReplayPlayerAvatar player={player} avatarByLogin={avatarByLogin} />
                       {observer || player.faction ? (
                         <ReplayPlayerMarker player={player} observer={observer} size={18} />
                       ) : (
                         <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
                       )}
-                      <PlayerName name={player.name} />
+                      <span className="replay-player-name-group">
+                        <PlayerName name={player.name} className="replay-player-name-text" />
+                        {player.rating !== null && (
+                          <span className="replay-player-rating" title={t("replays.roster.rating") || "Rating"}>
+                            ({player.rating})
+                          </span>
+                        )}
+                      </span>
                     </button>
                     <span className="replay-player-stats">
-                      {player.rating !== null && (
-                        <span className="replay-player-rating" title={t("replays.roster.rating") || "Rating"}>
-                          {player.rating}
-                        </span>
-                      )}
                       {showResults && player.score !== null && (
                         <span
                           className={`replay-player-score ${

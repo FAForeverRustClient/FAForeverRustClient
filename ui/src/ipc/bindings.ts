@@ -3702,7 +3702,10 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 { type: "downloadVault"; payload: {
 	uid: number,
 } } |
-/**  Load the deferred FAF version from a replay body. */
+/**
+ *  Load the deferred game options, in-game chat, and FAF version from a
+ *  replay body.
+ */
 { type: "loadDetails"; payload: {
 	uid: number,
 	localPath?: string | null,
@@ -3819,6 +3822,11 @@ export type ReplayGameOption = {
 
 export type ReplayPlayer = {
 	name: string,
+	/**
+	 *  Absolute URL of the player's selected avatar, when the vault response
+	 *  includes the player's avatar assignment.
+	 */
+	avatarUrl?: string | null,
 	/**
 	 *  1=UEF, 2=Aeon, 3=Cybran, 4=Seraphim, 5=Random: the lobby selection
 	 *  recorded by `playerStats.faction`, not the faction Random resolved to.
@@ -3951,8 +3959,8 @@ export type ReplayState = {
 	local: LocalReplay[],
 	localStatus: VaultStatus,
 	/**
-	 *  Deferred replay metadata keyed by replay uid. The detail action currently
-	 *  stores only the FAF version to avoid retaining full options and chat.
+	 *  Deferred replay metadata keyed by replay uid. Details are loaded only
+	 *  when requested because parsing the command stream can be expensive.
 	 */
 	replayDetails?: { [key in number]: ReplayDetails },
 	detailsLoading?: number | null,

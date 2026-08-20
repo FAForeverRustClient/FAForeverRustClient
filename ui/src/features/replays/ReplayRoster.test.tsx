@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { parseOutcome, outcomeLabel, ReplayDetailRoster } from "./ReplayRoster";
-import type { ReplayTeam } from "../../ipc/bindings";
+import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayDetailRoster } from "./ReplayRoster";
+import type { LocalReplayTeam, ReplayTeam } from "../../ipc/bindings";
 
 describe("ReplayRoster outcomes", () => {
   it("parses victory, defeat, draw, and mutual draw correctly", () => {
@@ -59,5 +59,65 @@ describe("ReplayRoster outcomes", () => {
 
     expect(markup).toContain('class="replay-team-outcome draw"');
     expect(markup).toContain("Draw");
+  });
+
+  it("renders a player's avatar before the faction marker", () => {
+    const teams: ReplayTeam[] = [
+      {
+        team: 2,
+        players: [
+          {
+            name: "Player1",
+            avatarUrl: "https://example.test/player1.png",
+            faction: 1,
+            rating: 1500,
+            outcome: "",
+            score: null,
+          },
+        ],
+      },
+    ];
+
+    const markup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} />);
+
+    expect(markup).toContain('class="replay-player-avatar"');
+    expect(markup).toContain('src="https://example.test/player1.png"');
+    expect(markup.indexOf("replay-player-avatar")).toBeLessThan(markup.indexOf("replay-player-faction"));
+  });
+
+  it("fills missing player ratings from matching local replay metadata", () => {
+    const teams: ReplayTeam[] = [{
+      team: 2,
+      players: [
+        { name: "Player1", faction: 1, rating: null, outcome: "", score: null },
+        { name: "Player2", faction: 1, rating: 1500, outcome: "", score: null },
+      ],
+    }];
+    const localTeams: LocalReplayTeam[] = [{
+      // Local replay headers and the vault API can number the same team
+      // differently. The player-name fallback should still merge the rating.
+      team: "1",
+      players: [
+        { name: "player1", faction: 1, rating: 1200 },
+        { name: "Player2", faction: 1, rating: 1400 },
+      ],
+    }];
+
+    const merged = mergeReplayTeamsWithLocal(teams, localTeams);
+
+    expect(merged[0].players[0].rating).toBe(1200);
+    expect(merged[0].players[1].rating).toBe(1500);
+  });
+
+  it("renders a player rating in the detail lineup", () => {
+    const teams: ReplayTeam[] = [{
+      team: 2,
+      players: [{ name: "Player1", faction: 1, rating: 1500, outcome: "", score: null }],
+    }];
+
+    const markup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} />);
+
+    expect(markup).toContain('class="replay-player-rating"');
+    expect(markup).toContain(">(1500)</span>");
   });
 });

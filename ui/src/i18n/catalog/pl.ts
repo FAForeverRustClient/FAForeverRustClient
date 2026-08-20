@@ -1299,7 +1299,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.detail.loadDetails": "Wczytaj więcej informacji",
   "replays.detail.loadDetailsShort": "Więcej informacji",
   "replays.detail.downloadShort": "Pobierz",
-  "replays.detail.loadingDetails": "Wczytywanie wersji FAF…",
+  "replays.detail.loadingDetails": "Wczytywanie szczegółów powtórki…",
   "replays.detail.gameOptions": "Opcje gry",
   "replays.detail.filterOptions": "Filtruj opcje…",
   "replays.detail.optionName": "Opcja",

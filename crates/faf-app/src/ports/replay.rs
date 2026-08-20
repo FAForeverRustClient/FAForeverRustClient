@@ -62,9 +62,9 @@ pub trait ReplayPort: Send + Sync {
     /// launching the game, returning its lightweight library metadata.
     async fn download_vault(&self, uid: i32) -> Result<LocalReplay, String>;
 
-    /// Load the deferred FAF version metadata for a replay by uid or local file path.
-    /// The UI deliberately does not parse game options or in-game chat here:
-    /// online replays may need a full download just to read this one field.
+    /// Load the deferred game options, in-game chat, and FAF version metadata
+    /// for a replay by uid or local file path. Online replays may need a full
+    /// download when the replay is not cached locally.
     async fn load_details(
         &self,
         uid: i32,

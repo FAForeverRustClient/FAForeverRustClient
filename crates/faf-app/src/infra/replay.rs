@@ -50,7 +50,7 @@
 
 use std::collections::{hash_map::DefaultHasher, HashMap};
 use std::hash::{Hash as _, Hasher as _};
-use std::io::{BufReader, Cursor, Read, Write};
+use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -576,7 +576,7 @@ impl ReplayPort for ReplayClient {
                 .append_key_only("page[totals]")
                 .append_pair(
                     "include",
-                    "mapVersion,mapVersion.map,featuredMod,playerStats.player,playerStats.ratingChanges,reviewsSummary",
+                    "mapVersion,mapVersion.map,featuredMod,playerStats.player,playerStats.player.avatarAssignments.avatar,playerStats.ratingChanges,reviewsSummary",
                 );
             // The date floor that keeps an otherwise unbounded filtered search
             // off the slow path: the rule lives in the query, the clock here.
@@ -649,10 +649,10 @@ impl ReplayPort for ReplayClient {
             }
         };
 
-        // The replay detail action only needs the FAF patch. Keep the full
-        // options and chat parser available for local tooling, but do not
-        // allocate those structures when the user only asks for the version.
-        read_faf_version(&path).await
+        // Detail loading is intentionally deferred until the user asks for it,
+        // but once requested it must expose the complete replay metadata: game
+        // options, in-game chat, and the FAF version.
+        read_detailed_info(&path).await
     }
 
     async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String> {
@@ -825,8 +825,6 @@ fn local_sim_mods(header: &Value) -> Vec<String> {
 
 const LOCAL_REPLAY_BODY_PREFIX_BYTES: u64 = 512 * 1024;
 const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
-const FAF_VERSION_PREFIX_BYTES: usize = 64 * 1024;
-const FAFREPLAY_HEADER_MAX_BYTES: usize = 64 * 1024;
 
 /// Read the compact FA replay header from a compressed local replay body. The
 /// JSON envelope has player names, but faction and displayed rating are stored
@@ -1017,93 +1015,28 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
     }
 }
 
-#[cfg(test)]
 async fn read_detailed_info(path: &Path) -> Result<ReplayDetails, String> {
-    let body_bytes = read_replay_body(path).await?;
-    Ok(parse_detailed_info_from_body(&body_bytes))
-}
-
-/// Read only the replay header needed for the deferred FAF version field.
-///
-/// This deliberately does not parse game options or scan the command stream
-/// for chat. Online replays still need to be downloaded when they are not
-/// cached, but only a bounded decompressed prefix is retained by this action.
-async fn read_faf_version(path: &Path) -> Result<ReplayDetails, String> {
     let path = path.to_owned();
-    let game_version = tokio::task::spawn_blocking(move || read_faf_version_from_file(&path))
-        .await
-        .map_err(|error| format!("could not parse replay version: {error}"))??;
-    Ok(replay_details_with_version(game_version))
+    tokio::task::spawn_blocking(move || {
+        let body_bytes = read_replay_body(&path)?;
+        Ok(parse_detailed_info_from_body(&body_bytes))
+    })
+    .await
+    .map_err(|error| format!("could not parse replay details: {error}"))?
 }
 
-fn read_faf_version_from_file(path: &Path) -> Result<Option<i32>, String> {
-    let file = std::fs::File::open(path)
-        .map_err(|error| format!("could not read replay file {}: {error}", path.display()))?;
-    let mut reader = BufReader::new(file);
-    let is_fafreplay = path
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| extension.eq_ignore_ascii_case("fafreplay"));
-
-    let prefix = if is_fafreplay {
-        let header = read_fafreplay_header(&mut reader)?;
-        let meta: Value = serde_json::from_slice(&header)
-            .map_err(|error| format!("corrupted fafreplay header: {error}"))?;
-        let compression = meta
-            .get("compression")
-            .and_then(Value::as_str)
-            .unwrap_or("qtcompress");
-
-        if compression.eq_ignore_ascii_case("zstd") {
-            let decoder = zstd::stream::read::Decoder::new(reader)
-                .map_err(|error| format!("could not create zstd decoder: {error}"))?;
-            read_replay_body_prefix_limit(decoder, FAF_VERSION_PREFIX_BYTES)
-        } else {
-            let mut decoded = base64::read::DecoderReader::new(
-                reader,
-                &base64::engine::general_purpose::STANDARD,
-            );
-            let mut uncompressed_size = [0; 4];
-            decoded
-                .read_exact(&mut uncompressed_size)
-                .map_err(|error| format!("invalid legacy replay body size: {error}"))?;
-            read_replay_body_prefix_limit(
-                flate2::read::ZlibDecoder::new(decoded),
-                FAF_VERSION_PREFIX_BYTES,
-            )
-        }
-    } else {
-        read_replay_body_prefix_limit(&mut reader, FAF_VERSION_PREFIX_BYTES)
-    };
-
-    Ok(parse_game_version_from_body(&prefix))
-}
-
-fn read_fafreplay_header(reader: &mut BufReader<std::fs::File>) -> Result<Vec<u8>, String> {
-    let mut header = Vec::with_capacity(1024);
-    let mut byte = [0_u8; 1];
-    while header.len() < FAFREPLAY_HEADER_MAX_BYTES {
-        let read = reader
-            .read(&mut byte)
-            .map_err(|error| format!("could not read replay header: {error}"))?;
-        if read == 0 {
-            return Err("corrupted fafreplay: missing newline delimiter".to_string());
-        }
-        header.push(byte[0]);
-        if byte[0] == b'\n' {
-            return Ok(header);
-        }
+fn read_replay_body(path: &Path) -> Result<Vec<u8>, String> {
+    let file_size = std::fs::metadata(path)
+        .map_err(|error| format!("could not inspect replay file {}: {error}", path.display()))?
+        .len();
+    if file_size > MAX_DOWNLOAD_BYTES {
+        return Err(format!(
+            "replay file exceeds the allowed size of {} MB",
+            MAX_DOWNLOAD_BYTES / (1024 * 1024)
+        ));
     }
-    Err(format!(
-        "corrupted fafreplay header: exceeds {FAFREPLAY_HEADER_MAX_BYTES} bytes"
-    ))
-}
-
-#[cfg(test)]
-async fn read_replay_body(path: &Path) -> Result<Vec<u8>, String> {
-    let bytes = tokio::fs::read(path)
-        .await
-        .map_err(|e| format!("could not read replay file {}: {e}", path.display()))?;
+    let bytes = std::fs::read(path)
+        .map_err(|error| format!("could not read replay file {}: {error}", path.display()))?;
 
     let is_fafreplay = path
         .extension()
@@ -1124,7 +1057,6 @@ async fn read_replay_body(path: &Path) -> Result<Vec<u8>, String> {
     Ok(body_bytes)
 }
 
-#[cfg(test)]
 fn split_fafreplay_bytes(bytes: &[u8]) -> Result<(Value, &[u8]), String> {
     let newline_idx = bytes
         .iter()
@@ -1137,15 +1069,12 @@ fn split_fafreplay_bytes(bytes: &[u8]) -> Result<(Value, &[u8]), String> {
     Ok((meta, body_slice))
 }
 
-#[cfg(test)]
 fn decompress_replay_body(body: &[u8], compression: &str) -> Result<Vec<u8>, String> {
     if compression.eq_ignore_ascii_case("zstd") {
-        let mut decoder = zstd::stream::read::Decoder::new(body)
+        let decoder = zstd::stream::read::Decoder::new(body)
             .map_err(|e| format!("could not create zstd decoder: {e}"))?;
         let mut out = Vec::new();
-        decoder
-            .read_to_end(&mut out)
-            .map_err(|e| format!("could not decompress zstd replay body: {e}"))?;
+        copy_bounded(decoder, &mut out)?;
         Ok(out)
     } else {
         let mut decoded =
@@ -1154,10 +1083,16 @@ fn decompress_replay_body(body: &[u8], compression: &str) -> Result<Vec<u8>, Str
         decoded
             .read_exact(&mut uncompressed_size)
             .map_err(|e| format!("invalid legacy replay body size: {e}"))?;
-        let mut zlib = flate2::read::ZlibDecoder::new(decoded);
+        let expected = u32::from_be_bytes(uncompressed_size);
+        if u64::from(expected) > MAX_DECOMPRESSED_REPLAY_BYTES {
+            return Err("replay expands beyond the allowed size".to_string());
+        }
+        let zlib = flate2::read::ZlibDecoder::new(decoded);
         let mut out = Vec::new();
-        zlib.read_to_end(&mut out)
-            .map_err(|e| format!("could not decompress legacy replay body: {e}"))?;
+        let written = copy_bounded(zlib, &mut out)?;
+        if written != u64::from(expected) {
+            return Err("legacy replay size does not match its qCompress header".to_string());
+        }
         Ok(out)
     }
 }
@@ -1441,11 +1376,6 @@ fn replay_string(cursor: &mut Cursor<&[u8]>) -> Option<String> {
     let end = rest.iter().position(|byte| *byte == 0)?;
     cursor.set_position((start + end + 1) as u64);
     Some(String::from_utf8_lossy(&rest[..end]).into_owned())
-}
-
-fn parse_game_version_from_body(body: &[u8]) -> Option<i32> {
-    let mut cursor = Cursor::new(body);
-    game_version_from_string(replay_string(&mut cursor).as_deref())
 }
 
 fn game_version_from_string(version: Option<&str>) -> Option<i32> {
@@ -1897,6 +1827,38 @@ fn resolve_map_thumbnail(
 /// `game.relationships.playerStats[] -> playerStats.relationships.player ->
 /// player.attributes.login`, grouped by `playerStats.attributes.team`.
 ///
+fn resolve_player_avatar(
+    player: Option<&JsonApiResource>,
+    index: &HashMap<(String, String), &JsonApiResource>,
+) -> Option<String> {
+    let player = player?;
+    let selected = rel_targets(&player.relationships, "avatarAssignments")
+        .into_iter()
+        .filter_map(|key| index.get(&key).copied())
+        .find(|assignment| {
+            assignment
+                .attributes
+                .get("selected")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        });
+    let selected_url = selected
+        .and_then(|assignment| rel_target(&assignment.relationships, "avatar"))
+        .and_then(|key| index.get(&key).copied())
+        .and_then(|avatar| avatar.attributes.get("url"))
+        .and_then(Value::as_str)
+        .filter(|url| !url.trim().is_empty())
+        .map(str::to_string);
+    selected_url.or_else(|| {
+        player
+            .attributes
+            .get("avatarUrl")
+            .and_then(Value::as_str)
+            .filter(|url| !url.trim().is_empty())
+            .map(str::to_string)
+    })
+}
+
 fn resolve_teams(
     relationships: &Value,
     index: &HashMap<(String, String), &JsonApiResource>,
@@ -1911,19 +1873,24 @@ fn resolve_teams(
             .get("team")
             .and_then(team_value)
             .unwrap_or(0);
-        let name = rel_target(&stat.relationships, "player")
-            .and_then(|k| index.get(&k))
+        let player = rel_target(&stat.relationships, "player").and_then(|k| index.get(&k).copied());
+        let name = player
             .and_then(|p| p.attributes.get("login"))
             .and_then(Value::as_str)
             .unwrap_or("unknown")
             .to_string();
+        let avatar_url = resolve_player_avatar(player, index);
         let faction = stat.attributes.get("faction").and_then(faction_value);
         let rating = rel_targets(&stat.relationships, "ratingChanges")
             .into_iter()
             .filter_map(|key| index.get(&key))
-            .find_map(|journal| displayed_rating_before(&journal.attributes));
+            .find_map(|journal| displayed_rating_before(&journal.attributes))
+            // Older game resources expose the same values directly on the
+            // player stat instead of including a rating journal relationship.
+            .or_else(|| displayed_rating_from_stat(&stat.attributes));
         by_team.entry(team).or_default().push(ReplayPlayer {
             name,
+            avatar_url,
             faction,
             rating,
             outcome: stat
@@ -2044,7 +2011,27 @@ fn rating_before(attributes: &Value) -> Option<(f64, f64)> {
 }
 
 fn displayed_rating_before(attributes: &Value) -> Option<i32> {
-    let (mean, deviation) = rating_before(attributes)?;
+    displayed_rating_with_fields(attributes, "meanBefore", "deviationBefore")
+}
+
+fn displayed_rating_from_stat(attributes: &Value) -> Option<i32> {
+    displayed_rating_with_fields(attributes, "beforeMean", "beforeDeviation")
+}
+
+fn displayed_rating_with_fields(
+    attributes: &Value,
+    mean_field: &str,
+    deviation_field: &str,
+) -> Option<i32> {
+    let numeric = |name: &str| {
+        attributes.get(name).and_then(|value| {
+            value
+                .as_f64()
+                .or_else(|| value.as_str().and_then(|text| text.trim().parse().ok()))
+        })
+    };
+    let mean = numeric(mean_field)?;
+    let deviation = numeric(deviation_field)?;
     let rating = mean - 3.0 * deviation;
     (rating.is_finite() && rating >= f64::from(i32::MIN) && rating <= f64::from(i32::MAX))
         .then_some(rating.round() as i32)
@@ -3002,7 +2989,12 @@ mod tests {
                 {
                     "type": "gamePlayerStats",
                     "id": "101",
-                    "attributes": { "team": 3, "faction": "RANDOM" },
+                    "attributes": {
+                        "team": 3,
+                        "faction": "RANDOM",
+                        "beforeMean": 1600.0,
+                        "beforeDeviation": 100.0
+                    },
                     "relationships": { "player": { "data": { "type": "player", "id": "501" } } },
                 },
                 {
@@ -3011,9 +3003,27 @@ mod tests {
                     "attributes": { "team": "null", "faction": "SERAPHIM" },
                     "relationships": { "player": { "data": { "type": "player", "id": "502" } } },
                 },
-                { "type": "player", "id": "500", "attributes": { "login": "Seraphim-Noob" } },
+                {
+                    "type": "player",
+                    "id": "500",
+                    "attributes": { "login": "Seraphim-Noob" },
+                    "relationships": {
+                        "avatarAssignments": { "data": [{ "type": "avatarAssignment", "id": "900" }] }
+                    }
+                },
                 { "type": "player", "id": "501", "attributes": { "login": "Nomander" } },
                 { "type": "player", "id": "502", "attributes": { "login": "Watcher" } },
+                {
+                    "type": "avatarAssignment",
+                    "id": "900",
+                    "attributes": { "selected": true },
+                    "relationships": { "avatar": { "data": { "type": "avatar", "id": "901" } } }
+                },
+                {
+                    "type": "avatar",
+                    "id": "901",
+                    "attributes": { "url": "https://content.faforever.com/faf/avatars/GW_Seraphim.png" }
+                },
                 {
                     "type": "leaderboardRatingJournal",
                     "id": "700",
@@ -3049,6 +3059,10 @@ mod tests {
         assert_eq!(replay.teams.len(), 3);
         assert_eq!(replay.teams[0].team, 2);
         assert_eq!(replay.teams[0].players[0].name, "Seraphim-Noob");
+        assert_eq!(
+            replay.teams[0].players[0].avatar_url.as_deref(),
+            Some("https://content.faforever.com/faf/avatars/GW_Seraphim.png")
+        );
         assert_eq!(replay.teams[0].players[0].faction, Some(1));
         assert_eq!(replay.teams[0].players[0].rating, Some(1300));
         assert_eq!(replay.teams[0].players[0].outcome, "VICTORY");
@@ -3057,6 +3071,7 @@ mod tests {
         assert_eq!(replay.teams[1].team, 3);
         assert_eq!(replay.teams[1].players[0].name, "Nomander");
         assert_eq!(replay.teams[1].players[0].faction, Some(5));
+        assert_eq!(replay.teams[1].players[0].rating, Some(1300));
         assert_eq!(replay.teams[2].team, -1);
         assert_eq!(replay.teams[2].players[0].name, "Watcher");
     }
@@ -3302,11 +3317,9 @@ mod tests {
             .find(|o| o.key == "AllowObservers");
         assert!(allow_observers.is_some());
 
-        let version_only = read_faf_version(&test_file)
-            .await
-            .expect("should parse the deferred version");
-        assert_eq!(version_only.game_version, Some(3675));
-        assert_eq!(version_only.game_options.len(), 1);
-        assert!(version_only.chat_messages.is_empty());
+        assert!(
+            !details.chat_messages.is_empty(),
+            "the detail parser should retain recorded in-game chat"
+        );
     }
 }

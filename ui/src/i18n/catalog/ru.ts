@@ -1354,7 +1354,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.detail.loadDetails": "Загрузить подробности",
   "replays.detail.loadDetailsShort": "Подробности",
   "replays.detail.downloadShort": "Скачать",
-  "replays.detail.loadingDetails": "Загрузка версии FAF…",
+  "replays.detail.loadingDetails": "Загрузка подробностей повтора…",
   "replays.detail.gameOptions": "Параметры игры",
   "replays.detail.filterOptions": "Фильтр параметров…",
   "replays.detail.optionName": "Параметр",

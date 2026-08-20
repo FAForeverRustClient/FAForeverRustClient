@@ -212,6 +212,17 @@ export function extractGeneratedMapSeed(mapName: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Prefer the technical map name from a matching local replay when a vault
+ * replay only contains the generic Neroxis display name. The technical name
+ * is the key used by the locally generated preview cache.
+ */
+export function effectiveReplayMapName(replayMap: string, localMap?: string | null): string {
+  return localMap && isGeneratedMap(localMap) && Boolean(extractGeneratedMapSeed(localMap))
+    ? localMap
+    : replayMap;
+}
+
 function fallbackDisplayName(mapName: string): string {
   return baseMapName(mapName)
     .replace(/_/g, " ")

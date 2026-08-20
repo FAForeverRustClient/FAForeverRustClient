@@ -265,7 +265,12 @@ impl ChatPort for IrcClient {
         let supervisor = Supervisor {
             config: self.config.clone(),
             http: self.http.clone(),
-            access_token: self.tokens.get(),
+            // Keep the store, rather than the token value, in the supervisor.
+            // OAuth refresh runs independently and replaces the access token
+            // while this reconnect loop may still be sleeping after a laptop
+            // wakes from suspend. A value captured here would make every retry
+            // keep sending the expired token to the IRC token endpoint.
+            tokens: self.tokens.clone(),
             username,
             wanted_channels: self.wanted_channels.clone(),
             current_nick: self.username.clone(),
@@ -470,7 +475,7 @@ impl ChatEmitter {
 struct Supervisor {
     config: IrcConfig,
     http: reqwest::Client,
-    access_token: Option<String>,
+    tokens: TokenStore,
     username: String,
     wanted_channels: Arc<Mutex<BTreeSet<String>>>,
     /// Shared with [`IrcClient::username`] so a server-side rename is visible
@@ -482,17 +487,19 @@ struct Supervisor {
 
 impl Supervisor {
     async fn run(self, mut outgoing: mpsc::Receiver<String>, cancel: CancellationToken) {
-        let Some(access_token) = self.access_token.clone() else {
-            tracing::warn!("chat connection skipped because there is no access token");
-            return;
-        };
-
         let mut failures: u32 = 0;
         loop {
             if !self.emitter.status(ChatStatus::Connecting, "").await {
                 return; // the service dropped the stream
             }
 
+            // Read immediately before every attempt. The OAuth provider can
+            // refresh the token while the reconnect backoff is running, which
+            // is especially common when the process resumes from sleep.
+            let Some(access_token) = self.tokens.get() else {
+                tracing::warn!("chat connection skipped because there is no access token");
+                return;
+            };
             let end = self.attempt(&access_token, &mut outgoing, &cancel).await;
             let _ = self.emitter.status(ChatStatus::Disconnected, "").await;
 
