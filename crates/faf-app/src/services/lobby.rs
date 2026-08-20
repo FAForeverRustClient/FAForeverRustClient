@@ -240,9 +240,9 @@ async fn connect(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(LobbyEvent::Connecting);
     // Deliberately no `Connected` here. `connect` returns as soon as the session
     // task is spawned, long before the socket is open, let alone authenticated.
-    // Emitting it here made `LobbyStatus::Connected` — which gates the join guard
-    // and the whole UI — true for seconds while the lobby would still reject
-    // everything. It is emitted on `LobbyUpdate::Authenticated` instead.
+    // Emitting it here made `LobbyStatus::Connected` true for seconds while the
+    // lobby would still reject everything, and that flag gates the join guard and
+    // the whole UI. It is emitted on `LobbyUpdate::Authenticated` instead.
     let mut updates = ctx.ports.lobby.connect().await;
 
     let launch_enabled = ctx.ports.process.supports_live_launch();

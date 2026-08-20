@@ -38,8 +38,8 @@ pub enum LobbyUpdate {
     ///
     /// Distinct from the socket being open, and the distinction matters: the
     /// lobby refuses everything but the handshake until this point and drops
-    /// the connection over an early command. This — not `connect` returning —
-    /// is when the lobby becomes usable.
+    /// the connection over an early command. This, not `connect` returning, is
+    /// when the lobby becomes usable.
     Authenticated,
     /// A fresh full snapshot of the open-games list.
     Games(Vec<Game>),
