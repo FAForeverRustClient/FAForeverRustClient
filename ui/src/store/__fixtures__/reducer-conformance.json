@@ -647,6 +647,7 @@
                   "wins": 2,
                   "losses": 1,
                   "undecided": 0,
+                  "unattributed": 0,
                   "maps": [
                     {
                       "map": "Setons Clutch",
@@ -684,6 +685,7 @@
               ],
               "totalGames": 3,
               "truncated": false,
+              "unattributed": 0,
               "undecided": 0,
               "wins": 2
             },

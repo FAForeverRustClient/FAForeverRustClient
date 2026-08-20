@@ -1516,7 +1516,7 @@ mod map_stats_tests {
         assert!(!games[3].decided, "a draw must not move the record");
 
         // The API omitted game 999 from `included`; the row survives without a
-        // map rather than being dropped.
+        // map name, which the fold then reads as a generated map.
         assert_eq!(games[4].map, "");
         assert!(games[4].decided && games[4].won);
     }
@@ -1530,16 +1530,23 @@ mod map_stats_tests {
         assert_eq!(stats.losses, 1);
         assert_eq!(stats.undecided, 1);
 
-        // Most played first: Setons three times (two decided), Dual Gap once.
-        // The map-less row is in the totals but not in this list.
+        // Most played first: Setons three times (two decided), then the two
+        // single-game rows. The row whose game the API omitted is a generated
+        // map, so it appears here rather than vanishing from the table; its
+        // name is empty because the view supplies the label.
         assert_eq!(
             stats
                 .maps
                 .iter()
-                .map(|entry| (entry.map.as_str(), entry.games, entry.wins, entry.losses))
+                .map(|entry| (entry.map.as_str(), entry.generated, entry.games, entry.wins))
                 .collect::<Vec<_>>(),
-            [("Setons Clutch", 3, 2, 0), ("Dual Gap", 1, 0, 1)]
+            [
+                ("Setons Clutch", false, 3, 2),
+                ("", true, 1, 1),
+                ("Dual Gap", false, 1, 0),
+            ]
         );
+        assert_eq!(stats.unattributed, 1, "one row got there by having no name");
         assert_eq!(stats.maps[0].last_played, "2026-01-04T20:00:00Z");
     }
 
