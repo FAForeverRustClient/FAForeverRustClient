@@ -95,14 +95,6 @@ export function PlayerMapStatistics({ playerId }: Props) {
         <p className="player-maps-note muted">{t("playerCard.maps.truncated")}</p>
       )}
 
-      {/* Without this the header and the table simply disagree, with nothing to
-          explain the gap. Locally generated maps are the usual reason: the API
-          has no map to point at, so the game counts but lands in no row. */}
-      {stats.unattributed > 0 && (
-        <p className="player-maps-note muted">
-          {t("playerCard.maps.unattributed", { count: stats.unattributed })}
-        </p>
-      )}
 
       <div className="search-field player-maps-search">
         <input

@@ -3393,14 +3393,12 @@ export type PlayerMapStats = {
 	/**  Games the API returned without a decided result (draws, unfinished). */
 	undecided: number,
 	/**
-	 *  Games whose map the API did not name, so they are in the totals but
-	 *  in no row below.
+	 *  How many of the generated row's games got there by having no map name
+	 *  at all, rather than by carrying a recognisable generated one.
 	 *
-	 *  Reported rather than swallowed. A map the API cannot reference (a
-	 *  locally generated one, or a game whose map version has since been
-	 *  removed) otherwise vanishes from the table while still counting in the
-	 *  header, and the two numbers quietly stop agreeing with no way to tell
-	 *  why. Surfacing the count is what makes that visible.
+	 *  Kept for honesty rather than for display: the bucket is named after
+	 *  what these games overwhelmingly are, and this says how much of that
+	 *  naming is inference.
 	 */
 	unattributed: number,
 	/**  Every map played, most played first. */

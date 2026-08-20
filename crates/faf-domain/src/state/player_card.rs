@@ -775,14 +775,12 @@ pub struct PlayerMapStats {
     pub losses: i32,
     /// Games the API returned without a decided result (draws, unfinished).
     pub undecided: i32,
-    /// Games whose map the API did not name, so they are in the totals but
-    /// in no row below.
+    /// How many of the generated row's games got there by having no map name
+    /// at all, rather than by carrying a recognisable generated one.
     ///
-    /// Reported rather than swallowed. A map the API cannot reference (a
-    /// locally generated one, or a game whose map version has since been
-    /// removed) otherwise vanishes from the table while still counting in the
-    /// header, and the two numbers quietly stop agreeing with no way to tell
-    /// why. Surfacing the count is what makes that visible.
+    /// Kept for honesty rather than for display: the bucket is named after
+    /// what these games overwhelmingly are, and this says how much of that
+    /// naming is inference.
     pub unattributed: i32,
     /// Every map played, most played first.
     pub maps: Vec<PlayerMapStat>,
@@ -825,14 +823,22 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
             (false, _) => stats.undecided += 1,
         }
 
-        // A game whose map the API did not name still counts towards the
-        // totals; it simply cannot be attributed to a map.
-        if game.map.is_empty() {
+        // A game the API names no map for is a generated one.
+        //
+        // Inferred, and worth stating why. FAF does not hold generated maps
+        // in its map table, since they are produced locally from a seed, so a
+        // game played on one has no map version to point at and arrives here
+        // nameless. faftracker.xyz resolves the same games the same way and
+        // labels them "Mapgen / generated map"; against a real account the
+        // counts agree. Left unattributed instead, these are simply missing
+        // from the table while still counting in the header, which is what
+        // made a player with many generated games look like they had none.
+        let nameless = game.map.is_empty();
+        if nameless {
             stats.unattributed += 1;
-            continue;
         }
 
-        let generated = is_generated_map_name(&game.map);
+        let generated = nameless || is_generated_map_name(&game.map);
         let key = if generated {
             GENERATED_BUCKET.to_string()
         } else {
@@ -949,7 +955,10 @@ mod map_stats_tests {
     }
 
     #[test]
-    fn a_game_without_a_map_is_counted_and_reported_rather_than_swallowed() {
+    fn a_game_the_api_names_no_map_for_is_a_generated_one() {
+        // FAF holds no map version for a locally generated map, so these
+        // arrive nameless. Dropping them made a heavy mapgen player look like
+        // they had never played one.
         let stats = aggregate_map_stats(
             &[
                 game("", true, true, "2026-01-01"),
@@ -960,12 +969,33 @@ mod map_stats_tests {
         );
         assert_eq!(stats.total_games, 3);
         assert_eq!(stats.wins, 2);
-        assert_eq!(stats.maps.len(), 1, "only Loki can be attributed");
+
+        let generated = stats
+            .maps
+            .iter()
+            .find(|entry| entry.generated)
+            .expect("the nameless games become the generated row");
         assert_eq!(
-            stats.unattributed, 2,
-            "the gap between the header and the table must be stated, not left \
-             for the reader to notice"
+            (generated.games, generated.wins, generated.losses),
+            (2, 1, 1)
         );
+        assert_eq!(stats.unattributed, 2, "and the inference is recorded");
+
+        assert_eq!(stats.maps.iter().filter(|e| !e.generated).count(), 1);
+    }
+
+    #[test]
+    fn nameless_and_named_generated_games_share_one_row() {
+        let stats = aggregate_map_stats(
+            &[
+                game("", true, true, "2026-01-01"),
+                game("neroxis_map_generator_1.8.0_abcd", true, true, "2026-01-02"),
+            ],
+            false,
+        );
+        assert_eq!(stats.maps.len(), 1, "both spellings are the same thing");
+        assert_eq!(stats.maps[0].games, 2);
+        assert_eq!(stats.unattributed, 1, "only one of them was inferred");
     }
 }
 
