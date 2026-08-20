@@ -1,12 +1,12 @@
 [package]
-name = "forge-client"
+name = "faforever-rust-client"
 description = "FAF client: Tauri shell. Thin: wires faf-app to Tauri commands/events. No logic."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [lib]
-name = "forge_client_lib"
+name = "faforever_rust_client_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
@@ -29,5 +29,5 @@ faf-domain = { workspace = true }
 faf-app = { workspace = true }
 
 [[bin]]
-name = "forge-client"
+name = "faforever-rust-client"
 path = "src/main.rs"

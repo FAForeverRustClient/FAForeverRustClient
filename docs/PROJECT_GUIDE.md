@@ -137,7 +137,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 
 | Path | Meaning |
 |---|---|
-| `src/main.rs` | Entry point; calls `forge_client_lib::run()`. |
+| `src/main.rs` | Entry point; calls `faforever_rust_client_lib::run()`. |
 | `src/lib.rs` | Registers Tauri commands `dispatch` + `snapshot`, forwards every `AppEvent` to the frontend (`emit("app://event")`). Injects `ports_from_env()` here. |
 | `build.rs` | Tauri build hook. |
 | `tauri.conf.json` | Window, build, and bundle configuration (frontend path, dev URL, icons). |

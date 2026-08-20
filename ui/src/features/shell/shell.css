@@ -111,11 +111,6 @@
   place-items: center;
 }
 
-.brand-mark-image {
-  display: block;
-  object-fit: contain;
-  user-select: none;
-}
 
 .brand-copy {
   display: flex;

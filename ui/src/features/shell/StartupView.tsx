@@ -14,7 +14,7 @@ export function StartupView({ error }: Props) {
     <main className="centered">
       <div className="entry-card" aria-live="polite">
         <div className="entry-brand">
-          <BrandMark className="entry-brand-image" size={68} />
+          <BrandMark size={68} />
         </div>
         <div className="entry-heading">
           <h1>{error ? t("shell.startup.failedTitle") : t("shell.startup.title")}</h1>

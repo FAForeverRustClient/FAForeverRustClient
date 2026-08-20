@@ -231,7 +231,7 @@ export function mapThumbnailCandidates(
     baseName !== normalized && !baseName.includes(" ")
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
       : undefined,
-    isGen ? "/generated-map.svg" : undefined,
+    isGen ? "/assets/mapgen-placeholder.png" : undefined,
   ]);
 }
 

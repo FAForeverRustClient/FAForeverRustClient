@@ -27,7 +27,7 @@ pub fn init(log_dir: &Path) -> Result<DiagnosticsGuard, String> {
     let appender = build_appender(log_dir)?;
     let (writer, guard) = tracing_appender::non_blocking(appender);
     let filter = EnvFilter::try_from_env("FAF_LOG")
-        .unwrap_or_else(|_| EnvFilter::new("faf_app=info,forge_client_lib=info,warn"));
+        .unwrap_or_else(|_| EnvFilter::new("faf_app=info,faforever_rust_client_lib=info,warn"));
     let file = tracing_subscriber::fmt::layer()
         .with_ansi(false)
         .with_target(true)

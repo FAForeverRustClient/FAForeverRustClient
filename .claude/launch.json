@@ -2,7 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "forge-client-dev",
+      "name": "faforever-rust-client-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "dev"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "faforever-rust-client-dev",
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
@@ -11,7 +19,7 @@
       "port": 5173
     },
     {
-      "name": "forge-client-tourney-local",
+      "name": "faforever-rust-client-tourney-local",
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
@@ -20,9 +28,12 @@
       "port": 5173
     },
     {
-      "name": "forge-client-tourney-live",
+      "name": "faforever-rust-client-tourney-live",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "pnpm tauri dev"],
+      "runtimeArgs": [
+        "-c",
+        "pnpm tauri dev"
+      ],
       "port": 5173
     }
   ]
