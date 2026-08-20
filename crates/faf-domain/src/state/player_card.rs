@@ -775,6 +775,15 @@ pub struct PlayerMapStats {
     pub losses: i32,
     /// Games the API returned without a decided result (draws, unfinished).
     pub undecided: i32,
+    /// Games whose map the API did not name, so they are in the totals but
+    /// in no row below.
+    ///
+    /// Reported rather than swallowed. A map the API cannot reference (a
+    /// locally generated one, or a game whose map version has since been
+    /// removed) otherwise vanishes from the table while still counting in the
+    /// header, and the two numbers quietly stop agreeing with no way to tell
+    /// why. Surfacing the count is what makes that visible.
+    pub unattributed: i32,
     /// Every map played, most played first.
     pub maps: Vec<PlayerMapStat>,
     /// Set when the scan hit its safety limit, so the view can say the numbers
@@ -819,6 +828,7 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
         // A game whose map the API did not name still counts towards the
         // totals; it simply cannot be attributed to a map.
         if game.map.is_empty() {
+            stats.unattributed += 1;
             continue;
         }
 
@@ -939,13 +949,22 @@ mod map_stats_tests {
     }
 
     #[test]
-    fn a_game_without_a_map_still_counts_towards_the_totals() {
-        let stats = aggregate_map_stats(&[game("", true, true, "2026-01-01")], false);
-        assert_eq!(stats.total_games, 1);
-        assert_eq!(stats.wins, 1);
-        assert!(
-            stats.maps.is_empty(),
-            "but it cannot be attributed to a map"
+    fn a_game_without_a_map_is_counted_and_reported_rather_than_swallowed() {
+        let stats = aggregate_map_stats(
+            &[
+                game("", true, true, "2026-01-01"),
+                game("", true, false, "2026-01-02"),
+                game("Loki", true, true, "2026-01-03"),
+            ],
+            false,
+        );
+        assert_eq!(stats.total_games, 3);
+        assert_eq!(stats.wins, 2);
+        assert_eq!(stats.maps.len(), 1, "only Loki can be attributed");
+        assert_eq!(
+            stats.unattributed, 2,
+            "the gap between the header and the table must be stated, not left \
+             for the reader to notice"
         );
     }
 }

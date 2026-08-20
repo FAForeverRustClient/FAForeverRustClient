@@ -1130,6 +1130,7 @@ export const en = {
   "playerCard.maps.searchPlaceholder": "Find a map…",
   "playerCard.maps.searchAria": "Find a map in this player's history",
   "playerCard.maps.noMatch": "No map matches that.",
+  "playerCard.maps.unattributed": { "one": "{count} game is not counted in the table below, because the server names no map for it. Locally generated maps are the usual reason.", "other": "{count} games are not counted in the table below, because the server names no map for them. Locally generated maps are the usual reason." },
   "playerCard.maps.truncated": "This player has more games than one scan covers. The numbers below are their most recent games, newest first.",
   "playerCard.tab.statistics": "Statistics",
   "playerCard.tab.achievements": "Achievements",

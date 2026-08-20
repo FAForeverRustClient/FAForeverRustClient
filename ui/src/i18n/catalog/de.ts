@@ -1044,6 +1044,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.searchPlaceholder": "Karte suchen…",
   "playerCard.maps.searchAria": "Karte in der Historie dieses Spielers suchen",
   "playerCard.maps.noMatch": "Keine Karte passt dazu.",
+  "playerCard.maps.unattributed": { "one": "{count} Spiel fehlt in der Tabelle unten, weil der Server keine Karte dazu nennt. Meist sind das lokal generierte Karten.", "other": "{count} Spiele fehlen in der Tabelle unten, weil der Server keine Karte dazu nennt. Meist sind das lokal generierte Karten." },
   "playerCard.maps.truncated": "Dieser Spieler hat mehr Spiele, als ein Durchlauf erfasst. Die Zahlen unten zeigen die neuesten Spiele.",
   "playerCard.tab.statistics": "Statistiken",
   "playerCard.tab.achievements": "Erfolge",

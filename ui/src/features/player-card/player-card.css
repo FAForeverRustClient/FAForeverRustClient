@@ -1300,12 +1300,13 @@
   line-height: 1.5;
 }
 
-/* Bounded: inherited from `.search-field` it stretched the full panel width,
-   which made a one-word filter look like the main input on the tab. */
+/* `.search-field` carries `flex: 1 1 240px`, which is written for a toolbar
+   row. Inside this column that grow factor applies to the *height*, so the
+   filter stretched into a block several times taller than an input. Full width,
+   content height. */
 .player-maps-search {
   flex: none;
-  align-self: flex-start;
-  width: min(260px, 100%);
+  width: 100%;
 }
 
 .player-maps-map {

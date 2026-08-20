@@ -3392,6 +3392,17 @@ export type PlayerMapStats = {
 	losses: number,
 	/**  Games the API returned without a decided result (draws, unfinished). */
 	undecided: number,
+	/**
+	 *  Games whose map the API did not name, so they are in the totals but
+	 *  in no row below.
+	 *
+	 *  Reported rather than swallowed. A map the API cannot reference (a
+	 *  locally generated one, or a game whose map version has since been
+	 *  removed) otherwise vanishes from the table while still counting in the
+	 *  header, and the two numbers quietly stop agreeing with no way to tell
+	 *  why. Surfacing the count is what makes that visible.
+	 */
+	unattributed: number,
 	/**  Every map played, most played first. */
 	maps: PlayerMapStat[],
 	/**
