@@ -1630,8 +1630,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.host.selectMap": "Sélectionner une carte",
   "lobby.host.searchMapsPlaceholder": "Rechercher des cartes...",
   "lobby.host.searchMapsAria": "Rechercher des cartes",
-  "lobby.host.maxPlayersAria": "Nombre maximum de joueurs de la carte",
-  "lobby.host.upTo": "Jusqu'à {count} joueurs",
   "lobby.host.availableMaps": "Cartes disponibles",
   "lobby.host.noMaps": "Aucune carte correspondante.",
   "lobby.host.playersUnstated": "Nombre de joueurs inconnu",

@@ -1686,8 +1686,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.selectMap": "Выберите карту",
   "lobby.host.searchMapsPlaceholder": "Поиск карт...",
   "lobby.host.searchMapsAria": "Поиск карт",
-  "lobby.host.maxPlayersAria": "Максимальное число игроков на карте",
-  "lobby.host.upTo": "До {count} игроков",
   "lobby.host.availableMaps": "Доступные карты",
   "lobby.host.noMaps": "Подходящих карт не найдено.",
   "lobby.host.playersUnstated": "Число игроков не указано",

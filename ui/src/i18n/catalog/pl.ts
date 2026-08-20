@@ -1599,8 +1599,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.host.selectMap": "Wybierz mapę",
   "lobby.host.searchMapsPlaceholder": "Szukaj map...",
   "lobby.host.searchMapsAria": "Szukaj map",
-  "lobby.host.maxPlayersAria": "Maksymalna liczba graczy na mapie",
-  "lobby.host.upTo": "Do {count} graczy",
   "lobby.host.availableMaps": "Dostępne mapy",
   "lobby.host.noMaps": "Nie znaleziono pasujących map.",
   "lobby.host.activeMods": "Aktywne mody",

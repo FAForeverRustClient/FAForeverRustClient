@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
+import { RangeSlider } from "../../design-system/RangeSlider";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
@@ -20,6 +21,28 @@ interface Props {
 }
 
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
+
+/** Map cells per kilometre, the engine's scale. */
+const CELLS_PER_KM = 51.2;
+
+const toKilometres = (cells: number) => Math.round(cells / CELLS_PER_KM);
+
+/** Bounds for the map filter's sliders. 80 km is the largest map FA ships. */
+const MAX_MAP_KM = 80;
+const MAX_MAP_PLAYERS = 16;
+
+type Range = { low: number | null; high: number | null };
+
+const NO_RANGE: Range = { low: null, high: null };
+
+const isBounded = (range: Range) => range.low !== null || range.high !== null;
+
+/** A value passes when it is inside the range, or when it is simply unknown. */
+function withinRange(value: number, range: Range): boolean {
+  if (value <= 0) return true;
+  if (range.low !== null && value < range.low) return false;
+  return !(range.high !== null && value > range.high);
+}
 
 type HostMap = {
   displayName: string;
@@ -55,19 +78,15 @@ function formatMapMeta(map: { maxPlayers: number; width: number; height: number 
     parts.push(`${map.maxPlayers}p`);
   }
   if (map.width > 0 && map.height > 0) {
-    const kmW = (map.width / 51.2).toFixed(0);
-    const kmH = (map.height / 51.2).toFixed(0);
-    parts.push(`${kmW}×${kmH}km`);
+    parts.push(`${toKilometres(map.width)}×${toKilometres(map.height)}km`);
   }
   return parts.join(" · ");
 }
 
-/** Show detailed dimensions for preview panel. */
+/** Map dimensions in kilometres, which is the unit players actually use. */
 function formatMapDimensions(width: number, height: number): string {
   if (width <= 0) return "";
-  const kmW = (width / 51.2).toFixed(0);
-  const kmH = (height / 51.2).toFixed(0);
-  return `${kmW} × ${kmH} km (${width}×${height})`;
+  return `${toKilometres(width)} × ${toKilometres(height)} km`;
 }
 
 export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialTitle }: Props) {
@@ -104,9 +123,31 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
   const [presetModalOpen, setPresetModalOpen] = useState(false);
   const [modSearch, setModSearch] = useState("");
   const [mapSearch, setMapSearch] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(16);
+  const [widthKm, setWidthKm] = useState<Range>(NO_RANGE);
+  const [heightKm, setHeightKm] = useState<Range>(NO_RANGE);
+  const [playerCount, setPlayerCount] = useState<Range>(NO_RANGE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
   const [selectedMap, setSelectedMap] = useState(initialMap ?? remembered.map);
   const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (event.target instanceof Node && !filterRef.current?.contains(event.target)) {
+        setFiltersOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFiltersOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [filtersOpen]);
 
   useEffect(() => {
     ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
@@ -235,9 +276,23 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
 
     return Array.from(mapByFolder.values())
       .filter((map) => matches(map.displayName) || matches(map.folderName))
-      .filter((map) => map.maxPlayers === 0 || map.maxPlayers <= maxPlayers)
+      .filter(
+        (map) =>
+          withinRange(map.maxPlayers, playerCount) &&
+          withinRange(toKilometres(map.width), widthKm) &&
+          withinRange(toKilometres(map.height), heightKm),
+      )
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
-  }, [coopMissions, mapSearch, maps.installed, maps.vault, maxPlayers, selectedMap]);
+  }, [
+    coopMissions,
+    heightKm,
+    mapSearch,
+    maps.installed,
+    maps.vault,
+    playerCount,
+    selectedMap,
+    widthKm,
+  ]);
 
   const chosen = availableMaps.find((map) => map.folderName.toLowerCase() === selectedMap?.toLowerCase())
     ?? availableMaps.find((map) => map.folderName === selectedMap)
@@ -314,6 +369,9 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
   // What the list shows is what Enable All / Disable All act on, which is how
   // the two mod kinds stay separately controllable without four buttons.
   const tabMods = modTab === "ui" ? uiMods : simMods;
+
+  // Shown on the filter button so a narrowed list is never a mystery.
+  const activeFilterCount = [widthKm, heightKm, playerCount].filter(isBounded).length;
 
   const applyPreset = (preset: ModPreset) => {
     const wanted = new Set(preset.uids);
@@ -428,19 +486,26 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
 
       {/* Top Header Row: Title, Password, Friends Only, Rating Limits */}
       <section className="host-top-config surface-panel">
-        <div className="host-top-title-wrap">
-          <input
-            className="host-title-input"
-            value={title}
-            maxLength={128}
-            aria-invalid={Boolean(titleError)}
-            aria-describedby={titleError ? "host-title-error" : undefined}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={t("lobby.host.gameTitle")}
-          />
-          {titleError && <small id="host-title-error" className="host-field-error">{titleError}</small>}
+        <div className="host-top-title-row">
+          <label className="host-top-label" htmlFor="host-lobby-name">
+            {t("lobby.host.gameTitle")}
+          </label>
+          <div className="host-top-title-wrap">
+            <input
+              id="host-lobby-name"
+              className="host-title-input"
+              value={title}
+              maxLength={128}
+              aria-invalid={Boolean(titleError)}
+              aria-describedby={titleError ? "host-title-error" : undefined}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder={t("lobby.host.gameTitle")}
+            />
+            {titleError && <small id="host-title-error" className="host-field-error">{titleError}</small>}
+          </div>
         </div>
 
+        <div className="host-top-options-row">
         {/* Password */}
         <div className="host-option-item">
           <label className="check-field">
@@ -514,6 +579,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
             />
           </div>
           {ratingError && <small className="host-field-error host-rating-error">{ratingError}</small>}
+        </div>
         </div>
       </section>
 
@@ -696,18 +762,65 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
                 aria-label={t("lobby.host.searchMapsAria")}
               />
             </div>
-            <select
-              className="host-players-select"
-              value={maxPlayers}
-              onChange={(event) => setMaxPlayers(Number(event.target.value))}
-              aria-label={t("lobby.host.maxPlayersAria")}
-            >
-              <option value={2}>{t("lobby.host.upTo", { count: 2 })}</option>
-              <option value={4}>{t("lobby.host.upTo", { count: 4 })}</option>
-              <option value={8}>{t("lobby.host.upTo", { count: 8 })}</option>
-              <option value={12}>{t("lobby.host.upTo", { count: 12 })}</option>
-              <option value={16}>{t("lobby.host.upTo", { count: 16 })}</option>
-            </select>
+            <div className="host-map-filter" ref={filterRef}>
+              <button
+                type="button"
+                className={`host-map-filter-button${activeFilterCount > 0 ? " active" : ""}`}
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                <Icon name="filter" size={13} />
+                {t("lobby.host.filter")}
+                {activeFilterCount > 0 && (
+                  <span className="host-map-filter-count">{activeFilterCount}</span>
+                )}
+              </button>
+
+              {/* A popover rather than a dialog: it filters the list behind it,
+                  and that list has to stay visible while the sliders move. */}
+              {filtersOpen && (
+                <div className="host-map-filter-popover surface-panel" role="group">
+                  <RangeSlider
+                    label={t("lobby.host.filterWidth")}
+                    min={0}
+                    max={MAX_MAP_KM}
+                    low={widthKm.low}
+                    high={widthKm.high}
+                    format={(value) => `${value} km`}
+                    onChange={(low, high) => setWidthKm({ low, high })}
+                  />
+                  <RangeSlider
+                    label={t("lobby.host.filterHeight")}
+                    min={0}
+                    max={MAX_MAP_KM}
+                    low={heightKm.low}
+                    high={heightKm.high}
+                    format={(value) => `${value} km`}
+                    onChange={(low, high) => setHeightKm({ low, high })}
+                  />
+                  <RangeSlider
+                    label={t("lobby.host.filterPlayers")}
+                    min={0}
+                    max={MAX_MAP_PLAYERS}
+                    low={playerCount.low}
+                    high={playerCount.high}
+                    onChange={(low, high) => setPlayerCount({ low, high })}
+                  />
+                  <button
+                    type="button"
+                    className="host-map-filter-reset"
+                    disabled={activeFilterCount === 0}
+                    onClick={() => {
+                      setWidthKm(NO_RANGE);
+                      setHeightKm(NO_RANGE);
+                      setPlayerCount(NO_RANGE);
+                    }}
+                  >
+                    {t("lobby.host.filterReset")}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="host-column-body host-map-list" role="listbox" aria-label={t("lobby.host.availableMaps")}>
@@ -734,10 +847,21 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
             )}
           </div>
 
-          <div className="host-column-footer">
+          <div className="host-column-footer host-map-actions">
             <Button className="host-col-action-btn" onClick={chooseRandom} title={t("lobby.host.randomTitle")}>
               <Icon name="refresh" size={14} />
               {t("lobby.host.randomMap")}
+            </Button>
+            <Button
+              className="host-col-action-btn host-generate-btn"
+              onClick={() => setGenerating(true)}
+              title={t("lobby.host.generateTitle")}
+            >
+              <span className="host-generate-btn-label">
+                <Icon name="plus" size={14} />
+                <span>{t("lobby.host.generateMap")}</span>
+              </span>
+              <span className="host-badge-neroxis">Neroxis</span>
             </Button>
           </div>
         </section>
@@ -787,28 +911,20 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
                   </div>
                 </div>
                 {(chosen.version || chosen.author) && (
-                  <div className="host-map-info-footer">
-                    {chosen.version && <span className="host-map-version-badge">v{chosen.version}</span>}
-                    {chosen.author && <span className="host-map-author-label">by {chosen.author}</span>}
-                  </div>
+                  <dl className="host-map-facts">
+                    <dt>{t("lobby.host.mapAuthor")}</dt>
+                    <dd>{chosen.author || t("lobby.host.mapAuthorUnknown")}</dd>
+                    <dt>{t("lobby.host.mapVersion")}</dt>
+                    <dd>{chosen.version || t("lobby.host.mapAuthorUnknown")}</dd>
+                  </dl>
+                )}
+                {chosen.description && (
+                  <p className="host-map-description">{chosen.description}</p>
                 )}
               </div>
             )}
           </div>
 
-          <div className="host-column-footer">
-            <Button
-              className="host-col-action-btn host-generate-btn"
-              onClick={() => setGenerating(true)}
-              title={t("lobby.host.generateTitle")}
-            >
-              <span className="host-generate-btn-label">
-                <Icon name="plus" size={14} />
-                <span>{t("lobby.host.generateMap")}</span>
-              </span>
-              <span className="host-badge-neroxis">Neroxis</span>
-            </Button>
-          </div>
         </section>
       </div>
 
