@@ -409,6 +409,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Reviews(c) => services::reviews::handle(c, ctx, sink).await,
         AppCommand::Tourney(c) => services::tourney::handle(c, ctx, sink).await,
         AppCommand::Tutorials(c) => services::tutorials::handle(c, ctx, sink).await,
+        AppCommand::Changelog(c) => services::changelog::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,
         AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,
         AppCommand::ClientUpdate(c) => services::client_update::handle(c, ctx, sink).await,

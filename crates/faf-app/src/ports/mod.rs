@@ -5,6 +5,7 @@
 //! See ARCHITECTURE.md §5 for the full Port table.
 
 pub mod auth;
+pub mod changelog;
 pub mod chat;
 pub mod client_update;
 pub mod coop;
@@ -29,6 +30,7 @@ pub mod updater;
 pub mod uploads;
 
 pub use auth::{AuthError, AuthPort, AuthResult};
+pub use changelog::ChangelogPort;
 pub use chat::{ChatPort, ChatUpdate};
 pub use client_update::{ClientUpdatePort, DownloadProgress};
 pub use coop::CoopPort;
@@ -86,6 +88,9 @@ pub struct Ports {
     pub reviews: Arc<dyn ReviewsPort>,
     pub tourney: Arc<dyn TourneyPort>,
     pub tutorials: Arc<dyn TutorialsPort>,
+    /// FAForever/fa's published patch notes. Public documents, never gated on
+    /// login: the changelog is worth reading before signing in.
+    pub changelog: Arc<dyn ChangelogPort>,
     pub uploads: Arc<dyn UploadsPort>,
     /// Replaces the *client*, not the game. Distinct from `updater` above,
     /// which patches the Forged Alliance install.

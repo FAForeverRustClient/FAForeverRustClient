@@ -1,0 +1,338 @@
+/*
+ * Changelog: a release list beside one patch note.
+ *
+ * The note is long-form reading, so it gets a measure limit and generous line
+ * height rather than the dense rows the rest of the client uses for tables.
+ */
+
+.changelog-view {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.changelog-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+}
+
+.changelog-search {
+  flex-shrink: 0;
+}
+
+.changelog-releases {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.changelog-year + .changelog-year {
+  margin-top: 10px;
+}
+
+.changelog-year-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 4px;
+  padding: 4px 2px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  background: var(--color-surface);
+}
+
+.changelog-release {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.changelog-release:hover {
+  background: var(--color-surface-hover);
+}
+
+.changelog-release.active {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.changelog-release-id {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.changelog-release-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* A hotfix and a game patch are different kinds of read, so they are told
+   apart at a glance rather than by reading the word. */
+.changelog-kind {
+  padding: 1px 5px;
+  font-size: 11px;
+  font-weight: 550;
+  border-radius: 999px;
+}
+
+.changelog-kind-patch {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 16%, transparent);
+}
+
+.changelog-kind-hotfix {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 16%, transparent);
+}
+
+.changelog-date {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-subtle);
+}
+
+/* ── The note ──────────────────────────────────────────────────────────── */
+.changelog-note {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--radius-lg);
+}
+
+.changelog-note-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.changelog-note-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.changelog-note-date {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+}
+
+.changelog-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--color-text);
+  cursor: pointer;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.changelog-external:hover {
+  background: var(--color-surface-hover);
+}
+
+.changelog-note-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Long-form prose: bounded measure so lines stay readable on a wide window. */
+  max-width: 78ch;
+  padding: 16px 18px 28px;
+}
+
+.changelog-heading {
+  margin: 22px 0 8px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.changelog-note-body > .changelog-heading:first-child {
+  margin-top: 0;
+}
+
+.changelog-heading-1 {
+  font-size: 16px;
+}
+
+.changelog-heading-2 {
+  padding-bottom: 5px;
+  font-size: 14.5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.changelog-heading-3,
+.changelog-heading-4 {
+  font-size: 13px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.changelog-paragraph {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.changelog-list {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.changelog-list .changelog-list {
+  margin: 3px 0 6px;
+}
+
+.changelog-list li {
+  margin-bottom: 2px;
+}
+
+/* ── Unit header: the icon the site's Liquid tag renders ───────────────── */
+.changelog-unit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 8px;
+  padding: 7px 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* A header can name a whole unit family, so the icons wrap rather than
+   squeezing the caption out of the row. */
+.changelog-unit-icons {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.changelog-unit-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  user-select: none;
+}
+
+.changelog-unit-icon.is-missing {
+  display: none;
+}
+
+.changelog-unit-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Balance changes read as a diff ────────────────────────────────────── */
+.changelog-change {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.changelog-change-label {
+  font-weight: 550;
+}
+
+.changelog-change-label::after {
+  content: ":";
+}
+
+.changelog-old {
+  color: var(--color-error);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--color-error) 55%, transparent);
+}
+
+.changelog-new {
+  font-weight: 550;
+  color: var(--color-ok);
+}
+
+.changelog-change svg {
+  flex: none;
+  color: var(--color-subtle);
+}
+
+/* ── Inline runs ───────────────────────────────────────────────────────── */
+.changelog-link,
+.changelog-issue {
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.changelog-link:hover,
+.changelog-issue:hover {
+  text-decoration: underline;
+}
+
+.changelog-issue {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+}
+
+.changelog-note-body code {
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 900px) {
+  .changelog-view {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(140px, 32%) 1fr;
+  }
+}

@@ -2770,6 +2770,40 @@ fn local_replay(uid: i32) -> LocalReplay {
 
 fn cases() -> Vec<Case> {
     vec![
+        // ── changelog ────────────────────────────────────────────────────
+        case(
+            "a patch note is selected before it arrives, and earlier ones are kept",
+            vec![
+                ChangelogEvent::Loading.into(),
+                ChangelogEvent::Loaded {
+                    releases: vec![faf_domain::protocol::changelog::ChangelogRelease {
+                        id: "3837".into(),
+                        kind: "Game Patch".into(),
+                        date: "2026-08-14".into(),
+                        year: "2026".into(),
+                        source_url: "https://example.invalid/3837.md".into(),
+                        web_url: "https://example.invalid/3837".into(),
+                    }],
+                }
+                .into(),
+                ChangelogEvent::EntryLoading { id: "3837".into() }.into(),
+                ChangelogEvent::EntryLoaded {
+                    entry: faf_domain::protocol::changelog::ChangelogEntry {
+                        id: "3837".into(),
+                        title: "3837 - Game Patch".into(),
+                        blocks: vec![faf_domain::protocol::changelog::ChangelogBlock::Heading {
+                            level: 1,
+                            text: "Game version 3837".into(),
+                        }],
+                    },
+                }
+                .into(),
+                ChangelogEvent::EntryLoadFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── session / auth / nav ─────────────────────────────────────────
         case(
             "session connects and reports its version",

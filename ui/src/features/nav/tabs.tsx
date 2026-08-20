@@ -10,6 +10,9 @@ import { lazy, type ComponentType } from "react";
 import type { Tab } from "../../ipc/bindings";
 import type { IconName } from "../../design-system/Icon";
 import type { MessageKey } from "../../i18n";
+const ChangelogView = lazy(() =>
+  import("../changelog/ChangelogView").then((module) => ({ default: module.ChangelogView })),
+);
 const ChatView = lazy(() =>
   import("../chat/ChatView").then((module) => ({ default: module.ChatView })),
 );
@@ -66,6 +69,7 @@ export const TAB_ORDER: Tab[] = [
   "tournaments",
   "tutorials",
   "units",
+  "changelog",
   "contribution",
   "settings",
 ];
@@ -82,5 +86,6 @@ export const TABS: Record<Tab, TabDef> = {
   tournaments: { label: "nav.tab.tournaments.label", description: "nav.tab.tournaments.description", icon: "trophy", Component: TournamentsView },
   tutorials: { label: "nav.tab.tutorials.label", description: "nav.tab.tutorials.description", icon: "book", Component: TutorialsView },
   units: { label: "nav.tab.units.label", description: "nav.tab.units.description", icon: "units", Component: UnitsView },
+  changelog: { label: "nav.tab.changelog.label", description: "nav.tab.changelog.description", icon: "changelog", Component: ChangelogView },
   settings: { label: "nav.tab.settings.label", description: "nav.tab.settings.description", icon: "settings", Component: SettingsView },
 };

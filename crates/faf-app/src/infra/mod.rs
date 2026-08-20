@@ -25,6 +25,7 @@ pub const OFFLINE_FAF_ID: i32 = 101;
 pub const OFFLINE_FAF_NAME: &str = "Nuggets";
 
 pub mod auth;
+pub mod changelog;
 pub mod chat;
 pub mod client_update;
 pub mod coop;
@@ -67,6 +68,7 @@ pub mod uploads;
 pub(crate) mod vault_install;
 
 pub use auth::FakeAuth;
+pub use changelog::{ChangelogClient, ChangelogConfig, FakeChangelog};
 pub use chat::FakeChat;
 pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
 pub use coop::{CoopClient, CoopConfig, FakeCoop};
@@ -368,6 +370,7 @@ pub fn fake_ports() -> Ports {
         reviews: Arc::new(FakeReviews::default()),
         tourney: Arc::new(FakeTourney::default()),
         tutorials: Arc::new(FakeTutorials),
+        changelog: Arc::new(FakeChangelog),
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
         galactic_war: Arc::new(FakeGalacticWar),
@@ -464,6 +467,9 @@ pub fn real_ports() -> Ports {
     let coop: Arc<dyn crate::ports::CoopPort> = Arc::new(CoopClient::faf(tokens.clone()));
     let tutorials: Arc<dyn crate::ports::TutorialsPort> =
         Arc::new(TutorialsClient::faf(tokens.clone()));
+    // Public static documents, so no token and no gating: like the update check
+    // below, this works before login.
+    let changelog: Arc<dyn crate::ports::ChangelogPort> = Arc::new(ChangelogClient::faf());
     let reviews: Arc<dyn crate::ports::ReviewsPort> = Arc::new(ReviewsClient::faf(tokens.clone()));
     let uploads: Arc<dyn crate::ports::UploadsPort> = Arc::new(UploadsClient::faf(tokens.clone()));
 
@@ -508,6 +514,7 @@ pub fn real_ports() -> Ports {
         reviews,
         tourney,
         tutorials,
+        changelog,
         uploads,
         client_update,
         galactic_war,
