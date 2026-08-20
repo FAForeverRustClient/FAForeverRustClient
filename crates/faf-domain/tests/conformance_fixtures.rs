@@ -2770,6 +2770,24 @@ fn local_replay(uid: i32) -> LocalReplay {
 
 fn cases() -> Vec<Case> {
     vec![
+        // ── auth ─────────────────────────────────────────────────────────
+        case(
+            "a remembered session is announced, then resolves either way",
+            vec![
+                AuthEvent::RestoreStarted.into(),
+                AuthEvent::LoggedIn {
+                    player: Player::new(7, "Commander"),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a restore with nothing stored hands the login screen back",
+            vec![
+                AuthEvent::RestoreStarted.into(),
+                AuthEvent::LoggedOut.into(),
+            ],
+        ),
         // ── changelog ────────────────────────────────────────────────────
         case(
             "a patch note is selected before it arrives, and earlier ones are kept",

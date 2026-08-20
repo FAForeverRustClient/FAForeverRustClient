@@ -97,6 +97,8 @@ export const en = {
   // Login screen.
   "auth.welcome": "Welcome to FAForever",
   "auth.subtitle": "Sign in with your FAF account to continue.",
+  "auth.restoring": "Signing you in…",
+  "auth.restoringHint": "Restoring the session you stayed signed in with. This only takes a moment.",
   "auth.signingIn": "Signing in…",
   "auth.login": "Log in with FAF",
   "auth.hint": "Opens your browser to sign in. The client never sees your password.",

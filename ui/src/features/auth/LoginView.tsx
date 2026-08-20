@@ -41,6 +41,26 @@ export function LoginView() {
   const login = () => ipc.send({ kind: "Auth", command: { type: "login", payload: { remember } } });
   const loginTest = () => ipc.send({ kind: "Auth", command: { type: "loginTest" } });
 
+  // A remembered session is being exchanged. The client used to show the whole
+  // login form here, so a player who had ticked "stay signed in" read it as
+  // being signed out and started a second, pointless login. Same card, so
+  // nothing jumps when it resolves, but nothing to press.
+  if (auth.status === "restoring") {
+    return (
+      <main className="centered login-screen">
+        <div className="entry-card surface-panel login-card">
+          <div className="entry-brand"><BrandMark size={68} /></div>
+          <div className="entry-heading">
+            <h1>{t("auth.restoring")}</h1>
+            <p>{t("auth.restoringHint")}</p>
+          </div>
+        </div>
+
+        <p className="login-footnote">{t("auth.footnote")}</p>
+      </main>
+    );
+  }
+
   return (
     <main className="centered login-screen">
       <div className="entry-card surface-panel login-card">

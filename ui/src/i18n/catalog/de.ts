@@ -68,6 +68,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "auth.welcome": "Willkommen bei FAForever",
   "auth.subtitle": "Melde dich mit deinem FAF-Konto an, um fortzufahren.",
+  "auth.restoring": "Du wirst angemeldet…",
+  "auth.restoringHint": "Die gespeicherte Sitzung wird wiederhergestellt. Das dauert nur einen Moment.",
   "auth.signingIn": "Anmeldung läuft…",
   "auth.login": "Mit FAF anmelden",
   "auth.hint": "Öffnet den Browser zur Anmeldung. Der Client sieht dein Passwort nie.",

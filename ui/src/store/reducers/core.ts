@@ -76,6 +76,8 @@ export function reduceAuth(state: AuthState, event: AuthEvent): AuthState {
   switch (event.type) {
     case "loginStarted":
       return { ...state, status: "loggingIn", error: null };
+    case "restoreStarted":
+      return { ...state, status: "restoring", error: null };
     case "loggedIn":
       return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "account" };
     case "testLoggedIn":

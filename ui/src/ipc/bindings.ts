@@ -116,7 +116,9 @@ export type AuthCommand =
 { type: "restore" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
-export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: {
+export type AuthEvent = { type: "loginStarted" } |
+/**  A stored refresh token exists and is being exchanged. */
+{ type: "restoreStarted" } | { type: "loggedIn"; payload: {
 	player: Player,
 } } | { type: "testLoggedIn"; payload: {
 	player: Player,
@@ -137,7 +139,17 @@ export type AuthState = {
 	mode: AuthMode,
 };
 
-export type AuthStatus = "loggedOut" | "loggingIn" | "loggedIn" | "failed";
+export type AuthStatus = "loggedOut" |
+/**
+ *  A remembered session is being tried, before any UI is offered.
+ *
+ *  Distinct from [`Self::LoggingIn`], which means an interactive browser
+ *  login the user just started. Conflating them was the bug: the client
+ *  showed the ordinary login screen while silently restoring, so a player
+ *  who had ticked "stay signed in" believed their session was gone and
+ *  signed in a second time.
+ */
+"restoring" | "loggingIn" | "loggedIn" | "failed";
 
 /**
  *  One avatar the lobby server allows the authenticated player to select.

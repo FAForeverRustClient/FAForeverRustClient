@@ -79,6 +79,14 @@ fn normalise_role(role: &str) -> &str {
 pub enum AuthStatus {
     #[default]
     LoggedOut,
+    /// A remembered session is being tried, before any UI is offered.
+    ///
+    /// Distinct from [`Self::LoggingIn`], which means an interactive browser
+    /// login the user just started. Conflating them was the bug: the client
+    /// showed the ordinary login screen while silently restoring, so a player
+    /// who had ticked "stay signed in" believed their session was gone and
+    /// signed in a second time.
+    Restoring,
     LoggingIn,
     LoggedIn,
     Failed,
@@ -108,9 +116,17 @@ pub struct AuthState {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum AuthEvent {
     LoginStarted,
-    LoggedIn { player: Player },
-    TestLoggedIn { player: Player },
-    LoginFailed { message: String },
+    /// A stored refresh token exists and is being exchanged.
+    RestoreStarted,
+    LoggedIn {
+        player: Player,
+    },
+    TestLoggedIn {
+        player: Player,
+    },
+    LoginFailed {
+        message: String,
+    },
     LoggedOut,
 }
 
@@ -135,6 +151,10 @@ pub fn reduce(state: &mut AuthState, event: &AuthEvent) {
     match event {
         AuthEvent::LoginStarted => {
             state.status = AuthStatus::LoggingIn;
+            state.error = None;
+        }
+        AuthEvent::RestoreStarted => {
+            state.status = AuthStatus::Restoring;
             state.error = None;
         }
         AuthEvent::LoggedIn { player } => {
@@ -176,6 +196,36 @@ mod tests {
             roles: roles.iter().map(|role| (*role).to_string()).collect(),
             ..player()
         }
+    }
+
+    #[test]
+    fn restoring_is_its_own_state_and_ends_either_way() {
+        let mut state = AuthState::default();
+        assert_eq!(state.status, AuthStatus::LoggedOut);
+
+        reduce(&mut state, &AuthEvent::RestoreStarted);
+        assert_eq!(
+            state.status,
+            AuthStatus::Restoring,
+            "the client must be able to say it is signing in"
+        );
+        assert_ne!(
+            state.status,
+            AuthStatus::LoggingIn,
+            "not the same thing as a browser login the user started"
+        );
+
+        // A stored session that works.
+        reduce(&mut state, &AuthEvent::LoggedIn { player: player() });
+        assert_eq!(state.status, AuthStatus::LoggedIn);
+
+        // A stored session that does not: the login screen has to come back,
+        // and without an error, because "nothing was stored" is not a failure.
+        let mut state = AuthState::default();
+        reduce(&mut state, &AuthEvent::RestoreStarted);
+        reduce(&mut state, &AuthEvent::LoggedOut);
+        assert_eq!(state.status, AuthStatus::LoggedOut);
+        assert!(state.error.is_none());
     }
 
     #[test]

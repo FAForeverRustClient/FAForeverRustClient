@@ -600,6 +600,83 @@
   },
   "cases": [
     {
+      "name": "a remembered session is announced, then resolves either way",
+      "steps": [
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "restoreStarted"
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "restoring"
+          }
+        },
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "loggedIn",
+              "payload": {
+                "player": {
+                  "id": 7,
+                  "name": "Commander",
+                  "roles": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": {
+              "id": 7,
+              "name": "Commander",
+              "roles": []
+            },
+            "status": "loggedIn"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a restore with nothing stored hands the login screen back",
+      "steps": [
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "restoreStarted"
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "restoring"
+          }
+        },
+        {
+          "event": {
+            "kind": "Auth",
+            "event": {
+              "type": "loggedOut"
+            }
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "status": "loggedOut"
+          }
+        }
+      ]
+    },
+    {
       "name": "a patch note is selected before it arrives, and earlier ones are kept",
       "steps": [
         {

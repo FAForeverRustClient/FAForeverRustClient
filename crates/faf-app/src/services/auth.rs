@@ -33,13 +33,21 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             if !is_current(ctx, generation) {
                 return;
             }
-            // A missing or temporarily unavailable refresh token should leave
-            // the normal login screen usable; only a successful restore changes
-            // the authenticated state.
-            if let Ok(Some(player)) = ctx.ports.auth.restore().await {
-                if is_current(ctx, generation) {
-                    out.emit(AuthEvent::LoggedIn { player });
-                }
+            // Say that a restore is happening. Emitting nothing until it
+            // succeeded left the ordinary login screen on display throughout,
+            // which read as "you are signed out" to anyone who had ticked
+            // "stay signed in" and invited a pointless second login.
+            out.emit(AuthEvent::RestoreStarted);
+            let restored = ctx.ports.auth.restore().await;
+            if !is_current(ctx, generation) {
+                return;
+            }
+            match restored {
+                Ok(Some(player)) => out.emit(AuthEvent::LoggedIn { player }),
+                // No stored token, or one that could not be exchanged. Not a
+                // login failure: there is nothing to report and the login
+                // screen must become usable.
+                _ => out.emit(AuthEvent::LoggedOut),
             }
         }
         AuthCommand::LoginTest => {
