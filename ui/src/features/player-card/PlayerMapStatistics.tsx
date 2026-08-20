@@ -6,6 +6,7 @@
 // player played the map I am about to host, and how did it go?
 
 import { useEffect, useMemo, useState } from "react";
+import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { formatNumber } from "../../i18n";
@@ -26,6 +27,21 @@ function winRate(wins: number, losses: number): number | null {
   return decided > 0 ? Math.round((wins / decided) * 100) : null;
 }
 
+type SortColumn = "map" | "games" | "record" | "winRate" | "lastPlayed";
+
+/** Which way a column sorts on its *first* click.
+ *
+ * Names read alphabetically, everything else reads best-first: clicking
+ * "Win rate" to be shown the worst maps would be a strange way round.
+ */
+const FIRST_DIRECTION: Record<SortColumn, "asc" | "desc"> = {
+  map: "asc",
+  games: "desc",
+  record: "desc",
+  winRate: "desc",
+  lastPlayed: "desc",
+};
+
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
   const stats = useAppStore((state) => state.state.playerCard.mapStats);
@@ -34,6 +50,12 @@ export function PlayerMapStatistics({ playerId }: Props) {
   const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
   const error = useAppStore((state) => state.state.playerCard.mapStatsError);
   const [search, setSearch] = useState("");
+  // Matches the order the backend already delivers, so the first render is
+  // not a resort of what the fold just sorted.
+  const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" }>({
+    column: "games",
+    direction: "desc",
+  });
 
   // Loaded when this tab is opened rather than with the profile: the scan walks
   // the player's entire history, and someone who only wanted their rating
@@ -49,11 +71,69 @@ export function PlayerMapStatistics({ playerId }: Props) {
   const maps = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     const all = stats?.maps ?? [];
-    if (!query) return all;
-    return all.filter((entry) =>
-      (entry.generated ? generatedLabel : entry.map).toLocaleLowerCase().includes(query),
+    const matching = query
+      ? all.filter((entry) =>
+          (entry.generated ? generatedLabel : entry.map).toLocaleLowerCase().includes(query),
+        )
+      : all;
+
+    const sign = sort.direction === "asc" ? 1 : -1;
+    return [...matching].sort((a, b) => {
+      if (sort.column === "map") {
+        const left = a.generated ? generatedLabel : a.map;
+        const right = b.generated ? generatedLabel : b.map;
+        return sign * left.localeCompare(right);
+      }
+      if (sort.column === "lastPlayed") {
+        // ISO timestamps compare correctly as strings; a map with no recorded
+        // date sorts last either way rather than pretending to be the oldest.
+        if (!a.lastPlayed || !b.lastPlayed) {
+          return Number(Boolean(b.lastPlayed)) - Number(Boolean(a.lastPlayed));
+        }
+        return sign * a.lastPlayed.localeCompare(b.lastPlayed);
+      }
+      if (sort.column === "winRate") {
+        const left = winRate(a.wins, a.losses);
+        const right = winRate(b.wins, b.losses);
+        // A map with nothing decided has no rate to rank, so it stays at the
+        // bottom in both directions instead of topping the ascending list.
+        if (left === null || right === null) {
+          return Number(right !== null) - Number(left !== null);
+        }
+        return sign * (left - right) || b.games - a.games;
+      }
+      const value = (entry: (typeof matching)[number]) =>
+        sort.column === "record" ? entry.wins : entry.games;
+      // Ties fall back to games played, so equal columns still read sensibly.
+      return sign * (value(a) - value(b)) || b.games - a.games;
+    });
+  }, [generatedLabel, search, sort, stats]);
+
+  /// First click sorts the column its natural way, a second reverses it.
+  const toggleSort = (column: SortColumn) =>
+    setSort((current) =>
+      current.column === column
+        ? { column, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { column, direction: FIRST_DIRECTION[column] },
     );
-  }, [generatedLabel, search, stats]);
+
+  const header = (column: SortColumn, label: string) => {
+    const active = sort.column === column;
+    return (
+      <th
+        className={active ? "is-sorted" : undefined}
+        aria-sort={active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <button type="button" className="player-maps-sort" onClick={() => toggleSort(column)}>
+          {label}
+          <Icon
+            name={active && sort.direction === "asc" ? "chevronUp" : "chevronDown"}
+            size={11}
+          />
+        </button>
+      </th>
+    );
+  };
 
   if (status === "loading") {
     return <div className="player-card-empty muted">{t("playerCard.maps.loading")}</div>;
@@ -111,11 +191,11 @@ export function PlayerMapStatistics({ playerId }: Props) {
       <table className="surface-panel player-maps-table">
         <thead>
           <tr>
-            <th>{t("playerCard.maps.map")}</th>
-            <th>{t("playerCard.maps.games")}</th>
-            <th>{t("playerCard.maps.record")}</th>
-            <th>{t("playerCard.maps.winRate")}</th>
-            <th>{t("playerCard.maps.lastPlayed")}</th>
+            {header("map", t("playerCard.maps.map"))}
+            {header("games", t("playerCard.maps.games"))}
+            {header("record", t("playerCard.maps.record"))}
+            {header("winRate", t("playerCard.maps.winRate"))}
+            {header("lastPlayed", t("playerCard.maps.lastPlayed"))}
           </tr>
         </thead>
         <tbody>

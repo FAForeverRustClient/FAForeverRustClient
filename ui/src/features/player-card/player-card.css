@@ -1310,12 +1310,7 @@
 .player-maps-view .player-maps-search {
   flex: 0 0 auto;
   width: 100%;
-  min-height: 28px;
-}
-
-.player-maps-view .player-maps-search input {
-  padding: 3px 0;
-  font-size: 12px;
+  min-height: 50px;
 }
 
 .player-maps-map {
@@ -1401,4 +1396,47 @@
   .player-maps-summary {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Sortable headers: the whole cell is the target, so the hit area matches
+   what looks clickable rather than just the word. */
+.player-maps-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.player-maps-table th:first-child .player-maps-sort {
+  flex-direction: row;
+}
+
+.player-maps-table th:not(:first-child) .player-maps-sort {
+  /* Right-aligned columns keep their label against the numbers below it. */
+  flex-direction: row-reverse;
+}
+
+.player-maps-sort:hover {
+  color: var(--color-text);
+}
+
+/* The arrow only earns full contrast on the column actually in effect. */
+.player-maps-sort svg {
+  color: var(--color-subtle);
+  opacity: 0;
+}
+
+.player-maps-table th.is-sorted .player-maps-sort {
+  color: var(--color-text);
+}
+
+.player-maps-table th.is-sorted .player-maps-sort svg,
+.player-maps-sort:hover svg {
+  opacity: 1;
 }
