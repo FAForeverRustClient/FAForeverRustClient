@@ -51,7 +51,10 @@
 .coop-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  /* Wide enough for the record board to show all six of its columns without
+     scrolling sideways: rank, time, players, team, secondary and the replay
+     button. The team cell is the one that grows, so it truncates instead. */
+  grid-template-columns: minmax(0, 1fr) minmax(460px, 540px);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
@@ -371,17 +374,43 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A real button rather than an underlined word: this downloads a replay and
+   starts the game, which is not what a link in a table cell promises. */
 .coop-board-replay {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
   color: var(--color-accent);
-  background: none;
-  border: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font: inherit;
-  text-decoration: underline;
+  font-weight: 550;
+  line-height: 1.6;
   cursor: pointer;
+}
+
+.coop-board-replay:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
 }
 
 .coop-board-replay:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* The record exists, the replay does not: older runs predate replay storage. */
+.coop-board-no-replay {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+/* Everything else in the board is short and fixed; the team is the cell that
+   can hold four logins, so it gives way rather than widening the table. */
+.coop-board-team {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

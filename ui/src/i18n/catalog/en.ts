@@ -557,6 +557,8 @@ export const en = {
   "lobby.coop.column.secondary": "Secondary",
   "lobby.coop.column.replay": "Replay",
   "lobby.coop.watch": "Watch",
+  "lobby.coop.noReplay": "No replay",
+  "lobby.coop.watchRunTitle": "Watch the replay of this run",
 
   // Host-game dialog.
   "lobby.host.defaultTitle": "{player}'s game",

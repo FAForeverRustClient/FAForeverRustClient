@@ -389,17 +389,23 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
       <td>{result.ranking}</td>
       <td className="coop-board-time">{formatDuration(result.durationSeconds)}</td>
       <td>{result.playerCount}</td>
-      <td>{result.players.join(", ") || <span className="muted">{t("lobby.coop.unknownPlayers")}</span>}</td>
+      <td className="coop-board-team" title={result.players.join(", ")}>
+        {result.players.join(", ") || <span className="muted">{t("lobby.coop.unknownPlayers")}</span>}
+      </td>
       {/* Completing the optional objectives is the harder run, so it is worth
           distinguishing rather than hiding in a tooltip. */}
       <td>{result.secondaryObjectives ? t("lobby.coop.yes") : "N/A"}</td>
       <td>
+        {/* One click plays back exactly this run: `watchVault` downloads the
+            replay the record was set with and starts the game on it, the same
+            path the replay vault uses. */}
         {result.replayId === null ? (
-          <span className="muted">, </span>
+          <span className="coop-board-no-replay">{t("lobby.coop.noReplay")}</span>
         ) : (
           <button
             type="button"
             className="coop-board-replay"
+            title={t("lobby.coop.watchRunTitle")}
             onClick={() =>
               ipc.send({
                 kind: "Replays",
@@ -407,6 +413,7 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
               })
             }
           >
+            <Icon name="play" size={11} />
             {t("lobby.coop.watch")}
           </button>
         )}

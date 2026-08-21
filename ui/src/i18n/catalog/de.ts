@@ -2486,4 +2486,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.coop.noMissions": "Keine passende Mission.",
   "lobby.coop.previewUnavailable": "Keine Vorschau für {mission}",
   "lobby.host.error.selectMission": "Wähle eine Mission.",
+  "lobby.coop.noReplay": "Kein Replay",
+  "lobby.coop.watchRunTitle": "Replay dieses Laufs ansehen",
 };
