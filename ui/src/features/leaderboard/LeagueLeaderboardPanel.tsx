@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs } from "../../design-system/SectionTabs";
 import { ipc } from "../../ipc/client";
@@ -14,10 +13,6 @@ import { useTranslation } from "../../i18n/useTranslation";
 const selectLeague = (leagueId: number) => ipc.send({
   kind: "Leaderboard",
   command: { type: "selectLeague", payload: { leagueId } },
-});
-const selectSeason = (seasonId: number) => ipc.send({
-  kind: "Leaderboard",
-  command: { type: "selectSeason", payload: { seasonId } },
 });
 
 function SeasonPicker({
@@ -135,7 +130,6 @@ function SeasonPicker({
 
   return (
     <div className="leaderboard-season-picker">
-      <span className="leaderboard-field-label">{label}</span>
       <button
         ref={triggerRef}
         type="button"
@@ -182,11 +176,44 @@ function SeasonPicker({
   );
 }
 
-function DivisionDistribution({ tiers, entries, ownDivision, seasonContext }: {
+export function LeagueSeasonToolbar({
+  currentSeason,
+  seasons,
+  selectedSeasonId,
+  disabled,
+  onChange,
+}: {
+  currentSeason: LeagueSeason;
+  seasons: LeagueSeason[];
+  selectedSeasonId: number | null;
+  disabled: boolean;
+  onChange: (seasonId: number) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="leaderboard-season-toolbar">
+      <div className="leaderboard-season-context">
+        <SeasonPicker
+          label={t("leaderboard.leagues.season")}
+          seasons={seasons}
+          selectedSeasonId={selectedSeasonId}
+          disabled={disabled}
+          onChange={onChange}
+        />
+        <div className="leaderboard-season-meta">
+          <span className={currentSeason.active ? "leaderboard-active" : "muted"}>{t(currentSeason.active ? "leaderboard.leagues.active" : "leaderboard.leagues.finished")}</span>
+          <span>{formatDate(currentSeason.startDate)} – {formatDate(currentSeason.endDate)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DivisionDistribution({ tiers, entries, ownDivision }: {
   tiers: LeaderboardTier[];
   entries: LeaderboardEntry[];
   ownDivision: string | null;
-  seasonContext: ReactNode;
 }) {
   const { t } = useTranslation();
   const counts = useMemo(() => {
@@ -231,7 +258,6 @@ function DivisionDistribution({ tiers, entries, ownDivision, seasonContext }: {
           <h3>{t("leaderboard.leagues.population")}</h3>
           <span className="muted">{entries.length} placed</span>
         </div>
-        {seasonContext}
       </div>
       <div className="leaderboard-distribution-chart" role="img" aria-label={t("leaderboard.leagues.population")}>
         <div className="leaderboard-distribution-plot">
@@ -392,7 +418,6 @@ export function LeagueLeaderboardPanel() {
           items={state.leagues.map((league) => ({ id: league.id, label: league.name }))}
           onChange={(leagueId) => void selectLeague(leagueId)}
         />
-
       </div>
 
       {state.seasonsStatus.type === "loading" && <div className="leaderboard-state muted">Loading seasons…</div>}
@@ -409,23 +434,6 @@ export function LeagueLeaderboardPanel() {
               tiers={state.tiers}
               entries={state.seasonEntries}
               ownDivision={ownEntry?.division ?? null}
-              seasonContext={(
-                <div className="leaderboard-season-context">
-                  <SeasonPicker
-                    label={t("leaderboard.leagues.season")}
-                    seasons={state.seasons}
-                    selectedSeasonId={state.selectedSeasonId}
-                    disabled={state.seasonsStatus.type === "loading"}
-                    onChange={(seasonId) => void selectSeason(seasonId)}
-                  />
-                  {currentSeason && (
-                    <div className="leaderboard-season-meta">
-                      <span className={currentSeason.active ? "leaderboard-active" : "muted"}>{t(currentSeason.active ? "leaderboard.leagues.active" : "leaderboard.leagues.finished")}</span>
-                      <span>{formatDate(currentSeason.startDate)} – {formatDate(currentSeason.endDate)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
             />
           </div>
 
@@ -441,16 +449,19 @@ export function LeagueLeaderboardPanel() {
                 {divisions.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
             </label>
-            {subdivisions.length > 0 && (
-              <div className="leaderboard-subdivisions" aria-label={t("leaderboard.leagues.subdivision")}>
-                <Button variant={subdivision === "all" ? "primary" : "ghost"} onClick={() => setSubdivision("all")}>{t("leaderboard.leagues.all")}</Button>
+            <label className="leaderboard-field">
+              <span>{t("leaderboard.leagues.subdivision")}</span>
+              <select
+                value={subdivision}
+                disabled={subdivisions.length === 0}
+                onChange={(event) => setSubdivision(event.target.value)}
+              >
+                <option value="all">{t("leaderboard.leagues.all")}</option>
                 {subdivisions.map((tier) => (
-                  <Button key={tier.name} variant={subdivision === tier.name ? "primary" : "ghost"} onClick={() => setSubdivision(tier.name)}>
-                    {tier.subdivision || tier.name}
-                  </Button>
+                  <option key={tier.name} value={tier.name}>{tier.subdivision || tier.name}</option>
                 ))}
-              </div>
-            )}
+              </select>
+            </label>
           </div>
 
           <div className="leaderboard-main-grid">

@@ -4,7 +4,7 @@ import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardMode } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
-import { LeagueLeaderboardPanel } from "./LeagueLeaderboardPanel";
+import { LeagueLeaderboardPanel, LeagueSeasonToolbar } from "./LeagueLeaderboardPanel";
 import { RatingLeaderboardPanel } from "./RatingLeaderboardPanel";
 import "./leaderboard.css";
 import { openPlayerCard } from "../player-card/playerCardActions";
@@ -14,12 +14,17 @@ const setMode = (mode: LeaderboardMode) => ipc.send({
   kind: "Leaderboard",
   command: { type: "setMode", payload: { mode } },
 });
+const selectSeason = (seasonId: number) => ipc.send({
+  kind: "Leaderboard",
+  command: { type: "selectSeason", payload: { seasonId } },
+});
 const loadCatalog = () => ipc.send({ kind: "Leaderboard", command: { type: "loadCatalog" } });
 
 export function LeaderboardView() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
   const player = useAppStore((store) => store.state.auth.player);
+  const currentSeason = state.seasons.find((season) => season.id === state.selectedSeasonId) ?? null;
 
   useEffect(() => {
     if (useAppStore.getState().state.leaderboard.catalogStatus.type === "idle") void loadCatalog();
@@ -39,6 +44,15 @@ export function LeaderboardView() {
           </Button>
           </div>
         </div>
+        {state.mode === "leagues" && currentSeason && (
+          <LeagueSeasonToolbar
+            currentSeason={currentSeason}
+            seasons={state.seasons}
+            selectedSeasonId={state.selectedSeasonId}
+            disabled={state.seasonsStatus.type === "loading"}
+            onChange={(seasonId) => void selectSeason(seasonId)}
+          />
+        )}
       </header>
 
       {state.catalogStatus.type === "loading" && <div className="leaderboard-state muted">Loading leaderboard catalog…</div>}

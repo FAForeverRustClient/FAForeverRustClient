@@ -5,6 +5,7 @@
   min-height: 0;
   height: 100%;
   overflow: auto;
+  --leaderboard-detail-width: 230px;
 }
 
 .leaderboard-header,
@@ -14,16 +15,24 @@
 .leaderboard-league-header,
 .leaderboard-season-toolbar,
 .leaderboard-season-meta,
-.leaderboard-section-title,
-.leaderboard-subdivisions {
+.leaderboard-section-title {
   display: flex;
   align-items: center;
 }
 
 .leaderboard-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--leaderboard-detail-width);
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
+}
+
+.leaderboard-header > .leaderboard-season-toolbar {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  margin-left: 0;
 }
 
 .leaderboard-header h2,
@@ -48,8 +57,7 @@
 }
 
 .leaderboard-mode,
-.leaderboard-header-actions,
-.leaderboard-subdivisions {
+.leaderboard-header-actions {
   gap: var(--space-2);
 }
 
@@ -74,7 +82,6 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  --leaderboard-detail-width: 230px;
 }
 
 .leaderboard-description {
@@ -118,9 +125,18 @@
   outline-offset: 2px;
 }
 
+/* The leaderboard is itself a clipped scroll surface. Keep field focus rings
+ * inside their controls so the left edge is not cut off at the scrollport. */
+.leaderboard-field input:focus-visible,
+.leaderboard-field select:focus-visible {
+  outline-offset: -2px;
+}
+
 .leaderboard-field input:disabled,
+.leaderboard-field select:disabled,
 .leaderboard-search-date input[aria-disabled="true"] {
   opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .leaderboard-search-panel {
@@ -477,12 +493,12 @@
 }
 
 .leaderboard-season-toolbar {
-  flex: 0 1 auto;
-  align-self: flex-start;
+  flex: 0 0 auto;
+  align-self: center;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-4);
   margin-left: var(--space-4);
+  transform: translateY(var(--space-3));
 }
 
 .leaderboard-season-toolbar .leaderboard-field {
@@ -581,7 +597,7 @@
 
 .leaderboard-season-meta {
   gap: var(--space-3);
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -869,10 +885,10 @@
 .leaderboard-season-context {
   display: flex;
   flex: 0 1 auto;
-  align-items: center;
-  justify-content: flex-end;
+  align-items: flex-end;
+  flex-direction: column;
   min-width: 0;
-  gap: var(--space-3);
+  gap: var(--space-1);
 }
 
 .leaderboard-season-context .leaderboard-season-picker {
@@ -881,25 +897,47 @@
 
 .leaderboard-season-context .leaderboard-season-meta {
   flex: 0 1 auto;
+  justify-content: flex-end;
 }
 
 .leaderboard-league-filters {
+  width: calc(100% - var(--leaderboard-detail-width) - var(--space-3));
+  max-width: 100%;
+  min-width: 0;
   align-items: flex-end;
-  margin-right: calc(var(--leaderboard-detail-width) + var(--space-3));
 }
 
-.leaderboard-subdivisions {
-  flex-wrap: wrap;
+.leaderboard-league-filters > .leaderboard-field {
+  flex: 0 1 170px;
+  min-width: 0;
+}
+
+.leaderboard-league-filters > .leaderboard-field-grow {
+  flex: 1 1 240px;
 }
 
 @media (max-width: 1100px) {
+  .leaderboard-header {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard-header > .leaderboard-season-toolbar {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+    margin-left: 0;
+    transform: none;
+  }
+
   .leaderboard-main-grid,
   .leaderboard-overview-grid {
     grid-template-columns: 1fr;
   }
 
   .leaderboard-overview-grid,
-  .leaderboard-league-filters {
+  .leaderboard-league-filters,
+  .leaderboard-season-toolbar {
+    width: 100%;
     margin-right: 0;
   }
 }
@@ -908,6 +946,10 @@
   .leaderboard-view {
     height: auto;
     overflow: visible;
+  }
+
+  .leaderboard-header {
+    display: flex;
   }
 
   .leaderboard-header,
@@ -925,9 +967,10 @@
     width: 100%;
   }
 
-  .leaderboard-season-toolbar {
+  .leaderboard-header > .leaderboard-season-toolbar {
     width: 100%;
-    margin: var(--space-3) 0 0;
+    margin: var(--space-2) 0 var(--space-3);
+    transform: none;
   }
 
   .leaderboard-season-picker {
