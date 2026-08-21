@@ -26,9 +26,35 @@ function state(overrides: Partial<LobbyState> = {}): LobbyState {
     avatarSelectionStatus: "idle",
     avatarSelectionError: "",
     hostPrefill: null,
+    pendingHostMap: null,
     ...overrides,
   };
 }
+
+describe("the map a host request carries", () => {
+  // `game_launch` has no `mapname`, so this is the only copy of the map at the
+  // moment the launcher prepares. It must outlive the launch and go away when
+  // the game is over.
+  it("survives the launch and is dropped when the game ends", () => {
+    const requested = reduceLobby(state(), {
+      type: "hostRequested",
+      payload: { map: "scca_coop_a01.v0017" },
+    });
+    expect(requested.pendingHostMap).toBe("scca_coop_a01.v0017");
+
+    const ended = reduceLobby(requested, { type: "gameTerminated" });
+    expect(ended.pendingHostMap).toBeNull();
+  });
+
+  it("does not outlive the connection", () => {
+    const requested = reduceLobby(state({ status: "connected" }), {
+      type: "hostRequested",
+      payload: { map: "hoey.v0002" },
+    });
+
+    expect(reduceLobby(requested, { type: "disconnected" }).pendingHostMap).toBeNull();
+  });
+});
 
 function game(id: number): Game {
   return {

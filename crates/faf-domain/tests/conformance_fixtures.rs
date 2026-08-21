@@ -3686,6 +3686,30 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a host request keeps its map until the launch that follows",
+            vec![
+                // The server's `game_launch` carries no `mapname`, so the map
+                // the host chose is the only copy in existence at the moment
+                // preparation runs. It survives the launch and is dropped when
+                // the game is over, not when it starts.
+                LobbyEvent::HostRequested {
+                    map: "scca_coop_a01.v0017".into(),
+                }
+                .into(),
+                LobbyEvent::Launching {
+                    launch: GameLaunch {
+                        uid: 27_344_519,
+                        mod_name: "coop".into(),
+                        name: "Rhiza co-op".into(),
+                        game_type: "custom".into(),
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
             "tutorials narrate a launch",
             vec![
                 TutorialsEvent::Loading.into(),
@@ -4512,7 +4536,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Lobby:gamesUpdated",
     "Lobby:joinFailed",
     "Lobby:launchFailed",
-    "Lobby:launching",
     "Lobby:liveGamesUpdated",
     "Lobby:matchmakingUpdated",
     "Lobby:partyUpdated",

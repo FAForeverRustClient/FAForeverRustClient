@@ -2097,7 +2097,14 @@ export type LobbyEvent = { type: "connecting" } | { type: "connected" } |
 /**  Another tab asked for the host dialog, with this title. */
 { type: "hostPrepared"; payload: {
 	title: string,
-} } | { type: "hostPrefillCleared" } | { type: "gamesUpdated"; payload: {
+} } | { type: "hostPrefillCleared" } |
+/**
+ *  A `game_host` request went out. Carries the map so the launch that
+ *  follows can be prepared for it; see [`LobbyState::pending_host_map`].
+ */
+{ type: "hostRequested"; payload: {
+	map: string,
+} } | { type: "gamesUpdated"; payload: {
 	games: Game[],
 } } | { type: "liveGamesUpdated"; payload: {
 	games: Game[],
@@ -2173,6 +2180,19 @@ export type LobbyState = {
 	 *  host's decision, and the existing dialog already asks for them properly.
 	 */
 	hostPrefill: string | null,
+	/**
+	 *  The map of a host request that has not been launched yet.
+	 *
+	 *  The server's `game_launch` carries no `mapname`: captured live, a custom
+	 *  launch is exactly `{command, args, uid, mod, name, init_mode, game_type,
+	 *  rating_type}`, and the map only ever appears in `game_info`. A player
+	 *  joining a listed game is prepared from that record before the join is
+	 *  even sent, but a *host* has no such record: the server does not know the
+	 *  map until the game reports it over GPGNet, which is after launch. So the
+	 *  one place the map exists at that moment is the request this client just
+	 *  made, and it has to survive until the launch arrives.
+	 */
+	pendingHostMap: string | null,
 };
 
 export type LobbyStatus = "disconnected" | "connecting" | "connected";

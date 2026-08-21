@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 /// An open game in the lobby.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Game {
     pub id: i32,
@@ -246,7 +246,7 @@ pub enum PlayMode {
 /// (a later phase) needs to actually start the game. For now we only model and
 /// surface it; nothing acts on it yet. Mirrors the relevant fields of the Python
 /// client's `GameLaunchCommand` (`src/protocol/lobbyprotocol.py`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GameLaunch {
     pub uid: i32,
@@ -395,6 +395,17 @@ pub struct LobbyState {
     /// Only the title: the map, the featured mod and the password are the
     /// host's decision, and the existing dialog already asks for them properly.
     pub host_prefill: Option<String>,
+    /// The map of a host request that has not been launched yet.
+    ///
+    /// The server's `game_launch` carries no `mapname`: captured live, a custom
+    /// launch is exactly `{command, args, uid, mod, name, init_mode, game_type,
+    /// rating_type}`, and the map only ever appears in `game_info`. A player
+    /// joining a listed game is prepared from that record before the join is
+    /// even sent, but a *host* has no such record: the server does not know the
+    /// map until the game reports it over GPGNet, which is after launch. So the
+    /// one place the map exists at that moment is the request this client just
+    /// made, and it has to survive until the launch arrives.
+    pub pending_host_map: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -407,6 +418,11 @@ pub enum LobbyEvent {
         title: String,
     },
     HostPrefillCleared,
+    /// A `game_host` request went out. Carries the map so the launch that
+    /// follows can be prepared for it; see [`LobbyState::pending_host_map`].
+    HostRequested {
+        map: String,
+    },
     GamesUpdated {
         games: Vec<Game>,
     },
@@ -540,6 +556,7 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
         LobbyEvent::Connected => state.status = LobbyStatus::Connected,
         LobbyEvent::HostPrepared { title } => state.host_prefill = Some(title.clone()),
         LobbyEvent::HostPrefillCleared => state.host_prefill = None,
+        LobbyEvent::HostRequested { map } => state.pending_host_map = Some(map.clone()),
         LobbyEvent::GamesUpdated { games } => state.games = games.clone(),
         LobbyEvent::LiveGamesUpdated { games } => state.live_games = games.clone(),
         LobbyEvent::MatchmakerQueuesUpdated { queues } => {
@@ -615,12 +632,18 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
                 reason: reason.clone(),
             }
         }
-        LobbyEvent::GameTerminated => state.join = JoinState::Idle,
+        LobbyEvent::GameTerminated => {
+            state.join = JoinState::Idle;
+            // Not cleared on `Launching`: the launcher reads this *after* that
+            // event goes out, which is the whole point of keeping it.
+            state.pending_host_map = None;
+        }
         LobbyEvent::Disconnected => {
             state.status = LobbyStatus::Disconnected;
             state.games.clear();
             state.live_games.clear();
             state.join = JoinState::Idle;
+            state.pending_host_map = None;
             state.matchmaker_queues.clear();
             state.matchmaking = MatchmakingState::Idle;
             state.party = PartyState::default();

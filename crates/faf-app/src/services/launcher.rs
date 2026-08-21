@@ -80,7 +80,16 @@ pub async fn start(
     // the launch rather than a warning. Both reference clients do the same
     // check at the same point (Java's `MapService.generateIfNotInstalled`).
     if !already_prepared {
-        if let Err(reason) = ensure_generated_map(&launch.mapname, ctx, out).await {
+        // Not `launch.mapname`: the server never sends one. See `map_for`.
+        let mapname = out.with_state(|state| {
+            map_for(
+                launch,
+                &state.lobby.games,
+                &state.lobby.live_games,
+                state.lobby.pending_host_map.as_deref(),
+            )
+        });
+        if let Err(reason) = ensure_generated_map(&mapname, ctx, out).await {
             return fail(ctx, out, reason);
         }
 
@@ -93,7 +102,7 @@ pub async fn start(
         // `prepareAndLaunchGameWhenReady`, the Python client's `fa.check.check`);
         // it is cheap when nothing changed, because files matching by MD5 are
         // skipped and a present map is not re-fetched.
-        if let Err(reason) = prepare_install(launch, ctx, out).await {
+        if let Err(reason) = prepare_install(launch, &mapname, ctx, out).await {
             return fail(ctx, out, reason);
         }
     }
@@ -301,8 +310,51 @@ async fn ensure_generated_map(
 /// recording the user chose to watch; here the server has already seated them
 /// in a game, and starting an out-of-date client means a failed load, a desync,
 /// or a leave the other players see as a drop. Reporting why beats all three.
+/// The map this launch is actually on.
+///
+/// `launch.mapname` is almost always empty, which is why this exists. Captured
+/// from a live session, the server's frame is exactly:
+///
+/// ```text
+/// {'command': 'game_launch', 'args': ['/numgames', 4409], 'uid': 27344519,
+///  'mod': 'faf', 'name': "Seraphim-Noob's game", 'init_mode': 0,
+///  'game_type': 'custom', 'rating_type': 'global'}
+/// ```
+///
+/// No `mapname`, on a hosted game or a joined one. The map is only ever in
+/// `game_info` (`'mapname': 'scmp_009', 'map_file_path': 'maps/scmp_009.zip'`).
+/// Reading it off the launch meant `map_folder` was `None` every single time,
+/// so `ensure_live_map` never ran: the featured mod was patched and the map was
+/// never downloaded, silently, on every host and every matchmaker start. Only
+/// joining a listed game worked, because that path prepares from the game
+/// record before the join is even sent.
+///
+/// The field is still read first: it costs nothing and a server that does send
+/// one is then believed. Then the game record this launch refers to, then the
+/// host request this client just made, which is the only source that exists
+/// when hosting.
+fn map_for(
+    launch: &GameLaunch,
+    games: &[Game],
+    live_games: &[Game],
+    pending_host_map: Option<&str>,
+) -> String {
+    if !launch.mapname.is_empty() {
+        return launch.mapname.clone();
+    }
+    games
+        .iter()
+        .chain(live_games.iter())
+        .find(|game| game.id == launch.uid)
+        .map(|game| game.map.clone())
+        .filter(|map| !map.is_empty())
+        .or_else(|| pending_host_map.map(str::to_owned))
+        .unwrap_or_default()
+}
+
 async fn prepare_install(
     launch: &GameLaunch,
+    mapname: &str,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) -> Result<(), String> {
@@ -310,8 +362,8 @@ async fn prepare_install(
 
     // A generated map was already rebuilt above and is never in the vault, so
     // asking the CDN for it would be a guaranteed 404.
-    let map_folder = (!launch.mapname.is_empty() && !is_generated_map(&launch.mapname))
-        .then(|| launch.mapname.clone());
+    let map_folder =
+        (!mapname.is_empty() && !is_generated_map(mapname)).then(|| mapname.to_string());
 
     prepare_request(
         GamePreparation {
@@ -509,6 +561,83 @@ mod tests {
     use super::*;
     use faf_domain::state::PlayerLobbyRating;
     use std::collections::BTreeMap;
+
+    fn launch_without_map(uid: i32) -> GameLaunch {
+        // The shape the live server actually sends: no `mapname` field at all.
+        GameLaunch {
+            uid,
+            mod_name: "faf".into(),
+            name: "Seraphim-Noob's game".into(),
+            mapname: String::new(),
+            game_type: "custom".into(),
+            ..Default::default()
+        }
+    }
+
+    fn game_on(id: i32, map: &str) -> Game {
+        Game {
+            id,
+            map: map.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_joined_game_takes_its_map_from_the_game_record() {
+        let map = map_for(
+            &launch_without_map(27_344_519),
+            &[game_on(27_344_519, "adaptive_gadostb.v0002")],
+            &[],
+            None,
+        );
+        assert_eq!(map, "adaptive_gadostb.v0002");
+    }
+
+    #[test]
+    fn a_hosted_game_takes_its_map_from_the_request_this_client_made() {
+        // The server has no record to read yet: it does not learn the map until
+        // the game reports it over GPGNet, which is after this point.
+        let map = map_for(
+            &launch_without_map(27_344_519),
+            &[],
+            &[],
+            Some("scca_coop_a01.v0017"),
+        );
+        assert_eq!(map, "scca_coop_a01.v0017");
+    }
+
+    #[test]
+    fn a_live_game_is_searched_too_and_a_mapname_on_the_launch_still_wins() {
+        let map = map_for(
+            &launch_without_map(9),
+            &[],
+            &[game_on(9, "hoey.v0002")],
+            Some("stale.v0001"),
+        );
+        assert_eq!(map, "hoey.v0002");
+
+        let mut launch = launch_without_map(9);
+        launch.mapname = "from_the_server.v0003".into();
+        assert_eq!(
+            map_for(&launch, &[game_on(9, "hoey.v0002")], &[], None),
+            "from_the_server.v0003"
+        );
+    }
+
+    #[test]
+    fn nothing_known_is_an_empty_map_rather_than_a_wrong_one() {
+        assert_eq!(map_for(&launch_without_map(1), &[], &[], None), "");
+        // A record with a blank map is not an answer either: fall through.
+        assert_eq!(
+            map_for(
+                &launch_without_map(1),
+                &[game_on(1, "")],
+                &[],
+                Some("mine.v0001")
+            ),
+            "mine.v0001"
+        );
+    }
 
     #[test]
     fn init_mode_normal_for_custom_auto_for_matchmaker() {

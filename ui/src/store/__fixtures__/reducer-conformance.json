@@ -66,7 +66,8 @@
       "avatarListError": "",
       "avatarSelectionStatus": "idle",
       "avatarSelectionError": "",
-      "hostPrefill": null
+      "hostPrefill": null,
+      "pendingHostMap": null
     },
     "replays": {
       "status": {
@@ -2903,6 +2904,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connecting",
             "vetoes": []
@@ -2935,6 +2937,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -2975,6 +2978,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -3015,6 +3019,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -3047,6 +3052,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -3087,6 +3093,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -3127,6 +3134,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -3159,6 +3167,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -3191,6 +3200,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "connected",
             "vetoes": []
@@ -3223,6 +3233,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3289,6 +3300,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3350,6 +3362,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3411,6 +3424,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3443,6 +3457,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3483,6 +3498,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "matchmaking",
             "status": "disconnected",
             "vetoes": []
@@ -3515,6 +3531,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "matchmaking",
             "status": "connected",
             "vetoes": []
@@ -3547,6 +3564,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "matchmaking",
             "status": "disconnected",
             "vetoes": []
@@ -3584,6 +3602,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3629,6 +3648,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3666,6 +3686,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3703,6 +3724,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -3735,6 +3757,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -13675,6 +13698,7 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []
@@ -13707,6 +13731,146 @@
               "members": [],
               "ownerId": null
             },
+            "pendingHostMap": null,
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a host request keeps its map until the launch that follows",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "hostRequested",
+              "payload": {
+                "map": "scca_coop_a01.v0017"
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "pendingHostMap": "scca_coop_a01.v0017",
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "launching",
+              "payload": {
+                "launch": {
+                  "uid": 27344519,
+                  "mod": "coop",
+                  "name": "Rhiza co-op",
+                  "mapname": "",
+                  "gameType": "custom",
+                  "ratingType": "",
+                  "expectedPlayers": null,
+                  "team": null,
+                  "faction": null,
+                  "mapPosition": null,
+                  "gameOptions": {},
+                  "args": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "launch": {
+                  "args": [],
+                  "expectedPlayers": null,
+                  "faction": null,
+                  "gameOptions": {},
+                  "gameType": "custom",
+                  "mapPosition": null,
+                  "mapname": "",
+                  "mod": "coop",
+                  "name": "Rhiza co-op",
+                  "ratingType": "",
+                  "team": null,
+                  "uid": 27344519
+                }
+              },
+              "type": "launched"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "pendingHostMap": "scca_coop_a01.v0017",
+            "playMode": "custom",
+            "status": "disconnected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "gameTerminated"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "pendingHostMap": null,
             "playMode": "custom",
             "status": "disconnected",
             "vetoes": []

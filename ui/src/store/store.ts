@@ -38,6 +38,7 @@ const INITIAL: AppState = {
     avatarSelectionStatus: "idle",
     avatarSelectionError: "",
     hostPrefill: null,
+    pendingHostMap: null,
   },
   replays: {
     status: { type: "idle" },

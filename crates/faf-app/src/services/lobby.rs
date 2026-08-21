@@ -114,6 +114,11 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                         preferences: Box::new(browsing),
                     });
                 }
+                // The map has to outlive this call: the server's `game_launch`
+                // does not repeat it, and preparation happens when that arrives.
+                out.emit(LobbyEvent::HostRequested {
+                    map: config.map.clone(),
+                });
                 ctx.ports.lobby.host(config);
                 if remember {
                     crate::services::settings::persist(ctx, out).await;

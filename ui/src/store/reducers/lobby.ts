@@ -40,6 +40,8 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
       return { ...state, hostPrefill: event.payload.title };
     case "hostPrefillCleared":
       return { ...state, hostPrefill: null };
+    case "hostRequested":
+      return { ...state, pendingHostMap: event.payload.map };
     case "gamesUpdated":
       return { ...state, games: event.payload.games };
     case "liveGamesUpdated":
@@ -112,8 +114,10 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
       return { ...state, join: { type: "inGame" } };
     case "launchFailed":
       return { ...state, join: { type: "launchFailed", payload: { reason: event.payload.reason } } };
+    // Not cleared on `launching`: the launcher reads it after that event goes
+    // out, which is the whole point of keeping it.
     case "gameTerminated":
-      return { ...state, join: { type: "idle" } };
+      return { ...state, join: { type: "idle" }, pendingHostMap: null };
     case "disconnected":
       return {
         ...state,
@@ -130,6 +134,7 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
         avatarListError: "",
         avatarSelectionStatus: "idle",
         avatarSelectionError: "",
+        pendingHostMap: null,
       };
   }
 }
