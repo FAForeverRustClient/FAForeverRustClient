@@ -2178,6 +2178,22 @@ export type LobbyState = {
 export type LobbyStatus = "disconnected" | "connecting" | "connected";
 
 /**
+ *  The preview art an installed map carries in its own folder.
+ *
+ *  Vault maps ship `<name>.small.png` and `<name>.large.png` alongside the
+ *  `.scmap`, and for the co-op campaign that is the *only* copy that exists:
+ *  the FAF API builds its `thumbnailUrl` from the folder name without ever
+ *  checking, and `content.faforever.com/maps/previews/` holds no image for any
+ *  of the campaign missions. Reading the folder is what makes their art appear
+ *  at all. Remote-first order still applies: this is the last resort.
+ */
+export type LocalMapPreview = {
+	/**  `data:image/png;base64,...`, or `None` when the folder has no such file. */
+	small: string | null,
+	large: string | null,
+};
+
+/**
  *  One `.fafreplay` file already on disk, from the shared FAF replay folder
  *  (`%ProgramData%\FAForever\replays` on Windows: every FAF client writes
  *  here, mirrors `DataPrefs.getReplaysDirectory()` in the Java client). Read
@@ -2521,7 +2537,19 @@ export type MapsCommand =
 	query: MapVaultQuery,
 } } |
 /**  Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`). */
-{ type: "loadInstalled" } | { type: "loadMatchmakerPools"; payload: {
+{ type: "loadInstalled" } |
+/**
+ *  Read preview art straight out of the named installed map folders.
+ *
+ *  On demand rather than with the folder scan: a full maps folder is
+ *  several hundred entries, and base64 for all of them would dwarf every
+ *  other payload the client sends. Callers ask for the handful they are
+ *  about to show, and each folder is read once for good: both sizes at a
+ *  time, so a tile and a detail pane never race to re-read the same map.
+ */
+{ type: "loadLocalPreviews"; payload: {
+	folderNames: string[],
+} } | { type: "loadMatchmakerPools"; payload: {
 	queueName: string,
 } } |
 /**  Download and extract a map version's zip (mirrors `maps._doDownloadMap`). */
@@ -2568,6 +2596,13 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
 	maps: InstalledMap[],
 } } | { type: "installedLoadFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  Keyed by base folder name. Every requested folder gets an entry, even
+ *  an empty one, so a fruitless look is remembered rather than repeated.
+ */
+{ type: "localPreviewsLoaded"; payload: {
+	previews: { [key in string]: LocalMapPreview },
 } } | { type: "matchmakerPoolsLoading" } | { type: "matchmakerPoolsLoaded"; payload: {
 	queueName: string,
 	pools: MatchmakerMapPool[],
@@ -2630,6 +2665,13 @@ export type MapsState = {
 	visibilityStatus: MapVisibilityStatus,
 	matchmakerPools: { [key in string]: MatchmakerMapPool[] },
 	matchmakerPoolsStatus: MapListStatus,
+	/**
+	 *  Preview art read out of installed map folders, keyed by the folder's
+	 *  *base* name (lowercase, `.vNNNN` stripped) so a mission named without a
+	 *  version still finds the installed copy. A key with an empty value means
+	 *  "looked, found nothing": it stops the UI asking again every render.
+	 */
+	localPreviews: { [key in string]: LocalMapPreview },
 };
 
 /**

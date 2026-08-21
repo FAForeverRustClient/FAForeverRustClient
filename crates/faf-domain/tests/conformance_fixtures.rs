@@ -3790,6 +3790,43 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "local map previews merge per size and remember a fruitless look",
+            vec![
+                // Written from two directions: a tile that ran out of remote
+                // candidates asks for one size, a detail pane for the other.
+                // A whole-value overwrite would lose whichever landed first.
+                MapsEvent::LocalPreviewsLoaded {
+                    previews: [(
+                        "scca_coop_a01".to_string(),
+                        LocalMapPreview {
+                            small: Some("data:image/png;base64,c21hbGw=".into()),
+                            large: None,
+                        },
+                    )]
+                    .into_iter()
+                    .collect(),
+                }
+                .into(),
+                MapsEvent::LocalPreviewsLoaded {
+                    previews: [
+                        (
+                            "scca_coop_a01".to_string(),
+                            LocalMapPreview {
+                                small: None,
+                                large: Some("data:image/png;base64,bGFyZ2U=".into()),
+                            },
+                        ),
+                        // An empty entry is the answer "looked, found nothing":
+                        // without it the UI asks again on every render.
+                        ("plain_map".to_string(), LocalMapPreview::default()),
+                    ]
+                    .into_iter()
+                    .collect(),
+                }
+                .into(),
+            ],
+        ),
+        case(
             "an author hides one of their own map versions, then is refused the way back",
             vec![
                 MapsEvent::VaultSearched {

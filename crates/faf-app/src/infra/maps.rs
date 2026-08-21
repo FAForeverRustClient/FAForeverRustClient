@@ -25,12 +25,14 @@
 //! zip's own top-level entry is the map's folder name). Uninstalling just
 //! removes that directory, mirroring `MapsManagerDialog::delete_map`.
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use async_trait::async_trait;
 use faf_domain::protocol::vault_query::MapVaultQuery;
 use faf_domain::state::{
-    is_safe_folder_name, InstalledMap, MatchmakerMapPool, MatchmakerPoolMap, VaultMap,
+    is_safe_folder_name, InstalledMap, LocalMapPreview, MatchmakerMapPool, MatchmakerPoolMap,
+    VaultMap,
 };
 use serde_json::Value;
 
@@ -170,6 +172,10 @@ impl MapsPort for MapsClient {
 
     async fn list_installed(&self) -> Result<Vec<InstalledMap>, String> {
         list_installed_dir(&maps_dir()).await
+    }
+
+    async fn local_previews(&self, folder_names: &[String]) -> BTreeMap<String, LocalMapPreview> {
+        local_previews_in(&maps_dir(), folder_names).await
     }
 
     async fn list_matchmaker_pools(
@@ -357,6 +363,131 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
     }
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));
     Ok(installed)
+}
+
+/// Largest preview file read into a data URL. A vault `.large.png` is around
+/// 100 kB; anything past this is not a thumbnail and is not worth base64.
+const MAX_PREVIEW_BYTES: u64 = 4 * 1024 * 1024;
+
+/// Ceiling on one request, so a caller cannot ask for the whole maps folder.
+const MAX_PREVIEW_REQUEST: usize = 64;
+
+/// A folder name without its `.vNNNN` suffix, lowercased: the key both the
+/// installed folders and the co-op missions are matched on.
+pub(crate) fn base_folder_name(folder_name: &str) -> String {
+    let lower = folder_name.trim().to_lowercase();
+    match lower.rsplit_once(".v") {
+        Some((base, version))
+            if !version.is_empty() && version.chars().all(|c| c.is_ascii_digit()) =>
+        {
+            base.to_string()
+        }
+        _ => lower,
+    }
+}
+
+/// Reads preview art out of installed map folders: the testable body of
+/// [`MapsClient::local_previews`].
+///
+/// Matching is by base name and the newest version wins, because the names the
+/// callers hold are not the names on disk: a co-op mission knows itself as
+/// `scca_coop_a01` while the folder is `scca_coop_a01.v0017`. Within a folder
+/// the files are found by suffix rather than built from the folder name, because
+/// the two sizes do not agree on a spelling (`SCCA_Coop_A01.small.png` next to
+/// `scca_coop_a01.v0017.large.png`).
+async fn local_previews_in(
+    dir: &std::path::Path,
+    folder_names: &[String],
+) -> BTreeMap<String, LocalMapPreview> {
+    let mut out = BTreeMap::new();
+    if folder_names.is_empty() {
+        return out;
+    }
+
+    // Newest version per base name, in one pass over the maps folder.
+    let mut newest: std::collections::HashMap<String, (u32, PathBuf)> =
+        std::collections::HashMap::new();
+    let Ok(mut entries) = tokio::fs::read_dir(dir).await else {
+        // Still record the look, so the UI does not spin on a missing folder.
+        for name in folder_names.iter().take(MAX_PREVIEW_REQUEST) {
+            out.insert(base_folder_name(name), LocalMapPreview::default());
+        }
+        return out;
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        if !entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let base = base_folder_name(&name);
+        let version = version_from_folder(&name.to_lowercase())
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(0);
+        match newest.get(&base) {
+            Some((known, _)) if *known >= version => {}
+            _ => {
+                newest.insert(base, (version, entry.path()));
+            }
+        }
+    }
+
+    for requested in folder_names.iter().take(MAX_PREVIEW_REQUEST) {
+        let base = base_folder_name(requested);
+        if out.contains_key(&base) {
+            continue;
+        }
+        // The folder is joined from a name off the wire, so it goes through the
+        // same guard as install and uninstall.
+        if !is_safe_folder_name(&base) {
+            out.insert(base, LocalMapPreview::default());
+            continue;
+        }
+        let mut preview = LocalMapPreview::default();
+        if let Some((_, path)) = newest.get(&base) {
+            // Both sizes in one go: about four in five folders carry both, and
+            // the caller that wants the other one must not have to ask again.
+            let (small_path, large_path) = preview_files_in(path).await;
+            if let Some(path) = small_path {
+                preview.small = read_preview_data_url(&path).await;
+            }
+            if let Some(path) = large_path {
+                preview.large = read_preview_data_url(&path).await;
+            }
+        }
+        out.insert(base, preview);
+    }
+    out
+}
+
+/// The `.small.png` / `.large.png` a map folder carries, if any.
+async fn preview_files_in(folder: &std::path::Path) -> (Option<PathBuf>, Option<PathBuf>) {
+    let mut small = None;
+    let mut large = None;
+    let Ok(mut entries) = tokio::fs::read_dir(folder).await else {
+        return (None, None);
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        if small.is_none() && name.ends_with(".small.png") {
+            small = Some(entry.path());
+        } else if large.is_none() && name.ends_with(".large.png") {
+            large = Some(entry.path());
+        }
+    }
+    (small, large)
+}
+
+async fn read_preview_data_url(path: &std::path::Path) -> Option<String> {
+    use base64::Engine as _;
+    let size = tokio::fs::metadata(path).await.ok()?.len();
+    if size == 0 || size > MAX_PREVIEW_BYTES {
+        return None;
+    }
+    let bytes = tokio::fs::read(path).await.ok()?;
+    Some(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&bytes)
+    ))
 }
 
 async fn find_and_parse_scenario_lua(folder_path: &std::path::Path) -> Option<ScenarioInfo> {
@@ -946,6 +1077,65 @@ mod tests {
             .await
             .expect("missing dir is not an error");
         assert!(installed.is_empty());
+    }
+
+    #[test]
+    fn base_folder_name_strips_only_a_real_version_suffix() {
+        assert_eq!(base_folder_name("SCCA_Coop_A01.v0017"), "scca_coop_a01");
+        assert_eq!(base_folder_name("scca_coop_a01"), "scca_coop_a01");
+        // Not a version: the map is called that.
+        assert_eq!(base_folder_name("some_map.version"), "some_map.version");
+    }
+
+    #[tokio::test]
+    async fn local_previews_finds_a_versioned_folder_from_an_unversioned_name() {
+        // What the co-op catalogue hands over is the mission's folder without a
+        // version; what is on disk carries one. And the two preview files do
+        // not agree on a spelling, which is why they are found by suffix.
+        let dir = std::env::temp_dir().join(format!("forge-previews-test-{}", std::process::id()));
+        let map = dir.join("scca_coop_a01.v0017");
+        tokio::fs::create_dir_all(&map).await.unwrap();
+        tokio::fs::write(map.join("SCCA_Coop_A01.small.png"), b"small-bytes")
+            .await
+            .unwrap();
+        tokio::fs::write(map.join("scca_coop_a01.v0017.large.png"), b"large-bytes")
+            .await
+            .unwrap();
+
+        let previews = local_previews_in(&dir, &["scca_coop_a01".to_string()]).await;
+
+        let preview = previews.get("scca_coop_a01").expect("the folder was found");
+        assert_eq!(
+            preview.small.as_deref(),
+            Some("data:image/png;base64,c21hbGwtYnl0ZXM=")
+        );
+        assert_eq!(
+            preview.large.as_deref(),
+            Some("data:image/png;base64,bGFyZ2UtYnl0ZXM=")
+        );
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    #[tokio::test]
+    async fn local_previews_records_a_fruitless_look() {
+        // The UI asks from an image error handler, so "nothing there" has to be
+        // an answer it can remember. An absent key would mean asking forever.
+        let dir = std::env::temp_dir().join(format!("forge-previews-empty-{}", std::process::id()));
+        tokio::fs::create_dir_all(dir.join("plain_map.v0001"))
+            .await
+            .unwrap();
+
+        let previews = local_previews_in(
+            &dir,
+            &["plain_map".to_string(), "not_installed".to_string()],
+        )
+        .await;
+
+        assert!(previews["plain_map"].is_empty());
+        assert!(previews["not_installed"].is_empty());
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 
     #[test]

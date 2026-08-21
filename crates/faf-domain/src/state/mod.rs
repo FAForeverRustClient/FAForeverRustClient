@@ -72,8 +72,8 @@ pub use map_generator::{
     ValidationIssue, MAX_PRESET_NAME,
 };
 pub use maps::{
-    InstalledMap, MapInstallStatus, MapListStatus, MapVisibilityStatus, MapsCommand, MapsEvent,
-    MapsState, MatchmakerMapPool, MatchmakerPoolMap, VaultMap,
+    InstalledMap, LocalMapPreview, MapInstallStatus, MapListStatus, MapVisibilityStatus,
+    MapsCommand, MapsEvent, MapsState, MatchmakerMapPool, MatchmakerPoolMap, VaultMap,
 };
 pub use mods::{
     InstalledMod, ModInstallStatus, ModListStatus, ModToggleStatus, ModType, ModsCommand,

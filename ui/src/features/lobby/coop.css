@@ -51,7 +51,10 @@
 .coop-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  /* Wide enough for the record board to show all six of its columns without
+     scrolling sideways: rank, time, players, team, secondary and the replay
+     button. The team cell is the one that grows, so it truncates instead. */
+  grid-template-columns: minmax(0, 1fr) minmax(460px, 540px);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
@@ -217,121 +220,6 @@
   font-size: 16px;
 }
 
-.coop-detail-art {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 180px;
-  object-fit: contain;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.coop-detail-art-placeholder {
-  display: grid;
-  width: 100%;
-  height: 140px;
-  place-items: center;
-  color: var(--color-subtle);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.coop-detail-art-card {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.coop-detail-art-card[data-faction="uef"] {
-  border-left: 3px solid var(--color-faction-uef);
-}
-
-.coop-detail-art-card[data-faction="aeon"] {
-  border-left: 3px solid var(--color-faction-aeon);
-}
-
-.coop-detail-art-card[data-faction="cybran"] {
-  border-left: 3px solid var(--color-faction-cybran);
-}
-
-.coop-detail-art-card[data-faction="seraphim"] {
-  border-left: 3px solid var(--color-faction-seraphim);
-}
-
-.coop-detail-art-card[data-faction="custom"] {
-  border-left: 3px solid var(--color-border-strong);
-}
-
-.coop-detail-art-inner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-}
-
-.coop-detail-art-icon-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.coop-detail-preview-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 100%;
-}
-
-.coop-detail-preview-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.coop-detail-host-btn {
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.coop-detail-art-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.coop-detail-art-scenario {
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.coop-detail-art-mission {
-  color: var(--color-text);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.coop-detail-art-meta small {
-  font-size: 11px;
-}
-
 .coop-map-tile-badge {
   display: grid;
   width: 100%;
@@ -486,17 +374,43 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A real button rather than an underlined word: this downloads a replay and
+   starts the game, which is not what a link in a table cell promises. */
 .coop-board-replay {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
   color: var(--color-accent);
-  background: none;
-  border: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font: inherit;
-  text-decoration: underline;
+  font-weight: 550;
+  line-height: 1.6;
   cursor: pointer;
+}
+
+.coop-board-replay:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
 }
 
 .coop-board-replay:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* The record exists, the replay does not: older runs predate replay storage. */
+.coop-board-no-replay {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+/* Everything else in the board is short and fixed; the team is the cell that
+   can hold four logins, so it gives way rather than widening the table. */
+.coop-board-team {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

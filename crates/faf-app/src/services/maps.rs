@@ -73,6 +73,31 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(MapsEvent::InstalledLoadFailed { reason }),
             }
         }
+        MapsCommand::LoadLocalPreviews { folder_names } => {
+            // Only what has not been looked at yet. The event records an empty
+            // result too, so a map whose folder holds no art is asked about
+            // once and never again, which matters because the UI asks from
+            // an image's error handler, and that fires on every render.
+            let wanted: Vec<String> = out.with_state(|state| {
+                folder_names
+                    .iter()
+                    .filter(|name| {
+                        !state
+                            .maps
+                            .local_previews
+                            .contains_key(&crate::infra::maps::base_folder_name(name))
+                    })
+                    .cloned()
+                    .collect()
+            });
+            if wanted.is_empty() {
+                return;
+            }
+            let previews = ctx.ports.maps.local_previews(&wanted).await;
+            if !previews.is_empty() {
+                out.emit(MapsEvent::LocalPreviewsLoaded { previews });
+            }
+        }
         MapsCommand::LoadMatchmakerPools { queue_name } => {
             out.emit(MapsEvent::MatchmakerPoolsLoading);
             match ctx

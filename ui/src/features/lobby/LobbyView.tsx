@@ -7,6 +7,7 @@ import type { CoopMission, Game, PlayerProfile, VaultMap } from "../../ipc/bindi
 import { useAppStore } from "../../store/store";
 import { GameFiltersModal, type GameFilterRule } from "./GameFiltersModal";
 import { HostGameModal } from "./HostGameModal";
+import { HostCoopModal } from "./host/HostCoopModal";
 import { MatchmakingPanel } from "./MatchmakingPanel";
 import { CoopPanel } from "./CoopPanel";
 import { GalacticWarPanel } from "./GalacticWarPanel";
@@ -283,6 +284,7 @@ export function LobbyView() {
   const party = useAppStore((state) => state.state.lobby.party);
   const playerNotes = useAppStore((state) => state.state.settings.social.playerNotes);
   const galacticWar = useAppStore((state) => state.state.galacticWar);
+  const selectedMissionId = useAppStore((state) => state.state.coop.selectedMissionId);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const gameBrowser = browsing.customGamesBrowser;
   const [search, setSearch] = useState("");
@@ -463,6 +465,9 @@ export function LobbyView() {
     });
   };
 
+  // Which mission the co-op dialog should open on. `undefined` means "whatever
+  // the leaderboard is showing", which is the case when the toolbar button is
+  // used rather than a specific mission.
   const [coopMissionToHost, setCoopMissionToHost] = useState<CoopMission | null>(null);
   // A title another tab prepared, e.g. the tournament tab offering to host a
   // bracket match. It lives in the lobby slice because it has to cross a tab
@@ -475,6 +480,15 @@ export function LobbyView() {
   const handleHostCoop = (mission?: CoopMission) => {
     setCoopMissionToHost(mission ?? null);
     setHostOpen(true);
+  };
+
+  const closeHostDialog = () => {
+    setHostOpen(false);
+    setCoopMissionToHost(null);
+    // Otherwise the dialog reopens the next time this tab is visited.
+    if (hostPrefill !== null) {
+      ipc.send({ kind: "Lobby", command: { type: "clearHostPrefill" } });
+    }
   };
 
   return (
@@ -590,24 +604,18 @@ export function LobbyView() {
           onClose={() => setFiltersOpen(false)}
         />
       )}
-      {hostOpen && (
-        <HostGameModal
-          forcedFeaturedMod={inCoop ? "coop" : undefined}
-          initialMap={coopMissionToHost?.mapFolderName}
-          initialTitle={
-            hostPrefill ??
-            (coopMissionToHost ? `${coopMissionToHost.name} co-op` : undefined)
-          }
-          onClose={() => {
-            setHostOpen(false);
-            setCoopMissionToHost(null);
-            // Otherwise the dialog reopens the next time this tab is visited.
-            if (hostPrefill !== null) {
-              ipc.send({ kind: "Lobby", command: { type: "clearHostPrefill" } });
-            }
-          }}
-        />
-      )}
+      {hostOpen &&
+        (inCoop ? (
+          // Co-op hosts a campaign mission, not a map: its own dialog, with the
+          // campaigns where the custom one asks for a featured mod.
+          <HostCoopModal
+            initialMissionId={coopMissionToHost?.id ?? selectedMissionId}
+            initialTitle={hostPrefill ?? undefined}
+            onClose={closeHostDialog}
+          />
+        ) : (
+          <HostGameModal initialTitle={hostPrefill ?? undefined} onClose={closeHostDialog} />
+        ))}
       {passwordGame && (
         <PrivateGameDialog
           game={passwordGame}

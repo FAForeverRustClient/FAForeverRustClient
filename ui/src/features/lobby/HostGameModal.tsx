@@ -15,8 +15,6 @@ import type { InstalledMod, ModPreset } from "../../ipc/bindings";
 
 interface Props {
   onClose: () => void;
-  forcedFeaturedMod?: string;
-  initialMap?: string;
   initialTitle?: string;
 }
 
@@ -89,11 +87,10 @@ function formatMapDimensions(width: number, height: number): string {
   return `${toKilometres(width)} × ${toKilometres(height)} km`;
 }
 
-export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialTitle }: Props) {
+export function HostGameModal({ onClose, initialTitle }: Props) {
   const { t } = useTranslation();
   const player = useAppStore((state) => state.state.auth.player);
   const maps = useAppStore((state) => state.state.maps);
-  const coopMissions = useAppStore((state) => state.state.coop.missions);
   const installedMods = useAppStore((state) => state.state.mods.installed);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const remembered = browsing.hostGame;
@@ -104,14 +101,13 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
   /// preset and closing the dialog in quick succession would otherwise write the
   /// preset straight back out again.
   const currentBrowsing = () => useAppStore.getState().state.settings.browsing;
-  const customGame = forcedFeaturedMod === undefined;
 
   const [title, setTitle] = useState(
     initialTitle ??
       (remembered.title ||
         t("lobby.host.defaultTitle", { player: player?.name ?? t("lobby.matchmaker.player") })),
   );
-  const [featuredMod, setFeaturedMod] = useState(forcedFeaturedMod ?? remembered.featuredMod);
+  const [featuredMod, setFeaturedMod] = useState(remembered.featuredMod);
   const [visibility, setVisibility] = useState(remembered.visibility);
   const [passwordEnabled, setPasswordEnabled] = useState(remembered.passwordEnabled);
   const [password, setPassword] = useState(remembered.password);
@@ -128,7 +124,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
   const [playerCount, setPlayerCount] = useState<Range>(NO_RANGE);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
-  const [selectedMap, setSelectedMap] = useState(initialMap ?? remembered.map);
+  const [selectedMap, setSelectedMap] = useState(remembered.map);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -244,24 +240,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
       });
     }
 
-    // 3. Co-op campaign missions
-    for (const mission of coopMissions) {
-      if (mission.mapFolderName) {
-        const key = mission.mapFolderName.toLocaleLowerCase();
-        if (!mapByFolder.has(key)) {
-          mapByFolder.set(key, {
-            displayName: mission.name,
-            folderName: mission.mapFolderName,
-            maxPlayers: 4,
-            width: 0,
-            height: 0,
-            description: mission.description,
-          });
-        }
-      }
-    }
-
-    // 4. Ensure selectedMap is present (e.g. freshly generated Neroxis map)
+    // 3. Ensure selectedMap is present (e.g. freshly generated Neroxis map)
     if (selectedMap && !mapByFolder.has(selectedMap.toLowerCase())) {
       mapByFolder.set(selectedMap.toLowerCase(), {
         displayName: selectedMap,
@@ -284,7 +263,6 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
       )
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
   }, [
-    coopMissions,
     heightKm,
     mapSearch,
     maps.installed,
@@ -297,20 +275,6 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
   const chosen = availableMaps.find((map) => map.folderName.toLowerCase() === selectedMap?.toLowerCase())
     ?? availableMaps.find((map) => map.folderName === selectedMap)
     ?? availableMaps[0];
-
-  const displayedFeaturedMods: FeaturedModOption[] = useMemo(() => {
-    if (forcedFeaturedMod && !FEATURED_MODS.some((m) => m.id === forcedFeaturedMod)) {
-      return [
-        ...FEATURED_MODS,
-        {
-          id: forcedFeaturedMod,
-          nameKey: forcedFeaturedMod === "coop" ? "lobby.host.mod.coop" : "lobby.host.mod.faf",
-          descKey: forcedFeaturedMod === "coop" ? "lobby.host.mod.coopDesc" : "lobby.host.mod.fafDesc",
-        },
-      ];
-    }
-    return FEATURED_MODS;
-  }, [forcedFeaturedMod]);
 
   const activeModsCount = useMemo(
     () => installedMods.filter((mod) => mod.enabled).length,
@@ -448,30 +412,28 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
   };
 
   const close = () => {
-    if (customGame) {
-      ipc.send({
-        kind: "Settings",
-        command: {
-          type: "setBrowsing",
-          payload: {
-            preferences: {
-              ...currentBrowsing(),
-              hostGame: {
-                title,
-                featuredMod,
-                visibility,
-                map: chosen?.folderName ?? selectedMap,
-                passwordEnabled,
-                password,
-                enforceRatingRange: ratingEnabled,
-                ratingMin,
-                ratingMax,
-              },
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "setBrowsing",
+        payload: {
+          preferences: {
+            ...currentBrowsing(),
+            hostGame: {
+              title,
+              featuredMod,
+              visibility,
+              map: chosen?.folderName ?? selectedMap,
+              passwordEnabled,
+              password,
+              enforceRatingRange: ratingEnabled,
+              ratingMin,
+              ratingMax,
             },
           },
         },
-      });
-    }
+      },
+    });
     onClose();
   };
 
@@ -479,7 +441,7 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
     <Modal className="host-game-modal" onClose={close}>
       <div className="play-dialog-head">
         <div>
-          <h2>{t(forcedFeaturedMod === "coop" ? "lobby.host.titleCoop" : "lobby.host.titleCustom")}</h2>
+          <h2>{t("lobby.host.titleCustom")}</h2>
           <p>{t("lobby.host.subtitle")}</p>
         </div>
       </div>
@@ -591,16 +553,14 @@ export function HostGameModal({ onClose, forcedFeaturedMod, initialMap, initialT
             <h3>{t("lobby.host.gameType")}</h3>
           </div>
           <div className="host-column-body host-gametype-list" role="listbox">
-            {displayedFeaturedMods.map((mod) => {
+            {FEATURED_MODS.map((mod) => {
               const active = featuredMod === mod.id;
-              const disabled = Boolean(forcedFeaturedMod) && forcedFeaturedMod !== mod.id;
               return (
                 <button
                   key={mod.id}
                   type="button"
                   role="option"
                   aria-selected={active}
-                  disabled={disabled}
                   className={`host-gametype-row${active ? " active" : ""}`}
                   onClick={() => setFeaturedMod(mod.id)}
                 >

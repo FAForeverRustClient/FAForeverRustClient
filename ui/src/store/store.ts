@@ -71,6 +71,7 @@ const INITIAL: AppState = {
     visibilityStatus: { type: "idle" },
     matchmakerPools: {},
     matchmakerPoolsStatus: { type: "idle" },
+    localPreviews: {},
   },
   mapGenerator: {
     status: { type: "idle" },

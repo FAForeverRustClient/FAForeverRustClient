@@ -173,6 +173,28 @@ pub enum MapInstallStatus {
     },
 }
 
+/// The preview art an installed map carries in its own folder.
+///
+/// Vault maps ship `<name>.small.png` and `<name>.large.png` alongside the
+/// `.scmap`, and for the co-op campaign that is the *only* copy that exists:
+/// the FAF API builds its `thumbnailUrl` from the folder name without ever
+/// checking, and `content.faforever.com/maps/previews/` holds no image for any
+/// of the campaign missions. Reading the folder is what makes their art appear
+/// at all. Remote-first order still applies: this is the last resort.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMapPreview {
+    /// `data:image/png;base64,...`, or `None` when the folder has no such file.
+    pub small: Option<String>,
+    pub large: Option<String>,
+}
+
+impl LocalMapPreview {
+    pub fn is_empty(&self) -> bool {
+        self.small.is_none() && self.large.is_none()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MapsState {
@@ -196,6 +218,11 @@ pub struct MapsState {
     pub visibility_status: MapVisibilityStatus,
     pub matchmaker_pools: BTreeMap<String, Vec<MatchmakerMapPool>>,
     pub matchmaker_pools_status: MapListStatus,
+    /// Preview art read out of installed map folders, keyed by the folder's
+    /// *base* name (lowercase, `.vNNNN` stripped) so a mission named without a
+    /// version still finds the installed copy. A key with an empty value means
+    /// "looked, found nothing": it stops the UI asking again every render.
+    pub local_previews: BTreeMap<String, LocalMapPreview>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -227,6 +254,11 @@ pub enum MapsEvent {
     },
     InstalledLoadFailed {
         reason: String,
+    },
+    /// Keyed by base folder name. Every requested folder gets an entry, even
+    /// an empty one, so a fruitless look is remembered rather than repeated.
+    LocalPreviewsLoaded {
+        previews: BTreeMap<String, LocalMapPreview>,
     },
     MatchmakerPoolsLoading,
     #[serde(rename_all = "camelCase")]
@@ -287,6 +319,15 @@ pub enum MapsCommand {
     SearchVault { query: MapVaultQuery },
     /// Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`).
     LoadInstalled,
+    /// Read preview art straight out of the named installed map folders.
+    ///
+    /// On demand rather than with the folder scan: a full maps folder is
+    /// several hundred entries, and base64 for all of them would dwarf every
+    /// other payload the client sends. Callers ask for the handful they are
+    /// about to show, and each folder is read once for good: both sizes at a
+    /// time, so a tile and a detail pane never race to re-read the same map.
+    #[serde(rename_all = "camelCase")]
+    LoadLocalPreviews { folder_names: Vec<String> },
     #[serde(rename_all = "camelCase")]
     LoadMatchmakerPools { queue_name: String },
     /// Download and extract a map version's zip (mirrors `maps._doDownloadMap`).
@@ -357,6 +398,19 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
                 reason: reason.clone(),
             }
         }
+        MapsEvent::LocalPreviewsLoaded { previews } => {
+            // Merge per size: a later `large` read must not drop the `small`
+            // one an earlier tile already paid for, and vice versa.
+            for (folder, preview) in previews {
+                let entry = state.local_previews.entry(folder.clone()).or_default();
+                if preview.small.is_some() {
+                    entry.small = preview.small.clone();
+                }
+                if preview.large.is_some() {
+                    entry.large = preview.large.clone();
+                }
+            }
+        }
         MapsEvent::MatchmakerPoolsLoading => state.matchmaker_pools_status = MapListStatus::Loading,
         MapsEvent::MatchmakerPoolsLoaded { queue_name, pools } => {
             state
@@ -378,6 +432,10 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             state.install_status = MapInstallStatus::Idle;
             state.installed = installed.clone();
             state.installed_status = MapListStatus::Ready;
+            // A map that had no art a moment ago may have some now, and the
+            // empty "looked, found nothing" markers would otherwise outlive the
+            // folder they describe.
+            state.local_previews.clear();
         }
         MapsEvent::InstallFailed { reason } => {
             state.install_status = MapInstallStatus::Failed {
@@ -388,6 +446,7 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             state.install_status = MapInstallStatus::Idle;
             state.installed = installed.clone();
             state.installed_status = MapListStatus::Ready;
+            state.local_previews.clear();
         }
         MapsEvent::UninstallFailed { reason } => {
             state.install_status = MapInstallStatus::Failed {
