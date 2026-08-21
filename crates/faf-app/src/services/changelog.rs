@@ -1,5 +1,6 @@
 //! Changelog orchestration: load the index once, load a note on demand.
 
+use faf_domain::protocol::changelog::ChangelogRelease;
 use faf_domain::state::{ChangelogCommand, ChangelogEvent, ChangelogStatus};
 
 use crate::runtime::{EventSink, ServiceCtx};
@@ -13,18 +14,23 @@ pub async fn handle(cmd: ChangelogCommand, ctx: &ServiceCtx, out: &EventSink) {
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
     // The tab re-mounts on every visit, and the index does not change within a
-    // session. Reloading it on each visit would be a request per tab switch.
+    // session. Reloading it on each visit would be a request per tab switch,
+    // but the selection should still reset to the newest dated patch.
     let already = out.with_state(|state| matches!(state.changelog.status, ChangelogStatus::Ready));
     if already {
+        let newest = out.with_state(|state| newest_patch_id(&state.changelog.releases));
+        if let Some(id) = newest {
+            select(id, ctx, out).await;
+        }
         return;
     }
 
     out.emit(ChangelogEvent::Loading);
     match ctx.ports.changelog.list_releases().await {
         Ok(releases) => {
-            // Open on the newest release, so the tab shows a patch note rather
-            // than an empty panel next to a list.
-            let newest = releases.first().map(|release| release.id.clone());
+            // Open on the newest dated patch, not one of the rolling branch
+            // entries that are displayed above the release history.
+            let newest = newest_patch_id(&releases);
             out.emit(ChangelogEvent::Loaded { releases });
             if let Some(id) = newest {
                 select(id, ctx, out).await;
@@ -32,6 +38,14 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
         }
         Err(reason) => out.emit(ChangelogEvent::LoadFailed { reason }),
     }
+}
+
+fn newest_patch_id(releases: &[ChangelogRelease]) -> Option<String> {
+    releases
+        .iter()
+        .filter(|release| !release.date.is_empty())
+        .max_by(|left, right| left.date.cmp(&right.date))
+        .map(|release| release.id.clone())
 }
 
 async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {

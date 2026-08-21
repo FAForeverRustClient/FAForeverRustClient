@@ -58,6 +58,7 @@ pub struct LeaderboardTier {
     pub division_order: i32,
     pub highest_score: i32,
     pub image_url: Option<String>,
+    pub medium_image_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -79,6 +80,7 @@ pub struct LeaderboardEntry {
     pub division_order: Option<i32>,
     pub highest_score: Option<i32>,
     pub division_image_url: Option<String>,
+    pub division_medium_image_url: Option<String>,
     pub returning_player: Option<bool>,
 }
 
@@ -393,6 +395,7 @@ mod tests {
                 division_order: None,
                 highest_score: None,
                 division_image_url: None,
+                division_medium_image_url: None,
                 returning_player: None,
             }],
             ..LeaderboardState::default()

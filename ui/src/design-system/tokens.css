@@ -42,6 +42,12 @@
   --color-faction-aeon: #62ad72;
   --color-faction-cybran: #dc6464;
   --color-faction-seraphim: #d5ad45;
+  --color-league-bronze: #bf8056;
+  --color-league-silver: #b6bec7;
+  --color-league-gold: #d9ad57;
+  --color-league-diamond: #5fbae8;
+  --color-league-master: #8aaec4;
+  --color-league-grandmaster: #e27e84;
 
   --radius-sm: 6px;
   --radius-md: 8px;

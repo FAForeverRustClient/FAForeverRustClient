@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardEntry } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -19,7 +20,6 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
   const [copied, setCopied] = useState(false);
   const me = useAppStore((state) => state.state.auth.player);
   const friends = useAppStore((state) => state.state.social.friends);
-  const foes = useAppStore((state) => state.state.social.foes);
 
   if (!entry) {
     return (
@@ -32,8 +32,7 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
 
   const isMe = me?.id === entry.playerId;
   const isFriend = friends.includes(entry.playerName);
-  const isFoe = foes.includes(entry.playerName);
-  const setRelation = (relation: "friend" | "foe", member: boolean) => ipc.send({
+  const setRelation = (relation: "friend", member: boolean) => ipc.send({
     kind: "Social",
     command: {
       type: "setRelation",
@@ -65,23 +64,23 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
     <aside className="leaderboard-player-panel surface-panel">
       <h3>{title}</h3>
       <div className="leaderboard-player-identity">
-        {entry.avatarUrl ? (
-          <img
-            className="leaderboard-player-avatar"
-            src={entry.avatarUrl}
-            alt=""
-            title={`${entry.playerName} avatar`}
-            width={56}
-            height={28}
-            decoding="async"
-            draggable={false}
-          />
-        ) : (
-          <span className="leaderboard-player-avatar leaderboard-avatar-slot" aria-hidden="true" />
-        )}
-        <div className="leaderboard-player-name"><PlayerName name={entry.playerName} /></div>
+        <div className="leaderboard-player-copy">
+          <div className="leaderboard-player-name"><PlayerName name={entry.playerName} /></div>
+          {(entry.divisionMediumImageUrl || entry.divisionImageUrl) && (
+            <div className="leaderboard-player-division">
+              <img
+                src={entry.divisionMediumImageUrl || entry.divisionImageUrl || ""}
+                alt={entry.division ?? ""}
+                width={64}
+                height={32}
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+              />
+            </div>
+          )}
+        </div>
       </div>
-      {entry.division && <div className="leaderboard-player-division muted">{entry.division}</div>}
       <dl className="leaderboard-player-stats">
         <div><dt>{t("leaderboard.column.rank")}</dt><dd>#{entry.rank}</dd></div>
         {entry.score !== null && <div><dt>{t("leaderboard.column.score")}</dt><dd>{entry.score}</dd></div>}
@@ -89,16 +88,29 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
         <div><dt>{t("leaderboard.column.games")}</dt><dd>{entry.gamesPlayed}</dd></div>
       </dl>
       <div className="leaderboard-player-actions">
-        <Button variant="primary" onClick={() => void openPlayerCard(entry.playerId, entry.playerName)}>{t("leaderboard.player.fullProfile")}</Button>
-        <Button onClick={() => void copy()}>{t(copied ? "leaderboard.player.copied" : "leaderboard.player.copyName")}</Button>
-        {!isMe && <Button onClick={message}>{t("leaderboard.player.message")}</Button>}
-        <Button onClick={browseReplays}>{t("leaderboard.player.browseReplays")}</Button>
-        {!isMe && entry.playerId > 0 && (
-          <>
+        <Button variant="primary" onClick={() => void openPlayerCard(entry.playerId, entry.playerName)}>
+          <Icon name="users" size={15} />
+          {t("leaderboard.player.fullProfile")}
+        </Button>
+        <div className="leaderboard-player-action-grid">
+          <Button onClick={() => void copy()} title={t(copied ? "leaderboard.player.copied" : "leaderboard.player.copyName")}>
+            <Icon name={copied ? "check" : "copy"} size={14} />
+            {t(copied ? "leaderboard.player.copied" : "leaderboard.player.copyName")}
+          </Button>
+          {!isMe && (
+            <Button onClick={message}>
+              <Icon name="chat" size={14} />
+              {t("leaderboard.player.message")}
+            </Button>
+          )}
+          <Button onClick={browseReplays}>
+            <Icon name="replays" size={14} />
+            {t("leaderboard.player.browseReplays")}
+          </Button>
+          {!isMe && entry.playerId > 0 && (
             <Button onClick={() => setRelation("friend", !isFriend)}>{t(isFriend ? "leaderboard.player.removeFriend" : "leaderboard.player.addFriend")}</Button>
-            <Button onClick={() => setRelation("foe", !isFoe)}>{t(isFoe ? "leaderboard.player.removeFoe" : "leaderboard.player.markFoe")}</Button>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </aside>
   );

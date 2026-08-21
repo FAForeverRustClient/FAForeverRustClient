@@ -7,6 +7,7 @@ import { PlayerName } from "../../shared/nameColors";
 export type LeaderboardColumn =
   | "rank"
   | "player"
+  | "league"
   | "division"
   | "score"
   | "rating"
@@ -20,6 +21,7 @@ export type LeaderboardColumn =
 const LABELS: Record<LeaderboardColumn, MessageKey> = {
   rank: "leaderboard.column.rank",
   player: "leaderboard.column.player",
+  league: "leaderboard.column.league",
   division: "leaderboard.column.division",
   score: "leaderboard.column.score",
   rating: "leaderboard.column.rating",
@@ -35,6 +37,7 @@ function value(entry: LeaderboardEntry, column: LeaderboardColumn): number | str
   switch (column) {
     case "rank": return entry.rank;
     case "player": return entry.playerName;
+    case "league": return entry.division;
     case "division": return entry.division;
     case "score": return entry.score;
     case "rating": return entry.rating;
@@ -81,6 +84,25 @@ function playerCell(entry: LeaderboardEntry) {
       )}
       <PlayerName name={entry.playerName} />
     </span>
+  );
+}
+
+function leagueCell(entry: LeaderboardEntry) {
+  const imageUrl = entry.divisionMediumImageUrl || entry.divisionImageUrl;
+  return imageUrl ? (
+    <img
+      className="leaderboard-division-icon"
+      src={imageUrl}
+      alt=""
+      title={entry.division || undefined}
+      width={48}
+      height={24}
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+    />
+  ) : (
+    <span className="leaderboard-division-icon-slot" aria-hidden="true" />
   );
 }
 
@@ -155,7 +177,11 @@ export function LeaderboardTable({
             >
               {columns.map((column) => (
                 <td key={column} className={column === "rank" ? "leaderboard-rank" : undefined}>
-                  {column === "player" ? playerCell(entry) : format(entry, column)}
+                  {column === "player"
+                    ? playerCell(entry)
+                    : column === "league"
+                      ? leagueCell(entry)
+                      : format(entry, column)}
                 </td>
               ))}
             </tr>

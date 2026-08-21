@@ -879,7 +879,7 @@ export const en = {
   "settings.category.account": "Account & social",
   "settings.category.connectivity": "Connectivity",
   "settings.category.game": "Game & replays",
-  "settings.category.maintenance": "Updates & diagnostics",
+  "settings.category.maintenance": "Updates & paths",
 
   // Settings sections. `keywords` is search-only: extra terms that are not in
   // the visible copy, so a search for "volume" still finds the sound slider.
@@ -1837,6 +1837,7 @@ export const en = {
 
   "leaderboard.column.rank": "Rank",
   "leaderboard.column.player": "Player",
+  "leaderboard.column.league": "League",
   "leaderboard.column.division": "Division",
   "leaderboard.column.score": "Score",
   "leaderboard.column.rating": "Rating",
@@ -1862,6 +1863,9 @@ export const en = {
   "leaderboard.leagues.populationHint": "All subdivisions, including empty ones",
   "leaderboard.leagues.yourPlacement": "Your placement",
   "leaderboard.leagues.notPlaced": "Not placed this season",
+  "leaderboard.leagues.completePlacement": "Complete {count} placement games to enter a subdivision.",
+  "leaderboard.leagues.placementGames": "Placement games",
+  "leaderboard.leagues.gamesRequired": "{count} required",
   "leaderboard.leagues.yourPosition": "Your season position",
   "leaderboard.leagues.placed": "Placed",
   "leaderboard.leagues.season": "Season",

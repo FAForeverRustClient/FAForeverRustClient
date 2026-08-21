@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs } from "../../design-system/SectionTabs";
 import { ipc } from "../../ipc/client";
-import type { LeaderboardEntry, LeaderboardTier } from "../../ipc/bindings";
+import type { LeaderboardEntry, LeaderboardTier, LeagueSeason } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { formatDate } from "../../shared/dates";
 import { LeaderboardTable } from "./LeaderboardTable";
@@ -19,10 +20,173 @@ const selectSeason = (seasonId: number) => ipc.send({
   command: { type: "selectSeason", payload: { seasonId } },
 });
 
-function DivisionDistribution({ tiers, entries, ownDivision }: {
+function SeasonPicker({
+  label,
+  seasons,
+  selectedSeasonId,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  seasons: LeagueSeason[];
+  selectedSeasonId: number | null;
+  disabled: boolean;
+  onChange: (seasonId: number) => void;
+}) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const selectedIndex = Math.max(0, seasons.findIndex((season) => season.id === selectedSeasonId));
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(selectedIndex);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 240, maxHeight: 360 });
+  const selectedSeason = seasons[selectedIndex];
+
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    const width = Math.min(Math.max(rect.width, 240), Math.max(160, viewportWidth - 16));
+    const left = Math.min(Math.max(8, rect.left), Math.max(8, viewportWidth - width - 8));
+    const gap = 4;
+    const below = Math.max(0, viewportHeight - rect.bottom - gap);
+    const above = Math.max(0, rect.top - gap);
+    const opensAbove = below < 240 && above > below;
+    const maxHeight = Math.max(120, Math.min(420, opensAbove ? above : below));
+    setPosition({
+      top: opensAbove ? rect.top - maxHeight - gap : rect.bottom + gap,
+      left,
+      width,
+      maxHeight,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open) setActiveIndex(selectedIndex);
+  }, [open, selectedIndex]);
+
+  const openPicker = () => {
+    if (disabled || seasons.length === 0) return;
+    setActiveIndex(selectedIndex);
+    setOpen(true);
+  };
+  const choose = (seasonId: number) => {
+    onChange(seasonId);
+    setOpen(false);
+  };
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled || seasons.length === 0) return;
+    if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!open) {
+        openPicker();
+        return;
+      }
+    }
+    if (!open) return;
+    if (event.key === "ArrowDown") setActiveIndex((index) => Math.min(seasons.length - 1, index + 1));
+    if (event.key === "ArrowUp") setActiveIndex((index) => Math.max(0, index - 1));
+    if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(seasons.length - 1);
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const season = seasons[activeIndex];
+      if (season) choose(season.id);
+    }
+  };
+
+  return (
+    <div className="leaderboard-season-picker">
+      <span className="leaderboard-field-label">{label}</span>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="leaderboard-season-trigger"
+        disabled={disabled || seasons.length === 0}
+        aria-label={label}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls={menuId}
+        aria-activedescendant={open && seasons[activeIndex] ? `${menuId}-option-${seasons[activeIndex].id}` : undefined}
+        onClick={() => (open ? setOpen(false) : openPicker())}
+        onKeyDown={handleKeyDown}
+      >
+        <span>{selectedSeason?.name || (selectedSeason ? `Season ${selectedSeason.seasonNumber}` : "")}</span>
+        <Icon name="chevronDown" size={14} />
+      </button>
+      {open && createPortal(
+        <div
+          ref={popoverRef}
+          id={menuId}
+          className="leaderboard-season-popover"
+          role="listbox"
+          aria-label={label}
+          style={{ top: position.top, left: position.left, width: position.width, maxHeight: position.maxHeight }}
+        >
+          {seasons.map((season, index) => (
+            <button
+              key={season.id}
+              id={`${menuId}-option-${season.id}`}
+              type="button"
+              role="option"
+              aria-selected={season.id === selectedSeasonId}
+              className={index === activeIndex ? "is-active" : undefined}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => choose(season.id)}
+            >
+              {season.name || `Season ${season.seasonNumber}`}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+function DivisionDistribution({ tiers, entries, ownDivision, seasonContext }: {
   tiers: LeaderboardTier[];
   entries: LeaderboardEntry[];
   ownDivision: string | null;
+  seasonContext: ReactNode;
 }) {
   const { t } = useTranslation();
   const counts = useMemo(() => {
@@ -32,29 +196,76 @@ function DivisionDistribution({ tiers, entries, ownDivision }: {
     }
     return result;
   }, [entries]);
-  const ordered = useMemo(() => [...tiers].sort((a, b) => b.divisionOrder - a.divisionOrder), [tiers]);
-  const max = Math.max(1, ...counts.values());
+  const groups = useMemo(() => {
+    const grouped = new Map<string, LeaderboardTier[]>();
+    for (const tier of tiers) {
+      const divisionTiers = grouped.get(tier.division) ?? [];
+      divisionTiers.push(tier);
+      grouped.set(tier.division, divisionTiers);
+    }
+    return [...grouped.entries()]
+      .map(([division, divisionTiers]) => ({
+        division,
+        tiers: divisionTiers.sort((left, right) => left.divisionOrder - right.divisionOrder),
+      }))
+      .sort((left, right) => (left.tiers[0]?.divisionOrder ?? 0) - (right.tiers[0]?.divisionOrder ?? 0));
+  }, [tiers]);
+  const max = Math.max(1, ...tiers.map((tier) => counts.get(tier.name) ?? 0));
+  const divisionClass = (division: string) => {
+    switch (division.toLocaleLowerCase()) {
+      case "bronze": return "is-bronze";
+      case "silver": return "is-silver";
+      case "gold": return "is-gold";
+      case "diamond": return "is-diamond";
+      case "master": return "is-master";
+      case "grandmaster": return "is-grandmaster";
+      default: return "is-neutral";
+    }
+  };
 
-  if (ordered.length === 0) return null;
+  if (groups.length === 0) return null;
   return (
     <section className="leaderboard-distribution-card surface-panel">
-      <div className="leaderboard-section-title">
-        <div><h3>{t("leaderboard.leagues.population")}</h3><span className="muted">{t("leaderboard.leagues.populationHint")}</span></div>
-        <span className="muted">{entries.length} placed</span>
+      <div className="leaderboard-distribution-heading">
+        <div className="leaderboard-section-title">
+          <h3>{t("leaderboard.leagues.population")}</h3>
+          <span className="muted">{entries.length} placed</span>
+        </div>
+        {seasonContext}
       </div>
-      <div className="leaderboard-distribution">
-        {ordered.map((tier) => {
-          const count = counts.get(tier.name) ?? 0;
-          return (
-            <div key={tier.name} className={`leaderboard-distribution-row${tier.name === ownDivision ? " is-current" : ""}`}>
-              <span className="leaderboard-distribution-label">{tier.name}</span>
-              <div className="leaderboard-distribution-track">
-                <div className="leaderboard-distribution-bar" style={{ width: `${Math.max(2, (count / max) * 100)}%` }} />
+      <div className="leaderboard-distribution-chart" role="img" aria-label={t("leaderboard.leagues.population")}>
+        <div className="leaderboard-distribution-plot">
+          <div className="leaderboard-distribution-groups">
+            {groups.map((group) => (
+              <div key={group.division} className={`leaderboard-distribution-group ${divisionClass(group.division)}`}>
+                <div className="leaderboard-distribution-bars">
+                  {group.tiers.map((tier) => {
+                    const count = counts.get(tier.name) ?? 0;
+                    const height = count === 0 ? "0%" : `${Math.max(4, (count / max) * 86)}%`;
+                    return (
+                      <div
+                        key={tier.name}
+                        className={`leaderboard-distribution-bar-wrap ${divisionClass(group.division)}${tier.name === ownDivision ? " is-current" : ""}`}
+                        title={`${tier.name}: ${count}`}
+                      >
+                        <div className="leaderboard-distribution-bar-area">
+                          <div className="leaderboard-distribution-bar-stack">
+                            {count > 0 && <span className="leaderboard-distribution-value">{count}</span>}
+                            <div className="leaderboard-distribution-bar" style={{ height }} />
+                          </div>
+                        </div>
+                        <span className="leaderboard-distribution-subdivision">
+                          {group.division === "Grandmaster" ? "GM" : tier.subdivision || tier.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <span className="leaderboard-distribution-label">{group.division}</span>
               </div>
-              <span className="leaderboard-distribution-count">{count}</span>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -64,31 +275,46 @@ function MyLeagueCard({ entry, placementGames }: { entry: LeaderboardEntry | nul
   const { t } = useTranslation();
   if (!entry) {
     return (
-      <section className="leaderboard-own-card surface-panel">
-        <div className="leaderboard-own-placeholder"><Icon name="activity" size={24} /></div>
-        <div>
-          <span className="leaderboard-eyebrow">{t("leaderboard.leagues.yourPlacement")}</span>
-          <h3>{t("leaderboard.leagues.notPlaced")}</h3>
-          <p className="muted">Complete {placementGames} placement games to enter a subdivision.</p>
+      <section className="leaderboard-own-card leaderboard-own-card-empty surface-panel">
+        <div className="leaderboard-own-card-main">
+          <div className="leaderboard-own-placeholder"><Icon name="activity" size={24} /></div>
+          <div>
+            <span className="leaderboard-eyebrow">{t("leaderboard.leagues.yourPlacement")}</span>
+            <h3>{t("leaderboard.leagues.notPlaced")}</h3>
+            <p className="muted">{t("leaderboard.leagues.completePlacement", { count: placementGames })}</p>
+            <div className="leaderboard-own-empty-meta">
+              <span>{t("leaderboard.leagues.placementGames")}</span>
+              <strong>{t("leaderboard.leagues.gamesRequired", { count: placementGames })}</strong>
+            </div>
+          </div>
         </div>
       </section>
     );
   }
   const score = entry.score ?? 0;
-  const ceiling = Math.max(score, entry.highestScore ?? score, 1);
-  const progress = Math.min(100, Math.max(0, (score / ceiling) * 100));
+  const divisionImageUrl = entry.divisionImageUrl || entry.divisionMediumImageUrl;
   return (
-    <section className="leaderboard-own-card surface-panel">
-      {entry.divisionImageUrl
-        ? <img src={entry.divisionImageUrl} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />
-        : <div className="leaderboard-own-placeholder"><Icon name="leaderboard" size={24} /></div>}
-      <div className="leaderboard-own-body">
-        <span className="leaderboard-eyebrow">{t("leaderboard.leagues.yourPosition")}</span>
-        <h3>#{entry.rank} · {entry.division ?? t("leaderboard.leagues.placed")}</h3>
-        <div className="leaderboard-progress" aria-label={`${progress.toFixed(0)} percent subdivision score progress`}>
-          <span style={{ width: `${progress}%` }} />
+    <section className="leaderboard-own-card leaderboard-own-card-ranked surface-panel">
+      <div className="leaderboard-own-card-main">
+        <div className="leaderboard-own-badge" aria-hidden={divisionImageUrl ? undefined : true}>
+          {divisionImageUrl
+            ? <img className="leaderboard-own-division-icon" src={divisionImageUrl} alt={entry.division ?? ""} width={80} height={52} decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} />
+            : <div className="leaderboard-own-placeholder"><Icon name="leaderboard" size={24} /></div>}
         </div>
-        <p className="muted">{score} score · {entry.gamesPlayed} games</p>
+        <div className="leaderboard-own-body">
+          <span className="leaderboard-eyebrow">{t("leaderboard.leagues.yourPosition")}</span>
+          <h3><span className="leaderboard-own-rank">#{entry.rank}</span><span className="leaderboard-own-divider" aria-hidden="true">·</span><span>{entry.division ?? t("leaderboard.leagues.placed")}</span></h3>
+          <div className="leaderboard-own-stats" aria-label={`${score} ${t("leaderboard.column.score")}, ${entry.gamesPlayed} ${t("leaderboard.column.games")}`}>
+            <div>
+              <span>{t("leaderboard.column.score")}</span>
+              <strong>{score}</strong>
+            </div>
+            <div>
+              <span>{t("leaderboard.column.games")}</span>
+              <strong>{entry.gamesPlayed}</strong>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -140,35 +366,33 @@ export function LeagueLeaderboardPanel() {
     setSelected(ownEntry);
   }, [ownEntry, state.selectedSeasonId]);
 
+  useEffect(() => {
+    if (filtered.length === 0) {
+      setSelected(null);
+      return;
+    }
+
+    setSelected((current) => {
+      if (current && filtered.some((entry) => entry.playerId === current.playerId)) {
+        return current;
+      }
+      return ownEntry && filtered.some((entry) => entry.playerId === ownEntry.playerId)
+        ? ownEntry
+        : filtered[0];
+    });
+  }, [filtered, ownEntry]);
+
   return (
     <section className="leaderboard-panel">
-      <SectionTabs
-        active={state.selectedLeagueId}
-        ariaLabel={t("leaderboard.leagues.leagueQueues")}
-        className="leaderboard-tabs"
-        items={state.leagues.map((league) => ({ id: league.id, label: league.name }))}
-        onChange={(leagueId) => void selectLeague(leagueId)}
-      />
+      <div className="leaderboard-league-header">
+        <SectionTabs
+          active={state.selectedLeagueId}
+          ariaLabel={t("leaderboard.leagues.leagueQueues")}
+          className="leaderboard-tabs"
+          items={state.leagues.map((league) => ({ id: league.id, label: league.name }))}
+          onChange={(leagueId) => void selectLeague(leagueId)}
+        />
 
-      <div className="leaderboard-season-toolbar">
-        <label className="leaderboard-field">
-          <span>{t("leaderboard.leagues.season")}</span>
-          <select
-            value={state.selectedSeasonId ?? ""}
-            disabled={state.seasonsStatus.type === "loading" || state.seasons.length === 0}
-            onChange={(event) => void selectSeason(Number(event.target.value))}
-          >
-            {state.seasons.map((season) => (
-              <option key={season.id} value={season.id}>{season.name || `Season ${season.seasonNumber}`}</option>
-            ))}
-          </select>
-        </label>
-        {currentSeason && (
-          <div className="leaderboard-season-meta">
-            <span className={currentSeason.active ? "leaderboard-active" : "muted"}>{t(currentSeason.active ? "leaderboard.leagues.active" : "leaderboard.leagues.finished")}</span>
-            <span>{formatDate(currentSeason.startDate)} – {formatDate(currentSeason.endDate)}</span>
-          </div>
-        )}
       </div>
 
       {state.seasonsStatus.type === "loading" && <div className="leaderboard-state muted">Loading seasons…</div>}
@@ -181,7 +405,28 @@ export function LeagueLeaderboardPanel() {
             <MyLeagueCard entry={ownEntry} placementGames={ownEntry?.returningPlayer
               ? currentSeason.placementGamesReturningPlayer
               : currentSeason.placementGames} />
-            <DivisionDistribution tiers={state.tiers} entries={state.seasonEntries} ownDivision={ownEntry?.division ?? null} />
+            <DivisionDistribution
+              tiers={state.tiers}
+              entries={state.seasonEntries}
+              ownDivision={ownEntry?.division ?? null}
+              seasonContext={(
+                <div className="leaderboard-season-context">
+                  <SeasonPicker
+                    label={t("leaderboard.leagues.season")}
+                    seasons={state.seasons}
+                    selectedSeasonId={state.selectedSeasonId}
+                    disabled={state.seasonsStatus.type === "loading"}
+                    onChange={(seasonId) => void selectSeason(seasonId)}
+                  />
+                  {currentSeason && (
+                    <div className="leaderboard-season-meta">
+                      <span className={currentSeason.active ? "leaderboard-active" : "muted"}>{t(currentSeason.active ? "leaderboard.leagues.active" : "leaderboard.leagues.finished")}</span>
+                      <span>{formatDate(currentSeason.startDate)} – {formatDate(currentSeason.endDate)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
           </div>
 
           <div className="leaderboard-table-toolbar leaderboard-league-filters">
@@ -217,7 +462,7 @@ export function LeagueLeaderboardPanel() {
               ) : (
                 <LeaderboardTable
                   entries={filtered}
-                  columns={["rank", "player", "division", "score", "games"]}
+                  columns={["rank", "player", "league", "division", "score", "games"]}
                   selectedPlayerId={selected?.playerId ?? null}
                   onSelect={setSelected}
                   emptyMessage={t("leaderboard.leagues.empty")}
