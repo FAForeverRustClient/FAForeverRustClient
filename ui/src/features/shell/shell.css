@@ -288,7 +288,8 @@
 .content.content-tab-units,
 .content.content-tab-chat,
 .content.content-tab-play,
-.content.content-tab-leaderboard {
+.content.content-tab-leaderboard,
+.content.content-tab-changelog {
   overflow: hidden;
 }
 
@@ -301,7 +302,8 @@
 
 .content-inner.content-chat,
 .content-inner.content-play,
-.content-inner.content-leaderboard {
+.content-inner.content-leaderboard,
+.content-inner.content-changelog {
   height: 100%;
   overflow: hidden;
 }
@@ -429,4 +431,3 @@
     overflow: visible;
   }
 }
-

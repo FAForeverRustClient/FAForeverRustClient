@@ -68,8 +68,8 @@ export const TAB_ORDER: Tab[] = [
   "leaderboard",
   "tournaments",
   "tutorials",
-  "units",
   "changelog",
+  "units",
   "contribution",
   "settings",
 ];
