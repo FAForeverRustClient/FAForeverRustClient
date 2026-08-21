@@ -609,6 +609,12 @@
   color: var(--color-subtle);
 }
 
+/* Found without being asked for. Same green as a configured path that works,
+   because the outcome is the same: the launcher has what it needs. */
+.settings-path-status.is-detected {
+  color: var(--color-ok);
+}
+
 .theme-card {
   display: flex;
   flex-direction: column;

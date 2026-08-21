@@ -89,6 +89,11 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             persist(ctx, out).await;
             sync_installs(ctx, out);
         }
+        SettingsCommand::SetRetailGamePath { path } => {
+            out.emit(SettingsEvent::RetailGamePathChanged { path });
+            persist(ctx, out).await;
+            sync_installs(ctx, out);
+        }
         SettingsCommand::SetGeneral { preferences } => {
             out.emit(SettingsEvent::GeneralChanged { preferences });
             persist(ctx, out).await;
@@ -208,6 +213,9 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
     ctx.ports
         .process
         .set_paths(settings.game_path, settings.replay_game_path);
+    // The base game, which is neither of those: never launched, but written
+    // into `fa_path.lua` so the engine mounts its `gamedata/*.scd` archives.
+    ctx.ports.process.set_retail_path(settings.retail_game_path);
     // The replay preparation steps patch the install they are about to launch,
     // so they follow the configured path rather than a startup environment
     // variable. Without this a replay install chosen in Settings left the
@@ -219,5 +227,6 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(InstallEvent::Checked {
         game_ready: present.game,
         replay_ready: present.replay,
+        retail_path: present.retail,
     });
 }

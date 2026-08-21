@@ -124,6 +124,17 @@ button.vault-input {
   gap: var(--space-2) var(--space-3);
 }
 
+/* The API cannot page a review-score sort alongside a player-side filter, so
+   the backend orders by date instead. The picker says so in place rather than
+   claiming an ordering the results do not have. Small and tightly leaded: it
+   sits under one cell of an auto-fill grid, so anything bigger would stretch
+   the whole row. */
+.vault-sort-note {
+  font-size: 11px;
+  line-height: 1.3;
+  max-width: 100%;
+}
+
 /* Sort direction toggle sits flush against the sort picker. */
 .vault-search button.vault-sort-order.search-panel-control {
   flex: 0 0 34px;

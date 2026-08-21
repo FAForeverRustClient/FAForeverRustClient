@@ -33,7 +33,12 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const query = useAppStore((s) => s.state.replays.vaultQuery);
   const hasMore = useAppStore((s) => s.state.replays.vaultHasMore);
   const featuredMods = useAppStore((s) => s.state.replays.featuredMods);
-  const leagues = useAppStore((s) => s.state.leaderboard.leagues);
+  // The rating leaderboards (`global`, `ladder_1v1`, `tmm_2v2`, …), not the
+  // league catalogue: the vault filter matches
+  // `playerStats.ratingChanges.leaderboard.technicalName`, which is a
+  // leaderboard name. Feeding it leagues left "global" out of the dropdown
+  // entirely and made every selection match zero replays.
+  const leaderboards = useAppStore((s) => s.state.leaderboard.ratingLeaderboards);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
   const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
   const browsing = useAppStore((s) => s.state.settings.browsing);
@@ -114,7 +119,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     <>
       <VaultSearch
         featuredMods={featuredMods}
-        leagues={leagues}
+        leaderboards={leaderboards}
         self={self}
         initialQuery={vaultStatus.type === "idle" ? personalReplayQuery(initialPlayer, isoDaysAgo(365)) : query}
         onSearch={handleSearch}

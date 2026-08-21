@@ -2895,6 +2895,7 @@ fn cases() -> Vec<Case> {
             vec![InstallEvent::Checked {
                 game_ready: true,
                 replay_ready: false,
+                retail_path: r"C:\Games\Supreme Commander Forged Alliance".into(),
             }
             .into()],
         ),
@@ -4573,6 +4574,7 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Settings:mapGeneratorChanged",
     "Settings:notificationsChanged",
     "Settings:replayGamePathChanged",
+    "Settings:retailGamePathChanged",
     "Settings:updatesChanged",
     "Social:cleared",
     "Social:relationSet",

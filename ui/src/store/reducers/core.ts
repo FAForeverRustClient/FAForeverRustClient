@@ -23,6 +23,8 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
       return { ...state, gamePath: event.payload.path };
     case "replayGamePathChanged":
       return { ...state, replayGamePath: event.payload.path };
+    case "retailGamePathChanged":
+      return { ...state, retailGamePath: event.payload.path };
     case "generalChanged":
       return { ...state, general: event.payload.preferences };
     case "appearanceChanged":
@@ -67,6 +69,7 @@ export function reduceInstall(_state: InstallState, event: InstallEvent): Instal
       return {
         gameReady: event.payload.gameReady,
         replayReady: event.payload.replayReady,
+        retailPath: event.payload.retailPath,
         checked: true,
       };
   }

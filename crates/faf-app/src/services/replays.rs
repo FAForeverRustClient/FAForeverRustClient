@@ -143,6 +143,11 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         ReplayCommand::SearchVault { query } => {
+            // Ordering the API cannot combine with the requested filters is
+            // adjusted here rather than at the request, so the query echoed
+            // back with the results is the one that actually ran and the sort
+            // picker stops showing an option the answer was not sorted by.
+            let query = Box::new(query.accepted_by_api());
             let generation = ctx.replay_vault_generation.begin();
             out.emit(ReplayEvent::VaultLoading);
             let result = ctx.ports.replay.search_vault((*query).clone()).await;

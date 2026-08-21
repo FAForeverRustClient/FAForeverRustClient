@@ -339,6 +339,66 @@ impl ReplayPort for ReplayClient {
             .get()
             .ok_or_else(|| "not logged in".to_string())?;
 
+        let mod_name = normalize_mod(&target.mod_name);
+
+        // Everything the install needs, before a byte of the stream is asked
+        // for. Patching after the websocket is open would leave the relay
+        // buffering a live game for however long a download takes, and FA
+        // would start against a stream already minutes behind.
+        //
+        // Same gap `play_file` had before it got `ensure_map_available`:
+        // live-spectating never staged the game's map at all, so a custom
+        // (non-base) map FA can't already find leaves it stuck: confirmed live
+        // (`map /maps/hoey.v0002/Hoey.scmap failed. aborting session.`),
+        // silently dumping the user back to the main menu with no crash dialog
+        // and no error surfaced here either. `target.map` is the FAF technical
+        // map name (e.g. `hoey.v0002`), the shape `ensure_map_available` wants.
+        let mut warning = None;
+        // Not `target`: that is the live game being watched.
+        let install = self.install_dir();
+        if install.is_none() {
+            // Same silence as in `play_file`: with no replay install every step
+            // below is skipped, and FA opens on the main menu with no error of
+            // its own to explain why.
+            tracing::warn!(
+                "no replay install is configured, so the engine version and map                  were not prepared; FA may refuse to play this live replay"
+            );
+        }
+        if let Some(target_dir) = install.as_deref() {
+            // A live game is always on the current release, and the replay
+            // install is a separate one that nothing else updates: without
+            // this it stays at whatever version the last vault replay pinned
+            // it to, and `fa_path.lua` is never written for someone who only
+            // ever watches live. Mirrors the Java client calling
+            // `updateFeaturedModToLatest(mod, forReplays = true)` before every
+            // live replay. Fatal on failure for the same reason it is in
+            // `play_file`: launching anyway reproduces the crash this prevents.
+            game_updater::ensure_latest_game_version(
+                &self.http,
+                &token,
+                &self.config.api_base,
+                &cache_dir()?.join("game_files"),
+                target_dir,
+                self.process.retail_install_dir().as_deref(),
+                &mod_name,
+                &self.config.exe_name,
+                &|_| {},
+            )
+            .await
+            .map_err(|e| format!("could not update the replay install: {e}"))?;
+
+            if let Err(e) = game_updater::ensure_map_available(
+                &self.http,
+                &self.config.content_base,
+                target_dir,
+                &target.map,
+            )
+            .await
+            {
+                warning = Some(format!("could not stage map {}: {e}", target.map));
+            }
+        }
+
         let access_url = fetch_access_url(
             &self.http,
             &self.config.user_api_base,
@@ -368,30 +428,6 @@ impl ReplayPort for ReplayClient {
         let listener = TcpListener::bind(("127.0.0.1", port))
             .await
             .map_err(|e| format!("could not bind local replay proxy: {e}"))?;
-
-        let mod_name = normalize_mod(&target.mod_name);
-
-        // Same gap `play_file` had before it got `ensure_map_available`:
-        // live-spectating never staged the game's map at all, so a custom
-        // (non-base) map FA can't already find leaves it stuck the same
-        // way: confirmed live (`map /maps/hoey.v0002/Hoey.scmap failed.
-        // aborting session.`), silently dumping the user back to the main
-        // menu with no crash dialog and no error surfaced here either.
-        // `target.map` is the FAF technical map name (e.g. `hoey.v0002`),
-        // the same shape `ensure_map_available` expects.
-        let mut warning = None;
-        if let Some(target_dir) = self.install_dir().as_deref() {
-            if let Err(e) = game_updater::ensure_map_available(
-                &self.http,
-                &self.config.content_base,
-                target_dir,
-                &target.map,
-            )
-            .await
-            {
-                warning = Some(format!("could not stage map {}: {e}", target.map));
-            }
-        }
 
         let log_path = crate::infra::game_logs::next_path("live-replay", Some(target.uid))?;
         let args = vec![
@@ -456,6 +492,7 @@ impl ReplayPort for ReplayClient {
                     &self.config.api_base,
                     &cache_dir()?.join("game_files"),
                     target_dir,
+                    self.process.retail_install_dir().as_deref(),
                     &mod_name,
                     version,
                     &self.config.exe_name,

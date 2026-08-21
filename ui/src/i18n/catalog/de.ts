@@ -862,6 +862,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.reduceMotionHint": "Nicht zwingend nötige Animationen und Übergänge verringern.",
   "settings.paths.gameInstall": "Spielinstallation",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe zum Beitreten und Spielen laufender Partien.",
+  "settings.paths.retailInstall": "Originalspiel",
+  "settings.paths.retailInstallHint":
+    "Der Retail- oder Steam-Ordner von Supreme Commander: Forged Alliance (der mit gamedata/lua.scd). Wird nie gestartet, aber ohne ihn startet Forged Alliance nicht. Wird automatisch erkannt; nur setzen, wenn die Erkennung fehlschlägt.",
   "settings.paths.replayInstall": "Replay-Installation",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe für die Replay-Wiedergabe: darf eine andere Version als die Spielinstallation sein.",
   "settings.game.additionalGameLaunch": "Zusätzliche Startargumente",
@@ -944,6 +947,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.paths.unset": "Nicht gesetzt",
   "settings.paths.missing": "Nicht nutzbar",
   "settings.paths.ok": "Gefunden",
+  "settings.paths.detected": "Erkannt",
   "settings.updates.checking": "Wird geprüft…",
   "settings.updates.checkNow": "Jetzt prüfen",
   "settings.updates.running": "Läuft mit {version}",
@@ -1225,6 +1229,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.search.leaderboard": "Rangliste",
   "replays.search.rating": "Rating",
   "replays.search.sortBy": "Sortieren nach",
+  "replays.search.sortUnavailable":
+    "Das Vault kann nicht nach Bewertung sortieren, solange ein Spieler-, Fraktions-, Rating- oder Leaderboard-Filter gesetzt ist — stattdessen nach Spieldatum sortiert.",
   "replays.search.submit": "Suchen",
   "replays.search.descendingAria": "Absteigend; klicken für aufsteigend",
   "replays.search.ascendingAria": "Aufsteigend; klicken für absteigend",

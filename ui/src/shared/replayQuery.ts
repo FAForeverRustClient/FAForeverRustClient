@@ -85,3 +85,24 @@ export function advancedReplayFilterCount(query: ReplayQuery): number {
     query.pageSize !== EMPTY_REPLAY_QUERY.pageSize,
   ].filter(Boolean).length;
 }
+
+/**
+ * Whether the API will refuse to order this search the way the form asks.
+ *
+ * Mirrors `ReplayQuery::sort_rejected_by_api`. Elide, the framework behind
+ * `/data/game`, cannot page a query that both sorts across a relationship
+ * (only "review score" does) and filters across a to-many one (anything about
+ * the players: name, faction, rating, leaderboard). The backend orders such a
+ * search by date instead of failing it; this is what lets the form say so
+ * before the user wonders why.
+ */
+export function reviewScoreSortUnavailable(query: ReplayQuery): boolean {
+  return (
+    query.sortBy === "reviewScore"
+    && (query.player !== ""
+      || query.leaderboards.length > 0
+      || query.factions.length > 0
+      || query.minRating !== null
+      || query.maxRating !== null)
+  );
+}
