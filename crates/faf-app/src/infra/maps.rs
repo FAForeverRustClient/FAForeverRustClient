@@ -377,7 +377,9 @@ const MAX_PREVIEW_REQUEST: usize = 64;
 pub(crate) fn base_folder_name(folder_name: &str) -> String {
     let lower = folder_name.trim().to_lowercase();
     match lower.rsplit_once(".v") {
-        Some((base, version)) if !version.is_empty() && version.chars().all(|c| c.is_ascii_digit()) => {
+        Some((base, version))
+            if !version.is_empty() && version.chars().all(|c| c.is_ascii_digit()) =>
+        {
             base.to_string()
         }
         _ => lower,
