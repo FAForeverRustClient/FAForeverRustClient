@@ -7,12 +7,16 @@
 
 .changelog-view {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(224px, 260px) minmax(0, 1fr);
+  gap: var(--space-4);
   height: 100%;
   min-height: 0;
-  padding: 12px;
+  padding: var(--space-4);
   box-sizing: border-box;
+}
+
+.changelog-view.has-toc {
+  grid-template-columns: minmax(224px, 260px) minmax(0, 1fr) minmax(180px, 220px);
 }
 
 .changelog-sidebar {
@@ -20,12 +24,13 @@
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  padding: 10px;
+  padding: var(--space-3) 0 var(--space-3) var(--space-3);
   border-radius: var(--radius-lg);
 }
 
 .changelog-search {
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  margin-right: var(--space-3);
 }
 
 .changelog-releases {
@@ -34,34 +39,102 @@
   flex-direction: column;
   gap: 2px;
   min-height: 0;
+  box-sizing: border-box;
   overflow-y: auto;
+  padding-right: var(--space-3);
+  /* Keep these at auto so Chromium/WebView2 applies the WebKit width below. */
+  scrollbar-color: auto;
+  scrollbar-width: auto;
+}
+
+.changelog-releases::-webkit-scrollbar {
+  width: 11px;
+}
+
+.changelog-releases::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.changelog-releases::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.changelog-releases::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+  background-clip: padding-box;
+}
+
+.changelog-releases::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
 }
 
 .changelog-year + .changelog-year {
   margin-top: 10px;
 }
 
-.changelog-year-label {
+.changelog-year.is-collapsed + .changelog-year.is-collapsed {
+  margin-top: 4px;
+}
+
+.changelog-year-toggle {
   position: sticky;
   top: 0;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
   margin: 0 0 4px;
-  padding: 4px 2px;
+  padding: 8px 10px 8px 6px;
+  font: inherit;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.05em;
   color: var(--color-muted);
+  text-align: left;
   text-transform: uppercase;
   background: var(--color-surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.changelog-year-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.changelog-year-toggle:focus-visible {
+  border-color: var(--color-border-strong);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.changelog-year-toggle svg {
+  flex: none;
+  color: var(--color-subtle);
+}
+
+.changelog-release-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .changelog-release {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex: 1 1 auto;
   gap: 8px;
-  width: 100%;
-  padding: 6px 8px;
+  min-width: 0;
+  padding: 6px 8px 6px 12px;
   font: inherit;
   color: var(--color-text);
   text-align: left;
@@ -78,6 +151,32 @@
 .changelog-release.active {
   background: var(--color-surface-raised);
   border-color: var(--color-border-strong);
+}
+
+.changelog-branch-info {
+  display: inline-grid;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-muted);
+  cursor: help;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+
+.changelog-branch-info:hover,
+.changelog-branch-info:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.changelog-branch-info:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .changelog-release-id {
@@ -112,12 +211,6 @@
   background: color-mix(in srgb, var(--color-warn) 16%, transparent);
 }
 
-.changelog-date {
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-subtle);
-}
-
 /* ── The note ──────────────────────────────────────────────────────────── */
 .changelog-note {
   display: flex;
@@ -131,22 +224,27 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-4);
   flex-shrink: 0;
-  padding: 14px 18px;
+  padding: 16px 20px 14px;
   border-bottom: 1px solid var(--color-border);
+}
+
+.changelog-note-title {
+  min-width: 0;
 }
 
 .changelog-note-head h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
 .changelog-note-date {
-  margin: 3px 0 0;
-  font-size: 11.5px;
+  margin: 4px 0 0;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--color-muted);
 }
@@ -156,9 +254,9 @@
   align-items: center;
   gap: 6px;
   flex: none;
-  padding: 5px 10px;
+  padding: 6px 10px;
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 550;
   color: var(--color-text);
   cursor: pointer;
@@ -173,11 +271,90 @@
 
 .changelog-note-body {
   flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
   min-height: 0;
+  box-sizing: border-box;
   overflow-y: auto;
-  /* Long-form prose: bounded measure so lines stay readable on a wide window. */
-  max-width: 78ch;
-  padding: 16px 18px 28px;
+  padding: 20px 24px 32px;
+}
+
+.changelog-note-copy {
+  width: 100%;
+  max-width: 86ch;
+}
+
+/* ── Table of Contents ─────────────────────────────────────────────────── */
+.changelog-toc {
+  position: sticky;
+  top: var(--space-4);
+  align-self: start;
+  min-width: 0;
+  max-height: calc(100% - var(--space-4));
+  box-sizing: border-box;
+  padding: 12px 0 12px var(--space-4);
+  overflow-y: auto;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--color-border);
+  border-radius: 0;
+}
+
+.changelog-toc-title {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.changelog-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.changelog-toc-item {
+  display: block;
+  width: 100%;
+  padding: 5px 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-muted);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  transition: color 0.12s;
+}
+
+.changelog-toc-item:hover {
+  color: var(--color-text);
+}
+
+.changelog-toc-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.changelog-toc-item-level-1 {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.changelog-toc-item-level-3 {
+  padding-left: var(--space-3);
+  font-size: 12.5px;
+}
+
+.changelog-toc-item-level-4 {
+  padding-left: 24px;
+  font-size: 12px;
+  color: var(--color-subtle);
 }
 
 .changelog-heading {
@@ -187,7 +364,7 @@
   color: var(--color-text);
 }
 
-.changelog-note-body > .changelog-heading:first-child {
+.changelog-note-copy > .changelog-heading:first-child {
   margin-top: 0;
 }
 
@@ -211,7 +388,7 @@
 
 .changelog-paragraph {
   margin: 0 0 10px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--color-text);
 }
@@ -219,7 +396,7 @@
 .changelog-list {
   margin: 0 0 10px;
   padding-left: 18px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -236,11 +413,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 18px 0 8px;
-  padding: 7px 10px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  margin: 20px 0 10px;
+  padding: 8px 0;
+  background: transparent;
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* A header can name a whole unit family, so the icons wrap rather than
@@ -254,9 +430,10 @@
 
 .changelog-unit-icon {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
+  border-radius: var(--radius-sm);
   user-select: none;
 }
 
@@ -265,7 +442,7 @@
 }
 
 .changelog-unit-name {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -310,22 +487,33 @@
   cursor: pointer;
   background: none;
   border: 0;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
 }
 
 .changelog-link:hover,
 .changelog-issue:hover {
-  text-decoration: underline;
+  color: var(--color-text);
+  text-decoration-style: dotted;
+}
+
+.changelog-link:focus-visible,
+.changelog-issue:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .changelog-issue {
   font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
 }
 
 .changelog-note-body code {
   padding: 1px 5px;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   background: var(--color-surface-raised);
   border-radius: var(--radius-sm);
 }
@@ -334,5 +522,22 @@
   .changelog-view {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(140px, 32%) 1fr;
+  }
+
+  .changelog-toc {
+    display: none;
+  }
+
+}
+
+@media (max-width: 560px) {
+  .changelog-note-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .changelog-external {
+    align-self: flex-start;
   }
 }

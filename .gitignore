@@ -107,3 +107,15 @@ TODO.md
 
 # Maps the generator writes beside the binary during development.
 src-tauri/neroxis_map_generator_*/
+
+# Impeccable
+.github/hooks/
+.claude/hooks/
+.impeccable/
+.agents/
+.codex/
+PRODUCT.md
+DESIGN.md
+impeccable.json
+.impeccable.json
+impeccable.config.json
