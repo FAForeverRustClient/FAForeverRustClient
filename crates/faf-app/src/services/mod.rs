@@ -32,6 +32,7 @@ pub mod mods;
 pub mod nav;
 pub mod notifications;
 pub mod player_card;
+pub mod reconnect;
 pub mod replays;
 pub mod reporting;
 pub mod reviews;

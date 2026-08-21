@@ -218,13 +218,11 @@
   position: relative;
 }
 
-.live-replay-row.is-menu-open,
-.live-replay-row:has(.live-delay-actions[open]) {
-  position: relative;
-  z-index: 30;
-}
-
+/* `is-menu-open` marks the row whose delay menu is open. The menu itself is
+   rendered into `document.body` and so floats free of the table; highlighting
+   the row is what still connects the two. */
 .live-replay-row:hover td,
+.live-replay-row.is-menu-open td,
 .live-replay-row.expanded td {
   background: var(--color-surface-raised);
 }
@@ -327,6 +325,33 @@
   white-space: nowrap;
 }
 
+/* A nickname is a control here, not just text: it opens the player menu. It
+   keeps the name's own colour and weight so the table still reads as a table,
+   and only underlines on hover, the way the chat roster's names do. */
+.live-player-name {
+  /* Inline rather than the button default, so the surrounding cells keep
+     ellipsising a lineup that does not fit instead of clipping it mid-name. */
+  display: inline;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.live-player-name:hover,
+.live-player-name:focus-visible {
+  text-decoration: underline;
+}
+
+.live-player-name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .live-mods-cell span {
   width: fit-content;
   max-width: 100%;
@@ -346,7 +371,6 @@
 }
 
 .live-delay-actions {
-  position: relative;
   min-width: 0;
 }
 
@@ -362,11 +386,6 @@
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
-  list-style: none;
-}
-
-.live-delay-trigger::-webkit-details-marker {
-  display: none;
 }
 
 .live-delay-trigger:hover,
@@ -381,11 +400,13 @@
   outline-offset: 2px;
 }
 
+/* Rendered into `document.body`, so the table's scroll container cannot clip
+   it and the next row cannot paint over it. `top`/`left` come from the
+   trigger's viewport rect; `DELAY_MENU_WIDTH` in LiveReplayRow.tsx mirrors the
+   width below, so the two must change together. */
 .live-delay-menu {
-  position: absolute;
+  position: fixed;
   z-index: 100;
-  top: calc(100% + var(--space-1));
-  right: 0;
   display: grid;
   width: 190px;
   gap: var(--space-1);

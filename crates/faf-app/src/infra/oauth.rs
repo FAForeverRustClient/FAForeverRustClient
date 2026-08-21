@@ -15,7 +15,7 @@
 //! overridable via [`OAuthConfig::from_env`] so a partner dev can point at staging.
 
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use async_trait::async_trait;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -110,6 +110,18 @@ const MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 /// Assumed lifetime when the token response omits `expires_in`.
 const DEFAULT_TOKEN_LIFETIME: Duration = Duration::from_secs(3_600);
 
+/// Longest single sleep the refresh loop takes, whatever the token's lifetime.
+///
+/// `tokio::time::sleep` runs off a monotonic clock, and on Windows that clock
+/// stops while the host is suspended. A laptop that sleeps through most of an
+/// hour therefore wakes with an access token the server considers expired and
+/// a timer that still believes it has nearly the whole lifetime left: every
+/// FAF API call 401s (the chat client's token endpoint first and loudest)
+/// until the timer finally catches up, tens of minutes later. Waking on this
+/// interval and re-deriving what is left from the *wall* clock bounds that
+/// error to one tick, so a resumed client renews within half a minute.
+const REFRESH_TICK: Duration = Duration::from_secs(30);
+
 impl OAuthAuth {
     pub fn new(config: OAuthConfig, tokens: TokenStore) -> Self {
         Self {
@@ -143,9 +155,9 @@ impl OAuthAuth {
         let tokens = self.tokens.clone();
 
         let handle = tokio::spawn(async move {
-            let mut wait = refresh_delay(lifetime);
+            let mut due = SystemTime::now() + refresh_delay(lifetime);
             loop {
-                tokio::time::sleep(wait).await;
+                sleep_until(due).await;
 
                 let Some(refresh_token) = load_refresh_token(&config) else {
                     // Nothing persisted (the user did not ask to be remembered),
@@ -158,12 +170,13 @@ impl OAuthAuth {
                         if let Some(refresh) = &response.refresh_token {
                             store_refresh_token(&config, refresh);
                         }
-                        wait = refresh_delay(
+                        let wait = refresh_delay(
                             response
                                 .expires_in
                                 .map(Duration::from_secs)
                                 .unwrap_or(DEFAULT_TOKEN_LIFETIME),
                         );
+                        due = SystemTime::now() + wait;
                         tracing::debug!(?wait, "access token refreshed");
                     }
                     Err(error) => {
@@ -172,7 +185,7 @@ impl OAuthAuth {
                         // on its own, and one that fails because the grant was
                         // revoked will surface as a 401 the user can act on.
                         tracing::warn!(%error, "could not refresh the access token");
-                        wait = MIN_REFRESH_INTERVAL;
+                        due = SystemTime::now() + MIN_REFRESH_INTERVAL;
                     }
                 }
             }
@@ -482,6 +495,23 @@ fn refresh_delay(lifetime: Duration) -> Duration {
     lifetime
         .saturating_sub(REFRESH_MARGIN)
         .max(MIN_REFRESH_INTERVAL)
+}
+
+/// Sleep until the wall clock reaches `due`, in slices of [`REFRESH_TICK`].
+///
+/// Re-reading the wall clock on every slice is the whole point: a suspend that
+/// freezes the monotonic clock is invisible to a single long `sleep`, but
+/// shows up here as a `due` that has already passed.
+async fn sleep_until(due: SystemTime) {
+    loop {
+        let Ok(remaining) = due.duration_since(SystemTime::now()) else {
+            return; // due, or the clock was stepped past it
+        };
+        if remaining.is_zero() {
+            return;
+        }
+        tokio::time::sleep(remaining.min(REFRESH_TICK)).await;
+    }
 }
 
 /// Parsed query parameters from the OAuth redirect.

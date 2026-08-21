@@ -223,6 +223,9 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             terminate_game(ctx, out);
         }
         LobbyCommand::Disconnect => {
+            // Hanging up is a decision, not a fault: the watchdog must not
+            // undo it on its next tick.
+            ctx.lobby_auto_reconnect.disarm();
             // Cancels the active connection; the `Connect` task above then sees the
             // stream close and emits `Disconnected`.
             out.emit(LobbyEvent::JoinCancelled);
@@ -233,6 +236,9 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn connect(ctx: &ServiceCtx, out: &EventSink) {
+    // Armed before the guard, so asking for a connection while one is already
+    // in flight still re-arms the watchdog.
+    ctx.lobby_auto_reconnect.arm();
     if !ctx.lobby_active.try_start() {
         return;
     }

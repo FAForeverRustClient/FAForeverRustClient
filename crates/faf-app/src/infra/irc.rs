@@ -106,6 +106,41 @@ impl IrcConfig {
     }
 }
 
+/// The two handles the send methods reach the live connection through.
+///
+/// Held by both [`IrcClient`] and its [`Supervisor`] so the supervisor can put
+/// them down when a connection ends for good: the update sender is what keeps
+/// the chat service's stream open, and the service's single-flight guard is
+/// only released when that stream closes.
+#[derive(Clone)]
+struct ConnectionSlots {
+    updates: Arc<Mutex<Option<mpsc::Sender<ChatUpdate>>>>,
+    outgoing: Arc<Mutex<Option<mpsc::Sender<String>>>>,
+}
+
+impl ConnectionSlots {
+    /// Drop the client's handles on a connection that has ended for good.
+    ///
+    /// Without this the supervisor could give up (a bad token, ten failed
+    /// attempts) while `IrcClient` still held a clone of the update sender, so
+    /// the service's `recv()` never returned `None`, its `chat_active` guard
+    /// was never released, and every later `Connect` returned immediately: the
+    /// status bar offered a reconnect that silently did nothing for the rest
+    /// of the session. That is exactly the state a laptop resume produced.
+    ///
+    /// Guarded on channel identity, because a `connect` that has already
+    /// replaced these slots owns them now; clearing them would tear down the
+    /// *new* connection on behalf of the dead one.
+    fn release(&self, stream: &mpsc::Sender<ChatUpdate>) {
+        let mut updates = self.updates.lock().unwrap();
+        if !updates.as_ref().is_some_and(|tx| tx.same_channel(stream)) {
+            return;
+        }
+        *updates = None;
+        *self.outgoing.lock().unwrap() = None;
+    }
+}
+
 pub struct IrcClient {
     config: IrcConfig,
     tokens: TokenStore,
@@ -265,6 +300,10 @@ impl ChatPort for IrcClient {
         let supervisor = Supervisor {
             config: self.config.clone(),
             http: self.http.clone(),
+            slots: ConnectionSlots {
+                updates: self.updates.clone(),
+                outgoing: self.outgoing.clone(),
+            },
             // Keep the store, rather than the token value, in the supervisor.
             // OAuth refresh runs independently and replaces the access token
             // while this reconnect loop may still be sleeping after a laptop
@@ -475,6 +514,9 @@ impl ChatEmitter {
 struct Supervisor {
     config: IrcConfig,
     http: reqwest::Client,
+    /// The client's handles on this connection, released when the loop below
+    /// gives up so the service learns that it has.
+    slots: ConnectionSlots,
     tokens: TokenStore,
     username: String,
     wanted_channels: Arc<Mutex<BTreeSet<String>>>,
@@ -486,7 +528,21 @@ struct Supervisor {
 }
 
 impl Supervisor {
-    async fn run(self, mut outgoing: mpsc::Receiver<String>, cancel: CancellationToken) {
+    /// Reconnect until the connection is cancelled or hopeless, then put the
+    /// client's handles down.
+    ///
+    /// Every `return` in [`Self::supervise`] is final for this connection, and
+    /// the chat service only notices a final one when its update stream
+    /// closes: which needs both the emitter here *and* the clone `IrcClient`
+    /// kept for the send methods to be gone.
+    async fn run(self, outgoing: mpsc::Receiver<String>, cancel: CancellationToken) {
+        let slots = self.slots.clone();
+        let stream = self.emitter.tx.clone();
+        self.supervise(outgoing, cancel).await;
+        slots.release(&stream);
+    }
+
+    async fn supervise(self, mut outgoing: mpsc::Receiver<String>, cancel: CancellationToken) {
         let mut failures: u32 = 0;
         loop {
             if !self.emitter.status(ChatStatus::Connecting, "").await {
@@ -504,12 +560,20 @@ impl Supervisor {
             let _ = self.emitter.status(ChatStatus::Disconnected, "").await;
 
             match end {
-                SessionEnd::Cancelled => return,
-                SessionEnd::AuthFailed => {
+                AttemptEnd::Session(SessionEnd::Cancelled) => return,
+                AttemptEnd::Session(SessionEnd::AuthFailed) => {
                     tracing::error!("chat authentication was rejected; reconnect disabled");
                     return;
                 }
-                SessionEnd::Dropped => failures += 1,
+                // Nothing this loop can do renews an OAuth token. Stand down
+                // and let the reconnect watchdog try again once the provider
+                // has: spending the attempt budget here is what left the
+                // client chatless for the rest of the session after a resume.
+                AttemptEnd::Unauthorized => {
+                    tracing::warn!("chat stood down until the access token is renewed");
+                    return;
+                }
+                AttemptEnd::Session(SessionEnd::Dropped) => failures += 1,
             }
 
             if failures >= MAX_CONSECUTIVE_FAILURES {
@@ -536,13 +600,17 @@ impl Supervisor {
         access_token: &str,
         outgoing: &mut mpsc::Receiver<String>,
         cancel: &CancellationToken,
-    ) -> SessionEnd {
+    ) -> AttemptEnd {
         let sasl_token =
             match fetch_irc_token(&self.http, &self.config.user_api_base, access_token).await {
                 Ok(t) => t,
+                Err(TokenError::Unauthorized(message)) => {
+                    tracing::warn!(error = %message, "the FAF API refused our access token");
+                    return AttemptEnd::Unauthorized;
+                }
                 Err(e) => {
                     tracing::warn!(error = %e, "could not obtain IRC token");
-                    return SessionEnd::Dropped;
+                    return AttemptEnd::Session(SessionEnd::Dropped);
                 }
             };
 
@@ -551,19 +619,19 @@ impl Supervisor {
             Ok(r) => r,
             Err(e) => {
                 tracing::error!(error = %e, "could not build chat WebSocket request");
-                return SessionEnd::Dropped;
+                return AttemptEnd::Session(SessionEnd::Dropped);
             }
         };
         let ws = match tokio_tungstenite::connect_async(request).await {
             Ok((ws, _)) => ws,
             Err(e) => {
                 tracing::warn!(error = %e, "could not open chat WebSocket");
-                return SessionEnd::Dropped;
+                return AttemptEnd::Session(SessionEnd::Dropped);
             }
         };
         tracing::info!("chat WebSocket connected");
 
-        run_session(
+        let end = run_session(
             ws,
             SessionParams {
                 username: self.username.clone(),
@@ -576,8 +644,17 @@ impl Supervisor {
             outgoing,
             cancel,
         )
-        .await
+        .await;
+        AttemptEnd::Session(end)
     }
+}
+
+/// How one connection attempt ended, from the supervisor's point of view.
+enum AttemptEnd {
+    Session(SessionEnd),
+    /// The attempt never reached the socket because the FAF API rejected the
+    /// access token we hold.
+    Unauthorized,
 }
 
 struct SessionParams {
@@ -750,25 +827,51 @@ async fn fetch_irc_token(
     http: &reqwest::Client,
     user_api_base: &str,
     access_token: &str,
-) -> Result<String, String> {
+) -> Result<String, TokenError> {
     let resp = http
         .get(format!("{user_api_base}/irc/ergochat/token"))
         .bearer_auth(access_token)
         .header(reqwest::header::ACCEPT, "application/json")
         .send()
         .await
-        .map_err(|e| format!("request failed: {e}"))?;
+        .map_err(|e| TokenError::Failed(format!("request failed: {e}")))?;
 
     let status = resp.status();
-    let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
+    let body = resp
+        .text()
+        .await
+        .map_err(|e| TokenError::Failed(format!("read failed: {e}")))?;
     if !status.is_success() {
-        return Err(format!(
+        let message = format!(
             "irc/ergochat/token returned {status}: {}",
             body.chars().take(200).collect::<String>()
-        ));
+        );
+        return Err(if status == reqwest::StatusCode::UNAUTHORIZED {
+            TokenError::Unauthorized(message)
+        } else {
+            TokenError::Failed(message)
+        });
     }
 
     serde_json::from_str::<IrcTokenResponse>(&body)
         .map(|r| r.value)
-        .map_err(|e| format!("invalid JSON: {e}"))
+        .map_err(|e| TokenError::Failed(format!("invalid JSON: {e}")))
+}
+
+/// Why the one-time SASL token could not be minted.
+enum TokenError {
+    /// The FAF API refused our access token. Retrying with the same one is
+    /// pointless, and the supervisor's ten-attempt budget is far too small a
+    /// thing to spend on it: this is the ordinary state of affairs for the few
+    /// seconds after a suspended host resumes, before OAuth has renewed.
+    Unauthorized(String),
+    Failed(String),
+}
+
+impl std::fmt::Display for TokenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unauthorized(message) | Self::Failed(message) => f.write_str(message),
+        }
+    }
 }

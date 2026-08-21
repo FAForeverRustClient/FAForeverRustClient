@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import type { Game, LiveReplayTracking } from "../../ipc/bindings";
 import type { MapPresentation } from "../../shared/mapPresentation";
+import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import { LiveReplayRow } from "./LiveReplayRow";
 import { replayDelayRemaining, type LiveSortKey, type SortDirection } from "./liveReplayModel";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -46,6 +47,7 @@ interface Props {
   tracking: LiveReplayTracking | null;
   onSort: (key: LiveSortKey) => void;
   onToggle: (id: number) => void;
+  onPlayerMenu: PlayerMenuOpener;
   onLoadMore: () => void;
 }
 
@@ -95,6 +97,7 @@ export function LiveReplayTable(props: Props) {
               ageNow={ageNow}
               waitSeconds={replayDelayRemaining(game, waitNow)}
               onToggle={props.onToggle}
+              onPlayerMenu={props.onPlayerMenu}
               presentation={presentation}
               player={props.player}
               tracking={props.tracking}

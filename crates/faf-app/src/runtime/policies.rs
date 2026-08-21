@@ -48,6 +48,29 @@ impl Drop for SingleFlightGuard<'_> {
     }
 }
 
+/// Whether a long-lived connection should be brought back after it drops.
+///
+/// Armed by an explicit `Connect` and disarmed by an explicit `Disconnect`, so
+/// [`reconnect`](crate::services::reconnect) can tell a socket that failed
+/// from one the user hung up. A plain flag rather than a [`SingleFlight`]: two
+/// commands set it and a third only reads it, and nobody owns it in between.
+#[derive(Debug, Default)]
+pub struct AutoReconnect(AtomicBool);
+
+impl AutoReconnect {
+    pub fn arm(&self) {
+        self.0.store(true, Ordering::Release);
+    }
+
+    pub fn disarm(&self) {
+        self.0.store(false, Ordering::Release);
+    }
+
+    pub fn armed(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
+}
+
 /// Generation counter for requests where only the newest response may land.
 #[derive(Debug, Default, Clone)]
 pub struct LatestRequest(Arc<AtomicU64>);

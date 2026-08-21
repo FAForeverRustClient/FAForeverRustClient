@@ -18,7 +18,7 @@ use crate::ports::Ports;
 use crate::services;
 
 mod policies;
-pub use policies::{LatestRequest, SerialMutation, SingleFlight};
+pub use policies::{AutoReconnect, LatestRequest, SerialMutation, SingleFlight};
 
 /// Read-only context handed to every service: shared dependencies.
 ///
@@ -36,6 +36,11 @@ pub struct ServiceCtx {
     pub lobby_join_active: SingleFlight,
     /// Same single-flight guard, for the chat connection.
     pub chat_active: SingleFlight,
+    /// Whether [`services::reconnect`] should bring these sockets back after
+    /// an unexpected drop, so a user who hung up stays hung up while a laptop
+    /// resume does not.
+    pub lobby_auto_reconnect: AutoReconnect,
+    pub chat_auto_reconnect: AutoReconnect,
     /// Generations cancel stale player-card requests when users rapidly switch players/queues.
     pub player_card_profile_generation: LatestRequest,
     pub player_card_matchmaker_generation: LatestRequest,
@@ -226,6 +231,8 @@ impl App {
             lobby_active: SingleFlight::default(),
             lobby_join_active: SingleFlight::default(),
             chat_active: SingleFlight::default(),
+            lobby_auto_reconnect: AutoReconnect::default(),
+            chat_auto_reconnect: AutoReconnect::default(),
             player_card_profile_generation: LatestRequest::default(),
             player_card_matchmaker_generation: LatestRequest::default(),
             player_card_map_stats_generation: LatestRequest::default(),
@@ -379,6 +386,10 @@ impl AppLoop {
         // status mirrors state, so it observes the event stream instead. It
         // owns its own tasks and never blocks this loop.
         services::discord::spawn(ctx.clone(), self.sink.clone());
+
+        // Likewise state-driven: a socket that dropped while the user is still
+        // signed in should come back without them asking.
+        services::reconnect::spawn(ctx.clone(), self.sink.clone());
 
         while let Some(queued) = self.cmd_rx.recv().await {
             let ctx = ctx.clone();

@@ -3,6 +3,7 @@ import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { mapPresentation } from "../../shared/mapPresentation";
+import { usePlayerMenu } from "../chat/usePlayerMenu";
 import { LiveReplayControls } from "./LiveReplayControls";
 import { LiveReplayTable } from "./LiveReplayTable";
 import {
@@ -30,6 +31,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const player = useAppStore((s) => s.state.auth.player?.name ?? "spectator");
   const tracking = useAppStore((s) => s.state.replays.liveTracking);
+  const { openPlayerMenu, playerMenu } = usePlayerMenu();
   const [filters, setFilters] = useState<LiveFilters>(browsing.liveReplayFilters);
   const filtersDirty = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -223,9 +225,11 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           tracking={tracking}
           onSort={changeSort}
           onToggle={toggleExpanded}
+          onPlayerMenu={openPlayerMenu}
           onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
         />
       )}
+      {playerMenu}
     </section>
   );
 }
