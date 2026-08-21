@@ -218,13 +218,11 @@
   position: relative;
 }
 
-.live-replay-row.is-menu-open,
-.live-replay-row:has(.live-delay-actions[open]) {
-  position: relative;
-  z-index: 30;
-}
-
+/* `is-menu-open` marks the row whose delay menu is open. The menu itself is
+   rendered into `document.body` and so floats free of the table; highlighting
+   the row is what still connects the two. */
 .live-replay-row:hover td,
+.live-replay-row.is-menu-open td,
 .live-replay-row.expanded td {
   background: var(--color-surface-raised);
 }
@@ -346,7 +344,6 @@
 }
 
 .live-delay-actions {
-  position: relative;
   min-width: 0;
 }
 
@@ -362,11 +359,6 @@
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
-  list-style: none;
-}
-
-.live-delay-trigger::-webkit-details-marker {
-  display: none;
 }
 
 .live-delay-trigger:hover,
@@ -381,11 +373,13 @@
   outline-offset: 2px;
 }
 
+/* Rendered into `document.body`, so the table's scroll container cannot clip
+   it and the next row cannot paint over it. `top`/`left` come from the
+   trigger's viewport rect; `DELAY_MENU_WIDTH` in LiveReplayRow.tsx mirrors the
+   width below, so the two must change together. */
 .live-delay-menu {
-  position: absolute;
+  position: fixed;
   z-index: 100;
-  top: calc(100% + var(--space-1));
-  right: 0;
   display: grid;
   width: 190px;
   gap: var(--space-1);
