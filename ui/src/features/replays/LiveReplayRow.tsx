@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { PlayerName } from "../../shared/nameColors";
+import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import type { Game, LiveReplayTracking } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatClockDuration, formatRelativeDuration } from "../../shared/durations";
@@ -30,6 +31,28 @@ function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
     <span className="live-replay-map-placeholder" aria-hidden="true">
       <Icon name="maps" size={18} />
     </span>
+  );
+}
+
+/**
+ * A nickname in the table, with the client's player menu on it.
+ *
+ * Both reference clients treat a player's name as the handle on that player
+ * wherever it appears; this table showed a lineup you could read and nothing
+ * else. Left-click opens the menu as well as right-click, because a name in a
+ * table cell does not otherwise advertise that it has one.
+ */
+function LivePlayerName({ name, onMenu }: { name: string; onMenu: PlayerMenuOpener }) {
+  return (
+    <button
+      type="button"
+      className="live-player-name"
+      aria-haspopup="menu"
+      onClick={(event) => onMenu(name, event)}
+      onContextMenu={(event) => onMenu(name, event)}
+    >
+      <PlayerName name={name} />
+    </button>
   );
 }
 
@@ -237,6 +260,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   ageNow,
   waitSeconds,
   onToggle,
+  onPlayerMenu,
   presentation,
   player,
   tracking,
@@ -247,6 +271,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   ageNow: number;
   waitSeconds: number;
   onToggle: (id: number) => void;
+  onPlayerMenu: PlayerMenuOpener;
   presentation: MapPresentation;
   player: string;
   tracking: LiveReplayTracking | null;
@@ -291,7 +316,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
         </td>
         <td className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>
         <td className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : "N/A"}</td>
-        <td className="live-host-cell"><PlayerName name={game.host} /></td>
+        <td className="live-host-cell"><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></td>
         <td className="live-mods-cell">
           <span>{game.modName || "faf"}</span>
           <small title={simMods.join(", ")}>
@@ -326,7 +351,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                         {players.map((p, i) => (
                           <Fragment key={p}>
                             {i > 0 && ", "}
-                            <PlayerName name={p} />
+                            <LivePlayerName name={p} onMenu={onPlayerMenu} />
                           </Fragment>
                         ))}
                       </span>

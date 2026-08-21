@@ -15,13 +15,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
-import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
-import { noteForPlayer } from "../../shared/playerNotes";
-import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { useAppStore } from "../../store/store";
 import { Icon } from "../../design-system/Icon";
-import type { ChatChannel, ChatStatus, Game, PlayerProfile, Reaction } from "../../ipc/bindings";
-import { findPlayer, isPrivateChannel } from "../../store/reducer";
+import type { ChatChannel, ChatStatus, Game, Reaction } from "../../ipc/bindings";
+import { isPrivateChannel } from "../../store/reducer";
 import { typistsAt } from "../../store/reducers/chat";
 import { ChannelTabs } from "./ChannelTabs";
 import type { ChatGameLink } from "./chatFormat";
@@ -30,9 +27,7 @@ import { MessageList, type MessageReactionsMap } from "./MessageList";
 import { visibleChatMessages } from "./messageFilters";
 import { RosterResizeHandle, clampRosterWidth } from "./RosterResizeHandle";
 import { UserList } from "./UserList";
-import { UserMenu, type UserMenuTarget } from "./UserMenu";
-import { openPlayerCard } from "../player-card/playerCardActions";
-import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
+import { usePlayerMenu } from "./usePlayerMenu";
 import "./chat.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -81,20 +76,8 @@ const joinChannel = (channel: string) =>
   ipc.send({ kind: "Chat", command: { type: "joinChannel", payload: { channel } } });
 const leaveChannel = (channel: string) =>
   ipc.send({ kind: "Chat", command: { type: "leaveChannel", payload: { channel } } });
-// User-menu actions. Friend/foe and party invites travel the lobby socket, the
-// same as in both reference clients.
-const setRelation = (profile: PlayerProfile, relation: "friend" | "foe", member: boolean) =>
-  ipc.send({
-    kind: "Social",
-    command: {
-      type: "setRelation",
-      payload: { playerId: profile.id, login: profile.login, relation, member },
-    },
-  });
-const inviteToParty = (playerId: number) =>
-  ipc.send({ kind: "Lobby", command: { type: "inviteToParty", payload: { playerId } } });
-const kickFromParty = (playerId: number) =>
-  ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId } } });
+// Game links in a message. Friend/foe, party and profile actions belong to the
+// player menu, which owns its own commands (see `usePlayerMenu`).
 const joinGame = (game: Game) =>
   ipc.send({ kind: "Lobby", command: { type: "join", payload: { id: game.id, password: null } } });
 const watchGame = (game: Game) =>
@@ -114,11 +97,8 @@ export function ChatView() {
   const games = useAppStore((s) => s.state.lobby.games);
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const mapVault = useAppStore((s) => s.state.maps.vault);
-  const party = useAppStore((s) => s.state.lobby.party);
   const chatPreferences = useAppStore((s) => s.state.settings.chat);
-  const playerNotes = useAppStore((s) => s.state.settings.social.playerNotes);
-  const [menu, setMenu] = useState<UserMenuTarget | null>(null);
-  const [noteTarget, setNoteTarget] = useState<PlayerProfile | null>(null);
+  const { openPlayerMenu, playerMenu } = usePlayerMenu();
   const [searchRequest, setSearchRequest] = useState(0);
   const [gameLinkNotice, setGameLinkNotice] = useState("");
   const [rosterWidth, setRosterWidth] = useState(() => clampRosterWidth(chatPreferences.rosterWidth));
@@ -210,17 +190,6 @@ export function ChatView() {
     void selectChannel(nick);
   }, [self]);
 
-  const openMenu = useCallback((nickname: string, event: React.MouseEvent) => {
-    // Replace the webview's own context menu, which offers "Reload"/"Inspect".
-    event.preventDefault();
-    setMenu({
-      nickname,
-      profile: findPlayer(useAppStore.getState().state.social, nickname),
-      x: event.clientX,
-      y: event.clientY,
-    });
-  }, []);
-  const closeMenu = useCallback(() => setMenu(null), []);
   const commitRosterWidth = useCallback((width: number) => {
     const preferences = useAppStore.getState().state.settings.chat;
     if (preferences.rosterWidth === width) return;
@@ -229,58 +198,6 @@ export function ChatView() {
       command: { type: "setChat", payload: { preferences: { ...preferences, rosterWidth: width } } },
     });
   }, []);
-
-  const setPlayerNameColor = useCallback((nickname: string, color: string | null) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const key = nickKey(nickname);
-    const players = Object.fromEntries(
-      Object.entries(preferences.nameColors.players).filter(([player]) => nickKey(player) !== key),
-    );
-    if (color) players[nickname] = color;
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "setChat",
-        payload: {
-          preferences: {
-            ...preferences,
-            nameColors: { ...preferences.nameColors, players },
-          },
-        },
-      },
-    });
-  }, []);
-
-  const setMuted = useCallback((nickname: string, muted: boolean) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const withoutPlayer = preferences.mutedPlayers.filter(
-      (player) => player.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0,
-    );
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "setChat",
-        payload: {
-          preferences: {
-            ...preferences,
-            mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
-          },
-        },
-      },
-    });
-  }, []);
-
-  // Which game the menu's target is in, from the lists the Play tab already
-  // keeps: `player_info` doesn't carry a game, but `game_info` carries rosters.
-  const inGame = (list: Game[], nickname: string) =>
-    list.find((g) => Object.values(g.teams).some((team) => team.includes(nickname)));
-  const menuHostedGame = menu && games.find((g) => g.host === menu.nickname);
-  const menuLiveGame = menu ? inGame(liveGames, menu.nickname) : undefined;
-  const inParty = (id: number) => party.members.some((m) => m.playerId === id);
-  const menuNameColor = menu
-    ? assignedPlayerColor(chatPreferences.nameColors.players, menu.nickname)
-    : undefined;
-  const menuIsMuted = !!menu && includesName(chatPreferences.mutedPlayers, menu.nickname);
 
   const activateGameLink = useCallback((link: ChatGameLink) => {
     const game = (link.kind === "openGame" ? games : liveGames)
@@ -295,54 +212,6 @@ export function ChatView() {
     // `t` is part of the identity: switching language must rebuild this so a
     // later click reports the failure in the language now selected.
   }, [games, liveGames, t]);
-
-  const userMenu = menu && (
-        <UserMenu
-          target={menu}
-          self={self}
-          isFriend={social.friends.includes(menu.nickname)}
-          isFoe={social.foes.includes(menu.nickname)}
-          isMuted={menuIsMuted}
-          hostedGame={menuHostedGame ?? undefined}
-          liveGame={menuLiveGame}
-          canInvite={!!menu.profile && !inParty(menu.profile.id)}
-          canKickFromParty={
-            !!menu.profile &&
-            party.ownerId === (player?.id ?? -1) &&
-            inParty(menu.profile.id)
-          }
-          nameColor={menuNameColor}
-          actions={{
-            privateMessage: openConversation,
-            viewProfile: (playerId, nickname) => void openPlayerCard(playerId, nickname),
-            copyUsername: (nickname) => void navigator.clipboard?.writeText(nickname),
-            joinGame: (game) => void joinGame(game),
-            watchGame: (game) => void watchGame(game),
-            viewReplays: (username) => {
-              ipc.send({
-                kind: "Replays",
-                command: {
-                  type: "searchVault",
-                  payload: { query: { ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true } },
-                },
-              });
-              ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
-            },
-            inviteToParty: (id) => void inviteToParty(id),
-            setRelation: (profile, relation, member) =>
-              void setRelation(profile, relation, member),
-            kickFromParty: (id) => void kickFromParty(id),
-            setNameColor: setPlayerNameColor,
-            setMuted,
-            editNote: setNoteTarget,
-            reportPlayer: (profile) => ipc.send({
-              kind: "Reporting",
-              command: { type: "open", payload: { playerId: profile.id, login: profile.login } },
-            }),
-          }}
-          onClose={closeMenu}
-        />
-  );
 
   const chatStyle = { "--chat-roster-width": `${rosterWidth}px` } as CSSProperties;
 
@@ -399,7 +268,7 @@ export function ChatView() {
                 : t("chat.empty.offline")
             }
             onNickClick={openConversation}
-            onNickContextMenu={openMenu}
+            onNickContextMenu={openPlayerMenu}
             showTimestamps={chatPreferences.showTimestamps}
             use24HourTime={chatPreferences.use24HourTime}
             users={active.users}
@@ -461,20 +330,12 @@ export function ChatView() {
             mapVault={mapVault}
             preferences={chatPreferences}
             onOpenConversation={openConversation}
-            onContextMenu={openMenu}
+            onContextMenu={openPlayerMenu}
           />
         </div>
       )}
 
-      {userMenu}
-      {noteTarget && (
-        <PlayerNoteModal
-          playerId={noteTarget.id}
-          login={noteTarget.login}
-          initialNote={noteForPlayer(playerNotes, noteTarget.id)}
-          onClose={() => setNoteTarget(null)}
-        />
-      )}
+      {playerMenu}
     </div>
   );
 }
