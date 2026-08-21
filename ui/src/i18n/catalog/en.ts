@@ -301,6 +301,13 @@ export const en = {
   // Embedded web views.
   "units.frameTitle": "ETFreeman Unit Database",
   "news.frameTitle": "FAF News Hub",
+  "embed.openExternal": "Open in browser",
+  "embed.openExternalTitle": "Open this page in your system browser",
+  "shell.webview.outdated": "Outdated system webview",
+  "shell.webview.outdatedHintVersion": "This client renders in WebKitGTK {version}, which does not support {features}. Parts of the interface and of the embedded pages will look wrong. Update your distribution's webkit2gtk packages to {recommended} or newer, or use the browser button on the Units and News tabs.",
+  "shell.webview.outdatedHint": "The system webview does not support {features}. Parts of the interface and of the embedded pages will look wrong. Update your system's webview, or use the browser button on the Units and News tabs.",
+  "shell.webview.dismiss": "Dismiss",
+  "shell.webview.dismissTitle": "Hide this warning until the webview changes",
 
 
   // Settings: general section.

@@ -260,6 +260,13 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "units.frameTitle": "ETFreeman-Einheitendatenbank",
   "news.frameTitle": "FAF-Newshub",
+  "embed.openExternal": "Im Browser öffnen",
+  "embed.openExternalTitle": "Diese Seite im System-Browser öffnen",
+  "shell.webview.outdated": "Veraltete System-Webview",
+  "shell.webview.outdatedHintVersion": "Dieser Client läuft in WebKitGTK {version}, das {features} nicht unterstützt. Teile der Oberfläche und der eingebetteten Seiten werden falsch dargestellt. Aktualisiere die webkit2gtk-Pakete deiner Distribution auf {recommended} oder neuer, oder nutze den Browser-Button in den Tabs Einheiten und News.",
+  "shell.webview.outdatedHint": "Die System-Webview unterstützt {features} nicht. Teile der Oberfläche und der eingebetteten Seiten werden falsch dargestellt. Aktualisiere die Webview deines Systems, oder nutze den Browser-Button in den Tabs Einheiten und News.",
+  "shell.webview.dismiss": "Ausblenden",
+  "shell.webview.dismissTitle": "Diesen Hinweis ausblenden, bis sich die Webview ändert",
 
 
   "settings.general.startPage.label": "Startseite",

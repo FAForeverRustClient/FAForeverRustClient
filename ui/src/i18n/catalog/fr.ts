@@ -190,6 +190,13 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "units.frameTitle": "Base de données d'unités ETFreeman",
   "news.frameTitle": "Actualités FAF",
+  "embed.openExternal": "Ouvrir dans le navigateur",
+  "embed.openExternalTitle": "Ouvrir cette page dans le navigateur du système",
+  "shell.webview.outdated": "Webview système obsolète",
+  "shell.webview.outdatedHintVersion": "Ce client s'affiche dans WebKitGTK {version}, qui ne prend pas en charge {features}. Une partie de l'interface et des pages intégrées s'affichera mal. Mettez à jour les paquets webkit2gtk de votre distribution vers {recommended} ou plus récent, ou utilisez le bouton navigateur dans les onglets Unités et Actualités.",
+  "shell.webview.outdatedHint": "La webview du système ne prend pas en charge {features}. Une partie de l'interface et des pages intégrées s'affichera mal. Mettez à jour la webview de votre système, ou utilisez le bouton navigateur dans les onglets Unités et Actualités.",
+  "shell.webview.dismiss": "Masquer",
+  "shell.webview.dismissTitle": "Masquer cet avertissement jusqu'au changement de webview",
 
   "common.unknown": "Inconnu",
   "common.now": "Maintenant",

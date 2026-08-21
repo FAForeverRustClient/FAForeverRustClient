@@ -33,6 +33,14 @@ export interface LogPreview {
   issues: LogIssue[];
 }
 
+/** Mirrors `WebviewEngine` in the Tauri shell. */
+export interface WebviewEngine {
+  /** `windows`, `macos`, `linux`, or `other`. */
+  platform: string;
+  /** WebKitGTK `major.minor.micro`; only Linux has a version worth reporting. */
+  webkitVersion: string | null;
+}
+
 export const native = {
   openLogFolder(kind: LogKind): Promise<void> {
     return invoke("open_log_folder", { kind });
@@ -58,6 +66,11 @@ export const native = {
 
   openUrl(url: string): Promise<void> {
     return openUrl(url);
+  },
+
+  /** Which engine the interface is being rendered by. */
+  webviewEngine(): Promise<WebviewEngine> {
+    return invoke<WebviewEngine>("webview_engine");
   },
 
   isWindowFocused(): Promise<boolean> {

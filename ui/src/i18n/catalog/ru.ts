@@ -191,6 +191,13 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "units.frameTitle": "База данных юнитов ETFreeman",
   "news.frameTitle": "Новости FAF",
+  "embed.openExternal": "Открыть в браузере",
+  "embed.openExternalTitle": "Открыть эту страницу в системном браузере",
+  "shell.webview.outdated": "Устаревший системный webview",
+  "shell.webview.outdatedHintVersion": "Клиент работает в WebKitGTK {version}, который не поддерживает {features}. Часть интерфейса и встроенных страниц отобразится неверно. Обновите пакеты webkit2gtk до {recommended} или новее либо воспользуйтесь кнопкой браузера на вкладках Юниты и Новости.",
+  "shell.webview.outdatedHint": "Системный webview не поддерживает {features}. Часть интерфейса и встроенных страниц отобразится неверно. Обновите системный webview либо воспользуйтесь кнопкой браузера на вкладках Юниты и Новости.",
+  "shell.webview.dismiss": "Скрыть",
+  "shell.webview.dismissTitle": "Скрыть предупреждение до смены webview",
 
   "common.unknown": "Неизвестно",
   "common.now": "Сейчас",
