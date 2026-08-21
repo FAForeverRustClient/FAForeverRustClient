@@ -47,6 +47,13 @@ pub struct GameConfig {
     /// Literal arguments supplied by the user in Settings. They are prepended,
     /// leaving protocol-critical arguments later in the command line.
     pub additional_arguments: Vec<String>,
+    /// The original retail/Steam Forged Alliance folder, as chosen in Settings.
+    /// Never launched: it is what `fa_path.lua` points the engine at so the
+    /// base game's own archives get mounted. Empty is the normal case, and
+    /// means "detect it"; the `FAF_GAME_INSTALL_DIR` override lives in
+    /// [`crate::infra::game_updater::retail_install_dir`] with the rest of the
+    /// resolution order rather than being duplicated here.
+    pub retail_path: String,
 }
 
 impl GameConfig {
@@ -55,6 +62,7 @@ impl GameConfig {
             game_path: std::env::var("FAF_GAME_PATH").unwrap_or_default(),
             replay_game_path: std::env::var("FAF_REPLAY_GAME_PATH").unwrap_or_default(),
             additional_arguments: Vec::new(),
+            retail_path: String::new(),
         }
     }
 }
@@ -269,6 +277,15 @@ impl ProcessPort for GameProcess {
         self.config.lock().unwrap().additional_arguments = arguments;
     }
 
+    fn set_retail_path(&self, path: String) {
+        self.config.lock().unwrap().retail_path = path;
+    }
+
+    fn retail_install_dir(&self) -> Option<PathBuf> {
+        let path = self.config.lock().unwrap().retail_path.clone();
+        (!path.is_empty()).then(|| PathBuf::from(path))
+    }
+
     fn game_install_dir(&self) -> Option<PathBuf> {
         managed_install_dir_of(&self.config.lock().unwrap().game_path)
     }
@@ -279,10 +296,28 @@ impl ProcessPort for GameProcess {
 
     fn installs_present(&self) -> InstallPresence {
         let config = self.config.lock().unwrap();
+        let configured =
+            (!config.retail_path.is_empty()).then(|| PathBuf::from(&config.retail_path));
+        // The same last resort the updater allows: an install that FAF was
+        // patched over is both directories at once.
+        let managed: Vec<PathBuf> = [&config.game_path, &config.replay_game_path]
+            .into_iter()
+            .filter_map(|path| install_dir_of(path))
+            .collect();
+        let last_resort: Vec<&Path> = managed.iter().map(PathBuf::as_path).collect();
         let present = managed_executable_is_present;
         InstallPresence {
             game: present(&config.game_path),
             replay: present(&config.replay_game_path),
+            // Resolved, not merely stat'd: an unset path is the normal case and
+            // still yields a working install via auto-detection, so reporting
+            // "unset" here would call a healthy setup broken.
+            retail: crate::infra::game_updater::retail_install_dir(
+                configured.as_deref(),
+                &last_resort,
+            )
+            .map(|dir| dir.to_string_lossy().into_owned())
+            .unwrap_or_default(),
         }
     }
 
@@ -357,8 +392,37 @@ fn java_data_root(path: &Path) -> Option<PathBuf> {
 
 fn python_data_root(path: &Path) -> Option<PathBuf> {
     let text = read_small_text_file(path)?;
-    let mut section = "";
+    ini_value(&text, "client", &["data_path"]).map(PathBuf::from)
+}
 
+/// The *retail* Forged Alliance directory the Java client stores, if any.
+///
+/// Its `client.prefs` is JSON; `forgedAlliance.installationPath` is the folder
+/// the user picked in that client's first-run wizard. Read by
+/// [`crate::infra::game_updater::retail_install_dir`] to spare a user who has
+/// already answered this question from answering it again.
+pub(crate) fn java_retail_path(path: &Path) -> Option<PathBuf> {
+    let text = read_small_text_file(path)?;
+    let document: serde_json::Value = serde_json::from_str(&text).ok()?;
+    document
+        .pointer("/forgedAlliance/installationPath")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(PathBuf::from)
+}
+
+/// The same, from the Python client's `FA Lobby.ini`, where the setting is
+/// `ForgedAlliance/app/path` (a Qt `QSettings` key, so it appears either as a
+/// `[ForgedAlliance]` section with an `app\path` key or spelled out in full).
+pub(crate) fn python_retail_path(path: &Path) -> Option<PathBuf> {
+    let text = read_small_text_file(path)?;
+    ini_value(&text, "ForgedAlliance", &["app\\path", "app/path"]).map(PathBuf::from)
+}
+
+/// One value from a Qt-style INI, tried under every spelling `QSettings` uses
+/// for a nested key: inside its section, or fully qualified at top level.
+fn ini_value(text: &str, section_name: &str, keys: &[&str]) -> Option<String> {
+    let mut section = "";
     for raw_line in text.lines() {
         let line = raw_line.trim();
         if line.is_empty() || line.starts_with(';') || line.starts_with('#') {
@@ -375,17 +439,17 @@ fn python_data_root(path: &Path) -> Option<PathBuf> {
             continue;
         };
         let key = key.trim();
-        let is_data_path = (section.eq_ignore_ascii_case("client")
-            && key.eq_ignore_ascii_case("data_path"))
-            || key.eq_ignore_ascii_case("client/data_path")
-            || key.eq_ignore_ascii_case(r"client\data_path");
-        if !is_data_path {
+        let matches = keys.iter().any(|candidate| {
+            (section.eq_ignore_ascii_case(section_name) && key.eq_ignore_ascii_case(candidate))
+                || key.eq_ignore_ascii_case(&format!("{section_name}\\{candidate}"))
+                || key.eq_ignore_ascii_case(&format!("{section_name}/{candidate}"))
+        });
+        if !matches {
             continue;
         }
-
         let value = value.trim().trim_matches('"').replace(r"\\", r"\");
         if !value.is_empty() {
-            return Some(PathBuf::from(value));
+            return Some(value);
         }
     }
     None
@@ -598,19 +662,93 @@ mod tests {
     #[test]
     fn an_unset_path_is_not_present_and_a_real_file_is() {
         let process = GameProcess::new(GameConfig::default());
-        assert_eq!(process.installs_present(), InstallPresence::default());
+        let present = process.installs_present();
+        assert!(!present.game);
+        assert!(!present.replay);
 
         // The test binary itself is a file that certainly exists, which is all
         // `installs_present` checks. (`file!()` would be relative to the
         // workspace root, not the crate dir the test runs in.)
         let existing = std::env::current_exe().unwrap().display().to_string();
         process.set_paths(existing, String::new());
+        let present = process.installs_present();
+        assert!(present.game);
+        assert!(!present.replay);
+    }
+
+    #[test]
+    fn the_java_clients_retail_folder_is_read_from_its_prefs() {
+        // A user who set this up in the Java client should not be asked again.
+        let temp = tempfile::tempdir().unwrap();
+        let prefs = temp.path().join("client.prefs");
+        std::fs::write(
+            &prefs,
+            r#"{"data":{"baseDataDirectory":"C:\\ProgramData\\FAForever"},
+                "forgedAlliance":{"installationPath":"D:\\SteamLibrary\\steamapps\\common\\Supreme Commander Forged Alliance"}}"#,
+        )
+        .unwrap();
         assert_eq!(
-            process.installs_present(),
-            InstallPresence {
-                game: true,
-                replay: false
-            }
+            java_retail_path(&prefs),
+            Some(PathBuf::from(
+                r"D:\SteamLibrary\steamapps\common\Supreme Commander Forged Alliance"
+            ))
+        );
+
+        // The managed data root is a different setting and must not stand in
+        // for it: that directory is exactly the one that has no base game.
+        std::fs::write(
+            &prefs,
+            r#"{"data":{"baseDataDirectory":"C:\\ProgramData\\FAForever"}}"#,
+        )
+        .unwrap();
+        assert_eq!(java_retail_path(&prefs), None);
+    }
+
+    #[test]
+    fn the_python_clients_retail_folder_is_read_from_its_ini() {
+        // Qt writes a nested key either way round depending on version.
+        let temp = tempfile::tempdir().unwrap();
+        let ini = temp.path().join("FA Lobby.ini");
+
+        std::fs::write(
+            &ini,
+            "[ForgedAlliance]\napp\\path=D:\\\\Games\\\\Supreme Commander Forged Alliance\n",
+        )
+        .unwrap();
+        assert_eq!(
+            python_retail_path(&ini),
+            Some(PathBuf::from(r"D:\Games\Supreme Commander Forged Alliance"))
+        );
+
+        std::fs::write(&ini, "ForgedAlliance/app/path=\"E:/FA\"\n").unwrap();
+        assert_eq!(python_retail_path(&ini), Some(PathBuf::from("E:/FA")));
+
+        std::fs::write(&ini, "[client]\ndata_path=C:\\\\FAForever\n").unwrap();
+        assert_eq!(python_retail_path(&ini), None);
+    }
+
+    #[test]
+    fn ini_reading_ignores_comments_and_other_sections() {
+        let text =
+            "; a comment\n[other]\napp\\path=wrong\n[ForgedAlliance]\n# another\napp\\path=right\n";
+        assert_eq!(
+            ini_value(text, "ForgedAlliance", &["app\\path"]),
+            Some("right".to_string())
+        );
+    }
+
+    #[test]
+    fn the_retail_path_is_only_reported_once_settings_has_one() {
+        // Unset is the normal case: the updater detects the base game, so an
+        // empty configuration is not the same as no install (which is why this
+        // is a directory nobody launches rather than another managed exe).
+        let process = GameProcess::new(GameConfig::default());
+        assert_eq!(process.retail_install_dir(), None);
+
+        process.set_retail_path(r"C:\Games\Supreme Commander Forged Alliance".into());
+        assert_eq!(
+            process.retail_install_dir(),
+            Some(PathBuf::from(r"C:\Games\Supreme Commander Forged Alliance"))
         );
     }
 

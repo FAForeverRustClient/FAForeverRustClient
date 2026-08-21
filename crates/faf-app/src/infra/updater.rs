@@ -88,6 +88,7 @@ impl GameUpdaterClient {
             &self.config.api_base,
             &cache_dir()?.join("game_files"),
             &target_dir,
+            self.process.retail_install_dir().as_deref(),
             &request.featured_mod,
             &self.config.exe_name,
             progress,

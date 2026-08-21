@@ -73,6 +73,13 @@ impl ReplaySortField {
             ReplaySortField::VictoryCondition => "victoryCondition",
         }
     }
+
+    /// Whether ordering by this option makes the API sort *across a
+    /// relationship* rather than over a column of `game` itself. See
+    /// [`ReplayQuery::sort_rejected_by_api`] for why that matters.
+    pub fn is_over_relationship(self) -> bool {
+        self.property().contains('.')
+    }
 }
 
 /// The four victory conditions the engine reports, as the API spells them.
@@ -203,6 +210,57 @@ impl ReplayQuery {
             || self.map_max_size_km.is_some()
             || self.ranked_map_only
             || self.only_ranked
+    }
+
+    /// Whether any active filter reaches through a *to-many* relationship.
+    ///
+    /// `game` owns `playerStats` as a collection, and every one of these
+    /// narrows the search by something inside it: the player who took part,
+    /// the faction they picked, the leaderboard their rating change belongs
+    /// to, or that rating itself. Everything else the form offers filters on
+    /// `game` directly or through a to-one hop (`mapVersion`, `featuredMod`,
+    /// `host`, `reviewsSummary`), which the API is happy to combine with
+    /// anything.
+    pub fn filters_over_to_many(&self) -> bool {
+        !self.player.is_empty()
+            || !self.leaderboards.is_empty()
+            || !self.factions.is_empty()
+            || self.min_rating.is_some()
+            || self.max_rating.is_some()
+    }
+
+    /// Whether the API would refuse this query outright because of *how* it is
+    /// ordered rather than what it asks for.
+    ///
+    /// Elide (the framework behind `/data/game`) cannot page a query that both
+    /// sorts across a relationship and filters across a to-many one, and says
+    /// so by failing the whole request:
+    ///
+    /// > Invalid value: Combination of pagination, sorting over relationship
+    /// > and filtering over toMany relationships unsupported
+    ///
+    /// Only "sort by review score" orders across a relationship
+    /// (`reviewsSummary.averageScore`), and paging is never optional, so in
+    /// practice this is "review score plus a player/faction/rating/leaderboard
+    /// filter". Left unhandled it is invisible from the form: picking that sort
+    /// once made *every* subsequent search fail, including searches whose
+    /// filters looked entirely innocent, because the sort is sticky and the
+    /// error names none of the fields involved.
+    pub fn sort_rejected_by_api(&self) -> bool {
+        self.sort_by.is_over_relationship() && self.filters_over_to_many()
+    }
+
+    /// The same query, ordered by something the API will actually accept.
+    ///
+    /// Applied before the request goes out (and echoed back to the form, so
+    /// the sort picker shows what was really used). The filters are what the
+    /// user asked *for*; the ordering is only how the answer is arranged, so
+    /// when the two cannot coexist the ordering is what gives way.
+    pub fn accepted_by_api(mut self) -> Self {
+        if self.sort_rejected_by_api() {
+            self.sort_by = ReplaySortField::StartTime;
+        }
+        self
     }
 
     /// The API's `sort` parameter. A leading `-` means descending.
@@ -742,6 +800,109 @@ mod tests {
             build_filter(&q, None).unwrap(),
             r#"(playerStats.player.login=="abc")"#
         );
+    }
+
+    #[test]
+    fn only_the_player_side_filters_reach_through_a_to_many_relationship() {
+        for narrow in [
+            ReplayQuery {
+                player: "Stormlord".into(),
+                ..query()
+            },
+            ReplayQuery {
+                leaderboards: vec!["global".into()],
+                ..query()
+            },
+            ReplayQuery {
+                factions: vec![1],
+                ..query()
+            },
+            ReplayQuery {
+                min_rating: Some(1500),
+                ..query()
+            },
+            ReplayQuery {
+                max_rating: Some(1500),
+                ..query()
+            },
+        ] {
+            assert!(narrow.filters_over_to_many(), "{narrow:?}");
+        }
+
+        // Everything else hangs off `game` itself or a to-one hop.
+        let wide = ReplayQuery {
+            map: "Setons".into(),
+            map_author: "Ozonex".into(),
+            title: "all welcome".into(),
+            host: "Stormlord".into(),
+            featured_mods: vec!["faf".into()],
+            victory_conditions: vec!["DEMORALIZATION".into()],
+            min_review_score: Some(4.0),
+            min_duration_minutes: Some(10),
+            map_min_players: Some(4),
+            ranked_map_only: true,
+            only_ranked: true,
+            ..query()
+        };
+        assert!(!wide.filters_over_to_many());
+    }
+
+    #[test]
+    fn review_score_sort_survives_filters_the_api_can_combine_it_with() {
+        let q = ReplayQuery {
+            sort_by: ReplaySortField::ReviewScore,
+            map: "Setons".into(),
+            min_review_score: Some(4.0),
+            ..query()
+        };
+        assert!(!q.sort_rejected_by_api());
+        assert_eq!(
+            q.clone().accepted_by_api().sort_by,
+            ReplaySortField::ReviewScore
+        );
+    }
+
+    #[test]
+    fn review_score_sort_gives_way_to_a_to_many_filter() {
+        // The combination the API rejects outright; the filter is what the
+        // user asked for, so the ordering is what gets adjusted.
+        let q = ReplayQuery {
+            sort_by: ReplaySortField::ReviewScore,
+            player: "Stormlord".into(),
+            sort_descending: false,
+            ..query()
+        };
+        assert!(q.sort_rejected_by_api());
+
+        let accepted = q.clone().accepted_by_api();
+        assert_eq!(accepted.sort_by, ReplaySortField::StartTime);
+        assert!(!accepted.sort_rejected_by_api());
+        // Only the ordering property moves: direction and every filter stay.
+        assert_eq!(accepted.sort_descending, q.sort_descending);
+        assert_eq!(accepted.player, q.player);
+    }
+
+    #[test]
+    fn column_sorts_are_never_adjusted() {
+        for field in [
+            ReplaySortField::StartTime,
+            ReplaySortField::EndTime,
+            ReplaySortField::Duration,
+            ReplaySortField::Title,
+            ReplaySortField::Id,
+            ReplaySortField::VictoryCondition,
+        ] {
+            assert!(!field.is_over_relationship(), "{field:?}");
+            let q = ReplayQuery {
+                sort_by: field,
+                player: "Stormlord".into(),
+                leaderboards: vec!["global".into()],
+                ..query()
+            };
+            assert!(!q.sort_rejected_by_api(), "{field:?}");
+            assert_eq!(q.accepted_by_api().sort_by, field);
+        }
+        assert!(ReplaySortField::ReviewScore.is_over_relationship());
     }
 
     #[test]

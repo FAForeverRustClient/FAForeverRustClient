@@ -8,7 +8,7 @@ describe("VaultSearch", () => {
     const markup = renderToStaticMarkup(
       <VaultSearch
         featuredMods={["faf"]}
-        leagues={[]}
+        leaderboards={[]}
         self="TestPlayer"
         initialQuery={EMPTY_REPLAY_QUERY}
         onSearch={() => undefined}

@@ -25,7 +25,7 @@
 // description can't drift.
 
 import { useEffect, useState } from "react";
-import type { League, ReplayQuery, ReplaySortField } from "../../ipc/bindings";
+import type { RatingLeaderboard, ReplayQuery, ReplaySortField } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { MultiSelect, type MultiSelectOption } from "../../design-system/MultiSelect";
@@ -35,6 +35,7 @@ import {
   ALL_TIME_AFTER,
   EMPTY_REPLAY_QUERY,
   isoDaysAgo,
+  reviewScoreSortUnavailable,
 } from "../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
 import "../../design-system/search-panel.css";
@@ -60,7 +61,12 @@ type Preset = "newest" | "highestRated" | "own";
 interface Props {
   /** Featured mod technical names from the API. */
   featuredMods: string[];
-  leagues: League[];
+  /** The API's *rating* leaderboards (`global`, `ladder_1v1`, `tmm_2v2`, …).
+      Not the league catalogue: leagues are the divisional ladders and have
+      neither a `global` entry nor technical names the replay filter's
+      `playerStats.ratingChanges.leaderboard.technicalName` can match, so
+      filtering by one returned zero replays. */
+  leaderboards: RatingLeaderboard[];
   /** Logged-in player, for the "My replays" preset. */
   self: string;
   /** Executed query (or the first query about to execute) when this form mounts. */
@@ -68,7 +74,7 @@ interface Props {
   onSearch: (query: ReplayQuery) => void;
 }
 
-export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearch }: Props) {
+export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
   const [advanced, setAdvanced] = useState(false);
@@ -137,11 +143,15 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
   };
 
   const modOptions: MultiSelectOption[] = featuredMods.map((m) => ({ value: m, label: m }));
-  const leagueOptions: MultiSelectOption[] = leagues.map((l) => ({
+  const leaderboardOptions: MultiSelectOption[] = leaderboards.map((l) => ({
     value: l.technicalName,
-    label: l.technicalName,
+    label: l.name || l.technicalName,
   }));
   const hiddenFilterCount = advancedReplayFilterCount(form);
+  // The one sort the API refuses to combine with a player-side filter. The
+  // backend orders by date instead of failing the search, so the picker would
+  // otherwise claim an ordering the results do not have.
+  const sortUnavailable = reviewScoreSortUnavailable(form);
 
   return (
     <form className="vault-search online-vault-search search-panel surface-panel" onSubmit={submit}>
@@ -182,7 +192,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         <div className="vault-field vault-search-leaderboard">
           <MultiSelect
             label={t("replays.search.leaderboard")}
-            options={leagueOptions}
+            options={leaderboardOptions}
             selected={form.leaderboards}
             onChange={(v) => set("leaderboards", v)}
           />
@@ -222,6 +232,9 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
               </option>
             ))}
           </select>
+          {sortUnavailable && (
+            <span className="vault-sort-note muted">{t("replays.search.sortUnavailable")}</span>
+          )}
         </label>
 
         <button

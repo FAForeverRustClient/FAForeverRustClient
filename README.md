@@ -64,6 +64,11 @@ Env toggles for local dev:
 - `FAF_ICE_ADAPTER_VERSION` and `FAF_ICE_ADAPTER_SHA256`: override the pinned official adapter release together
 - `FAF_ICE_ADAPTER_PATH`: optional path override for the bundled `faf-pioneer`
 - `FAF_GAME_PATH`: path to `ForgedAlliance.exe` (its folder must hold `init_<mod>.lua`)
+- `FAF_GAME_INSTALL_DIR`: the *original* Supreme Commander: Forged Alliance folder, the one with
+  `gamedata/lua.scd`. It is never launched; it is what `fa_path.lua` points the engine at so the
+  base game’s archives get mounted. Detected from the Java/Python clients’ settings, the usual
+  retail and Steam locations, and Steam’s library index, and settable under Settings → Paths;
+  this variable overrides all of them.
 - `FAF_CLIENT_VERSION`: client version reported to the lobby (defaults to the crate version)
 - `FAF_LOG`: optional `tracing` filter for client diagnostics (for example
   `faf_app=debug,faforever_rust_client_lib=info,warn`); the default records client info and all warnings

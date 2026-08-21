@@ -21,6 +21,12 @@ pub struct InstallState {
     pub game_ready: bool,
     /// The configured replay-playback executable exists on disk.
     pub replay_ready: bool,
+    /// The original retail/Steam Forged Alliance folder, as actually resolved:
+    /// the one configured in Settings when it is set and real, otherwise
+    /// whatever auto-detection found. Empty means nothing was found, which is
+    /// worth showing: without it every launch fails, and it fails in the engine
+    /// with a message about a shader file.
+    pub retail_path: String,
     /// Whether the paths have been checked at all yet.
     ///
     /// Without this the UI cannot tell "no install" from "not looked yet", and
@@ -33,6 +39,11 @@ impl InstallState {
     /// Nothing can be launched: neither a live game nor a replay.
     pub fn nothing_ready(&self) -> bool {
         !self.game_ready && !self.replay_ready
+    }
+
+    /// The base game was located, so `fa_path.lua` can be written truthfully.
+    pub fn retail_ready(&self) -> bool {
+        !self.retail_path.is_empty()
     }
 }
 
@@ -49,6 +60,8 @@ pub enum InstallEvent {
     Checked {
         game_ready: bool,
         replay_ready: bool,
+        /// The resolved retail install, or empty when none was found.
+        retail_path: String,
     },
 }
 
@@ -57,9 +70,11 @@ pub fn reduce(state: &mut InstallState, event: &InstallEvent) {
         InstallEvent::Checked {
             game_ready,
             replay_ready,
+            retail_path,
         } => {
             state.game_ready = *game_ready;
             state.replay_ready = *replay_ready;
+            state.retail_path = retail_path.clone();
             state.checked = true;
         }
     }
@@ -74,6 +89,7 @@ mod tests {
         let s = InstallState::default();
         assert!(!s.checked);
         assert!(s.nothing_ready());
+        assert!(!s.retail_ready());
     }
 
     #[test]
@@ -84,12 +100,14 @@ mod tests {
             &InstallEvent::Checked {
                 game_ready: true,
                 replay_ready: false,
+                retail_path: r"C:\Games\Supreme Commander Forged Alliance".into(),
             },
         );
         assert!(s.checked);
         assert!(s.game_ready);
         assert!(!s.replay_ready);
         assert!(!s.nothing_ready());
+        assert!(s.retail_ready());
     }
 
     #[test]
@@ -97,6 +115,7 @@ mod tests {
         let mut s = InstallState {
             game_ready: true,
             replay_ready: true,
+            retail_path: r"C:\Games\Supreme Commander Forged Alliance".into(),
             checked: true,
         };
         reduce(
@@ -104,9 +123,11 @@ mod tests {
             &InstallEvent::Checked {
                 game_ready: false,
                 replay_ready: false,
+                retail_path: String::new(),
             },
         );
         assert!(s.checked, "still checked: we looked and found nothing");
         assert!(s.nothing_ready());
+        assert!(!s.retail_ready(), "a base game that went away is not ready");
     }
 }

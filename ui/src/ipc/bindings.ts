@@ -1782,6 +1782,8 @@ export type InstallEvent =
 { type: "checked"; payload: {
 	gameReady: boolean,
 	replayReady: boolean,
+	/**  The resolved retail install, or empty when none was found. */
+	retailPath: string,
 } };
 
 export type InstallState = {
@@ -1789,6 +1791,14 @@ export type InstallState = {
 	gameReady: boolean,
 	/**  The configured replay-playback executable exists on disk. */
 	replayReady: boolean,
+	/**
+	 *  The original retail/Steam Forged Alliance folder, as actually resolved:
+	 *  the one configured in Settings when it is set and real, otherwise
+	 *  whatever auto-detection found. Empty means nothing was found, which is
+	 *  worth showing: without it every launch fails, and it fails in the engine
+	 *  with a message about a shader file.
+	 */
+	retailPath: string,
 	/**
 	 *  Whether the paths have been checked at all yet.
 	 *
@@ -4381,6 +4391,8 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	path: string,
 } } | { type: "setReplayGamePath"; payload: {
 	path: string,
+} } | { type: "setRetailGamePath"; payload: {
+	path: string,
 } } | { type: "setGeneral"; payload: {
 	preferences: GeneralPreferences,
 } } | { type: "setAppearance"; payload: {
@@ -4416,6 +4428,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
 } } | { type: "gamePathChanged"; payload: {
 	path: string,
 } } | { type: "replayGamePathChanged"; payload: {
+	path: string,
+} } | { type: "retailGamePathChanged"; payload: {
 	path: string,
 } } | { type: "generalChanged"; payload: {
 	preferences: GeneralPreferences,
@@ -4456,6 +4470,19 @@ export type SettingsState = {
 	theme: Theme,
 	gamePath: string,
 	replayGamePath: string,
+	/**
+	 *  The *original* Forged Alliance folder: the retail/Steam install whose
+	 *  `gamedata/*.scd` archives hold the base game. Neither of the paths above
+	 *  can stand in for it: those point at FAF's patched executables, which
+	 *  carry only FAF's own overrides. Written into `fa_path.lua` at launch, so
+	 *  leaving it wrong crashes the engine in its shader compiler with a
+	 *  message that names a `.fx` file and nothing else.
+	 *
+	 *  Empty means "work it out": the updater auto-detects from the reference
+	 *  clients' settings and the usual retail/Steam locations, and only asks
+	 *  when that fails.
+	 */
+	retailGamePath: string,
 	general: GeneralPreferences,
 	appearance: AppearancePreferences,
 	social: SocialPreferences,

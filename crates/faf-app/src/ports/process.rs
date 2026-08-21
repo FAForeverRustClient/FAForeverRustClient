@@ -59,15 +59,21 @@ pub struct ReplayMetadata {
     pub sim_mods: std::collections::BTreeMap<String, String>,
 }
 
-/// Which of the configured executables actually exist on disk right now.
+/// What the client can actually find on disk right now.
 ///
-/// Two independent installs by design (see `faf-domain`'s settings module): a
-/// user can have replay playback working while live games aren't configured, or
-/// the reverse.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// The two managed installs are independent by design (see `faf-domain`'s
+/// settings module): a user can have replay playback working while live games
+/// aren't configured, or the reverse. The base game is a third thing again:
+/// shared by both, never launched, and usually found rather than configured.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct InstallPresence {
     pub game: bool,
     pub replay: bool,
+    /// The base game as actually resolved, empty when it could not be found.
+    /// A path rather than a flag because it is worth showing: the user never
+    /// chose it in the common case, so "not found" is only actionable next to
+    /// "here is where I looked and what I settled on".
+    pub retail: String,
 }
 
 /// Existing FAF-managed executables discovered from another installed client.
@@ -152,10 +158,11 @@ pub trait ProcessPort: Send + Sync {
     /// [`Self::set_paths`] rather than an environment variable read at startup.
     fn replay_install_dir(&self) -> Option<PathBuf>;
 
-    /// Stat the configured executables. Drives the missing-install banner, and
-    /// is the reason it can distinguish "no path set" from "path set but the
-    /// file is gone": both report `false`, and both are worth telling the user
-    /// about.
+    /// Stat the configured installs. Drives the missing-install banner, and is
+    /// the reason it can distinguish "no path set" from "path set but the file
+    /// is gone": both report `false`, and both are worth telling the user
+    /// about. The base game is reported as the directory that was resolved,
+    /// since it is usually detected rather than configured.
     fn installs_present(&self) -> InstallPresence;
 
     /// Validate one candidate executable without changing the active paths.
@@ -172,5 +179,26 @@ pub trait ProcessPort: Send + Sync {
     /// inspect, so the default is intentionally empty.
     fn discover_install_paths(&self) -> DiscoveredInstallPaths {
         DiscoveredInstallPaths::default()
+    }
+
+    /// Point the client at the *original* Supreme Commander: Forged Alliance
+    /// install: the retail/Steam folder the base game's `gamedata/*.scd`
+    /// archives live in, which is neither of the two managed installs above.
+    ///
+    /// Kept beside them because it changes the same way: the settings service
+    /// pushes it on load and on every edit, so a folder chosen in Settings
+    /// takes effect on the next launch rather than the next restart.
+    fn set_retail_path(&self, _path: String) {}
+
+    /// The retail install as configured, verbatim.
+    ///
+    /// `None` means "nothing configured", not "nothing exists", and it is not
+    /// validated here: the updater treats this as the first candidate and falls
+    /// back to auto-detection (reference-client settings, the usual retail and
+    /// Steam locations) when it is unset or is not really an install. Only the
+    /// configured answer belongs on the port, because only that one changes at
+    /// runtime.
+    fn retail_install_dir(&self) -> Option<PathBuf> {
+        None
     }
 }

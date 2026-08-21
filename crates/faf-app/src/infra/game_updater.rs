@@ -116,10 +116,16 @@ pub async fn ensure_game_version(
     api_base: &str,
     cache_dir: &Path,
     target_dir: &Path,
+    configured_retail_dir: Option<&Path>,
     featured_mod: &str,
     version: i32,
     exe_name: &str,
 ) -> Result<(), String> {
+    // Resolved before a single byte is downloaded. Without it the launch is
+    // already lost (see [`retail_install_dir`]), and saying so up front beats
+    // patching an install the user is about to watch crash.
+    let retail_dir = require_retail_install_dir(configured_retail_dir, target_dir)?;
+
     install_featured_mod(
         http,
         token,
@@ -133,13 +139,22 @@ pub async fn ensure_game_version(
     )
     .await?;
 
-    write_fa_path_lua(
-        target_dir,
-        &retail_install_dir(target_dir),
-        featured_mod,
-        version,
-    )?;
+    write_fa_path_lua(target_dir, &retail_dir, featured_mod, version)?;
     Ok(())
+}
+
+/// [`retail_install_dir`], with the failure turned into the message the user
+/// needs: which setting to change, phrased the way Settings labels it.
+fn require_retail_install_dir(
+    configured: Option<&Path>,
+    target_dir: &Path,
+) -> Result<PathBuf, String> {
+    retail_install_dir(configured, &[target_dir]).ok_or_else(|| {
+        "the original Supreme Commander: Forged Alliance install could not be found. \
+         Set it in Settings → Paths (the folder containing gamedata/lua.scd); \
+         Forged Alliance cannot start without the base game's own data files"
+            .to_string()
+    })
 }
 
 /// The featured mods that *are* a complete game install. Everything else
@@ -177,10 +192,14 @@ pub async fn ensure_latest_game_version(
     api_base: &str,
     cache_dir: &Path,
     target_dir: &Path,
+    configured_retail_dir: Option<&Path>,
     featured_mod: &str,
     exe_name: &str,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<i32, String> {
+    // Up front, for the same reason as in [`ensure_game_version`]: a live game
+    // whose `fa_path` points nowhere real crashes in the shader compiler.
+    let retail_dir = require_retail_install_dir(configured_retail_dir, target_dir)?;
     let mut base = None;
     if !BASE_FEATURED_MODS.contains(&featured_mod) {
         progress(PreparationStep::indeterminate(format!(
@@ -220,12 +239,7 @@ pub async fn ensure_latest_game_version(
         .or_else(|| base.as_ref().and_then(|b| b.engine_version))
         .unwrap_or(installed.version);
 
-    write_fa_path_lua(
-        target_dir,
-        &retail_install_dir(target_dir),
-        featured_mod,
-        engine_version,
-    )?;
+    write_fa_path_lua(target_dir, &retail_dir, featured_mod, engine_version)?;
     Ok(engine_version)
 }
 
@@ -318,33 +332,90 @@ async fn install_featured_mod(
 
 /// The retail Supreme Commander: Forged Alliance install root: where the
 /// base-game `movies`, `sounds`, `fonts`, and `gamedata/*.scd` live. This is
-/// **not** the FAF patch dir (`target_dir`, e.g. `.../replaydata`), which
-/// only holds FAF's `.nx2` gamedata overrides and the patched executable.
+/// **not** the FAF patch dir (e.g. `.../replaydata`), which only holds FAF's
+/// `.nx2` gamedata overrides and the patched executable.
 ///
 /// Mirrors the Python client's `ForgedAlliance/app/path` setting, which
-/// `writeFAPathLua` writes verbatim as `fa_path`. Getting this wrong is
-/// invisible-but-crippling: the FAF init script mounts `fa_path/movies`,
-/// `fa_path/sounds`, `fa_path/fonts`: point `fa_path` at the FAF patch dir
-/// (which has none of those) and the game still *runs* (base unit/effect
-/// blueprints come from the `.nx2` files, mounted relative to the exe), but
-/// with no loading-screen movie, no audio, and broken menu fonts.
-/// Confirmed live as the cause of exactly that symptom.
+/// `writeFAPathLua` writes verbatim as `fa_path`, and the Java client's
+/// `ForgedAlliancePrefs.installationPath`.
 ///
-/// Resolution order: explicit `FAF_GAME_INSTALL_DIR` override → auto-detect
-/// among the usual retail/Steam locations (validated by `gamedata/lua.scd`,
-/// same probe file Python's `validate_game_path` uses) → `target_dir` as a
-/// last resort (preserves the old behaviour rather than writing a knowingly
-/// bogus path when nothing is found).
-fn retail_install_dir(target_dir: &Path) -> PathBuf {
+/// Getting this wrong is invisible-but-fatal. `init_faf.lua` mounts
+/// `fa_path/gamedata/*.scd`: the base game's own effects, textures, units and
+/// engine localisation: plus `fa_path/{movies,sounds,fonts}`. Point `fa_path`
+/// at the FAF patch dir, which has none of those, and FA starts, mounts only
+/// the `.nx2` overrides, then dies compiling the first shader it needs:
+///
+/// ```text
+/// CD3DDeviceResources::DevResInitResources: Unable to load effect file /effects/cartographic.fx
+///   ...effects/cartographic.fx: unable to compile effect ... error X3000: syntax error: unexpected token '('
+/// ```
+///
+/// That token is the `AlphaState(...)` macro from `/effects/d3d9states.compat`,
+/// which lives in the unmounted base-game archive: the crash names a shader,
+/// not the missing install. Confirmed as the cause of exactly that crash for
+/// live replays and vault replays alike.
+///
+/// Resolution order: explicit `FAF_GAME_INSTALL_DIR` override, the path
+/// configured in Settings, the retail path either reference client already
+/// stored, auto-detection among the usual retail/Steam locations, and finally
+/// `last_resort`: the FAF install dirs themselves, which are normally patch
+/// directories but are the whole game for anyone who patched FAF over their
+/// retail copy. Every candidate is validated by `gamedata/lua.scd`, the same
+/// probe file Python's `validate_game_path` uses, so the last resort is taken
+/// only when it really is an install.
+///
+/// `None` when nothing is found, which callers turn into a message naming the
+/// setting. Writing an unvalidated path instead: which is what the FAF patch
+/// dir used to be used as, unconditionally: is what produced the shader crash
+/// above.
+pub fn retail_install_dir(configured: Option<&Path>, last_resort: &[&Path]) -> Option<PathBuf> {
+    retail_install_candidates(configured, last_resort)
+        .into_iter()
+        .find(|path| is_retail_install(path))
+}
+
+/// Everything worth probing, in the order [`retail_install_dir`] documents.
+fn retail_install_candidates(configured: Option<&Path>, last_resort: &[&Path]) -> Vec<PathBuf> {
+    let mut out = Vec::new();
     if let Ok(dir) = std::env::var("FAF_GAME_INSTALL_DIR") {
         if !dir.is_empty() {
-            return PathBuf::from(dir);
+            out.push(PathBuf::from(dir));
         }
     }
-    typical_retail_install_paths()
-        .into_iter()
-        .find(|p| p.join("gamedata").join("lua.scd").is_file())
-        .unwrap_or_else(|| target_dir.to_path_buf())
+    out.extend(configured.map(Path::to_path_buf));
+    out.extend(reference_client_retail_paths());
+    out.extend(typical_retail_install_paths());
+    out.extend(steam_library_retail_paths());
+    out.extend(last_resort.iter().copied().map(Path::to_path_buf));
+    out
+}
+
+/// The probe both reference clients use: a retail install is one that has the
+/// base game's Lua archive. The FAF patch dir never does.
+fn is_retail_install(dir: &Path) -> bool {
+    dir.join("gamedata").join("lua.scd").is_file()
+}
+
+/// The retail path the Java or Python client already asked this user for.
+///
+/// Worth reading even though the corresponding *managed* install paths are
+/// deliberately not imported (see `infra::game`'s
+/// `discover_reference_install_paths`): the objection there is that our updater
+/// would then write into a directory another client owns, which cannot apply to
+/// a directory nothing ever writes to. Someone who has run either client has
+/// already been walked through locating this exact folder.
+fn reference_client_retail_paths() -> Vec<PathBuf> {
+    let Some(app_data) = std::env::var_os("APPDATA").map(PathBuf::from) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let java = app_data
+        .join("Forged Alliance Forever")
+        .join("client.prefs");
+    out.extend(crate::infra::game::java_retail_path(&java));
+    let python = app_data.join("ForgedAllianceForever").join("FA Lobby.ini");
+    out.extend(crate::infra::game::python_retail_path(&python));
+    out
 }
 
 /// Candidate retail install locations, mirroring the Python client's
@@ -370,6 +441,63 @@ fn typical_retail_install_paths() -> Vec<PathBuf> {
         }
     }
     out
+}
+
+/// The game as installed into a *secondary* Steam library.
+///
+/// The fixed guesses above only find Steam in its default location on the
+/// system drive, and a large game moved to another disk is ordinary rather than
+/// exotic: this reads Steam's own index of where its libraries are. The Python
+/// client reaches the same libraries through the registry
+/// (`HKCU\Software\Valve\Steam\SteamPath`); the index sits at a fixed place
+/// relative to the Steam root, so no registry access is needed for it.
+fn steam_library_retail_paths() -> Vec<PathBuf> {
+    const GAME_SUBDIR: &str = r"steamapps\common\Supreme Commander Forged Alliance";
+    let mut out = Vec::new();
+    for var in ["ProgramFiles(x86)", "ProgramFiles"] {
+        let Ok(base) = std::env::var(var) else {
+            continue;
+        };
+        if base.is_empty() {
+            continue;
+        }
+        let index = PathBuf::from(&base)
+            .join("Steam")
+            .join("steamapps")
+            .join("libraryfolders.vdf");
+        out.extend(
+            steam_library_roots(&index)
+                .into_iter()
+                .map(|library| library.join(GAME_SUBDIR)),
+        );
+    }
+    out
+}
+
+/// The library roots listed in a `libraryfolders.vdf`.
+///
+/// The file is Valve's own key-value text format. Both the historic shape
+/// (`"1"  "D:\\SteamLibrary"`) and the current one (a nested block with a
+/// `"path"` key) put the directory in the second quoted string on its line, so
+/// reading every quoted pair whose value looks like an absolute path covers
+/// both without a VDF parser. Anything that is not really an install is
+/// discarded by the caller's `gamedata/lua.scd` probe anyway.
+fn steam_library_roots(index: &Path) -> Vec<PathBuf> {
+    let Ok(text) = std::fs::read_to_string(index) else {
+        return Vec::new();
+    };
+    text.lines()
+        .filter_map(|line| {
+            let mut quoted = line.split('"').skip(1).step_by(2);
+            let key = quoted.next()?;
+            let value = quoted.next()?;
+            let is_absolute =
+                value.contains(":\\") || value.contains(":/") || value.starts_with("\\\\");
+            let names_a_library = key == "path" || key.bytes().all(|b| b.is_ascii_digit());
+            // VDF escapes backslashes, so a real path arrives doubled.
+            (is_absolute && names_a_library).then(|| PathBuf::from(value.replace("\\\\", "\\")))
+        })
+        .collect()
 }
 
 async fn fetch_mod_id(
@@ -946,6 +1074,160 @@ mod tests {
         );
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_retail_install_is_recognised_by_the_base_game_archive() {
+        // The same probe both reference clients use. It is what tells a real
+        // install apart from FAF's patch directory, which has a `gamedata`
+        // folder too but only FAF's own `.nx2` overrides inside it.
+        let temp = tempfile::tempdir().unwrap();
+        let retail = temp.path().join("Supreme Commander Forged Alliance");
+        let faf_patch_dir = temp.path().join("replaydata");
+        std::fs::create_dir_all(retail.join("gamedata")).unwrap();
+        std::fs::create_dir_all(faf_patch_dir.join("gamedata")).unwrap();
+        std::fs::write(faf_patch_dir.join("gamedata").join("effects.nx2"), b"").unwrap();
+
+        assert!(!is_retail_install(&retail), "a gamedata dir is not enough");
+        assert!(!is_retail_install(&faf_patch_dir));
+        assert!(!is_retail_install(temp.path()));
+
+        std::fs::write(retail.join("gamedata").join("lua.scd"), b"").unwrap();
+        assert!(is_retail_install(&retail));
+    }
+
+    #[test]
+    fn a_configured_install_is_preferred_over_every_guess() {
+        let temp = tempfile::tempdir().unwrap();
+        let retail = temp.path().join("Supreme Commander Forged Alliance");
+        std::fs::create_dir_all(retail.join("gamedata")).unwrap();
+        std::fs::write(retail.join("gamedata").join("lua.scd"), b"").unwrap();
+
+        let candidates = retail_install_candidates(Some(&retail), &[]);
+        assert!(candidates.contains(&retail));
+        // Ahead of the reference clients' answers and the fixed guesses, so a
+        // user who corrected the detection is not silently overruled by it.
+        let position = candidates.iter().position(|p| p == &retail).unwrap();
+        assert!(
+            position <= 1,
+            "only the FAF_GAME_INSTALL_DIR override may come first: {candidates:?}"
+        );
+    }
+
+    #[test]
+    fn a_configured_directory_that_is_not_an_install_is_skipped() {
+        // Better a detected install than a knowingly wrong `fa_path`: pointing
+        // the engine at a directory with no base game is the crash this whole
+        // resolution order exists to avoid.
+        let temp = tempfile::tempdir().unwrap();
+        let not_the_game = temp.path().join("Documents");
+        std::fs::create_dir_all(&not_the_game).unwrap();
+        assert_ne!(
+            retail_install_dir(Some(&not_the_game), &[]),
+            Some(not_the_game)
+        );
+    }
+
+    #[test]
+    fn steam_libraries_are_read_from_valves_own_index() {
+        // The current nested format, which is how a game moved to a second
+        // disk becomes findable at all.
+        let temp = tempfile::tempdir().unwrap();
+        let index = temp.path().join("libraryfolders.vdf");
+        std::fs::write(
+            &index,
+            r#""libraryfolders"
+{
+    "0"
+    {
+        "path"      "C:\\Program Files (x86)\\Steam"
+        "label"     ""
+        "totalsize" "0"
+        "apps"
+        {
+            "9420"  "1234567"
+        }
+    }
+    "1"
+    {
+        "path"      "D:\\SteamLibrary"
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            steam_library_roots(&index),
+            vec![
+                PathBuf::from(r"C:\Program Files (x86)\Steam"),
+                PathBuf::from(r"D:\SteamLibrary"),
+            ],
+            "labels, sizes and app ids are not libraries"
+        );
+    }
+
+    #[test]
+    fn the_historic_steam_index_format_still_parses() {
+        // Older Steam wrote the path straight against a numeric key.
+        let temp = tempfile::tempdir().unwrap();
+        let index = temp.path().join("libraryfolders.vdf");
+        std::fs::write(
+            &index,
+            "\"LibraryFolders\"\n{\n\t\"TimeNextStatsReport\"\t\"1234\"\n\t\"1\"\t\t\"E:\\\\Games\\\\Steam\"\n}\n",
+        )
+        .unwrap();
+        assert_eq!(
+            steam_library_roots(&index),
+            vec![PathBuf::from(r"E:\Games\Steam")]
+        );
+    }
+
+    #[test]
+    fn a_missing_steam_index_is_not_an_error() {
+        assert!(steam_library_roots(Path::new("no/such/libraryfolders.vdf")).is_empty());
+    }
+
+    #[test]
+    fn a_faf_install_that_is_itself_the_whole_game_is_accepted() {
+        // Patching FAF over the retail copy leaves one directory that is both.
+        // The old code assumed that unconditionally, which is how a patch dir
+        // that is *not* a game install became a valid-looking `fa_path`; the
+        // probe keeps the working half of that behaviour and drops the rest.
+        let temp = tempfile::tempdir().unwrap();
+        let combined = temp.path().join("FAForever");
+        std::fs::create_dir_all(combined.join("gamedata")).unwrap();
+        std::fs::write(combined.join("gamedata").join("lua.scd"), b"").unwrap();
+
+        // Ordering rather than outcome: a developer machine with a real install
+        // resolves to that one instead, which is the whole point of calling
+        // this a last resort.
+        let candidates = retail_install_candidates(None, &[&combined]);
+        assert_eq!(
+            candidates.last().map(PathBuf::as_path),
+            Some(combined.as_path()),
+            "the FAF install is tried only after every real guess"
+        );
+        assert!(
+            is_retail_install(&combined),
+            "and only because it really is one"
+        );
+    }
+
+    #[test]
+    fn a_base_game_that_cannot_be_found_names_the_setting() {
+        // The message a user actually gets instead of FA dying in its shader
+        // compiler: it has to say what to do, because nothing in the engine's
+        // own output points here.
+        let temp = tempfile::tempdir().unwrap();
+        let Err(message) = require_retail_install_dir(Some(temp.path()), temp.path()) else {
+            // A developer machine with a real install (or the override set)
+            // resolves one regardless of the bogus argument, which is correct
+            // behaviour and nothing to assert about.
+            return;
+        };
+        assert!(message.contains("Settings"), "{message}");
+        assert!(message.contains("lua.scd"), "{message}");
     }
 
     #[test]

@@ -961,6 +961,9 @@ export const en = {
   "settings.appearance.reduceMotionHint": "Minimize non-essential animation and transition effects.",
   "settings.paths.gameInstall": "Game install",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe used to join and play live games.",
+  "settings.paths.retailInstall": "Original game",
+  "settings.paths.retailInstallHint":
+    "The retail or Steam Supreme Commander: Forged Alliance folder (the one containing gamedata/lua.scd). Never launched, but Forged Alliance cannot start without it. Detected automatically; set it only when detection fails.",
   "settings.paths.replayInstall": "Replay install",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe used for replay playback: can be a different build/version than the game install.",
   "settings.game.additionalGameLaunch": "Additional game launch arguments",
@@ -1043,6 +1046,7 @@ export const en = {
   "settings.paths.unset": "Not set",
   "settings.paths.missing": "Not usable",
   "settings.paths.ok": "Found",
+  "settings.paths.detected": "Detected",
   "settings.updates.checking": "Checking…",
   "settings.updates.checkNow": "Check now",
   "settings.updates.running": "Running {version}",
@@ -1338,6 +1342,8 @@ export const en = {
   "replays.search.leaderboard": "Leaderboard",
   "replays.search.rating": "Rating",
   "replays.search.sortBy": "Sort by",
+  "replays.search.sortUnavailable":
+    "The vault cannot sort by review score while a player, faction, rating or leaderboard filter is set. Sorted by date played instead.",
   "replays.search.submit": "Search",
   "replays.search.descendingAria": "Descending; click for ascending",
   "replays.search.ascendingAria": "Ascending; click for descending",

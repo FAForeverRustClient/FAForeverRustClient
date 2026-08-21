@@ -64,6 +64,12 @@ export const native = {
     return typeof selected === "string" ? selected : null;
   },
 
+  /** Pick a folder rather than a file: the retail game install is a directory. */
+  async selectDirectory(): Promise<string | null> {
+    const selected = await open({ directory: true, multiple: false });
+    return typeof selected === "string" ? selected : null;
+  },
+
   openUrl(url: string): Promise<void> {
     return openUrl(url);
   },

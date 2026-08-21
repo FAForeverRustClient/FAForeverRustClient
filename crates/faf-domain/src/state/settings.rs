@@ -1302,6 +1302,17 @@ pub struct SettingsState {
     pub theme: Theme,
     pub game_path: String,
     pub replay_game_path: String,
+    /// The *original* Forged Alliance folder: the retail/Steam install whose
+    /// `gamedata/*.scd` archives hold the base game. Neither of the paths above
+    /// can stand in for it: those point at FAF's patched executables, which
+    /// carry only FAF's own overrides. Written into `fa_path.lua` at launch, so
+    /// leaving it wrong crashes the engine in its shader compiler with a
+    /// message that names a `.fx` file and nothing else.
+    ///
+    /// Empty means "work it out": the updater auto-detects from the reference
+    /// clients' settings and the usual retail/Steam locations, and only asks
+    /// when that fails.
+    pub retail_game_path: String,
     pub general: GeneralPreferences,
     pub appearance: AppearancePreferences,
     pub social: SocialPreferences,
@@ -1336,6 +1347,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             theme: Theme,
             game_path: String,
             replay_game_path: String,
+            retail_game_path: String,
             general: GeneralPreferences,
             appearance: AppearancePreferences,
             social: SocialPreferences,
@@ -1354,6 +1366,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             theme: wire.theme,
             game_path: wire.game_path,
             replay_game_path: wire.replay_game_path,
+            retail_game_path: wire.retail_game_path,
             general: wire.general,
             appearance: wire.appearance,
             social: wire.social,
@@ -1398,6 +1411,9 @@ pub enum SettingsEvent {
         path: String,
     },
     ReplayGamePathChanged {
+        path: String,
+    },
+    RetailGamePathChanged {
         path: String,
     },
     GeneralChanged {
@@ -1451,6 +1467,9 @@ pub enum SettingsCommand {
     SetReplayGamePath {
         path: String,
     },
+    SetRetailGamePath {
+        path: String,
+    },
     SetGeneral {
         preferences: GeneralPreferences,
     },
@@ -1496,6 +1515,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::ThemeChanged { theme } => state.theme = *theme,
         SettingsEvent::GamePathChanged { path } => state.game_path = path.clone(),
         SettingsEvent::ReplayGamePathChanged { path } => state.replay_game_path = path.clone(),
+        SettingsEvent::RetailGamePathChanged { path } => state.retail_game_path = path.clone(),
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => state.appearance = preferences.clone(),
         SettingsEvent::SocialChanged { preferences } => {

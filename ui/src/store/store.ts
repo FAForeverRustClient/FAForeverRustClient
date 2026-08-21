@@ -223,7 +223,7 @@ const INITIAL: AppState = {
     status: { type: "idle" },
     submit: { type: "idle" },
   },
-  install: { gameReady: false, replayReady: false, checked: false },
+  install: { gameReady: false, replayReady: false, retailPath: "", checked: false },
   social: { friends: [], foes: [], players: [] },
   coop: {
     scenarios: [],
@@ -322,6 +322,7 @@ const INITIAL: AppState = {
     theme: "forgeDark",
     gamePath: "",
     replayGamePath: "",
+    retailGamePath: "",
     general: { startPage: "news", autoLogin: true },
     appearance: { density: "comfortable", reduceMotion: false, uiScale: 100 },
     social: { playerNotes: [] },

@@ -8,6 +8,7 @@
     "install": {
       "gameReady": false,
       "replayReady": false,
+      "retailPath": "",
       "checked": false
     },
     "auth": {
@@ -539,6 +540,7 @@
       "theme": "forgeDark",
       "gamePath": "",
       "replayGamePath": "",
+      "retailGamePath": "",
       "general": {
         "startPage": "news",
         "autoLogin": true
@@ -1294,14 +1296,16 @@
               "type": "checked",
               "payload": {
                 "gameReady": true,
-                "replayReady": false
+                "replayReady": false,
+                "retailPath": "C:\\Games\\Supreme Commander Forged Alliance"
               }
             }
           },
           "expected": {
             "checked": true,
             "gameReady": true,
-            "replayReady": false
+            "replayReady": false,
+            "retailPath": "C:\\Games\\Supreme Commander Forged Alliance"
           }
         }
       ]
@@ -20429,6 +20433,7 @@
               "volume": 70
             },
             "replayGamePath": "",
+            "retailGamePath": "",
             "social": {
               "playerNotes": []
             },
@@ -20600,6 +20605,7 @@
               "volume": 70
             },
             "replayGamePath": "",
+            "retailGamePath": "",
             "social": {
               "playerNotes": []
             },
@@ -20794,6 +20800,7 @@
               "volume": 70
             },
             "replayGamePath": "",
+            "retailGamePath": "",
             "social": {
               "playerNotes": [
                 {
@@ -20979,6 +20986,7 @@
               "volume": 70
             },
             "replayGamePath": "",
+            "retailGamePath": "",
             "social": {
               "playerNotes": [
                 {
@@ -21233,6 +21241,7 @@
               "volume": 70
             },
             "replayGamePath": "",
+            "retailGamePath": "",
             "social": {
               "playerNotes": [
                 {
