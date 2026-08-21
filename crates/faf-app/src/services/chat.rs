@@ -29,6 +29,9 @@ use crate::services::notifications;
 pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ChatCommand::Connect { username } => {
+            // Armed before the guard, so asking for a connection while one
+            // is already in flight still re-arms the watchdog.
+            ctx.chat_auto_reconnect.arm();
             // Single-flight: only one connection may be active at a time,
             // same guard shape as the lobby service.
             if !ctx.chat_active.try_start() {
@@ -193,6 +196,9 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             ctx.ports.chat.unreact(channel, msgid, emoji);
         }
         ChatCommand::Disconnect => {
+            // Hanging up is a decision, not a fault: the watchdog must not
+            // undo it on its next tick.
+            ctx.chat_auto_reconnect.disarm();
             ctx.chat_read_marker_persist_generation.invalidate();
             ctx.ports.chat.disconnect();
             crate::services::settings::persist(ctx, out).await;
