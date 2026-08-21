@@ -15,11 +15,9 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
-import type { CoopMission, CoopResult, CoopScenario, CoopStatus, Game, VaultMap } from "../../ipc/bindings";
+import type { CoopMission, CoopResult, CoopScenario, CoopStatus, Game } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { loadStatusNote } from "../../shared/loadStatusNote";
-import { inferCoopFaction, mapThumbnailCandidates } from "../../shared/mapPresentation";
-import { FactionIcon } from "../../shared/FactionIcon";
 import { GameBrowserRow, GameTile, type GameViewMode } from "./CustomGamesBrowser";
 import { coopFailureAction } from "./coopFailure";
 import "./custom-games.css";
@@ -34,14 +32,6 @@ const COOP_FACTION_ORDER: Record<CoopScenario["faction"], number> = {
   aeon: 2,
   seraphim: 3,
   custom: 4,
-};
-
-const COOP_FACTION_NUMBERS: Record<string, number> = {
-  uef: 1,
-  aeon: 2,
-  cybran: 3,
-  seraphim: 4,
-  custom: 5,
 };
 
 const loadCatalog = () => ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
@@ -63,118 +53,15 @@ function factionRank(faction: CoopScenario["faction"]): number {
   return COOP_FACTION_ORDER[faction] ?? COOP_FACTION_ORDER.custom;
 }
 
-function secureImageUrl(url: string): string {
-  return url.trim().replace(/^http:\/\//i, "https://");
-}
-
-function coopPreviewCandidates(mission: CoopMission, vault: VaultMap[]): string[] {
-  return [...new Set([
-    ...mapThumbnailCandidates(vault, mission.mapFolderName, true),
-    mission.thumbnailUrlLarge,
-    mission.thumbnailUrlSmall,
-    ...mapThumbnailCandidates(vault, mission.mapFolderName),
-  ].map(secureImageUrl).filter(Boolean))];
-}
-
-function CoopMissionPreview({
-  mission,
-  scenario,
-  vault,
-  onHost,
-}: {
-  mission: CoopMission;
-  scenario?: CoopScenario;
-  vault: VaultMap[];
-  onHost?: () => void;
-}) {
-  const { t } = useTranslation();
-  const candidates = useMemo(
-    () => coopPreviewCandidates(mission, vault),
-    [mission, vault],
-  );
-  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadedUrl(null);
-
-    if (candidates.length === 0) return;
-
-    let index = 0;
-    const tryNext = () => {
-      if (cancelled || index >= candidates.length) return;
-      const src = candidates[index++];
-      const img = new window.Image();
-      img.onload = () => {
-        if (!cancelled) setLoadedUrl(src);
-      };
-      img.onerror = () => {
-        if (!cancelled) tryNext();
-      };
-      img.src = src;
-    };
-
-    tryNext();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [candidates]);
-
-  const faction = scenario?.faction ?? inferCoopFaction(mission.mapFolderName);
-  const factionId = COOP_FACTION_NUMBERS[faction] ?? 1;
-
-  if (loadedUrl) {
-    return (
-      <div className="coop-detail-preview-wrap">
-        <img
-          className="coop-detail-art"
-          src={loadedUrl}
-          alt={`${mission.name} preview`}
-          loading="lazy"
-          decoding="async"
-        />
-        <div className="coop-detail-preview-info">
-          <div className="coop-detail-art-meta">
-            <span className="coop-detail-art-scenario">{scenario?.name ?? t("lobby.coop.campaignMission")}</span>
-            <strong className="coop-detail-art-mission">{mission.name}</strong>
-            <small className="muted">{mission.mapFolderName}</small>
-          </div>
-          {onHost && (
-            <Button variant="primary" onClick={onHost} className="coop-detail-host-btn">
-              <Icon name="plus" size={14} /> {t("lobby.toolbar.hostGame")}
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="coop-detail-art-card"
-      data-faction={faction}
-      role="img"
-      aria-label={`${mission.name} briefing`}
-    >
-      <div className="coop-detail-art-inner">
-        <div className="coop-detail-art-icon-wrap">
-          <FactionIcon faction={factionId} size={32} />
-        </div>
-        <div className="coop-detail-art-meta">
-          <span className="coop-detail-art-scenario">{scenario?.name ?? t("lobby.coop.campaignMission")}</span>
-          <strong className="coop-detail-art-mission">{mission.name}</strong>
-          <small className="muted">{mission.mapFolderName}</small>
-        </div>
-        {onHost && (
-          <Button variant="primary" onClick={onHost} className="coop-detail-host-btn">
-            <Icon name="plus" size={14} /> {t("lobby.toolbar.hostGame")}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
+/**
+ * Stands for "the missions no campaign claims".
+ *
+ * The API expresses the link one way only (a campaign lists its maps), so
+ * inverting it leaves missions with no owner. Filtering strictly by campaign
+ * made those unreachable; this bucket is how their records can be read. It is
+ * only offered when something is actually in it.
+ */
+const NO_CAMPAIGN = -1;
 
 interface Props {
   games: Game[];
@@ -197,6 +84,11 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
   }, []);
 
   // Organize scenarios and missions
+  const orphanCount = useMemo(
+    () => coop.missions.filter((mission) => mission.scenarioId === null).length,
+    [coop.missions],
+  );
+
   const scenarios = useMemo(() => {
     return [...coop.scenarios].sort(
       (a, b) => factionRank(a.faction) - factionRank(b.faction) || a.order - b.order || a.name.localeCompare(b.name),
@@ -214,7 +106,11 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
 
   const missionsInActiveScenario = useMemo(() => {
     return coop.missions
-      .filter((mission) => mission.scenarioId === activeScenarioId)
+      .filter((mission) =>
+        activeScenarioId === NO_CAMPAIGN
+          ? mission.scenarioId === null
+          : mission.scenarioId === activeScenarioId,
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [coop.missions, activeScenarioId]);
 
@@ -322,6 +218,9 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                     {scenario.name} ({scenario.faction.toUpperCase()})
                   </option>
                 ))}
+                {orphanCount > 0 && (
+                  <option value={NO_CAMPAIGN}>{t("lobby.coop.withoutCampaign")}</option>
+                )}
               </select>
             </div>
 
@@ -346,7 +245,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
           </div>
 
           {selected ? (
-            <MissionDetail mission={selected} onHost={onHost} />
+            <MissionDetail mission={selected} />
           ) : (
             <p className="muted">{t("lobby.coop.selectAbove")}</p>
           )}
@@ -356,17 +255,17 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
   );
 }
 
-function MissionDetail({
-  mission,
-  onHost,
-}: {
-  mission: CoopMission;
-  onHost: (mission?: CoopMission) => void;
-}) {
+/**
+ * The briefing and the record board.
+ *
+ * No art and no Host button any more: hosting is one dialog now, reached from
+ * the toolbar, and the mission's preview belongs beside the campaign list in
+ * there. What is left on this side is the leaderboard and the two selects that
+ * choose whose leaderboard it is.
+ */
+function MissionDetail({ mission }: { mission: CoopMission }) {
   const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
-  const maps = useAppStore((state) => state.state.maps);
-  const scenario = coop.scenarios.find((s) => s.id === mission.scenarioId);
   const note = loadStatusNote(
     coop.leaderboardStatus,
     t("lobby.coop.loadingRecords"),
@@ -375,8 +274,6 @@ function MissionDetail({
 
   return (
     <>
-      <CoopMissionPreview mission={mission} scenario={scenario} vault={maps.vault} onHost={() => onHost(mission)} />
-
       {mission.description && <p className="coop-detail-brief">{mission.description}</p>}
 
       <div className="coop-board-head">

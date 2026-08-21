@@ -1160,3 +1160,88 @@
   height: auto;
   align-items: stretch;
 }
+
+
+/* ── Co-op host dialog ─────────────────────────────────────────────────── */
+/* Same four-column shape as the custom dialog, with campaigns where that one
+   asks which featured mod to run: in co-op the answer is always `coop`, so the
+   question was three disabled rows. The mission list is narrower than a map
+   list because it holds one campaign, not the vault. */
+.host-coop-grid {
+  grid-template-columns: 220px minmax(260px, 1fr) 320px 360px;
+}
+
+.host-coop-faction-badge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.host-coop-faction-badge[data-faction="uef"] {
+  border-color: var(--color-faction-uef);
+  color: var(--color-faction-uef);
+}
+
+.host-coop-faction-badge[data-faction="aeon"] {
+  border-color: var(--color-faction-aeon);
+  color: var(--color-faction-aeon);
+}
+
+.host-coop-faction-badge[data-faction="cybran"] {
+  border-color: var(--color-faction-cybran);
+  color: var(--color-faction-cybran);
+}
+
+.host-coop-faction-badge[data-faction="seraphim"] {
+  border-color: var(--color-faction-seraphim);
+  color: var(--color-faction-seraphim);
+}
+
+/* Shown when a mission has no art anywhere: not every installed map folder
+   carries a preview, and the campaign's remote thumbnails are missing. */
+.host-preview-thumb-wrap .coop-mission-art-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-raised);
+  color: var(--color-muted);
+}
+
+.host-preview-thumb-wrap .coop-mission-art-fallback[data-faction="uef"] {
+  box-shadow: inset 3px 0 0 var(--color-faction-uef);
+}
+
+.host-preview-thumb-wrap .coop-mission-art-fallback[data-faction="aeon"] {
+  box-shadow: inset 3px 0 0 var(--color-faction-aeon);
+}
+
+.host-preview-thumb-wrap .coop-mission-art-fallback[data-faction="cybran"] {
+  box-shadow: inset 3px 0 0 var(--color-faction-cybran);
+}
+
+.host-preview-thumb-wrap .coop-mission-art-fallback[data-faction="seraphim"] {
+  box-shadow: inset 3px 0 0 var(--color-faction-seraphim);
+}
+
+/* Repeated after the shared rule above so the narrow layouts still collapse:
+   `.host-coop-grid` and `.host-game-grid` weigh the same, and this file wins
+   on source order. */
+@media (max-width: 960px) {
+  .host-coop-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .host-coop-grid {
+    grid-template-columns: 1fr;
+  }
+}
