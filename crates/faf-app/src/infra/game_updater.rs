@@ -409,7 +409,9 @@ fn reference_client_retail_paths() -> Vec<PathBuf> {
         return Vec::new();
     };
     let mut out = Vec::new();
-    let java = app_data.join("Forged Alliance Forever").join("client.prefs");
+    let java = app_data
+        .join("Forged Alliance Forever")
+        .join("client.prefs");
     out.extend(crate::infra::game::java_retail_path(&java));
     let python = app_data.join("ForgedAllianceForever").join("FA Lobby.ini");
     out.extend(crate::infra::game::python_retail_path(&python));
@@ -1206,7 +1208,10 @@ mod tests {
             Some(combined.as_path()),
             "the FAF install is tried only after every real guess"
         );
-        assert!(is_retail_install(&combined), "and only because it really is one");
+        assert!(
+            is_retail_install(&combined),
+            "and only because it really is one"
+        );
     }
 
     #[test]

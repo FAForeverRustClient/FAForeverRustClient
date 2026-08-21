@@ -1343,7 +1343,7 @@ export const en = {
   "replays.search.rating": "Rating",
   "replays.search.sortBy": "Sort by",
   "replays.search.sortUnavailable":
-    "The vault cannot sort by review score while a player, faction, rating or leaderboard filter is set — sorted by date played instead.",
+    "The vault cannot sort by review score while a player, faction, rating or leaderboard filter is set. Sorted by date played instead.",
   "replays.search.submit": "Search",
   "replays.search.descendingAria": "Descending; click for ascending",
   "replays.search.ascendingAria": "Ascending; click for descending",

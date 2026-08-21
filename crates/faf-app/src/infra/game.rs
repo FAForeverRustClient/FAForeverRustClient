@@ -696,8 +696,11 @@ mod tests {
 
         // The managed data root is a different setting and must not stand in
         // for it: that directory is exactly the one that has no base game.
-        std::fs::write(&prefs, r#"{"data":{"baseDataDirectory":"C:\\ProgramData\\FAForever"}}"#)
-            .unwrap();
+        std::fs::write(
+            &prefs,
+            r#"{"data":{"baseDataDirectory":"C:\\ProgramData\\FAForever"}}"#,
+        )
+        .unwrap();
         assert_eq!(java_retail_path(&prefs), None);
     }
 
@@ -726,7 +729,8 @@ mod tests {
 
     #[test]
     fn ini_reading_ignores_comments_and_other_sections() {
-        let text = "; a comment\n[other]\napp\\path=wrong\n[ForgedAlliance]\n# another\napp\\path=right\n";
+        let text =
+            "; a comment\n[other]\napp\\path=wrong\n[ForgedAlliance]\n# another\napp\\path=right\n";
         assert_eq!(
             ini_value(text, "ForgedAlliance", &["app\\path"]),
             Some("right".to_string())

@@ -1230,7 +1230,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.search.rating": "Rating",
   "replays.search.sortBy": "Sortieren nach",
   "replays.search.sortUnavailable":
-    "Das Vault kann nicht nach Bewertung sortieren, solange ein Spieler-, Fraktions-, Rating- oder Leaderboard-Filter gesetzt ist — stattdessen nach Spieldatum sortiert.",
+    "Das Vault kann nicht nach Bewertung sortieren, solange ein Spieler-, Fraktions-, Rating- oder Leaderboard-Filter gesetzt ist. Stattdessen wird nach Spieldatum sortiert.",
   "replays.search.submit": "Suchen",
   "replays.search.descendingAria": "Absteigend; klicken für aufsteigend",
   "replays.search.ascendingAria": "Aufsteigend; klicken für absteigend",
