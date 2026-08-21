@@ -47,6 +47,12 @@ struct RatingStats {
     update_time: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+struct ResolvedPlayer {
+    name: String,
+    avatar_url: Option<String>,
+}
+
 impl LeaderboardClient {
     pub fn new(config: LeaderboardConfig, tokens: crate::infra::session::TokenStore) -> Self {
         Self {
@@ -73,27 +79,32 @@ impl LeaderboardClient {
         fetch_document(&self.http, url, token).await
     }
 
-    async fn resolve_player_names(
+    async fn resolve_players(
         &self,
         player_ids: &[i32],
         token: &str,
-    ) -> Result<HashMap<i32, String>, String> {
-        let mut names = HashMap::new();
+    ) -> Result<HashMap<i32, ResolvedPlayer>, String> {
+        let mut players = HashMap::new();
         for chunk in unique_ids(player_ids).chunks(ID_CHUNK_SIZE) {
             let ids = csv_ids(chunk);
             let mut url = self.collection_url("player")?;
             url.query_pairs_mut()
                 .append_pair("filter", &format!("id=in=({ids})"))
+                .append_pair("include", "avatarAssignments.avatar")
                 .append_pair("page[size]", &chunk.len().to_string());
             let doc = self.get_json(url, token).await?;
-            names.extend(doc.data.iter().filter_map(|resource| {
+            let index = resource_index(&doc.included);
+            players.extend(doc.data.iter().filter_map(|resource| {
                 Some((
                     resource.id.parse().ok()?,
-                    string_attr(resource, "login")?.to_string(),
+                    ResolvedPlayer {
+                        name: string_attr(resource, "login")?.to_string(),
+                        avatar_url: avatar_url(Some(resource), &index),
+                    },
                 ))
             }));
         }
-        Ok(names)
+        Ok(players)
     }
 
     async fn season_tiers(
@@ -235,9 +246,9 @@ impl LeaderboardPort for LeaderboardClient {
         let tiers = tiers?;
         let raw = scores?;
         let player_ids: Vec<i32> = raw.iter().map(|entry| entry.player_id).collect();
-        let names = self.resolve_player_names(&player_ids, &token).await?;
+        let players = self.resolve_players(&player_ids, &token).await?;
         Ok(SeasonLeaderboard {
-            entries: build_season_entries(raw, &names),
+            entries: build_season_entries(raw, &players),
             tiers,
         })
     }
@@ -315,7 +326,23 @@ fn pretty_mode_name(technical_name: &str, fallback: &str) -> String {
         "tmm_3v3" | "ladder3v3" => "3v3".into(),
         "tmm_4v4_full_share" | "ladder4v4" => "4v4 Full Share".into(),
         "tmm_4v4_share_until_death" => "4v4 No Share".into(),
-        _ if !fallback.is_empty() => display_key(fallback),
+        // League resources use names such as `1v1_league` and often carry a
+        // localization key ending in `.name`. The latter is not a display
+        // label, and displaying its last segment produced "Name" in the
+        // league tabs.
+        "1v1_league" => "1v1 League".into(),
+        "2v2_league" => "2v2 League".into(),
+        "3v3_league" => "3v3 League".into(),
+        "4v4_full_share_league" => "4v4 Full Share League".into(),
+        "4v4_share_until_death_league" => "4v4 No Share League".into(),
+        _ if !fallback.is_empty()
+            && !fallback
+                .rsplit('.')
+                .next()
+                .is_some_and(|part| part.eq_ignore_ascii_case("name")) =>
+        {
+            display_key(fallback)
+        }
         _ => display_key(technical_name),
     }
 }
@@ -449,6 +476,7 @@ fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
             division_order: None,
             highest_score: None,
             division_image_url: None,
+            division_medium_image_url: None,
             returning_player: None,
         });
     }
@@ -495,8 +523,16 @@ fn resolve_tier(
         subdivision,
         division_order: division_index * 1_000 + subdivision_index,
         highest_score: i32_attr(resource, "highestScore").unwrap_or_default(),
-        image_url: string_attr(resource, "smallImageUrl")
+        // Keep the full image for the season-position card. Compact table
+        // treatments explicitly use `mediumImageUrl` and should not upscale
+        // the small badge returned by the API.
+        image_url: string_attr(resource, "imageUrl")
+            .or_else(|| string_attr(resource, "mediumImageUrl"))
+            .or_else(|| string_attr(resource, "smallImageUrl"))
+            .map(str::to_string),
+        medium_image_url: string_attr(resource, "mediumImageUrl")
             .or_else(|| string_attr(resource, "imageUrl"))
+            .or_else(|| string_attr(resource, "smallImageUrl"))
             .map(str::to_string),
     })
 }
@@ -542,18 +578,20 @@ fn parse_raw_season_entries(doc: &JsonApiDoc) -> Vec<RawSeasonEntry> {
 
 fn build_season_entries(
     raw: Vec<RawSeasonEntry>,
-    names: &HashMap<i32, String>,
+    players: &HashMap<i32, ResolvedPlayer>,
 ) -> Vec<LeaderboardEntry> {
     let mut entries: Vec<_> = raw
         .into_iter()
         .map(|entry| LeaderboardEntry {
             player_id: entry.player_id,
             rank: 0,
-            player_name: names
+            player_name: players
                 .get(&entry.player_id)
-                .cloned()
+                .map(|player| player.name.clone())
                 .unwrap_or_else(|| "unknown".into()),
-            avatar_url: None,
+            avatar_url: players
+                .get(&entry.player_id)
+                .and_then(|player| player.avatar_url.clone()),
             score: Some(entry.score),
             rating: None,
             mean: None,
@@ -564,7 +602,11 @@ fn build_season_entries(
             division: entry.tier.as_ref().map(|tier| tier.name.clone()),
             division_order: entry.tier.as_ref().map(|tier| tier.division_order),
             highest_score: entry.tier.as_ref().map(|tier| tier.highest_score),
-            division_image_url: entry.tier.and_then(|tier| tier.image_url),
+            division_image_url: entry.tier.as_ref().and_then(|tier| tier.image_url.clone()),
+            division_medium_image_url: entry
+                .tier
+                .as_ref()
+                .and_then(|tier| tier.medium_image_url.clone()),
             returning_player: Some(entry.returning_player),
         })
         .collect();
@@ -621,6 +663,7 @@ fn fake_entry(player_id: i32, rank: i32, name: &str, rating: i32) -> Leaderboard
         division_order: None,
         highest_score: None,
         division_image_url: None,
+        division_medium_image_url: None,
         returning_player: None,
     }
 }
@@ -713,6 +756,7 @@ impl LeaderboardPort for FakeLeaderboard {
                 division_order: 2003,
                 highest_score: 1000,
                 image_url: None,
+                medium_image_url: None,
             },
             LeaderboardTier {
                 name: "Gold I".into(),
@@ -721,6 +765,7 @@ impl LeaderboardPort for FakeLeaderboard {
                 division_order: 3001,
                 highest_score: 1600,
                 image_url: None,
+                medium_image_url: None,
             },
         ];
         let mut entries = vec![
@@ -827,6 +872,55 @@ mod tests {
     }
 
     #[test]
+    fn league_names_use_technical_names_when_api_name_key_is_generic() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [
+                {
+                    "type": "league", "id": "1",
+                    "attributes": {
+                        "technicalName": "1v1_league",
+                        "nameKey": "leaderboard.1v1_league.name"
+                    }
+                },
+                {
+                    "type": "league", "id": "2",
+                    "attributes": {
+                        "technicalName": "2v2_league",
+                        "nameKey": "leaderboard.2v2_league.name"
+                    }
+                },
+                {
+                    "type": "league", "id": "3",
+                    "attributes": {
+                        "technicalName": "4v4_full_share_league",
+                        "nameKey": "leaderboard.4v4_full_share_league.name"
+                    }
+                },
+                {
+                    "type": "league", "id": "4",
+                    "attributes": {
+                        "technicalName": "4v4_share_until_death_league",
+                        "nameKey": "leaderboard.4v4_share_until_death_league.name"
+                    }
+                }
+            ]
+        }))
+        .unwrap();
+
+        let parsed = parse_leagues(&doc);
+        let names: Vec<_> = parsed.iter().map(|league| league.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "1v1 League",
+                "2v2 League",
+                "4v4 Full Share League",
+                "4v4 No Share League"
+            ]
+        );
+    }
+
+    #[test]
     fn parses_season_metadata_and_tiers() {
         let seasons: JsonApiDoc = serde_json::from_value(json!({
             "data": [{
@@ -845,7 +939,7 @@ mod tests {
         let tiers: JsonApiDoc = serde_json::from_value(json!({
             "data": [{
                 "type": "leagueSeasonDivisionSubdivision", "id": "5",
-                "attributes": { "nameKey": "III", "subdivisionIndex": 3, "highestScore": 1200, "smallImageUrl": "https://example.invalid/bronze.png" },
+                "attributes": { "nameKey": "III", "subdivisionIndex": 3, "highestScore": 1200, "imageUrl": "https://example.invalid/bronze-full.png", "mediumImageUrl": "https://example.invalid/bronze-medium.png", "smallImageUrl": "https://example.invalid/bronze.png" },
                 "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "4" } } }
             }],
             "included": [{ "type": "leagueSeasonDivision", "id": "4", "attributes": { "nameKey": "Bronze", "divisionIndex": 1 } }]
@@ -854,6 +948,14 @@ mod tests {
         assert_eq!(parsed[0].name, "Bronze III");
         assert_eq!(parsed[0].division_order, 1003);
         assert_eq!(parsed[0].highest_score, 1200);
+        assert_eq!(
+            parsed[0].image_url.as_deref(),
+            Some("https://example.invalid/bronze-full.png")
+        );
+        assert_eq!(
+            parsed[0].medium_image_url.as_deref(),
+            Some("https://example.invalid/bronze-medium.png")
+        );
     }
 
     #[test]
@@ -871,6 +973,7 @@ mod tests {
                     division_order: 2001,
                     highest_score: 1600,
                     image_url: None,
+                    medium_image_url: None,
                 }),
             },
             RawSeasonEntry {
@@ -885,12 +988,32 @@ mod tests {
                     division_order: 3003,
                     highest_score: 1000,
                     image_url: None,
+                    medium_image_url: None,
                 }),
             },
         ];
-        let names = HashMap::from([(1, "Silver".into()), (2, "Gold".into())]);
-        let entries = build_season_entries(raw, &names);
+        let players = HashMap::from([
+            (
+                1,
+                ResolvedPlayer {
+                    name: "Silver".into(),
+                    avatar_url: None,
+                },
+            ),
+            (
+                2,
+                ResolvedPlayer {
+                    name: "Gold".into(),
+                    avatar_url: Some("https://content.example/gold.png".into()),
+                },
+            ),
+        ]);
+        let entries = build_season_entries(raw, &players);
         assert_eq!(entries[0].player_name, "Gold");
+        assert_eq!(
+            entries[0].avatar_url.as_deref(),
+            Some("https://content.example/gold.png")
+        );
         assert_eq!(entries[0].rank, 1);
     }
 

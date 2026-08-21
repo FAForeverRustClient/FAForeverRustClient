@@ -1909,6 +1909,7 @@ export type LeaderboardEntry = {
 	divisionOrder: number | null,
 	highestScore: number | null,
 	divisionImageUrl: string | null,
+	divisionMediumImageUrl: string | null,
 	returningPlayer: boolean | null,
 };
 
@@ -1972,6 +1973,7 @@ export type LeaderboardTier = {
 	divisionOrder: number,
 	highestScore: number,
 	imageUrl: string | null,
+	mediumImageUrl: string | null,
 };
 
 export type League = {
