@@ -9,6 +9,7 @@ import {
   mapThumbnailCandidates,
   normalizeMapName,
 } from "./mapPresentation";
+import { useLocalMapPreview } from "./useLocalMapPreview";
 
 const COOP_FACTION_IDS: Record<string, number> = {
   uef: 1,
@@ -53,7 +54,22 @@ export function MapThumbnail({
   useEffect(() => setCandidateIndex(0), [candidates]);
 
   const url = candidates[candidateIndex];
+  // Only once every remote candidate has 404'd. Kept out of `candidates` on
+  // purpose: appending it there would reset the walk and replay those misses.
+  const localPreview = useLocalMapPreview(mapName, !url, large);
+
   if (!url) {
+    if (localPreview) {
+      return (
+        <img
+          className={className}
+          src={localPreview}
+          alt={`${presentation.displayName} preview`}
+          loading="lazy"
+          decoding="async"
+        />
+      );
+    }
     if (presentation.isCoop) {
       const faction = presentation.coopFaction ?? "uef";
       const isCustomFaction = faction === "custom";

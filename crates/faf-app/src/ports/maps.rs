@@ -5,9 +5,11 @@
 //! (mirrors the Python client's `fa/maps.py::_doDownloadMap` ->
 //! `ZipDownloadExtract`). See `infra/maps.rs` for the real implementation.
 
+use std::collections::BTreeMap;
+
 use async_trait::async_trait;
 use faf_domain::protocol::vault_query::MapVaultQuery;
-use faf_domain::state::{InstalledMap, MatchmakerMapPool, VaultMap};
+use faf_domain::state::{InstalledMap, LocalMapPreview, MatchmakerMapPool, VaultMap};
 
 /// One page of a vault search, plus what the server said about the rest.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -31,6 +33,17 @@ pub trait MapsPort: Send + Sync {
     /// Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`
     /// / `fa.maps.getUserMaps`).
     async fn list_installed(&self) -> Result<Vec<InstalledMap>, String>;
+
+    /// Read preview art out of the named installed map folders, as data URLs.
+    ///
+    /// The last resort behind the remote thumbnails: for the co-op campaign it
+    /// is the only copy that exists (see [`LocalMapPreview`]). Folders are
+    /// matched on their base name, so `scca_coop_a01` finds
+    /// `scca_coop_a01.v0017` on disk. Never fails: a folder that cannot be read
+    /// simply comes back empty, which is also how "we looked" is recorded.
+    async fn local_previews(&self, _folder_names: &[String]) -> BTreeMap<String, LocalMapPreview> {
+        BTreeMap::new()
+    }
 
     /// Load the rating-bracket map pools and veto limits for one queue.
     async fn list_matchmaker_pools(

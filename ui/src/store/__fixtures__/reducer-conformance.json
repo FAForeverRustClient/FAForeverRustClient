@@ -168,7 +168,8 @@
       "matchmakerPools": {},
       "matchmakerPoolsStatus": {
         "type": "idle"
-      }
+      },
+      "localPreviews": {}
     },
     "mapGenerator": {
       "status": {
@@ -14173,6 +14174,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14230,6 +14232,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14287,6 +14290,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14369,6 +14373,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14432,6 +14437,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14492,6 +14498,7 @@
             "installedStatus": {
               "type": "loading"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14575,6 +14582,7 @@
             "installedStatus": {
               "type": "ready"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14585,6 +14593,155 @@
                 "reason": "503"
               },
               "type": "failed"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "local map previews merge per size and remember a fruitless look",
+      "steps": [
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "localPreviewsLoaded",
+              "payload": {
+                "previews": {
+                  "scca_coop_a01": {
+                    "small": "data:image/png;base64,c21hbGw=",
+                    "large": null
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviews": {
+              "scca_coop_a01": {
+                "large": null,
+                "small": "data:image/png;base64,c21hbGw="
+              }
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "localPreviewsLoaded",
+              "payload": {
+                "previews": {
+                  "plain_map": {
+                    "small": null,
+                    "large": null
+                  },
+                  "scca_coop_a01": {
+                    "small": null,
+                    "large": "data:image/png;base64,bGFyZ2U="
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviews": {
+              "plain_map": {
+                "large": null,
+                "small": null
+              },
+              "scca_coop_a01": {
+                "large": "data:image/png;base64,bGFyZ2U=",
+                "small": "data:image/png;base64,c21hbGw="
+              }
+            },
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
             },
             "visibilityStatus": {
               "type": "idle"
@@ -14764,6 +14921,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14872,6 +15030,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -14984,6 +15143,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -15092,6 +15252,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -15203,6 +15364,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"
@@ -15311,6 +15473,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
               "type": "idle"

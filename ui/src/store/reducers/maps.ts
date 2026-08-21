@@ -42,6 +42,20 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
         ...state,
         installedStatus: { type: "failed", payload: { reason: event.payload.reason } },
       };
+    // Merge per size: a later read must not drop art an earlier one paid for.
+    // An entry with both sides null is the "looked, found nothing" marker that
+    // stops the image error handler asking again.
+    case "localPreviewsLoaded": {
+      const localPreviews = { ...state.localPreviews };
+      for (const [folder, preview] of Object.entries(event.payload.previews)) {
+        const known = localPreviews[folder];
+        localPreviews[folder] = {
+          small: preview.small ?? known?.small ?? null,
+          large: preview.large ?? known?.large ?? null,
+        };
+      }
+      return { ...state, localPreviews };
+    }
     case "matchmakerPoolsLoading":
       return { ...state, matchmakerPoolsStatus: { type: "loading" } };
     case "matchmakerPoolsLoaded":
@@ -60,12 +74,16 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
         ...state,
         installStatus: { type: "installing", payload: { folderName: event.payload.folderName } },
       };
+    // A map that had no art a moment ago may have some now, and the empty
+    // "looked, found nothing" markers would otherwise outlive the folder they
+    // describe.
     case "installed":
       return {
         ...state,
         installed: event.payload.installed,
         installedStatus: { type: "ready" },
         installStatus: { type: "idle" },
+        localPreviews: {},
       };
     case "installFailed":
       return { ...state, installStatus: { type: "failed", payload: { reason: event.payload.reason } } };
@@ -75,6 +93,7 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
         installed: event.payload.installed,
         installedStatus: { type: "ready" },
         installStatus: { type: "idle" },
+        localPreviews: {},
       };
     case "uninstallFailed":
       return { ...state, installStatus: { type: "failed", payload: { reason: event.payload.reason } } };
