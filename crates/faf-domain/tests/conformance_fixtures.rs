@@ -3191,12 +3191,22 @@ fn cases() -> Vec<Case> {
                             team_size: 4,
                             num_players: 1,
                             queue_pop_time_seconds: 90,
+                            rating_brackets_80: Vec::new(),
+                            rating_brackets_75: Vec::new(),
                         },
                         MatchmakerQueue {
                             queue_name: "ladder1v1".into(),
                             team_size: 1,
                             num_players: 7,
                             queue_pop_time_seconds: 30,
+                            rating_brackets_80: vec![RatingBracket {
+                                min: 900,
+                                max: 1400,
+                            }],
+                            rating_brackets_75: vec![RatingBracket {
+                                min: 800,
+                                max: 1500,
+                            }],
                         },
                     ],
                 }
@@ -3208,6 +3218,8 @@ fn cases() -> Vec<Case> {
                         team_size: 2,
                         num_players: 3,
                         queue_pop_time_seconds: 60,
+                        rating_brackets_80: Vec::new(),
+                        rating_brackets_75: Vec::new(),
                     }],
                 }
                 .into(),
@@ -3217,6 +3229,11 @@ fn cases() -> Vec<Case> {
                         team_size: 1,
                         num_players: 12,
                         queue_pop_time_seconds: 20,
+                        rating_brackets_80: vec![RatingBracket {
+                            min: 950,
+                            max: 1450,
+                        }],
+                        rating_brackets_75: Vec::new(),
                     }],
                 }
                 .into(),

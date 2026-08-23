@@ -369,7 +369,7 @@ const INITIAL: AppState = {
       hiddenRosterCategories: [],
       readMarkers: {},
     },
-    game: { additionalArguments: [], autoGenerateMaps: true },
+    game: { additionalArguments: [], autoGenerateMaps: true, deleteGeneratedMapsOnExit: false },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "java", selectionVersion: 1 },
     updates: { automatic: true, preRelease: false },

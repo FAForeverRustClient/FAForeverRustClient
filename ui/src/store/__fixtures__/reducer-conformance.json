@@ -598,7 +598,8 @@
       },
       "game": {
         "additionalArguments": [],
-        "autoGenerateMaps": true
+        "autoGenerateMaps": true,
+        "deleteGeneratedMapsOnExit": false
       },
       "discord": {
         "enabled": true,
@@ -3248,13 +3249,27 @@
                     "queueName": "tmm4v4",
                     "teamSize": 4,
                     "numPlayers": 1,
-                    "queuePopTimeSeconds": 90
+                    "queuePopTimeSeconds": 90,
+                    "ratingBrackets80": [],
+                    "ratingBrackets75": []
                   },
                   {
                     "queueName": "ladder1v1",
                     "teamSize": 1,
                     "numPlayers": 7,
-                    "queuePopTimeSeconds": 30
+                    "queuePopTimeSeconds": 30,
+                    "ratingBrackets80": [
+                      {
+                        "min": 900,
+                        "max": 1400
+                      }
+                    ],
+                    "ratingBrackets75": [
+                      {
+                        "min": 800,
+                        "max": 1500
+                      }
+                    ]
                   }
                 ]
               }
@@ -3277,12 +3292,26 @@
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
+                "ratingBrackets75": [
+                  {
+                    "max": 1500,
+                    "min": 800
+                  }
+                ],
+                "ratingBrackets80": [
+                  {
+                    "max": 1400,
+                    "min": 900
+                  }
+                ],
                 "teamSize": 1
               },
               {
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "ratingBrackets75": [],
+                "ratingBrackets80": [],
                 "teamSize": 4
               }
             ],
@@ -3309,7 +3338,9 @@
                     "queueName": "tmm2v2",
                     "teamSize": 2,
                     "numPlayers": 3,
-                    "queuePopTimeSeconds": 60
+                    "queuePopTimeSeconds": 60,
+                    "ratingBrackets80": [],
+                    "ratingBrackets75": []
                   }
                 ]
               }
@@ -3332,18 +3363,34 @@
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
+                "ratingBrackets75": [
+                  {
+                    "max": 1500,
+                    "min": 800
+                  }
+                ],
+                "ratingBrackets80": [
+                  {
+                    "max": 1400,
+                    "min": 900
+                  }
+                ],
                 "teamSize": 1
               },
               {
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
+                "ratingBrackets75": [],
+                "ratingBrackets80": [],
                 "teamSize": 2
               },
               {
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "ratingBrackets75": [],
+                "ratingBrackets80": [],
                 "teamSize": 4
               }
             ],
@@ -3370,7 +3417,14 @@
                     "queueName": "ladder1v1",
                     "teamSize": 1,
                     "numPlayers": 12,
-                    "queuePopTimeSeconds": 20
+                    "queuePopTimeSeconds": 20,
+                    "ratingBrackets80": [
+                      {
+                        "min": 950,
+                        "max": 1450
+                      }
+                    ],
+                    "ratingBrackets75": []
                   }
                 ]
               }
@@ -3393,18 +3447,29 @@
                 "numPlayers": 12,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 20,
+                "ratingBrackets75": [],
+                "ratingBrackets80": [
+                  {
+                    "max": 1450,
+                    "min": 950
+                  }
+                ],
                 "teamSize": 1
               },
               {
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
+                "ratingBrackets75": [],
+                "ratingBrackets80": [],
                 "teamSize": 2
               },
               {
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "ratingBrackets75": [],
+                "ratingBrackets80": [],
                 "teamSize": 4
               }
             ],
@@ -20374,7 +20439,8 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "deleteGeneratedMapsOnExit": false
             },
             "gamePath": "",
             "general": {
@@ -20546,7 +20612,8 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "deleteGeneratedMapsOnExit": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -20741,7 +20808,8 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "deleteGeneratedMapsOnExit": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -20927,7 +20995,8 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "deleteGeneratedMapsOnExit": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -21182,7 +21251,8 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "deleteGeneratedMapsOnExit": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {

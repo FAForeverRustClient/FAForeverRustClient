@@ -680,6 +680,18 @@ pub struct GamePreferences {
     /// Automatically generate missing Neroxis maps when joining a lobby.
     #[serde(default = "default_true")]
     pub auto_generate_maps: bool,
+    /// Sweep generated maps out of the maps folder when the client closes.
+    ///
+    /// Python does this (`fa.maps.clear_generated_maps`, called from
+    /// `_clientwindow`'s shutdown), and defaults it *on*. Here it defaults
+    /// **off**: a generated map is reproducible from its name, but only for as
+    /// long as its generator release still exists, and people who keep one have
+    /// a reason to. Losing work silently at shutdown is the worse failure of the
+    /// two, so keeping is the default and deleting is the choice.
+    ///
+    /// Favourite maps are spared either way, exactly as Python spares them.
+    #[serde(default)]
+    pub delete_generated_maps_on_exit: bool,
 }
 
 fn default_true() -> bool {
@@ -691,6 +703,7 @@ impl Default for GamePreferences {
         Self {
             additional_arguments: Vec::new(),
             auto_generate_maps: true,
+            delete_generated_maps_on_exit: false,
         }
     }
 }

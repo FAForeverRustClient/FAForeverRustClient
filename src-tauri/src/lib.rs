@@ -10,7 +10,9 @@
 use std::sync::Arc;
 
 use faf_app::{App, VersionedSnapshot};
-use faf_domain::state::{AuthCommand, LobbyCommand, SessionCommand, SettingsCommand};
+use faf_domain::state::{
+    AuthCommand, LobbyCommand, MapGeneratorCommand, SessionCommand, SettingsCommand,
+};
 use faf_domain::{AppCommand, AppEvent, AppState};
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -180,8 +182,28 @@ fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {
 
 /// Terminate the application process cleanly.
 #[tauri::command]
-fn exit_app(app: tauri::AppHandle) {
+async fn exit_app(app: tauri::AppHandle, core: tauri::State<'_, Core>) -> Result<(), String> {
+    let core = core.0.clone();
+    run_shutdown_tasks(core).await;
     app.exit(0);
+    Ok(())
+}
+
+/// The work that has to finish before the process goes away.
+///
+/// Only the generated-map sweep today, and only when the user asked for it (see
+/// `MapGeneratorCommand::CleanUpOnExit`). Bounded, because a shutdown that
+/// hangs on a slow disk is indistinguishable from a crash: after the deadline
+/// the client exits and the maps simply stay, which is the safe outcome anyway.
+async fn run_shutdown_tasks(core: Arc<App>) {
+    let sweep =
+        core.dispatch_and_wait(AppCommand::MapGenerator(MapGeneratorCommand::CleanUpOnExit));
+    if tokio::time::timeout(std::time::Duration::from_secs(10), sweep)
+        .await
+        .is_err()
+    {
+        tracing::warn!("shutdown tasks did not finish in time; exiting anyway");
+    }
 }
 
 /// Which rendering engine the client actually ended up in.
@@ -293,6 +315,17 @@ pub fn run() {
                         let _ = window.emit("app://request-exit-confirm", ());
                         return;
                     }
+                    // The shutdown work is async, so the close is held rather
+                    // than raced: `exit(0)` from this handler would cut the
+                    // sweep off mid-directory.
+                    api.prevent_close();
+                    let app = window.app_handle().clone();
+                    let core = core.0.clone();
+                    tauri::async_runtime::spawn(async move {
+                        run_shutdown_tasks(core).await;
+                        app.exit(0);
+                    });
+                    return;
                 }
                 window.app_handle().exit(0);
             }

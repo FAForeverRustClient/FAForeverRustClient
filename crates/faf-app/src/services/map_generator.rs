@@ -248,6 +248,35 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                 ),
             }
         }
+        MapGeneratorCommand::CleanUpOnExit => {
+            // Opt-in, and off by default: see the command's own documentation.
+            // Read from disk rather than from state, for the same reason the
+            // manual sweep does: the persisted file is the authority on what
+            // the user chose, and a half-hydrated state at shutdown is not.
+            let settings = ctx.ports.settings.load().await;
+            if !settings.game.delete_generated_maps_on_exit {
+                return;
+            }
+            // A run in flight owns the folder it is writing into. Deleting
+            // around it would take out a map the user is still waiting for, so
+            // the sweep yields rather than queues: the client is closing, and
+            // there is no later.
+            let Some(_guard) = ctx.map_generator_active.try_acquire() else {
+                tracing::info!("skipping the exit sweep: a generation is still running");
+                return;
+            };
+            match ctx
+                .ports
+                .map_generator
+                .clean_up(&settings.browsing.favorite_maps)
+                .await
+            {
+                Ok(count) => tracing::info!(count, "removed generated maps on exit"),
+                Err(reason) => {
+                    tracing::warn!(%reason, "could not remove generated maps on exit")
+                }
+            }
+        }
     }
 }
 

@@ -493,6 +493,19 @@ pub enum MapGeneratorCommand {
     /// (`MapGeneratorService.destroy`); exposing it as a command instead lets
     /// the user decide when, which suits a client that may not exit cleanly.
     CleanUp,
+    /// The same sweep, run while the client is shutting down, and only if
+    /// [`crate::state::GamePreferences::delete_generated_maps_on_exit`] asks
+    /// for it.
+    ///
+    /// Separate from [`Self::CleanUp`] rather than a flag on it, because the
+    /// two differ in more than their trigger: this one is silent (there is no
+    /// window left to show a notification in), it is skipped outright while a
+    /// generation is running, and it does nothing at all unless the user opted
+    /// in. Python runs the same sweep from its shutdown path
+    /// (`fa.maps.clear_generated_maps`) but defaults it on; here the default is
+    /// to keep, so nobody loses a map they meant to keep by never having found
+    /// the setting.
+    CleanUpOnExit,
 }
 
 pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {

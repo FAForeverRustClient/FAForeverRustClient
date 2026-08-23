@@ -31,6 +31,10 @@ export function GameSettingsSection() {
     void save({ ...preferences, autoGenerateMaps });
   };
 
+  const setDeleteGeneratedOnExit = (deleteGeneratedMapsOnExit: boolean) => {
+    void save({ ...preferences, deleteGeneratedMapsOnExit });
+  };
+
   return (
     <>
       <GamePathsSection />
@@ -42,6 +46,16 @@ export function GameSettingsSection() {
           checked={preferences.autoGenerateMaps ?? true}
           onChange={setAutoGenerate}
           label={t("settings.game.autoGenerateMaps")}
+        />
+      </SettingRow>
+      <SettingRow
+        label={t("settings.game.deleteGeneratedOnExit")}
+        hint={t("settings.game.deleteGeneratedOnExitHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.deleteGeneratedMapsOnExit ?? false}
+          onChange={setDeleteGeneratedOnExit}
+          label={t("settings.game.deleteGeneratedOnExit")}
         />
       </SettingRow>
       <div className="setting-block">

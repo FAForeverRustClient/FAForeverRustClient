@@ -528,6 +528,33 @@
   opacity: 0.7;
 }
 
+/* Whether anybody in your rating range is actually searching. A dot rather
+   than a coloured pill: it sits inside a card that is itself a toggle, and a
+   second filled shape there would read as a second control. */
+.matchmaker-queue-proximity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-subtle);
+}
+
+.matchmaker-queue-proximity i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.matchmaker-queue-proximity[data-near="true"] {
+  color: var(--color-ok);
+}
+
+.matchmaker-queue-proximity[data-near="true"] i {
+  opacity: 1;
+}
+
 .matchmaker-queue-check {
   display: grid;
   width: 20px;

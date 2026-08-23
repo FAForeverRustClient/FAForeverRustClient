@@ -14,7 +14,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use faf_domain::state::{
     AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
-    PlayerProfile, PlayerVeto, Relation,
+    PlayerProfile, PlayerVeto, RatingBracket, Relation,
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -109,18 +109,39 @@ impl LobbyPort for FakeLobby {
                         team_size: 1,
                         num_players: 18,
                         queue_pop_time_seconds: 95,
+                        rating_brackets_80: vec![
+                            RatingBracket { min: 250, max: 700 },
+                            RatingBracket {
+                                min: 1300,
+                                max: 1750,
+                            },
+                        ],
+                        rating_brackets_75: vec![RatingBracket {
+                            min: 100,
+                            max: 1900,
+                        }],
                     },
                     MatchmakerQueue {
                         queue_name: "tmm2v2".into(),
                         team_size: 2,
                         num_players: 12,
                         queue_pop_time_seconds: 150,
+                        rating_brackets_80: vec![RatingBracket {
+                            min: 900,
+                            max: 1400,
+                        }],
+                        rating_brackets_75: vec![RatingBracket {
+                            min: 800,
+                            max: 1500,
+                        }],
                     },
                     MatchmakerQueue {
                         queue_name: "tmm4v4".into(),
                         team_size: 4,
                         num_players: 20,
                         queue_pop_time_seconds: 210,
+                        rating_brackets_80: Vec::new(),
+                        rating_brackets_75: Vec::new(),
                     },
                 ]))
                 .await;

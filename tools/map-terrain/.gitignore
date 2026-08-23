@@ -1,0 +1,3 @@
+# Byte-compiled cache from running the scripts here.
+__pycache__/
+*.pyc

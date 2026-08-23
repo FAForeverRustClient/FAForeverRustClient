@@ -232,6 +232,8 @@ const SECTIONS = {
       "settings.paths.replayInstallHint",
       "settings.game.autoGenerateMaps",
       "settings.game.autoGenerateMapsHint",
+      "settings.game.deleteGeneratedOnExit",
+      "settings.game.deleteGeneratedOnExitHint",
       "settings.game.argumentsLabel",
       "settings.game.argumentsHint",
     ],

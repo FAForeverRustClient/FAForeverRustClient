@@ -2,6 +2,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { MatchmakerQueue, PlayerRatingSummary } from "../../ipc/bindings";
 import { formatClockDuration } from "../../shared/durations";
+import { opponentsNearYou } from "./matchmakerRatings";
 import { t } from "../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
@@ -45,6 +46,7 @@ export function MatchmakerQueueCard({
   onOpenMapPool,
 }: Props) {
   const statusLabel = statusText(status);
+  const proximity = opponentsNearYou(queue, rating);
   return (
     <article className={`matchmaker-queue-card surface-panel${selected ? " is-selected" : ""}${disabled ? " incompatible" : ""}`} data-status={status}>
       {/* The whole card toggles, not a checkbox-sized strip at the top of it.
@@ -77,6 +79,19 @@ export function MatchmakerQueueCard({
           <span><Icon name="users" size={14} /> {queue.numPlayers} queued</span>
           <span><Icon name="play" size={14} /> {activeGames} active</span>
         </span>
+
+        {/* "12 queued" is only half the answer: twelve players two thousand
+            rating away are twelve players you will not be matched with. The
+            server publishes the rating spread of who is actually searching, so
+            say whether any of it overlaps yours. */}
+        {proximity !== "unknown" && (
+          <span className="matchmaker-queue-proximity" data-near={proximity === "near"}>
+            <i aria-hidden />
+            {proximity === "near"
+              ? t("lobby.matchmaker.proximity.near")
+              : t("lobby.matchmaker.proximity.far")}
+          </span>
+        )}
       </button>
 
       <div className="matchmaker-queue-footer">

@@ -33,7 +33,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use faf_domain::state::{
     AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
-    PartyMember, PartyState, PlayerLobbyRating, PlayerProfile, PlayerVeto, Relation,
+    PartyMember, PartyState, PlayerLobbyRating, PlayerProfile, PlayerVeto, RatingBracket, Relation,
 };
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
@@ -1413,8 +1413,31 @@ fn parse_matchmaker_queues(message: &Value) -> Vec<MatchmakerQueue> {
                 .and_then(Value::as_f64)
                 .unwrap_or_default()
                 .round() as i32,
+            rating_brackets_80: parse_rating_brackets(queue, "boundary_80s"),
+            rating_brackets_75: parse_rating_brackets(queue, "boundary_75s"),
         })
         .filter(|queue| !queue.queue_name.is_empty())
+        .collect()
+}
+
+/// The rating intervals of the players searching one queue.
+///
+/// The server sends them as an array of two-element arrays, floats, and it
+/// sends them per queue: `[[300, 700], [1300, 1750]]`. Anything that is not a
+/// usable pair is dropped rather than clamped, because a half-read bracket
+/// would claim a range nobody is actually searching in.
+fn parse_rating_brackets(queue: &Value, key: &str) -> Vec<RatingBracket> {
+    queue
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|bracket| {
+            let pair = bracket.as_array()?;
+            let min = value_as_f64(pair.first()?)?.round() as i32;
+            let max = value_as_f64(pair.get(1)?)?.round() as i32;
+            (min <= max).then_some(RatingBracket { min, max })
+        })
         .collect()
 }
 

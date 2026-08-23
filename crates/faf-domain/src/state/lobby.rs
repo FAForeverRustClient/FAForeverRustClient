@@ -127,6 +127,30 @@ fn validate_host_text(
     Ok(())
 }
 
+/// One rating interval the lobby reports as currently occupied by searching
+/// players.
+///
+/// The server publishes these per queue in `matchmaker_info` so a client can
+/// answer the only question that decides whether joining is worth it: is
+/// anybody *near me* searching? A queue with eleven players in it is no use if
+/// all eleven are two thousand rating away.
+///
+/// Rounded to whole rating points. The wire carries floats, but a bracket edge
+/// half a point out is not a distinction anybody can act on, and integers keep
+/// the whole lobby slice `Eq`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RatingBracket {
+    pub min: i32,
+    pub max: i32,
+}
+
+impl RatingBracket {
+    pub fn contains(&self, rating: i32) -> bool {
+        (self.min..=self.max).contains(&rating)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchmakerQueue {
@@ -134,6 +158,50 @@ pub struct MatchmakerQueue {
     pub team_size: i32,
     pub num_players: i32,
     pub queue_pop_time_seconds: i32,
+    /// Rating intervals of the players searching this queue, at the two
+    /// confidence levels the server publishes (`boundary_80s`, `boundary_75s`).
+    ///
+    /// Two lists rather than one because the choice between them is the
+    /// player's, not the server's: see [`MatchmakerQueue::has_opponent_near`].
+    #[serde(default)]
+    pub rating_brackets_80: Vec<RatingBracket>,
+    #[serde(default)]
+    pub rating_brackets_75: Vec<RatingBracket>,
+}
+
+impl MatchmakerQueue {
+    /// Is one of the players currently searching this queue close enough in
+    /// rating to be matched with?
+    ///
+    /// The rule is the Python client's (`_clientwindow.handle_matchmaker_info`):
+    /// a settled rating is compared against the tighter 80% brackets, and a
+    /// still-uncertain one (deviation at or above 100) against the wider 75%
+    /// brackets, because a player the server is unsure about will be matched
+    /// across a wider spread anyway. `None` when the server has published no
+    /// brackets for this queue, which is not the same as "nobody is near": it
+    /// means the client cannot tell.
+    ///
+    /// `mean` is the *mean*, not the displayed rating. The server builds these
+    /// brackets around each searcher's mu, while a client shows mu - 3σ, so
+    /// comparing the displayed number would sit a whole confidence interval
+    /// below the range it is being tested against: for a new account, several
+    /// hundred points of it. Python compares `ladder_rating_mean` for exactly
+    /// this reason.
+    pub fn has_opponent_near(&self, mean: f64, deviation: f64) -> Option<bool> {
+        let brackets = if deviation < 100.0 {
+            &self.rating_brackets_80
+        } else {
+            &self.rating_brackets_75
+        };
+        // An empty list is only meaningful when the queue has searchers to
+        // describe: an idle queue publishes no brackets because there is
+        // nothing in it, and "nobody near you" is the honest answer there.
+        if brackets.is_empty() && self.num_players > 0 {
+            return None;
+        }
+        let mean = mean.round() as i32;
+        Some(brackets.iter().any(|bracket| bracket.contains(mean)))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -720,7 +788,59 @@ mod tests {
             team_size,
             num_players,
             queue_pop_time_seconds: 60,
+            rating_brackets_80: Vec::new(),
+            rating_brackets_75: Vec::new(),
         }
+    }
+
+    #[test]
+    fn a_settled_rating_is_judged_against_the_tighter_brackets() {
+        // The Python client's rule: below 100 deviation the server is confident
+        // enough that the 80% spread is the one you will actually be matched
+        // across.
+        let queue = MatchmakerQueue {
+            rating_brackets_80: vec![RatingBracket {
+                min: 1000,
+                max: 1200,
+            }],
+            rating_brackets_75: vec![RatingBracket {
+                min: 600,
+                max: 1600,
+            }],
+            ..queue("ladder1v1", 1, 5)
+        };
+        assert_eq!(queue.has_opponent_near(1100.0, 60.0), Some(true));
+        assert_eq!(queue.has_opponent_near(1400.0, 60.0), Some(false));
+        // The same player, still finding their level, is matched wider: 1400 is
+        // outside every 80% bracket but inside the 75% one.
+        assert_eq!(queue.has_opponent_near(1400.0, 140.0), Some(true));
+    }
+
+    #[test]
+    fn bracket_edges_count_as_in_range() {
+        let queue = MatchmakerQueue {
+            rating_brackets_80: vec![RatingBracket {
+                min: 1000,
+                max: 1200,
+            }],
+            ..queue("ladder1v1", 1, 5)
+        };
+        assert_eq!(queue.has_opponent_near(1000.0, 50.0), Some(true));
+        assert_eq!(queue.has_opponent_near(1200.0, 50.0), Some(true));
+        assert_eq!(queue.has_opponent_near(1201.0, 50.0), Some(false));
+    }
+
+    #[test]
+    fn an_empty_queue_answers_nobody_rather_than_dont_know() {
+        // No searchers means no brackets, and there the missing list is the
+        // answer. A *populated* queue with no brackets is a server that did not
+        // publish them, which is a different thing and must not be dressed up
+        // as "nobody near you".
+        let empty = queue("ladder1v1", 1, 0);
+        assert_eq!(empty.has_opponent_near(1100.0, 50.0), Some(false));
+
+        let unpublished = queue("ladder1v1", 1, 12);
+        assert_eq!(unpublished.has_opponent_near(1100.0, 50.0), None);
     }
 
     #[test]

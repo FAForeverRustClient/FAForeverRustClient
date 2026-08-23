@@ -35,6 +35,14 @@ Features so far:
   `GET user.faforever.com/lobby/access` → verified `wss://…/?verify=…` URL →
   `ask_session` → `auth` (token + `faf-uid` fingerprint) → `game_info`. The OAuth access
   token reaches the lobby via an in-memory `TokenStore`, never through `AppState`.
+- **matchmaking**: each queue card says whether anybody *near your rating* is
+  searching it, not just how many people are. The lobby publishes the rating
+  spread of the players in each queue (`boundary_80s`/`boundary_75s` on
+  `matchmaker_info`); a settled rating is compared against the tighter 80%
+  brackets and an uncertain one against the wider 75%, which is the Python
+  client's rule. Unlike Python it is answered for every queue rather than for
+  `ladder1v1` alone. The comparison is against the rating *mean*, because that
+  is the space the server builds the brackets in.
 
 **CI** (`.github/workflows/ci.yml`) runs tests, clippy, frontend linting,
 typecheck, build, a bindings-drift check (fails if `ui/src/ipc/bindings.ts` is
@@ -90,6 +98,7 @@ crates/
 src-tauri/      thin Tauri shell (commands + event forwarding)
 ui/             React frontend (ipc bridge, Zustand store, features)
 docs/           ARCHITECTURE.md
+tools/          standalone one-off scripts, not part of the client build
 ```
 
 ## Develop

@@ -1510,6 +1510,19 @@ export type GamePreferences = {
 	additionalArguments?: string[],
 	/**  Automatically generate missing Neroxis maps when joining a lobby. */
 	autoGenerateMaps?: boolean,
+	/**
+	 *  Sweep generated maps out of the maps folder when the client closes.
+	 *
+	 *  Python does this (`fa.maps.clear_generated_maps`, called from
+	 *  `_clientwindow`'s shutdown), and defaults it *on*. Here it defaults
+	 *  **off**: a generated map is reproducible from its name, but only for as
+	 *  long as its generator release still exists, and people who keep one have
+	 *  a reason to. Losing work silently at shutdown is the worse failure of the
+	 *  two, so keeping is the default and deleting is the choice.
+	 *
+	 *  Favourite maps are spared either way, exactly as Python spares them.
+	 */
+	deleteGeneratedMapsOnExit?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -2339,7 +2352,22 @@ export type MapGeneratorCommand =
  *  (`MapGeneratorService.destroy`); exposing it as a command instead lets
  *  the user decide when, which suits a client that may not exit cleanly.
  */
-{ type: "cleanUp" };
+{ type: "cleanUp" } |
+/**
+ *  The same sweep, run while the client is shutting down, and only if
+ *  [`crate::state::GamePreferences::delete_generated_maps_on_exit`] asks
+ *  for it.
+ *
+ *  Separate from [`Self::CleanUp`] rather than a flag on it, because the
+ *  two differ in more than their trigger: this one is silent (there is no
+ *  window left to show a notification in), it is skipped outright while a
+ *  generation is running, and it does nothing at all unless the user opted
+ *  in. Python runs the same sweep from its shutdown path
+ *  (`fa.maps.clear_generated_maps`) but defaults it on; here the default is
+ *  to keep, so nobody loses a map they meant to keep by never having found
+ *  the setting.
+ */
+{ type: "cleanUpOnExit" };
 
 export type MapGeneratorEvent = { type: "statusChanged"; payload: {
 	status: GeneratorStatus,
@@ -2862,6 +2890,15 @@ export type MatchmakerQueue = {
 	teamSize: number,
 	numPlayers: number,
 	queuePopTimeSeconds: number,
+	/**
+	 *  Rating intervals of the players searching this queue, at the two
+	 *  confidence levels the server publishes (`boundary_80s`, `boundary_75s`).
+	 *
+	 *  Two lists rather than one because the choice between them is the
+	 *  player's, not the server's: see [`MatchmakerQueue::has_opponent_near`].
+	 */
+	ratingBrackets80?: RatingBracket[],
+	ratingBrackets75?: RatingBracket[],
 };
 
 export type MatchmakingState = { type: "idle" } | { type: "searching"; payload: {
@@ -3696,6 +3733,24 @@ export type QualifierRule = {
 	 *  score for [`QualifierKind::Points`]. At least 1 either way.
 	 */
 	n: number,
+};
+
+/**
+ *  One rating interval the lobby reports as currently occupied by searching
+ *  players.
+ *
+ *  The server publishes these per queue in `matchmaker_info` so a client can
+ *  answer the only question that decides whether joining is worth it: is
+ *  anybody *near me* searching? A queue with eleven players in it is no use if
+ *  all eleven are two thousand rating away.
+ *
+ *  Rounded to whole rating points. The wire carries floats, but a bracket edge
+ *  half a point out is not a distinction anybody can act on, and integers keep
+ *  the whole lobby slice `Eq`.
+ */
+export type RatingBracket = {
+	min: number,
+	max: number,
 };
 
 /**  Rating limits an organiser set on entry. */

@@ -91,6 +91,11 @@ A service can **never** reach a socket or the filesystem directly: only through 
 - **`faf-ipc`** isolates the type-generation boundary so backend and frontend types can never drift (see §5.7).
 - **`src-tauri`** stays thin: it's glue, not logic.
 
+One-off migration tooling does **not** go in here. A script that runs once to
+populate a server and is then obsolete has no business being compiled into the
+client, however tempting the shared code is: it lives under `tools/`, outside
+the workspace, and nothing in `crates/` or `ui/` may depend on it.
+
 ---
 
 ## 3. Shared state design (the core)
