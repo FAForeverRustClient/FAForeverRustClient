@@ -5,6 +5,7 @@ import { MapThumbnail } from "../../shared/MapThumbnail";
 import { flagSrc } from "../../shared/countryFlags";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { gameTeamSummaries, type GamePresence } from "./gameSummary";
+import { GameStatusSword } from "./GameStatusSword";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -12,6 +13,7 @@ const STATUS_LABEL = {
   hosting: "chat.presence.hosting",
   lobbying: "chat.presence.lobbying",
   playing: "chat.presence.playing",
+  playingDelayed: "chat.presence.playingDelayed",
 } as const satisfies Record<GamePresence["status"], MessageKey>;
 
 interface Props {
@@ -68,11 +70,13 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
       >
+        <GameStatusSword status={presence.status} />
         <MapThumbnail
           mapName={presence.game.map}
           vault={vault}
           className="chat-game-map"
           placeholderClassName="chat-game-map chat-game-map-placeholder"
+          preferCanonicalPreview
         />
       </button>
       {open && createPortal(

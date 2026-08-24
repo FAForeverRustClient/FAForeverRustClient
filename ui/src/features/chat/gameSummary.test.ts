@@ -48,6 +48,21 @@ it("distinguishes hosting from waiting in an open lobby", () => {
   expect(gamePresenceForPlayer([open], [], "guest")?.status).toBe("lobbying");
 });
 
+it("identifies playingDelayed when launched within safety delay", () => {
+  const now = 1_700_000_300;
+  const recentGame = {
+    ...game(10, "Host", { "1": ["Player1"] }),
+    launchedAt: now - 120, // 2 minutes ago (< 300s)
+  };
+  const olderGame = {
+    ...game(20, "Host", { "1": ["Player2"] }),
+    launchedAt: now - 350, // 5.8 minutes ago (> 300s)
+  };
+
+  expect(gamePresenceForPlayer([], [recentGame], "Player1", now)?.status).toBe("playingDelayed");
+  expect(gamePresenceForPlayer([], [olderGame], "Player2", now)?.status).toBe("playing");
+});
+
 describe("game team summaries", () => {
   it("adds known player ratings and keeps observers last", () => {
     const social: SocialState = {

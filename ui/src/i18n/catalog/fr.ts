@@ -391,6 +391,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "chat.presence.hosting": "Héberge",
   "chat.presence.lobbying": "Dans le salon",
   "chat.presence.playing": "En jeu",
+  "chat.presence.playingDelayed": "En jeu (différé)",
   "chat.game.untitled": "Partie sans titre",
   "chat.game.noLineup": "Le salon n'a pas encore transmis de composition.",
   "chat.channels.aria": "Salons",

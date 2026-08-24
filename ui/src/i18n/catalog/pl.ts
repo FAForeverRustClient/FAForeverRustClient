@@ -397,6 +397,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "chat.presence.hosting": "Hostuje",
   "chat.presence.lobbying": "W poczekalni",
   "chat.presence.playing": "Gra",
+  "chat.presence.playingDelayed": "Gra (opóźnienie)",
   "chat.game.untitled": "Gra bez tytułu",
   "chat.game.noLineup": "Poczekalnia nie podała jeszcze składu.",
   "chat.channels.aria": "Kanały",

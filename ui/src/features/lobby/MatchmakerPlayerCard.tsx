@@ -82,7 +82,7 @@ export function MatchmakerPlayerCard({
                 alt=""
                 width={40}
                 height={20}
-                title={profile.avatarTooltip}
+                title={profile.avatarTooltip || undefined}
                 loading="lazy"
                 decoding="async"
                 draggable={false}

@@ -164,6 +164,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "chat.presence.hosting": "Hostet",
   "chat.presence.lobbying": "In der Lobby",
   "chat.presence.playing": "Spielt",
+  "chat.presence.playingDelayed": "Spielt (Verzögerung)",
   "chat.game.untitled": "Unbenannte Partie",
   "chat.game.noLineup": "Die Lobby hat noch keine Aufstellung geliefert.",
   "chat.channels.aria": "Kanäle",

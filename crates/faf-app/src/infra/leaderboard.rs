@@ -51,6 +51,7 @@ struct RatingStats {
 struct ResolvedPlayer {
     name: String,
     avatar_url: Option<String>,
+    avatar_tooltip: Option<String>,
 }
 
 impl LeaderboardClient {
@@ -95,11 +96,13 @@ impl LeaderboardClient {
             let doc = self.get_json(url, token).await?;
             let index = resource_index(&doc.included);
             players.extend(doc.data.iter().filter_map(|resource| {
+                let (avatar_url, avatar_tooltip) = avatar_info(Some(resource), &index);
                 Some((
                     resource.id.parse().ok()?,
                     ResolvedPlayer {
                         name: string_attr(resource, "login")?.to_string(),
-                        avatar_url: avatar_url(Some(resource), &index),
+                        avatar_url,
+                        avatar_tooltip,
                     },
                 ))
             }));
@@ -274,11 +277,13 @@ fn bool_attr(resource: &JsonApiResource, name: &str) -> Option<bool> {
     resource.attributes.get(name).and_then(Value::as_bool)
 }
 
-fn avatar_url(
+fn avatar_info(
     resource: Option<&JsonApiResource>,
     index: &HashMap<(String, String), &JsonApiResource>,
-) -> Option<String> {
-    let resource = resource?;
+) -> (Option<String>, Option<String>) {
+    let Some(resource) = resource else {
+        return (None, None);
+    };
     let assignment = rel_targets(&resource.relationships, "avatarAssignments")
         .into_iter()
         .filter_map(|key| index.get(&key).copied())
@@ -286,7 +291,7 @@ fn avatar_url(
     let avatar = assignment
         .and_then(|assignment| rel_target(&assignment.relationships, "avatar"))
         .and_then(|key| index.get(&key).copied());
-    avatar
+    let url = avatar
         .and_then(|avatar| string_attr(avatar, "url"))
         .filter(|url| !url.trim().is_empty())
         .map(str::to_string)
@@ -297,7 +302,12 @@ fn avatar_url(
                 .and_then(Value::as_str)
                 .filter(|url| !url.trim().is_empty())
                 .map(str::to_string)
-        })
+        });
+    let tooltip = avatar
+        .and_then(|avatar| string_attr(avatar, "tooltip"))
+        .filter(|tooltip| !tooltip.trim().is_empty())
+        .map(str::to_string);
+    (url, tooltip)
 }
 
 fn display_key(value: &str) -> String {
@@ -457,6 +467,7 @@ fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
             .and_then(|(_, id)| id.parse().ok())
             .unwrap_or_default();
         let stats = parse_rating_stats(resource);
+        let (avatar_url, avatar_tooltip) = avatar_info(player, &index);
         entries.push(LeaderboardEntry {
             player_id,
             rank: (page - 1) * page_size + offset as i32 + 1,
@@ -464,7 +475,8 @@ fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
                 .and_then(|value| string_attr(value, "login"))
                 .unwrap_or("unknown")
                 .to_string(),
-            avatar_url: avatar_url(player, &index),
+            avatar_url,
+            avatar_tooltip,
             score: None,
             rating: stats.rating,
             mean: stats.mean,
@@ -592,6 +604,9 @@ fn build_season_entries(
             avatar_url: players
                 .get(&entry.player_id)
                 .and_then(|player| player.avatar_url.clone()),
+            avatar_tooltip: players
+                .get(&entry.player_id)
+                .and_then(|player| player.avatar_tooltip.clone()),
             score: Some(entry.score),
             rating: None,
             mean: None,
@@ -652,6 +667,7 @@ fn fake_entry(player_id: i32, rank: i32, name: &str, rating: i32) -> Leaderboard
         rank,
         player_name: name.into(),
         avatar_url: None,
+        avatar_tooltip: None,
         score: None,
         rating: Some(rating),
         mean: Some(rating as f64 + 500.0),
@@ -821,7 +837,10 @@ mod tests {
                 },
                 {
                     "type": "avatar", "id": "7001",
-                    "attributes": { "url": "https://content.example/avatar.png" }
+                    "attributes": {
+                        "url": "https://content.example/avatar.png",
+                        "tooltip": "FAF Champion"
+                    }
                 }
             ],
             "meta": { "page": { "number": 2, "limit": 100, "totalPages": 4, "totalRecords": 340 } }
@@ -837,6 +856,10 @@ mod tests {
         assert_eq!(
             page.entries[0].avatar_url.as_deref(),
             Some("https://content.example/avatar.png")
+        );
+        assert_eq!(
+            page.entries[0].avatar_tooltip.as_deref(),
+            Some("FAF Champion")
         );
         assert_eq!(page.entries[0].rating, Some(1601));
         assert_eq!(page.entries[0].mean, Some(2100.25));
@@ -998,6 +1021,7 @@ mod tests {
                 ResolvedPlayer {
                     name: "Silver".into(),
                     avatar_url: None,
+                    avatar_tooltip: None,
                 },
             ),
             (
@@ -1005,6 +1029,7 @@ mod tests {
                 ResolvedPlayer {
                     name: "Gold".into(),
                     avatar_url: Some("https://content.example/gold.png".into()),
+                    avatar_tooltip: Some("Gold Champion".into()),
                 },
             ),
         ]);
@@ -1013,6 +1038,10 @@ mod tests {
         assert_eq!(
             entries[0].avatar_url.as_deref(),
             Some("https://content.example/gold.png")
+        );
+        assert_eq!(
+            entries[0].avatar_tooltip.as_deref(),
+            Some("Gold Champion")
         );
         assert_eq!(entries[0].rank, 1);
     }

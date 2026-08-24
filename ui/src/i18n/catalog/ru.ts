@@ -397,6 +397,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "chat.presence.hosting": "Создаёт игру",
   "chat.presence.lobbying": "В лобби",
   "chat.presence.playing": "Играет",
+  "chat.presence.playingDelayed": "Играет (задержка)",
   "chat.game.untitled": "Игра без названия",
   "chat.game.noLineup": "Лобби пока не передало состав.",
   "chat.channels.aria": "Каналы",

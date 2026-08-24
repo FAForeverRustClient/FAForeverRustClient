@@ -69,6 +69,8 @@ pub struct LeaderboardEntry {
     pub player_name: String,
     /// Absolute URL of the player's selected avatar, when one is assigned.
     pub avatar_url: Option<String>,
+    /// Hover tooltip or title of the player's selected avatar.
+    pub avatar_tooltip: Option<String>,
     pub score: Option<i32>,
     pub rating: Option<i32>,
     pub mean: Option<f64>,
@@ -384,6 +386,7 @@ mod tests {
                 rank: 1,
                 player_name: "Commander".into(),
                 avatar_url: None,
+                avatar_tooltip: None,
                 score: Some(100),
                 rating: Some(1500),
                 mean: None,

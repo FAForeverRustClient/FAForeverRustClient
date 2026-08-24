@@ -200,6 +200,7 @@ export const en = {
   "chat.presence.hosting": "Hosting",
   "chat.presence.lobbying": "In lobby",
   "chat.presence.playing": "Playing",
+  "chat.presence.playingDelayed": "Playing (delay)",
   "chat.game.untitled": "Untitled game",
   "chat.game.noLineup": "The lobby has not supplied a lineup yet.",
   "chat.channels.aria": "Channels",

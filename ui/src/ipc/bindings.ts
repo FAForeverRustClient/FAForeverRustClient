@@ -1898,6 +1898,8 @@ export type LeaderboardEntry = {
 	playerName: string,
 	/**  Absolute URL of the player's selected avatar, when one is assigned. */
 	avatarUrl: string | null,
+	/**  Hover tooltip or title of the player's selected avatar. */
+	avatarTooltip: string | null,
 	score: number | null,
 	rating: number | null,
 	mean: number | null,
