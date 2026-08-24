@@ -1,6 +1,6 @@
 import type { Game, SocialState } from "../../ipc/bindings";
 
-export type GamePresenceStatus = "hosting" | "lobbying" | "playing";
+export type GamePresenceStatus = "hosting" | "lobbying" | "playing" | "playingDelayed";
 
 export interface GamePresence {
   game: Game;
@@ -28,17 +28,32 @@ const loginKey = (login: string) => login.toLocaleLowerCase();
 // directory when resolving a roster.
 const sameLogin = (left: string, right: string) => loginKey(left) === loginKey(right);
 
+export const LIVE_REPLAY_DELAY_SECONDS = 300;
+
+export function isLiveReplayDelayed(
+  launchedAt: number | null | undefined,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): boolean {
+  if (!launchedAt || launchedAt <= 0) return false;
+  return nowSeconds - launchedAt < LIVE_REPLAY_DELAY_SECONDS;
+}
+
 /** Find the authoritative game presence represented by lobby snapshots. */
 export function gamePresenceForPlayer(
   openGames: Game[],
   liveGames: Game[],
   login: string,
+  nowSeconds = Math.floor(Date.now() / 1000),
 ): GamePresence | null {
-  return gamePresenceIndex(openGames, liveGames).get(loginKey(login)) ?? null;
+  return gamePresenceIndex(openGames, liveGames, nowSeconds).get(loginKey(login)) ?? null;
 }
 
 /** Build once for a roster, avoiding a full game/team scan for every row. */
-export function gamePresenceIndex(openGames: Game[], liveGames: Game[]): Map<string, GamePresence> {
+export function gamePresenceIndex(
+  openGames: Game[],
+  liveGames: Game[],
+  nowSeconds = Math.floor(Date.now() / 1000),
+): Map<string, GamePresence> {
   const result = new Map<string, GamePresence>();
   const members = (game: Game) => new Set([game.host, ...Object.values(game.teams).flat()]);
 
@@ -51,8 +66,12 @@ export function gamePresenceIndex(openGames: Game[], liveGames: Game[]): Map<str
     }
   }
   for (const game of liveGames) {
+    const isDelayed = isLiveReplayDelayed(game.launchedAt, nowSeconds);
     for (const login of members(game)) {
-      result.set(loginKey(login), { game, status: "playing" });
+      result.set(loginKey(login), {
+        game,
+        status: isDelayed ? "playingDelayed" : "playing",
+      });
     }
   }
   return result;

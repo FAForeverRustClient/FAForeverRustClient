@@ -245,6 +245,7 @@ export function mapThumbnailCandidates(
   missions?: CoopMission[],
   customGeneratedPreview?: string,
   customUrl?: string,
+  preferCanonicalPreview = false,
 ): string[] {
   const isGen = isGeneratedMap(mapName);
   const normalized = normalizeMapName(mapName);
@@ -272,13 +273,7 @@ export function mapThumbnailCandidates(
     ? baseName
     : OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
   const size = large ? "large" : "small";
-
-  return uniqueUrls([
-    customUrl,
-    large ? coopMission?.thumbnailUrlLarge : coopMission?.thumbnailUrlSmall,
-    large ? coopMission?.thumbnailUrlSmall : coopMission?.thumbnailUrlLarge,
-    large ? vaultMap?.thumbnailUrlLarge : vaultMap?.thumbnailUrl,
-    large ? vaultMap?.thumbnailUrl : vaultMap?.thumbnailUrlLarge,
+  const canonicalPreviewUrls = [
     officialKey
       ? `https://content.faforever.com/maps/previews/${size}/${officialKey}.png`
       : undefined,
@@ -288,6 +283,27 @@ export function mapThumbnailCandidates(
     baseName !== normalized && !baseName.includes(" ")
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
       : undefined,
+  ];
+  // Chat uses the same unmarked small art as the reference clients. Do not
+  // fall through to a large preview there: large map art can include resource
+  // and structure markers that are useful in map details but noisy at 22px.
+  const coopPreviewUrls = large
+    ? [coopMission?.thumbnailUrlLarge, coopMission?.thumbnailUrlSmall]
+    : preferCanonicalPreview
+      ? [coopMission?.thumbnailUrlSmall]
+      : [coopMission?.thumbnailUrlSmall, coopMission?.thumbnailUrlLarge];
+  const vaultPreviewUrls = large
+    ? [vaultMap?.thumbnailUrlLarge, vaultMap?.thumbnailUrl]
+    : preferCanonicalPreview
+      ? [vaultMap?.thumbnailUrl]
+      : [vaultMap?.thumbnailUrl, vaultMap?.thumbnailUrlLarge];
+
+  return uniqueUrls([
+    customUrl,
+    ...(preferCanonicalPreview ? canonicalPreviewUrls : []),
+    ...coopPreviewUrls,
+    ...vaultPreviewUrls,
+    ...(!preferCanonicalPreview ? canonicalPreviewUrls : []),
   ]);
 }
 

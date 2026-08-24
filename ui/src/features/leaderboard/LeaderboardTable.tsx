@@ -72,7 +72,7 @@ function playerCell(entry: LeaderboardEntry) {
           className="leaderboard-avatar"
           src={entry.avatarUrl}
           alt=""
-          title={`${entry.playerName} avatar`}
+          title={entry.avatarTooltip || undefined}
           width={40}
           height={20}
           loading="lazy"

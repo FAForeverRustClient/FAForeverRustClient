@@ -223,9 +223,6 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             terminate_game(ctx, out);
         }
         LobbyCommand::Disconnect => {
-            // Hanging up is a decision, not a fault: the watchdog must not
-            // undo it on its next tick.
-            ctx.lobby_auto_reconnect.disarm();
             // Cancels the active connection; the `Connect` task above then sees the
             // stream close and emits `Disconnected`.
             out.emit(LobbyEvent::JoinCancelled);
@@ -236,9 +233,6 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn connect(ctx: &ServiceCtx, out: &EventSink) {
-    // Armed before the guard, so asking for a connection while one is already
-    // in flight still re-arms the watchdog.
-    ctx.lobby_auto_reconnect.arm();
     if !ctx.lobby_active.try_start() {
         return;
     }
@@ -282,7 +276,10 @@ async fn handle_update(
     game_notifications: &mut GameNotificationTracker,
 ) {
     match update {
-        LobbyUpdate::Authenticated => out.emit(LobbyEvent::Connected),
+        LobbyUpdate::Authenticated => {
+            game_notifications.mark_authenticated();
+            out.emit(LobbyEvent::Connected);
+        }
         LobbyUpdate::Games(games) => {
             let (preferences, player_name) = out.with_state(|state| {
                 (
@@ -546,11 +543,13 @@ fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(LobbyEvent::GameTerminated);
 }
 
+use std::time::{Duration, Instant};
+
 #[derive(Debug, Clone)]
 enum GameNotificationSignal {
     NewGame(Game),
     GameFull(Game),
-    FriendPlaying { login: String, game: Game },
+    FriendsPlaying { logins: Vec<String>, game: Game },
     OwnGameEnded(Game),
 }
 
@@ -561,9 +560,19 @@ enum GameNotificationSignal {
 struct GameNotificationTracker {
     open: Option<HashMap<i32, Game>>,
     live: Option<HashMap<i32, Game>>,
+    suppress_until: Option<Instant>,
 }
 
 impl GameNotificationTracker {
+    fn mark_authenticated(&mut self) {
+        self.suppress_until = Some(Instant::now() + Duration::from_secs(5));
+    }
+
+    fn is_suppressed(&self) -> bool {
+        self.suppress_until
+            .is_some_and(|until| Instant::now() < until)
+    }
+
     fn observe_open(
         &mut self,
         games: &[Game],
@@ -573,6 +582,10 @@ impl GameNotificationTracker {
         let Some(previous) = self.open.replace(next.clone()) else {
             return Vec::new();
         };
+
+        if self.is_suppressed() {
+            return Vec::new();
+        }
 
         let mut signals = Vec::new();
         for game in games {
@@ -602,11 +615,21 @@ impl GameNotificationTracker {
             return Vec::new();
         };
 
+        if self.is_suppressed() {
+            return Vec::new();
+        }
+
         let mut signals = Vec::new();
         for game in games.iter().filter(|game| !previous.contains_key(&game.id)) {
-            for login in participants(game).filter(|login| contains_name(friends, login)) {
-                signals.push(GameNotificationSignal::FriendPlaying {
-                    login: login.to_owned(),
+            let mut game_friends = Vec::new();
+            for login in participants(game) {
+                if contains_name(friends, login) && !contains_name(&game_friends, login) {
+                    game_friends.push(login.to_owned());
+                }
+            }
+            if !game_friends.is_empty() {
+                signals.push(GameNotificationSignal::FriendsPlaying {
+                    logins: game_friends,
                     game: game.clone(),
                 });
             }
@@ -620,6 +643,39 @@ impl GameNotificationTracker {
             }
         }
         signals
+    }
+}
+
+fn format_friends_playing(logins: &[String], game_title: &str) -> (&'static str, String) {
+    match logins {
+        [] => (
+            "Friend started playing",
+            format!("A friend started playing {game_title}."),
+        ),
+        [single] => (
+            "Friend started playing",
+            format!("{single} started playing {game_title}."),
+        ),
+        [first, second] => (
+            "Friends started playing",
+            format!("{first} and {second} started playing {game_title}."),
+        ),
+        [first, second, third] => (
+            "Friends started playing",
+            format!("{first}, {second}, and {third} started playing {game_title}."),
+        ),
+        [first, second, rest @ ..] => {
+            let count = rest.len();
+            let other_friends = if count == 1 {
+                "1 other friend".to_string()
+            } else {
+                format!("{count} other friends")
+            };
+            (
+                "Friends started playing",
+                format!("{first}, {second}, and {other_friends} started playing {game_title}."),
+            )
+        }
     }
 }
 
@@ -651,14 +707,9 @@ fn notify_game_signal(
             format!("{} is full and ready to launch.", game.title),
             Some(NotificationAction::OpenCustomGames),
         ),
-        GameNotificationSignal::FriendPlaying { login, game } if preferences.friend_playing => {
-            notifications::add(
-                out,
-                NotificationKind::FriendPlaying,
-                "Friend started playing",
-                format!("{login} started playing {}.", game.title),
-                None,
-            )
+        GameNotificationSignal::FriendsPlaying { logins, game } if preferences.friend_playing => {
+            let (title, message) = format_friends_playing(&logins, &game.title);
+            notifications::add(out, NotificationKind::FriendPlaying, title, message, None);
         }
         GameNotificationSignal::OwnGameEnded(game) if preferences.review_reminder => {
             notifications::add(
@@ -777,12 +828,99 @@ mod tests {
         assert_eq!(signals.len(), 2);
         assert!(signals.iter().any(|signal| matches!(
             signal,
-            GameNotificationSignal::FriendPlaying { login, game }
-                if login == "FRIEND" && game.id == 2
+            GameNotificationSignal::FriendsPlaying { logins, game }
+                if logins == &["FRIEND"] && game.id == 2
         )));
         assert!(signals.iter().any(|signal| matches!(
             signal,
             GameNotificationSignal::OwnGameEnded(game) if game.id == 1
         )));
+    }
+
+    #[test]
+    fn multiple_friends_in_same_game_produce_single_notification_signal() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.observe_live(
+            &[],
+            &["Friend1".into(), "Friend2".into(), "Friend3".into()],
+            None,
+        );
+
+        let signals = tracker.observe_live(
+            &[game(
+                10,
+                "Host",
+                &["Friend1", "Friend2", "Friend3", "Other"],
+                4,
+                4,
+            )],
+            &["Friend1".into(), "Friend2".into(), "Friend3".into()],
+            None,
+        );
+        assert_eq!(signals.len(), 1);
+        let GameNotificationSignal::FriendsPlaying { logins, game } = &signals[0] else {
+            panic!("expected FriendsPlaying signal");
+        };
+        assert_eq!(game.id, 10);
+        assert_eq!(logins, &["Friend1", "Friend2", "Friend3"]);
+    }
+
+    #[test]
+    fn format_friends_playing_messages() {
+        let (title1, msg1) = format_friends_playing(&["Alice".into()], "1.7k+");
+        assert_eq!(title1, "Friend started playing");
+        assert_eq!(msg1, "Alice started playing 1.7k+.");
+
+        let (title2, msg2) = format_friends_playing(&["Alice".into(), "Bob".into()], "1.7k+");
+        assert_eq!(title2, "Friends started playing");
+        assert_eq!(msg2, "Alice and Bob started playing 1.7k+.");
+
+        let (title3, msg3) =
+            format_friends_playing(&["Alice".into(), "Bob".into(), "Charlie".into()], "1.7k+");
+        assert_eq!(title3, "Friends started playing");
+        assert_eq!(msg3, "Alice, Bob, and Charlie started playing 1.7k+.");
+
+        let (title5, msg5) = format_friends_playing(
+            &[
+                "Doni-".into(),
+                "Terarii".into(),
+                "VindexNoob".into(),
+                "KnownSniper".into(),
+                "Resistance".into(),
+            ],
+            "1.7k+",
+        );
+        assert_eq!(title5, "Friends started playing");
+        assert_eq!(
+            msg5,
+            "Doni-, Terarii, and 3 other friends started playing 1.7k+."
+        );
+    }
+
+    #[test]
+    fn suppression_window_silences_initial_connection_burst() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.mark_authenticated();
+
+        // First packet
+        assert!(tracker
+            .observe_live(
+                &[game(1, "Host1", &["Friend1"], 1, 2)],
+                &["Friend1".into()],
+                None
+            )
+            .is_empty());
+
+        // Subsequent packets within the suppression window still establish baseline without firing
+        assert!(tracker
+            .observe_live(
+                &[
+                    game(1, "Host1", &["Friend1"], 1, 2),
+                    game(2, "Host2", &["Friend2"], 1, 2),
+                ],
+                &["Friend1".into(), "Friend2".into()],
+                None,
+            )
+            .is_empty());
     }
 }

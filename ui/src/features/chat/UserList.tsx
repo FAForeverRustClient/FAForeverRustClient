@@ -328,7 +328,7 @@ const RosterRow = memo(function RosterRow({
               <img
                 src={profile.avatarUrl}
                 alt=""
-                title={profile.avatarTooltip}
+                title={profile.avatarTooltip || undefined}
                 width={40}
                 height={20}
                 loading="lazy"

@@ -25,6 +25,8 @@ interface Props {
   className?: string;
   placeholderClassName?: string;
   large?: boolean;
+  /** Prefer the clean FAF small/large preview over potentially stale vault art. */
+  preferCanonicalPreview?: boolean;
 }
 
 /** Map art with ordered fallbacks for stale, missing, and not-yet-loaded vault data. */
@@ -34,6 +36,7 @@ export function MapThumbnail({
   className,
   placeholderClassName,
   large = false,
+  preferCanonicalPreview = false,
 }: Props) {
   const presentation = mapPresentation(vault, mapName);
   const isGenerated = isGeneratedMap(mapName);
@@ -46,8 +49,8 @@ export function MapThumbnail({
       : undefined,
   );
   const candidates = useMemo(
-    () => mapThumbnailCandidates(vault, mapName, large, undefined, generatedPreview),
-    [generatedPreview, large, mapName, vault],
+    () => mapThumbnailCandidates(vault, mapName, large, undefined, generatedPreview, undefined, preferCanonicalPreview),
+    [generatedPreview, large, mapName, preferCanonicalPreview, vault],
   );
   const [candidateIndex, setCandidateIndex] = useState(0);
 

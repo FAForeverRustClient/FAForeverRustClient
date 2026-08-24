@@ -9,7 +9,11 @@
 
 import { Button } from "../design-system/Button";
 import { Icon } from "../design-system/Icon";
-import { TRUSTED_EMBED_SANDBOX } from "./embedSecurity";
+import { useEffect, useRef } from "react";
+import {
+  externalUrlFromEmbedMessage,
+  TRUSTED_EMBED_SANDBOX,
+} from "./embedSecurity";
 import { openHttpsUrl } from "./externalLinks";
 import { useTranslation } from "../i18n/useTranslation";
 
@@ -22,9 +26,28 @@ interface EmbeddedSiteProps {
 
 export function EmbeddedSite({ url, title }: EmbeddedSiteProps) {
   const { t } = useTranslation();
+  const frameRef = useRef<HTMLIFrameElement>(null);
   // Naming the origin is the honest version of a browser's address bar: the
   // page is not ours, and the button below hands it to a real browser.
   const host = new URL(url).host;
+
+  useEffect(() => {
+    const trustedOrigin = new URL(url).origin;
+    const receiveExternalLink = (event: MessageEvent<unknown>) => {
+      if (
+        event.origin !== trustedOrigin ||
+        event.source !== frameRef.current?.contentWindow
+      ) {
+        return;
+      }
+
+      const externalUrl = externalUrlFromEmbedMessage(event.data);
+      if (externalUrl) void openHttpsUrl(externalUrl).catch(() => undefined);
+    };
+
+    window.addEventListener("message", receiveExternalLink);
+    return () => window.removeEventListener("message", receiveExternalLink);
+  }, [url]);
 
   return (
     <div className="embed-view">
@@ -40,6 +63,7 @@ export function EmbeddedSite({ url, title }: EmbeddedSiteProps) {
         </Button>
       </div>
       <iframe
+        ref={frameRef}
         className="embed-frame"
         src={url}
         title={title}

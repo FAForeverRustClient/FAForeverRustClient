@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { VaultMap } from "../ipc/bindings";
 import {
   GENERATED_MAP_PLACEHOLDER_URL,
   effectiveReplayMapName,
@@ -73,6 +74,28 @@ describe("mapPresentation", () => {
       "/generated-map.svg",
     );
     expect(candidates).toEqual([GENERATED_MAP_PLACEHOLDER_URL]);
+  });
+
+  it("can prefer the clean canonical preview over stale vault artwork", () => {
+    const staleVaultMap = {
+      folderName: "scmp_009",
+      displayName: "Seton's Clutch",
+      thumbnailUrl: "https://content.faforever.com/maps/previews/small/scmp_009.png",
+      thumbnailUrlLarge: "https://content.faforever.com/maps/previews/large/scmp_009.png",
+    } as VaultMap;
+
+    const candidates = mapThumbnailCandidates(
+      [staleVaultMap],
+      "scmp_009",
+      false,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
+
+    expect(candidates[0]).toBe("https://content.faforever.com/maps/previews/small/scmp_009.png");
+    expect(candidates).not.toContain(staleVaultMap.thumbnailUrlLarge);
   });
 
   it("formats generated map presentation using Neroxis Map Generator as displayName", () => {

@@ -5,7 +5,7 @@ const root = resolve(import.meta.dirname, "..");
 const violations = [];
 // Generated output, not source: the same reason "dist" and "target" are here.
 const ignoredDirectories = new Set([
-  ".git", "context", "dist", "graphify-out", "natives", "node_modules", "target",
+  ".agents", ".git", "context", "dist", "graphify-out", "natives", "node_modules", "target",
 ]);
 
 async function sourceFiles(directory, extensions) {

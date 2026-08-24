@@ -153,8 +153,6 @@ fn read_latest_log(kind: String, app: tauri::AppHandle) -> Result<Option<LogPrev
     }))
 }
 
-/// UI → backend: enqueue a command with bounded backpressure; results still
-/// arrive asynchronously as events.
 #[tauri::command]
 async fn dispatch(command: AppCommand, core: tauri::State<'_, Core>) -> Result<(), String> {
     let core = core.0.clone();
@@ -262,6 +260,92 @@ fn trim_working_set() {
     }
 }
 
+// The News Hub creates most article cards after page load. WebView popup hooks
+// do not receive every target="_blank" click from a sandboxed iframe, so mirror
+// the Java client's approach: capture every current and future News Hub anchor
+// and ask the trusted top-level UI to open it externally. The UI validates the
+// frame origin, message source, and final HTTPS URL before invoking the opener.
+const NEWS_EXTERNAL_LINK_SCRIPT: &str = r##"
+(() => {
+  const host = window.location.hostname.toLowerCase();
+  const isNewsHub =
+    (host === "www.faforever.com" || host === "faforever.com") &&
+    (window.location.pathname === "/newshub" ||
+      window.location.pathname.startsWith("/newshub/"));
+  if (!isNewsHub) return;
+
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented || event.button !== 0) return;
+
+    const target = event.target instanceof Element
+      ? event.target
+      : event.target?.parentElement;
+    const anchor = target?.closest("a[href]");
+    if (!anchor) return;
+
+    const rawHref = anchor.getAttribute("href")?.trim();
+    if (!rawHref || rawHref.startsWith("#")) return;
+
+    let candidate = rawHref;
+    if (/^youtube\.com\//i.test(candidate)) {
+      candidate = `https://www.${candidate}`;
+    } else if (/^youtu\.be\//i.test(candidate)) {
+      candidate = `https://${candidate}`;
+    }
+
+    let resolved;
+    try {
+      resolved = new URL(candidate, document.baseURI);
+    } catch {
+      return;
+    }
+    if (resolved.protocol !== "https:") return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.top.postMessage(
+      { type: "faf:open-external-link", url: resolved.href },
+      "*",
+    );
+  }, true);
+})();
+"##;
+
+fn external_link_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::<R>::new("external-link-handler")
+        .on_navigation(|webview, url| {
+            let url_str = url.as_str();
+            let is_internal = url_str.starts_with("http://localhost")
+                || url_str.starts_with("https://localhost")
+                || url_str.starts_with("https://tauri.localhost")
+                || url_str.starts_with("http://ipc.localhost")
+                || url_str == "https://www.faforever.com/newshub"
+                || url_str == "https://faforever.com/newshub"
+                || url_str.starts_with("https://www.faforever.com/dist/")
+                || url_str.starts_with("https://faforever.github.io/spooky-db");
+            if !is_internal {
+                let target_url = if let Some(stripped) =
+                    url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/")
+                {
+                    format!("https://www.youtube.com/{stripped}")
+                } else if let Some(stripped) =
+                    url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
+                {
+                    format!("https://youtu.be/{stripped}")
+                } else {
+                    url_str.to_string()
+                };
+                let _ = webview
+                    .app_handle()
+                    .opener()
+                    .open_url(&target_url, None::<&str>);
+                return false;
+            }
+            true
+        })
+        .build()
+}
+
 pub fn run() {
     #[cfg(windows)]
     if std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_err() {
@@ -275,6 +359,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(external_link_plugin())
         .on_window_event(|window, event| {
             #[cfg(windows)]
             if matches!(event, tauri::WindowEvent::Focused(false)) {
@@ -424,6 +509,72 @@ pub fn run() {
             });
 
             app.manage(Core(core));
+
+            // Create the main window programmatically so we can attach
+            // on_navigation and on_new_window hooks. These intercept external
+            // links that bubble up from the embedded news/unit iframe via
+            // allow-popups-to-escape-sandbox and allow-top-navigation-by-user-activation,
+            // routing them to the OS default browser via the opener plugin.
+            let nav_handle = app.handle().clone();
+            let new_win_handle = app.handle().clone();
+            tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::default(),
+            )
+            .title("FAForever Client")
+            .inner_size(1100.0, 720.0)
+            .resizable(true)
+            .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
+            .on_navigation(move |url| {
+                let url_str = url.as_str();
+                // Allow the Tauri app origin and the two embedded site roots.
+                let is_internal = url_str.starts_with("http://localhost")
+                    || url_str.starts_with("https://localhost")
+                    || url_str.starts_with("https://tauri.localhost")
+                    || url_str.starts_with("http://ipc.localhost")
+                    || url_str == "https://www.faforever.com/newshub"
+                    || url_str == "https://faforever.com/newshub"
+                    || url_str.starts_with("https://www.faforever.com/dist/")
+                    || url_str.starts_with("https://faforever.github.io/spooky-db");
+                if !is_internal {
+                    let target_url = if let Some(stripped) =
+                        url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/")
+                    {
+                        format!("https://www.youtube.com/{stripped}")
+                    } else if let Some(stripped) =
+                        url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
+                    {
+                        format!("https://youtu.be/{stripped}")
+                    } else {
+                        url_str.to_string()
+                    };
+                    let _ = nav_handle.opener().open_url(&target_url, None::<&str>);
+                    return false;
+                }
+                true
+            })
+            .on_new_window(move |url, _features| {
+                // Any new-window request (target="_blank", window.open, popup)
+                // that escapes the iframe sandbox is routed to the OS browser.
+                let url_str = url.as_str();
+                if url_str.starts_with("http://") || url_str.starts_with("https://") {
+                    let target_url = if let Some(stripped) =
+                        url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/")
+                    {
+                        format!("https://www.youtube.com/{stripped}")
+                    } else if let Some(stripped) =
+                        url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
+                    {
+                        format!("https://youtu.be/{stripped}")
+                    } else {
+                        url_str.to_string()
+                    };
+                    let _ = new_win_handle.opener().open_url(&target_url, None::<&str>);
+                }
+                tauri::webview::NewWindowResponse::Deny
+            })
+            .build()?;
 
             // Match the Python client's small but useful tray surface: restore
             // the window, terminate a stuck/running FA process without closing
