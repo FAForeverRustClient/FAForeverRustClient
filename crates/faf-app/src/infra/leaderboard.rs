@@ -1039,10 +1039,7 @@ mod tests {
             entries[0].avatar_url.as_deref(),
             Some("https://content.example/gold.png")
         );
-        assert_eq!(
-            entries[0].avatar_tooltip.as_deref(),
-            Some("Gold Champion")
-        );
+        assert_eq!(entries[0].avatar_tooltip.as_deref(), Some("Gold Champion"));
         assert_eq!(entries[0].rank, 1);
     }
 

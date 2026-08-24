@@ -1287,8 +1287,8 @@ img.chat-game-map {
 }
 
 .chat-game-status.is-hosting {
-  color: #eab308;
-  background: color-mix(in srgb, #eab308 12%, transparent);
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
 }
 
 .chat-game-status.is-lobbying {
