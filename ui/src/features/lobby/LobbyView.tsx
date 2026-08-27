@@ -11,7 +11,7 @@ import { HostCoopModal } from "./host/HostCoopModal";
 import { MatchmakingPanel } from "./MatchmakingPanel";
 import { CoopPanel } from "./CoopPanel";
 import { GalacticWarPanel } from "./GalacticWarPanel";
-import { CustomGamesBrowser, type GameViewMode } from "./CustomGamesBrowser";
+import { CustomGamesBrowser, isCustomGameRanked, type GameViewMode } from "./CustomGamesBrowser";
 import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
 import { GameMapImage } from "./GameMapImage";
 import { PlayModeTabs } from "./PlayModeTabs";
@@ -99,12 +99,14 @@ function GameDetails({
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
+  const mods = useAppStore((state) => state.state.mods);
   const lobby = useAppStore((state) => state.state.lobby);
   const social = useAppStore((state) => state.state.social);
   const player = useAppStore((state) => state.state.auth.player);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const vaultMap = findVaultMap(maps.vault, game.map);
   const presentation = mapPresentation(maps.vault, game.map);
+  const isRanked = isCustomGameRanked(game, maps.vault, mods.vault);
   const isGenerated = isGeneratedMap(game.map);
   const installed = maps.installed.some((map) => map.folderName.toLowerCase() === game.map.toLowerCase() || map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`));
   const isGeneratingThisMap =
@@ -190,6 +192,14 @@ function GameDetails({
           <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
           <div><dt>{t("lobby.details.averageRating")}</dt><dd>{game.averageRating || t("lobby.details.unrated")}</dd></div>
           <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} – ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
+          <div>
+            <dt>{t("lobby.browser.ranking")}</dt>
+            <dd>
+              <span className={isRanked ? "map-vault-type ranked" : "map-vault-type unranked"}>
+                {t(isRanked ? "lobby.browser.ranked" : "lobby.browser.unranked")}
+              </span>
+            </dd>
+          </div>
           <div><dt>{t("lobby.details.visibility")}</dt><dd>{game.visibility || t("lobby.details.public")}</dd></div>
         </dl>
         {simMods.length > 0 && (
@@ -286,12 +296,14 @@ export function LobbyView() {
   const galacticWar = useAppStore((state) => state.state.galacticWar);
   const selectedMissionId = useAppStore((state) => state.state.coop.selectedMissionId);
   const browsing = useAppStore((state) => state.state.settings.browsing);
+  const mods = useAppStore((state) => state.state.mods);
   const gameBrowser = browsing.customGamesBrowser;
   const [search, setSearch] = useState("");
   const sort: SortMode = gameBrowser.sort;
   const gameView: GameViewMode = browsing.customGamesView;
   const hidePrivate = gameBrowser.hidePrivate;
   const hideModded = gameBrowser.hideModded;
+  const hideUnranked = gameBrowser.hideUnranked;
   const applyFilters = gameBrowser.applyFilters;
   const rules: GameFilterRule[] = gameBrowser.rules;
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -369,6 +381,9 @@ export function LobbyView() {
     if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
       ipc.send({ kind: "Maps", command: { type: "loadVault" } });
     }
+    if (useAppStore.getState().state.mods.vaultStatus.type === "idle") {
+      ipc.send({ kind: "Mods", command: { type: "loadVault" } });
+    }
   }, []);
 
   const customGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() !== "coop" && game.gameType.toLocaleLowerCase() !== "coop"), [lobby.games]);
@@ -391,9 +406,10 @@ export function LobbyView() {
       )
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
+      .filter((game) => !hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
       .sort((left, right) => compareGames(sort, left, right));
-  }, [applyFilters, customGames, hideModded, hidePrivate, maps.vault, rules, search, sort]);
+  }, [applyFilters, customGames, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort]);
 
   const filteredCoopGames = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -412,9 +428,10 @@ export function LobbyView() {
       )
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
+      .filter((game) => !hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
       .sort((left, right) => compareGames(sort, left, right));
-  }, [applyFilters, coopGames, hideModded, hidePrivate, maps.vault, rules, search, sort]);
+  }, [applyFilters, coopGames, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort]);
 
   const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
   const inGame = (list: Game[], nickname: string) =>
@@ -527,6 +544,7 @@ export function LobbyView() {
               viewMode={gameView}
               hidePrivate={hidePrivate}
               hideModded={hideModded}
+              hideUnranked={hideUnranked}
               applyFilters={applyFilters}
               filterCount={rules.length}
               connected={connected}
@@ -535,6 +553,7 @@ export function LobbyView() {
               onViewMode={selectGameView}
               onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
               onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+              onHideUnranked={(value) => updateGameBrowser({ hideUnranked: value })}
               onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
               onOpenFilters={() => setFiltersOpen(true)}
               onHost={() => handleHostCoop()}
@@ -554,6 +573,7 @@ export function LobbyView() {
             viewMode={gameView}
             hidePrivate={hidePrivate}
             hideModded={hideModded}
+            hideUnranked={hideUnranked}
             applyFilters={applyFilters}
             filterCount={rules.length}
             connected={connected}
@@ -562,6 +582,7 @@ export function LobbyView() {
             onViewMode={selectGameView}
             onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
             onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+            onHideUnranked={(value) => updateGameBrowser({ hideUnranked: value })}
             onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
             onOpenFilters={() => setFiltersOpen(true)}
             onHost={() => {

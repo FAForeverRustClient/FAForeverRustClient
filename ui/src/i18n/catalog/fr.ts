@@ -1536,6 +1536,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.listView": "Vue en liste",
   "lobby.toolbar.hidePrivate": "Masquer les privées",
   "lobby.toolbar.hideModded": "Masquer les moddées",
+  "lobby.toolbar.hideUnranked": "Masquer les non classées",
   "lobby.toolbar.applyFilters": "Appliquer les filtres",
   "lobby.toolbar.hostGame": "Héberger une partie",
 
@@ -1586,6 +1587,9 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.averageRating": "Classement moyen",
   "lobby.browser.ratingRange": "Plage de classement",
   "lobby.browser.visibility": "Visibilité",
+  "lobby.browser.ranking": "Classement",
+  "lobby.browser.ranked": "Classé",
+  "lobby.browser.unranked": "Non classé",
   "lobby.browser.mapSize": "Taille de la carte",
   "lobby.browser.unrated": "Non classée",
   "lobby.browser.public": "Publique",

@@ -11,6 +11,7 @@ interface Props {
   viewMode: GameViewMode;
   hidePrivate: boolean;
   hideModded: boolean;
+  hideUnranked: boolean;
   applyFilters: boolean;
   filterCount: number;
   connected: boolean;
@@ -19,6 +20,7 @@ interface Props {
   onViewMode: (value: GameViewMode) => void;
   onHidePrivate: (value: boolean) => void;
   onHideModded: (value: boolean) => void;
+  onHideUnranked: (value: boolean) => void;
   onApplyFilters: (value: boolean) => void;
   onOpenFilters: () => void;
   onHost: () => void;
@@ -56,6 +58,14 @@ export function CustomGamesToolbar(props: Props) {
           onChange={(event) => props.onHideModded(event.target.checked)}
         />
         {t("lobby.toolbar.hideModded")}
+      </label>
+      <label className="toolbar-check">
+        <input
+          type="checkbox"
+          checked={props.hideUnranked}
+          onChange={(event) => props.onHideUnranked(event.target.checked)}
+        />
+        {t("lobby.toolbar.hideUnranked")}
       </label>
       <label className="toolbar-check">
         <input

@@ -1592,6 +1592,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.listView": "Списком",
   "lobby.toolbar.hidePrivate": "Скрыть приватные",
   "lobby.toolbar.hideModded": "Скрыть с модами",
+  "lobby.toolbar.hideUnranked": "Скрыть без рейтинга",
   "lobby.toolbar.applyFilters": "Применить фильтры",
   "lobby.toolbar.hostGame": "Создать игру",
 
@@ -1642,6 +1643,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.averageRating": "Средний рейтинг",
   "lobby.browser.ratingRange": "Диапазон рейтинга",
   "lobby.browser.visibility": "Видимость",
+  "lobby.browser.ranking": "Рейтинг",
+  "lobby.browser.ranked": "Рейтинговая",
+  "lobby.browser.unranked": "Без рейтинга",
   "lobby.browser.mapSize": "Размер карты",
   "lobby.browser.unrated": "Без рейтинга",
   "lobby.browser.public": "Публичная",

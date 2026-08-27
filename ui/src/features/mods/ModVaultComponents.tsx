@@ -56,30 +56,27 @@ export function ModCard({
   mod,
   installed,
   active,
+  favorite,
   busy,
   working,
   onSelect,
   onInstall,
+  onUninstall,
+  onToggleFavorite,
 }: {
   mod: VaultMod;
   installed: InstalledMod | undefined;
   active: boolean;
+  favorite?: boolean;
   busy: boolean;
   working: boolean;
   onSelect: () => void;
   onInstall: () => void;
+  onUninstall?: () => void;
+  onToggleFavorite?: () => void;
 }) {
   const { t } = useTranslation();
   const updateAvailable = Boolean(installed && installed.version !== mod.version);
-  // What the card says about your relationship to the mod, which outranks the
-  // ranked-safety note once you actually have it installed.
-  const state = updateAvailable
-    ? { label: t("mods.vault.state.updateAvailable"), tone: "warn" as const }
-    : installed
-      ? { label: t(installed.enabled ? "mods.vault.state.enabled" : "mods.vault.state.installed"), tone: "ok" as const }
-      : mod.ranked
-        ? { label: t("mods.vault.state.ranked"), tone: "ok" as const }
-        : { label: t("mods.vault.state.unranked"), tone: "muted" as const };
 
   return (
     <article className={active ? "mod-vault-card surface-panel active" : "mod-vault-card surface-panel"}>
@@ -101,26 +98,65 @@ export function ModCard({
             number, a count and a date, and the rules cost more attention than
             the facts did. */}
         <span className="mod-vault-card-facts">
-          <span className={`mod-vault-type ${mod.modType}`}>{mod.modType === "ui" ? "UI" : "SIM"}</span>
-          <span className="mod-vault-fact" title={mod.reviews
-            ? t("mods.vault.ratingTooltip", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews })
-            : t("mods.vault.noReviews")}>
-            <Icon name="star" size={12} />
-            {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : "N/A"}
+          <span className="mod-vault-facts-row">
+            <span className={`mod-vault-type ${mod.modType}`}>{mod.modType === "ui" ? "UI" : "SIM"}</span>
+            {mod.modType === "sim" && (
+              <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
+                {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
+              </span>
+            )}
           </span>
-          <span className="mod-vault-fact" title={t("mods.vault.lastUpdated")}>
-            {formatShortDate(mod.updatedAt || mod.createdAt)}
+          <span className="mod-vault-facts-row mod-vault-facts-sub">
+            <span className="mod-vault-fact is-date" title={t("mods.vault.lastUpdated")}>
+              {formatShortDate(mod.updatedAt || mod.createdAt)}
+            </span>
+            <span
+              className="mod-vault-fact is-rating"
+              title={mod.reviews
+                ? t("mods.vault.ratingTooltip", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews })
+                : t("mods.vault.noReviews")}
+            >
+              <Icon name="star" size={12} />
+              {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : "N/A"}
+            </span>
           </span>
         </span>
       </button>
 
       <div className="mod-vault-card-action">
-        <span className={`mod-vault-state is-${state.tone}`}>{state.label}</span>
-        {(!installed || updateAvailable) && (
-          <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
-            {t(working ? "mods.vault.busy" : updateAvailable ? "mods.vault.update" : "mods.vault.install")}
+        {onToggleFavorite && (
+          <Button
+            className={favorite ? "mod-favorite-button active" : "mod-favorite-button"}
+            aria-label={favorite ? `Remove ${mod.displayName} from favorites` : `Add ${mod.displayName} to favorites`}
+            aria-pressed={favorite}
+            title={t(favorite ? "mods.vault.removeFavorite" : "mods.vault.addFavorite")}
+            onClick={onToggleFavorite}
+          >
+            <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
           </Button>
         )}
+        <span className="mod-vault-card-buttons">
+          {installed ? (
+            updateAvailable ? (
+              <>
+                <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
+                  {t("mods.vault.uninstall")}
+                </Button>
+                <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
+                  {t(working ? "mods.vault.busy" : "mods.vault.update")}
+                </Button>
+              </>
+            ) : (
+              <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
+                {t(working ? "mods.vault.busy" : "mods.vault.uninstall")}
+              </Button>
+            )
+          ) : (
+            <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
+              {t(working ? "mods.vault.busy" : "mods.vault.install")}
+            </Button>
+          )}
+        </span>
       </div>
     </article>
   );
@@ -129,21 +165,25 @@ export function ModCard({
 export function ModDetailPanel({
   mod,
   installed,
+  favorite,
   busy,
   installing,
   toggling,
   onInstall,
   onToggle,
   onUninstall,
+  onToggleFavorite,
 }: {
   mod: VaultMod;
   installed: InstalledMod | undefined;
+  favorite?: boolean;
   busy: boolean;
   installing: boolean;
   toggling: boolean;
   onInstall: () => void;
   onToggle: () => void;
   onUninstall: () => void;
+  onToggleFavorite?: () => void;
 }) {
   const { t } = useTranslation();
   const description = cleanDescription(mod.description);
@@ -159,9 +199,11 @@ export function ModDetailPanel({
             <span className={`vault-badge mod-badge mod-badge-${mod.modType}`}>
               {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
             </span>
-            <span className={`vault-badge is-${mod.ranked ? "ok" : "warn"} ${mod.ranked ? "ranked" : "unranked"}`}>
-              {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
-            </span>
+            {mod.modType === "sim" && (
+              <span className={`vault-badge is-${mod.ranked ? "ok" : "warn"} ${mod.ranked ? "ranked" : "unranked"}`}>
+                {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
+              </span>
+            )}
             {mod.recommended && <span className="vault-badge is-accent">{t("mods.vault.featured")}</span>}
           </div>
           <h2 className="vault-detail-title">{mod.displayName}</h2>
@@ -206,6 +248,16 @@ export function ModDetailPanel({
 
         <div className="vault-detail-actions mod-vault-detail-actions">
           <div className="vault-detail-actions-left">
+            {onToggleFavorite && (
+              <Button
+                className={favorite ? "vault-action-favorite is-active mod-favorite-button active" : "vault-action-favorite mod-favorite-button"}
+                aria-pressed={favorite}
+                onClick={onToggleFavorite}
+              >
+                <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
+                {t(favorite ? "mods.vault.favorited" : "mods.vault.favorite")}
+              </Button>
+            )}
             <Button onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>
               {t("mods.vault.reviews")}
             </Button>

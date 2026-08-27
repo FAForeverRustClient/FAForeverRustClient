@@ -50,6 +50,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                     sort: CustomGameSort::Age,
                     hide_private: true,
                     hide_modded: false,
+                    hide_unranked: false,
                     apply_filters: true,
                     rules: vec![CustomGameFilterRule {
                         field: CustomGameFilterField::Map,
@@ -66,6 +67,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 },
                 host_game: HostGamePreferences::default(),
                 favorite_maps: vec!["adaptive_tabula.v0006".into()],
+                favorite_mods: vec!["eco_graph".into()],
                 map_vault_preset: "newest".into(),
                 mod_vault_preset: "rating".into(),
                 mod_presets: Vec::new(),
@@ -97,6 +99,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.live_replay_filters.search, "tournament");
     assert_eq!(state.live_replay_filters.active_players, "4");
     assert_eq!(state.favorite_maps, ["adaptive_tabula.v0006"]);
+    assert_eq!(state.favorite_mods, ["eco_graph"]);
     assert_eq!(state.map_vault_preset, "newest");
     assert_eq!(state.mod_vault_preset, "rating");
     assert_eq!(state.leaderboard_rating_columns, ["rating", "games"]);

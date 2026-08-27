@@ -23,6 +23,9 @@
 }
 
 .mod-vault-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: 0;
   overflow: hidden;
   transition: background-color 120ms ease, border-color 120ms ease;
@@ -40,6 +43,7 @@
 
 .mod-vault-card-main {
   display: flex;
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -61,7 +65,7 @@
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
@@ -78,7 +82,7 @@
 /* Mod art is a logo on transparency, so `contain` already leaves margin of its
    own. 18px on top of that shrank the one thing identifying the mod. */
 .mod-vault-thumb {
-  padding: 10px;
+  padding: 8px;
 }
 
 .mod-vault-preview-empty {
@@ -114,6 +118,18 @@
 }
 
 .mod-vault-type.sim {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
+}
+
+.mod-vault-type.ranked {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
+}
+
+.mod-vault-type.unranked {
   color: var(--color-warn);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
@@ -156,13 +172,30 @@
    values, which read as a spec sheet rather than a card. */
 .mod-vault-card-facts {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   width: 100%;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 10px;
+  margin-top: auto;
   padding: 0 12px 12px;
   color: var(--color-muted);
   font-size: 12px;
+}
+
+.mod-vault-facts-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  width: 100%;
+}
+
+.mod-vault-facts-sub {
+  justify-content: space-between;
+}
+
+.mod-vault-facts-sub .is-rating {
+  margin-left: auto;
 }
 
 .mod-vault-fact {
@@ -171,15 +204,22 @@
   align-items: center;
   gap: 4px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.mod-vault-fact svg {
+.mod-vault-fact.is-rating svg {
   flex: 0 0 auto;
   color: var(--color-warn);
 }
 
+.mod-vault-fact.is-date {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
 .mod-vault-card-action {
   display: flex;
+  margin-top: auto;
   min-height: 40px;
   padding: 6px 8px;
   align-items: center;
@@ -220,10 +260,29 @@
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
 }
 
+.mod-vault-card-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .mod-vault-card-action button {
   min-height: 28px;
   padding: 0 10px;
   font-size: 12px;
+}
+
+.mod-vault-card-action .mod-favorite-button {
+  flex: 0 0 28px;
+  width: 28px;
+  padding: 0;
+  color: var(--color-muted);
+}
+
+.mod-favorite-button.active {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
 .mod-vault-details {
@@ -246,10 +305,11 @@
   padding: 24px;
 }
 
-.mod-vault-detail-body {
 .mod-vault-uninstall,
 .mod-vault-uninstall-confirm {
   color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
 .mod-vault-uninstall:hover,
@@ -257,6 +317,7 @@
 .mod-vault-uninstall-confirm:hover,
 .mod-vault-uninstall-confirm:focus-visible {
   border-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
 }
 
 .mod-uninstall-dialog {
@@ -372,7 +433,7 @@
 
 
 @media (max-width: 700px) {
-.mods-heading {
+  .mods-heading {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -391,6 +452,28 @@
 
   .mod-vault-details {
     display: block;
+  }
+
+  .mod-vault-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  .installed-mod-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .installed-mod-card {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .installed-mod-card .mod-vault-thumb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .installed-mod-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }
 
@@ -555,27 +638,4 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-}
-
-  .mod-vault-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-
-  .installed-mod-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .installed-mod-card {
-    grid-template-columns: 60px minmax(0, 1fr);
-  }
-
-  .installed-mod-card .mod-vault-thumb {
-    width: 60px;
-    height: 60px;
-  }
-
-  .installed-mod-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-  }
 }

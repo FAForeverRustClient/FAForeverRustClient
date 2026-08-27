@@ -7,7 +7,6 @@ import { useAppStore } from "../../store/store";
 import { LeagueLeaderboardPanel, LeagueSeasonToolbar } from "./LeagueLeaderboardPanel";
 import { RatingLeaderboardPanel } from "./RatingLeaderboardPanel";
 import "./leaderboard.css";
-import { openPlayerCard } from "../player-card/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const setMode = (mode: LeaderboardMode) => ipc.send({
@@ -23,7 +22,6 @@ const loadCatalog = () => ipc.send({ kind: "Leaderboard", command: { type: "load
 export function LeaderboardView() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
-  const player = useAppStore((store) => store.state.auth.player);
   const currentSeason = state.seasons.find((season) => season.id === state.selectedSeasonId) ?? null;
 
   useEffect(() => {
@@ -34,14 +32,13 @@ export function LeaderboardView() {
     <div className="leaderboard-view">
       <header className="leaderboard-header">
         <div className="leaderboard-header-actions">
-          {player && <Button onClick={() => void openPlayerCard(player.id, player.name)}><Icon name="users" size={16} /> {t("leaderboard.view.myProfile")}</Button>}
           <div className="leaderboard-mode" role="group" aria-label={t("leaderboard.view.leaderboardMode")}>
-          <Button variant={state.mode === "ratings" ? "primary" : "ghost"} onClick={() => void setMode("ratings")}>
-            <Icon name="activity" size={16} /> {t("leaderboard.view.ratings")}
-          </Button>
-          <Button variant={state.mode === "leagues" ? "primary" : "ghost"} onClick={() => void setMode("leagues")}>
-            <Icon name="leaderboard" size={16} /> {t("leaderboard.view.leagues")}
-          </Button>
+            <Button variant={state.mode === "ratings" ? "primary" : "ghost"} onClick={() => void setMode("ratings")}>
+              <Icon name="activity" size={16} /> {t("leaderboard.view.ratings")}
+            </Button>
+            <Button variant={state.mode === "leagues" ? "primary" : "ghost"} onClick={() => void setMode("leagues")}>
+              <Icon name="leaderboard" size={16} /> {t("leaderboard.view.leagues")}
+            </Button>
           </div>
         </div>
         {state.mode === "leagues" && currentSeason && (

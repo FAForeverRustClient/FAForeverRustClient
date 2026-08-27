@@ -26,7 +26,6 @@ import { isWithinNumberRange } from "../../shared/filterRanges";
 import { EMPTY_MAP_QUERY } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import {
-  installNote,
   isOfficialMap,
   MapCard,
   MapDetailPanel,
@@ -503,7 +502,20 @@ function VaultView({ busy }: { busy: boolean }) {
                   const isInstalled = mapInstalled(map, installedFolders);
                   const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
                   const favorite = favoriteFolders.has(map.folderName.toLocaleLowerCase());
-                  return <MapCard key={map.folderName} map={map} active={selected?.folderName === map.folderName} installed={isInstalled} busy={isBusy} favorite={favorite} onSelect={() => setSelectedFolder(map.folderName)} onInstall={() => installMap(map.folderName, map.downloadUrl)} onToggleFavorite={() => toggleFavorite(map.folderName)} />;
+                  return (
+                    <MapCard
+                      key={map.folderName}
+                      map={map}
+                      active={selected?.folderName === map.folderName}
+                      installed={isInstalled}
+                      busy={isBusy}
+                      favorite={favorite}
+                      onSelect={() => setSelectedFolder(map.folderName)}
+                      onInstall={() => installMap(map.folderName, map.downloadUrl)}
+                      onUninstall={() => setPendingUninstall(map)}
+                      onToggleFavorite={() => toggleFavorite(map.folderName)}
+                    />
+                  );
                 })}
               </div>
               {totalPages > 1 && (
@@ -534,7 +546,25 @@ function VaultView({ busy }: { busy: boolean }) {
 
       {pendingUninstall && <MapUninstallDialog mapName={pendingUninstall.displayName} onCancel={() => setPendingUninstall(null)} onConfirm={() => { uninstallMap(pendingUninstall.folderName); setPendingUninstall(null); }} />}
       {pendingHide && <MapHideDialog mapName={pendingHide.displayName} onCancel={() => setPendingHide(null)} onConfirm={() => { setMapVersionHidden(pendingHide.versionId, true); setPendingHide(null); }} />}
-      {previewMap && <Modal onClose={() => setPreviewMap(null)}><div className="map-preview-dialog"><h2>{previewMap.displayName}</h2><MapPreview map={previewMap} large /><p>{sizeLabel(previewMap)} · {previewMap.maxPlayers} players</p></div></Modal>}
+      {previewMap && (
+        <Modal onClose={() => setPreviewMap(null)}>
+          <div className="map-preview-dialog">
+            <h2>{previewMap.displayName}</h2>
+            <MapPreview map={previewMap} large />
+            <p>
+              {sizeLabel(previewMap)} · {previewMap.maxPlayers} players
+              {typeof previewMap.ranked === "boolean" && (
+                <>
+                  {" · "}
+                  <span className={previewMap.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
+                    {t(previewMap.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
@@ -811,11 +841,17 @@ function InstalledView({ busy }: { busy: boolean }) {
             {pageMaps.map((map) => {
               const metadata = vaultByFolder.get(map.folderName.toLocaleLowerCase());
               const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
+              const isRanked = metadata ? metadata.ranked : isOfficialMap(map.folderName);
               return (
                 <article className="installed-map-card surface-panel" key={map.folderName}>
                   <MapPreview map={metadata ?? map} />
                   <span>
-                    <strong>{metadata?.displayName || map.displayName}</strong>
+                    <span className="installed-map-title-row">
+                      <strong title={metadata?.displayName || map.displayName}>{metadata?.displayName || map.displayName}</strong>
+                      <span className={isRanked ? "map-vault-type ranked" : "map-vault-type unranked"}>
+                        {t(isRanked ? "maps.vault.ranked" : "maps.vault.unranked")}
+                      </span>
+                    </span>
                     <small>{map.folderName}</small>
                     <small>
                       {sizeLabel(metadata ?? { width: map.width ?? 512, height: map.height ?? 512 })} · {map.maxPlayers ?? metadata?.maxPlayers ?? 2} players
@@ -836,11 +872,13 @@ function InstalledView({ busy }: { busy: boolean }) {
             })}
           </div>
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
+            <div className="vault-pagination">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </div>
           )}
         </section>
       )}
@@ -874,13 +912,11 @@ export function MapsView() {
   const installed = useAppStore((state) => state.state.maps.installed);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
-  const note = installNote(installStatus);
   const busy = installStatus.type === "installing";
   const { Component } = SUB_VIEWS[subView];
 
   return (
     <div className="maps-workspace">
-      {note && <div className="vault-note muted">{note}</div>}
       <div className="vault-subnav">
         <SectionTabs
           active={subView}

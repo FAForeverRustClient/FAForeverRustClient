@@ -4301,6 +4301,7 @@ fn cases() -> Vec<Case> {
                             sort: CustomGameSort::Age,
                             hide_private: true,
                             hide_modded: true,
+                            hide_unranked: false,
                             apply_filters: true,
                             rules: vec![
                                 CustomGameFilterRule {
@@ -4342,6 +4343,7 @@ fn cases() -> Vec<Case> {
                             rating_max: 1_700,
                         },
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
+                        favorite_mods: vec!["eco_graph".into()],
                         map_vault_preset: "recommended".into(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),

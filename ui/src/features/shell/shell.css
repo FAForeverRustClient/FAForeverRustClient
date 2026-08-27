@@ -296,7 +296,7 @@
 .content-inner {
   min-width: 0;
   min-height: 100%;
-  padding: 28px;
+  padding: 28px 28px 18px;
   box-sizing: border-box;
 }
 

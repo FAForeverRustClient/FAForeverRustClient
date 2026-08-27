@@ -397,11 +397,13 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
             ))}
           </div>
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
+            <div className="vault-pagination">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </div>
           )}
         </section>
       ) : null}

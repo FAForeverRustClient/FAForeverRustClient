@@ -82,6 +82,7 @@ export const VALID_MAP_VAULT_PRESETS = [
 
 export const VALID_MOD_VAULT_PRESETS = [
   "recommended",
+  "favorites",
   // See VALID_MAP_VAULT_PRESETS.
   "mine",
   "rating",
@@ -97,6 +98,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     sort: "players",
     hidePrivate: false,
     hideModded: false,
+    hideUnranked: false,
     applyFilters: false,
     rules: [],
   },
@@ -105,6 +107,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   liveReplayFilters: { ...DEFAULT_LIVE_REPLAY_FILTERS },
   hostGame: { ...DEFAULT_HOST_GAME_PREFERENCES },
   favoriteMaps: [],
+  favoriteMods: [],
   mapVaultPreset: "recommended",
   modVaultPreset: "recommended",
   modPresets: [],
@@ -147,6 +150,7 @@ export function normalizeBrowsingPreferences(
     },
     hostGame: normalizeHostGamePreferences(preferences.hostGame),
     favoriteMaps: normalizeLabels(preferences.favoriteMaps ?? [], 512, 256).map(asciiLower),
+    favoriteMods: normalizeLabels(preferences.favoriteMods ?? [], 512, 256).map(asciiLower),
     mapVaultPreset: normalizeMapVaultPreset(preferences.mapVaultPreset),
     modVaultPreset: normalizeModVaultPreset(preferences.modVaultPreset),
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
@@ -208,7 +212,14 @@ function normalizeCustomGamesBrowser(
     rules.push(rule);
     if (rules.length === 64) break;
   }
-  return { ...preferences, rules };
+  return {
+    ...preferences,
+    hidePrivate: Boolean(preferences.hidePrivate),
+    hideModded: Boolean(preferences.hideModded),
+    hideUnranked: Boolean(preferences.hideUnranked),
+    applyFilters: Boolean(preferences.applyFilters),
+    rules,
+  };
 }
 
 function normalizeHostGamePreferences(

@@ -568,6 +568,12 @@
   color: var(--color-warn);
 }
 
+.game-tile-flags i.unranked {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error) 25%, transparent);
+}
+
 .game-tile-host {
   display: flex;
   min-width: 0;
