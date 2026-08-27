@@ -222,9 +222,11 @@ export type BrowsingPreferences = {
 	 *  key and uses it in the host picker and generated-map cleanup.
 	 */
 	favoriteMaps: string[],
+	/**  Stable mod UIDs starred by the user. */
+	favoriteMods: string[],
 	/**  Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all"). */
 	mapVaultPreset: string,
-	/**  Active preset filter in the mod vault ("recommended", "rating", "ui", "newest", "all"). */
+	/**  Active preset filter in the mod vault ("recommended", "favorites", "rating", "ui", "newest", "all"). */
 	modVaultPreset: string,
 	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
@@ -1089,6 +1091,7 @@ export type CustomGameBrowserPreferences = {
 	sort: CustomGameSort,
 	hidePrivate: boolean,
 	hideModded: boolean,
+	hideUnranked: boolean,
 	applyFilters: boolean,
 	rules: CustomGameFilterRule[],
 };

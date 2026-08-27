@@ -617,6 +617,7 @@
           "sort": "players",
           "hidePrivate": false,
           "hideModded": false,
+          "hideUnranked": false,
           "applyFilters": false,
           "rules": []
         },
@@ -649,6 +650,7 @@
           "ratingMax": 1500
         },
         "favoriteMaps": [],
+        "favoriteMods": [],
         "mapVaultPreset": "recommended",
         "modVaultPreset": "recommended",
         "modPresets": [],
@@ -20289,11 +20291,13 @@
                 "applyFilters": false,
                 "hideModded": false,
                 "hidePrivate": false,
+                "hideUnranked": false,
                 "rules": [],
                 "sort": "players"
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
+              "favoriteMods": [],
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -20460,11 +20464,13 @@
                 "applyFilters": false,
                 "hideModded": false,
                 "hidePrivate": false,
+                "hideUnranked": false,
                 "rules": [],
                 "sort": "players"
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
+              "favoriteMods": [],
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -20654,11 +20660,13 @@
                 "applyFilters": false,
                 "hideModded": false,
                 "hidePrivate": false,
+                "hideUnranked": false,
                 "rules": [],
                 "sort": "players"
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
+              "favoriteMods": [],
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -20839,11 +20847,13 @@
                 "applyFilters": false,
                 "hideModded": false,
                 "hidePrivate": false,
+                "hideUnranked": false,
                 "rules": [],
                 "sort": "players"
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
+              "favoriteMods": [],
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -21013,6 +21023,7 @@
                     "sort": "age",
                     "hidePrivate": true,
                     "hideModded": true,
+                    "hideUnranked": false,
                     "applyFilters": true,
                     "rules": [
                       {
@@ -21059,6 +21070,9 @@
                   "favoriteMaps": [
                     "adaptive_tabula.v0006"
                   ],
+                  "favoriteMods": [
+                    "eco_graph"
+                  ],
                   "mapVaultPreset": "recommended",
                   "modVaultPreset": "recommended",
                   "modPresets": [],
@@ -21086,6 +21100,7 @@
                 "applyFilters": true,
                 "hideModded": true,
                 "hidePrivate": true,
+                "hideUnranked": false,
                 "rules": [
                   {
                     "constraint": "contains",
@@ -21098,6 +21113,9 @@
               "customGamesView": "list",
               "favoriteMaps": [
                 "adaptive_tabula.v0006"
+              ],
+              "favoriteMods": [
+                "eco_graph"
               ],
               "hostGame": {
                 "enforceRatingRange": true,

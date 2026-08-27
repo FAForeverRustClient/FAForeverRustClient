@@ -28,6 +28,9 @@
 }
 
 .map-vault-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: 0;
   overflow: hidden;
   transition: background-color 120ms ease, border-color 120ms ease;
@@ -45,6 +48,7 @@
 
 .map-vault-card-main {
   display: flex;
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -131,6 +135,7 @@
 .map-vault-card-facts {
   display: flex;
   width: 100%;
+  margin-top: auto;
   align-items: center;
   flex-wrap: wrap;
   gap: 4px 8px;
@@ -195,6 +200,7 @@
 
 .map-vault-card-action {
   display: flex;
+  margin-top: auto;
   min-height: 40px;
   padding: 6px 8px;
   align-items: center;
@@ -293,6 +299,8 @@
    author cannot undo: it reads like uninstalling, not like a toggle. */
 .map-vault-hide {
   color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
 .map-vault-uninstall:hover,
@@ -302,6 +310,7 @@
 .map-vault-hide:hover,
 .map-vault-hide:focus-visible {
   border-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
 }
 
 .map-uninstall-dialog,
@@ -379,8 +388,18 @@
   gap: 2px;
 }
 
+.installed-map-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .installed-map-card strong {
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .installed-map-card small {

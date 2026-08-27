@@ -4,7 +4,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Modal } from "../../design-system/Modal";
-import type { Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
+import type { Game, PlayerProfile, VaultMap, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { GameMapImage } from "./GameMapImage";
 import { findVaultMap, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
@@ -19,6 +19,40 @@ import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 
 export type GameViewMode = "list" | "tiles";
+
+export function isCustomGameRanked(
+  game: Game,
+  vaultMaps: VaultMap[],
+  vaultMods: VaultMod[],
+): boolean {
+  if (game.modName.toLocaleLowerCase() === "coop" || game.gameType.toLocaleLowerCase() === "coop") {
+    return false;
+  }
+
+  // 1. Check map ranked status
+  const mapName = game.map.trim().toLocaleLowerCase();
+  const mapMeta = vaultMaps.find(
+    (m) => m.folderName.toLocaleLowerCase() === mapName || mapName.startsWith(`${m.folderName.toLocaleLowerCase()}.`),
+  );
+  if (mapMeta && !mapMeta.ranked) {
+    return false;
+  }
+
+  // 2. Check active SIM mods
+  const simModUids = Object.keys(game.simMods);
+  if (simModUids.length > 0) {
+    const modsByUid = new Map(vaultMods.map((m) => [m.uid.toLocaleLowerCase(), m]));
+    for (const uid of simModUids) {
+      const mod = modsByUid.get(uid.toLocaleLowerCase());
+      // Any unranked SIM mod or unknown SIM mod makes the match unranked
+      if (!mod || !mod.ranked) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
 
 interface Props {
   games: Game[];
@@ -290,8 +324,10 @@ export const GameTile = memo(function GameTile({
   onPreview?: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
+  const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const simModCount = Object.keys(game.simMods).length;
+  const isRanked = isCustomGameRanked(game, vault, vaultMods);
   const players = playingCount(game);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition();
 
@@ -346,6 +382,7 @@ export const GameTile = memo(function GameTile({
         <span className="game-tile-flags">
           <i>{game.modName || "faf"}</i>
           {simModCount > 0 && <i className="modded">{simModCount} SIM mod{simModCount === 1 ? "" : "s"}</i>}
+          {!isRanked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
             <i>{game.ratingMin ?? t("lobby.browser.any")}–{game.ratingMax ?? t("lobby.browser.any")}</i>
           )}
@@ -375,7 +412,9 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   onJoin: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
+  const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
+  const isRanked = isCustomGameRanked(game, vault, vaultMods);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition();
   return (
     <>
@@ -398,7 +437,13 @@ export const GameBrowserRow = memo(function GameBrowserRow({
             className="game-browser-map-thumb"
             placeholderClassName="game-browser-map-placeholder"
           />
-          <span><strong>{game.title}</strong><small><PlayerName name={game.host} /> · {game.modName || "faf"}</small></span>
+          <span>
+            <strong>{game.title}</strong>
+            <small>
+              <PlayerName name={game.host} /> · {game.modName || "faf"}
+              {!isRanked && ` · ${t("lobby.browser.unranked")}`}
+            </small>
+          </span>
         </span>
         <span>{presentation.displayName}</span>
         <span>{playingCount(game)}/{game.maxPlayers}</span>
@@ -426,6 +471,8 @@ function GamePreviewDialog({
   const presentation = mapPresentation(vault, game.map);
   const vaultMap = findVaultMap(vault, game.map);
   const maps = useAppStore((state) => state.state.maps);
+  const vaultMods = useAppStore((state) => state.state.mods.vault);
+  const isRanked = isCustomGameRanked(game, vault, vaultMods);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const isGenerated = isGeneratedMap(game.map);
   const installed = maps.installed.some(
@@ -485,7 +532,14 @@ function GamePreviewDialog({
             <div><dt>{t("lobby.browser.players")}</dt><dd>{players} / {game.maxPlayers}</dd></div>
             <div><dt>{t("lobby.browser.averageRating")}</dt><dd>{game.averageRating || t("lobby.browser.unrated")}</dd></div>
             <div><dt>{t("lobby.browser.ratingRange")}</dt><dd>{ratingRange}</dd></div>
-            <div><dt>{t("lobby.browser.visibility")}</dt><dd>{game.visibility || t("lobby.browser.public")}</dd></div>
+            <div>
+              <dt>{t("lobby.browser.ranking")}</dt>
+              <dd>
+                <span className={isRanked ? "map-vault-type ranked" : "map-vault-type unranked"}>
+                  {t(isRanked ? "lobby.browser.ranked" : "lobby.browser.unranked")}
+                </span>
+              </dd>
+            </div>
             {vaultMap && <div><dt>{t("lobby.browser.mapSize")}</dt><dd>{sizeLabel(vaultMap)}</dd></div>}
           </dl>
           {simMods.length > 0 && (

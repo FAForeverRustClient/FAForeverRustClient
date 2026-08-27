@@ -21,10 +21,8 @@ import { EMPTY_MOD_QUERY } from "../../shared/vaultQuery";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
 import {
-  installNote,
   ModCard,
   ModDetailPanel,
-  toggleNote,
   UninstallDialog,
 } from "./ModVaultComponents";
 import { InstalledModsView } from "./InstalledModsView";
@@ -42,12 +40,13 @@ type ModSort = "rating" | "newest" | "updated" | "name";
 type ModTypeFilter = "all" | "ui" | "sim";
 type RankedFilter = "all" | "ranked" | "unranked";
 type InstallFilter = "all" | "installed" | "available" | "updates";
-type ModPreset = "recommended" | "mine" | "rating" | "ui" | "newest" | "all";
+type ModPreset = "recommended" | "favorites" | "mine" | "rating" | "ui" | "newest" | "all";
 type DateField = "updated" | "uploaded";
 
 const PAGE_SIZE = 36;
 const MOD_PRESETS: Array<[ModPreset, MessageKey]> = [
   ["recommended", "mods.view.preset.recommended"],
+  ["favorites", "mods.view.preset.favorites"],
   // Only once there is an id to filter on: see `modVaultQuery`.
   ["mine", "mods.view.preset.mine"],
   ["rating", "mods.view.preset.rating"],
@@ -170,6 +169,21 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const note = loadStatusNote(vaultStatus, t("mods.view.loadingVault"), t("mods.view.vaultFailed"));
   const installedByUid = useMemo(() => new Map(installed.map((mod) => [mod.uid, mod])), [installed]);
+  const favoriteUids = useMemo(
+    () => new Set((browsing.favoriteMods || []).map((uid) => uid.toLocaleLowerCase())),
+    [browsing.favoriteMods],
+  );
+
+  const toggleFavorite = (uid: string) => {
+    const key = uid.trim().toLocaleLowerCase();
+    const favoriteMods = favoriteUids.has(key)
+      ? (browsing.favoriteMods || []).filter((favorite) => favorite.toLocaleLowerCase() !== key)
+      : [...(browsing.favoriteMods || []), key];
+    ipc.send({
+      kind: "Settings",
+      command: { type: "setBrowsing", payload: { preferences: { ...browsing, favoriteMods } } },
+    });
+  };
 
   useEffect(() => {
     const mods = useAppStore.getState().state.mods;
@@ -186,7 +200,7 @@ function VaultView({ busy }: { busy: boolean }) {
     } else if (preset === "all") {
       setSort("name");
       setApplied((prev) => ({ ...prev, sort: "name" }));
-    } else if (preset === "recommended" || preset === "rating" || preset === "ui") {
+    } else if (preset === "recommended" || preset === "rating" || preset === "ui" || preset === "favorites") {
       setSort("rating");
       setApplied((prev) => ({ ...prev, sort: "rating" }));
     }
@@ -211,7 +225,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const choosePreset = (next: ModPreset) => {
     let nextSort: ModSort = sort;
-    if (next === "recommended" || next === "rating" || next === "ui") nextSort = "rating";
+    if (next === "recommended" || next === "rating" || next === "ui" || next === "favorites") nextSort = "rating";
     if (next === "newest" || next === "mine") nextSort = "newest";
     if (next === "all") nextSort = "name";
     setSort(nextSort);
@@ -253,6 +267,10 @@ function VaultView({ busy }: { busy: boolean }) {
     choosePreset("recommended");
   };
 
+  // `favorites` is local state the server has never heard of. It filters the
+  // index loaded in memory rather than asking the server.
+  const localFavorites = preset === "favorites";
+
   // Server-side search, as in both reference clients: the filters go out as a
   // query and one page comes back.
   const query = useMemo(
@@ -261,14 +279,21 @@ function VaultView({ busy }: { busy: boolean }) {
   );
 
   useEffect(() => {
+    if (localFavorites) return;
     ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } });
-  }, [query]);
+  }, [localFavorites, query]);
 
-  // Install state is the users disk, which the API knows nothing about, so this
-  // one filter narrows the page that came back rather than the whole vault.
-  const pageMods = useMemo(() => {
-    if (applied.installFilter === "all") return browse;
-    return browse.filter((mod) => {
+  const favorites = useMemo(
+    () => (localFavorites
+      ? vault.filter((mod) => favoriteUids.has(mod.uid.toLocaleLowerCase()))
+      : []),
+    [localFavorites, vault, favoriteUids],
+  );
+
+  const results = useMemo(() => {
+    const source = localFavorites ? favorites : browse;
+    if (applied.installFilter === "all") return source;
+    return source.filter((mod) => {
       const installedMod = installedByUid.get(mod.uid);
       if (applied.installFilter === "installed") return Boolean(installedMod);
       if (applied.installFilter === "updates") {
@@ -276,10 +301,15 @@ function VaultView({ busy }: { busy: boolean }) {
       }
       return !installedMod;
     });
-  }, [applied.installFilter, browse, installedByUid]);
+  }, [applied.installFilter, browse, favorites, installedByUid, localFavorites]);
 
-  const totalPages = browseTotalPages ?? 1;
+  const totalPages = localFavorites
+    ? Math.max(1, Math.ceil(favorites.length / PAGE_SIZE))
+    : browseTotalPages ?? 1;
   const currentPage = Math.min(page, totalPages);
+  const pageMods = localFavorites
+    ? results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+    : results;
   const selected = pageMods.find((mod) => mod.uid === selectedUid) ?? pageMods[0] ?? null;
   const hiddenFilterCount = Number(installFilter !== "all")
     + Number(dateAfter !== "" || dateBefore !== "");
@@ -295,7 +325,19 @@ function VaultView({ busy }: { busy: boolean }) {
         secondary={(
           <>
             {MOD_PRESETS.filter(([key]) => key !== "mine" || playerId !== null).map(([key, label]) => (
-              <Button key={key} className={preset === key ? "active" : ""} onClick={() => choosePreset(key)} title={key === "mine" ? t("mods.view.preset.mineTitle") : undefined}>
+              <Button
+                key={key}
+                className={preset === key ? "active" : ""}
+                onClick={() => choosePreset(key)}
+                title={
+                  key === "favorites"
+                    ? t("mods.view.preset.favoritesTitle", { count: favoriteUids.size })
+                    : key === "mine"
+                      ? t("mods.view.preset.mineTitle")
+                      : undefined
+                }
+              >
+                {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />}
                 {key === "mine" && <Icon name="mods" size={14} />} {t(label)}
               </Button>
             ))}
@@ -370,7 +412,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
       {note && <p className="vault-note muted">{note}</p>}
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("mods.view.detectionUnavailable")}</p>}
-      {browseStatus.type === "ready" && pageMods.length === 0 ? (
+      {(browseStatus.type === "ready" || localFavorites) && pageMods.length === 0 ? (
         // An empty "my mods" is the ordinary state for most players rather
         // than a failed search, so it says so instead of suggesting the
         // filters be widened.
@@ -410,10 +452,13 @@ function VaultView({ busy }: { busy: boolean }) {
                       mod={mod}
                       installed={installedMod}
                       active={selected?.uid === mod.uid}
+                      favorite={favoriteUids.has(mod.uid.toLocaleLowerCase())}
                       busy={busy}
                       working={isBusy}
                       onSelect={() => setSelectedUid(mod.uid)}
                       onInstall={() => installMod(mod.uid, mod.downloadUrl)}
+                      onUninstall={() => installedMod && setPendingUninstall(installedMod)}
+                      onToggleFavorite={() => toggleFavorite(mod.uid)}
                     />
                   );
                 })}
@@ -432,12 +477,14 @@ function VaultView({ busy }: { busy: boolean }) {
                 <ModDetailPanel
                   mod={selected}
                   installed={installedMod}
+                  favorite={favoriteUids.has(selected.uid.toLocaleLowerCase())}
                   busy={busy}
                   installing={installing}
                   toggling={toggling}
                   onInstall={() => installMod(selected.uid, selected.downloadUrl)}
                   onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
                   onUninstall={() => installedMod && setPendingUninstall(installedMod)}
+                  onToggleFavorite={() => toggleFavorite(selected.uid)}
                 />
               );
             })()}
@@ -473,12 +520,10 @@ export function ModsView() {
   const installed = useAppStore((state) => state.state.mods.installed);
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
-  const note = installNote(installStatus) ?? toggleNote(toggleStatus);
   const busy = installStatus.type === "installing" || toggleStatus.type === "toggling";
   const { Component } = SUB_VIEWS[subView];
   return (
     <div className="mods-workspace">
-      {note && <div className="vault-note muted">{note}</div>}
       <div className="vault-subnav">
         <SectionTabs
           active={subView}

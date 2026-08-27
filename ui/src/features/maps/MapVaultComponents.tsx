@@ -117,6 +117,7 @@ export function MapCard({
   busy,
   onSelect,
   onInstall,
+  onUninstall,
   favorite,
   onToggleFavorite,
 }: {
@@ -126,13 +127,11 @@ export function MapCard({
   busy: boolean;
   onSelect: () => void;
   onInstall: () => void;
+  onUninstall?: () => void;
   favorite: boolean;
   onToggleFavorite: () => void;
 }) {
   useLocale();
-  const installState = installed
-    ? { label: t(isOfficialMap(map.folderName) ? "maps.vault.builtIn" : "maps.vault.installed"), tone: "ok" as const }
-    : { label: t("maps.vault.notInstalled"), tone: "muted" as const };
 
   return (
     <article className={active ? "map-vault-card surface-panel active" : "map-vault-card surface-panel"}>
@@ -179,18 +178,29 @@ export function MapCard({
         </span>
       </button>
       <div className="map-vault-card-action">
-        <span className={`map-vault-state is-${installState.tone}`}>{installState.label}</span>
+        <Button
+          className={favorite ? "map-favorite-button active" : "map-favorite-button"}
+          aria-label={favorite ? `Remove ${map.displayName} from favorites` : `Add ${map.displayName} to favorites`}
+          aria-pressed={favorite}
+          title={t(favorite ? "maps.vault.removeFavorite" : "maps.vault.addFavorite")}
+          onClick={onToggleFavorite}
+        >
+          <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
+        </Button>
         <span className="map-vault-card-buttons">
-          <Button
-            className={favorite ? "map-favorite-button active" : "map-favorite-button"}
-            aria-label={favorite ? `Remove ${map.displayName} from favorites` : `Add ${map.displayName} to favorites`}
-            aria-pressed={favorite}
-            title={t(favorite ? "maps.vault.removeFavorite" : "maps.vault.addFavorite")}
-            onClick={onToggleFavorite}
-          >
-            <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
-          </Button>
-          {!installed && (
+          {installed ? (
+            isOfficialMap(map.folderName) ? (
+              <span className="map-vault-state is-ok">{t("maps.vault.builtIn")}</span>
+            ) : (
+              <Button
+                className="map-vault-uninstall"
+                disabled={busy}
+                onClick={onUninstall}
+              >
+                {t(busy ? "maps.view.removing" : "maps.view.uninstall")}
+              </Button>
+            )
+          ) : (
             <Button variant="primary" disabled={busy || !map.downloadUrl} onClick={onInstall}>
               {t(busy ? "maps.vault.installing" : "maps.vault.install")}
             </Button>

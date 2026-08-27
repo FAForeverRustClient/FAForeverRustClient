@@ -236,7 +236,8 @@
 .leaderboard-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--leaderboard-detail-width);
-  min-height: 360px;
+  min-height: 0;
+  flex: 1;
   gap: var(--space-3);
 }
 

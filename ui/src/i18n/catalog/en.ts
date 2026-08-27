@@ -461,6 +461,7 @@ export const en = {
   "lobby.toolbar.listView": "List view",
   "lobby.toolbar.hidePrivate": "Hide private",
   "lobby.toolbar.hideModded": "Hide modded",
+  "lobby.toolbar.hideUnranked": "Hide unranked",
   "lobby.toolbar.applyFilters": "Apply filters",
   "lobby.toolbar.hostGame": "Host game",
 
@@ -512,6 +513,9 @@ export const en = {
   "lobby.browser.averageRating": "Average rating",
   "lobby.browser.ratingRange": "Rating range",
   "lobby.browser.visibility": "Visibility",
+  "lobby.browser.ranking": "Ranking",
+  "lobby.browser.ranked": "Ranked",
+  "lobby.browser.unranked": "Unranked",
   "lobby.browser.mapSize": "Map size",
   "lobby.browser.unrated": "Unrated",
   "lobby.browser.public": "Public",
@@ -1585,9 +1589,15 @@ export const en = {
     "“{name}” will be permanently removed and deactivated in Forged Alliance.",
   "mods.vault.cancel": "Cancel",
   "mods.vault.confirmUninstallAction": "Uninstall mod",
+  "mods.vault.addFavorite": "Add to favorites",
+  "mods.vault.removeFavorite": "Remove from favorites",
+  "mods.vault.favorite": "Favorite",
+  "mods.vault.favorited": "Favorited",
 
   // Mods tab: vault browser.
   "mods.view.preset.recommended": "Featured",
+  "mods.view.preset.favorites": "Favorites",
+  "mods.view.preset.favoritesTitle": "Show {count} favorited mods",
   "mods.view.preset.mine": "My mods",
   "mods.view.preset.mineTitle": "Every mod you uploaded to the vault",
   "mods.view.emptyMine": "You have not uploaded any mods yet",

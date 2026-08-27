@@ -891,6 +891,7 @@ pub struct CustomGameBrowserPreferences {
     pub sort: CustomGameSort,
     pub hide_private: bool,
     pub hide_modded: bool,
+    pub hide_unranked: bool,
     pub apply_filters: bool,
     pub rules: Vec<CustomGameFilterRule>,
 }
@@ -906,6 +907,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             sort: CustomGameSort,
             hide_private: bool,
             hide_modded: bool,
+            hide_unranked: bool,
             apply_filters: bool,
             rules: Vec<CustomGameFilterRule>,
         }
@@ -915,6 +917,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             sort: wire.sort,
             hide_private: wire.hide_private,
             hide_modded: wire.hide_modded,
+            hide_unranked: wire.hide_unranked,
             apply_filters: wire.apply_filters,
             rules: wire.rules,
         })
@@ -1076,9 +1079,11 @@ pub struct BrowsingPreferences {
     /// Stable map folder names starred by the user. Python persists the same
     /// key and uses it in the host picker and generated-map cleanup.
     pub favorite_maps: Vec<String>,
+    /// Stable mod UIDs starred by the user.
+    pub favorite_mods: Vec<String>,
     /// Active preset filter in the map vault ("recommended", "favorites", "rating", "newest", "played", "all").
     pub map_vault_preset: String,
-    /// Active preset filter in the mod vault ("recommended", "rating", "ui", "newest", "all").
+    /// Active preset filter in the mod vault ("recommended", "favorites", "rating", "ui", "newest", "all").
     pub mod_vault_preset: String,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
@@ -1122,6 +1127,7 @@ impl Default for BrowsingPreferences {
             live_replay_filters: LiveReplayFilters::default(),
             host_game: HostGamePreferences::default(),
             favorite_maps: Vec::new(),
+            favorite_mods: Vec::new(),
             map_vault_preset: "recommended".into(),
             mod_vault_preset: "recommended".into(),
             mod_presets: Vec::new(),
@@ -1151,6 +1157,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             live_replay_filters: LiveReplayFilters,
             host_game: HostGamePreferences,
             favorite_maps: Vec<String>,
+            favorite_mods: Vec<String>,
             map_vault_preset: String,
             mod_vault_preset: String,
             mod_presets: Vec<ModPreset>,
@@ -1171,6 +1178,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     live_replay_filters: defaults.live_replay_filters,
                     host_game: defaults.host_game,
                     favorite_maps: defaults.favorite_maps,
+                    favorite_mods: defaults.favorite_mods,
                     map_vault_preset: defaults.map_vault_preset,
                     mod_vault_preset: defaults.mod_vault_preset,
                     mod_presets: defaults.mod_presets,
@@ -1191,6 +1199,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             live_replay_filters: wire.live_replay_filters,
             host_game: wire.host_game,
             favorite_maps: wire.favorite_maps,
+            favorite_mods: wire.favorite_mods,
             map_vault_preset: wire.map_vault_preset,
             mod_vault_preset: wire.mod_vault_preset,
             mod_presets: wire.mod_presets,
@@ -1245,6 +1254,10 @@ impl BrowsingPreferences {
             .into_iter()
             .map(|folder| folder.to_ascii_lowercase())
             .collect();
+        self.favorite_mods = normalize_labels(self.favorite_mods, 512, 256)
+            .into_iter()
+            .map(|uid| uid.to_ascii_lowercase())
+            .collect();
         self.map_vault_preset = match self.map_vault_preset.trim().to_ascii_lowercase().as_str() {
             "favorites" => "favorites".into(),
             // Kept even when signed out: the preset outlives the session it was
@@ -1259,6 +1272,7 @@ impl BrowsingPreferences {
             _ => "recommended".into(),
         };
         self.mod_vault_preset = match self.mod_vault_preset.trim().to_ascii_lowercase().as_str() {
+            "favorites" => "favorites".into(),
             "rating" => "rating".into(),
             // Same reasoning as the map preset above: kept even when signed
             // out, because the tab, not this function, decides whether it can
@@ -1841,6 +1855,7 @@ mod tests {
                     sort: CustomGameSort::Host,
                     hide_private: true,
                     hide_modded: true,
+                    hide_unranked: true,
                     apply_filters: true,
                     rules: vec![
                         CustomGameFilterRule {
@@ -1892,6 +1907,7 @@ mod tests {
                     "adaptive_tabula.v0006".into(),
                     String::new(),
                 ],
+                favorite_mods: vec!["  Eco_Graph  ".into(), "eco_graph".into(), String::new()],
                 map_vault_preset: "  NEWEST  ".into(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
@@ -1943,6 +1959,7 @@ mod tests {
         assert_eq!(settings.browsing.host_game.rating_min, 800);
         assert_eq!(settings.browsing.host_game.rating_max, 1_500);
         assert_eq!(settings.browsing.favorite_maps, ["adaptive_tabula.v0006"]);
+        assert_eq!(settings.browsing.favorite_mods, ["eco_graph"]);
         assert_eq!(settings.browsing.map_vault_preset, "newest");
         assert_eq!(settings.browsing.mod_vault_preset, "ui");
         assert_eq!(

@@ -28,6 +28,7 @@ describe("browsing preferences", () => {
         sort: "host",
         hidePrivate: true,
         hideModded: true,
+        hideUnranked: true,
         applyFilters: true,
         rules: [
           { field: "title", constraint: "contains", value: "  no rush  " },
@@ -59,6 +60,7 @@ describe("browsing preferences", () => {
         ratingMax: 800,
       },
       favoriteMaps: [" Adaptive_Tabula.v0006 ", "adaptive_tabula.v0006", ""],
+      favoriteMods: [" Eco_Graph ", "eco_graph", ""],
       mapVaultPreset: "  NEWEST  ",
       modVaultPreset: "  UI  ",
       modPresets: [
@@ -74,6 +76,8 @@ describe("browsing preferences", () => {
       legacyStorageMigrated: true,
     });
 
+    expect(normalized.favoriteMods).toEqual(["eco_graph"]);
+
     expect(normalized.modPresets).toEqual([
       { name: "Replay watching", uids: ["a", "b"] },
       { name: "Vanilla", uids: [] },
@@ -86,6 +90,7 @@ describe("browsing preferences", () => {
       sort: "host",
       hidePrivate: true,
       hideModded: true,
+      hideUnranked: true,
       applyFilters: true,
       rules: [{ field: "title", constraint: "contains", value: "no rush" }],
     });
