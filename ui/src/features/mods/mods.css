@@ -433,7 +433,7 @@
 
 
 @media (max-width: 700px) {
-.mods-heading {
+  .mods-heading {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -452,6 +452,28 @@
 
   .mod-vault-details {
     display: block;
+  }
+
+  .mod-vault-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  .installed-mod-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .installed-mod-card {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .installed-mod-card .mod-vault-thumb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .installed-mod-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }
 
@@ -616,27 +638,4 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-}
-
-  .mod-vault-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-
-  .installed-mod-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .installed-mod-card {
-    grid-template-columns: 60px minmax(0, 1fr);
-  }
-
-  .installed-mod-card .mod-vault-thumb {
-    width: 60px;
-    height: 60px;
-  }
-
-  .installed-mod-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-  }
 }
