@@ -71,17 +71,22 @@ export function filterLocalReplays(
   query: LocalReplayQuery,
   mapDisplayName: (replay: LocalReplay) => string = (replay) => replay.map,
 ): LocalReplay[] {
-  const playerQuery = query.player.trim().toLocaleLowerCase();
+  const targetPlayers = query.player
+    .split(",")
+    .map((p) => p.trim().toLocaleLowerCase())
+    .filter(Boolean);
   const replayId = query.replayId.trim().replace(/^#/, "");
   const after = dateBoundary(query.after, false);
   const before = dateBoundary(query.before, true);
 
   const filtered = replays.filter((replay) => {
     const players = replay.teams.flatMap((team) => team.players);
-    const matchesPlayer = !playerQuery || players.some((player) => {
-      const normalized = player.name.toLocaleLowerCase();
-      return query.exactPlayer ? normalized === playerQuery : normalized.includes(playerQuery);
-    });
+    const matchesPlayer = targetPlayers.length === 0 || targetPlayers.every((target) =>
+      players.some((player) => {
+        const normalized = player.name.toLocaleLowerCase();
+        return query.exactPlayer ? normalized === target : normalized.includes(target);
+      })
+    );
     const timestamp = localReplayTimestamp(replay);
     return matchesPlayer
       && (!query.map || contains(replay.map, query.map) || contains(mapDisplayName(replay), query.map))

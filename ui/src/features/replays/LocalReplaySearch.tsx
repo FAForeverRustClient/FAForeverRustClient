@@ -91,6 +91,7 @@ export function LocalReplaySearch({
             type="search"
             value={form.player}
             placeholder={t("replays.search.anyPlayer")}
+            title={t("replays.search.playerTooltip")}
             onChange={(event) => set("player", event.target.value)}
           />
         </label>

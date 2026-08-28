@@ -270,12 +270,21 @@ pub fn build_filter(query: &ReplayQuery, fallback_after: Option<&str>) -> Option
         clauses.push(r#"validity=="VALID""#.to_string());
     }
     if !query.player.is_empty() {
-        let pattern = if query.exact_player {
-            escape(&query.player)
-        } else {
-            glob(&query.player)
-        };
-        clauses.push(format!(r#"playerStats.player.login=="{pattern}""#));
+        for player_name in query
+            .player
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            let pattern = if query.exact_player {
+                escape(player_name)
+            } else {
+                glob(player_name)
+            };
+            if !pattern.is_empty() {
+                clauses.push(format!(r#"playerStats.player.login=="{pattern}""#));
+            }
+        }
     }
     if !query.map.is_empty() {
         clauses.push(format!(
@@ -452,6 +461,28 @@ mod tests {
         assert_eq!(
             build_filter(&q, None).unwrap(),
             r#"(playerStats.player.login=="Stormlord")"#
+        );
+    }
+
+    #[test]
+    fn multiple_comma_separated_players_are_anded() {
+        let q = ReplayQuery {
+            player: "Stormlord, Foley".into(),
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&q, None).unwrap(),
+            r#"(playerStats.player.login=="*Stormlord*";playerStats.player.login=="*Foley*")"#
+        );
+
+        let q_exact = ReplayQuery {
+            player: "Stormlord, Foley".into(),
+            exact_player: true,
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&q_exact, None).unwrap(),
+            r#"(playerStats.player.login=="Stormlord";playerStats.player.login=="Foley")"#
         );
     }
 

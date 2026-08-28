@@ -153,6 +153,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
             type="search"
             value={form.player}
             placeholder={t("replays.search.anyPlayer")}
+            title={t("replays.search.playerTooltip")}
             onChange={(e) => set("player", e.target.value)}
           />
         </label>

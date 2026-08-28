@@ -11,7 +11,8 @@ import { HostCoopModal } from "./host/HostCoopModal";
 import { MatchmakingPanel } from "./MatchmakingPanel";
 import { CoopPanel } from "./CoopPanel";
 import { GalacticWarPanel } from "./GalacticWarPanel";
-import { CustomGamesBrowser, isCustomGameRanked, type GameViewMode } from "./CustomGamesBrowser";
+import { Modal } from "../../design-system/Modal";
+import { CustomGamesBrowser, GamePreviewDialog, isCustomGameRanked, type GameViewMode } from "./CustomGamesBrowser";
 import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
 import { GameMapImage } from "./GameMapImage";
 import { PlayModeTabs } from "./PlayModeTabs";
@@ -92,21 +93,21 @@ function GameDetails({
   game,
   onJoin,
   onOpenUserMenu,
+  onPreview,
 }: {
   game: Game;
   onJoin: () => void;
   onOpenUserMenu: (nickname: string, event: React.MouseEvent) => void;
+  onPreview?: () => void;
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
-  const mods = useAppStore((state) => state.state.mods);
   const lobby = useAppStore((state) => state.state.lobby);
   const social = useAppStore((state) => state.state.social);
   const player = useAppStore((state) => state.state.auth.player);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const vaultMap = findVaultMap(maps.vault, game.map);
   const presentation = mapPresentation(maps.vault, game.map);
-  const isRanked = isCustomGameRanked(game, maps.vault, mods.vault);
   const isGenerated = isGeneratedMap(game.map);
   const installed = maps.installed.some((map) => map.folderName.toLowerCase() === game.map.toLowerCase() || map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`));
   const isGeneratingThisMap =
@@ -115,6 +116,10 @@ function GameDetails({
     mapGenStatus.type === "resolvingVersion";
   const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
   const simMods = Object.values(game.simMods);
+  const [expandedMods, setExpandedMods] = useState(false);
+  useEffect(() => {
+    setExpandedMods(false);
+  }, [game.id]);
 
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
@@ -156,7 +161,13 @@ function GameDetails({
 
   return (
     <aside className="game-detail-panel surface-panel">
-      <div className="game-map-preview">
+      <button
+        type="button"
+        className="game-map-preview"
+        onClick={onPreview}
+        title={t("lobby.browser.previewMap")}
+        aria-label={t("lobby.browser.previewMap")}
+      >
         <GameMapImage
           mapName={game.map}
           vault={maps.vault}
@@ -169,7 +180,7 @@ function GameDetails({
             <Icon name="lock" size={13} />
           </span>
         )}
-      </div>
+      </button>
       <div className="game-detail-content">
         <div className="game-detail-title">
           <span>{game.modName || "faf"}</span>
@@ -191,21 +202,27 @@ function GameDetails({
           <div><dt>{t("lobby.details.map")}</dt><dd>{presentation.displayName}</dd></div>
           <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
           <div><dt>{t("lobby.details.averageRating")}</dt><dd>{game.averageRating || t("lobby.details.unrated")}</dd></div>
-          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} – ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
-          <div>
-            <dt>{t("lobby.browser.ranking")}</dt>
-            <dd>
-              <span className={isRanked ? "map-vault-type ranked" : "map-vault-type unranked"}>
-                {t(isRanked ? "lobby.browser.ranked" : "lobby.browser.unranked")}
-              </span>
-            </dd>
-          </div>
-          <div><dt>{t("lobby.details.visibility")}</dt><dd>{game.visibility || t("lobby.details.public")}</dd></div>
+          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} - ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
         </dl>
         {simMods.length > 0 && (
           <div className="game-detail-section">
             <h3>{t("lobby.details.simMods")}</h3>
-            {simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}
+            <div>
+              {(expandedMods ? simMods : simMods.slice(0, 4)).map((mod) => (
+                <span className="tag" key={mod}>{mod}</span>
+              ))}
+              {simMods.length > 4 && (
+                <button
+                  type="button"
+                  className="game-detail-more-tags"
+                  onClick={() => setExpandedMods((prev) => !prev)}
+                >
+                  {expandedMods
+                    ? t("lobby.details.showLessMods")
+                    : t("lobby.details.showMoreMods", { count: simMods.length - 4 })}
+                </button>
+              )}
+            </div>
           </div>
         )}
         {teams.length > 0 && (
@@ -307,6 +324,7 @@ export function LobbyView() {
   const applyFilters = gameBrowser.applyFilters;
   const rules: GameFilterRule[] = gameBrowser.rules;
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [previewGame, setPreviewGame] = useState<Game | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [hostOpen, setHostOpen] = useState(false);
   const [passwordGame, setPasswordGame] = useState<Game | null>(null);
@@ -599,9 +617,15 @@ export function LobbyView() {
             viewMode={gameView}
             onSelect={setSelectedId}
             onJoin={requestJoin}
+            onPreview={setPreviewGame}
           />
           {selected ? (
-            <GameDetails game={selected} onJoin={() => requestJoin(selected)} onOpenUserMenu={openUserMenu} />
+            <GameDetails
+              game={selected}
+              onJoin={() => requestJoin(selected)}
+              onOpenUserMenu={openUserMenu}
+              onPreview={() => setPreviewGame(selected)}
+            />
           ) : (
             <aside className="game-detail-panel surface-panel empty">
               <Icon name="play" size={24} />
@@ -717,6 +741,20 @@ export function LobbyView() {
           initialNote={noteForPlayer(playerNotes, noteTarget.id)}
           onClose={() => setNoteTarget(null)}
         />
+      )}
+      {previewGame && (
+        <Modal onClose={() => setPreviewGame(null)}>
+          <GamePreviewDialog
+            game={previewGame}
+            vault={maps.vault}
+            onClose={() => setPreviewGame(null)}
+            onJoin={() => {
+              const target = previewGame;
+              setPreviewGame(null);
+              requestJoin(target);
+            }}
+          />
+        </Modal>
       )}
     </div>
   );

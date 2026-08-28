@@ -225,7 +225,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   return (
     <>
       <LocalReplaySearch
-        initialQuery={query}
+        initialQuery={query.player === self ? { ...query, player: "" } : query}
         self={self}
         featuredMods={featuredMods}
         loading={localStatus.type === "loading"}

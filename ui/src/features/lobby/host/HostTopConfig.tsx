@@ -10,27 +10,25 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
 
   return (
     <section className="host-top-config surface-panel">
-      <div className="host-top-title-row">
+      <div className="host-top-title-wrap">
         <label className="host-top-label" htmlFor="host-lobby-name">
           {t("lobby.host.gameTitle")}
         </label>
-        <div className="host-top-title-wrap">
-          <input
-            id="host-lobby-name"
-            className="host-title-input"
-            value={settings.title}
-            maxLength={128}
-            aria-invalid={Boolean(settings.titleError)}
-            aria-describedby={settings.titleError ? "host-title-error" : undefined}
-            onChange={(event) => settings.setTitle(event.target.value)}
-            placeholder={t("lobby.host.gameTitle")}
-          />
-          {settings.titleError && (
-            <small id="host-title-error" className="host-field-error">
-              {settings.titleError}
-            </small>
-          )}
-        </div>
+        <input
+          id="host-lobby-name"
+          className="host-title-input"
+          value={settings.title}
+          maxLength={128}
+          aria-invalid={Boolean(settings.titleError)}
+          aria-describedby={settings.titleError ? "host-title-error" : undefined}
+          onChange={(event) => settings.setTitle(event.target.value)}
+          placeholder={t("lobby.host.gameTitle")}
+        />
+        {settings.titleError && (
+          <small id="host-title-error" className="host-field-error host-title-error">
+            {settings.titleError}
+          </small>
+        )}
       </div>
 
       <div className="host-top-options-row">

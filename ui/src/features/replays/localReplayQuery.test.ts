@@ -45,6 +45,22 @@ describe("local replay query", () => {
 
     expect(filterLocalReplays([candidate], query)).toEqual([candidate]);
     expect(filterLocalReplays([candidate], { ...query, exactPlayer: true })).toEqual([]);
+
+    // Multi-player search: matches only games where ALL listed players participated
+    expect(
+      filterLocalReplays([candidate], {
+        ...EMPTY_LOCAL_REPLAY_QUERY,
+        player: "TestPlayer, Foley",
+        exactPlayer: true,
+      }),
+    ).toEqual([candidate]);
+    expect(
+      filterLocalReplays([candidate], {
+        ...EMPTY_LOCAL_REPLAY_QUERY,
+        player: "TestPlayer, SomeoneElse",
+        exactPlayer: true,
+      }),
+    ).toEqual([]);
   });
 
   it("supports local advanced filters and sort direction", () => {

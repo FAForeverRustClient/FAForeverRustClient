@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pagination } from "../../design-system/Pagination";
 import type { ReplayQuery } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -110,13 +110,23 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const totalPages = useAppStore((s) => s.state.replays.vaultTotalPages);
   const totalRecords = useAppStore((s) => s.state.replays.vaultTotalRecords);
 
+  const formInitialQuery: ReplayQuery = useMemo(() => {
+    const base = vaultStatus.type === "idle"
+      ? personalReplayQuery(initialPlayer, isoDaysAgo(365))
+      : query;
+    if (base.player === self && !browsing.replayVaultPlayer) {
+      return { ...base, player: "" };
+    }
+    return base;
+  }, [vaultStatus.type, initialPlayer, query, self, browsing.replayVaultPlayer]);
+
   return (
     <>
       <VaultSearch
         featuredMods={featuredMods}
         leagues={leagues}
         self={self}
-        initialQuery={vaultStatus.type === "idle" ? personalReplayQuery(initialPlayer, isoDaysAgo(365)) : query}
+        initialQuery={formInitialQuery}
         onSearch={handleSearch}
       />
       <div className="online-replay-view-bar">

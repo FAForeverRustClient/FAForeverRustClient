@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="#ffffff">
+  <!-- Top Center Chevron Plate -->
+  <polygon points="256,56 341,105 341,200 256,151 171,200 171,105" />
+
+  <!-- Upper-Right Rhombus Plate -->
+  <polygon points="353,105 429,149 429,252 353,208" />
+
+  <!-- Upper-Left Rhombus Plate -->
+  <polygon points="159,105 83,149 83,252 159,208" />
+
+  <!-- Lower-Right Arm Plate -->
+  <polygon points="353,220 429,264 429,357 353,401 267,351 341,302 341,213" />
+
+  <!-- Lower-Left Arm Plate -->
+  <polygon points="159,220 83,264 83,357 159,401 245,351 171,302 171,213" />
+
+  <!-- Bottom Diamond Plate -->
+  <polygon points="256,361 341,410 256,458 171,410" />
+
+  <!-- Center Nomads Delta Spire -->
+  <path d="M 256,154 C 263,154 266,160 268,172 C 273,205 288,252 334,299 C 337,302 337,306 333,307 C 329,308 325,306 320,303 C 285,282 227,282 192,303 C 187,306 183,308 179,307 C 175,306 175,302 178,299 C 224,252 239,205 244,172 C 246,160 249,154 256,154 Z" />
+</svg>
