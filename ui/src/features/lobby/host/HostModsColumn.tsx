@@ -5,7 +5,7 @@
 // the store and writes both back itself, so a dialog embedding it passes
 // nothing and cannot get the wiring subtly wrong.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { ipc } from "../../../ipc/client";
@@ -24,6 +24,26 @@ export function HostModsColumn() {
   const [modTab, setModTab] = useState<ModTab>("ui");
   const [modSearch, setModSearch] = useState("");
   const [presetModalOpen, setPresetModalOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const presetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!presetsOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (event.target instanceof Node && !presetRef.current?.contains(event.target)) {
+        setPresetsOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPresetsOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [presetsOpen]);
 
   /// `setBrowsing` replaces the whole preferences bag, so a writer must start
   /// from the newest copy rather than the one captured at render time. Saving a
@@ -119,53 +139,95 @@ export function HostModsColumn() {
     <section className="host-column host-column-mods surface-panel">
       <div className="host-column-header">
         <h3>{t("lobby.host.mods")}</h3>
-        <span className="host-count-badge">
-          {activeModsCount} active · {installedMods.length} installed
-        </span>
-      </div>
-
-      <div className="host-preset-block">
-        <span className="host-preset-label">{t("lobby.host.presets")}</span>
-        <div className="host-preset-chips">
-          {presets.map((preset) => (
-            <span key={preset.name} className="host-preset-chip">
-              <button
-                type="button"
-                className="host-preset-apply"
-                title={t("lobby.host.applyPreset", { name: preset.name })}
-                onClick={() => applyPreset(preset)}
-              >
-                {preset.name}
-              </button>
-              <button
-                type="button"
-                className="host-preset-delete"
-                aria-label={t("lobby.host.deletePreset", { name: preset.name })}
-                onClick={() => deletePreset(preset.name)}
-              >
-                <Icon name="close" size={10} />
-              </button>
-            </span>
-          ))}
+        <div className="host-header-actions">
+          <span className="host-count-badge">
+            {activeModsCount} active · {installedMods.length} installed
+          </span>
           <button
             type="button"
-            className="host-preset-save"
-            disabled={installedMods.length === 0}
-            onClick={() => setPresetModalOpen(true)}
+            className="host-header-icon-btn"
+            title={t("lobby.host.reloadMods")}
+            aria-label={t("lobby.host.reloadMods")}
+            onClick={() => ipc.send({ kind: "Mods", command: { type: "loadInstalled" } })}
           >
-            <Icon name="plus" size={12} /> {t("lobby.host.savePreset")}
+            <Icon name="refresh" size={12} />
           </button>
         </div>
       </div>
 
-      <div className="search-field host-column-search">
-        <Icon name="search" size={13} />
-        <input
-          value={modSearch}
-          onChange={(event) => setModSearch(event.target.value)}
-          placeholder={t("lobby.host.searchModsPlaceholder")}
-          aria-label={t("lobby.host.searchModsAria")}
-        />
+      <div className="host-map-search-row">
+        <div className="search-field host-column-search host-map-search-field">
+          <Icon name="search" size={13} />
+          <input
+            value={modSearch}
+            onChange={(event) => setModSearch(event.target.value)}
+            placeholder={t("lobby.host.searchModsPlaceholder")}
+            aria-label={t("lobby.host.searchModsAria")}
+          />
+        </div>
+        <div className="host-map-filter" ref={presetRef}>
+          <button
+            type="button"
+            className={`host-map-filter-button${presets.length > 0 ? " active" : ""}`}
+            aria-expanded={presetsOpen}
+            onClick={() => setPresetsOpen((open) => !open)}
+          >
+            <Icon name="mods" size={13} />
+            {t("lobby.host.presets")}
+            {presets.length > 0 && (
+              <span className="host-map-filter-count">{presets.length}</span>
+            )}
+          </button>
+
+          {presetsOpen && (
+            <div className="host-preset-popover surface-panel" role="group">
+              <div className="host-preset-popover-header">
+                <span>{t("lobby.host.presets")}</span>
+                <button
+                  type="button"
+                  className="host-preset-save-btn"
+                  disabled={installedMods.length === 0}
+                  onClick={() => {
+                    setPresetsOpen(false);
+                    setPresetModalOpen(true);
+                  }}
+                >
+                  <Icon name="plus" size={12} /> {t("lobby.host.savePreset")}
+                </button>
+              </div>
+              {presets.length === 0 ? (
+                <p className="host-preset-popover-empty">{t("lobby.host.noPresets") ?? "No saved presets"}</p>
+              ) : (
+                <div className="host-preset-popover-list">
+                  {presets.map((preset) => (
+                    <div key={preset.name} className="host-preset-popover-item">
+                      <button
+                        type="button"
+                        className="host-preset-popover-apply"
+                        title={t("lobby.host.applyPreset", { name: preset.name })}
+                        onClick={() => {
+                          applyPreset(preset);
+                          setPresetsOpen(false);
+                        }}
+                      >
+                        <span className="host-preset-popover-name">{preset.name}</span>
+                        <span className="host-preset-popover-count">{preset.uids.length} mods</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="host-preset-popover-delete"
+                        aria-label={t("lobby.host.deletePreset", { name: preset.name })}
+                        onClick={() => deletePreset(preset.name)}
+                      >
+                        <Icon name="close" size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="host-mod-tabs">
@@ -231,15 +293,6 @@ export function HostModsColumn() {
           onClick={() => setModsEnabled(tabMods, false)}
         >
           {t("lobby.host.disableAll")}
-        </Button>
-      </div>
-
-      <div className="host-column-footer">
-        <Button
-          className="host-col-action-btn"
-          onClick={() => ipc.send({ kind: "Mods", command: { type: "loadInstalled" } })}
-        >
-          <Icon name="refresh" size={13} /> {t("lobby.host.reloadMods")}
         </Button>
       </div>
 

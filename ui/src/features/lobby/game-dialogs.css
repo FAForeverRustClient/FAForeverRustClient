@@ -44,8 +44,19 @@
 }
 
 .host-game-modal {
+  display: flex;
+  flex-direction: column;
   width: min(1360px, calc(100vw - 32px));
   max-width: 1360px;
+  height: min(85vh, 800px);
+  max-height: 85vh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.host-game-modal > .play-dialog-head,
+.host-game-modal > .host-top-config {
+  flex-shrink: 0;
 }
 
 .play-dialog-head {
@@ -84,9 +95,10 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .host-form-global-error {
@@ -228,33 +240,47 @@
 /* Top Game Configuration Row */
 .host-top-config {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  margin: 10px 0 12px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  margin: 6px 0 10px;
   padding: 8px 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .host-top-title-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1 1 200px;
-  min-width: 160px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 580px;
+  flex: 0 0 580px;
+  min-width: 200px;
+}
+
+.host-top-label {
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  white-space: nowrap;
 }
 
 .host-title-input {
-  width: 100%;
-  height: 34px;
+  flex: 1 1 auto;
+  min-width: 100px;
+  height: 32px;
   padding: 0 10px;
   color: var(--color-text);
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 550;
   outline: none;
   transition: border-color 120ms ease;
@@ -265,10 +291,20 @@
   outline: 2px solid var(--color-accent-glow);
 }
 
+.host-top-options-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .host-option-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 12px;
   flex-shrink: 0;
 }
@@ -276,6 +312,7 @@
 .host-password-input {
   width: 120px;
   height: 28px;
+  margin-left: 4px;
   padding: 0 8px;
   color: var(--color-text);
   background: var(--color-bg);
@@ -334,13 +371,13 @@
 }
 
 /* 4-Column Grid Layout (Game Type | Mods | Map | Preview)
-   The mods column is the widest of the fixed three: it carries the preset row,
-   a search field and the kind toggle above its list. */
+   Column 1 accommodates mode icons; the other three are adjusted slightly. */
 .host-game-grid {
   display: grid;
-  grid-template-columns: 205px 360px minmax(280px, 1fr) 330px;
+  grid-template-columns: 245px 335px minmax(260px, 1fr) 310px;
   gap: 12px;
-  height: 630px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .host-column {
@@ -421,8 +458,9 @@
 
 .host-gametype-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
   padding: 8px 10px;
   text-align: left;
   background: var(--color-surface);
@@ -433,15 +471,42 @@
   transition: background 120ms ease, border-color 120ms ease;
 }
 
+.host-gametype-icon {
+  display: block;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  object-fit: contain;
+  color: var(--color-muted);
+  transition: color 120ms ease;
+}
+
+.host-gametype-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .host-gametype-row:hover:not(:disabled) {
   background: var(--color-surface-hover);
   border-color: var(--color-border-strong);
+}
+
+.host-gametype-row:hover:not(:disabled) .host-gametype-icon {
+  color: var(--color-text);
 }
 
 .host-gametype-row.active,
 .host-gametype-row.active:hover:not(:disabled) {
   background: var(--color-surface-raised);
   border-color: var(--color-accent);
+}
+
+.host-gametype-row.active .host-gametype-icon,
+.host-gametype-row.active:hover:not(:disabled) .host-gametype-icon {
+  color: var(--color-accent);
 }
 
 .host-gametype-row:disabled {
@@ -802,7 +867,6 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transform: translateX(-14px);
 }
 
 .host-badge-neroxis {
@@ -851,15 +915,55 @@
 
 
 
-/* ── Mods column: preset row, kind toggle, bulk actions ────────────────── */
-.host-preset-block {
+/* ── Mods column: preset popover, kind toggle, bulk actions ────────────────── */
+.host-header-actions {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
 }
 
-.host-preset-label {
+.host-header-icon-btn {
+  all: unset;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: var(--color-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 120ms ease;
+}
+
+.host-header-icon-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.host-preset-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 240px;
+  max-height: 280px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+
+.host-preset-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.host-preset-popover-header span {
   font-size: 11px;
   font-weight: 650;
   text-transform: uppercase;
@@ -867,75 +971,95 @@
   color: var(--color-muted);
 }
 
-.host-preset-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+.host-preset-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 120ms ease;
 }
 
-/* Apply and delete read as one control, so they share a border rather than
-   sitting next to each other as two. */
-.host-preset-chip {
-  display: inline-flex;
-  align-items: stretch;
-  max-width: 100%;
-  overflow: hidden;
+.host-preset-save-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+}
+
+.host-preset-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.host-preset-popover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: 180px;
+}
+
+.host-preset-popover-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
 
-.host-preset-apply,
-.host-preset-save {
+.host-preset-popover-apply {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 4px 9px;
-  overflow: hidden;
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--color-text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: pointer;
-  background: transparent;
-  border: 0;
 }
 
-.host-preset-save {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--color-surface-raised);
-  border: 1px dashed var(--color-border-strong);
+.host-preset-popover-name {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.host-preset-popover-count {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.host-preset-popover-delete {
+  all: unset;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--color-subtle);
+  cursor: pointer;
   border-radius: var(--radius-sm);
 }
 
-.host-preset-apply:hover,
-.host-preset-save:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-}
-
-.host-preset-save:disabled {
-  color: var(--color-subtle);
-  cursor: default;
-  opacity: 0.6;
-}
-
-.host-preset-delete {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 20px;
-  padding: 0;
-  color: var(--color-subtle);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-left: 1px solid var(--color-border);
-}
-
-.host-preset-delete:hover {
+.host-preset-popover-delete:hover {
   color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
+.host-preset-popover-empty {
+  margin: 8px 0;
+  font-size: 11px;
+  color: var(--color-muted);
+  text-align: center;
 }
 
 .host-mod-version {

@@ -62,6 +62,7 @@ interface Props {
   viewMode: GameViewMode;
   onSelect: (id: number) => void;
   onJoin: (game: Game) => void;
+  onPreview?: (game: Game) => void;
 }
 
 type ContextMenu = { game: Game; x: number; y: number };
@@ -168,7 +169,11 @@ function GameLineup({
       {mods.length > 0 && (
         <section className="game-lineup-mods">
           <b>{t("lobby.browser.simMods")}</b>
-          <span>{mods.join(", ")}</span>
+          <span title={mods.join(", ")}>
+            {mods.length <= 4
+              ? mods.join(", ")
+              : `${mods.slice(0, 4).join(", ")}, ${t("lobby.browser.moreMods", { count: mods.length - 4 })}`}
+          </span>
         </section>
       )}
     </aside>
@@ -381,10 +386,16 @@ export const GameTile = memo(function GameTile({
         </span>
         <span className="game-tile-flags">
           <i>{game.modName || "faf"}</i>
-          {simModCount > 0 && <i className="modded">{simModCount} SIM mod{simModCount === 1 ? "" : "s"}</i>}
+          {simModCount > 0 && (
+            <i className="modded" title={`${simModCount} SIM mod${simModCount === 1 ? "" : "s"}`}>
+              {simModCount} SIM
+            </i>
+          )}
           {!isRanked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <i>{game.ratingMin ?? t("lobby.browser.any")}–{game.ratingMax ?? t("lobby.browser.any")}</i>
+            <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
+              {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
+            </i>
           )}
         </span>
         <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
@@ -457,7 +468,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   );
 });
 
-function GamePreviewDialog({
+export const GamePreviewDialog = memo(function GamePreviewDialog({
   game,
   vault,
   onClose,
@@ -471,8 +482,11 @@ function GamePreviewDialog({
   const presentation = mapPresentation(vault, game.map);
   const vaultMap = findVaultMap(vault, game.map);
   const maps = useAppStore((state) => state.state.maps);
-  const vaultMods = useAppStore((state) => state.state.mods.vault);
-  const isRanked = isCustomGameRanked(game, vault, vaultMods);
+  const mods = useAppStore((state) => state.state.mods);
+  const lobby = useAppStore((state) => state.state.lobby);
+  const social = useAppStore((state) => state.state.social);
+  const player = useAppStore((state) => state.state.auth.player);
+  const isRanked = isCustomGameRanked(game, vault, mods.vault);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const isGenerated = isGeneratedMap(game.map);
   const installed = maps.installed.some(
@@ -486,9 +500,46 @@ function GamePreviewDialog({
     mapGenStatus.type === "resolvingVersion";
   const players = playingCount(game);
   const simMods = Object.values(game.simMods);
+  const teams = Object.entries(game.teams).filter(([, p]) => p.length > 0);
   const ratingRange = game.ratingMin !== null || game.ratingMax !== null
     ? t("lobby.browser.ratingBetween", { min: game.ratingMin ?? t("lobby.browser.any"), max: game.ratingMax ?? t("lobby.browser.any") })
     : t("lobby.browser.openRange");
+
+  const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
+  const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
+    teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
+  );
+
+  const isJoiningThis = lobby.join.type === "joining" && lobby.join.payload.id === game.id;
+  const isPreparingThis = lobby.join.type === "preparing";
+  const isLaunchedThis = lobby.join.type === "launched" && lobby.join.payload.launch.uid === game.id;
+  const isInGame = lobby.join.type === "inGame";
+
+  const isBusyWithOther = (lobby.join.type === "joining" && lobby.join.payload.id !== game.id)
+    || (lobby.join.type === "launched" && !isLaunchedThis)
+    || (isInGame && !isPlayerInGame && !isHost);
+
+  let joinLabel = t("lobby.details.joinGame");
+  let joinDisabled = false;
+  let joinTitle: string | undefined;
+
+  if (isHost) {
+    joinLabel = t("lobby.details.hostedByYou");
+    joinDisabled = true;
+  } else if (isPlayerInGame) {
+    joinLabel = t("lobby.details.inGame");
+    joinDisabled = true;
+  } else if (isJoiningThis) {
+    joinLabel = t("lobby.details.joining");
+    joinDisabled = true;
+  } else if (isPreparingThis) {
+    joinLabel = t("lobby.details.preparing");
+    joinDisabled = true;
+  } else if (isBusyWithOther) {
+    joinLabel = t("lobby.details.joinGame");
+    joinDisabled = true;
+    joinTitle = t("lobby.details.alreadyInGame");
+  }
 
   return (
     <div className="game-preview-dialog">
@@ -498,7 +549,6 @@ function GamePreviewDialog({
           <h2>{presentation.displayName}</h2>
           <p>{game.title}</p>
         </div>
-        <span className="game-preview-dialog-mod">{game.modName || "faf"}</span>
       </header>
       <div className="game-preview-dialog-body">
         <div className="game-preview-dialog-map">
@@ -522,13 +572,14 @@ function GamePreviewDialog({
             <button
               type="button"
               className="game-team-player"
-              onClick={() => openPlayerCard(findPlayer(useAppStore.getState().state.social, game.host)?.id ?? null, game.host)}
+              onClick={() => openPlayerCard(findPlayer(social, game.host)?.id ?? null, game.host)}
               title={`Open ${game.host}'s profile`}
             >
               <strong><PlayerName name={game.host} /></strong>
             </button>
           </div>
           <dl className="game-preview-dialog-summary">
+            <div><dt>{t("lobby.host.featuredMod")}</dt><dd>{game.modName || "faf"}</dd></div>
             <div><dt>{t("lobby.browser.players")}</dt><dd>{players} / {game.maxPlayers}</dd></div>
             <div><dt>{t("lobby.browser.averageRating")}</dt><dd>{game.averageRating || t("lobby.browser.unrated")}</dd></div>
             <div><dt>{t("lobby.browser.ratingRange")}</dt><dd>{ratingRange}</dd></div>
@@ -546,6 +597,54 @@ function GamePreviewDialog({
             <div className="game-preview-dialog-section">
               <span>{t("lobby.browser.simMods")}</span>
               <div>{simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}</div>
+            </div>
+          )}
+          {teams.length > 0 && (
+            <div className="game-preview-dialog-section">
+              <span>{t("lobby.details.teams")}</span>
+              <div className="game-preview-dialog-teams">
+                {teams.map(([team, teamPlayers]) => (
+                  <div className="game-team" key={team}>
+                    <span>
+                      {team === "-1" || team === "null"
+                        ? t("lobby.details.observers")
+                        : t("lobby.details.team", { id: team })}
+                    </span>
+                    <small>
+                      {teamPlayers.map((login, i) => {
+                        const profile = findPlayer(social, login);
+                        const rating = displayedRating(profile);
+                        return (
+                          <span key={login} className="game-preview-player-row">
+                            {i > 0 && ", "}
+                            {profile?.country ? (
+                              <img
+                                src={flagSrc(profile.country)}
+                                alt={profile.country.toUpperCase()}
+                                width={16}
+                                height={16}
+                                decoding="async"
+                                draggable={false}
+                              />
+                            ) : (
+                              <i className="game-lineup-flag-placeholder" />
+                            )}
+                            <button
+                              type="button"
+                              className="game-team-player"
+                              onClick={() => openPlayerCard(profile?.id ?? null, login)}
+                              title={`Open ${login}'s profile`}
+                            >
+                              <PlayerName name={login} />
+                            </button>
+                            {rating !== null && <span className="player-rating">({rating})</span>}
+                          </span>
+                        );
+                      })}
+                    </small>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </section>
@@ -589,11 +688,11 @@ function GamePreviewDialog({
           </Button>
         )}
         <Button onClick={onClose}>{t("lobby.browser.close")}</Button>
-        <Button variant="primary" onClick={onJoin}>{t("lobby.browser.joinGame")}</Button>
+        <Button variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
       </footer>
     </div>
   );
-};
+});
 
 export function CustomGamesBrowser({
   games,
@@ -603,11 +702,14 @@ export function CustomGamesBrowser({
   viewMode,
   onSelect,
   onJoin,
+  onPreview: onPreviewProp,
 }: Props) {
   useLocale();
   const [now, setNow] = useState(() => Date.now());
-  const [previewGame, setPreviewGame] = useState<Game | null>(null);
+  const [internalPreviewGame, setInternalPreviewGame] = useState<Game | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+
+  const handlePreview = onPreviewProp ?? setInternalPreviewGame;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -662,7 +764,7 @@ export function CustomGamesBrowser({
               now={now}
               onSelect={() => onSelect(game.id)}
               onJoin={() => onJoin(game)}
-              onPreview={() => setPreviewGame(game)}
+              onPreview={() => handlePreview(game)}
               onContextMenu={(event) => openContextMenu(event, game)}
             />
           ))
@@ -685,13 +787,13 @@ export function CustomGamesBrowser({
         <span>{t(viewMode === "tiles" ? "lobby.browser.tileHint" : "lobby.browser.listHint")}</span>
       </footer>
 
-      {previewGame && (
-        <Modal onClose={() => setPreviewGame(null)}>
+      {!onPreviewProp && internalPreviewGame && (
+        <Modal onClose={() => setInternalPreviewGame(null)}>
           <GamePreviewDialog
-            game={previewGame}
+            game={internalPreviewGame}
             vault={vault}
-            onClose={() => setPreviewGame(null)}
-            onJoin={() => onJoin(previewGame)}
+            onClose={() => setInternalPreviewGame(null)}
+            onJoin={() => onJoin(internalPreviewGame)}
           />
         </Modal>
       )}
@@ -704,7 +806,7 @@ export function CustomGamesBrowser({
         >
           <strong>{contextMenu.game.title}</strong>
           <button onClick={() => { onJoin(contextMenu.game); setContextMenu(null); }}>{t("lobby.browser.joinGame")}</button>
-          <button onClick={() => { setPreviewGame(contextMenu.game); setContextMenu(null); }}>{t("lobby.browser.previewMap")}</button>
+          <button onClick={() => { handlePreview(contextMenu.game); setContextMenu(null); }}>{t("lobby.browser.previewMap")}</button>
         </div>
       )}
     </section>

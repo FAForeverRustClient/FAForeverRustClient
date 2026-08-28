@@ -257,12 +257,9 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const [saved, setSaved] = useState(false);
   const [presetName, setPresetName] = useState("");
 
-  // The option lists come from the generator itself, so they need a round trip
-  // (and possibly a JAR download) before the pickers mean anything.
+  // Load generator versions, options, and presets on dialog open.
   useEffect(() => {
-    if (useAppStore.getState().state.mapGenerator.optionLists.styles.length === 0) {
-      void loadOptions();
-    }
+    void loadOptions();
     void loadPresets();
   }, []);
 
@@ -535,13 +532,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                     version: state.latestVersion || availableVersions[0] || t("maps.generate.auto"),
                   })}
                 </option>
-                {availableVersions
-                  .filter((v) => v !== (state.latestVersion || availableVersions[0]))
-                  .map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
+                {availableVersions.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
               </Select>
             </Row>
 
