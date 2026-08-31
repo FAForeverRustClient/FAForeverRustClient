@@ -14,6 +14,7 @@ pub mod irc;
 pub mod log_analysis;
 pub mod map_generator;
 pub mod map_generator_name;
+pub mod map_terrain;
 pub mod markup;
 pub mod replay_query;
 pub mod tourney;

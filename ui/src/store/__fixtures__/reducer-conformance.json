@@ -147,6 +147,8 @@
         "maxPlayers": null,
         "width": 0,
         "height": 0,
+        "terrain": null,
+        "water": null,
         "after": "",
         "before": "",
         "sortBy": "rating",
@@ -14229,6 +14231,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14287,6 +14291,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14345,6 +14351,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14396,6 +14404,8 @@
                   "maxPlayers": null,
                   "width": 0,
                   "height": 0,
+                  "terrain": null,
+                  "water": null,
                   "after": "",
                   "before": "",
                   "sortBy": "rating",
@@ -14428,6 +14438,8 @@
               "search": "seton",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14489,6 +14501,8 @@
               "search": "seton",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14550,6 +14564,8 @@
               "search": "seton",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14624,6 +14640,8 @@
               "search": "seton",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14708,6 +14726,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14780,6 +14800,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -14893,6 +14915,8 @@
                   "maxPlayers": null,
                   "width": 0,
                   "height": 0,
+                  "terrain": null,
+                  "water": null,
                   "after": "",
                   "before": "",
                   "sortBy": "rating",
@@ -14976,6 +15000,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -15085,6 +15111,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -15198,6 +15226,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -15307,6 +15337,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -15419,6 +15451,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {
@@ -15528,6 +15562,8 @@
               "search": "",
               "sortBy": "rating",
               "sortDescending": true,
+              "terrain": null,
+              "water": null,
               "width": 0
             },
             "browseStatus": {

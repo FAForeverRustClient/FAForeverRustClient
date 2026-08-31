@@ -20,6 +20,8 @@ export const EMPTY_MAP_QUERY: MapVaultQuery = {
   maxPlayers: null,
   width: 0,
   height: 0,
+  terrain: null,
+  water: null,
   after: "",
   before: "",
   sortBy: "rating",

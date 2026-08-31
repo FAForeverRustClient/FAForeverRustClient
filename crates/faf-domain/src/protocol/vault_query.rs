@@ -25,6 +25,9 @@
 //! are different things: an average of 5.0 from one review should not outrank a
 //! 4.8 from two hundred.
 
+use super::map_terrain::{
+    TerrainFilter, WaterBracket, MINIMUM_BIOME_PERCENT, TERRAIN_FILTER_READY,
+};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -112,6 +115,14 @@ pub struct MapVaultQuery {
     /// Exact map edge length in pixels, `0` for any.
     pub width: i32,
     pub height: i32,
+    /// What the ground is made of: a whole category, or one biome.
+    ///
+    /// Only reaches the wire once the API serves the column; see
+    /// `map_terrain::TERRAIN_FILTER_READY`.
+    pub terrain: Option<TerrainFilter>,
+    /// How much of the map is under water. The other half of "find me a naval
+    /// desert map", and independent of the terrain.
+    pub water: Option<WaterBracket>,
     /// Inclusive `YYYY-MM-DD` bounds on the upload date. Empty = unbounded.
     pub after: String,
     pub before: String,
@@ -137,6 +148,8 @@ impl Default for MapVaultQuery {
             max_players: None,
             width: 0,
             height: 0,
+            terrain: None,
+            water: None,
             after: String::new(),
             before: String::new(),
             sort_by: MapSortField::Rating,
@@ -201,6 +214,34 @@ impl Default for ModVaultQuery {
     }
 }
 
+/// The RSQL for "this map's ground is one of these things".
+///
+/// A map carries up to two biomes with the share of ground each covers, so the
+/// question has to be asked of both slots. The share matters: a map that is 99%
+/// evergreen and 1% desert does carry `DESERT` in its second slot, and without
+/// the threshold a search for desert maps would return it.
+///
+/// `;` binds tighter than `,` in RSQL, so `a;b,c;d` already means
+/// `(a AND b) OR (c AND d)`. The parentheses are written anyway: this clause is
+/// then joined to the others with `;`, and relying on precedence across that
+/// boundary is how a filter quietly starts matching everything.
+///
+/// The property names are the one part of this not yet taken from a reference
+/// implementation - the column does not exist yet. Confirm them against the API
+/// before flipping `TERRAIN_FILTER_READY`.
+fn terrain_clause(terrain: TerrainFilter) -> String {
+    let values = terrain
+        .biomes()
+        .into_iter()
+        .map(|biome| biome.api_value())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "((latestVersion.biome=in=({values});latestVersion.biomePercent=ge={MINIMUM_BIOME_PERCENT}),\
+         (latestVersion.biome2=in=({values});latestVersion.biome2Percent=ge={MINIMUM_BIOME_PERCENT}))"
+    )
+}
+
 /// The API's `sort` parameter. A leading `-` means descending.
 fn sort_param(property: &str, descending: bool) -> String {
     if descending {
@@ -257,6 +298,20 @@ impl MapVaultQuery {
         }
         if self.height > 0 {
             clauses.push(format!(r#"latestVersion.height=="{}""#, self.height));
+        }
+        if TERRAIN_FILTER_READY {
+            if let Some(terrain) = self.terrain {
+                clauses.push(terrain_clause(terrain));
+            }
+            if let Some(water) = self.water {
+                let (min, max) = water.bounds();
+                push_range(
+                    &mut clauses,
+                    "latestVersion.waterPercent",
+                    min.map(|value| value.to_string()),
+                    max.map(|value| value.to_string()),
+                );
+            }
         }
         push_dates(
             &mut clauses,
@@ -381,6 +436,7 @@ fn escape(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::super::map_terrain::{Biome, TerrainCategory};
     use super::*;
 
     #[test]
@@ -416,6 +472,59 @@ mod tests {
             ..MapVaultQuery::default()
         };
         assert_eq!(query.build_filter(), None);
+    }
+
+    #[test]
+    fn a_category_asks_both_biome_slots_for_any_of_its_biomes() {
+        // Both slots, because a map's second biome is a real answer: `Africa
+        // 4v4` is 66% desert and 27% tropical, and a tropical search that only
+        // looked at the leading value would miss it.
+        assert_eq!(
+            terrain_clause(TerrainFilter::Category(TerrainCategory::Arid)),
+            "((latestVersion.biome=in=(DESERT,RED_BARRENS);latestVersion.biomePercent=ge=25),\
+             (latestVersion.biome2=in=(DESERT,RED_BARRENS);latestVersion.biome2Percent=ge=25))"
+        );
+    }
+
+    #[test]
+    fn one_biome_asks_for_exactly_that_biome() {
+        assert_eq!(
+            terrain_clause(TerrainFilter::Biome(Biome::Tundra)),
+            "((latestVersion.biome=in=(TUNDRA);latestVersion.biomePercent=ge=25),\
+             (latestVersion.biome2=in=(TUNDRA);latestVersion.biome2Percent=ge=25))"
+        );
+    }
+
+    #[test]
+    fn the_threshold_is_in_the_clause_rather_than_baked_into_the_data() {
+        // The percentages are stored so this stays a query decision. If the
+        // clause ever stops carrying one, a map with a 1% smear of a theme
+        // starts being returned as that theme.
+        let clause = terrain_clause(TerrainFilter::Biome(Biome::Desert));
+        assert!(clause.contains("biomePercent=ge=25"));
+        assert!(clause.contains("biome2Percent=ge=25"));
+    }
+
+    #[test]
+    fn terrain_reaches_the_wire_only_once_the_api_serves_it() {
+        // The whole reason for the flag: an unrecognised property does not
+        // narrow the search, it fails it, and the vault shows nothing at all.
+        // Written to cover both sides so that flipping the flag is a decision
+        // this test follows rather than a test that suddenly goes red.
+        let query = MapVaultQuery {
+            terrain: Some(TerrainFilter::Category(TerrainCategory::Snow)),
+            water: Some(WaterBracket::Naval),
+            ..MapVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        if TERRAIN_FILTER_READY {
+            assert!(filter.contains("latestVersion.biome=in=(TUNDRA)"));
+            assert!(filter.contains("latestVersion.waterPercent=ge=50"));
+        } else {
+            assert_eq!(filter, "latestVersion.hidden=='false'");
+            assert!(!filter.contains("biome"));
+            assert!(!filter.contains("waterPercent"));
+        }
     }
 
     #[test]

@@ -153,6 +153,16 @@ export type AvailableAvatar = {
 export type AvatarListStatus = "idle" | "loading" | "ready" | "failed";
 
 /**
+ *  The terrain library covering most of a map's dry ground.
+ *
+ *  Carried lower case on this side and upper-cased at the API boundary, the
+ *  same way `ModVaultQuery` treats mod types.
+ */
+export type Biome = "evergreen" | "desert" | "tundra" | "redBarrens" | "tropical" | "lava" | "paradise" | "crystalline" | "geothermal" | "swamp" | "ancientEarth" | "newRealms" | "seraphim" | "wasteland" |
+/**  The map brings its own textures, so nothing can be said about the theme. */
+"custom";
+
+/**
  *  The best-of plan, settled at the moment the bracket is drawn.
  *
  *  Asked once, here, rather than at creation: the number of rounds follows from
@@ -2542,6 +2552,18 @@ export type MapVaultQuery = {
 	/**  Exact map edge length in pixels, `0` for any. */
 	width: number,
 	height: number,
+	/**
+	 *  What the ground is made of: a whole category, or one biome.
+	 *
+	 *  Only reaches the wire once the API serves the column; see
+	 *  `map_terrain::TERRAIN_FILTER_READY`.
+	 */
+	terrain: TerrainFilter | null,
+	/**
+	 *  How much of the map is under water. The other half of "find me a naval
+	 *  desert map", and independent of the terrain.
+	 */
+	water: WaterBracket | null,
 	/**  Inclusive `YYYY-MM-DD` bounds on the upload date. Empty = unbounded. */
 	after: string,
 	before: string,
@@ -4702,6 +4724,32 @@ export type TeamRequest = {
 	at: number | null,
 };
 
+/**
+ *  A coarse grouping of biomes, for people who want "a green map" and do not
+ *  care whether that is evergreen, tropical, paradise or swamp.
+ */
+export type TerrainCategory =
+/**  Grass and vegetation. 5723 of 8932 maps, so coarse by design. */
+"green" |
+/**  Sand and dry rock. */
+"arid" |
+/**  Snow and ice. */
+"snow" |
+/**  Lava fields and the cracked ground around them. */
+"volcanic" |
+/**  The themes that are not meant to look like Earth at all. */
+"alien" |
+/**  Maps carrying their own textures, which no category can describe. */
+"custom";
+
+/**
+ *  What the terrain filter is set to: nothing, a whole category, or one biome.
+ *
+ *  Both kinds resolve to the same thing - a set of biome values - so the query
+ *  builder does not care which the user picked.
+ */
+export type TerrainFilter = { kind: "category"; value: TerrainCategory } | { kind: "biome"; value: Biome };
+
 export type Theme = "forgeDark" | "forgeLight" | "javaClient" | "pythonClient";
 
 /**  A complete tournament, as `GET /api/t/{id}` returns it. */
@@ -6454,3 +6502,18 @@ export type VetoMode =
 "upfront" |
 /**  One step between games. */
 "continuous";
+
+/**
+ *  How much of a map is under water, as the three brackets people actually ask
+ *  for.
+ *
+ *  Thresholds rather than a slider because "is this a naval map" is a yes/no
+ *  question, and the answer at 49% and 51% is the same answer.
+ */
+export type WaterBracket =
+/**  15% or less. Land maps. */
+"land" |
+/**  Between the two. */
+"mixed" |
+/**  50% or more. Naval maps. */
+"naval";
