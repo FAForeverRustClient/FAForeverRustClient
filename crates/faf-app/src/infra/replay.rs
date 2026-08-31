@@ -837,10 +837,19 @@ struct LocalBodyInfo {
 }
 
 fn extract_map_folder(path: &str) -> String {
+    let path = if let Some((_, after)) = path.split_once("\r\n") {
+        after
+    } else if let Some((_, after)) = path.split_once('\n') {
+        after
+    } else {
+        path
+    };
     let normalized = path.replace('\\', "/");
     let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty()).collect();
-    if parts.len() >= 2 && parts[0].eq_ignore_ascii_case("maps") {
-        return parts[1].to_string();
+    if let Some(maps_idx) = parts.iter().position(|p| p.eq_ignore_ascii_case("maps")) {
+        if let Some(folder) = parts.get(maps_idx + 1) {
+            return folder.to_string();
+        }
     }
     if let Some(folder) = parts
         .iter()
@@ -848,8 +857,8 @@ fn extract_map_folder(path: &str) -> String {
     {
         return folder.to_string();
     }
-    if let Some(first) = parts.first() {
-        return first.replace("_scenario.lua", "").replace(".scmap", "");
+    if let Some(last) = parts.last() {
+        return last.replace("_scenario.lua", "").replace(".scmap", "");
     }
     String::new()
 }
@@ -899,34 +908,27 @@ fn read_replay_body_prefix_limit(mut reader: impl Read, limit: usize) -> Vec<u8>
 fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
     let mut cursor = Cursor::new(body);
     let game_version = game_version_from_string(replay_string(&mut cursor).as_deref());
-    if !skip_replay_bytes(&mut cursor, 3) {
-        return LocalBodyInfo {
-            game_version,
-            ..Default::default()
-        };
-    }
+    let _newline = replay_string(&mut cursor);
     let raw_map = replay_string(&mut cursor);
-    if !skip_replay_bytes(&mut cursor, 4) {
-        return LocalBodyInfo {
-            game_version,
-            ..Default::default()
-        };
-    }
+    let _garbage = replay_string(&mut cursor);
     let Some(_) = replay_u32(&mut cursor) else {
         return LocalBodyInfo {
             game_version,
+            map_name: raw_map
+                .as_deref()
+                .map(extract_map_folder)
+                .filter(|m| !m.is_empty()),
             ..Default::default()
         };
     };
-    if parse_replay_lua(&mut cursor, 0).is_none() {
-        return LocalBodyInfo {
-            game_version,
-            ..Default::default()
-        };
-    }
+    let _sim_mods = parse_replay_lua(&mut cursor, 0);
     let Some(_) = replay_u32(&mut cursor) else {
         return LocalBodyInfo {
             game_version,
+            map_name: raw_map
+                .as_deref()
+                .map(extract_map_folder)
+                .filter(|m| !m.is_empty()),
             ..Default::default()
         };
     };
@@ -2681,9 +2683,9 @@ mod tests {
     fn local_body_with_army() -> Vec<u8> {
         let mut body = Vec::new();
         body.extend_from_slice(b"Supreme Commander v1.50.3764\0");
-        body.extend_from_slice(&[0; 3]);
+        body.extend_from_slice(b"\r\n\0");
         body.extend_from_slice(b"Replay v1.9\r\n/maps/SCMP_009/SCMP_009.scmap\0");
-        body.extend_from_slice(&[0; 4]);
+        body.extend_from_slice(b"\0");
         body.extend_from_slice(&0_u32.to_le_bytes());
         body.extend_from_slice(&[4, 5]);
         body.extend_from_slice(&0_u32.to_le_bytes());
@@ -2716,6 +2718,30 @@ mod tests {
             stats.player_stats.get("TestPlayer"),
             Some(&(Some(1), Some(1200)))
         );
+        assert_eq!(stats.map_name.as_deref(), Some("SCMP_009"));
+    }
+
+    #[test]
+    fn extract_map_folder_handles_replay_version_prefix_and_paths() {
+        assert_eq!(
+            extract_map_folder("Replay v1.9\r\n/maps/scmp_001/scmp_001_scenario.lua"),
+            "scmp_001"
+        );
+        assert_eq!(
+            extract_map_folder(
+                "Replay v1.9\r\n/maps/setons_clutch.v0001/setons_clutch_scenario.lua"
+            ),
+            "setons_clutch.v0001"
+        );
+        assert_eq!(
+            extract_map_folder("Replay v1.9\r\n\\maps\\neroxis_map_generator_1.22.1_abc_xyz\\neroxis_map_generator_1.22.1_abc_xyz_scenario.lua"),
+            "neroxis_map_generator_1.22.1_abc_xyz"
+        );
+        assert_eq!(
+            extract_map_folder("/maps/dual_gap_adaptive.v0002/dual_gap_adaptive_scenario.lua"),
+            "dual_gap_adaptive.v0002"
+        );
+        assert_eq!(extract_map_folder("SCMP_009.scmap"), "SCMP_009");
     }
 
     #[tokio::test]

@@ -664,11 +664,24 @@ pub fn extract_map_folder(scfa_body: &[u8]) -> Option<String> {
     read_nul_string(scfa_body, &mut pos)?; // SupCom version string
     read_nul_string(scfa_body, &mut pos)?; // blank "newline" string
     let replay_and_map = read_nul_string(scfa_body, &mut pos)?;
-    let map_path = replay_and_map.split("\r\n").nth(1)?;
-    if !map_path.starts_with("/maps/") {
-        return None;
+    let map_path = replay_and_map
+        .split("\r\n")
+        .nth(1)
+        .unwrap_or(&replay_and_map);
+    let normalized = map_path.replace('\\', "/");
+    let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty()).collect();
+    if let Some(maps_idx) = parts.iter().position(|p| p.eq_ignore_ascii_case("maps")) {
+        if let Some(folder) = parts.get(maps_idx + 1) {
+            return Some(folder.to_string());
+        }
     }
-    map_path.split('/').nth(2).map(str::to_string)
+    if let Some(folder) = parts
+        .iter()
+        .find(|p| p.to_ascii_lowercase().starts_with("neroxis_map_generator_"))
+    {
+        return Some(folder.to_string());
+    }
+    None
 }
 
 fn read_nul_string(body: &[u8], pos: &mut usize) -> Option<String> {

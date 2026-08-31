@@ -24,7 +24,6 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
-  DecodedMapName,
   GenerationType,
   GeneratorOptions,
   GeneratorStatus,
@@ -35,8 +34,9 @@ import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { MultiSelect } from "../../design-system/MultiSelect";
 import { RangeSlider } from "../../design-system/RangeSlider";
+import { Select, type SelectOption } from "../../design-system/Select";
 import { ipc } from "../../ipc/client";
-import { isGeneratedMap } from "../../shared/mapPresentation";
+import { GENERATED_MAP_PLACEHOLDER_URL, isGeneratedMap } from "../../shared/mapPresentation";
 import { recordEntries } from "../../shared/records";
 import { useAppStore } from "../../store/store";
 import type { MessageKey } from "../../i18n";
@@ -99,146 +99,31 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   );
 }
 
-function Select({
-  value,
-  onChange,
-  children,
-}: {
-  value: string | number;
-  onChange: (value: string) => void;
-  children: ReactNode;
-}) {
-  return (
-    <div className="generate-map-select-wrap">
-      <select
-        className="generate-map-control generate-map-select"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {children}
-      </select>
-      <Icon name="chevronDown" size={13} className="generate-map-select-arrow" />
-    </div>
-  );
-}
-
 function GeneratePreviewImg({
   url,
   alt,
   className,
-  placeholderClassName,
-  iconSize,
 }: {
   url: string | undefined;
   alt: string;
   className: string;
-  placeholderClassName: string;
-  iconSize: number;
+  placeholderClassName?: string;
+  iconSize?: number;
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [url]);
 
-  if (!url || failed) {
-    return (
-      <div className={placeholderClassName}>
-        <Icon name="maps" size={iconSize} />
-      </div>
-    );
-  }
-
   return (
     <img
-      src={url}
+      src={!url || failed ? GENERATED_MAP_PLACEHOLDER_URL : url}
       alt={alt}
       className={className}
       loading="lazy"
       decoding="async"
-      onError={() => setFailed(true)}
+      onError={() => {
+        if (!failed) setFailed(true);
+      }}
     />
-  );
-}
-
-interface SingleMapResultProps {
-  map: string;
-  previewUrl: string | undefined;
-  facts: DecodedMapName | undefined;
-}
-
-function SingleMapResult({ map, previewUrl, facts }: SingleMapResultProps) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-
-  const copyName = () => {
-    void navigator.clipboard.writeText(map);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="generate-map-single-result surface-panel">
-      <div className="generate-map-single-preview">
-        <GeneratePreviewImg
-          url={previewUrl}
-          alt={map}
-          className="generate-map-single-img"
-          placeholderClassName="generate-map-single-placeholder"
-          iconSize={48}
-        />
-      </div>
-
-      <div className="generate-map-single-info">
-        <div className="generate-map-name-row">
-          <div className="generate-map-name-wrap">
-            <span className="generate-map-name-label">{t("maps.generate.reproduceTitle") || "Map name"}</span>
-            <code className="generate-map-name-code" title={map}>{map}</code>
-          </div>
-          <Button onClick={copyName} title={t("maps.generate.copyName")}>
-            <Icon name={copied ? "check" : "copy"} size={14} />
-            {copied ? "Copied" : "Copy"}
-          </Button>
-        </div>
-
-        <dl className="generate-map-specs-grid">
-          <div>
-            <dt>{t("maps.generate.mapSize")}</dt>
-            <dd>{facts ? formatMapSize(facts.mapSize) : "N/A"}</dd>
-          </div>
-          <div>
-            <dt>{t("maps.generate.spawns")}</dt>
-            <dd>{facts ? `${facts.spawnCount} players` : "N/A"}</dd>
-          </div>
-          <div>
-            <dt>{t("maps.generate.teams")}</dt>
-            <dd>{facts ? (facts.numTeams === 0 ? "Asymmetric" : `${facts.numTeams} teams`) : "N/A"}</dd>
-          </div>
-          <div>
-            <dt>{t("maps.generate.symmetry")}</dt>
-            <dd>{facts?.symmetry || t("maps.generate.any")}</dd>
-          </div>
-          <div>
-            <dt>{t("maps.generate.generatorVersion")}</dt>
-            <dd>{facts ? `v${facts.version}` : "N/A"}</dd>
-          </div>
-          <div>
-            <dt>{t("maps.generate.seed")}</dt>
-            <dd className="generate-map-spec-seed" title={facts?.seed}>{facts?.seed || "N/A"}</dd>
-          </div>
-        </dl>
-
-        {facts && (
-          <div className="generate-map-tags">
-            {summariseDecodedName(facts).map((fact) => (
-              <span key={fact} className="generate-map-tag">{fact}</span>
-            ))}
-          </div>
-        )}
-
-        <div className="generate-map-ready-badge">
-          <Icon name="check" size={15} />
-          <span>{t("maps.generate.installedReady")}</span>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -252,7 +137,6 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const { t } = useTranslation();
   const state = useAppStore((s) => s.state.mapGenerator);
   const [form, setForm] = useState<GeneratorOptions>(state.options);
-  const [advanced, setAdvanced] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [saved, setSaved] = useState(false);
   const [presetName, setPresetName] = useState("");
@@ -330,6 +214,20 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const advisory = issues.filter((issue) => !isFatal(issue));
   const submittable = canGenerate(form, issues);
 
+  const handleDeleteMap = (mapName: string) => {
+    ipc.send({ kind: "Maps", command: { type: "uninstallMap", payload: { folderName: mapName } } });
+    if (results) {
+      const nextResults = results.filter((m) => m !== mapName);
+      if (nextResults.length === 0) {
+        setResults(null);
+        setSelectedMapIndex(0);
+      } else {
+        setResults(nextResults);
+        setSelectedMapIndex((prev) => Math.min(prev, nextResults.length - 1));
+      }
+    }
+  };
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (reproducing) {
@@ -341,7 +239,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
     beginRun(() => void generate(form));
   };
 
-  const presets = state.presets ?? [];
+  const presets = useMemo(() => state.presets ?? [], [state.presets]);
   const trimmedPreset = presetName.trim();
   // Matching is case-insensitive because the file name is: saving "ladder"
   // over "Ladder" replaces it rather than making a second entry.
@@ -377,116 +275,90 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
       spawnCount: nearestLegalSpawnCount(f.spawnCount ?? 6, numTeams),
     }));
 
+  const availableVersions = useMemo(() => state.availableVersions ?? [], [state.availableVersions]);
+  const versionOptions: SelectOption<string>[] = useMemo(
+    () => [
+      {
+        value: "",
+        label: t("maps.generate.latestVersion", {
+          version: state.latestVersion || availableVersions[0] || t("maps.generate.auto"),
+        }),
+      },
+      ...availableVersions.map((v) => ({ value: v, label: v })),
+    ],
+    [availableVersions, state.latestVersion, t],
+  );
+
+  const mapSizeOptions: SelectOption<number>[] = useMemo(
+    () =>
+      MAP_SIZES.map((size) => ({
+        value: size,
+        label: formatMapSize(size),
+      })),
+    [],
+  );
+
+  const teamOptions: SelectOption<number>[] = useMemo(
+    () =>
+      TEAM_COUNTS.map((count) => ({
+        value: count,
+        label: count === 0 ? t("maps.generate.asymmetric") : String(count),
+      })),
+    [t],
+  );
+
+  const spawnSelectOptions: SelectOption<number>[] = useMemo(
+    () =>
+      spawnOptions.map((count) => ({
+        value: count,
+        label: String(count),
+      })),
+    [spawnOptions],
+  );
+
+  const generationTypeOptions: SelectOption<GenerationType>[] = useMemo(
+    () =>
+      recordEntries(GENERATION_TYPES).map(([value, kind]) => ({
+        value,
+        label: t(kind.label),
+      })),
+    [t],
+  );
+
+  const presetOptions: SelectOption<string>[] = useMemo(
+    () => [
+      {
+        value: "",
+        label: presets.length === 0 ? t("maps.generate.presetsEmpty") : t("maps.generate.presetsLoad"),
+        disabled: true,
+      },
+      ...presets.map((preset) => ({
+        value: preset.name,
+        label: preset.name,
+      })),
+    ],
+    [presets, t],
+  );
+
   const lists = state.optionLists;
-  const availableVersions = state.availableVersions ?? [];
   const previews = state.previews ?? {};
   const styleOverrides = (form.styles?.length ?? 0) > 0 || Boolean(form.style);
   const typeOverrides = form.generationType !== "casual";
   const rawOverrides = form.commandLineArgs.trim() !== "";
 
-  // Every finished run gets this overview, one map or twenty. It is the only
-  // place the maps are named, previewed and described, and skipping it for a
-  // single map left the commonest case with nothing to show at all.
-  if (results !== null) {
-    const pickable = Boolean(onGenerated);
-    const isSingle = results.length === 1;
-    const singleMap = results[0];
+  const [selectedMapIndex, setSelectedMapIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
 
-    return (
-      <Modal onClose={onClose} className="generate-map-modal">
-        <div className="generate-map-head">
-          <h2 className="generate-map-title">
-            {isSingle
-              ? t("maps.generate.singleResultTitle")
-              : pickable
-                ? t("maps.generate.chooseMap")
-                : t("maps.generate.resultTitle")}
-          </h2>
-          <p className="generate-map-subtitle">
-            {results.length === 0
-              ? t("maps.generate.resultNone")
-              : isSingle
-                ? t("maps.generate.singleResultSubtitle")
-                : pickable
-                  ? t("maps.generate.choicesNote", { count: results.length })
-                  : t("maps.generate.resultNote", { count: results.length })}
-          </p>
-        </div>
+  const copyCurrentName = (name: string) => {
+    void navigator.clipboard.writeText(name);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-        {isSingle ? (
-          <SingleMapResult
-            map={singleMap}
-            previewUrl={previews[singleMap]}
-            facts={state.decoded?.[singleMap]}
-          />
-        ) : (
-          <div className="generate-map-choices-grid">
-            {results.map((map) => {
-              const previewUrl = previews[map];
-              const facts = state.decoded?.[map];
-              const body = (
-                <>
-                  <div className="generate-map-card-thumb">
-                    <GeneratePreviewImg
-                      url={previewUrl}
-                      alt={map}
-                      className="generate-map-card-img"
-                      placeholderClassName="generate-map-card-placeholder"
-                      iconSize={32}
-                    />
-                  </div>
-                  <div className="generate-map-card-meta">
-                    <span className="generate-map-card-name" title={map}>
-                      {map}
-                    </span>
-                    {facts && (
-                      <span className="generate-map-card-facts">
-                        {summariseDecodedName(facts).join(" · ")}
-                      </span>
-                    )}
-                  </div>
-                </>
-              );
-              // Only a caller that can accept a map gets a clickable card;
-              // elsewhere a button that does nothing would just be a lie.
-              return pickable ? (
-                <button key={map} type="button" className="generate-map-card" onClick={() => pick(map)}>
-                  {body}
-                </button>
-              ) : (
-                <div key={map} className="generate-map-card is-static">
-                  {body}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="generate-map-actions">
-          <Button type="button" onClick={() => setResults(null)}>
-            {t("maps.generate.backToOptions")}
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => {
-              if (pickable && results && results.length > 0) {
-                pick(results[0]);
-              } else {
-                onClose();
-              }
-            }}
-          >
-            {pickable
-              ? isSingle
-                ? t("maps.generate.useMap")
-                : t("maps.generate.chooseMap")
-              : t("maps.generate.done")}
-          </Button>
-        </div>
-      </Modal>
-    );
-  }
+  const currentMap = results && results.length > 0 ? results[selectedMapIndex] ?? results[0] : null;
+  const currentPreviewUrl = currentMap ? previews[currentMap] : undefined;
+  const currentFacts = currentMap ? state.decoded?.[currentMap] : undefined;
+  const pickable = Boolean(onGenerated);
 
   return (
     <Modal onClose={onClose} className="generate-map-modal">
@@ -495,144 +367,116 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
         <p className="generate-map-subtitle">{t("maps.generate.subtitle")}</p>
       </div>
 
-      <form className="generate-map" onSubmit={submit}>
-        {reproducing && (
-          <div className="generate-map-banner">
-            <strong>{t("maps.generate.rebuildingBanner")}</strong>
-            <span>
-              {reproduceValid
-                ? t("maps.generate.rebuildingHint")
-                : t("maps.generate.notAGeneratedName")}
-            </span>
-            {decoded && (
-              <ul className="generate-map-facts">
-                {summariseDecodedName(decoded).map((fact) => (
-                  <li key={fact} className="generate-map-fact">
-                    {fact}
-                  </li>
-                ))}
-              </ul>
+      <div className="generate-map-unified-layout">
+        {/* Left Column: Generator Form & Controls */}
+        <div className="generate-map-form-pane">
+          <form className="generate-map" onSubmit={submit}>
+            {reproducing && (
+              <div className="generate-map-banner">
+                <strong>{t("maps.generate.rebuildingBanner")}</strong>
+                <span>
+                  {reproduceValid
+                    ? t("maps.generate.rebuildingHint")
+                    : t("maps.generate.notAGeneratedName")}
+                </span>
+                {decoded && (
+                  <ul className="generate-map-facts">
+                    {summariseDecodedName(decoded).map((fact) => (
+                      <li key={fact} className="generate-map-fact">
+                        {fact}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        <fieldset className="generate-map-fieldset" disabled={reproducing}>
-          <div className="generate-map-grid-2col">
-            <Row label={t("maps.generate.generatorVersion")}>
-              <Select
-                value={form.version ?? ""}
-                onChange={(value) => {
-                  const version = value || null;
-                  set("version", version);
-                  void loadOptions(version);
-                }}
-              >
-                <option value="">
-                  {t("maps.generate.latestVersion", {
-                    version: state.latestVersion || availableVersions[0] || t("maps.generate.auto"),
-                  })}
-                </option>
-                {availableVersions.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </Select>
-            </Row>
+            <fieldset className="generate-map-fieldset" disabled={reproducing}>
+              <div className="generate-map-grid-2col">
+                <Row label={t("maps.generate.generatorVersion")}>
+                  <Select
+                    value={form.version ?? ""}
+                    options={versionOptions}
+                    onChange={(value) => {
+                      const version = value || null;
+                      set("version", version);
+                      void loadOptions(version);
+                    }}
+                  />
+                </Row>
 
-            <Row label={t("maps.generate.mapSize")}>
-              <Select value={form.mapSize ?? 512} onChange={(v) => set("mapSize", Number(v))}>
-                {MAP_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {formatMapSize(size)}
-                  </option>
-                ))}
-              </Select>
-            </Row>
+                <Row label={t("maps.generate.mapSize")}>
+                  <Select
+                    value={form.mapSize ?? 512}
+                    options={mapSizeOptions}
+                    onChange={(v) => set("mapSize", Number(v))}
+                  />
+                </Row>
 
-            <Row label={t("maps.generate.teams")}>
-              <Select value={teams} onChange={(v) => changeTeams(Number(v))}>
-                {TEAM_COUNTS.map((count) => (
-                  <option key={count} value={count}>
-                    {count === 0 ? t("maps.generate.asymmetric") : count}
-                  </option>
-                ))}
-              </Select>
-            </Row>
+                <Row label={t("maps.generate.teams")}>
+                  <Select
+                    value={teams}
+                    options={teamOptions}
+                    onChange={(v) => changeTeams(Number(v))}
+                  />
+                </Row>
 
-            <Row
-              label={t("maps.generate.spawns")}
-              hint={teams > 0 ? t("maps.generate.spawnsMultipleHint", { teams }) : undefined}
-            >
-              <Select value={form.spawnCount ?? 6} onChange={(v) => set("spawnCount", Number(v))}>
-                {spawnOptions.map((count) => (
-                  <option key={count} value={count}>
-                    {count}
-                  </option>
-                ))}
-              </Select>
-            </Row>
+                <Row
+                  label={t("maps.generate.spawns")}
+                  hint={teams > 0 ? t("maps.generate.spawnsMultipleHint", { teams }) : undefined}
+                >
+                  <Select
+                    value={form.spawnCount ?? 6}
+                    options={spawnSelectOptions}
+                    onChange={(v) => set("spawnCount", Number(v))}
+                  />
+                </Row>
 
-            <Row
-              label={t("maps.generate.count")}
-              hint={seedPinsOneMap ? t("maps.generate.seedPinsOneMap") : undefined}
-            >
-              <input
-                type="number"
-                className="generate-map-control"
-                min={1}
-                max={MAX_MAPS_PER_RUN}
-                disabled={seedPinsOneMap}
-                value={seedPinsOneMap ? 1 : (form.numToGenerate ?? 1)}
-                onChange={(e) => set("numToGenerate", Number(e.target.value))}
-              />
-            </Row>
+                <Row
+                  label={t("maps.generate.count")}
+                  hint={seedPinsOneMap ? t("maps.generate.seedPinsOneMap") : undefined}
+                >
+                  <input
+                    type="number"
+                    className="generate-map-control"
+                    min={1}
+                    max={MAX_MAPS_PER_RUN}
+                    disabled={seedPinsOneMap}
+                    value={seedPinsOneMap ? 1 : (form.numToGenerate ?? 1)}
+                    onChange={(e) => set("numToGenerate", Number(e.target.value))}
+                  />
+                </Row>
 
-            <Row
-              label={t("maps.generate.styleOfGame")}
-              hint={t(GENERATION_TYPES[form.generationType].hint)}
-            >
-              <Select
-                value={form.generationType}
-                onChange={(v) => set("generationType", v as GenerationType)}
-              >
-                {recordEntries(GENERATION_TYPES).map(([value, kind]) => (
-                  <option key={value} value={value}>
-                    {t(kind.label)}
-                  </option>
-                ))}
-              </Select>
-            </Row>
-          </div>
+                <Row
+                  label={t("maps.generate.styleOfGame")}
+                  hint={t(GENERATION_TYPES[form.generationType].hint)}
+                >
+                  <Select
+                    value={form.generationType}
+                    options={generationTypeOptions}
+                    onChange={(v) => set("generationType", v)}
+                  />
+                </Row>
+              </div>
 
-          {(blocking.length > 0 || advisory.length > 0) && !rawOverrides && (
-            <div className="generate-map-issues">
-              {blocking.map((issue) => (
-                <p key={issueKey(issue)} className="generate-map-issue is-blocking">
-                  <span>{describeIssue(issue, t)}</span>
-                </p>
-              ))}
-              {advisory.map((issue) => (
-                <p key={issueKey(issue)} className="generate-map-issue is-advisory">
-                  <span>{describeIssue(issue, t)}</span>
-                </p>
-              ))}
-            </div>
-          )}
-        </fieldset>
+              {(blocking.length > 0 || advisory.length > 0) && !rawOverrides && (
+                <div className="generate-map-issues">
+                  {blocking.map((issue) => (
+                    <p key={issueKey(issue)} className="generate-map-issue is-blocking">
+                      <span>{describeIssue(issue, t)}</span>
+                    </p>
+                  ))}
+                  {advisory.map((issue) => (
+                    <p key={issueKey(issue)} className="generate-map-issue is-advisory">
+                      <span>{describeIssue(issue, t)}</span>
+                    </p>
+                  ))}
+                </div>
+              )}
+            </fieldset>
 
-        <button
-          type="button"
-          className="generate-map-advanced-toggle"
-          aria-expanded={advanced}
-          onClick={() => setAdvanced((a) => !a)}
-        >
-          <Icon name="chevronDown" size={13} className="generate-map-toggle-icon" />
-          <span>{advanced ? t("maps.generate.fewerOptions") : t("maps.generate.moreOptions")}</span>
-        </button>
+            <hr className="generate-map-divider" />
 
-        {advanced && (
-          <div className="generate-map-advanced">
             <fieldset className="generate-map-fieldset" disabled={reproducing}>
               {typeOverrides && (
                 <p className="generate-map-note">
@@ -642,292 +486,447 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </p>
               )}
 
-              <div className="generate-map-grid-2col">
-                <Row label={t("maps.generate.symmetries")}>
-                  <MultiSelect
-                    label={t("maps.generate.symmetries")}
-                    options={lists.symmetries.map((s) => ({ value: s, label: s }))}
-                    selected={form.symmetries ?? []}
-                    onChange={(symmetries) => set("symmetries", symmetries)}
-                    anyLabel={t("maps.generate.randomAny")}
-                  />
-                </Row>
-
-                <Row
-                  label={t("maps.generate.mapStyles")}
-                  hint={styleOverrides ? t("maps.generate.mapStyleHint") : undefined}
-                >
-                  <MultiSelect
-                    label={t("maps.generate.mapStyles")}
-                    options={lists.styles.map((s) => ({ value: s, label: s }))}
-                    selected={form.styles ?? []}
-                    onChange={(styles) => set("styles", styles)}
-                    anyLabel={t("maps.generate.randomAny")}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.terrainStyles")}>
-                  <MultiSelect
-                    label={t("maps.generate.terrainStyles")}
-                    options={lists.terrainStyles.map((s) => ({ value: s, label: s }))}
-                    selected={form.terrainStyles ?? []}
-                    onChange={(terrainStyles) => set("terrainStyles", terrainStyles)}
-                    anyLabel={t("maps.generate.randomAny")}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.textureStyles")}>
-                  <MultiSelect
-                    label={t("maps.generate.textureStyles")}
-                    options={lists.textureStyles.map((s) => ({ value: s, label: s }))}
-                    selected={form.textureStyles ?? []}
-                    onChange={(textureStyles) => set("textureStyles", textureStyles)}
-                    anyLabel={t("maps.generate.randomAny")}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.resourceStyles")}>
-                  <MultiSelect
-                    label={t("maps.generate.resourceStyles")}
-                    options={lists.resourceStyles.map((s) => ({ value: s, label: s }))}
-                    selected={form.resourceStyles ?? []}
-                    onChange={(resourceStyles) => set("resourceStyles", resourceStyles)}
-                    anyLabel={t("maps.generate.randomAny")}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.propStyles")}>
-                  <MultiSelect
-                    label={t("maps.generate.propStyles")}
-                    options={lists.propStyles.map((s) => ({ value: s, label: s }))}
-                    selected={form.propStyles ?? []}
-                    onChange={(propStyles) => set("propStyles", propStyles)}
-                    anyLabel={t("maps.generate.randomAny")}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.reclaimDensity")}>
-                  <RangeSlider
-                    label={t("maps.generate.reclaimDensity")}
-                    min={0}
-                    max={DENSITY_BINS}
-                    low={form.reclaimDensityMin ?? null}
-                    high={form.reclaimDensityMax ?? null}
-                    format={(v) => `${densityPercent(v)}%`}
-                    onChange={(low, high) => {
-                      set("reclaimDensityMin", low);
-                      set("reclaimDensityMax", high);
-                    }}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.resourceDensity")}>
-                  <RangeSlider
-                    label={t("maps.generate.resourceDensity")}
-                    min={0}
-                    max={DENSITY_BINS}
-                    low={form.resourceDensityMin ?? null}
-                    high={form.resourceDensityMax ?? null}
-                    format={(v) => `${densityPercent(v)}%`}
-                    onChange={(low, high) => {
-                      set("resourceDensityMin", low);
-                      set("resourceDensityMax", high);
-                    }}
-                  />
-                </Row>
-              </div>
-
-              <hr className="generate-map-divider" />
-
-              <div className="generate-map-grid-2col">
-                <Row label={t("maps.generate.seed")}>
-                  <div className="generate-map-seed" title={t("maps.generate.seedHint")}>
-                    <input
-                      className="generate-map-control"
-                      value={form.seed}
-                      disabled={reproducing}
-                      placeholder={t("maps.generate.random")}
-                      aria-label={t("maps.generate.seed")}
-                      onChange={(e) => set("seed", e.target.value.replace(/[^\d-]/g, ""))}
-                    />
-                    <button
-                      type="button"
-                      className="generate-map-seed-btn"
-                      disabled={reproducing}
-                      aria-label={t("maps.generate.rerollSeed")}
-                      title={t("maps.generate.rerollSeed")}
-                      onClick={() =>
-                        set("seed", String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
-                      }
-                    >
-                      <Icon name="refresh" size={13} />
-                    </button>
-                  </div>
-                </Row>
-
-                <Row label={t("maps.generate.reproduceTitle")}>
-                  <input
-                    className="generate-map-control"
-                    value={reproduceName}
-                    aria-invalid={reproducing && !reproduceValid}
-                    aria-label={t("maps.generate.mapNameSeed")}
-                    placeholder={t("maps.generate.mapNameSeedPlaceholder")}
-                    onChange={(e) => setReproduceName(e.target.value)}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.outputPath")}>
-                  <input
-                    className="generate-map-control"
-                    value={form.outputPath}
-                    aria-label={t("maps.generate.outputPath")}
-                    placeholder={t("maps.generate.outputPathHint")}
-                    onChange={(e) => set("outputPath", e.target.value)}
-                  />
-                </Row>
-
-                <Row label={t("maps.generate.rawArguments")}>
-                  <input
-                    className="generate-map-control"
-                    value={form.commandLineArgs}
-                    aria-label={t("maps.generate.rawArguments")}
-                    placeholder={t("maps.generate.overridesEveryOption")}
-                    onChange={(e) => set("commandLineArgs", e.target.value)}
-                  />
-                </Row>
-              </div>
-
-              <hr className="generate-map-divider" />
-
-              <div className="generate-map-grid-2col">
-                <Row label={t("maps.generate.presets")}>
-                  <Select value="" onChange={applyPreset}>
-                    <option value="">
-                      {presets.length === 0
-                        ? t("maps.generate.presetsEmpty")
-                        : t("maps.generate.presetsLoad")}
-                    </option>
-                    {presets.map((preset) => (
-                      <option key={preset.name} value={preset.name}>
-                        {preset.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Row>
-
-                <Row label={t("maps.generate.presetName")}>
-                  <div className="generate-map-preset-save-group">
-                    <input
-                      className="generate-map-control"
-                      value={presetName}
-                      maxLength={80}
-                      aria-label={t("maps.generate.presetName")}
-                      placeholder={t("maps.generate.presetName")}
-                      onChange={(e) => setPresetName(e.target.value)}
-                    />
-                    <Button type="button" disabled={!presetNameUsable} onClick={save}>
-                      {saved
-                        ? t("maps.generate.settingsSaved")
-                        : existing
-                          ? t("maps.generate.presetReplace")
-                          : t("maps.generate.presetSave")}
-                    </Button>
-                    {existing && (
-                      <Button type="button" onClick={() => void deletePreset(existing.name)}>
-                        {t("maps.generate.presetDelete")}
-                      </Button>
-                    )}
-                  </div>
-                </Row>
-              </div>
-
-              <hr className="generate-map-divider" />
-
-              <div className="generate-map-grid-2col">
-                <Row label={t("maps.generate.diagnostics")}>
-                  <div className="generate-map-checks-group">
-                    <label className="generate-map-check">
-                      <input
-                        type="checkbox"
-                        checked={form.visualize}
-                        onChange={(e) => set("visualize", e.target.checked)}
+                  <div className="generate-map-grid-2col">
+                    <Row label={t("maps.generate.symmetries")}>
+                      <MultiSelect
+                        label={t("maps.generate.symmetries")}
+                        options={lists.symmetries.map((s) => ({ value: s, label: s }))}
+                        selected={form.symmetries ?? []}
+                        onChange={(symmetries) => set("symmetries", symmetries)}
+                        anyLabel={t("maps.generate.randomAny")}
                       />
-                      <span title={t("maps.generate.visualizeHint")}>
-                        {t("maps.generate.visualize")}
-                      </span>
-                    </label>
-                    <label className="generate-map-check">
-                      <input
-                        type="checkbox"
-                        checked={form.debug}
-                        onChange={(e) => set("debug", e.target.checked)}
-                      />
-                      <span title={t("maps.generate.debugHint")}>{t("maps.generate.debug")}</span>
-                    </label>
-                  </div>
-                </Row>
+                    </Row>
 
-                <Row label={t("maps.generate.tools")}>
-                  <div className="generate-map-tools-group">
-                    <Button type="button" onClick={() => void preflight(form)} disabled={busy}>
-                      {t("maps.generate.checkOptions")}
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        setShowHelp((open) => !open);
-                        if (!state.helpText) void loadHelp(form.version);
-                      }}
+                    <Row
+                      label={t("maps.generate.mapStyles")}
+                      hint={styleOverrides ? t("maps.generate.mapStyleHint") : undefined}
                     >
-                      {showHelp ? t("maps.generate.hideHelp") : t("maps.generate.showHelp")}
-                    </Button>
+                      <MultiSelect
+                        label={t("maps.generate.mapStyles")}
+                        options={lists.styles.map((s) => ({ value: s, label: s }))}
+                        selected={form.styles ?? []}
+                        onChange={(styles) => set("styles", styles)}
+                        anyLabel={t("maps.generate.randomAny")}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.terrainStyles")}>
+                      <MultiSelect
+                        label={t("maps.generate.terrainStyles")}
+                        options={lists.terrainStyles.map((s) => ({ value: s, label: s }))}
+                        selected={form.terrainStyles ?? []}
+                        onChange={(terrainStyles) => set("terrainStyles", terrainStyles)}
+                        anyLabel={t("maps.generate.randomAny")}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.textureStyles")}>
+                      <MultiSelect
+                        label={t("maps.generate.textureStyles")}
+                        options={lists.textureStyles.map((s) => ({ value: s, label: s }))}
+                        selected={form.textureStyles ?? []}
+                        onChange={(textureStyles) => set("textureStyles", textureStyles)}
+                        anyLabel={t("maps.generate.randomAny")}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.resourceStyles")}>
+                      <MultiSelect
+                        label={t("maps.generate.resourceStyles")}
+                        options={lists.resourceStyles.map((s) => ({ value: s, label: s }))}
+                        selected={form.resourceStyles ?? []}
+                        onChange={(resourceStyles) => set("resourceStyles", resourceStyles)}
+                        anyLabel={t("maps.generate.randomAny")}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.propStyles")}>
+                      <MultiSelect
+                        label={t("maps.generate.propStyles")}
+                        options={lists.propStyles.map((s) => ({ value: s, label: s }))}
+                        selected={form.propStyles ?? []}
+                        onChange={(propStyles) => set("propStyles", propStyles)}
+                        anyLabel={t("maps.generate.randomAny")}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.reclaimDensity")}>
+                      <RangeSlider
+                        label={t("maps.generate.reclaimDensity")}
+                        min={0}
+                        max={DENSITY_BINS}
+                        low={form.reclaimDensityMin ?? null}
+                        high={form.reclaimDensityMax ?? null}
+                        format={(v) => `${densityPercent(v)}%`}
+                        onChange={(low, high) => {
+                          set("reclaimDensityMin", low);
+                          set("reclaimDensityMax", high);
+                        }}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.resourceDensity")}>
+                      <RangeSlider
+                        label={t("maps.generate.resourceDensity")}
+                        min={0}
+                        max={DENSITY_BINS}
+                        low={form.resourceDensityMin ?? null}
+                        high={form.resourceDensityMax ?? null}
+                        format={(v) => `${densityPercent(v)}%`}
+                        onChange={(low, high) => {
+                          set("resourceDensityMin", low);
+                          set("resourceDensityMax", high);
+                        }}
+                      />
+                    </Row>
                   </div>
-                </Row>
-              </div>
-            </fieldset>
 
-            {showHelp && (
-              <pre className="generate-map-help">
-                {state.helpText || t("maps.generate.loadingHelp")}
-              </pre>
-            )}
-          </div>
-        )}
+                  <hr className="generate-map-divider" />
 
-        {state.predictedName && !reproducing && state.status.type !== "generated" && (
-          <p className="generate-map-predicted">
-            <span className="generate-map-row-label">{t("maps.generate.willBeCalled")}</span>
-            <code>{state.predictedName}</code>
-          </p>
-        )}
+                  <div className="generate-map-grid-2col">
+                    <Row label={t("maps.generate.seed")}>
+                      <div className="generate-map-seed" title={t("maps.generate.seedHint")}>
+                        <input
+                          className="generate-map-control"
+                          value={form.seed}
+                          disabled={reproducing}
+                          placeholder={t("maps.generate.random")}
+                          aria-label={t("maps.generate.seed")}
+                          onChange={(e) => set("seed", e.target.value.replace(/[^\d-]/g, ""))}
+                        />
+                        <button
+                          type="button"
+                          className="generate-map-seed-btn"
+                          disabled={reproducing}
+                          aria-label={t("maps.generate.rerollSeed")}
+                          title={t("maps.generate.rerollSeed")}
+                          onClick={() =>
+                            set("seed", String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)))
+                          }
+                        >
+                          <Icon name="refresh" size={13} />
+                        </button>
+                      </div>
+                    </Row>
 
-        <GeneratorProgress />
+                    <Row label={t("maps.generate.reproduceTitle")}>
+                      <input
+                        className="generate-map-control"
+                        value={reproduceName}
+                        aria-invalid={reproducing && !reproduceValid}
+                        aria-label={t("maps.generate.mapNameSeed")}
+                        placeholder={t("maps.generate.mapNameSeedPlaceholder")}
+                        onChange={(e) => setReproduceName(e.target.value)}
+                      />
+                    </Row>
 
-        <div className="generate-map-actions">
-          <Button type="button" onClick={onClose}>
-            {t("maps.generate.close")}
-          </Button>
-          <Button type="button" disabled={reproducing} onClick={() => void setOptions(form)}>
-            {t("maps.generate.rememberOptions")}
-          </Button>
-          {busy && (
-            <Button type="button" onClick={() => void cancel()}>
-              {t("maps.generate.cancel")}
-            </Button>
-          )}
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={busy || (reproducing ? !reproduceValid : !submittable)}
-          >
-            {busy
-              ? t("maps.generate.working")
-              : reproducing
-                ? t("maps.generate.reproduce")
-                : t("maps.generate.generate")}
-          </Button>
+                    <Row label={t("maps.generate.outputPath")}>
+                      <input
+                        className="generate-map-control"
+                        value={form.outputPath}
+                        aria-label={t("maps.generate.outputPath")}
+                        placeholder={t("maps.generate.outputPathHint")}
+                        onChange={(e) => set("outputPath", e.target.value)}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.rawArguments")}>
+                      <input
+                        className="generate-map-control"
+                        value={form.commandLineArgs}
+                        aria-label={t("maps.generate.rawArguments")}
+                        placeholder={t("maps.generate.overridesEveryOption")}
+                        onChange={(e) => set("commandLineArgs", e.target.value)}
+                      />
+                    </Row>
+                  </div>
+
+                  <hr className="generate-map-divider" />
+
+                  <div className="generate-map-grid-2col">
+                    <Row label={t("maps.generate.presets")}>
+                      <Select
+                        value=""
+                        placeholder={
+                          presets.length === 0
+                            ? t("maps.generate.presetsEmpty")
+                            : t("maps.generate.presetsLoad")
+                        }
+                        options={presetOptions}
+                        onChange={applyPreset}
+                      />
+                    </Row>
+
+                    <Row label={t("maps.generate.presetName")}>
+                      <div className="generate-map-preset-save-group">
+                        <input
+                          className="generate-map-control"
+                          value={presetName}
+                          maxLength={80}
+                          aria-label={t("maps.generate.presetName")}
+                          placeholder={t("maps.generate.presetName")}
+                          onChange={(e) => setPresetName(e.target.value)}
+                        />
+                        <Button type="button" disabled={!presetNameUsable} onClick={save}>
+                          {saved
+                            ? t("maps.generate.settingsSaved")
+                            : existing
+                              ? t("maps.generate.presetReplace")
+                              : t("maps.generate.presetSave")}
+                        </Button>
+                        {existing && (
+                          <Button type="button" onClick={() => void deletePreset(existing.name)}>
+                            {t("maps.generate.presetDelete")}
+                          </Button>
+                        )}
+                      </div>
+                    </Row>
+                  </div>
+
+                  <hr className="generate-map-divider" />
+
+                  <div className="generate-map-grid-2col">
+                    <Row label={t("maps.generate.diagnostics")}>
+                      <div className="generate-map-checks-group">
+                        <label className="generate-map-check">
+                          <input
+                            type="checkbox"
+                            checked={form.visualize}
+                            onChange={(e) => set("visualize", e.target.checked)}
+                          />
+                          <span title={t("maps.generate.visualizeHint")}>
+                            {t("maps.generate.visualize")}
+                          </span>
+                        </label>
+                        <label className="generate-map-check">
+                          <input
+                            type="checkbox"
+                            checked={form.debug}
+                            onChange={(e) => set("debug", e.target.checked)}
+                          />
+                          <span title={t("maps.generate.debugHint")}>{t("maps.generate.debug")}</span>
+                        </label>
+                      </div>
+                    </Row>
+
+                    <Row label={t("maps.generate.tools")}>
+                      <div className="generate-map-tools-group">
+                        <Button type="button" onClick={() => void preflight(form)} disabled={busy}>
+                          {t("maps.generate.checkOptions")}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setShowHelp((open) => !open);
+                            if (!state.helpText) void loadHelp(form.version);
+                          }}
+                        >
+                          {showHelp ? t("maps.generate.hideHelp") : t("maps.generate.showHelp")}
+                        </Button>
+                      </div>
+                    </Row>
+                  </div>
+                </fieldset>
+
+                {showHelp && (
+                  <pre className="generate-map-help">
+                    {state.helpText || t("maps.generate.loadingHelp")}
+                  </pre>
+                )}
+
+            <div className="generate-map-actions">
+              <Button type="button" onClick={onClose}>
+                {t("maps.generate.close")}
+              </Button>
+              <Button type="button" disabled={reproducing} onClick={() => void setOptions(form)}>
+                {t("maps.generate.rememberOptions")}
+              </Button>
+              {busy && (
+                <Button type="button" onClick={() => void cancel()}>
+                  {t("maps.generate.cancel")}
+                </Button>
+              )}
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={busy || (reproducing ? !reproduceValid : !submittable)}
+              >
+                {busy
+                  ? t("maps.generate.working")
+                  : reproducing
+                    ? t("maps.generate.reproduce")
+                    : t("maps.generate.generate")}
+              </Button>
+            </div>
+          </form>
         </div>
-      </form>
+
+        {/* Right Column: Live Map Preview & Generation Output */}
+        <div className="generate-map-preview-pane">
+
+          {busy ? (
+            <div className="generate-map-preview-loading">
+              <div className="generate-map-preview-spinner" />
+              <GeneratorProgress />
+            </div>
+          ) : currentMap ? (
+            <div className="generate-map-preview-content">
+              {results && results.length > 1 && (
+                <div className="generate-map-multiselect-row">
+                  {results.map((map, idx) => (
+                    <button
+                      key={map}
+                      type="button"
+                      className={`generate-map-thumb-btn${selectedMapIndex === idx ? " is-active" : ""}`}
+                      onClick={() => setSelectedMapIndex(idx)}
+                      title={map}
+                    >
+                      <GeneratePreviewImg
+                        url={previews[map]}
+                        alt={map}
+                        className="generate-map-thumb-img"
+                        placeholderClassName="generate-map-thumb-placeholder"
+                        iconSize={20}
+                      />
+                      <span className="generate-map-thumb-index">#{idx + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="generate-map-preview-img-wrap">
+                <GeneratePreviewImg
+                  url={currentPreviewUrl}
+                  alt={currentMap}
+                  className="generate-map-preview-img"
+                  placeholderClassName="generate-map-preview-placeholder"
+                  iconSize={48}
+                />
+              </div>
+
+              <div className="generate-map-name-row">
+                <div className="generate-map-name-wrap">
+                  <span className="generate-map-name-label">
+                    {t("maps.generate.reproduceTitle") || "Map name"}
+                  </span>
+                  <code className="generate-map-name-code" title={currentMap}>
+                    {currentMap}
+                  </code>
+                </div>
+                <Button onClick={() => copyCurrentName(currentMap)} title={t("maps.generate.copyName")}>
+                  <Icon name={copied ? "check" : "copy"} size={14} />
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+              </div>
+
+              <dl className="generate-map-specs-grid">
+                <div>
+                  <dt>{t("maps.generate.mapSize")}</dt>
+                  <dd>{currentFacts ? formatMapSize(currentFacts.mapSize) : "N/A"}</dd>
+                </div>
+                <div>
+                  <dt>{t("maps.generate.spawns")}</dt>
+                  <dd>{currentFacts ? `${currentFacts.spawnCount} players` : "N/A"}</dd>
+                </div>
+                <div>
+                  <dt>{t("maps.generate.teams")}</dt>
+                  <dd>
+                    {currentFacts
+                      ? currentFacts.numTeams === 0
+                        ? "Asymmetric"
+                        : `${currentFacts.numTeams} teams`
+                      : "N/A"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t("maps.generate.symmetry")}</dt>
+                  <dd>{currentFacts?.symmetry || t("maps.generate.any")}</dd>
+                </div>
+                <div>
+                  <dt>{t("maps.generate.generatorVersion")}</dt>
+                  <dd>{currentFacts ? `v${currentFacts.version}` : "N/A"}</dd>
+                </div>
+                <div>
+                  <dt>{t("maps.generate.seed")}</dt>
+                  <dd className="generate-map-spec-seed" title={currentFacts?.seed}>
+                    {currentFacts?.seed || "N/A"}
+                  </dd>
+                </div>
+              </dl>
+
+              {currentFacts && (
+                <div className="generate-map-tags">
+                  {summariseDecodedName(currentFacts).map((fact) => (
+                    <span key={fact} className="generate-map-tag">
+                      {fact}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="generate-map-ready-badge">
+                <Icon name="check" size={15} />
+                <span>{t("maps.generate.installedReady")}</span>
+              </div>
+
+              <div className="generate-map-preview-actions">
+                <Button
+                  type="button"
+                  className="generate-map-delete-btn"
+                  onClick={() => handleDeleteMap(currentMap)}
+                  title={t("maps.vault.uninstall")}
+                >
+                  <Icon name="trash" size={14} />
+                  <span>{t("maps.generate.presetDelete")}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="generate-map-use-btn"
+                  onClick={() => {
+                    if (pickable) {
+                      pick(currentMap);
+                    } else {
+                      onClose();
+                    }
+                  }}
+                >
+                  {pickable ? t("maps.generate.useMap") : t("maps.generate.close")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="generate-map-preview-empty">
+              <div className="generate-map-preview-img-wrap">
+                <img
+                  src={GENERATED_MAP_PLACEHOLDER_URL}
+                  alt={t("maps.generate.title")}
+                  className="generate-map-preview-img"
+                />
+              </div>
+              <div className="generate-map-preview-empty-meta">
+                <span className="generate-map-name-label">
+                  {t("maps.generate.willBeCalled") || "Predicted map name"}
+                </span>
+                {state.predictedName && !reproducing ? (
+                  <code className="generate-map-name-code">{state.predictedName}</code>
+                ) : (
+                  <p className="generate-map-empty-hint">
+                    {reproducing
+                      ? t("maps.generate.rebuildingHint")
+                      : t("maps.generate.subtitle")}
+                  </p>
+                )}
+              </div>
+              <div className="generate-map-preview-empty-footer">
+                <span className="muted">
+                  {t("maps.generate.singleResultSubtitle")}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </Modal>
   );
 }

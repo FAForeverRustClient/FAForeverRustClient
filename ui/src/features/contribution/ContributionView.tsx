@@ -46,6 +46,7 @@ const ACKNOWLEDGMENTS = [
   { name: "Seraphim-Noob", note: null },
   { name: "Nory", note: null },
   { name: "Nuggets", note: "feedback" },
+  { name: "Vindex", note: "feedback" },
 ] as const;
 
 export function ContributionView() {

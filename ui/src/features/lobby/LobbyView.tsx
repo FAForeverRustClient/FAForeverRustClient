@@ -207,7 +207,7 @@ function GameDetails({
         {simMods.length > 0 && (
           <div className="game-detail-section">
             <h3>{t("lobby.details.simMods")}</h3>
-            <div>
+            <div className="game-detail-tags">
               {(expandedMods ? simMods : simMods.slice(0, 4)).map((mod) => (
                 <span className="tag" key={mod}>{mod}</span>
               ))}
@@ -404,8 +404,22 @@ export function LobbyView() {
     }
   }, []);
 
-  const customGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() !== "coop" && game.gameType.toLocaleLowerCase() !== "coop"), [lobby.games]);
-  const coopGames = useMemo(() => lobby.games.filter((game) => game.modName.toLocaleLowerCase() === "coop" || game.gameType.toLocaleLowerCase() === "coop"), [lobby.games]);
+  const isMatchmakerGame = (game: Game) =>
+    game.gameType.toLocaleLowerCase() === "matchmaker" ||
+    game.visibility.toLocaleLowerCase() === "matchmaker";
+
+  const isCoopGame = (game: Game) =>
+    game.modName.toLocaleLowerCase() === "coop" ||
+    game.gameType.toLocaleLowerCase() === "coop";
+
+  const customGames = useMemo(
+    () => lobby.games.filter((game) => !isCoopGame(game) && !isMatchmakerGame(game)),
+    [lobby.games],
+  );
+  const coopGames = useMemo(
+    () => lobby.games.filter((game) => isCoopGame(game) && !isMatchmakerGame(game)),
+    [lobby.games],
+  );
 
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();

@@ -187,6 +187,7 @@ function displayedRating(profile: PlayerProfile | undefined): number | null {
 }
 
 function displayTeamName(team: string, soleTeam: boolean): string {
+  if (team === "-1" || team === "null") return t("lobby.details.observers");
   const numeric = Number(team);
   if (!Number.isInteger(numeric)) return `Team ${team}`;
   // Team 1 is the server's "no team" bucket. When it holds everyone the game is
@@ -505,6 +506,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     ? t("lobby.browser.ratingBetween", { min: game.ratingMin ?? t("lobby.browser.any"), max: game.ratingMax ?? t("lobby.browser.any") })
     : t("lobby.browser.openRange");
 
+  const [expandedMods, setExpandedMods] = useState(false);
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
@@ -596,7 +598,22 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           {simMods.length > 0 && (
             <div className="game-preview-dialog-section">
               <span>{t("lobby.browser.simMods")}</span>
-              <div>{simMods.map((mod) => <span className="tag" key={mod}>{mod}</span>)}</div>
+              <div className="game-detail-tags">
+                {(expandedMods ? simMods : simMods.slice(0, 4)).map((mod) => (
+                  <span className="tag" key={mod}>{mod}</span>
+                ))}
+                {simMods.length > 4 && (
+                  <button
+                    type="button"
+                    className="game-detail-more-tags"
+                    onClick={() => setExpandedMods((prev) => !prev)}
+                  >
+                    {expandedMods
+                      ? t("lobby.details.showLessMods")
+                      : t("lobby.details.showMoreMods", { count: simMods.length - 4 })}
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {teams.length > 0 && (
@@ -605,18 +622,15 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
               <div className="game-preview-dialog-teams">
                 {teams.map(([team, teamPlayers]) => (
                   <div className="game-team" key={team}>
-                    <span>
-                      {team === "-1" || team === "null"
-                        ? t("lobby.details.observers")
-                        : t("lobby.details.team", { id: team })}
-                    </span>
-                    <small>
-                      {teamPlayers.map((login, i) => {
+                    <div className="game-team-header">
+                      <span>{displayTeamName(team, teams.length === 1)}</span>
+                    </div>
+                    <ul className="game-team-player-list">
+                      {teamPlayers.map((login) => {
                         const profile = findPlayer(social, login);
                         const rating = displayedRating(profile);
                         return (
-                          <span key={login} className="game-preview-player-row">
-                            {i > 0 && ", "}
+                          <li key={login} className="game-preview-player-row">
                             {profile?.country ? (
                               <img
                                 src={flagSrc(profile.country)}
@@ -638,10 +652,10 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
                               <PlayerName name={login} />
                             </button>
                             {rating !== null && <span className="player-rating">({rating})</span>}
-                          </span>
+                          </li>
                         );
                       })}
-                    </small>
+                    </ul>
                   </div>
                 ))}
               </div>
