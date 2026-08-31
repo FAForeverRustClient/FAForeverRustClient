@@ -531,7 +531,8 @@ export const en = {
   "lobby.browser.column.game": "Game",
   "lobby.browser.column.map": "Map",
   "lobby.browser.column.players": "Players",
-  "lobby.browser.column.rating": "Rating",
+  "lobby.browser.column.rating": "Avg. Rating",
+  "lobby.browser.column.age": "Age",
   "lobby.browser.noMatch": "No games match",
   "lobby.browser.noMatchHint": "Adjust the search or game filters.",
 
@@ -2034,7 +2035,7 @@ export const en = {
   "tournaments.list.drafts": "Your drafts",
   "tournaments.list.upcoming": "Upcoming",
   "tournaments.list.ongoing": "Ongoing",
-  "tournaments.list.past": "Finished and called off",
+  "tournaments.list.past": "Finished or called off",
   "tournaments.list.signupsIn": "Signups in {time}",
   "tournaments.list.abandoned": "Called off",
   "tournaments.signup.title": "Enter this tournament",

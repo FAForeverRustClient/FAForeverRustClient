@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { PlayerName } from "../../shared/nameColors";
@@ -12,12 +12,20 @@ import { MatchmakingPanel } from "./MatchmakingPanel";
 import { CoopPanel } from "./CoopPanel";
 import { GalacticWarPanel } from "./GalacticWarPanel";
 import { Modal } from "../../design-system/Modal";
-import { CustomGamesBrowser, GamePreviewDialog, isCustomGameRanked, type GameViewMode } from "./CustomGamesBrowser";
+import {
+  CustomGamesBrowser,
+  GamePreviewDialog,
+  displayTeamName,
+  displayedRating,
+  isCustomGameRanked,
+  type GameViewMode,
+} from "./CustomGamesBrowser";
 import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
 import { GameMapImage } from "./GameMapImage";
 import { PlayModeTabs } from "./PlayModeTabs";
 import { PrivateGameDialog } from "./PrivateGameDialog";
-import { findVaultMap, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
+import { flagSrc } from "../../shared/countryFlags";
+import { mapPresentation } from "../../shared/mapPresentation";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
 import { UserMenu, type UserMenuTarget } from "../chat/UserMenu";
@@ -105,16 +113,19 @@ function GameDetails({
   const lobby = useAppStore((state) => state.state.lobby);
   const social = useAppStore((state) => state.state.social);
   const player = useAppStore((state) => state.state.auth.player);
-  const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
-  const vaultMap = findVaultMap(maps.vault, game.map);
   const presentation = mapPresentation(maps.vault, game.map);
-  const isGenerated = isGeneratedMap(game.map);
-  const installed = maps.installed.some((map) => map.folderName.toLowerCase() === game.map.toLowerCase() || map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`));
-  const isGeneratingThisMap =
-    mapGenStatus.type === "generating" ||
-    mapGenStatus.type === "downloading" ||
-    mapGenStatus.type === "resolvingVersion";
-  const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
+  const teams = useMemo(() => {
+    return Object.entries(game.teams)
+      .filter(([, players]) => players.length > 0)
+      .sort(([a], [b]) => {
+        if (a === "-1" || a === "null") return 1;
+        if (b === "-1" || b === "null") return -1;
+        const numA = Number(a);
+        const numB = Number(b);
+        if (Number.isFinite(numA) && Number.isFinite(numB)) return numA - numB;
+        return a.localeCompare(b);
+      });
+  }, [game.teams]);
   const simMods = Object.values(game.simMods);
   const [expandedMods, setExpandedMods] = useState(false);
   useEffect(() => {
@@ -183,7 +194,6 @@ function GameDetails({
       </button>
       <div className="game-detail-content">
         <div className="game-detail-title">
-          <span>{game.modName || "faf"}</span>
           <h2>{game.title}</h2>
           <p>
             {t("lobby.details.hostLabel")}{" "}
@@ -227,15 +237,47 @@ function GameDetails({
         )}
         {teams.length > 0 && (
           <div className="game-detail-section">
-            {teams.map(([team, players]) => (
-              <div className="game-team" key={team}>
-                <span>{team === "-1" || team === "null" ? t("lobby.details.observers") : t("lobby.details.team", { id: team })}</span>
-                <small>
-                  {players.map((p, i) => {
+            {teams.map(([team, players]) => {
+              const isObserver = team === "-1" || team === "null";
+              const playerRatings = players
+                .map((p) => displayedRating(findPlayer(social, p)))
+                .filter((r): r is number => r !== null);
+              const totalRating = playerRatings.length > 0
+                ? playerRatings.reduce((sum, r) => sum + r, 0)
+                : null;
+              const avgRating = playerRatings.length > 0
+                ? Math.round(totalRating! / playerRatings.length)
+                : null;
+              return (
+                <div className="game-team" key={team}>
+                  <div className="game-team-header">
+                    <span className="game-team-name">
+                      {displayTeamName(team, teams.length === 1)}
+                    </span>
+                    {!isObserver && totalRating !== null && (
+                      <span className="game-team-stats">
+                        Avg: {avgRating} | Total: {totalRating}
+                      </span>
+                    )}
+                  </div>
+                <ul className="game-team-player-list">
+                  {players.map((p) => {
                     const profile = findPlayer(social, p);
+                    const rating = displayedRating(profile);
                     return (
-                      <Fragment key={p}>
-                        {i > 0 && ", "}
+                      <li key={p} className="game-preview-player-row">
+                        {profile?.country ? (
+                          <img
+                            src={flagSrc(profile.country)}
+                            alt={profile.country.toUpperCase()}
+                            width={16}
+                            height={16}
+                            decoding="async"
+                            draggable={false}
+                          />
+                        ) : (
+                          <i className="game-lineup-flag-placeholder" />
+                        )}
                         <button
                           type="button"
                           className="game-team-player"
@@ -245,54 +287,18 @@ function GameDetails({
                         >
                           <PlayerName name={p} />
                         </button>
-                      </Fragment>
+                        {rating !== null && <span className="player-rating">{rating}</span>}
+                      </li>
                     );
                   })}
-                </small>
+                </ul>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
-      <div className="game-detail-footer surface">
-        {!installed && isGenerated && (
-          <Button
-            disabled={isGeneratingThisMap}
-            onClick={() =>
-              ipc.send({
-                kind: "MapGenerator",
-                command: {
-                  type: "generateNamed",
-                  payload: {
-                    mapName: game.map,
-                  },
-                },
-              })
-            }
-          >
-            <Icon name="plus" size={13} />
-            {isGeneratingThisMap ? t("lobby.details.generatingMap") : t("lobby.details.generateMap")}
-          </Button>
-        )}
-        {!installed && !isGenerated && vaultMap && (
-          <Button
-            onClick={() =>
-              ipc.send({
-                kind: "Maps",
-                command: {
-                  type: "installMap",
-                  payload: {
-                    folderName: vaultMap.folderName,
-                    downloadUrl: vaultMap.downloadUrl,
-                  },
-                },
-              })
-            }
-          >
-            <Icon name="plus" size={13} />
-            {t("lobby.details.downloadMap")}
-          </Button>
-        )}
+      <div className="game-detail-footer">
         <Button className="game-detail-join" variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
       </div>
     </aside>
