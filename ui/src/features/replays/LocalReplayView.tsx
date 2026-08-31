@@ -12,7 +12,12 @@ import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { formatShortDate } from "../../shared/dates";
 import { LocalReplaySearch } from "./LocalReplaySearch";
-import { ReplayLibraryCard, type ReplayCardData } from "./OnlineReplayPresentation";
+import {
+  ReplayLibraryCard,
+  ReplayDetailPanel,
+  localReplayToVaultReplay,
+  type ReplayCardData,
+} from "./OnlineReplayPresentation";
 import { ReplayViewSwitch, type ReplayViewMode } from "./ReplayViewSwitch";
 import {
   formatReplayListAge,
@@ -143,6 +148,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   const [watched, setWatched] = useState<Set<string>>(() =>
     loadStoredSet(LOCAL_WATCHED_STORAGE_KEY, (value): value is string => typeof value === "string"),
   );
+  const [openReplay, setOpenReplay] = useState<LocalReplay | null>(null);
   const [pendingDelete, setPendingDelete] = useState<LocalReplay | null>(null);
   const note = loadStatusNote(localStatus, t("replays.local.scanning"), t("replays.local.scanFailed"));
 
@@ -259,8 +265,8 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 key={replay.path}
                 replay={localReplayCard(replay, mapVault)}
                 watched={watched.has(localReplayKey(replay))}
-                selected={false}
-                onOpen={() => undefined}
+                selected={openReplay?.path === replay.path}
+                onOpen={() => setOpenReplay(replay)}
                 onDoubleClick={() => replay.watchable && !busy && markWatchedAndOpen(replay)}
               />
             ))}
@@ -320,7 +326,9 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                     secondary: replayDetails,
                     tone: localStatusTone(replay.status),
                   },
+                  selected: openReplay?.path === replay.path,
                   watched: watched.has(localReplayKey(replay)),
+                  onSelect: () => setOpenReplay(replay),
                   onActivate: replay.watchable && !busy ? () => markWatchedAndOpen(replay) : undefined,
                   iconAction: {
                     icon: "close",
@@ -344,6 +352,19 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
             </div>
           )}
         </>
+      )}
+      {openReplay && (
+        <ReplayDetailPanel
+          replay={localReplayToVaultReplay(openReplay, mapVault)}
+          busy={busy}
+          localPath={openReplay.path}
+          downloadState="downloaded"
+          onClose={() => setOpenReplay(null)}
+          onWatch={() => {
+            markWatchedAndOpen(openReplay);
+            setOpenReplay(null);
+          }}
+        />
       )}
       {pendingDelete && (
         <Modal onClose={() => setPendingDelete(null)}>

@@ -2,10 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
-import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
+import type {
+  LocalReplay,
+  LocalReplayPlayer,
+  LocalReplayTeam,
+  ReplayTeam,
+  VaultMap,
+  VaultReplay,
+} from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatDate, formatShortDate, formatTime } from "../../shared/dates";
 import { formatDuration, formatRelativeDuration } from "../../shared/durations";
+import { localReplayTimestamp } from "./localReplayQuery";
 import {
   extractGeneratedMapSeed,
   effectiveReplayMapName,
@@ -376,22 +384,55 @@ function formatChatTime(seconds: number): string {
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+export function localReplayToVaultReplay(local: LocalReplay, mapVault: VaultMap[]): VaultReplay {
+  const presentation = local.map ? mapPresentation(mapVault, local.map) : null;
+  const timestamp = localReplayTimestamp(local);
+  return {
+    uid: local.uid ?? 0,
+    title: local.title || local.fileName,
+    map: presentation?.displayName || local.map || local.fileName,
+    mapThumbnailUrl: presentation?.thumbnailUrl || "",
+    modName: local.modName || "faf",
+    startTime: timestamp > 0 ? new Date(timestamp).toISOString() : "",
+    replayAvailable: local.watchable,
+    durationSeconds: null,
+    gameDurationSeconds: null,
+    quality: null,
+    reviewsAverage: null,
+    reviewsCount: null,
+    averageRating: local.averageRating,
+    gameVersion: local.gameVersion,
+    teams: local.teams.map((team: LocalReplayTeam) => ({
+      team: team.team === "null" ? -1 : Number.parseInt(team.team, 10) || 0,
+      players: team.players.map((player: LocalReplayPlayer) => ({
+        name: player.name,
+        faction: player.faction,
+        rating: player.rating,
+        outcome: "",
+        score: null,
+      })),
+    })),
+  };
+}
+
 export function ReplayDetailPanel({
   replay,
   busy,
   onClose,
   onWatch,
   onDownload,
-  downloadState,
-  downloadError,
+  downloadState = "idle",
+  downloadError = "",
+  localPath: initialLocalPath,
 }: {
   replay: VaultReplay;
   busy: boolean;
   onClose: () => void;
   onWatch: () => void;
-  onDownload: () => void;
-  downloadState: "idle" | "downloading" | "downloaded" | "failed";
-  downloadError: string;
+  onDownload?: () => void;
+  downloadState?: "idle" | "downloading" | "downloaded" | "failed";
+  downloadError?: string;
+  localPath?: string;
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
@@ -409,9 +450,11 @@ export function ReplayDetailPanel({
     return avatars;
   }, [socialPlayers]);
 
-  const localMatch = localReplays.find((local) => local.uid === replay.uid);
+  const localMatch = localReplays.find(
+    (local) => (replay.uid > 0 && local.uid === replay.uid) || (initialLocalPath && local.path === initialLocalPath),
+  );
   const detailTeams = mergeReplayTeamsWithLocal(replay.teams, localMatch?.teams);
-  const localPath = localMatch?.path;
+  const localPath = initialLocalPath || localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
   const isLoadingDetails = detailsLoading === replay.uid;
   const [optionFilter, setOptionFilter] = useState("");
@@ -545,15 +588,22 @@ export function ReplayDetailPanel({
         />
         <div className="replay-detail-headtext">
           <div className="replay-detail-eyebrow">
-            <span>{t("replays.detail.eyebrow", { uid: replay.uid })}{age && <> · {age}</>}</span>
-            <Button
-              className="replay-copy-id-button"
-              aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-              title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-              onClick={copyReplayId}
-            >
-              {t(copiedId ? "replays.detail.copiedShort" : "replays.detail.copyIdShort")}
-            </Button>
+            <span>
+              {replay.uid > 0
+                ? t("replays.detail.eyebrow", { uid: replay.uid })
+                : t("replays.local.noReplayId")}
+              {age && <> · {age}</>}
+            </span>
+            {replay.uid > 0 && (
+              <Button
+                className="replay-copy-id-button"
+                aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                onClick={copyReplayId}
+              >
+                {t(copiedId ? "replays.detail.copiedShort" : "replays.detail.copyIdShort")}
+              </Button>
+            )}
           </div>
           <h2>{replay.title || presentation.displayName || effectiveMap}</h2>
           <p className="replay-detail-map"><Icon name="maps" size={15} /> <span>{presentation.displayName || effectiveMap}</span></p>
@@ -656,27 +706,31 @@ export function ReplayDetailPanel({
             </Button>
           )}
           <div className="replay-detail-actions-secondary">
-            <Button
-              className="replay-secondary-btn replay-download-button"
-              disabled={!replay.replayAvailable || downloadState === "downloading" || downloadState === "downloaded"}
-              onClick={onDownload}
-              title={t("replays.detail.download")}
-            >
-              <Icon name="download" size={13} />
-              <span>{t(downloadState === "downloading"
-                ? "replays.detail.downloading"
-                : downloadState === "downloaded"
-                  ? "replays.detail.downloaded"
-                  : "replays.detail.downloadShort")}</span>
-            </Button>
-            <Button
-              className="replay-secondary-btn"
-              onClick={copyLink}
-              title={t("replays.detail.copyLink")}
-            >
-              <Icon name={copied ? "check" : "copy"} size={13} />
-              <span>{t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}</span>
-            </Button>
+            {onDownload && (
+              <Button
+                className="replay-secondary-btn replay-download-button"
+                disabled={!replay.replayAvailable || downloadState === "downloading" || downloadState === "downloaded"}
+                onClick={onDownload}
+                title={t("replays.detail.download")}
+              >
+                <Icon name="download" size={13} />
+                <span>{t(downloadState === "downloading"
+                  ? "replays.detail.downloading"
+                  : downloadState === "downloaded"
+                    ? "replays.detail.downloaded"
+                    : "replays.detail.downloadShort")}</span>
+              </Button>
+            )}
+            {replay.uid > 0 && (
+              <Button
+                className="replay-secondary-btn"
+                onClick={copyLink}
+                title={t("replays.detail.copyLink")}
+              >
+                <Icon name={copied ? "check" : "copy"} size={13} />
+                <span>{t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}</span>
+              </Button>
+            )}
           </div>
         </div>
       </header>

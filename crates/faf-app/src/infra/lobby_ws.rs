@@ -973,6 +973,14 @@ impl RawGame {
     /// Only games still open for joining belong in the list.
     fn is_open(&self) -> bool {
         self.state.as_deref() == Some("open")
+            && self
+                .game_type
+                .as_deref()
+                .is_none_or(|gt| !gt.eq_ignore_ascii_case("matchmaker"))
+            && self
+                .visibility
+                .as_deref()
+                .is_none_or(|v| !v.eq_ignore_ascii_case("matchmaker"))
     }
 
     /// Games actively in progress: not joinable, but watchable live.
@@ -2020,6 +2028,40 @@ mod tests {
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
         assert_eq!(snap[0].players, 4);
+    }
+
+    #[test]
+    fn gameset_ignores_forming_matchmaker_games_until_playing() {
+        let mut set = GameSet::default();
+        let forming_mm = json!({
+            "command": "game_info",
+            "uid": 99,
+            "title": "Team DietTaco Vs Team Balde",
+            "state": "open",
+            "game_type": "matchmaker",
+            "num_players": 4,
+            "max_players": 6,
+        });
+        for raw in extract_raw_games(&forming_mm) {
+            set.apply(raw, &BTreeMap::new());
+        }
+        assert_eq!(set.snapshot().len(), 0);
+        assert_eq!(set.snapshot_live().len(), 0);
+
+        let playing_mm = json!({
+            "command": "game_info",
+            "uid": 99,
+            "title": "Team DietTaco Vs Team Balde",
+            "state": "playing",
+            "game_type": "matchmaker",
+            "num_players": 6,
+            "max_players": 6,
+        });
+        for raw in extract_raw_games(&playing_mm) {
+            set.apply(raw, &BTreeMap::new());
+        }
+        assert_eq!(set.snapshot().len(), 0);
+        assert_eq!(set.snapshot_live().len(), 1);
     }
 
     #[test]

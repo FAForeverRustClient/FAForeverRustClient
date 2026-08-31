@@ -38,14 +38,23 @@ export function RangeSlider({
     return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
   };
 
+  const quantize = (val: number) => {
+    if (step <= 0) return val;
+    const steps = Math.round((val - min) / step);
+    const stepped = min + steps * step;
+    return Number(stepped.toFixed(10));
+  };
+
   // Clamp so the handles can't cross: each side stops at the other.
   const setLow = (raw: number) => {
-    const next = Math.min(raw, highValue);
+    const quantized = quantize(raw);
+    const next = Math.min(quantized, highValue);
     onChange(next <= min ? null : next, high);
   };
 
   const setHigh = (raw: number) => {
-    const next = Math.max(raw, lowValue);
+    const quantized = quantize(raw);
+    const next = Math.max(quantized, lowValue);
     onChange(low, next >= max ? null : next);
   };
 
