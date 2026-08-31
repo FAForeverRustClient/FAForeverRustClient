@@ -1,6 +1,7 @@
 import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SocialState, VaultMap } from "../../ipc/bindings";
+import { ipc } from "../../ipc/client";
 import { MapThumbnail } from "../../shared/MapThumbnail";
 import { flagSrc } from "../../shared/countryFlags";
 import { mapPresentation } from "../../shared/mapPresentation";
@@ -57,6 +58,35 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   const { t } = useTranslation();
   const status = t(STATUS_LABEL[presence.status]);
 
+  const handleDoubleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (presence.status === "playing" || presence.status === "playingDelayed") {
+      ipc.send({
+        kind: "Replays",
+        command: {
+          type: "watchLive",
+          payload: {
+            uid: presence.game.id,
+            modName: presence.game.modName,
+            map: presence.game.map,
+          },
+        },
+      });
+    } else if (presence.status === "hosting" || presence.status === "lobbying") {
+      ipc.send({
+        kind: "Lobby",
+        command: {
+          type: "join",
+          payload: {
+            id: presence.game.id,
+            password: null,
+          },
+        },
+      });
+    }
+  };
+
   return (
     <>
       <button
@@ -69,6 +99,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
+        onDoubleClick={handleDoubleClick}
       >
         <GameStatusSword status={presence.status} />
         <MapThumbnail

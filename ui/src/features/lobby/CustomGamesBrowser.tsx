@@ -182,11 +182,11 @@ function GameLineup({
 
 type LineupSide = "left" | "right" | "neutral";
 
-function displayedRating(profile: PlayerProfile | undefined): number | null {
+export function displayedRating(profile: PlayerProfile | undefined): number | null {
   return profile && profile.globalRating !== 0 ? profile.globalRating : null;
 }
 
-function displayTeamName(team: string, soleTeam: boolean): string {
+export function displayTeamName(team: string, soleTeam: boolean): string {
   if (team === "-1" || team === "null") return t("lobby.details.observers");
   const numeric = Number(team);
   if (!Number.isInteger(numeric)) return `Team ${team}`;
@@ -412,6 +412,7 @@ export const GameTile = memo(function GameTile({
 export const GameBrowserRow = memo(function GameBrowserRow({
   game,
   vault,
+  now,
   selected,
   onSelect,
   onJoin,
@@ -419,6 +420,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 }: {
   game: Game;
   vault: VaultMap[];
+  now?: number;
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
@@ -427,10 +429,14 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const isRanked = isCustomGameRanked(game, vault, vaultMods);
+  const simModCount = Object.keys(game.simMods).length;
+  const players = playingCount(game);
+  const currentNow = now ?? Date.now();
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition();
   return (
     <>
       <button
+        type="button"
         className={selected ? "game-browser-row active" : "game-browser-row"}
         onClick={onSelect}
         onDoubleClick={onJoin}
@@ -441,25 +447,69 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         onBlur={hideLineup}
         aria-describedby={tooltipPosition ? tooltipId : undefined}
       >
-        <span className="game-browser-name">
-          {game.passwordProtected ? <Icon name="lock" size={13} /> : <i />}
-          <GameMapImage
-            mapName={game.map}
-            vault={vault}
-            className="game-browser-map-thumb"
-            placeholderClassName="game-browser-map-placeholder"
-          />
-          <span>
-            <strong>{game.title}</strong>
-            <small>
-              <PlayerName name={game.host} /> · {game.modName || "faf"}
-              {!isRanked && ` · ${t("lobby.browser.unranked")}`}
-            </small>
-          </span>
-        </span>
-        <span>{presentation.displayName}</span>
-        <span>{playingCount(game)}/{game.maxPlayers}</span>
-        <span>{game.averageRating || "N/A"}</span>
+        <div className="game-browser-main">
+          <div className="game-browser-thumb-wrapper">
+            <GameMapImage
+              mapName={game.map}
+              vault={vault}
+              className="game-browser-map-thumb"
+              placeholderClassName="game-browser-map-placeholder"
+            />
+            {game.passwordProtected && (
+              <span
+                className="game-browser-thumb-lock"
+                role="img"
+                aria-label={t("lobby.browser.privateGame")}
+                title={t("lobby.browser.privateGame")}
+              >
+                <Icon name="lock" size={11} />
+              </span>
+            )}
+          </div>
+          <div className="game-browser-meta">
+            <span className="game-browser-title" title={game.title}>
+              {game.title}
+            </span>
+            <div className="game-browser-details">
+              <span className="game-browser-host">
+                {t("lobby.browser.host")}{" "}
+                <strong>
+                  <PlayerName name={game.host} />
+                </strong>
+              </span>
+              <span className="game-browser-tags">
+                <i>{game.modName || "faf"}</i>
+                {simModCount > 0 && (
+                  <i className="modded" title={`${simModCount} SIM mod${simModCount === 1 ? "" : "s"}`}>
+                    {simModCount} SIM
+                  </i>
+                )}
+                {!isRanked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+                {(game.ratingMin !== null || game.ratingMax !== null) && (
+                  <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
+                    {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
+                  </i>
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="game-browser-map-col">
+          <strong title={presentation.displayName}>{presentation.displayName}</strong>
+        </div>
+
+        <div className="game-browser-players-col">
+          <span>{players} / {game.maxPlayers}</span>
+        </div>
+
+        <div className="game-browser-rating-col">
+          <span>{game.averageRating || "N/A"}</span>
+        </div>
+
+        <div className="game-browser-age-col">
+          <span>{formatAge(game.hostedAt, currentNow)}</span>
+        </div>
       </button>
       {tooltipPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,
@@ -651,7 +701,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
                             >
                               <PlayerName name={login} />
                             </button>
-                            {rating !== null && <span className="player-rating">({rating})</span>}
+                            {rating !== null && <span className="player-rating">{rating}</span>}
                           </li>
                         );
                       })}
@@ -758,7 +808,11 @@ export function CustomGamesBrowser({
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
       {viewMode === "list" && (
         <div className="game-browser-head">
-          <span>{t("lobby.browser.column.game")}</span><span>{t("lobby.browser.column.map")}</span><span>{t("lobby.browser.column.players")}</span><span>{t("lobby.browser.column.rating")}</span>
+          <span>{t("lobby.browser.column.game")}</span>
+          <span>{t("lobby.browser.column.map")}</span>
+          <span>{t("lobby.browser.column.players")}</span>
+          <span>{t("lobby.browser.column.rating")}</span>
+          <span>{t("lobby.browser.column.age")}</span>
         </div>
       )}
       <div className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}>
@@ -788,6 +842,7 @@ export function CustomGamesBrowser({
               key={game.id}
               game={game}
               vault={vault}
+              now={now}
               selected={selectedId === game.id}
               onSelect={() => onSelect(game.id)}
               onJoin={() => onJoin(game)}

@@ -170,6 +170,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                 <span>{t("lobby.browser.column.map")}</span>
                 <span>{t("lobby.browser.column.players")}</span>
                 <span>{t("lobby.browser.column.rating")}</span>
+                <span>{t("lobby.browser.column.age")}</span>
               </div>
               {games.map((game) => (
                 <GameBrowserRow

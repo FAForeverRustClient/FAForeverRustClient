@@ -480,7 +480,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.column.game": "Partie",
   "lobby.browser.column.map": "Karte",
   "lobby.browser.column.players": "Spieler",
-  "lobby.browser.column.rating": "Rating",
+  "lobby.browser.column.rating": "Ø-Rating",
+  "lobby.browser.column.age": "Alter",
   "lobby.browser.noMatch": "Keine passenden Partien",
   "lobby.browser.noMatchHint": "Passe die Suche oder die Filter an.",
 
@@ -1915,7 +1916,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.list.drafts": "Deine Entwürfe",
   "tournaments.list.upcoming": "Anstehend",
   "tournaments.list.ongoing": "Laufend",
-  "tournaments.list.past": "Beendet und abgesagt",
+  "tournaments.list.past": "Beendet oder abgesagt",
   "tournaments.list.signupsIn": "Anmeldung in {time}",
   "tournaments.list.abandoned": "Abgesagt",
   "tournaments.signup.title": "An diesem Turnier teilnehmen",
