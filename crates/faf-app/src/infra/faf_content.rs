@@ -12,6 +12,9 @@ use std::path::PathBuf;
 /// configured vault when its preferences are present and point at an existing
 /// content root. The final fallback is FAF's conventional Documents location.
 pub(crate) fn vault_dir() -> PathBuf {
+    if let Some(path) = crate::infra::paths::vault_dir() {
+        return path;
+    }
     if let Some(path) = non_empty_env_path("FAF_VAULT_DIR") {
         return path;
     }

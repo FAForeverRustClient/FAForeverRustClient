@@ -53,7 +53,9 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                 return;
             }
             let updates = ctx.ports.map_generator.generate_named(map_name).await;
-            drain(updates, ctx, out).await;
+            // Not a keep: this is a map a launch needs, reproduced because it
+            // was missing, not one the user sat down and asked for.
+            drain(updates, false, ctx, out).await;
         }
         MapGeneratorCommand::Generate { options } => {
             let Some(_guard) = ctx.map_generator_active.try_acquire() else {
@@ -91,8 +93,9 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     }
                 }
             }
+            let keep = options.keep_maps;
             let updates = ctx.ports.map_generator.generate(options).await;
-            drain(updates, ctx, out).await;
+            drain(updates, keep, ctx, out).await;
         }
         MapGeneratorCommand::SetOptions { options } => {
             out.emit(MapGeneratorEvent::ValidationChanged {
@@ -220,7 +223,12 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             };
             // Read the authoritative persisted setting here rather than
             // trusting the webview to supply the cleanup exclusion list.
-            let protected_maps = ctx.ports.settings.load().await.browsing.favorite_maps;
+            let settings = ctx.ports.settings.load().await;
+            let mut protected_maps = settings.browsing.favorite_maps;
+            // Two ways to be spared, and they mean different things: a
+            // favourite is a map somebody marked in the vault, a kept map is
+            // one they asked the generator to hold on to as it ran.
+            protected_maps.extend(settings.kept_generated_maps);
             match ctx.ports.map_generator.clean_up(&protected_maps).await {
                 Ok(0) => services::notifications::add(
                     out,
@@ -252,8 +260,14 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
 }
 
 /// Forward every status, and re-scan installed maps once a run succeeds.
+///
+/// `keep` is this run's [`GeneratorOptions::keep_maps`]: the names it produced
+/// are recorded so the Maps tab's sweep spares them. Recorded here rather than
+/// held as a standing preference because the decision belongs to the run - the
+/// next one may well be a throwaway.
 async fn drain(
     mut updates: tokio::sync::mpsc::Receiver<GeneratorUpdate>,
+    keep: bool,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
@@ -287,6 +301,12 @@ async fn drain(
         out.emit(MapGeneratorEvent::StatusChanged { status });
     }
     if !succeeded_maps.is_empty() {
+        if keep {
+            out.emit(SettingsEvent::KeptGeneratedMaps {
+                map_names: succeeded_maps.clone(),
+            });
+            services::settings::persist(ctx, out).await;
+        }
         let previews = ctx.ports.map_generator.map_previews(&succeeded_maps).await;
         if !previews.is_empty() {
             out.emit(MapGeneratorEvent::PreviewsLoaded { previews });

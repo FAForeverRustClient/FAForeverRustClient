@@ -14,6 +14,25 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+/// Where each configurable location currently resolves to.
+///
+/// Reported by the backend rather than worked out in the interface: the
+/// fallbacks live in the adapters - a Java client's vault, FAF's Documents
+/// convention, a platform data directory - and the settings tab would
+/// otherwise have nothing to show for a path nobody has set, which is most of
+/// them for most people.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedPaths {
+    pub vault_dir: String,
+    pub maps_dir: String,
+    pub mods_dir: String,
+    pub replays_dir: String,
+    pub game_prefs_path: String,
+    pub map_generator_dir: String,
+    pub java_path: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallState {
@@ -27,6 +46,12 @@ pub struct InstallState {
     /// would flash a missing-install warning during the startup window before
     /// the first check completes.
     pub checked: bool,
+    /// Where the configurable locations point right now. See [`ResolvedPaths`].
+    ///
+    /// No `#[serde(default)]`: this slice is runtime state, never read back
+    /// from a file written by an older build, and the attribute would only
+    /// make the field optional in the generated TypeScript for nothing.
+    pub resolved: ResolvedPaths,
 }
 
 impl InstallState {
@@ -49,6 +74,7 @@ pub enum InstallEvent {
     Checked {
         game_ready: bool,
         replay_ready: bool,
+        resolved: ResolvedPaths,
     },
 }
 
@@ -57,9 +83,11 @@ pub fn reduce(state: &mut InstallState, event: &InstallEvent) {
         InstallEvent::Checked {
             game_ready,
             replay_ready,
+            resolved,
         } => {
             state.game_ready = *game_ready;
             state.replay_ready = *replay_ready;
+            state.resolved = resolved.clone();
             state.checked = true;
         }
     }
@@ -84,6 +112,7 @@ mod tests {
             &InstallEvent::Checked {
                 game_ready: true,
                 replay_ready: false,
+                resolved: ResolvedPaths::default(),
             },
         );
         assert!(s.checked);
@@ -98,15 +127,25 @@ mod tests {
             game_ready: true,
             replay_ready: true,
             checked: true,
+            resolved: ResolvedPaths {
+                maps_dir: "D:/old/maps".into(),
+                ..ResolvedPaths::default()
+            },
         };
         reduce(
             &mut s,
             &InstallEvent::Checked {
                 game_ready: false,
                 replay_ready: false,
+                resolved: ResolvedPaths {
+                    maps_dir: "D:/new/maps".into(),
+                    ..ResolvedPaths::default()
+                },
             },
         );
         assert!(s.checked, "still checked: we looked and found nothing");
         assert!(s.nothing_ready());
+        // The check reports where things resolve now, not where they used to.
+        assert_eq!(s.resolved.maps_dir, "D:/new/maps");
     }
 }

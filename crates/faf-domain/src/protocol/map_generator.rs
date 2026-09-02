@@ -491,12 +491,24 @@ pub struct GeneratorOptions {
     /// Raw passthrough. When set it replaces every other option: the escape
     /// hatch both clients keep for generator flags newer than the client.
     pub command_line_args: String,
+    /// Keep the maps this run produces, whatever the Maps tab is later asked
+    /// to sweep away.
+    ///
+    /// The one option here that never reaches the generator: it is a decision
+    /// about the maps afterwards, not about how to build them. It lives with
+    /// the run because that is when it is decided - generate a map to keep,
+    /// then generate three throwaways, and only the first survives - so the
+    /// names of a kept run are recorded as it finishes rather than the flag
+    /// standing as a policy over every generated map at once.
+    #[serde(default)]
+    pub keep_maps: bool,
 }
 
 impl Default for GeneratorOptions {
     fn default() -> Self {
         Self {
             // The Java client's `GeneratorPrefs` defaults.
+            keep_maps: false,
             version: None,
             spawn_count: Some(6),
             num_teams: Some(2),

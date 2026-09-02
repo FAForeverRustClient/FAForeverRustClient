@@ -734,6 +734,20 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   </pre>
                 )}
 
+            {/* Deliberately here rather than among the generator flags: this
+                one never reaches the generator. It decides what happens to the
+                maps this run produces once they exist, so it belongs where the
+                run is started and has to be visible without opening the
+                advanced options. */}
+            <label className="generate-map-check generate-map-keep">
+              <input
+                type="checkbox"
+                checked={form.keepMaps}
+                onChange={(e) => set("keepMaps", e.target.checked)}
+              />
+              <span title={t("maps.generate.keepMapsHint")}>{t("maps.generate.keepMaps")}</span>
+            </label>
+
             <div className="generate-map-actions">
               <Button type="button" onClick={onClose}>
                 {t("maps.generate.close")}

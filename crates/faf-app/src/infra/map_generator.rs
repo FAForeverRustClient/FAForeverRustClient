@@ -205,7 +205,10 @@ fn version_policy_from_env() -> VersionPolicy {
 
 /// Cache directory for generator JARs. Kept out of the maps folder so a
 /// "delete generated maps" sweep never removes the generators themselves.
-fn generator_dir() -> PathBuf {
+pub(crate) fn generator_dir() -> PathBuf {
+    if let Some(dir) = crate::infra::paths::map_generator_dir() {
+        return dir;
+    }
     if let Ok(dir) = std::env::var("FAF_MAP_GENERATOR_DIR") {
         if !dir.is_empty() {
             return PathBuf::from(dir);

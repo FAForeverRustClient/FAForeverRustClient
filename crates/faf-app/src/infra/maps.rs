@@ -664,6 +664,9 @@ fn capwords(s: &str) -> String {
 /// `fa.maps.getUserMapsFolder()`). `FAF_MAPS_DIR` overrides it (tests,
 /// alternate installs, custom vault path).
 pub(crate) fn maps_dir() -> PathBuf {
+    if let Some(dir) = crate::infra::paths::maps_dir() {
+        return dir;
+    }
     if let Ok(dir) = std::env::var("FAF_MAPS_DIR") {
         if !dir.is_empty() {
             return PathBuf::from(dir);

@@ -12,6 +12,10 @@ import type {
 } from "../../ipc/bindings";
 import { normalizePlayerNotes } from "../../shared/playerNotes";
 import { normalizeBrowsingPreferences } from "../../shared/browsingPreferences";
+import {
+  normalizePathPreferences,
+  withKeptGeneratedMaps,
+} from "../../shared/pathPreferences";
 
 export function reduceSettings(state: SettingsState, event: SettingsEvent): SettingsState {
   switch (event.type) {
@@ -23,6 +27,16 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
       return { ...state, gamePath: event.payload.path };
     case "replayGamePathChanged":
       return { ...state, replayGamePath: event.payload.path };
+    case "pathsChanged":
+      return { ...state, paths: normalizePathPreferences(event.payload.preferences) };
+    case "keptGeneratedMaps":
+      return {
+        ...state,
+        keptGeneratedMaps: withKeptGeneratedMaps(
+          state.keptGeneratedMaps ?? [],
+          event.payload.mapNames,
+        ),
+      };
     case "generalChanged":
       return { ...state, general: event.payload.preferences };
     case "appearanceChanged":
@@ -67,6 +81,7 @@ export function reduceInstall(_state: InstallState, event: InstallEvent): Instal
       return {
         gameReady: event.payload.gameReady,
         replayReady: event.payload.replayReady,
+        resolved: event.payload.resolved,
         checked: true,
       };
   }

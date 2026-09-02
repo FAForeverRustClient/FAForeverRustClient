@@ -1643,6 +1643,18 @@ export type GeneratorOptions = {
 	 *  hatch both clients keep for generator flags newer than the client.
 	 */
 	commandLineArgs: string,
+	/**
+	 *  Keep the maps this run produces, whatever the Maps tab is later asked
+	 *  to sweep away.
+	 *
+	 *  The one option here that never reaches the generator: it is a decision
+	 *  about the maps afterwards, not about how to build them. It lives with
+	 *  the run because that is when it is decided - generate a map to keep,
+	 *  then generate three throwaways, and only the first survives - so the
+	 *  names of a kept run are recorded as it finishes rather than the flag
+	 *  standing as a policy over every generated map at once.
+	 */
+	keepMaps?: boolean,
 };
 
 /**
@@ -1785,6 +1797,7 @@ export type InstallEvent =
 { type: "checked"; payload: {
 	gameReady: boolean,
 	replayReady: boolean,
+	resolved: ResolvedPaths,
 } };
 
 export type InstallState = {
@@ -1800,6 +1813,14 @@ export type InstallState = {
 	 *  the first check completes.
 	 */
 	checked: boolean,
+	/**
+	 *  Where the configurable locations point right now. See [`ResolvedPaths`].
+	 *
+	 *  No `#[serde(default)]`: this slice is runtime state, never read back
+	 *  from a file written by an older build, and the attribute would only
+	 *  make the field optional in the generated TypeScript for nothing.
+	 */
+	resolved: ResolvedPaths,
 };
 
 /**
@@ -3201,6 +3222,30 @@ export type PartyState = {
 };
 
 /**
+ *  Where the client looks for the game's files and the user's content.
+ *
+ *  Every field is a complete path and an empty one means "work it out": the
+ *  discovery the client did before any of this was configurable, and the
+ *  matching `FAF_*` environment variable still overrides that discovery for a
+ *  field nobody has set here. A value set here wins over both, because it is
+ *  the only one of the three a player chose deliberately.
+ *
+ *  `vault_dir` is the root the Java client keeps `maps/` and `mods/` under;
+ *  the two specific directories override it when they are set, so pointing the
+ *  vault somewhere new is one edit rather than three.
+ */
+export type PathPreferences = {
+	vaultDir?: string,
+	mapsDir?: string,
+	modsDir?: string,
+	replaysDir?: string,
+	gamePrefsPath?: string,
+	mapGeneratorDir?: string,
+	/**  The JVM the map generator and the Java ICE adapter run on. */
+	javaPath?: string,
+};
+
+/**
  *  A result one team submitted, which the other has to confirm.
  *
  *  Modelled because it is the whole point of player reporting: until the
@@ -4156,6 +4201,25 @@ export type RequestFailureKind =
 "unexpected";
 
 /**
+ *  Where each configurable location currently resolves to.
+ *
+ *  Reported by the backend rather than worked out in the interface: the
+ *  fallbacks live in the adapters - a Java client's vault, FAF's Documents
+ *  convention, a platform data directory - and the settings tab would
+ *  otherwise have nothing to show for a path nobody has set, which is most of
+ *  them for most people.
+ */
+export type ResolvedPaths = {
+	vaultDir: string,
+	mapsDir: string,
+	modsDir: string,
+	replaysDir: string,
+	gamePrefsPath: string,
+	mapGeneratorDir: string,
+	javaPath: string,
+};
+
+/**
  *  Scrollback detached from a channel that is no longer joined. Deliberately
  *  excludes topic, roster and unread state: those are live server facts and
  *  must be rebuilt when the channel is joined again.
@@ -4388,6 +4452,8 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	path: string,
 } } | { type: "setReplayGamePath"; payload: {
 	path: string,
+} } | { type: "setPaths"; payload: {
+	preferences: PathPreferences,
 } } | { type: "setGeneral"; payload: {
 	preferences: GeneralPreferences,
 } } | { type: "setAppearance"; payload: {
@@ -4422,6 +4488,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	theme: Theme,
 } } | { type: "gamePathChanged"; payload: {
 	path: string,
+} } | { type: "pathsChanged"; payload: {
+	preferences: PathPreferences,
 } } | { type: "replayGamePathChanged"; payload: {
 	path: string,
 } } | { type: "generalChanged"; payload: {
@@ -4452,6 +4520,13 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: BrowsingPreferences,
 } } | { type: "mapGeneratorChanged"; payload: {
 	preferences: GeneratorOptions,
+} } |
+/**
+ *  Generated maps a finished run asked to keep. Additive: a later run that
+ *  keeps nothing must not release what an earlier one kept.
+ */
+{ type: "keptGeneratedMaps"; payload: {
+	mapNames: string[],
 } };
 
 /**
@@ -4463,6 +4538,7 @@ export type SettingsState = {
 	theme: Theme,
 	gamePath: string,
 	replayGamePath: string,
+	paths: PathPreferences,
 	general: GeneralPreferences,
 	appearance: AppearancePreferences,
 	social: SocialPreferences,
@@ -4473,6 +4549,15 @@ export type SettingsState = {
 	connectivity: ConnectivityPreferences,
 	updates: UpdatePreferences,
 	browsing: BrowsingPreferences,
+	/**
+	 *  Generated maps the user asked to keep, by folder name.
+	 *
+	 *  Written when a run finishes with [`GeneratorOptions::keep_maps`] set,
+	 *  and read by the Maps tab's sweep, which spares everything named here.
+	 *  Persisted rather than derived because nothing on disk distinguishes a
+	 *  map somebody wants from one they generated once and forgot.
+	 */
+	keptGeneratedMaps?: string[],
 	/**
 	 *  The map generator dialog's last settings.
 	 *

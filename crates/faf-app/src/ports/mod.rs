@@ -18,6 +18,7 @@ pub mod lobby;
 pub mod map_generator;
 pub mod maps;
 pub mod mods;
+pub mod paths;
 pub mod player_card;
 pub mod process;
 pub mod replay;
@@ -43,6 +44,7 @@ pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
 pub use maps::{MapSearchPage, MapsPort};
 pub use mods::{ModSearchPage, ModsPort};
+pub use paths::PathsPort;
 pub use player_card::PlayerCardPort;
 pub use process::{
     DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayMetadata,
@@ -82,6 +84,9 @@ pub struct Ports {
     pub maps: Arc<dyn MapsPort>,
     pub map_generator: Arc<dyn MapGeneratorPort>,
     pub mods: Arc<dyn ModsPort>,
+    /// Where file lookups resolve to. See [`paths::PathsPort`] for why this is
+    /// a port at all.
+    pub paths: Arc<dyn PathsPort>,
     pub leaderboard: Arc<dyn LeaderboardPort>,
     pub player_card: Arc<dyn PlayerCardPort>,
     pub reporting: Arc<dyn ReportingPort>,

@@ -64,6 +64,12 @@ export const native = {
     return typeof selected === "string" ? selected : null;
   },
 
+  /** Pick a folder rather than a file. Same dialog, `directory` mode. */
+  async selectDirectory(defaultPath?: string): Promise<string | null> {
+    const selected = await open({ directory: true, multiple: false, defaultPath });
+    return typeof selected === "string" ? selected : null;
+  },
+
   openUrl(url: string): Promise<void> {
     return openUrl(url);
   },

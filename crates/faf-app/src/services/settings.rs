@@ -89,6 +89,22 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             persist(ctx, out).await;
             sync_installs(ctx, out);
         }
+        SettingsCommand::SetPaths { preferences } => {
+            let mut next = out.with_state(|state| state.settings.clone());
+            next.paths = preferences;
+            out.emit(SettingsEvent::PathsChanged {
+                preferences: next.normalized().paths,
+            });
+            persist(ctx, out).await;
+            // Before anything else can look one up. The maps list in
+            // particular is read straight after this, and reading it out of
+            // the old directory would show the user their change did nothing.
+            sync_paths(ctx, out);
+            // Re-reports the resolved locations, which the overrides just
+            // moved: the tab shows those beside every field.
+            sync_installs(ctx, out);
+            refresh_content_after_path_change(ctx, out).await;
+        }
         SettingsCommand::SetGeneral { preferences } => {
             out.emit(SettingsEvent::GeneralChanged { preferences });
             persist(ctx, out).await;
@@ -181,9 +197,32 @@ pub(crate) async fn persist(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 fn sync_runtime_preferences(ctx: &ServiceCtx, out: &EventSink) {
+    sync_paths(ctx, out);
     sync_installs(ctx, out);
     sync_launch_preferences(ctx, out);
     sync_connectivity(ctx, out);
+}
+
+/// Re-scan what the moved directories hold.
+///
+/// A path change silently invalidates two lists the user is probably looking
+/// at. Without this the maps and mods tabs keep showing what was in the old
+/// folder until something else happens to reload them, which reads as the
+/// setting having done nothing.
+async fn refresh_content_after_path_change(ctx: &ServiceCtx, out: &EventSink) {
+    crate::services::maps::handle(faf_domain::state::MapsCommand::LoadInstalled, ctx, out).await;
+    crate::services::mods::handle(faf_domain::state::ModsCommand::LoadInstalled, ctx, out).await;
+}
+
+/// Hand the configured directories to the path resolver.
+///
+/// Applied on load as well as on change, for the same reason as
+/// [`sync_connectivity`]: a directory chosen in a previous session has to be
+/// honoured from the first lookup, not the second.
+fn sync_paths(ctx: &ServiceCtx, out: &EventSink) {
+    ctx.ports
+        .paths
+        .set_overrides(out.with_state(|state| state.settings.paths.clone()));
 }
 
 /// Tell the connectivity port which backend to start next.
@@ -216,8 +255,10 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
         .replay
         .set_install_dir(ctx.ports.process.replay_install_dir());
     let present = ctx.ports.process.installs_present();
+    let resolved = ctx.ports.paths.resolved();
     out.emit(InstallEvent::Checked {
         game_ready: present.game,
         replay_ready: present.replay,
+        resolved,
     });
 }
