@@ -14,7 +14,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use faf_domain::state::{
     AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
-    PlayerProfile, PlayerVeto, Relation,
+    PlayerProfile, PlayerVeto, RatingRange, Relation,
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -109,18 +109,59 @@ impl LobbyPort for FakeLobby {
                         team_size: 1,
                         num_players: 18,
                         queue_pop_time_seconds: 95,
+                        // A spread of searches so the offline shell shows the
+                        // "in your range" count doing something. The 75%
+                        // windows are the wider ones, as on the server.
+                        boundary_80s: vec![
+                            RatingRange {
+                                min: 800,
+                                max: 1_200,
+                            },
+                            RatingRange {
+                                min: 1_100,
+                                max: 1_500,
+                            },
+                            RatingRange {
+                                min: 1_600,
+                                max: 2_000,
+                            },
+                        ],
+                        boundary_75s: vec![
+                            RatingRange {
+                                min: 700,
+                                max: 1_300,
+                            },
+                            RatingRange {
+                                min: 1_000,
+                                max: 1_600,
+                            },
+                            RatingRange {
+                                min: 1_500,
+                                max: 2_100,
+                            },
+                        ],
                     },
                     MatchmakerQueue {
                         queue_name: "tmm2v2".into(),
                         team_size: 2,
                         num_players: 12,
                         queue_pop_time_seconds: 150,
+                        boundary_80s: vec![RatingRange {
+                            min: 900,
+                            max: 1_300,
+                        }],
+                        boundary_75s: vec![RatingRange {
+                            min: 800,
+                            max: 1_400,
+                        }],
                     },
                     MatchmakerQueue {
                         queue_name: "tmm4v4".into(),
                         team_size: 4,
                         num_players: 20,
                         queue_pop_time_seconds: 210,
+                        boundary_80s: Vec::new(),
+                        boundary_75s: Vec::new(),
                     },
                 ]))
                 .await;

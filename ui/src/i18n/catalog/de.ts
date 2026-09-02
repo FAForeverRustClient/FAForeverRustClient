@@ -330,6 +330,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.how.battles.body": "Ein Angriff auf einen Planeten wird als Partie Forged Alliance ausgetragen. Die Zykluswerte zeigen, wie viele Angriffe gerade laufen und wie viele Schlachten bereits geschlagen wurden.",
   "lobby.galacticWar.how.client.title": "Der eigene Client",
   "lobby.galacticWar.how.client.body": "Galactic War läuft als eigene Anwendung mit eigenem Login. Dieser Client installiert sie, hält sie aktuell und startet sie; alles Weitere passiert im Galactic-War-Fenster.",
+  "lobby.matchmaker.inRange": "{count} in deinem Bereich",
+  "lobby.matchmaker.inRangeHint": "Wartende in dieser Warteschlange, deren Ratingbereich sich mit deinem überschneidet, ohne deine eigene Suche. Außerhalb von 1v1 leitet der Server das vom jeweils ersten Spieler einer Gruppe ab.",
   "lobby.matchmaker.mapPool": "Kartenpool",
   "lobby.matchmaker.queue.ranked1v1": "Gewertet 1 gegen 1",
   "lobby.matchmaker.state.searching": "Sucht",

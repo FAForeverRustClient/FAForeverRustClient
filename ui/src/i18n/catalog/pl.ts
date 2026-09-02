@@ -1473,6 +1473,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.how.battles.body": "Atak na planetę rozstrzyga się jako partia Forged Alliance. Dane cyklu pokazują, ile ataków trwa i ile bitew już stoczono.",
   "lobby.galacticWar.how.client.title": "Osobny klient",
   "lobby.galacticWar.how.client.body": "Galactic War działa jako własna aplikacja z własnym logowaniem. Ten klient ją instaluje, utrzymuje aktualną i uruchamia; wszystko dalsze dzieje się w oknie Galactic War.",
+  "lobby.matchmaker.inRange": "{count} w twoim zakresie",
+  "lobby.matchmaker.inRangeHint": "Gracze w tej kolejce, których zakres rankingu pokrywa się z twoim, bez twojego własnego wyszukiwania. Poza 1v1 serwer wylicza to z pierwszego gracza każdej grupy.",
   "lobby.matchmaker.mapPool": "Pula map",
   "lobby.matchmaker.queue.ranked1v1": "Rankingowe 1 na 1",
   "lobby.matchmaker.state.searching": "Szukanie",

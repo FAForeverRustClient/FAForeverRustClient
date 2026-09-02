@@ -3282,13 +3282,27 @@
                     "queueName": "tmm4v4",
                     "teamSize": 4,
                     "numPlayers": 1,
-                    "queuePopTimeSeconds": 90
+                    "queuePopTimeSeconds": 90,
+                    "boundary80s": [],
+                    "boundary75s": []
                   },
                   {
                     "queueName": "ladder1v1",
                     "teamSize": 1,
                     "numPlayers": 7,
-                    "queuePopTimeSeconds": 30
+                    "queuePopTimeSeconds": 30,
+                    "boundary80s": [
+                      {
+                        "min": 900,
+                        "max": 1300
+                      }
+                    ],
+                    "boundary75s": [
+                      {
+                        "min": 800,
+                        "max": 1400
+                      }
+                    ]
                   }
                 ]
               }
@@ -3308,12 +3322,26 @@
             "liveGames": [],
             "matchmakerQueues": [
               {
+                "boundary75s": [
+                  {
+                    "max": 1400,
+                    "min": 800
+                  }
+                ],
+                "boundary80s": [
+                  {
+                    "max": 1300,
+                    "min": 900
+                  }
+                ],
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
                 "teamSize": 1
               },
               {
+                "boundary75s": [],
+                "boundary80s": [],
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
@@ -3343,7 +3371,9 @@
                     "queueName": "tmm2v2",
                     "teamSize": 2,
                     "numPlayers": 3,
-                    "queuePopTimeSeconds": 60
+                    "queuePopTimeSeconds": 60,
+                    "boundary80s": [],
+                    "boundary75s": []
                   }
                 ]
               }
@@ -3363,18 +3393,34 @@
             "liveGames": [],
             "matchmakerQueues": [
               {
+                "boundary75s": [
+                  {
+                    "max": 1400,
+                    "min": 800
+                  }
+                ],
+                "boundary80s": [
+                  {
+                    "max": 1300,
+                    "min": 900
+                  }
+                ],
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
                 "teamSize": 1
               },
               {
+                "boundary75s": [],
+                "boundary80s": [],
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
                 "teamSize": 2
               },
               {
+                "boundary75s": [],
+                "boundary80s": [],
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
@@ -3404,7 +3450,23 @@
                     "queueName": "ladder1v1",
                     "teamSize": 1,
                     "numPlayers": 12,
-                    "queuePopTimeSeconds": 20
+                    "queuePopTimeSeconds": 20,
+                    "boundary80s": [
+                      {
+                        "min": 900,
+                        "max": 1300
+                      },
+                      {
+                        "min": 1200,
+                        "max": 1600
+                      }
+                    ],
+                    "boundary75s": [
+                      {
+                        "min": 800,
+                        "max": 1400
+                      }
+                    ]
                   }
                 ]
               }
@@ -3424,18 +3486,38 @@
             "liveGames": [],
             "matchmakerQueues": [
               {
+                "boundary75s": [
+                  {
+                    "max": 1400,
+                    "min": 800
+                  }
+                ],
+                "boundary80s": [
+                  {
+                    "max": 1300,
+                    "min": 900
+                  },
+                  {
+                    "max": 1600,
+                    "min": 1200
+                  }
+                ],
                 "numPlayers": 12,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 20,
                 "teamSize": 1
               },
               {
+                "boundary75s": [],
+                "boundary80s": [],
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
                 "teamSize": 2
               },
               {
+                "boundary75s": [],
+                "boundary80s": [],
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,

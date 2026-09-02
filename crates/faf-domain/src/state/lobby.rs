@@ -127,6 +127,20 @@ fn validate_host_text(
     Ok(())
 }
 
+/// One queued search's acceptable opponent rating window.
+///
+/// The server publishes these per queue in `matchmaker_info` and computes them
+/// from the searching party's rating, at two match qualities: roughly 80% and
+/// roughly 75%. Which of the two to read depends on how sure the server is of
+/// *your* rating - see `playersInRatingRange` on the frontend, which mirrors
+/// the Python client's `handle_matchmaker_info`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RatingRange {
+    pub min: i32,
+    pub max: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchmakerQueue {
@@ -134,6 +148,16 @@ pub struct MatchmakerQueue {
     pub team_size: i32,
     pub num_players: i32,
     pub queue_pop_time_seconds: i32,
+    /// The rating windows of the searches queued right now, at roughly 80%
+    /// match quality. One entry per search, not per player.
+    ///
+    /// The server derives each from the first player of that search's party
+    /// ("only works for 1v1", as its own comment puts it), so outside the 1v1
+    /// queues this is the party leader's window rather than the team's.
+    pub boundary_80s: Vec<RatingRange>,
+    /// The same at roughly 75%, which is the *wider* rating window despite the
+    /// lower number - the server's own comment wonders about that too.
+    pub boundary_75s: Vec<RatingRange>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -720,6 +744,8 @@ mod tests {
             team_size,
             num_players,
             queue_pop_time_seconds: 60,
+            boundary_80s: Vec::new(),
+            boundary_75s: Vec::new(),
         }
     }
 
