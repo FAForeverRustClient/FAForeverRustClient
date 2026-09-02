@@ -407,6 +407,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "chat.category.friends": "Amigos",
   "chat.category.players": "Jugadores",
   "chat.category.ircOnly": "Solo IRC",
+  "chat.category.foes": "Enemigos",
   "chat.link.joinGame": "Unirse a la partida",
   "chat.link.watchLive": "Ver la retransmisión",
   "chat.roster.resize": "Redimensionar la lista de usuarios",

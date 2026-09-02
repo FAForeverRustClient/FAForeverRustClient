@@ -217,6 +217,7 @@ export const en = {
   "chat.category.friends": "Friends",
   "chat.category.players": "Players",
   "chat.category.ircOnly": "IRC only",
+  "chat.category.foes": "Foes",
   "chat.link.joinGame": "Join game",
   "chat.link.watchLive": "Watch live replay",
   "chat.roster.resize": "Resize channel user list",
