@@ -1319,6 +1319,17 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
+  /* The label used to be upper-cased in the component, which is no longer
+     possible now that it comes from the catalogue in six languages. */
+  text-transform: uppercase;
+}
+
+/* A campaign the player picks a faction for. `official` is the retail Forged
+   Alliance campaign, which the raw faction value labelled "custom" - the same
+   word community campaigns carry. */
+.host-coop-faction-badge[data-faction="official"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .host-coop-faction-badge[data-faction="uef"] {

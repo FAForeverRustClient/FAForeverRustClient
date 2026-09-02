@@ -11,10 +11,11 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
-import type { CoopMission, CoopScenario } from "../../../ipc/bindings";
+import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { useAppStore } from "../../../store/store";
 import { loadLocalMapPreviews } from "../../../shared/useLocalMapPreview";
+import { scenarioBadge, sortCoopScenarios } from "../coopScenarios";
 import { CoopMissionArt } from "./CoopMissionArt";
 import { HostModsColumn } from "./HostModsColumn";
 import { HostTopConfig } from "./HostTopConfig";
@@ -23,20 +24,8 @@ import { useHostLobbySettings } from "./hostLobbySettings";
 /** The featured mod a co-op lobby always runs. */
 const COOP_FEATURED_MOD = "coop";
 
-const COOP_FACTION_ORDER: Record<CoopScenario["faction"], number> = {
-  uef: 0,
-  cybran: 1,
-  aeon: 2,
-  seraphim: 3,
-  custom: 4,
-};
-
 /** Stands for "the missions no campaign claims"; see `campaigns` below. */
 const NO_CAMPAIGN = -1;
-
-function factionRank(faction: CoopScenario["faction"]): number {
-  return COOP_FACTION_ORDER[faction] ?? COOP_FACTION_ORDER.custom;
-}
 
 interface Props {
   onClose: () => void;
@@ -82,12 +71,7 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
   );
 
   const campaigns = useMemo(() => {
-    const sorted = [...coop.scenarios].sort(
-      (a, b) =>
-        factionRank(a.faction) - factionRank(b.faction) ||
-        a.order - b.order ||
-        a.name.localeCompare(b.name),
-    );
+    const sorted = sortCoopScenarios(coop.scenarios);
     return orphanCount > 0
       ? [
           ...sorted,
@@ -97,7 +81,7 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
             faction: "custom" as const,
             order: Number.MAX_SAFE_INTEGER,
             description: "",
-            category: "custom",
+            category: "custom" as const,
           },
         ]
       : sorted;
@@ -232,8 +216,8 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
                   >
                     <div className="host-gametype-title-row">
                       <span className="host-gametype-name">{campaign.name}</span>
-                      <span className="host-coop-faction-badge" data-faction={campaign.faction}>
-                        {campaign.faction.toUpperCase()}
+                      <span className="host-coop-faction-badge" data-faction={scenarioBadge(campaign)}>
+                        {t(`lobby.coop.badge.${scenarioBadge(campaign)}`)}
                       </span>
                     </div>
                   </button>

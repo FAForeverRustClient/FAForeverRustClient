@@ -15,25 +15,19 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
-import type { CoopMission, CoopResult, CoopScenario, CoopStatus, Game } from "../../ipc/bindings";
+import type { CoopMission, CoopResult, CoopStatus, Game } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
+import { formatShortDate } from "../../shared/dates";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { GameBrowserRow, GameTile, type GameViewMode } from "./CustomGamesBrowser";
 import { coopFailureAction } from "./coopFailure";
 import "./custom-games.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import { scenarioBadge, sortCoopScenarios } from "./coopScenarios";
 import "./coop.css";
 
 /** `0` means "any team size": matches `ANY_PLAYER_COUNT` in the domain. */
 const PLAYER_COUNTS = [0, 1, 2, 3, 4];
-const COOP_FACTION_ORDER: Record<CoopScenario["faction"], number> = {
-  uef: 0,
-  cybran: 1,
-  aeon: 2,
-  seraphim: 3,
-  custom: 4,
-};
-
 const loadCatalog = () => ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
 const selectMission = (missionId: number) =>
   ipc.send({ kind: "Coop", command: { type: "selectMission", payload: { missionId } } });
@@ -47,10 +41,6 @@ function formatDuration(seconds: number): string {
   const secs = seconds % 60;
   const pad = (value: number) => value.toString().padStart(2, "0");
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
-}
-
-function factionRank(faction: CoopScenario["faction"]): number {
-  return COOP_FACTION_ORDER[faction] ?? COOP_FACTION_ORDER.custom;
 }
 
 /**
@@ -89,11 +79,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
     [coop.missions],
   );
 
-  const scenarios = useMemo(() => {
-    return [...coop.scenarios].sort(
-      (a, b) => factionRank(a.faction) - factionRank(b.faction) || a.order - b.order || a.name.localeCompare(b.name),
-    );
-  }, [coop.scenarios]);
+  const scenarios = useMemo(() => sortCoopScenarios(coop.scenarios), [coop.scenarios]);
 
   // Set default scenario when catalog loads
   useEffect(() => {
@@ -216,7 +202,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
               >
                 {scenarios.map((scenario) => (
                   <option key={scenario.id} value={scenario.id}>
-                    {scenario.name} ({scenario.faction.toUpperCase()})
+                    {scenario.name} ({t(`lobby.coop.badge.${scenarioBadge(scenario)}`)})
                   </option>
                 ))}
                 {orphanCount > 0 && (
@@ -331,6 +317,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
                 <th scope="col">{t("lobby.coop.column.players")}</th>
                 <th scope="col">{t("lobby.coop.column.team")}</th>
                 <th scope="col">{t("lobby.coop.column.secondary")}</th>
+                <th scope="col">{t("lobby.coop.column.played")}</th>
                 <th scope="col">{t("lobby.coop.column.replay")}</th>
               </tr>
             </thead>
@@ -394,8 +381,19 @@ function LeaderboardRow({ result }: { result: CoopResult }) {
         {result.players.join(", ") || <span className="muted">{t("lobby.coop.unknownPlayers")}</span>}
       </td>
       {/* Completing the optional objectives is the harder run, so it is worth
-          distinguishing rather than hiding in a tooltip. */}
-      <td>{result.secondaryObjectives ? t("lobby.coop.yes") : "N/A"}</td>
+          distinguishing rather than hiding in a tooltip. "N/A" stood here for
+          the negative case, which reads as "not known" - the API answers this
+          for every run, and the answer is simply no. */}
+      <td>{result.secondaryObjectives ? t("lobby.coop.yes") : t("lobby.coop.no")}</td>
+      {/* `playedAt` is the game's start time in seconds. A record with no game
+          behind it any more has none. */}
+      <td>
+        {result.playedAt === null ? (
+          <span className="muted">{t("common.unknown")}</span>
+        ) : (
+          formatShortDate(result.playedAt * 1000)
+        )}
+      </td>
       <td>
         {/* One click plays back exactly this run: `watchVault` downloads the
             replay the record was set with and starts the game on it, the same
