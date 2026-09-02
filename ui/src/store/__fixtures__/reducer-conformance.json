@@ -562,7 +562,8 @@
       "appearance": {
         "density": "comfortable",
         "reduceMotion": false,
-        "uiScale": 100
+        "uiScale": 100,
+        "gameTileColumns": 0
       },
       "social": {
         "playerNotes": []
@@ -592,6 +593,8 @@
         "use24HourTime": true,
         "coloredNames": false,
         "rosterWidth": 280,
+        "fontSize": 13,
+        "senderWidth": 116,
         "nameColors": {
           "selfColor": "#ffdd00",
           "friends": "#87cefa",
@@ -612,7 +615,10 @@
       },
       "game": {
         "additionalArguments": [],
-        "autoGenerateMaps": true
+        "autoGenerateMaps": true,
+        "cacheLifetimeDays": 30,
+        "cacheSizeAlertGb": 10,
+        "cacheRollingBranches": false
       },
       "discord": {
         "enabled": true,
@@ -724,6 +730,11 @@
         "outputPath": "",
         "commandLineArgs": "",
         "keepMaps": false
+      },
+      "cacheInfo": {
+        "totalSizeBytes": 0.0,
+        "totalFiles": 0,
+        "versions": []
       }
     },
     "changelog": {
@@ -20404,6 +20415,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -20472,11 +20484,17 @@
               "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -20491,6 +20509,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -20506,7 +20525,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "",
             "general": {
@@ -20599,6 +20621,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -20667,11 +20690,17 @@
               "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -20686,6 +20715,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -20701,7 +20731,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -20802,6 +20835,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -20870,11 +20904,17 @@
               "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -20889,6 +20929,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -20904,7 +20945,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -21001,6 +21045,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21069,11 +21114,17 @@
               "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -21088,6 +21139,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -21103,7 +21155,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -21200,6 +21255,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21268,11 +21324,17 @@
               "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -21287,6 +21349,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -21302,7 +21365,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -21421,6 +21487,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21489,11 +21556,17 @@
               "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -21508,6 +21581,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -21523,7 +21597,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -21633,6 +21710,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21701,11 +21779,17 @@
               "replayVaultPlayer": "",
               "replaysView": "tiles"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -21720,6 +21804,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -21735,7 +21820,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -21922,6 +22010,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21999,11 +22088,17 @@
               "replayVaultPlayer": "",
               "replaysView": "list"
             },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
             "chat": {
               "autoJoinChannels": [],
               "autoJoinLanguageChannel": true,
               "autoJoinNewbieChannel": true,
               "coloredNames": false,
+              "fontSize": 13,
               "hiddenRosterCategories": [],
               "hideFoeMessages": true,
               "mutedPlayers": [],
@@ -22018,6 +22113,7 @@
               "newbieChannelGameThreshold": 50,
               "readMarkers": {},
               "rosterWidth": 280,
+              "senderWidth": 116,
               "showJoinsParts": false,
               "showTimestamps": true,
               "use24HourTime": true,
@@ -22033,7 +22129,10 @@
             },
             "game": {
               "additionalArguments": [],
-              "autoGenerateMaps": true
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {

@@ -57,6 +57,13 @@ pub struct ReplayMetadata {
     pub teams: std::collections::BTreeMap<String, Vec<String>>,
     /// SIM mod UID to display name.
     pub sim_mods: std::collections::BTreeMap<String, String>,
+    /// Optional Git commit SHA if recorded from a develop or beta branch.
+    pub git_sha: Option<String>,
+    pub git_short_sha: Option<String>,
+    /// Composite hash of mod files.
+    pub signature: Option<String>,
+    /// Human-readable version name, e.g. "FAF Develop (abcdef1)".
+    pub version_name: Option<String>,
 }
 
 /// Which of the configured executables actually exist on disk right now.

@@ -108,12 +108,13 @@ pub use reviews::{
 };
 pub use session::{ConnectionStatus, SessionCommand, SessionEvent, SessionState};
 pub use settings::{
-    AppearancePreferences, BrowsingPreferences, ChatNameColors, ChatPreferences,
+    AppearancePreferences, BrowsingPreferences, CachedGameVersion, ChatNameColors, ChatPreferences,
     ConnectivityPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView,
-    DiscordPreferences, GamePreferences, GeneralPreferences, HostGamePreferences, IceAdapter,
-    LiveReplayFilters, NotificationPreferences, PathPreferences, PlayerNote, SettingsCommand,
-    SettingsEvent, SettingsState, SocialPreferences, Theme, UiDensity, UpdatePreferences,
+    DiscordPreferences, GameCacheInfo, GamePreferences, GeneralPreferences, HostGamePreferences,
+    IceAdapter, LiveReplayFilters, NotificationPreferences, PathPreferences, PlayerNote,
+    SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme, UiDensity,
+    UpdatePreferences,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,

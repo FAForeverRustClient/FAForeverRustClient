@@ -106,6 +106,23 @@ fn open_client_folder(kind: String, app: tauri::AppHandle) -> Result<(), String>
 }
 
 #[tauri::command]
+fn open_version_folder(name: String, app: tauri::AppHandle) -> Result<(), String> {
+    let cache_root = faf_app::infra::cache_dir()?;
+    let sanitized = faf_app::infra::sanitize_folder_name(&name);
+    let version_dir = cache_root.join("versions").join(&sanitized);
+    let target = if version_dir.is_dir() {
+        version_dir
+    } else {
+        cache_root.join("game_files")
+    };
+    std::fs::create_dir_all(&target)
+        .map_err(|error| format!("could not create {}: {error}", target.display()))?;
+    app.opener()
+        .open_path(target.to_string_lossy().into_owned(), None::<String>)
+        .map_err(|error| format!("could not open {}: {error}", target.display()))
+}
+
+#[tauri::command]
 async fn reveal_replay(path: String, app: tauri::AppHandle) -> Result<(), String> {
     let path =
         faf_app::infra::replay::validated_local_replay_path(std::path::Path::new(&path)).await?;
@@ -636,6 +653,7 @@ pub fn run() {
             snapshot,
             open_log_folder,
             open_client_folder,
+            open_version_folder,
             reveal_replay,
             read_latest_log,
             webview_engine,

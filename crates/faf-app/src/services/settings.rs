@@ -14,7 +14,8 @@
 //! path without the check running.
 
 use faf_domain::state::{
-    ChatEvent, InstallEvent, MapGeneratorEvent, NavEvent, SettingsCommand, SettingsEvent,
+    ChatEvent, ClientNotification, InstallEvent, MapGeneratorEvent, NavEvent, NotificationAction,
+    NotificationEvent, NotificationKind, SettingsCommand, SettingsEvent,
 };
 
 use crate::runtime::{EventSink, ServiceCtx};
@@ -52,11 +53,34 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             let start_page = settings.general.start_page;
             let show_joins_parts = settings.chat.show_joins_parts;
+            if let Ok(cache_root) = crate::infra::cache_dir() {
+                let game_files_cache = cache_root.join("game_files");
+                if let Some(days) = settings.game.cache_lifetime_days {
+                    let _ = crate::infra::game_updater::clean_expired_cache_files(
+                        &game_files_cache,
+                        days,
+                    )
+                    .await;
+                }
+                let mut install_dirs = Vec::new();
+                if !settings.game_path.is_empty() {
+                    install_dirs.push(std::path::PathBuf::from(&settings.game_path));
+                }
+                if !settings.replay_game_path.is_empty() {
+                    install_dirs.push(std::path::PathBuf::from(&settings.replay_game_path));
+                }
+                settings.cache_info = crate::infra::game_updater::inspect_game_cache(
+                    &game_files_cache,
+                    &install_dirs,
+                )
+                .await;
+            }
             // The map generator keeps its own working copy of these options,
             // so a persisted set has to be handed over explicitly: without
             // this the dialog would open on defaults every session and "save
             // settings" would look like it had done nothing.
             let generator_options = settings.map_generator.clone();
+            check_cache_size_alert(out, &settings.cache_info, settings.game.cache_size_alert_gb);
             out.emit(SettingsEvent::Loaded {
                 settings: Box::new(settings),
             });
@@ -177,16 +201,39 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         SettingsCommand::SetGame { preferences } => {
             let mut next = out.with_state(|state| state.settings.clone());
+            let old_lifetime = next.game.cache_lifetime_days;
             next.game = preferences;
+            let next_game = next.normalized().game;
+            let new_lifetime = next_game.cache_lifetime_days;
             out.emit(SettingsEvent::GameChanged {
-                preferences: next.normalized().game,
+                preferences: next_game,
             });
             persist(ctx, out).await;
             sync_launch_preferences(ctx, out);
+            if old_lifetime != new_lifetime {
+                if let Some(days) = new_lifetime {
+                    if let Ok(cache_root) = crate::infra::cache_dir() {
+                        let _ = crate::infra::game_updater::clean_expired_cache_files(
+                            &cache_root.join("game_files"),
+                            days,
+                        )
+                        .await;
+                        sync_game_cache(out).await;
+                    }
+                }
+            }
         }
         // Re-stat without changing anything: for the banner's "Check again"
         // after the user installs or restores the game outside the client.
         SettingsCommand::CheckInstalls => sync_installs(ctx, out),
+        SettingsCommand::RefreshGameCache => sync_game_cache(out).await,
+        SettingsCommand::ClearGameCache => {
+            if let Ok(cache_root) = crate::infra::cache_dir() {
+                let game_files_cache = cache_root.join("game_files");
+                let _ = crate::infra::game_updater::clear_game_cache(&game_files_cache).await;
+            }
+            sync_game_cache(out).await;
+        }
     }
 }
 
@@ -261,4 +308,65 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
         replay_ready: present.replay,
         resolved,
     });
+}
+
+async fn sync_game_cache(out: &EventSink) {
+    if let Ok(cache_root) = crate::infra::cache_dir() {
+        let game_files_cache = cache_root.join("game_files");
+        let (game_path, replay_path, alert_gb) = out.with_state(|state| {
+            (
+                std::path::PathBuf::from(&state.settings.game_path),
+                std::path::PathBuf::from(&state.settings.replay_game_path),
+                state.settings.game.cache_size_alert_gb,
+            )
+        });
+        let mut install_dirs = Vec::new();
+        if !game_path.as_os_str().is_empty() {
+            install_dirs.push(game_path);
+        }
+        if !replay_path.as_os_str().is_empty() && Some(&replay_path) != install_dirs.first() {
+            install_dirs.push(replay_path);
+        }
+        let info =
+            crate::infra::game_updater::inspect_game_cache(&game_files_cache, &install_dirs).await;
+        check_cache_size_alert(out, &info, alert_gb);
+        out.emit(SettingsEvent::CacheInfoUpdated { info });
+    }
+}
+
+fn check_cache_size_alert(
+    out: &EventSink,
+    cache_info: &faf_domain::state::GameCacheInfo,
+    alert_gb: Option<u32>,
+) {
+    let Some(threshold_gb) = alert_gb else {
+        return;
+    };
+    if threshold_gb == 0 {
+        return;
+    }
+    let threshold_bytes = (threshold_gb as f64) * 1024.0 * 1024.0 * 1024.0;
+    if cache_info.total_size_bytes >= threshold_bytes {
+        let size_gb = cache_info.total_size_bytes / (1024.0 * 1024.0 * 1024.0);
+        let id = format!("game-cache-alert-{}", threshold_gb);
+        let already_notified =
+            out.with_state(|state| state.notifications.items.iter().any(|item| item.id == id));
+        if !already_notified {
+            let notification = ClientNotification {
+                id,
+                kind: NotificationKind::GameCacheAlert,
+                title: "Game Cache Size Alert".to_string(),
+                body: format!(
+                    "Cached game files are using {:.1} GB (alert threshold: {} GB). You can review or clear disk space in Settings.",
+                    size_gb, threshold_gb
+                ),
+                created_at: chrono::Utc::now().to_rfc3339(),
+                read: false,
+                action: Some(NotificationAction::OpenSettings {
+                    section: Some("gameCache".to_string()),
+                }),
+            };
+            out.emit(NotificationEvent::Added { notification });
+        }
+    }
 }

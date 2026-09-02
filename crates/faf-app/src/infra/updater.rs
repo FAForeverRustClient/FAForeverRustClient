@@ -90,6 +90,7 @@ impl GameUpdaterClient {
             &target_dir,
             &request.featured_mod,
             &self.config.exe_name,
+            request.cache_rolling_branches,
             progress,
         )
         .await
@@ -101,14 +102,12 @@ impl GameUpdaterClient {
         // so launching without it just trades a clear message for a hang on a
         // blank loading screen.
         if let Some(folder) = &request.map_folder {
-            progress(PreparationStep::indeterminate(format!(
-                "Downloading map {folder}…"
-            )));
             game_updater::ensure_live_map(
                 &self.http,
                 &self.config.content_base,
                 &maps::maps_dir(),
                 folder,
+                progress,
             )
             .await?;
         }
@@ -188,6 +187,7 @@ mod tests {
             .prepare(GamePreparation {
                 featured_mod: "faf".into(),
                 map_folder: Some("adaptive_gadostb.v0002".into()),
+                cache_rolling_branches: false,
             })
             .await;
         assert_eq!(rx.recv().await, Some(UpdateProgress::Finished(Ok(()))));
@@ -212,6 +212,7 @@ mod tests {
             .prepare(GamePreparation {
                 featured_mod: "faf".into(),
                 map_folder: None,
+                cache_rolling_branches: false,
             })
             .await;
 

@@ -213,7 +213,11 @@ export function ChatView() {
     // later click reports the failure in the language now selected.
   }, [games, liveGames, t]);
 
-  const chatStyle = { "--chat-roster-width": `${rosterWidth}px` } as CSSProperties;
+  const chatStyle = {
+    "--chat-roster-width": `${rosterWidth}px`,
+    "--chat-font-size": `${chatPreferences.fontSize || 13}px`,
+    "--chat-sender-width": `${chatPreferences.senderWidth || 116}px`,
+  } as CSSProperties;
 
   return (
     <div className="chat" style={chatStyle}>

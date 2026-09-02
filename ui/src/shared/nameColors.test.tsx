@@ -22,6 +22,8 @@ const DEFAULT_CHAT_PREFS: ChatPreferences = {
   use24HourTime: true,
   coloredNames: false,
   rosterWidth: 280,
+  fontSize: 13,
+  senderWidth: 116,
   hideFoeMessages: true,
   visibleMessageLimit: 500,
   autoJoinChannels: [],

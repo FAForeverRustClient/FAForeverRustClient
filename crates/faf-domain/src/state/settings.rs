@@ -157,6 +157,10 @@ pub struct AppearancePreferences {
     /// reader below, which is how every other preference block in this module
     /// gains a field without making the generated IPC type optional.
     pub ui_scale: u16,
+    /// Number of columns to render in the custom games tile browser.
+    /// `0` means automatic / responsive (adapting dynamically to window width).
+    /// `1..=6` specifies a fixed column count.
+    pub game_tile_columns: u8,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -174,6 +178,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             density: UiDensity,
             reduce_motion: bool,
             ui_scale: u16,
+            game_tile_columns: u8,
         }
 
         impl Default for Wire {
@@ -183,6 +188,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     density: defaults.density,
                     reduce_motion: defaults.reduce_motion,
                     ui_scale: defaults.ui_scale,
+                    game_tile_columns: defaults.game_tile_columns,
                 }
             }
         }
@@ -192,6 +198,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             density: wire.density,
             reduce_motion: wire.reduce_motion,
             ui_scale: wire.ui_scale,
+            game_tile_columns: wire.game_tile_columns.min(6),
         })
     }
 }
@@ -214,7 +221,16 @@ impl Default for AppearancePreferences {
             density: UiDensity::Comfortable,
             reduce_motion: false,
             ui_scale: default_ui_scale(),
+            game_tile_columns: 0,
         }
+    }
+}
+
+impl AppearancePreferences {
+    pub fn normalized(mut self) -> Self {
+        self.ui_scale = self.ui_scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE);
+        self.game_tile_columns = self.game_tile_columns.min(6);
+        self
     }
 }
 
@@ -427,6 +443,10 @@ pub struct ChatPreferences {
     pub colored_names: bool,
     /// Width of the public-channel roster in logical CSS pixels.
     pub roster_width: u16,
+    /// Message text font size in logical pixels (11 to 24, default 13).
+    pub font_size: u16,
+    /// Width of the sender column in chat in logical pixels (60 to 300, default 116).
+    pub sender_width: u16,
     pub name_colors: ChatNameColors,
     pub hide_foe_messages: bool,
     /// Number of recent messages rendered per conversation. The domain retains
@@ -471,6 +491,8 @@ impl Default for ChatPreferences {
             use_24_hour_time: true,
             colored_names: false,
             roster_width: 280,
+            font_size: 13,
+            sender_width: 116,
             name_colors: ChatNameColors::default(),
             hide_foe_messages: true,
             visible_message_limit: 500,
@@ -501,6 +523,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
             use_24_hour_time: bool,
             colored_names: bool,
             roster_width: u16,
+            font_size: u16,
+            sender_width: u16,
             name_colors: ChatNameColors,
             hide_foe_messages: bool,
             visible_message_limit: u16,
@@ -522,6 +546,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
                     use_24_hour_time: defaults.use_24_hour_time,
                     colored_names: defaults.colored_names,
                     roster_width: defaults.roster_width,
+                    font_size: defaults.font_size,
+                    sender_width: defaults.sender_width,
                     name_colors: defaults.name_colors,
                     hide_foe_messages: defaults.hide_foe_messages,
                     visible_message_limit: defaults.visible_message_limit,
@@ -543,6 +569,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
             use_24_hour_time: wire.use_24_hour_time,
             colored_names: wire.colored_names,
             roster_width: wire.roster_width,
+            font_size: wire.font_size,
+            sender_width: wire.sender_width,
             name_colors: wire.name_colors,
             hide_foe_messages: wire.hide_foe_messages,
             visible_message_limit: wire.visible_message_limit,
@@ -560,6 +588,8 @@ impl<'de> Deserialize<'de> for ChatPreferences {
 impl ChatPreferences {
     fn normalized(mut self) -> Self {
         self.roster_width = self.roster_width.clamp(200, 600);
+        self.font_size = self.font_size.clamp(11, 24);
+        self.sender_width = self.sender_width.clamp(60, 300);
         self.name_colors.self_color = normalize_color(self.name_colors.self_color);
         self.name_colors.friends = normalize_color(self.name_colors.friends);
         self.name_colors.foes = normalize_color(self.name_colors.foes);
@@ -723,10 +753,30 @@ pub struct GamePreferences {
     /// Automatically generate missing Neroxis maps when joining a lobby.
     #[serde(default = "default_true")]
     pub auto_generate_maps: bool,
+    /// Maximum lifetime in days for cached game data and replay binaries.
+    /// `None` or `0` means cache retention is indefinite / automatic purging is disabled.
+    #[serde(default = "default_cache_lifetime_days")]
+    pub cache_lifetime_days: Option<u32>,
+    /// Size threshold in gigabytes to warn the user about game cache usage.
+    /// `None` or `0` means alert is disabled.
+    #[serde(default = "default_cache_size_alert_gb")]
+    pub cache_size_alert_gb: Option<u32>,
+    /// Whether to cache rolling development branches (FAF Develop and Beta).
+    /// Defaults to `false` so the client always checks for fresh commits from the server.
+    #[serde(default)]
+    pub cache_rolling_branches: bool,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_cache_lifetime_days() -> Option<u32> {
+    Some(30)
+}
+
+fn default_cache_size_alert_gb() -> Option<u32> {
+    Some(10)
 }
 
 impl Default for GamePreferences {
@@ -734,6 +784,9 @@ impl Default for GamePreferences {
         Self {
             additional_arguments: Vec::new(),
             auto_generate_maps: true,
+            cache_lifetime_days: default_cache_lifetime_days(),
+            cache_size_alert_gb: default_cache_size_alert_gb(),
+            cache_rolling_branches: false,
         }
     }
 }
@@ -1366,6 +1419,24 @@ impl BrowsingPreferences {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CachedGameVersion {
+    pub name: String,
+    pub version: i32,
+    pub file_count: u32,
+    pub size_bytes: f64,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GameCacheInfo {
+    pub total_size_bytes: f64,
+    pub total_files: u32,
+    pub versions: Vec<CachedGameVersion>,
+}
+
 /// Persisted preferences. `#[serde(default)]` is essential for forward
 /// compatibility: settings files written by older builds only contain the
 /// original theme/path fields and must retain them while new groups default.
@@ -1402,6 +1473,8 @@ pub struct SettingsState {
     /// having it survive a restart is the difference between the dialog being
     /// configured once and being configured every time.
     pub map_generator: GeneratorOptions,
+    #[serde(default)]
+    pub cache_info: GameCacheInfo,
 }
 
 impl<'de> Deserialize<'de> for SettingsState {
@@ -1452,6 +1525,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             browsing: wire.browsing,
             kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
+            cache_info: GameCacheInfo::default(),
         })
     }
 }
@@ -1464,10 +1538,7 @@ impl SettingsState {
         self.game = self.game.normalized();
         self.paths = self.paths.normalized();
         self.browsing = self.browsing.normalized();
-        // Clamped at the state boundary, so a hand-edited settings file cannot
-        // zoom the interface to something unusable that is then hard to undo:
-        // the control for fixing it would be off screen.
-        self.appearance.ui_scale = self.appearance.ui_scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE);
+        self.appearance = self.appearance.normalized();
         self
     }
 }
@@ -1540,6 +1611,9 @@ pub enum SettingsEvent {
     KeptGeneratedMaps {
         map_names: Vec<String>,
     },
+    CacheInfoUpdated {
+        info: GameCacheInfo,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -1595,6 +1669,8 @@ pub enum SettingsCommand {
         preferences: Box<BrowsingPreferences>,
     },
     CheckInstalls,
+    RefreshGameCache,
+    ClearGameCache,
 }
 
 pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
@@ -1624,7 +1700,9 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
             }
         }
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
-        SettingsEvent::AppearanceChanged { preferences } => state.appearance = preferences.clone(),
+        SettingsEvent::AppearanceChanged { preferences } => {
+            state.appearance = preferences.clone().normalized()
+        }
         SettingsEvent::SocialChanged { preferences } => {
             state.social = preferences.clone().normalized()
         }
@@ -1641,6 +1719,9 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         }
         SettingsEvent::MapGeneratorChanged { preferences } => {
             state.map_generator = preferences.as_ref().clone()
+        }
+        SettingsEvent::CacheInfoUpdated { info } => {
+            state.cache_info = info.clone();
         }
     }
 }
@@ -2284,5 +2365,28 @@ mod tests {
         assert_eq!(settings.social.player_notes.len(), 1);
         assert_eq!(settings.social.player_notes[0].login, "Aurora");
         assert_eq!(settings.social.player_notes[0].note, "useful");
+    }
+
+    #[test]
+    fn game_tile_columns_defaults_to_auto_and_is_bounded() {
+        let default_pref = AppearancePreferences::default();
+        assert_eq!(default_pref.game_tile_columns, 0);
+
+        let parsed: AppearancePreferences =
+            serde_json::from_str(r#"{"density":"compact","reduceMotion":true,"uiScale":125}"#)
+                .unwrap();
+        assert_eq!(parsed.game_tile_columns, 0);
+
+        let parsed_with_cols: AppearancePreferences = serde_json::from_str(
+            r#"{"density":"compact","reduceMotion":true,"uiScale":125,"gameTileColumns":4}"#,
+        )
+        .unwrap();
+        assert_eq!(parsed_with_cols.game_tile_columns, 4);
+
+        let parsed_exceeding: AppearancePreferences = serde_json::from_str(
+            r#"{"density":"compact","reduceMotion":true,"uiScale":125,"gameTileColumns":99}"#,
+        )
+        .unwrap();
+        assert_eq!(parsed_exceeding.game_tile_columns, 6);
     }
 }

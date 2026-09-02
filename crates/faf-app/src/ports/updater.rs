@@ -24,6 +24,8 @@ pub struct GamePreparation {
     /// maps are handled separately (see `infra::map_generator`): this is the
     /// vault-download path.
     pub map_folder: Option<String>,
+    /// Whether to snapshot rolling develop and beta branches into cache_manifest and cache/versions.
+    pub cache_rolling_branches: bool,
 }
 
 /// One user-visible preparation step. `progress` is absent for work whose

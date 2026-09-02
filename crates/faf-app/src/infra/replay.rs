@@ -445,23 +445,32 @@ impl ReplayPort for ReplayClient {
             // version is exact and required, so a failure here is fatal:
             // launching anyway would just reproduce the exact crash this is
             // supposed to prevent, with no diagnostic for the user.
-            if let Some(version) = replay.game_version {
-                let token = self
-                    .tokens
-                    .get()
-                    .ok_or_else(|| "not logged in".to_string())?;
-                game_updater::ensure_game_version(
-                    &self.http,
-                    &token,
-                    &self.config.api_base,
-                    &cache_dir()?.join("game_files"),
-                    target_dir,
-                    &mod_name,
-                    version,
-                    &self.config.exe_name,
-                )
-                .await
-                .map_err(|e| format!("could not update game to version {version}: {e}"))?;
+            let token = self
+                .tokens
+                .get()
+                .ok_or_else(|| "not logged in".to_string())?;
+            let version_info = game_updater::ReplayVersionInfo {
+                mod_name: mod_name.clone(),
+                game_version: replay.game_version,
+                git_sha: replay.git_sha,
+                git_short_sha: replay.git_short_sha,
+                build_signature: replay.build_signature,
+                version_name: replay.version_name,
+                launched_at: replay.launched_at,
+            };
+            if let Some(warn) = game_updater::resolve_and_stage_replay_version(
+                &self.http,
+                &token,
+                &self.config.api_base,
+                &cache_dir()?.join("game_files"),
+                target_dir,
+                &version_info,
+                &self.config.exe_name,
+            )
+            .await
+            .map_err(|e| format!("could not prepare game for replay: {e}"))?
+            {
+                warning = Some(warn);
             }
 
             // Old replays' init scripts predate the "custom vault path"
@@ -2288,20 +2297,12 @@ struct ScfaReplay {
     uid: Option<i32>,
     game_version: Option<i32>,
     map_folder: Option<String>,
-    /// `(uid, display name)` pairs: mirrors the Python client's
-    /// `fa.check.check`'s `sim_mods` param, which it feeds to
-    /// `checkMods()`. A replay recorded with sim mods active desyncs (or,
-    /// confirmed live, just hangs indefinitely past the loading screen with
-    /// no error) if those mods aren't the *active* set in `game.prefs` at
-    /// launch: installed alone isn't enough. Read straight from the
-    /// `.fafreplay` envelope's own `sim_mods` field (present on every real
-    /// vault/local file inspected) rather than re-deriving it from the
-    /// compressed body's embedded Lua table the way `fa/replayparser.py`
-    /// does: the envelope already carries the same `{uid: name}` map as
-    /// plain JSON, so there's no need to reimplement Lua binary table
-    /// parsing to get it. Always empty for the legacy bare-`.scfareplay`
-    /// path, which has no JSON envelope at all.
     sim_mods: Vec<(String, String)>,
+    git_sha: Option<String>,
+    git_short_sha: Option<String>,
+    build_signature: Option<String>,
+    version_name: Option<String>,
+    launched_at: Option<u64>,
 }
 
 /// Resolve a `.fafreplay`/`.scfareplay` source to a playable `.scfareplay`
@@ -2325,6 +2326,11 @@ async fn prepare_scfareplay(path: &std::path::Path) -> Result<ScfaReplay, String
                 game_version: game_updater::extract_game_version(&bytes),
                 map_folder: game_updater::extract_map_folder(&bytes),
                 sim_mods: Vec::new(),
+                git_sha: None,
+                git_short_sha: None,
+                build_signature: None,
+                version_name: None,
+                launched_at: None,
             })
         }
         other => Err(format!(
@@ -2406,6 +2412,27 @@ async fn decode_fafreplay_to(
                 .collect()
         })
         .unwrap_or_default();
+    let git_sha = header
+        .get("git_sha")
+        .and_then(Value::as_str)
+        .map(String::from);
+    let git_short_sha = header
+        .get("git_short_sha")
+        .and_then(Value::as_str)
+        .map(String::from);
+    let build_signature = header
+        .get("build_signature")
+        .and_then(Value::as_str)
+        .map(String::from);
+    let version_name = header
+        .get("version_name")
+        .and_then(Value::as_str)
+        .map(String::from);
+    let launched_at = header
+        .get("launched_at")
+        .and_then(Value::as_f64)
+        .map(|f| f as u64);
+
     Ok(ScfaReplay {
         path: out_path,
         mod_name,
@@ -2413,6 +2440,11 @@ async fn decode_fafreplay_to(
         game_version: game_updater::extract_game_version(&decompressed_prefix),
         map_folder: game_updater::extract_map_folder(&decompressed_prefix),
         sim_mods,
+        git_sha,
+        git_short_sha,
+        build_signature,
+        version_name,
+        launched_at,
     })
 }
 
@@ -2883,6 +2915,10 @@ mod tests {
             .into_iter()
             .collect(),
             sim_mods: Default::default(),
+            git_sha: None,
+            git_short_sha: None,
+            signature: None,
+            version_name: None,
         };
         let file =
             crate::infra::replay_recorder::build_fafreplay(&metadata, b"body".to_vec(), true)

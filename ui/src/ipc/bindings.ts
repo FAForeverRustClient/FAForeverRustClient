@@ -63,6 +63,12 @@ export type AppearancePreferences = {
 	 *  gains a field without making the generated IPC type optional.
 	 */
 	uiScale: number,
+	/**
+	 *  Number of columns to render in the custom games tile browser.
+	 *  `0` means automatic / responsive (adapting dynamically to window width).
+	 *  `1..=6` specifies a fixed column count.
+	 */
+	gameTileColumns: number,
 };
 
 /**
@@ -262,6 +268,14 @@ export type BrowsingPreferences = {
 	 *  is one-time and the old keys can be removed on a later confirmed load.
 	 */
 	legacyStorageMigrated: boolean,
+};
+
+export type CachedGameVersion = {
+	name: string,
+	version: number,
+	fileCount: number,
+	sizeBytes: number | null,
+	url: string | null,
 };
 
 /**
@@ -701,6 +715,10 @@ export type ChatPreferences = {
 	coloredNames: boolean,
 	/**  Width of the public-channel roster in logical CSS pixels. */
 	rosterWidth: number,
+	/**  Message text font size in logical pixels (11 to 24, default 13). */
+	fontSize: number,
+	/**  Width of the sender column in chat in logical pixels (60 to 300, default 116). */
+	senderWidth: number,
 	nameColors: ChatNameColors,
 	hideFoeMessages: boolean,
 	/**
@@ -1489,6 +1507,12 @@ export type Game = {
 	simMods: { [key in string]: string },
 };
 
+export type GameCacheInfo = {
+	totalSizeBytes: number | null,
+	totalFiles: number,
+	versions: CachedGameVersion[],
+};
+
 /**
  *  The server's `game_launch` order: everything the connectivity + launch chain
  *  (a later phase) needs to actually start the game. For now we only model and
@@ -1527,6 +1551,21 @@ export type GamePreferences = {
 	additionalArguments?: string[],
 	/**  Automatically generate missing Neroxis maps when joining a lobby. */
 	autoGenerateMaps?: boolean,
+	/**
+	 *  Maximum lifetime in days for cached game data and replay binaries.
+	 *  `None` or `0` means cache retention is indefinite / automatic purging is disabled.
+	 */
+	cacheLifetimeDays?: number | null,
+	/**
+	 *  Size threshold in gigabytes to warn the user about game cache usage.
+	 *  `None` or `0` means alert is disabled.
+	 */
+	cacheSizeAlertGb?: number | null,
+	/**
+	 *  Whether to cache rolling development branches (FAF Develop and Beta).
+	 *  Defaults to `false` so the client always checks for fresh commits from the server.
+	 */
+	cacheRollingBranches?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -3171,6 +3210,8 @@ export type NotificationAction = { type: "openChat"; payload: {
 	playerId: number,
 } } | { type: "watchLive"; payload: {
 	target: LiveReplayTarget,
+} } | { type: "openSettings"; payload: {
+	section: string | null,
 } };
 
 export type NotificationCommand = { type: "markRead"; payload: {
@@ -3197,7 +3238,9 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  slow and usually kicked off in the background by a lobby join, so the
  *  user is very likely looking at something else when it completes.
  */
-"mapGenerated" | "error";
+"mapGenerated" |
+/**  Game file cache exceeded user-configured threshold size. */
+"gameCacheAlert" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -4522,7 +4565,7 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	preferences: GeneratorOptions,
 } } | { type: "setBrowsing"; payload: {
 	preferences: BrowsingPreferences,
-} } | { type: "checkInstalls" };
+} } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
 
 export type SettingsEvent = { type: "loaded"; payload: {
 	settings: SettingsState,
@@ -4569,6 +4612,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
  */
 { type: "keptGeneratedMaps"; payload: {
 	mapNames: string[],
+} } | { type: "cacheInfoUpdated"; payload: {
+	info: GameCacheInfo,
 } };
 
 /**
@@ -4609,6 +4654,7 @@ export type SettingsState = {
 	 *  configured once and being configured every time.
 	 */
 	mapGenerator: GeneratorOptions,
+	cacheInfo?: GameCacheInfo,
 };
 
 /**  How entrants get in. */

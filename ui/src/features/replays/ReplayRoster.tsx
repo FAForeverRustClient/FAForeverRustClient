@@ -12,8 +12,11 @@ import { PlayerName } from "../../shared/nameColors";
 // which is what the Java client's lineup shows too.
 function teamName(team: number, soleTeam: boolean): string {
   if (team < 0) return t("replays.roster.observers");
+  if (soleTeam) {
+    return team === 1 ? t("replays.roster.freeForAll") : t("replays.roster.players");
+  }
   if (team > 1) return `Team ${team - 1}`;
-  return soleTeam ? t("replays.roster.freeForAll") : t("replays.roster.unassigned");
+  return t("replays.roster.unassigned");
 }
 
 export function isObserverTeam(team: number): boolean {
@@ -97,30 +100,41 @@ export function mergeReplayTeamsWithLocal(
 export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
   useLocale();
   if (teams.length === 0) return null;
-  const soleTeam = teams.filter((team) => !isObserverTeam(team.team)).length === 1;
+  const nonObserverTeams = teams.filter((team) => !isObserverTeam(team.team));
+  const soleTeam = nonObserverTeams.length === 1;
+  const isSingleTeamGame = teams.length === 1;
   return (
-    <div className="replay-card-teams">
+    <div className="replay-card-teams" data-sole-team={soleTeam ? "true" : undefined}>
       {teams.map((team) => {
         const observer = isObserverTeam(team.team);
+        const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > 4;
+        const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
         return (
           <section key={team.team} className="replay-card-team">
-            <header className="replay-card-team-title">
-              <span>{teamName(team.team, soleTeam)}</span>
-              <span>
-                {team.players.length} {observer
-                  ? (team.players.length === 1 ? "observer" : "observers")
-                  : (team.players.length === 1 ? "player" : "players")}
-              </span>
-            </header>
-            {team.players.map((player) => (
-              <div key={player.name} className="replay-player">
-                <span className="replay-player-identity">
-                  <ReplayPlayerMarker player={player} observer={observer} size={17} />
-                  <PlayerName name={player.name} />
+            {!isSingleTeamGame && (
+              <header className="replay-card-team-title">
+                <span>{teamName(team.team, soleTeam)}</span>
+                <span>
+                  {team.players.length} {observer
+                    ? (team.players.length === 1 ? "observer" : "observers")
+                    : (team.players.length === 1 ? "player" : "players")}
                 </span>
-                {player.rating !== null && <span className="muted">{player.rating}</span>}
-              </div>
-            ))}
+              </header>
+            )}
+            <div
+              className={`replay-card-team-roster ${isSplit ? "is-split" : ""}`}
+              style={rowCount ? { gridTemplateRows: `repeat(${rowCount}, auto)` } : undefined}
+            >
+              {team.players.map((player) => (
+                <div key={player.name} className="replay-player">
+                  <span className="replay-player-identity">
+                    <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                    <PlayerName name={player.name} />
+                  </span>
+                  {player.rating !== null && <span className="muted">{player.rating}</span>}
+                </div>
+              ))}
+            </div>
           </section>
         );
       })}
@@ -165,13 +179,19 @@ export function ReplayDetailRoster({
 }) {
   useLocale();
   if (teams.length === 0) return null;
-  const soleTeam = teams.filter((team) => !isObserverTeam(team.team)).length === 1;
+  const nonObserverTeams = teams.filter((team) => !isObserverTeam(team.team));
+  const soleTeam = nonObserverTeams.length === 1;
+  const isSingleTeamGame = teams.length === 1;
   // Two teams get a versus divider between them, the way both reference clients
   // present a matchup. More than two is a grid, because a chain of "vs" reads
   // as a bracket rather than a lineup.
   const versus = teams.length === 2 && teams.every((team) => !isObserverTeam(team.team));
   return (
-    <div className="replay-detail-teams" data-layout={versus ? "versus" : undefined}>
+    <div
+      className="replay-detail-teams"
+      data-layout={versus ? "versus" : undefined}
+      data-sole-team={soleTeam ? "true" : undefined}
+    >
       {teams.map((team, index) => {
         const observer = isObserverTeam(team.team);
         const ratings = observer
@@ -184,22 +204,30 @@ export function ReplayDetailRoster({
           ? ""
           : team.players.map((player) => parseOutcome(player.outcome)).find(Boolean) ?? "";
         const outcomeText = outcomeKind ? outcomeLabel(outcomeKind) : "";
+        const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > 4;
+        const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
+        const showHeader = !isSingleTeamGame || (showResults && Boolean(outcomeKind));
         return (
           <Fragment key={team.team}>
             {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
             <section className="replay-detail-team surface-panel">
-              <header className="replay-detail-team-title">
-                <span>{teamName(team.team, soleTeam)}</span>
-                <span className="replay-detail-team-summary">
-                  {teamRating !== null && (
-                    <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
-                  )}
-                  {showResults && outcomeKind && (
-                    <span className={`replay-team-outcome ${outcomeKind}`}>{outcomeText}</span>
-                  )}
-                </span>
-              </header>
-              <div className="replay-detail-roster">
+              {showHeader && (
+                <header className="replay-detail-team-title">
+                  <span>{!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}</span>
+                  <span className="replay-detail-team-summary">
+                    {!isSingleTeamGame && teamRating !== null && (
+                      <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
+                    )}
+                    {showResults && outcomeKind && (
+                      <span className={`replay-team-outcome ${outcomeKind}`}>{outcomeText}</span>
+                    )}
+                  </span>
+                </header>
+              )}
+              <div
+                className={`replay-detail-roster ${isSplit ? "is-split" : ""}`}
+                style={rowCount ? { gridTemplateRows: `repeat(${rowCount}, auto)` } : undefined}
+              >
                 {team.players.map((player) => (
                   <div key={player.name} className="replay-detail-player">
                     <button

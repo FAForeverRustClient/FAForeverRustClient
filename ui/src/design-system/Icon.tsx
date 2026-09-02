@@ -48,6 +48,7 @@ export type IconName =
   | "edit"
   | "info"
   | "check"
+  | "folder"
   | "trash";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
@@ -100,6 +101,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     edit: <><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></>,
     info: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="8" r=".8" fill="currentColor" stroke="none" /><path d="M12 11.5v4.5" /></>,
     check: <polyline points="20 6 9 17 4 12" />,
+    folder: <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />,
     trash: (
       <>
         <polyline points="3 6 5 6 21 6" />

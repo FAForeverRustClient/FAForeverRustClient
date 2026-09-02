@@ -65,6 +65,8 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
       return { ...state, browsing: normalizeBrowsingPreferences(event.payload.preferences) };
     case "mapGeneratorChanged":
       return { ...state, mapGenerator: event.payload.preferences };
+    case "cacheInfoUpdated":
+      return { ...state, cacheInfo: event.payload.info };
   }
 }
 

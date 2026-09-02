@@ -70,6 +70,7 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
         .prepare(GamePreparation {
             featured_mod: TUTORIALS_FEATURED_MOD.to_string(),
             map_folder: Some(tutorial.map_folder_name.clone()),
+            cache_rolling_branches: false,
         })
         .await;
 

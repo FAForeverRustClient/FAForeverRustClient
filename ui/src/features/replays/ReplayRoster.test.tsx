@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayDetailRoster } from "./ReplayRoster";
+import { mergeReplayTeamsWithLocal, parseOutcome, outcomeLabel, ReplayCardRoster, ReplayDetailRoster } from "./ReplayRoster";
 import type { LocalReplayTeam, ReplayTeam } from "../../ipc/bindings";
 
 describe("ReplayRoster outcomes", () => {
@@ -119,5 +119,68 @@ describe("ReplayRoster outcomes", () => {
 
     expect(markup).toContain('class="replay-player-rating"');
     expect(markup).toContain(">(1500)</span>");
+  });
+
+  it("splits single-team rosters with more than 4 players into 2 balanced columns", () => {
+    const teams: ReplayTeam[] = [{
+      team: 1,
+      players: [
+        { name: "P1", faction: 1, rating: 1000, outcome: "", score: null },
+        { name: "P2", faction: 2, rating: 1100, outcome: "", score: null },
+        { name: "P3", faction: 3, rating: 1200, outcome: "", score: null },
+        { name: "P4", faction: 4, rating: 1300, outcome: "", score: null },
+        { name: "P5", faction: 1, rating: 1400, outcome: "", score: null },
+        { name: "P6", faction: 2, rating: 1500, outcome: "", score: null },
+        { name: "P7", faction: 3, rating: 1600, outcome: "", score: null },
+        { name: "P8", faction: 4, rating: 1700, outcome: "", score: null },
+      ],
+    }];
+
+    const cardMarkup = renderToStaticMarkup(<ReplayCardRoster teams={teams} />);
+    expect(cardMarkup).toContain('data-sole-team="true"');
+    expect(cardMarkup).toContain('class="replay-card-team-roster is-split"');
+    expect(cardMarkup).toContain('grid-template-rows:repeat(4, auto)');
+
+    const detailMarkup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} />);
+    expect(detailMarkup).toContain('data-sole-team="true"');
+    expect(detailMarkup).toContain('class="replay-detail-roster is-split"');
+    expect(detailMarkup).toContain('grid-template-rows:repeat(4, auto)');
+    expect(detailMarkup).not.toContain('class="replay-detail-team-title"');
+  });
+
+  it("omits inner team header in single-team replays without results, but shows outcome when revealed", () => {
+    const teams: ReplayTeam[] = [{
+      team: 2,
+      players: [
+        { name: "P1", faction: 1, rating: 1000, outcome: "VICTORY", score: 100 },
+      ],
+    }];
+
+    const hiddenMarkup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} showResults={false} />);
+    expect(hiddenMarkup).not.toContain('class="replay-detail-team-title"');
+    expect(hiddenMarkup).not.toContain("Team 1");
+
+    const revealedMarkup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} showResults={true} />);
+    expect(revealedMarkup).toContain('class="replay-detail-team-title"');
+    expect(revealedMarkup).toContain('class="replay-team-outcome victory"');
+    expect(revealedMarkup).not.toContain("Team 1");
+  });
+
+  it("labels the sole player team as Players when observers are present", () => {
+    const teams: ReplayTeam[] = [
+      {
+        team: 2,
+        players: [{ name: "Player1", faction: 1, rating: 1500, outcome: "", score: null }],
+      },
+      {
+        team: -1,
+        players: [{ name: "Obs1", faction: 0, rating: null, outcome: "", score: null }],
+      },
+    ];
+
+    const markup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} />);
+    expect(markup).toContain("Players");
+    expect(markup).toContain("Observers");
+    expect(markup).not.toContain("Team 1");
   });
 });
