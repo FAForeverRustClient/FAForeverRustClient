@@ -444,13 +444,13 @@ html.is-resizing-chat-roster * {
 .chat-message {
   position: relative;
   display: grid;
-  grid-template-columns: 32px minmax(64px, 116px) minmax(0, 1fr) 44px;
+  grid-template-columns: 32px minmax(64px, var(--chat-sender-width, 116px)) minmax(0, 1fr) 44px;
   gap: 6px;
   align-items: start;
   min-height: 24px;
   padding: 2px 7px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: var(--chat-font-size, 13px);
   line-height: 1.45;
   flex-shrink: 0;
 }

@@ -101,14 +101,12 @@ impl GameUpdaterClient {
         // so launching without it just trades a clear message for a hang on a
         // blank loading screen.
         if let Some(folder) = &request.map_folder {
-            progress(PreparationStep::indeterminate(format!(
-                "Downloading map {folder}…"
-            )));
             game_updater::ensure_live_map(
                 &self.http,
                 &self.config.content_base,
                 &maps::maps_dir(),
                 folder,
+                progress,
             )
             .await?;
         }

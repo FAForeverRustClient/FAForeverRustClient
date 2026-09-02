@@ -4618,6 +4618,7 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Reviews:loadFailed",
     "Reviews:saveFailed",
     "Settings:appearanceChanged",
+    "Settings:cacheInfoUpdated",
     "Settings:chatChanged",
     "Settings:connectivityChanged",
     "Settings:gameChanged",

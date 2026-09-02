@@ -214,14 +214,6 @@ pub(crate) async fn prepare_custom_join(
 
     let mod_uids: Vec<String> = game.sim_mods.keys().cloned().collect();
     if !mod_uids.is_empty() {
-        out.emit(LobbyEvent::Preparing {
-            detail: format!(
-                "Installing {} required simulation mod{}…",
-                mod_uids.len(),
-                if mod_uids.len() == 1 { "" } else { "s" }
-            ),
-            progress: None,
-        });
         ctx.ports
             .mods
             .ensure_game_mods(&mod_uids)

@@ -25,6 +25,7 @@ function actionLabel(action: NotificationAction | null): string | null {
     case "openCustomGames": return t("notifications.action.openCustomGames");
     case "acceptPartyInvite": return t("notifications.action.acceptPartyInvite");
     case "watchLive": return t("notifications.action.watchLive");
+    case "openSettings": return t("notifications.action.openSettings");
   }
 }
 
@@ -54,6 +55,16 @@ async function runAction(item: ClientNotification) {
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
         await ipc.dispatch({ kind: "Replays", command: { type: "watchLive", payload: action.payload.target } });
         break;
+      case "openSettings":
+        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
+        if (action.payload.section) {
+          const sectionId = action.payload.section;
+          setTimeout(() => {
+            const el = document.getElementById(sectionId);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 100);
+        }
+        break;
     }
   }
   markRead(item.id);
@@ -68,7 +79,7 @@ function formatTime(timestamp: string) {
 
 function notificationTone(item: ClientNotification): string {
   if (item.kind === "error") return " is-error";
-  if (item.kind === "serverWarning") return " is-warning";
+  if (item.kind === "serverWarning" || item.kind === "gameCacheAlert") return " is-warning";
   if (item.kind === "serverNotice") return " is-server";
   return "";
 }

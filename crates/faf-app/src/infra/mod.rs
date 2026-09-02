@@ -157,7 +157,7 @@ fn legacy_project_dirs() -> Option<directories::ProjectDirs> {
 /// content-addressed featured-mod file cache: which the replay and live-game
 /// updaters deliberately share, so patching for a live game also satisfies the
 /// next replay at that version without re-downloading.
-pub(crate) fn cache_dir() -> Result<std::path::PathBuf, String> {
+pub fn cache_dir() -> Result<std::path::PathBuf, String> {
     project_dirs()
         .map(|dirs| dirs.cache_dir().to_path_buf())
         .ok_or_else(|| "could not resolve a cache directory".to_string())
@@ -222,12 +222,30 @@ pub(crate) fn env_or(key: &str, fallback: impl Into<String>) -> String {
 /// shared FAF directory and patches a `game.prefs` none of which a user would
 /// guess. Resolution lives here rather than in the shell so the paths cannot
 /// drift from the ones the adapters actually use.
+pub fn sanitize_folder_name(name: &str) -> String {
+    name.chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            other => other,
+        })
+        .collect()
+}
+
 pub fn client_folder(kind: &str) -> Result<std::path::PathBuf, String> {
     let path = match kind {
         "maps" => faf_content::vault_dir().join("maps"),
         "mods" => faf_content::vault_dir().join("mods"),
         "replays" => replay::local_replays_dir(),
         "vault" => faf_content::vault_dir(),
+        "gameCache" | "cache" => {
+            let root = cache_dir()?;
+            let versions = root.join("versions");
+            if versions.is_dir() {
+                versions
+            } else {
+                root.join("game_files")
+            }
+        }
         // A file, not a directory: the shell reveals it in its parent.
         "gamePrefs" => mods::game_prefs_path(),
         other => return Err(format!("unknown folder '{other}'")),

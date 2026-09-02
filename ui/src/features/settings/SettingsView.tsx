@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs } from "../../design-system/SectionTabs";
@@ -8,6 +8,8 @@ import { ChatSettingsSection } from "./ChatSettingsSection";
 import { ConnectivitySettingsSection } from "./ConnectivitySettingsSection";
 import { DiscordSettingsSection } from "./DiscordSettingsSection";
 import { DiagnosticsSettingsSection } from "./DiagnosticsSettingsSection";
+import { FoldersSettingsSection } from "./FoldersSettingsSection";
+import { GameCacheSettingsSection } from "./GameCacheSettingsSection";
 import { GameSettingsSection } from "./GameSettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 import { PathsSettingsSection } from "./PathsSettingsSection";
@@ -18,7 +20,7 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./settings.css";
 
-type SectionKey = "general" | "account" | "appearance" | "notifications" | "chat" | "discord" | "connectivity" | "diagnostics" | "updates" | "game" | "paths";
+type SectionKey = "general" | "account" | "appearance" | "notifications" | "chat" | "discord" | "connectivity" | "folders" | "diagnostics" | "updates" | "game" | "gameCache" | "paths";
 type SettingsCategory = "all" | "general" | "chat" | "notifications" | "account" | "connectivity" | "game" | "paths" | "maintenance";
 
 interface SectionDef {
@@ -186,10 +188,10 @@ const SECTIONS = {
     ],
     Component: ConnectivitySettingsSection,
   },
-  diagnostics: {
-    title: "settings.section.diagnostics.title",
-    description: "settings.section.diagnostics.description",
-    keywords: "settings.section.diagnostics.keywords",
+  folders: {
+    title: "settings.section.folders.title",
+    description: "settings.section.folders.description",
+    keywords: "settings.section.folders.keywords",
     labels: [
       "settings.folders.label",
       "settings.folders.hint",
@@ -198,6 +200,14 @@ const SECTIONS = {
       "settings.folders.replays",
       "settings.folders.vault",
       "settings.folders.gamePrefs",
+    ],
+    Component: FoldersSettingsSection,
+  },
+  diagnostics: {
+    title: "settings.section.diagnostics.title",
+    description: "settings.section.diagnostics.description",
+    keywords: "settings.section.diagnostics.keywords",
+    labels: [
       "settings.diagnostics.gameLogs",
       "settings.diagnostics.gameLogsHint",
       "settings.diagnostics.viewLatest",
@@ -260,18 +270,35 @@ const SECTIONS = {
     ],
     Component: PathsSettingsSection,
   },
+  gameCache: {
+    title: "settings.section.gameCache.title",
+    description: "settings.section.gameCache.description",
+    keywords: "settings.section.gameCache.keywords",
+    labels: [
+      "settings.game.cacheLifetime",
+      "settings.game.cacheLifetimeHint",
+      "settings.game.cacheRollingBranches",
+      "settings.game.cacheRollingBranchesHint",
+      "settings.game.cacheStorage",
+      "settings.game.cacheStorageHint",
+      "settings.game.cachedVersions",
+      "settings.game.clearCache",
+      "settings.game.refreshCache",
+    ],
+    Component: GameCacheSettingsSection,
+  },
 } as const satisfies Record<SectionKey, SectionDef>;
 
 const CATEGORY_SECTIONS: Record<SettingsCategory, readonly SectionKey[]> = {
-  all: ["general", "account", "appearance", "notifications", "chat", "discord", "connectivity", "diagnostics", "updates", "game", "paths"],
+  all: ["general", "appearance", "chat", "notifications", "account", "discord", "connectivity", "game", "gameCache", "paths", "folders", "diagnostics", "updates"],
   general: ["general", "appearance"],
   chat: ["chat"],
   notifications: ["notifications"],
   account: ["account", "discord"],
   connectivity: ["connectivity"],
-  game: ["game"],
+  game: ["game", "gameCache"],
   paths: ["paths"],
-  maintenance: ["updates", "diagnostics"],
+  maintenance: ["folders", "gameCache", "updates", "diagnostics"],
 };
 
 const CATEGORY_TABS = [
@@ -291,11 +318,14 @@ const SECTION_KEYS: readonly SectionKey[] = CATEGORY_SECTIONS.all;
 export function SettingsView() {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("general");
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("all");
+  const [isScrolled, setIsScrolled] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isProgrammaticScroll = useRef(false);
+  const scrollTimeoutRef = useRef<number | null>(null);
   const query = search.trim().toLocaleLowerCase();
 
-  const sectionVisible = (section: SectionKey) => {
-    if (!CATEGORY_SECTIONS[activeCategory].includes(section)) return false;
+  const sectionMatchesSearch = (section: SectionKey) => {
     if (!query) return true;
     const definition = SECTIONS[section];
     const labels = definition.labels ? definition.labels.map((key) => t(key)).join(" ") : "";
@@ -308,68 +338,150 @@ export function SettingsView() {
     return simplifiedHaystack.includes(simplifiedQuery);
   };
 
-  const visibleSections = SECTION_KEYS.filter(sectionVisible);
+  const visibleSections = SECTION_KEYS.filter(sectionMatchesSearch);
+
   const updateSearch = (value: string) => {
     setSearch(value);
-    setActiveCategory(value.trim() ? "all" : "general");
+    setActiveCategory("all");
   };
+
+  const scrollToCategory = (category: SettingsCategory) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    isProgrammaticScroll.current = true;
+    setActiveCategory(category);
+
+    if (category === "all") {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      const firstSectionKey = CATEGORY_SECTIONS[category][0];
+      const el = document.getElementById(`settings-${firstSectionKey}`);
+      if (el) {
+        const containerRect = container.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const targetScrollTop = container.scrollTop + (elRect.top - containerRect.top) - 4;
+        container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: "smooth" });
+      }
+    }
+
+    if (scrollTimeoutRef.current) {
+      window.clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      isProgrammaticScroll.current = false;
+    }, 600);
+  };
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const onScroll = () => {
+      const scrolled = container.scrollTop > 2;
+      setIsScrolled((prev) => (prev !== scrolled ? scrolled : prev));
+
+      if (isProgrammaticScroll.current) return;
+      if (search.trim()) return;
+
+      if (container.scrollTop < 30) {
+        setActiveCategory("all");
+        return;
+      }
+
+      const isBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 30;
+      if (isBottom) {
+        setActiveCategory("maintenance");
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      let current: SettingsCategory = "all";
+      for (const tab of CATEGORY_TABS) {
+        if (tab.id === "all") continue;
+        const firstSectionKey = CATEGORY_SECTIONS[tab.id][0];
+        const el = document.getElementById(`settings-${firstSectionKey}`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= containerRect.top + 32) {
+            current = tab.id;
+          }
+        }
+      }
+
+      setActiveCategory(current);
+    };
+
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      if (scrollTimeoutRef.current) {
+        window.clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [search]);
 
   return (
     <div className="settings-view">
-      <div className="settings-heading">
-        <div>
-          <h2 className="view-title">{t("settings.title")}</h2>
-          <p className="settings-intro muted">{t("settings.intro")}</p>
+      <div className="settings-header-container">
+        <div className="settings-heading">
+          <div>
+            <h2 className="view-title">{t("settings.title")}</h2>
+            <p className="settings-intro muted">{t("settings.intro")}</p>
+          </div>
+          <label className="settings-search-field">
+            <Icon name="search" size={15} />
+            <input
+              value={search}
+              onChange={(event) => updateSearch(event.target.value)}
+              placeholder={t("settings.search.placeholder")}
+              aria-label={t("settings.search.placeholder")}
+            />
+            {search && (
+              <button
+                type="button"
+                aria-label={t("settings.search.clearAria")}
+                title={t("settings.search.clearTitle")}
+                onClick={() => updateSearch("")}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            )}
+          </label>
         </div>
-        <label className="settings-search-field">
-          <Icon name="search" size={15} />
-          <input
-            value={search}
-            onChange={(event) => updateSearch(event.target.value)}
-            placeholder={t("settings.search.placeholder")}
-            aria-label={t("settings.search.placeholder")}
-          />
-          {search && (
-            <button
-              type="button"
-              aria-label={t("settings.search.clearAria")}
-              title={t("settings.search.clearTitle")}
-              onClick={() => updateSearch("")}
-            >
-              <Icon name="close" size={14} />
-            </button>
-          )}
-        </label>
+
+        <SectionTabs
+          active={activeCategory}
+          ariaLabel={t("settings.categories.aria")}
+          className="settings-category-tabs"
+          items={CATEGORY_TABS.map((tab) => ({ id: tab.id, label: t(tab.label) }))}
+          onChange={scrollToCategory}
+        />
+        <div className={`settings-header-scrim${isScrolled ? " is-visible" : ""}`} />
       </div>
 
-      <SectionTabs
-        active={activeCategory}
-        ariaLabel={t("settings.categories.aria")}
-        className="settings-category-tabs"
-        items={CATEGORY_TABS.map((tab) => ({ id: tab.id, label: t(tab.label) }))}
-        onChange={setActiveCategory}
-      />
+      <div className="settings-content" ref={scrollContainerRef}>
+        {visibleSections.map((section) => {
+          const definition = SECTIONS[section];
+          const Section = definition.Component;
+          return (
+            <SettingsSection
+              key={section}
+              id={`settings-${section}`}
+              title={t(definition.title)}
+              description={t(definition.description)}
+            >
+              <Section />
+            </SettingsSection>
+          );
+        })}
 
-      {visibleSections.map((section) => {
-        const definition = SECTIONS[section];
-        const Section = definition.Component;
-        return (
-          <SettingsSection
-            key={section}
-            id={`settings-${section}`}
-            title={t(definition.title)}
-            description={t(definition.description)}
-          >
-            <Section />
-          </SettingsSection>
-        );
-      })}
-
-      {query && visibleSections.length === 0 && (
-        <p className="settings-search-empty surface muted">
-          {t("settings.search.empty", { query: search.trim() })}
-        </p>
-      )}
+        {query && visibleSections.length === 0 && (
+          <p className="settings-search-empty surface muted">
+            {t("settings.search.empty", { query: search.trim() })}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

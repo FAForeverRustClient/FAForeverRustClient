@@ -42,6 +42,7 @@ export function GameSettingsSection() {
           label={t("settings.game.autoGenerateMaps")}
         />
       </SettingRow>
+
       <div className="setting-block">
         <span className="setting-label">{t("settings.game.argumentsLabel")}</span>
         <span className="muted">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
-import { native, type ClientFolder, type LogIssue, type LogKind, type LogPreview } from "../../ipc/native";
+import { native, type LogIssue, type LogKind, type LogPreview } from "../../ipc/native";
 import { openExternalUrl } from "../../shared/externalLinks";
 
 /**
@@ -35,26 +35,8 @@ export function DiagnosticsSettingsSection() {
       .catch((reason) => setError(String(reason)));
   };
 
-  // The Java client reveals these from its main menu. They matter more here:
-  // this client stages maps into a vault path and patches a `game.prefs` that
-  // no user would think to go looking for.
-  const CLIENT_FOLDERS: ClientFolder[] = ["maps", "mods", "replays", "vault", "gamePrefs"];
-  const openClientFolder = (kind: ClientFolder) => {
-    setError("");
-    void native.openClientFolder(kind).catch((reason) => setError(String(reason)));
-  };
-
   return (
     <>
-      <SettingRow label={t("settings.folders.label")} hint={t("settings.folders.hint")}>
-        <div className="settings-diagnostic-actions">
-          {CLIENT_FOLDERS.map((kind) => (
-            <Button key={kind} onClick={() => openClientFolder(kind)}>
-              {t(`settings.folders.${kind}`)}
-            </Button>
-          ))}
-        </div>
-      </SettingRow>
       <SettingRow label={t("settings.diagnostics.gameLogs")} hint={t("settings.diagnostics.gameLogsHint")}>
         <div className="settings-diagnostic-actions">
           <Button onClick={() => viewLatest("game")}>{t("settings.diagnostics.viewLatest")}</Button>

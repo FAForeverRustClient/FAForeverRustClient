@@ -20,7 +20,7 @@
 use std::io::{Seek as _, SeekFrom, Write as _};
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::ports::PreparationStep;
@@ -183,9 +183,6 @@ pub async fn ensure_latest_game_version(
 ) -> Result<i32, String> {
     let mut base = None;
     if !BASE_FEATURED_MODS.contains(&featured_mod) {
-        progress(PreparationStep::indeterminate(format!(
-            "Updating the base game for {featured_mod}…"
-        )));
         base = Some(
             install_featured_mod(
                 http, token, api_base, cache_dir, target_dir, "faf", None, exe_name, progress,
@@ -194,9 +191,6 @@ pub async fn ensure_latest_game_version(
         );
     }
 
-    progress(PreparationStep::indeterminate(format!(
-        "Updating {featured_mod}…"
-    )));
     let installed = install_featured_mod(
         http,
         token,
@@ -239,6 +233,31 @@ struct InstalledMod {
     engine_version: Option<i32>,
 }
 
+async fn fetch_github_commit_sha(http: &reqwest::Client, branch: &str) -> Option<(String, String)> {
+    let url = format!("https://api.github.com/repos/FAForever/fa/commits/{branch}");
+    let resp = http
+        .get(&url)
+        .header(reqwest::header::USER_AGENT, "FAForever-Rust-Client")
+        .header(reqwest::header::ACCEPT, "application/vnd.github.v3+json")
+        .send()
+        .await
+        .ok()?;
+
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    let val: serde_json::Value = resp.json().await.ok()?;
+    let sha = val.get("sha")?.as_str()?.to_string();
+    let html_url = val
+        .get("html_url")
+        .and_then(|u| u.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("https://github.com/FAForever/fa/commit/{sha}"));
+
+    Some((sha, html_url))
+}
+
 /// Sync one featured mod's file set into `target_dir` and stamp the engine
 /// executable, returning the version that was actually installed.
 ///
@@ -259,7 +278,7 @@ async fn install_featured_mod(
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<InstalledMod, String> {
     let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
-    let files = fetch_file_list(http, token, api_base, &mod_id, version).await?;
+    let files = fetch_file_list(http, token, api_base, &mod_id, featured_mod, version).await?;
 
     // Requested version wins; `latest` resolves from the list itself. Falling
     // back to 0 would silently mis-stamp the executable, so an unresolvable
@@ -273,14 +292,18 @@ async fn install_featured_mod(
 
     let total = files.len();
     for (done, file) in files.iter().enumerate() {
-        let detail = format!(
-            "Updating {featured_mod} {resolved}: {} ({}/{total})",
-            file.name,
-            done + 1
-        );
-        progress(PreparationStep::counted(detail.clone(), done, total));
-        update_file(http, cache_dir, target_dir, file).await?;
-        progress(PreparationStep::counted(detail, done + 1, total));
+        update_file(
+            http,
+            cache_dir,
+            target_dir,
+            file,
+            featured_mod,
+            resolved,
+            done,
+            total,
+            progress,
+        )
+        .await?;
     }
 
     let shipped_exe = files
@@ -309,6 +332,115 @@ async fn install_featured_mod(
         }
         (None, None) => None,
     };
+
+    // Record build state info for rolling branches and mods
+    let (git_sha, git_short_sha, commit_url) = if featured_mod == "fafdevelop" {
+        if let Some((sha, url)) = fetch_github_commit_sha(http, "develop").await {
+            let short = sha.chars().take(7).collect::<String>();
+            (Some(sha), Some(short), Some(url))
+        } else {
+            (
+                None,
+                None,
+                Some("https://github.com/FAForever/fa/commits/develop".to_string()),
+            )
+        }
+    } else if featured_mod == "fafbeta" {
+        if let Some((sha, url)) = fetch_github_commit_sha(http, "deploy/fafbeta").await {
+            let short = sha.chars().take(7).collect::<String>();
+            (Some(sha), Some(short), Some(url))
+        } else {
+            (
+                None,
+                None,
+                Some("https://github.com/FAForever/fa/commits/deploy/fafbeta".to_string()),
+            )
+        }
+    } else {
+        (None, None, None)
+    };
+
+    let mut hasher = md5::Context::new();
+    for f in &files {
+        hasher.consume(f.name.as_bytes());
+        hasher.consume(f.md5.as_bytes());
+    }
+    let composite_hash = format!("{:x}", hasher.compute());
+    let short_hash = composite_hash.chars().take(7).collect::<String>();
+
+    let build_info = serde_json::json!({
+        "featuredMod": featured_mod,
+        "version": version,
+        "resolvedVersion": resolved,
+        "signature": short_hash,
+        "gitSha": git_sha,
+        "gitShortSha": git_short_sha,
+        "commitUrl": commit_url,
+    });
+    let _ = std::fs::write(
+        target_dir.join(".faf_build.json"),
+        serde_json::to_string(&build_info).unwrap_or_default(),
+    );
+
+    let entry_name = if featured_mod == "fafdevelop" {
+        if let Some(short) = &git_short_sha {
+            format!("FAF Develop ({short})")
+        } else {
+            format!("FAF Develop ({short_hash})")
+        }
+    } else if featured_mod == "fafbeta" {
+        if let Some(short) = &git_short_sha {
+            format!("FAF Beta ({short})")
+        } else {
+            format!("FAF Beta ({short_hash})")
+        }
+    } else if featured_mod == "faf" || featured_mod == "ladder1v1" {
+        format!("FAF Build {resolved}")
+    } else {
+        format!("{featured_mod} v{resolved}")
+    };
+
+    let entry_url = if featured_mod == "fafdevelop" {
+        commit_url
+            .clone()
+            .or_else(|| Some("https://github.com/FAForever/fa/commits/develop".to_string()))
+    } else if featured_mod == "fafbeta" {
+        commit_url
+            .clone()
+            .or_else(|| Some("https://github.com/FAForever/fa/commits/deploy/fafbeta".to_string()))
+    } else if (featured_mod == "faf" || featured_mod == "ladder1v1") && resolved >= 3636 {
+        Some(format!(
+            "https://github.com/FAForever/fa/releases/tag/{resolved}"
+        ))
+    } else {
+        None
+    };
+
+    let cached_files: Vec<CachedFileInfo> = files
+        .iter()
+        .map(|f| CachedFileInfo {
+            group: f.group.clone(),
+            md5: f.md5.clone(),
+            name: Some(f.name.clone()),
+        })
+        .collect();
+
+    let manifest_entry = CacheManifestEntry {
+        featured_mod: featured_mod.to_string(),
+        version,
+        resolved_version: resolved,
+        name: entry_name,
+        url: entry_url,
+        git_short_sha,
+        signature: Some(short_hash),
+        files: cached_files,
+        updated_at: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0),
+    };
+
+    save_cache_manifest_entry(cache_dir, manifest_entry);
 
     Ok(InstalledMod {
         version: resolved,
@@ -411,15 +543,49 @@ async fn fetch_mod_id(
 /// `None`: the exact segment both reference clients use for "whatever the
 /// server is on right now" (Java's `getFeaturedModFiles(mod, null)`, the
 /// Python client's `_resolve_base_version` returning `"latest"`).
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+struct CachedFileList {
+    expires_at: Instant,
+    files: Vec<FeaturedModFile>,
+}
+
+type FileListCache = std::collections::HashMap<(String, Option<i32>), CachedFileList>;
+
+static FILE_LIST_CACHE: Mutex<Option<FileListCache>> = Mutex::new(None);
+
+pub fn clear_file_list_cache() {
+    if let Ok(mut lock) = FILE_LIST_CACHE.lock() {
+        *lock = None;
+    }
+}
+
 async fn fetch_file_list(
     http: &reqwest::Client,
     token: &str,
     api_base: &str,
     mod_id: &str,
+    featured_mod: &str,
     version: Option<i32>,
 ) -> Result<Vec<FeaturedModFile>, String> {
-    let version = version.map_or_else(|| "latest".to_string(), |v| v.to_string());
-    let url = format!("{api_base}/featuredMods/{mod_id}/files/{version}");
+    // Rolling branches (fafdevelop, fafbeta) change frequently with git commits, so skip file list cache
+    let is_rolling = featured_mod == "fafdevelop" || featured_mod == "fafbeta";
+    let cache_key = (mod_id.to_string(), version);
+    if !is_rolling {
+        if let Ok(guard) = FILE_LIST_CACHE.lock() {
+            if let Some(cache) = guard.as_ref() {
+                if let Some(entry) = cache.get(&cache_key) {
+                    if Instant::now() < entry.expires_at {
+                        return Ok(entry.files.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    let version_str = version.map_or_else(|| "latest".to_string(), |v| v.to_string());
+    let url = format!("{api_base}/featuredMods/{mod_id}/files/{version_str}");
     let resp = http
         .get(&url)
         .bearer_auth(token)
@@ -437,23 +603,45 @@ async fn fetch_file_list(
     }
 
     let doc: JsonApiList = serde_json::from_str(&body).map_err(|e| format!("invalid JSON: {e}"))?;
-    doc.data
+    let files: Vec<FeaturedModFile> = doc
+        .data
         .into_iter()
         .map(|e| {
             serde_json::from_value(e.attributes)
                 .map_err(|err| format!("invalid featuredModFile attributes: {err}"))
         })
-        .collect()
+        .collect::<Result<_, _>>()?;
+
+    if !is_rolling {
+        if let Ok(mut guard) = FILE_LIST_CACHE.lock() {
+            let cache = guard.get_or_insert_with(std::collections::HashMap::new);
+            cache.insert(
+                cache_key,
+                CachedFileList {
+                    expires_at: Instant::now() + Duration::from_secs(600), // 10 minutes TTL
+                    files: files.clone(),
+                },
+            );
+        }
+    }
+
+    Ok(files)
 }
 
 /// Bring one file up to date: skip if the local MD5 already matches, else
 /// serve from the content-addressed cache or download fresh (populating the
 /// cache either way, for reuse across versions/replays that share a file).
+#[allow(clippy::too_many_arguments)]
 async fn update_file(
     http: &reqwest::Client,
     cache_dir: &Path,
     target_dir: &Path,
     file: &FeaturedModFile,
+    featured_mod: &str,
+    resolved: i32,
+    done: usize,
+    total: usize,
+    progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<(), String> {
     let target_path = safe_join_file(target_dir, &file.group, &file.name)?;
     if file.md5.len() != 32 || !file.md5.bytes().all(|byte| byte.is_ascii_hexdigit()) {
@@ -469,6 +657,13 @@ async fn update_file(
         }
     }
 
+    let detail = format!(
+        "Updating {featured_mod} {resolved}: {} ({}/{total})",
+        file.name,
+        done + 1
+    );
+    progress(PreparationStep::counted(detail.clone(), done, total));
+
     if let Some(parent) = target_path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
@@ -481,6 +676,7 @@ async fn update_file(
             tokio::fs::copy(&cache_path, &target_path)
                 .await
                 .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
+            progress(PreparationStep::counted(detail, done + 1, total));
             return Ok(());
         }
         // A killed prior write or external cache edit must not be promoted
@@ -523,6 +719,7 @@ async fn update_file(
     tokio::fs::write(&target_path, &bytes)
         .await
         .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
+    progress(PreparationStep::counted(detail, done + 1, total));
     Ok(())
 }
 
@@ -778,6 +975,7 @@ pub async fn ensure_live_map(
     content_base: &str,
     maps_dir: &Path,
     map_folder: &str,
+    progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<(), String> {
     let dirs = live_map_dirs(
         maps_dir,
@@ -787,6 +985,9 @@ pub async fn ensure_live_map(
     if dirs.is_empty() {
         return Ok(());
     }
+    progress(PreparationStep::indeterminate(format!(
+        "Downloading map {map_folder}…"
+    )));
     stage_map(http, content_base, &dirs, map_folder).await
 }
 
@@ -867,6 +1068,486 @@ async fn stage_map(
     })
     .await
     .map_err(|e| format!("map extraction task failed: {e}"))?
+}
+
+/// Read the 4-byte engine version stamped into `ForgedAlliance.exe` at `0xd3d40`.
+pub fn read_exe_version(exe_path: &Path) -> Option<i32> {
+    use std::io::Read as _;
+    let mut file = std::fs::File::open(exe_path).ok()?;
+    let length = file.metadata().ok()?.len();
+    let min_len = VERSION_ADDRESSES[0] + 4;
+    if length < min_len {
+        return None;
+    }
+    file.seek(SeekFrom::Start(VERSION_ADDRESSES[0])).ok()?;
+    let mut buf = [0u8; 4];
+    file.read_exact(&mut buf).ok()?;
+    let ver = i32::from_le_bytes(buf);
+    if (3000..=10000).contains(&ver) {
+        Some(ver)
+    } else {
+        None
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct CacheManifest {
+    #[serde(default)]
+    entries: Vec<CacheManifestEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CacheManifestEntry {
+    pub featured_mod: String,
+    pub version: Option<i32>,
+    pub resolved_version: i32,
+    pub name: String,
+    pub url: Option<String>,
+    pub git_short_sha: Option<String>,
+    pub signature: Option<String>,
+    #[serde(default)]
+    pub files: Vec<CachedFileInfo>,
+    #[serde(default)]
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CachedFileInfo {
+    pub group: String,
+    pub md5: String,
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+fn link_or_copy(src: &Path, dst: &Path) -> std::io::Result<()> {
+    if dst.is_file() || dst.is_symlink() {
+        if let (Ok(m_src), Ok(m_dst)) = (src.metadata(), dst.metadata()) {
+            if m_src.len() == m_dst.len() {
+                return Ok(());
+            }
+        }
+        let _ = std::fs::remove_file(dst);
+    }
+    if let Some(parent) = dst.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if std::fs::hard_link(src, dst).is_ok() {
+        return Ok(());
+    }
+    #[cfg(unix)]
+    {
+        if std::os::unix::fs::symlink(src, dst).is_ok() {
+            return Ok(());
+        }
+    }
+    std::fs::copy(src, dst).map(|_| ())
+}
+
+fn sync_version_folder(cache_dir: &Path, entry: &CacheManifestEntry) {
+    let parent = match cache_dir.parent() {
+        Some(p) => p,
+        None => return,
+    };
+    let versions_dir = parent.join("versions");
+    let folder_name = crate::infra::sanitize_folder_name(&entry.name);
+    let version_dir = versions_dir.join(folder_name);
+
+    for f in &entry.files {
+        let file_name = match &f.name {
+            Some(n) => n.as_str(),
+            None => continue,
+        };
+        let src = cache_dir.join(&f.group).join(&f.md5);
+        if !src.is_file() {
+            continue;
+        }
+        let dst = version_dir.join(&f.group).join(file_name);
+        let _ = link_or_copy(&src, &dst);
+    }
+}
+
+fn load_cache_manifest(cache_dir: &Path) -> CacheManifest {
+    let manifest_path = cache_dir.join("cache_manifest.json");
+    if let Ok(content) = std::fs::read_to_string(manifest_path) {
+        if let Ok(m) = serde_json::from_str::<CacheManifest>(&content) {
+            return m;
+        }
+    }
+    CacheManifest::default()
+}
+
+fn save_cache_manifest_entry(cache_dir: &Path, entry: CacheManifestEntry) {
+    if !cache_dir.is_dir() {
+        let _ = std::fs::create_dir_all(cache_dir);
+    }
+    sync_version_folder(cache_dir, &entry);
+    let mut manifest = load_cache_manifest(cache_dir);
+    manifest.entries.retain(|e| {
+        !(e.featured_mod == entry.featured_mod
+            && e.resolved_version == entry.resolved_version
+            && e.git_short_sha == entry.git_short_sha
+            && e.name == entry.name)
+    });
+    manifest.entries.push(entry);
+    let manifest_path = cache_dir.join("cache_manifest.json");
+    if let Ok(json) = serde_json::to_string_pretty(&manifest) {
+        let _ = std::fs::write(manifest_path, json);
+    }
+}
+
+fn prune_cache_manifest(cache_dir: &Path) {
+    let mut manifest = load_cache_manifest(cache_dir);
+    if manifest.entries.is_empty() {
+        return;
+    }
+    let parent = cache_dir.parent();
+    let versions_dir = parent.map(|p| p.join("versions"));
+
+    manifest.entries.retain_mut(|entry| {
+        entry
+            .files
+            .retain(|f| cache_dir.join(&f.group).join(&f.md5).is_file());
+        let keep = !entry.files.is_empty();
+        if !keep {
+            if let Some(v_dir) = &versions_dir {
+                let folder_name = crate::infra::sanitize_folder_name(&entry.name);
+                let _ = std::fs::remove_dir_all(v_dir.join(folder_name));
+            }
+        }
+        keep
+    });
+    let manifest_path = cache_dir.join("cache_manifest.json");
+    if let Ok(json) = serde_json::to_string_pretty(&manifest) {
+        let _ = std::fs::write(manifest_path, json);
+    }
+}
+
+/// Prune files in `cache_dir` older than `max_age_days`. If `max_age_days == 0`, no files are removed.
+pub async fn clean_expired_cache_files(
+    cache_dir: &Path,
+    max_age_days: u32,
+) -> Result<usize, String> {
+    if max_age_days == 0 || !cache_dir.is_dir() {
+        return Ok(0);
+    }
+    let max_age = std::time::Duration::from_secs(max_age_days as u64 * 86400);
+    let now = std::time::SystemTime::now();
+    let mut removed = 0;
+
+    let mut stack = vec![cache_dir.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let mut entries = match tokio::fs::read_dir(&dir).await {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            let metadata = match entry.metadata().await {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+            if metadata.is_dir() {
+                stack.push(path);
+            } else if metadata.is_file() {
+                let mtime = metadata.modified().unwrap_or(now);
+                if let Ok(age) = now.duration_since(mtime) {
+                    if age > max_age && tokio::fs::remove_file(&path).await.is_ok() {
+                        removed += 1;
+                    }
+                }
+            }
+        }
+    }
+    if removed > 0 {
+        prune_cache_manifest(cache_dir);
+    }
+    Ok(removed)
+}
+
+/// Remove all files from the game files cache and clear in-memory caches.
+pub async fn clear_game_cache(cache_dir: &Path) -> Result<(), String> {
+    clear_file_list_cache();
+    if let Some(parent) = cache_dir.parent() {
+        let versions_dir = parent.join("versions");
+        if versions_dir.is_dir() {
+            let _ = tokio::fs::remove_dir_all(&versions_dir).await;
+        }
+    }
+    if cache_dir.is_dir() {
+        let mut entries = tokio::fs::read_dir(cache_dir)
+            .await
+            .map_err(|e| format!("could not read cache directory: {e}"))?;
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            if let Ok(file_type) = entry.file_type().await {
+                if file_type.is_dir() {
+                    let _ = tokio::fs::remove_dir_all(&path).await;
+                } else {
+                    let _ = tokio::fs::remove_file(&path).await;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn read_game_type_from_fa_path(dir: &Path) -> Option<String> {
+    let content = std::fs::read_to_string(dir.join("fa_path.lua")).ok()?;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("GameType = \"") {
+            if let Some(game_type) = rest.strip_suffix('"') {
+                return Some(game_type.to_string());
+            }
+        }
+    }
+    None
+}
+
+struct BuildInfo {
+    git_short_sha: Option<String>,
+    signature: Option<String>,
+    commit_url: Option<String>,
+}
+
+fn read_build_info(dir: &Path) -> Option<BuildInfo> {
+    let content = std::fs::read_to_string(dir.join(".faf_build.json")).ok()?;
+    let val: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let git_short_sha = val
+        .get("gitShortSha")
+        .and_then(|s| s.as_str())
+        .map(|s| s.to_string());
+    let signature = val
+        .get("signature")
+        .and_then(|s| s.as_str())
+        .map(|s| s.to_string());
+    let commit_url = val
+        .get("commitUrl")
+        .and_then(|s| s.as_str())
+        .map(|s| s.to_string());
+    Some(BuildInfo {
+        git_short_sha,
+        signature,
+        commit_url,
+    })
+}
+
+fn dir_files_stats(dir: &Path) -> (usize, u64) {
+    let mut files = 0;
+    let mut size = 0;
+    for sub in &["gamedata", "bin"] {
+        let sub_dir = dir.join(sub);
+        if let Ok(entries) = std::fs::read_dir(sub_dir) {
+            for entry in entries.flatten() {
+                if let Ok(m) = entry.metadata() {
+                    if m.is_file() {
+                        files += 1;
+                        size += m.len();
+                    }
+                }
+            }
+        }
+    }
+    (files, size)
+}
+
+/// Calculate cache size, count, and discovered game versions.
+pub async fn inspect_game_cache(
+    cache_dir: &Path,
+    install_dirs: &[PathBuf],
+) -> faf_domain::state::GameCacheInfo {
+    let mut total_size_bytes = 0u64;
+    let mut total_files = 0usize;
+    let mut existing_cache_files: std::collections::HashMap<(String, String), u64> =
+        std::collections::HashMap::new();
+    let mut legacy_exe_versions: std::collections::BTreeMap<i32, (usize, u64)> =
+        std::collections::BTreeMap::new();
+
+    if cache_dir.is_dir() {
+        let mut stack = vec![cache_dir.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            let mut entries = match tokio::fs::read_dir(&dir).await {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let path = entry.path();
+                let metadata = match entry.metadata().await {
+                    Ok(m) => m,
+                    Err(_) => continue,
+                };
+                if metadata.is_dir() {
+                    stack.push(path);
+                } else if metadata.is_file() {
+                    if path.file_name().and_then(|n| n.to_str()) == Some("cache_manifest.json") {
+                        continue;
+                    }
+                    let len = metadata.len();
+                    total_size_bytes += len;
+                    total_files += 1;
+
+                    if let (Some(md5), Some(group_dir)) =
+                        (path.file_name().and_then(|n| n.to_str()), path.parent())
+                    {
+                        if let Some(group) = group_dir.file_name().and_then(|n| n.to_str()) {
+                            existing_cache_files.insert((group.to_string(), md5.to_string()), len);
+                        }
+                    }
+
+                    if let Some(v) = read_exe_version(&path) {
+                        if v >= 3636 {
+                            let entry = legacy_exe_versions.entry(v).or_insert((0, 0));
+                            entry.0 += 1;
+                            entry.1 += len;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let manifest = load_cache_manifest(cache_dir);
+    let mut versions: Vec<faf_domain::state::CachedGameVersion> = Vec::new();
+    let mut recorded_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for entry in manifest.entries {
+        let mut count = 0usize;
+        let mut size = 0u64;
+        for f in &entry.files {
+            if let Some(&file_len) = existing_cache_files.get(&(f.group.clone(), f.md5.clone())) {
+                count += 1;
+                size += file_len;
+            }
+        }
+        if count > 0 {
+            sync_version_folder(cache_dir, &entry);
+            recorded_names.insert(entry.name.clone());
+            versions.push(faf_domain::state::CachedGameVersion {
+                name: entry.name,
+                version: entry.resolved_version,
+                file_count: count.min(u32::MAX as usize) as u32,
+                size_bytes: size as f64,
+                url: entry.url,
+            });
+        }
+    }
+
+    // Auto-discover and populate versions from active install_dirs
+    for dir in install_dirs {
+        let game_type = read_game_type_from_fa_path(dir);
+        let build_info = read_build_info(dir);
+        let (f_count, f_size) = dir_files_stats(dir);
+
+        if let Some(gt) = game_type {
+            let is_develop = gt == "fafdevelop";
+            let is_beta = gt == "fafbeta";
+            if is_develop || is_beta {
+                let (name, url) = match &build_info {
+                    Some(info) if info.git_short_sha.is_some() => (
+                        format!(
+                            "FAF {} ({})",
+                            if is_develop { "Develop" } else { "Beta" },
+                            info.git_short_sha.as_ref().unwrap()
+                        ),
+                        info.commit_url.clone().unwrap_or_else(|| {
+                            format!(
+                                "https://github.com/FAForever/fa/commits/{}",
+                                if is_develop {
+                                    "develop"
+                                } else {
+                                    "deploy/fafbeta"
+                                }
+                            )
+                        }),
+                    ),
+                    Some(info) if info.signature.is_some() => (
+                        format!(
+                            "FAF {} ({})",
+                            if is_develop { "Develop" } else { "Beta" },
+                            info.signature.as_ref().unwrap()
+                        ),
+                        info.commit_url.clone().unwrap_or_else(|| {
+                            format!(
+                                "https://github.com/FAForever/fa/commits/{}",
+                                if is_develop {
+                                    "develop"
+                                } else {
+                                    "deploy/fafbeta"
+                                }
+                            )
+                        }),
+                    ),
+                    _ => (
+                        format!("FAF {}", if is_develop { "Develop" } else { "Beta" }),
+                        format!(
+                            "https://github.com/FAForever/fa/commits/{}",
+                            if is_develop {
+                                "develop"
+                            } else {
+                                "deploy/fafbeta"
+                            }
+                        ),
+                    ),
+                };
+                if !recorded_names.contains(&name) {
+                    recorded_names.insert(name.clone());
+                    versions.push(faf_domain::state::CachedGameVersion {
+                        name,
+                        version: 0,
+                        file_count: f_count.min(u32::MAX as usize) as u32,
+                        size_bytes: f_size as f64,
+                        url: Some(url),
+                    });
+                }
+            } else if gt == "faf" || gt == "ladder1v1" {
+                let exe_path = dir.join("bin").join("ForgedAlliance.exe");
+                if let Some(v) = read_exe_version(&exe_path) {
+                    if v >= 3636 {
+                        let name = format!("FAF Build {v}");
+                        if !recorded_names.contains(&name) {
+                            recorded_names.insert(name.clone());
+                            versions.push(faf_domain::state::CachedGameVersion {
+                                name,
+                                version: v,
+                                file_count: f_count.min(u32::MAX as usize) as u32,
+                                size_bytes: f_size as f64,
+                                url: Some(format!(
+                                    "https://github.com/FAForever/fa/releases/tag/{v}"
+                                )),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: add standalone legacy PE binaries discovered in cache_dir
+    for (version, (file_count, size_bytes)) in legacy_exe_versions {
+        let name = format!("FAF Build {version}");
+        if !recorded_names.contains(&name) {
+            recorded_names.insert(name.clone());
+            versions.push(faf_domain::state::CachedGameVersion {
+                name,
+                version,
+                file_count: file_count.min(u32::MAX as usize) as u32,
+                size_bytes: size_bytes as f64,
+                url: Some(format!(
+                    "https://github.com/FAForever/fa/releases/tag/{version}"
+                )),
+            });
+        }
+    }
+
+    versions.sort_by(|a, b| b.version.cmp(&a.version).then_with(|| a.name.cmp(&b.name)));
+
+    faf_domain::state::GameCacheInfo {
+        total_size_bytes: total_size_bytes as f64,
+        total_files: total_files.min(u32::MAX as usize) as u32,
+        versions,
+    }
 }
 
 #[cfg(test)]
@@ -1223,6 +1904,7 @@ mod tests {
             "http://127.0.0.1:1",
             std::path::Path::new("definitely/not/here"),
             "scmp_009",
+            &|_| {},
         )
         .await;
         assert!(result.is_ok(), "{result:?}");
@@ -1326,5 +2008,137 @@ mod tests {
         ensure_map_available(&http, "http://127.0.0.1:1", &target_dir, "X1MP_002")
             .await
             .expect("base maps should be skipped, not looked up");
+    }
+
+    #[tokio::test]
+    async fn cache_cleanup_and_inspection_works() {
+        let temp_dir = std::env::temp_dir().join(format!("faf-test-cache-{}", std::process::id()));
+        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+        tokio::fs::create_dir_all(temp_dir.join("bin"))
+            .await
+            .unwrap();
+        tokio::fs::write(temp_dir.join("bin").join("test.bin"), b"test data")
+            .await
+            .unwrap();
+
+        let info = inspect_game_cache(&temp_dir, &[]).await;
+        assert_eq!(info.total_files, 1);
+        assert_eq!(info.total_size_bytes, 9.0);
+
+        let removed = clean_expired_cache_files(&temp_dir, 0).await.unwrap();
+        assert_eq!(removed, 0);
+
+        clear_game_cache(&temp_dir).await.unwrap();
+        let info_after = inspect_game_cache(&temp_dir, &[]).await;
+        assert_eq!(info_after.total_files, 0);
+        assert_eq!(info_after.total_size_bytes, 0.0);
+
+        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+    }
+
+    #[tokio::test]
+    async fn cache_manifest_indexing_and_multi_version_inspection_works() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("faf-test-cache-manifest-{}", std::process::id()));
+        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+        tokio::fs::create_dir_all(temp_dir.join("bin"))
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(temp_dir.join("gamedata"))
+            .await
+            .unwrap();
+
+        // Write files for build 3837 (exe + gamedata)
+        tokio::fs::write(temp_dir.join("bin").join("md5_exe_3837"), b"12345678")
+            .await
+            .unwrap();
+        tokio::fs::write(
+            temp_dir.join("gamedata").join("md5_lua_3837"),
+            b"1234567890",
+        )
+        .await
+        .unwrap();
+
+        // Write files for fafdevelop
+        tokio::fs::write(
+            temp_dir.join("gamedata").join("md5_dev_lua"),
+            b"develop_lua_content",
+        )
+        .await
+        .unwrap();
+
+        let entry_3837 = CacheManifestEntry {
+            featured_mod: "faf".to_string(),
+            version: Some(3837),
+            resolved_version: 3837,
+            name: "FAF Build 3837".to_string(),
+            url: Some("https://github.com/FAForever/fa/releases/tag/3837".to_string()),
+            git_short_sha: None,
+            signature: None,
+            files: vec![
+                CachedFileInfo {
+                    group: "bin".to_string(),
+                    md5: "md5_exe_3837".to_string(),
+                    name: Some("ForgedAlliance.exe".to_string()),
+                },
+                CachedFileInfo {
+                    group: "gamedata".to_string(),
+                    md5: "md5_lua_3837".to_string(),
+                    name: Some("lua.nx2".to_string()),
+                },
+            ],
+            updated_at: 100,
+        };
+        save_cache_manifest_entry(&temp_dir, entry_3837);
+
+        let entry_dev = CacheManifestEntry {
+            featured_mod: "fafdevelop".to_string(),
+            version: None,
+            resolved_version: 0,
+            name: "FAF Develop (abcdef1)".to_string(),
+            url: Some("https://github.com/FAForever/fa/commits/abcdef1".to_string()),
+            git_short_sha: Some("abcdef1".to_string()),
+            signature: Some("abcdef1".to_string()),
+            files: vec![CachedFileInfo {
+                group: "gamedata".to_string(),
+                md5: "md5_dev_lua".to_string(),
+                name: Some("lua.nx2".to_string()),
+            }],
+            updated_at: 101,
+        };
+        save_cache_manifest_entry(&temp_dir, entry_dev);
+
+        let info = inspect_game_cache(&temp_dir, &[]).await;
+        assert_eq!(info.total_files, 3);
+        assert_eq!(info.total_size_bytes, 37.0); // 37 bytes total
+        assert_eq!(info.versions.len(), 2);
+
+        let v_3837 = info
+            .versions
+            .iter()
+            .find(|v| v.name == "FAF Build 3837")
+            .unwrap();
+        assert_eq!(v_3837.version, 3837);
+        assert_eq!(v_3837.file_count, 2);
+        assert_eq!(v_3837.size_bytes, 18.0);
+        assert_eq!(
+            v_3837.url.as_deref(),
+            Some("https://github.com/FAForever/fa/releases/tag/3837")
+        );
+
+        let v_dev = info
+            .versions
+            .iter()
+            .find(|v| v.name == "FAF Develop (abcdef1)")
+            .unwrap();
+        assert_eq!(v_dev.version, 0);
+        assert_eq!(v_dev.file_count, 1);
+        assert_eq!(v_dev.size_bytes, 19.0);
+        assert_eq!(
+            v_dev.url.as_deref(),
+            Some("https://github.com/FAForever/fa/commits/abcdef1")
+        );
+
+        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
     }
 }

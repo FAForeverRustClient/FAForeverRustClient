@@ -27,6 +27,8 @@ pub enum NotificationKind {
     /// slow and usually kicked off in the background by a lobby join, so the
     /// user is very likely looking at something else when it completes.
     MapGenerated,
+    /// Game file cache exceeded user-configured threshold size.
+    GameCacheAlert,
     Error,
 }
 
@@ -43,6 +45,7 @@ pub enum NotificationAction {
     OpenCustomGames,
     AcceptPartyInvite { player_id: i32 },
     WatchLive { target: super::LiveReplayTarget },
+    OpenSettings { section: Option<String> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]

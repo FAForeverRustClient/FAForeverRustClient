@@ -17,7 +17,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 export type LogKind = "game" | "client";
 
 /** Mirrors the arms of `faf_app::infra::client_folder`. */
-export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gamePrefs";
+export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";
 
 /** Mirrors `faf_domain::protocol::log_analysis::LogIssue`. */
 export type LogIssue = "gameMinimized" | "soundDriver";
@@ -49,6 +49,11 @@ export const native = {
   /** Reveal one of the client's own directories (or `game.prefs`). */
   openClientFolder(kind: ClientFolder): Promise<void> {
     return invoke("open_client_folder", { kind });
+  },
+
+  /** Reveal a specific cached game version folder. */
+  openVersionFolder(name: string): Promise<void> {
+    return invoke("open_version_folder", { name });
   },
 
   readLatestLog(kind: LogKind): Promise<LogPreview | null> {

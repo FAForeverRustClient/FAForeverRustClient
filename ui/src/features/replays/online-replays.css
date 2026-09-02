@@ -306,8 +306,25 @@ button.vault-input {
   flex: 1;
 }
 
+.replay-card-teams[data-sole-team="true"] {
+  grid-template-columns: 1fr;
+}
+
 .replay-card-team {
   min-width: 0;
+}
+
+.replay-card-team-roster {
+  display: flex;
+  flex-direction: column;
+}
+
+.replay-card-team-roster.is-split {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-3);
+  row-gap: 0;
 }
 
 .replay-card-team-title {
@@ -745,6 +762,10 @@ button.vault-input {
   margin: 0;
 }
 
+.replay-detail-teams[data-sole-team="true"] {
+  grid-template-columns: 1fr;
+}
+
 /* Exactly two teams read as a matchup, so they get a centred divider instead
    of sitting side by side as equal grid cells. */
 .replay-detail-teams[data-layout="versus"] {
@@ -838,7 +859,19 @@ button.vault-input {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding-top: 0;
+}
+
+.replay-detail-team-title + .replay-detail-roster {
   padding-top: 6px;
+}
+
+.replay-detail-roster.is-split {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-3);
+  row-gap: 2px;
 }
 
 .replay-detail-player {
