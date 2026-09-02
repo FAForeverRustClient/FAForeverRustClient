@@ -6,7 +6,7 @@
 // list here, the map list narrows to the missions of the chosen campaign, and
 // the map generator is gone: a generated map is not a campaign mission.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
@@ -14,6 +14,7 @@ import { ipc } from "../../../ipc/client";
 import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { useAppStore } from "../../../store/store";
+import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
 import { loadLocalMapPreviews } from "../../../shared/useLocalMapPreview";
 import { scenarioBadge, sortCoopScenarios } from "../coopScenarios";
 import { CoopMissionArt } from "./CoopMissionArt";
@@ -48,6 +49,8 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
   const [missionSearch, setMissionSearch] = useState("");
   const [campaignId, setCampaignId] = useState<number | null>(null);
   const [missionId, setMissionId] = useState<number | null>(initialMissionId ?? null);
+  const missionListRef = useRef<HTMLDivElement>(null);
+  const campaignListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (useAppStore.getState().state.coop.catalogStatus.type === "idle") {
@@ -146,6 +149,29 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
     setMissionId(missionsInCampaign[index].id);
   };
 
+  /// And the campaign column beside it, which narrows the mission list.
+  const onCampaignListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const current = campaigns.findIndex((campaign) => campaign.id === activeCampaignId);
+    const next = nextListboxIndex(event.key, current, campaigns.length);
+    if (next === null) return;
+    event.preventDefault();
+    setCampaignId(campaigns[next].id);
+    setMissionId(null);
+    setMissionSearch("");
+    focusListboxOption(campaignListRef.current, next);
+  };
+
+  /// The mission list's half of the same keyboard navigation the map list has:
+  /// the mission art and its briefing follow the selection, not focus.
+  const onMissionListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const current = missionsInCampaign.findIndex((mission) => mission.id === selected?.id);
+    const next = nextListboxIndex(event.key, current, missionsInCampaign.length);
+    if (next === null) return;
+    event.preventDefault();
+    setMissionId(missionsInCampaign[next].id);
+    focusListboxOption(missionListRef.current, next);
+  };
+
   const host = () => {
     if (formError || !selected) return;
     ipc.send({
@@ -195,7 +221,13 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
           <div className="host-column-header">
             <h3>{t("lobby.coop.campaigns")}</h3>
           </div>
-          <div className="host-column-body host-gametype-list" role="listbox">
+          <div
+            ref={campaignListRef}
+            className="host-column-body host-gametype-list"
+            role="listbox"
+            aria-label={t("lobby.coop.campaigns")}
+            onKeyDown={onCampaignListKeyDown}
+          >
             {campaigns.length === 0 ? (
               <p className="play-empty">{t("lobby.coop.loadingMissions")}</p>
             ) : (
@@ -247,9 +279,11 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
           </div>
 
           <div
+            ref={missionListRef}
             className="host-column-body host-map-list"
             role="listbox"
             aria-label={t("lobby.coop.missionListAria")}
+            onKeyDown={onMissionListKeyDown}
           >
             {missionsInCampaign.length === 0 ? (
               <p className="play-empty">{t("lobby.coop.noMissions")}</p>
