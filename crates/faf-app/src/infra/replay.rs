@@ -92,6 +92,32 @@ type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
 const MAX_REPLAY_DOWNLOAD_REDIRECTS: usize = 5;
 
+/// The relationships a vault row needs to render: map, mod, the roster with
+/// avatars, the rating changes and the review summary.
+const VAULT_INCLUDE: &str = "mapVersion,mapVersion.map,featuredMod,playerStats.player,playerStats.player.avatarAssignments.avatar,playerStats.ratingChanges,reviewsSummary";
+
+/// How many ids one page of a shared-games scan asks for. Half the API's 10 000
+/// ceiling (`elide.max-page-size`): every page is now a bounded index range, so
+/// the cost is in the round trips, and a decade of games is four requests
+/// instead of twenty.
+const ID_SCAN_PAGE_SIZE: u32 = 5000;
+
+/// The point at which a shared-games scan stops and says so. Roughly twice the
+/// game count of the busiest account on the server, so it exists to bound a
+/// filter that went wrong (a one-letter substring matching thousands of
+/// players), not to trim a real search.
+const ID_SCAN_CAP: usize = 100_000;
+
+/// How many accounts one shared-games search will look up. A substring name can
+/// legitimately match a handful of logins; a two-letter one matches thousands,
+/// and scanning all of their histories is not what the user meant.
+const MAX_RESOLVED_PLAYERS: u32 = 200;
+
+/// How large an intersection can be and still be reordered by a sort the scans
+/// did not fetch. One request's worth: beyond it the result stays newest-first,
+/// which is what the scans produce anyway.
+const MAX_SORTABLE_SHARED_GAMES: usize = 1000;
+
 #[derive(Debug, Clone)]
 pub struct ReplayConfig {
     /// FAF *user* API base, which serves `/replay/access` (same host as the
@@ -223,12 +249,31 @@ pub struct ReplayClient {
     /// Playback preparation writes shared cache and preference files. Keep one
     /// launch pipeline active per client so concurrent UI commands cannot race.
     playback_lock: Mutex<()>,
+    /// The last shared-games intersection and the search that produced it, so
+    /// turning a page does not scan every player's history again. Keyed by the
+    /// query with its paging normalised away: page and page size change what is
+    /// shown, not which games matched.
+    ///
+    /// It is a snapshot, deliberately: a game played while the user pages
+    /// through the results appears on their next search, not underneath them.
+    shared_games: std::sync::Mutex<Option<(ReplayQuery, Vec<i32>)>>,
+}
+
+/// The cache key for a shared-games search: everything except which slice of
+/// the answer is being displayed.
+fn shared_games_key(query: &ReplayQuery) -> ReplayQuery {
+    ReplayQuery {
+        page: 1,
+        page_size: 0,
+        ..query.clone()
+    }
 }
 
 impl ReplayClient {
     pub fn new(config: ReplayConfig, tokens: TokenStore, process: Arc<dyn ProcessPort>) -> Self {
         Self {
             install_dir: std::sync::Mutex::new(config.replay_target_dir.clone()),
+            shared_games: std::sync::Mutex::new(None),
             config,
             tokens,
             http: super::http::shared_http_client(),
@@ -288,6 +333,308 @@ impl ReplayClient {
             return bounded_body(response, &format!("replay {uid}"), MAX_DOWNLOAD_BYTES).await;
         }
         unreachable!("the bounded redirect loop always returns")
+    }
+
+    /// Every game the query's players were all in, as one page of results.
+    ///
+    /// The API cannot answer "A *and* B were in this game" in a single filter:
+    /// Elide derives a join alias from the property path alone, so two clauses
+    /// on `playerStats.player.login` share one join and match nothing (see
+    /// `replay_query`'s module docs). So we ask it one player at a time and
+    /// intersect the game ids ourselves.
+    ///
+    /// Completeness is the point of the feature, so the per-player scans read
+    /// *every* page rather than stopping once the current page could be filled:
+    /// two players who last met years ago must still show up, and the exact
+    /// intersection is what lets the pager offer real page numbers and a real
+    /// total. That costs a handful of round trips per search, which is the
+    /// trade this was designed around: the intersection is then cached
+    /// (`shared_games`) so paging through the results costs one request each,
+    /// like any other search.
+    ///
+    /// The implicit date floor is dropped here for the same reason
+    /// ([`ReplayQuery::fallback_months`] exists to keep *unbounded* searches
+    /// off the slow path; a login is already a narrow index lookup). Explicit
+    /// `after`/`before` bounds still apply.
+    async fn search_shared_games(
+        &self,
+        query: &ReplayQuery,
+        token: &str,
+    ) -> Result<VaultSearchResult, String> {
+        let key = shared_games_key(query);
+        let cached = self
+            .shared_games
+            .lock()
+            .expect("shared games cache poisoned")
+            .as_ref()
+            .filter(|(cached_key, _)| *cached_key == key)
+            .map(|(_, ids)| ids.clone());
+
+        let shared = match cached {
+            Some(ids) => ids,
+            None => {
+                let names = query.player_names();
+                // Timed at info level, per phase: this search is the one place
+                // in the client that can legitimately take seconds, and "which
+                // part" is otherwise unanswerable from a bug report.
+                let started = std::time::Instant::now();
+                let resolved = self
+                    .resolve_player_ids(&names, query.exact_player, token)
+                    .await?;
+                tracing::info!(
+                    names = names.len(),
+                    exact = query.exact_player,
+                    accounts = resolved.as_ref().map(|r| r.iter().map(Vec::len).sum::<usize>()),
+                    elapsed_ms = started.elapsed().as_millis() as u64,
+                    "shared games: resolved player names"
+                );
+                let ids = match resolved {
+                    // A name nobody answers to cannot share a game with anyone.
+                    None => Vec::new(),
+                    Some(per_name) => {
+                        let mut per_player = Vec::with_capacity(per_name.len());
+                        for player_ids in &per_name {
+                            let scan = std::time::Instant::now();
+                            let games = self.collect_game_ids(query, player_ids, token).await?;
+                            tracing::info!(
+                                accounts = player_ids.len(),
+                                games = games.len(),
+                                elapsed_ms = scan.elapsed().as_millis() as u64,
+                                "shared games: scanned one player"
+                            );
+                            per_player.push(games);
+                        }
+                        let shared = replay_query::intersect_game_ids(&per_player);
+                        let ordered = self.sort_shared_games(query, shared, token).await?;
+                        tracing::info!(
+                            shared = ordered.len(),
+                            elapsed_ms = started.elapsed().as_millis() as u64,
+                            "shared games: search complete"
+                        );
+                        ordered
+                    }
+                };
+                *self
+                    .shared_games
+                    .lock()
+                    .expect("shared games cache poisoned") = Some((key, ids.clone()));
+                ids
+            }
+        };
+
+        let total_records = i32::try_from(shared.len()).unwrap_or(i32::MAX);
+        let page_size = query.page_size.max(1);
+        let total_pages = i32::try_from(shared.len().div_ceil(page_size as usize))
+            .unwrap_or(i32::MAX)
+            .max(1);
+        let page_ids = replay_query::page_slice(&shared, query.page, page_size);
+        let Some(filter) = replay_query::ids_filter(page_ids) else {
+            return Ok(VaultSearchResult {
+                replays: Vec::new(),
+                total_pages: Some(total_pages),
+                total_records: Some(total_records),
+            });
+        };
+
+        // The ids are already the answer; this call only fetches the rows and
+        // their relationships. Same `sort` as the scans, so the page arrives in
+        // the order the intersection is in.
+        let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
+            .map_err(|e| format!("invalid API base: {e}"))?;
+        url.query_pairs_mut()
+            .append_pair("sort", &query.sort_param())
+            .append_pair("page[size]", &page_size.to_string())
+            .append_pair("include", VAULT_INCLUDE)
+            .append_pair("filter", &filter);
+
+        let doc = fetch_document(&self.http, url, token).await?;
+        Ok(VaultSearchResult {
+            replays: parse_vault_replays(&doc),
+            total_pages: Some(total_pages),
+            total_records: Some(total_records),
+        })
+    }
+
+    /// The player ids behind each typed name, in the order they were typed.
+    ///
+    /// One request for all of them. This is what lets the scans filter on
+    /// `playerStats.player.id` instead of a login wildcard: see
+    /// [`replay_query::build_scan_filter`] for why that is the difference
+    /// between seconds and minutes. A substring name can resolve to several
+    /// accounts, so each name keeps a *set* of ids.
+    ///
+    /// `None` means one of the names matches no account at all, which makes the
+    /// intersection empty without scanning anything.
+    async fn resolve_player_ids(
+        &self,
+        names: &[&str],
+        exact: bool,
+        token: &str,
+    ) -> Result<Option<Vec<Vec<i32>>>, String> {
+        let Some(filter) = replay_query::logins_filter(names, exact) else {
+            return Ok(None);
+        };
+        let mut url = url::Url::parse(&format!("{}/data/player", self.config.api_base))
+            .map_err(|e| format!("invalid API base: {e}"))?;
+        url.query_pairs_mut()
+            .append_pair("filter", &filter)
+            .append_pair("fields[player]", "login")
+            .append_pair("page[size]", &MAX_RESOLVED_PLAYERS.to_string());
+
+        let doc = fetch_document(&self.http, url, token).await?;
+        if doc.data.len() >= MAX_RESOLVED_PLAYERS as usize {
+            tracing::warn!(
+                resolved = doc.data.len(),
+                "a player name matched more accounts than one search resolves;                  narrow it or tick the exact-name box"
+            );
+        }
+        let resolved: Vec<(i32, String)> = doc
+            .data
+            .iter()
+            .filter_map(|player| {
+                let id = player.id.parse::<i32>().ok()?;
+                let login = player.attributes.get("login")?.as_str()?.to_string();
+                Some((id, login))
+            })
+            .collect();
+
+        let mut per_name = Vec::with_capacity(names.len());
+        for name in names {
+            let ids: Vec<i32> = resolved
+                .iter()
+                .filter(|(_, login)| replay_query::login_matches(login, name, exact))
+                .map(|(id, _)| *id)
+                .collect();
+            if ids.is_empty() {
+                return Ok(None);
+            }
+            per_name.push(ids);
+        }
+        Ok(Some(per_name))
+    }
+
+    /// The ids of every game these player ids appear in, newest first.
+    ///
+    /// Seeks by id rather than asking for page after page: each request carries
+    /// the lowest id of the last one, so every page is the same bounded index
+    /// range instead of an ever-growing `OFFSET`. Sorted by `-id`, which is the
+    /// seek key; game ids and start times run in the same direction, so this is
+    /// also the newest-first order the intersection is presented in.
+    ///
+    /// A sparse fieldset keeps the payload to ids: `startTime` is named only
+    /// because a fieldset wants a field, and `infra::player_card` narrows the
+    /// same type the same way.
+    ///
+    /// [`ID_SCAN_CAP`] is a runaway guard, not a page budget: it sits well above
+    /// the busiest account on the server, so a real scan ends on a short page.
+    async fn collect_game_ids(
+        &self,
+        query: &ReplayQuery,
+        player_ids: &[i32],
+        token: &str,
+    ) -> Result<Vec<i32>, String> {
+        let mut ids: Vec<i32> = Vec::new();
+        let mut before_id: Option<i32> = None;
+        loop {
+            let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
+                .map_err(|e| format!("invalid API base: {e}"))?;
+            {
+                let mut pairs = url.query_pairs_mut();
+                pairs
+                    .append_pair("sort", "-id")
+                    .append_pair("page[size]", &ID_SCAN_PAGE_SIZE.to_string())
+                    .append_pair("fields[game]", "startTime");
+                if let Some(filter) =
+                    replay_query::build_scan_filter(query, player_ids, before_id)
+                {
+                    pairs.append_pair("filter", &filter);
+                }
+            }
+
+            let doc = fetch_document(&self.http, url, token).await?;
+            let received = doc.data.len();
+            let page: Vec<i32> = doc
+                .data
+                .iter()
+                .filter_map(|game| game.id.parse::<i32>().ok())
+                .collect();
+            let lowest = page.iter().copied().min();
+            ids.extend(page);
+            match lowest {
+                // A short page is the end; so is a page whose ids cannot be
+                // parsed, which would otherwise seek from the same place
+                // forever.
+                Some(lowest) if received >= ID_SCAN_PAGE_SIZE as usize => {
+                    if ids.len() >= ID_SCAN_CAP {
+                        tracing::warn!(
+                            collected = ids.len(),
+                            "replay id scan hit its cap; the shared-games result may be incomplete"
+                        );
+                        return Ok(ids);
+                    }
+                    before_id = Some(lowest);
+                }
+                _ => return Ok(ids),
+            }
+        }
+    }
+
+    /// The intersection in the order the user asked for.
+    ///
+    /// The scans run newest-first by id, which is already the answer for the
+    /// default sort and its reverse. Any other ordering lives in columns the
+    /// scan never fetched (duration, title, review score), so the server is
+    /// asked to sort the ids it has just been handed — one extra request, and
+    /// only when the intersection is small enough to order in a single one.
+    async fn sort_shared_games(
+        &self,
+        query: &ReplayQuery,
+        shared: Vec<i32>,
+        token: &str,
+    ) -> Result<Vec<i32>, String> {
+        let by_id = matches!(
+            query.sort_by,
+            replay_query::ReplaySortField::StartTime | replay_query::ReplaySortField::Id
+        );
+        if by_id {
+            let mut ordered = shared;
+            if !query.sort_descending {
+                ordered.reverse();
+            }
+            return Ok(ordered);
+        }
+        if shared.len() > MAX_SORTABLE_SHARED_GAMES {
+            tracing::warn!(
+                shared = shared.len(),
+                "too many shared games to reorder in one request; keeping newest first"
+            );
+            return Ok(shared);
+        }
+        let Some(filter) = replay_query::ids_filter(&shared) else {
+            return Ok(shared);
+        };
+
+        let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
+            .map_err(|e| format!("invalid API base: {e}"))?;
+        url.query_pairs_mut()
+            .append_pair("sort", &query.sort_param())
+            .append_pair("page[size]", &MAX_SORTABLE_SHARED_GAMES.to_string())
+            .append_pair("fields[game]", "startTime")
+            .append_pair("filter", &filter);
+
+        let doc = fetch_document(&self.http, url, token).await?;
+        let ordered: Vec<i32> = doc
+            .data
+            .iter()
+            .filter_map(|game| game.id.parse::<i32>().ok())
+            .collect();
+        // Trust the server's order only if it returned the same set; anything
+        // else (a dropped row, a page cap) would silently lose results.
+        if ordered.len() == shared.len() {
+            Ok(ordered)
+        } else {
+            Ok(shared)
+        }
     }
 
     async fn download_vault_to(&self, uid: i32, directory: PathBuf) -> Result<PathBuf, String> {
@@ -574,6 +921,12 @@ impl ReplayPort for ReplayClient {
             .get()
             .ok_or_else(|| "not logged in".to_string())?;
 
+        // Two or more names is a different question ("games they shared") and
+        // needs a different shape of request: see `search_shared_games`.
+        if query.player_names().len() > 1 {
+            return self.search_shared_games(&query, &token).await;
+        }
+
         let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
             .map_err(|e| format!("invalid API base: {e}"))?;
         {
@@ -583,14 +936,11 @@ impl ReplayPort for ReplayClient {
                 .append_pair("page[size]", &query.page_size.to_string())
                 .append_pair("page[number]", &query.page.max(1).to_string())
                 .append_key_only("page[totals]")
-                .append_pair(
-                    "include",
-                    "mapVersion,mapVersion.map,featuredMod,playerStats.player,playerStats.player.avatarAssignments.avatar,playerStats.ratingChanges,reviewsSummary",
-                );
+                .append_pair("include", VAULT_INCLUDE);
             // The date floor that keeps an otherwise unbounded filtered search
             // off the slow path: the rule lives in the query, the clock here.
             let fallback = query.fallback_months().map(months_ago);
-            if let Some(filter) = replay_query::build_filter(&query, fallback.as_deref()) {
+            if let Some(filter) = replay_query::build_filter(&query, fallback.as_deref(), None) {
                 pairs.append_pair("filter", &filter);
             }
         }

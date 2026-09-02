@@ -20,6 +20,15 @@
   flex: 1 1 auto;
 }
 
+/* Separates the presets, which replace the whole search, from the toggles that
+   modify the current one. */
+.search-panel-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--space-1) var(--space-1);
+  background: var(--color-border);
+}
+
 .search-panel-secondary > .btn-ghost.active {
   color: var(--color-accent-contrast);
   background: var(--color-accent);

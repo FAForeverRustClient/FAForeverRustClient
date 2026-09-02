@@ -3,6 +3,7 @@ import {
   advancedReplayFilterCount,
   ALL_TIME_AFTER,
   EMPTY_REPLAY_QUERY,
+  isRecentBound,
   isoDaysAgo,
   personalReplayQuery,
 } from "./replayQuery";
@@ -57,5 +58,13 @@ describe("the date floor toggle", () => {
     // is the opposite of what turning the toggle off means.
     expect(ALL_TIME_AFTER).not.toBe("");
     expect(Number(ALL_TIME_AFTER.slice(0, 4))).toBeLessThan(2011);
+  });
+
+  it("only lights up for a bound that actually limits the search", () => {
+    expect(isRecentBound(isoDaysAgo(365))).toBe(true);
+    expect(isRecentBound(ALL_TIME_AFTER)).toBe(false);
+    // The regression: "All replays" clears `after`, and the toggle used to
+    // read that as "recent" and highlight itself while searching all history.
+    expect(isRecentBound(EMPTY_REPLAY_QUERY.after)).toBe(false);
   });
 });

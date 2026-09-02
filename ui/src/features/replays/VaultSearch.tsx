@@ -34,6 +34,7 @@ import {
   advancedReplayFilterCount,
   ALL_TIME_AFTER,
   EMPTY_REPLAY_QUERY,
+  isRecentBound,
   isoDaysAgo,
 } from "../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
@@ -73,14 +74,15 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
   const [advanced, setAdvanced] = useState(false);
   // Reflects the date bound already in the query, so the button matches what is
-  // actually being searched rather than a separate opinion about it.
-  const [recentOnly, setRecentOnly] = useState(
-    () => initialQuery.after !== ALL_TIME_AFTER,
-  );
+  // actually being searched rather than a separate opinion about it. An empty
+  // `after` is *no* bound, not a recent one: "All replays" leaves it empty and
+  // used to light this button up while searching all of history, which is
+  // precisely the contradiction that made the two controls unreadable.
+  const [recentOnly, setRecentOnly] = useState(() => isRecentBound(initialQuery.after));
 
   useEffect(() => {
     setForm(initialQuery);
-    setRecentOnly(initialQuery.after !== ALL_TIME_AFTER);
+    setRecentOnly(isRecentBound(initialQuery.after));
   }, [initialQuery]);
 
   // `page` is not part of the form: a new search always starts at page 1, and
@@ -115,7 +117,17 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
     const base: ReplayQuery = { ...EMPTY_REPLAY_QUERY };
     const query: ReplayQuery =
       preset === "own"
-        ? { ...base, player: self, exactPlayer: true }
+        ? {
+            ...base,
+            player: self,
+            exactPlayer: true,
+            // Explicit, for the same reason `personalReplayQuery` is: a player
+            // filter counts as narrowing, so leaving this empty hands the
+            // backend's invisible six-month floor
+            // (`ReplayQuery::fallback_months`) a search the user thinks is
+            // unbounded. One year, and it shows up in the date field.
+            after: isoDaysAgo(365),
+          }
         : preset === "highestRated"
           ? {
               ...base,
@@ -133,6 +145,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
             }
           : base;
     setForm(query);
+    setRecentOnly(isRecentBound(query.after));
     onSearch(query);
   };
 
@@ -247,11 +260,15 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         <Button type="button" onClick={() => applyPreset("highestRated")}>
           {t("replays.search.preset.bestReviewed")}
         </Button>
-        {/* A toggle, not a preset. The backend silently floors any narrowing
-            search to the last few months, which is right for speed and wrong
-            when it is invisible; this is that floor made into a control the user
-            can see and switch off. On by default, because the unbounded query is
-            the slow one. */}
+        <Button type="button" disabled={!self} onClick={() => applyPreset("own")}>
+          {t("replays.search.preset.myReplays")}
+        </Button>
+        {/* The divider is load-bearing: everything left of it replaces the
+            search, everything right of it modifies the one you have. Without it
+            the toggle reads as a fourth preset, and "All replays" next to
+            "Recent only" looks like a contradiction rather than a scope and a
+            bound. */}
+        <span className="search-panel-divider" aria-hidden="true" />
         <Button
           type="button"
           className={recentOnly ? "active" : ""}
@@ -270,9 +287,6 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
           }}
         >
           {t("replays.search.recentOnly")}
-        </Button>
-        <Button type="button" disabled={!self} onClick={() => applyPreset("own")}>
-          {t("replays.search.preset.myReplays")}
         </Button>
         <span className="spacer" />
         <button

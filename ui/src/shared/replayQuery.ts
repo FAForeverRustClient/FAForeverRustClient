@@ -45,6 +45,18 @@ export const EMPTY_REPLAY_QUERY: ReplayQuery = {
  */
 export const ALL_TIME_AFTER = "2010-01-01";
 
+/**
+ * Whether an `after` value is a real "recent" bound.
+ *
+ * Three states hide in one string field: a date the user (or a preset) chose,
+ * [`ALL_TIME_AFTER`] meaning "explicitly all of history", and empty meaning "no
+ * bound in the query" — which the backend may then floor invisibly, or not at
+ * all when nothing else narrows the search. Only the first is "Recent only".
+ */
+export function isRecentBound(after: string): boolean {
+  return after !== "" && after !== ALL_TIME_AFTER;
+}
+
 /** A date `n` days ago as `YYYY-MM-DD`, the form the search inputs use. */
 export function isoDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);

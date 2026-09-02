@@ -1315,7 +1315,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.search.clear": "Restablecer",
   "replays.search.refresh": "Actualizar",
   "replays.search.openFile": "Abrir archivo…",
-  "replays.search.preset.newest": "Más recientes",
+  "replays.search.preset.newest": "Todas las repeticiones",
   "replays.search.preset.bestReviewed": "Mejor valoradas",
   "replays.search.preset.myReplays": "Mis repeticiones",
   "replays.search.sort.datePlayed": "Fecha de la partida",
