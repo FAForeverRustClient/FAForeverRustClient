@@ -8,7 +8,16 @@
     "install": {
       "gameReady": false,
       "replayReady": false,
-      "checked": false
+      "checked": false,
+      "resolved": {
+        "vaultDir": "",
+        "mapsDir": "",
+        "modsDir": "",
+        "replaysDir": "",
+        "gamePrefsPath": "",
+        "mapGeneratorDir": "",
+        "javaPath": ""
+      }
     },
     "auth": {
       "status": "loggedOut",
@@ -311,7 +320,8 @@
         "visualize": false,
         "previewPath": "",
         "outputPath": "",
-        "commandLineArgs": ""
+        "commandLineArgs": "",
+        "keepMaps": false
       },
       "previews": {},
       "validation": [],
@@ -536,6 +546,15 @@
       "theme": "forgeDark",
       "gamePath": "",
       "replayGamePath": "",
+      "paths": {
+        "vaultDir": "",
+        "mapsDir": "",
+        "modsDir": "",
+        "replaysDir": "",
+        "gamePrefsPath": "",
+        "mapGeneratorDir": "",
+        "javaPath": ""
+      },
       "general": {
         "startPage": "news",
         "autoLogin": true
@@ -661,6 +680,7 @@
         "replayVaultPlayer": "",
         "legacyStorageMigrated": false
       },
+      "keptGeneratedMaps": [],
       "mapGenerator": {
         "version": null,
         "spawnCount": 6,
@@ -691,7 +711,8 @@
         "visualize": false,
         "previewPath": "",
         "outputPath": "",
-        "commandLineArgs": ""
+        "commandLineArgs": "",
+        "keepMaps": false
       }
     },
     "changelog": {
@@ -1284,7 +1305,7 @@
       ]
     },
     {
-      "name": "install check flips both flags",
+      "name": "install check flips both flags and reports where paths resolve",
       "steps": [
         {
           "event": {
@@ -1293,14 +1314,32 @@
               "type": "checked",
               "payload": {
                 "gameReady": true,
-                "replayReady": false
+                "replayReady": false,
+                "resolved": {
+                  "vaultDir": "D:/faf/vault",
+                  "mapsDir": "D:/faf/vault/maps",
+                  "modsDir": "D:/faf/vault/mods",
+                  "replaysDir": "C:/ProgramData/FAForever/replays",
+                  "gamePrefsPath": "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs",
+                  "mapGeneratorDir": "C:/Users/ada/AppData/Roaming/faf/map_generator",
+                  "javaPath": "java"
+                }
               }
             }
           },
           "expected": {
             "checked": true,
             "gameReady": true,
-            "replayReady": false
+            "replayReady": false,
+            "resolved": {
+              "gamePrefsPath": "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs",
+              "javaPath": "java",
+              "mapGeneratorDir": "C:/Users/ada/AppData/Roaming/faf/map_generator",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "D:/faf/vault/mods",
+              "replaysDir": "C:/ProgramData/FAForever/replays",
+              "vaultDir": "D:/faf/vault"
+            }
           }
         }
       ]
@@ -15895,6 +15934,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -16040,6 +16080,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -16188,6 +16229,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -16366,6 +16408,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -16534,6 +16577,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -16694,6 +16738,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -16856,6 +16901,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -17051,6 +17097,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -17226,6 +17273,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -17304,7 +17352,8 @@
                       "visualize": false,
                       "previewPath": "",
                       "outputPath": "",
-                      "commandLineArgs": ""
+                      "commandLineArgs": "",
+                      "keepMaps": false
                     }
                   },
                   {
@@ -17340,7 +17389,8 @@
                       "visualize": false,
                       "previewPath": "",
                       "outputPath": "",
-                      "commandLineArgs": ""
+                      "commandLineArgs": "",
+                      "keepMaps": false
                     }
                   }
                 ]
@@ -17474,6 +17524,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -17510,6 +17561,7 @@
                   "commandLineArgs": "",
                   "debug": false,
                   "generationType": "casual",
+                  "keepMaps": false,
                   "mapSize": 512,
                   "numTeams": 2,
                   "numToGenerate": null,
@@ -17546,6 +17598,7 @@
                   "commandLineArgs": "",
                   "debug": false,
                   "generationType": "casual",
+                  "keepMaps": false,
                   "mapSize": 512,
                   "numTeams": 2,
                   "numToGenerate": null,
@@ -17625,7 +17678,8 @@
                       "visualize": false,
                       "previewPath": "",
                       "outputPath": "",
-                      "commandLineArgs": ""
+                      "commandLineArgs": "",
+                      "keepMaps": false
                     }
                   }
                 ]
@@ -17759,6 +17813,7 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -17795,6 +17850,7 @@
                   "commandLineArgs": "",
                   "debug": false,
                   "generationType": "casual",
+                  "keepMaps": false,
                   "mapSize": 512,
                   "numTeams": 2,
                   "numToGenerate": null,
@@ -20353,10 +20409,12 @@
               "autoLogin": true,
               "startPage": "news"
             },
+            "keptGeneratedMaps": [],
             "mapGenerator": {
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20403,6 +20461,15 @@
               "reviewReminder": true,
               "sound": true,
               "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "",
+              "modsDir": "",
+              "replaysDir": "",
+              "vaultDir": ""
             },
             "replayGamePath": "",
             "social": {
@@ -20526,10 +20593,12 @@
               "autoLogin": true,
               "startPage": "news"
             },
+            "keptGeneratedMaps": [],
             "mapGenerator": {
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20576,6 +20645,586 @@
               "reviewReminder": true,
               "sound": true,
               "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "",
+              "modsDir": "",
+              "replaysDir": "",
+              "vaultDir": ""
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": []
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "pathsChanged",
+              "payload": {
+                "preferences": {
+                  "vaultDir": "  D:/faf/vault  ",
+                  "mapsDir": "D:/faf/vault/maps",
+                  "modsDir": "",
+                  "replaysDir": " D:/faf/replays ",
+                  "gamePrefsPath": "",
+                  "mapGeneratorDir": "",
+                  "javaPath": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false,
+              "uiScale": 100
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "mapVaultPreset": "recommended",
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
+              "replaysView": "tiles"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "autoLogin": true,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "keepMaps": false,
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault"
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": []
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "keptGeneratedMaps",
+              "payload": {
+                "mapNames": [
+                  "  neroxis_map_generator_1.15.2_keepme  ",
+                  "NEROXIS_MAP_GENERATOR_1.15.2_KEEPME",
+                  "   "
+                ]
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false,
+              "uiScale": 100
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "mapVaultPreset": "recommended",
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
+              "replaysView": "tiles"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "autoLogin": true,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme"
+            ],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "keepMaps": false,
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault"
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": []
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "keptGeneratedMaps",
+              "payload": {
+                "mapNames": [
+                  "neroxis_map_generator_1.15.2_alsokeep"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "reduceMotion": false,
+              "uiScale": 100
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "mapVaultPreset": "recommended",
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
+              "replaysView": "tiles"
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "autoLogin": true,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "keepMaps": false,
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault"
             },
             "replayGamePath": "",
             "social": {
@@ -20722,10 +21371,15 @@
               "autoLogin": true,
               "startPage": "news"
             },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
             "mapGenerator": {
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20772,6 +21426,15 @@
               "reviewReminder": true,
               "sound": true,
               "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault"
             },
             "replayGamePath": "",
             "social": {
@@ -20909,10 +21572,15 @@
               "autoLogin": true,
               "startPage": "news"
             },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
             "mapGenerator": {
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20959,6 +21627,15 @@
               "reviewReminder": true,
               "sound": true,
               "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault"
             },
             "replayGamePath": "",
             "social": {
@@ -21171,10 +21848,15 @@
               "autoLogin": true,
               "startPage": "news"
             },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
             "mapGenerator": {
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
+              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -21221,6 +21903,15 @@
               "reviewReminder": true,
               "sound": true,
               "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault"
             },
             "replayGamePath": "",
             "social": {

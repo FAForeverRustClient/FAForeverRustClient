@@ -670,6 +670,49 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
     }
 }
 
+/// Where the client looks for the game's files and the user's content.
+///
+/// Every field is a complete path and an empty one means "work it out": the
+/// discovery the client did before any of this was configurable, and the
+/// matching `FAF_*` environment variable still overrides that discovery for a
+/// field nobody has set here. A value set here wins over both, because it is
+/// the only one of the three a player chose deliberately.
+///
+/// `vault_dir` is the root the Java client keeps `maps/` and `mods/` under;
+/// the two specific directories override it when they are set, so pointing the
+/// vault somewhere new is one edit rather than three.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PathPreferences {
+    pub vault_dir: String,
+    pub maps_dir: String,
+    pub mods_dir: String,
+    pub replays_dir: String,
+    pub game_prefs_path: String,
+    pub map_generator_dir: String,
+    /// The JVM the map generator and the Java ICE adapter run on.
+    pub java_path: String,
+}
+
+impl PathPreferences {
+    fn normalized(mut self) -> Self {
+        // Trimmed, because a path pasted from a file manager routinely arrives
+        // with a trailing space and would then resolve to nothing.
+        for field in [
+            &mut self.vault_dir,
+            &mut self.maps_dir,
+            &mut self.mods_dir,
+            &mut self.replays_dir,
+            &mut self.game_prefs_path,
+            &mut self.map_generator_dir,
+            &mut self.java_path,
+        ] {
+            *field = field.trim().to_owned();
+        }
+        self
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GamePreferences {
@@ -1316,6 +1359,7 @@ pub struct SettingsState {
     pub theme: Theme,
     pub game_path: String,
     pub replay_game_path: String,
+    pub paths: PathPreferences,
     pub general: GeneralPreferences,
     pub appearance: AppearancePreferences,
     pub social: SocialPreferences,
@@ -1326,6 +1370,14 @@ pub struct SettingsState {
     pub connectivity: ConnectivityPreferences,
     pub updates: UpdatePreferences,
     pub browsing: BrowsingPreferences,
+    /// Generated maps the user asked to keep, by folder name.
+    ///
+    /// Written when a run finishes with [`GeneratorOptions::keep_maps`] set,
+    /// and read by the Maps tab's sweep, which spares everything named here.
+    /// Persisted rather than derived because nothing on disk distinguishes a
+    /// map somebody wants from one they generated once and forgot.
+    #[serde(default)]
+    pub kept_generated_maps: Vec<String>,
     /// The map generator dialog's last settings.
     ///
     /// Persisted for the same reason the Java client keeps `GeneratorPrefs`:
@@ -1350,6 +1402,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             theme: Theme,
             game_path: String,
             replay_game_path: String,
+            paths: PathPreferences,
             general: GeneralPreferences,
             appearance: AppearancePreferences,
             social: SocialPreferences,
@@ -1360,6 +1413,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             connectivity: ConnectivityPreferences,
             updates: UpdatePreferences,
             browsing: BrowsingPreferences,
+            kept_generated_maps: Vec<String>,
             map_generator: GeneratorOptions,
         }
 
@@ -1368,6 +1422,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             theme: wire.theme,
             game_path: wire.game_path,
             replay_game_path: wire.replay_game_path,
+            paths: wire.paths,
             general: wire.general,
             appearance: wire.appearance,
             social: wire.social,
@@ -1378,6 +1433,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             connectivity: wire.connectivity,
             updates: wire.updates,
             browsing: wire.browsing,
+            kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
         })
     }
@@ -1389,6 +1445,7 @@ impl SettingsState {
         self.social = self.social.normalized();
         self.notifications = self.notifications.normalized();
         self.game = self.game.normalized();
+        self.paths = self.paths.normalized();
         self.browsing = self.browsing.normalized();
         // Clamped at the state boundary, so a hand-edited settings file cannot
         // zoom the interface to something unusable that is then hard to undo:
@@ -1400,7 +1457,15 @@ impl SettingsState {
 
 // No `Eq`: the map generator's density preferences are `f32`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+// `rename_all_fields` matters from `KeptGeneratedMaps` onwards: every earlier
+// variant carries a single-word field, so camelCase was silently identical to
+// snake_case and its absence never showed.
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum SettingsEvent {
     Loaded {
         settings: Box<SettingsState>,
@@ -1410,6 +1475,9 @@ pub enum SettingsEvent {
     },
     GamePathChanged {
         path: String,
+    },
+    PathsChanged {
+        preferences: PathPreferences,
     },
     ReplayGamePathChanged {
         path: String,
@@ -1450,6 +1518,11 @@ pub enum SettingsEvent {
     MapGeneratorChanged {
         preferences: Box<GeneratorOptions>,
     },
+    /// Generated maps a finished run asked to keep. Additive: a later run that
+    /// keeps nothing must not release what an earlier one kept.
+    KeptGeneratedMaps {
+        map_names: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -1464,6 +1537,9 @@ pub enum SettingsCommand {
     },
     SetReplayGamePath {
         path: String,
+    },
+    SetPaths {
+        preferences: PathPreferences,
     },
     SetGeneral {
         preferences: GeneralPreferences,
@@ -1510,6 +1586,26 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::ThemeChanged { theme } => state.theme = *theme,
         SettingsEvent::GamePathChanged { path } => state.game_path = path.clone(),
         SettingsEvent::ReplayGamePathChanged { path } => state.replay_game_path = path.clone(),
+        // Normalised here rather than trusting the emitter: a path pasted
+        // with a trailing space resolves to nothing, and the state is the
+        // last place that can still be true regardless of who wrote it.
+        SettingsEvent::PathsChanged { preferences } => {
+            state.paths = preferences.clone().normalized()
+        }
+        SettingsEvent::KeptGeneratedMaps { map_names } => {
+            for name in map_names {
+                let name = name.trim();
+                if name.is_empty()
+                    || state
+                        .kept_generated_maps
+                        .iter()
+                        .any(|kept| kept.eq_ignore_ascii_case(name))
+                {
+                    continue;
+                }
+                state.kept_generated_maps.push(name.to_owned());
+            }
+        }
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => state.appearance = preferences.clone(),
         SettingsEvent::SocialChanged { preferences } => {

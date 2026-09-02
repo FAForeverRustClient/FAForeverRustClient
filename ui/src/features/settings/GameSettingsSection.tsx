@@ -3,7 +3,6 @@ import type { GamePreferences } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
-import { GamePathsSection } from "./GamePathsSection";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 
@@ -33,7 +32,6 @@ export function GameSettingsSection() {
 
   return (
     <>
-      <GamePathsSection />
       <SettingRow
         label={t("settings.game.autoGenerateMaps")}
         hint={t("settings.game.autoGenerateMapsHint")}

@@ -10,6 +10,7 @@ import { DiscordSettingsSection } from "./DiscordSettingsSection";
 import { DiagnosticsSettingsSection } from "./DiagnosticsSettingsSection";
 import { GameSettingsSection } from "./GameSettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
+import { PathsSettingsSection } from "./PathsSettingsSection";
 import { NotificationsSettingsSection } from "./NotificationsSettingsSection";
 import { SettingsSection } from "./SettingControls";
 import { UpdatesSettingsSection } from "./UpdatesSettingsSection";
@@ -17,8 +18,8 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./settings.css";
 
-type SectionKey = "general" | "account" | "appearance" | "notifications" | "chat" | "discord" | "connectivity" | "diagnostics" | "updates" | "game";
-type SettingsCategory = "all" | "general" | "chat" | "notifications" | "account" | "connectivity" | "game" | "maintenance";
+type SectionKey = "general" | "account" | "appearance" | "notifications" | "chat" | "discord" | "connectivity" | "diagnostics" | "updates" | "game" | "paths";
+type SettingsCategory = "all" | "general" | "chat" | "notifications" | "account" | "connectivity" | "game" | "paths" | "maintenance";
 
 interface SectionDef {
   title: MessageKey;
@@ -226,10 +227,6 @@ const SECTIONS = {
     description: "settings.section.game.description",
     keywords: "settings.section.game.keywords",
     labels: [
-      "settings.paths.gameInstall",
-      "settings.paths.gameInstallHint",
-      "settings.paths.replayInstall",
-      "settings.paths.replayInstallHint",
       "settings.game.autoGenerateMaps",
       "settings.game.autoGenerateMapsHint",
       "settings.game.argumentsLabel",
@@ -237,16 +234,43 @@ const SECTIONS = {
     ],
     Component: GameSettingsSection,
   },
+  paths: {
+    title: "settings.section.paths.title",
+    description: "settings.section.paths.description",
+    keywords: "settings.section.paths.keywords",
+    labels: [
+      "settings.paths.gameInstall",
+      "settings.paths.gameInstallHint",
+      "settings.paths.replayInstall",
+      "settings.paths.replayInstallHint",
+      "settings.paths.vault",
+      "settings.paths.vaultHint",
+      "settings.paths.maps",
+      "settings.paths.mapsHint",
+      "settings.paths.mods",
+      "settings.paths.modsHint",
+      "settings.paths.replays",
+      "settings.paths.replaysHint",
+      "settings.paths.mapGenerator",
+      "settings.paths.mapGeneratorHint",
+      "settings.paths.gamePrefs",
+      "settings.paths.gamePrefsHint",
+      "settings.paths.java",
+      "settings.paths.javaHint",
+    ],
+    Component: PathsSettingsSection,
+  },
 } as const satisfies Record<SectionKey, SectionDef>;
 
 const CATEGORY_SECTIONS: Record<SettingsCategory, readonly SectionKey[]> = {
-  all: ["general", "account", "appearance", "notifications", "chat", "discord", "connectivity", "diagnostics", "updates", "game"],
+  all: ["general", "account", "appearance", "notifications", "chat", "discord", "connectivity", "diagnostics", "updates", "game", "paths"],
   general: ["general", "appearance"],
   chat: ["chat"],
   notifications: ["notifications"],
   account: ["account", "discord"],
   connectivity: ["connectivity"],
   game: ["game"],
+  paths: ["paths"],
   maintenance: ["updates", "diagnostics"],
 };
 
@@ -258,6 +282,7 @@ const CATEGORY_TABS = [
   { id: "account", label: "settings.category.account" },
   { id: "connectivity", label: "settings.category.connectivity" },
   { id: "game", label: "settings.category.game" },
+  { id: "paths", label: "settings.category.paths" },
   { id: "maintenance", label: "settings.category.maintenance" },
 ] as const satisfies readonly { id: SettingsCategory; label: MessageKey }[];
 

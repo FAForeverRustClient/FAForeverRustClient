@@ -51,6 +51,7 @@ pub mod map_generator;
 pub mod maps;
 pub mod mods;
 pub mod oauth;
+pub mod paths;
 pub mod player_card;
 pub mod relay;
 pub mod replay;
@@ -86,6 +87,7 @@ pub use map_generator::{FakeMapGenerator, MapGeneratorConfig, NeroxisMapGenerato
 pub use maps::{FakeMaps, MapsClient, MapsConfig};
 pub use mods::{FakeMods, ModsClient, ModsConfig};
 pub use oauth::{OAuthAuth, OAuthConfig};
+pub use paths::{ConfiguredPaths, FakePaths};
 pub use player_card::{FakePlayerCard, PlayerCardClient, PlayerCardConfig};
 pub use relay::{GpgRelayServer, RelayChannels};
 pub use replay::{FakeReplay, ReplayClient, ReplayConfig};
@@ -367,6 +369,7 @@ pub fn fake_ports() -> Ports {
         maps: Arc::new(FakeMaps),
         map_generator: Arc::new(FakeMapGenerator),
         mods: Arc::new(FakeMods),
+        paths: Arc::new(FakePaths),
         leaderboard: Arc::new(FakeLeaderboard),
         player_card: Arc::new(FakePlayerCard),
         reporting: Arc::new(FakeReporting),
@@ -511,6 +514,7 @@ pub fn real_ports() -> Ports {
         maps,
         map_generator,
         mods,
+        paths: Arc::new(ConfiguredPaths),
         leaderboard,
         player_card,
         reporting,

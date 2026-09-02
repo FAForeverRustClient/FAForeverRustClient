@@ -575,6 +575,15 @@
   user-select: none;
 }
 
+/* Sits on its own line above the buttons, outside the two-column form grid
+   the rows above use, so it reads as part of the action rather than as one
+   more generator flag. */
+.generate-map-keep {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
 .generate-map-check input[type="checkbox"] {
   margin: 0;
   cursor: pointer;

@@ -54,7 +54,7 @@ pub use galactic_war::{
     GalacticWarSeason, GalacticWarState, GalacticWarStatistics, GalacticWarStatus,
     StatisticsStatus,
 };
-pub use install::{InstallEvent, InstallState};
+pub use install::{InstallEvent, InstallState, ResolvedPaths};
 pub use leaderboard::{
     LeaderboardCommand, LeaderboardEntry, LeaderboardEvent, LeaderboardMode, LeaderboardState,
     LeaderboardStatus, LeaderboardTier, League, LeagueSeason, RatingLeaderboard, RatingPage,
@@ -112,8 +112,8 @@ pub use settings::{
     ConnectivityPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView,
     DiscordPreferences, GamePreferences, GeneralPreferences, HostGamePreferences, IceAdapter,
-    LiveReplayFilters, NotificationPreferences, PlayerNote, SettingsCommand, SettingsEvent,
-    SettingsState, SocialPreferences, Theme, UiDensity, UpdatePreferences,
+    LiveReplayFilters, NotificationPreferences, PathPreferences, PlayerNote, SettingsCommand,
+    SettingsEvent, SettingsState, SocialPreferences, Theme, UiDensity, UpdatePreferences,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,

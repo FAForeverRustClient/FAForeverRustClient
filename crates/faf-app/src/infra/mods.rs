@@ -473,6 +473,9 @@ fn parse_mod_info(contents: &str) -> Option<ModInfoFields> {
 /// Commander Forged Alliance/mods` (mirrors `infra::maps::maps_dir`'s
 /// identical base, `mods` instead of `maps`). `FAF_MODS_DIR` overrides it.
 pub(crate) fn mods_dir() -> PathBuf {
+    if let Some(dir) = crate::infra::paths::mods_dir() {
+        return dir;
+    }
     if let Ok(dir) = std::env::var("FAF_MODS_DIR") {
         if !dir.is_empty() {
             return PathBuf::from(dir);
@@ -486,6 +489,9 @@ pub(crate) fn mods_dir() -> PathBuf {
 /// client's `util.LOCALFOLDER`/`PREFSFILENAME`). `FAF_GAME_PREFS_PATH`
 /// overrides it (tests, alternate installs).
 pub(crate) fn game_prefs_path() -> PathBuf {
+    if let Some(path) = crate::infra::paths::game_prefs_path() {
+        return path;
+    }
     if let Ok(path) = std::env::var("FAF_GAME_PREFS_PATH") {
         if !path.is_empty() {
             return PathBuf::from(path);

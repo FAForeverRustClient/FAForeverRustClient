@@ -9,6 +9,9 @@ use std::path::{Path, PathBuf};
 /// Resolve an explicit override, a bundled runtime, or a reference client's
 /// runtime before falling back to `PATH`.
 pub(crate) fn preferred_java_path() -> String {
+    if let Some(path) = crate::infra::paths::java_path() {
+        return path.to_string_lossy().into_owned();
+    }
     if let Ok(path) = std::env::var("FAF_JAVA_PATH") {
         if !path.trim().is_empty() {
             return path;

@@ -2891,10 +2891,19 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
-            "install check flips both flags",
+            "install check flips both flags and reports where paths resolve",
             vec![InstallEvent::Checked {
                 game_ready: true,
                 replay_ready: false,
+                resolved: ResolvedPaths {
+                    vault_dir: "D:/faf/vault".into(),
+                    maps_dir: "D:/faf/vault/maps".into(),
+                    mods_dir: "D:/faf/vault/mods".into(),
+                    replays_dir: "C:/ProgramData/FAForever/replays".into(),
+                    game_prefs_path: "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs".into(),
+                    map_generator_dir: "C:/Users/ada/AppData/Roaming/faf/map_generator".into(),
+                    java_path: "java".into(),
+                },
             }
             .into()],
         ),
@@ -4257,6 +4266,35 @@ fn cases() -> Vec<Case> {
                 .into(),
                 SettingsEvent::GamePathChanged {
                     path: "C:/games/FA/bin/ForgedAlliance.exe".into(),
+                }
+                .into(),
+                // Deliberately untrimmed: a path pasted out of a file manager
+                // arrives this way, and resolving it literally finds nothing.
+                SettingsEvent::PathsChanged {
+                    preferences: PathPreferences {
+                        vault_dir: "  D:/faf/vault  ".into(),
+                        maps_dir: "D:/faf/vault/maps".into(),
+                        mods_dir: String::new(),
+                        replays_dir: " D:/faf/replays ".into(),
+                        game_prefs_path: String::new(),
+                        map_generator_dir: String::new(),
+                        java_path: String::new(),
+                    },
+                }
+                .into(),
+                // Additive and case-insensitive: a second run that keeps
+                // nothing must not release what the first one kept, and the
+                // same map arriving twice must not be listed twice.
+                SettingsEvent::KeptGeneratedMaps {
+                    map_names: vec![
+                        "  neroxis_map_generator_1.15.2_keepme  ".into(),
+                        "NEROXIS_MAP_GENERATOR_1.15.2_KEEPME".into(),
+                        "   ".into(),
+                    ],
+                }
+                .into(),
+                SettingsEvent::KeptGeneratedMaps {
+                    map_names: vec!["neroxis_map_generator_1.15.2_alsokeep".into()],
                 }
                 .into(),
                 SettingsEvent::SocialChanged {
