@@ -245,9 +245,10 @@ struct InstalledMod {
     engine_version: Option<i32>,
 }
 
-static GITHUB_SHA_CACHE: std::sync::Mutex<
-    Option<std::collections::HashMap<String, (String, String, std::time::Instant)>>,
-> = std::sync::Mutex::new(None);
+type CachedCommitSha = (String, String, std::time::Instant);
+type CommitShaCache = std::collections::HashMap<String, CachedCommitSha>;
+
+static GITHUB_SHA_CACHE: std::sync::Mutex<Option<CommitShaCache>> = std::sync::Mutex::new(None);
 
 async fn fetch_github_commit_sha(http: &reqwest::Client, branch: &str) -> Option<(String, String)> {
     if let Ok(guard) = GITHUB_SHA_CACHE.lock() {

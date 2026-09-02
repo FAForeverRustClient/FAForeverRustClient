@@ -786,6 +786,16 @@
   pointer-events: none;
 }
 
+.game-tile-tooltip.is-single-team {
+  width: max-content;
+  min-width: 250px;
+  max-width: min(340px, calc(100vw - 32px));
+}
+
+.game-tile-tooltip.is-single-player {
+  max-width: min(290px, calc(100vw - 32px));
+}
+
 /* Left-aligned and unruled: the panel below it now carries its own dividers,
    and a centred title above a centred VS made three stacked centre lines. */
 .game-lineup-title {
@@ -860,8 +870,16 @@
 }
 
 .game-lineup-team.is-sole ul {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px var(--space-3);
+}
+
+.game-lineup-team.is-sole.is-single-player {
+  max-width: 100%;
+}
+
+.game-lineup-team.is-sole.is-single-player ul {
+  grid-template-columns: 1fr;
 }
 
 /* One row shape for every team: flag, name, rating. */

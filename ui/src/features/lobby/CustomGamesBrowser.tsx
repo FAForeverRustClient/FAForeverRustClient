@@ -196,11 +196,23 @@ function GameLineup({
     .flatMap(([, players]) => players);
   const mods = Object.values(game.simMods);
   const mirrored = teams.length === 2;
-
+  const isSingleTeam = teams.length === 1;
+  const totalPlayers = teams.reduce((acc, [, list]) => acc + list.length, 0);
+  const isSinglePlayer = isSingleTeam && totalPlayers === 1;
+  const maxMods = isSingleTeam ? 2 : 4;
   const profileFor = (login: string) => findPlayer(social, login);
+
+  const tooltipClass = [
+    "game-tile-tooltip",
+    isSingleTeam && "is-single-team",
+    isSinglePlayer && "is-single-player",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <aside
-      className="game-tile-tooltip"
+      className={tooltipClass}
       id={id}
       role="tooltip"
       style={position}
@@ -242,9 +254,9 @@ function GameLineup({
         <section className="game-lineup-mods">
           <b>{t("lobby.browser.simMods")}</b>
           <span title={mods.join(", ")}>
-            {mods.length <= 4
+            {mods.length <= maxMods
               ? mods.join(", ")
-              : `${mods.slice(0, 4).join(", ")}, ${t("lobby.browser.moreMods", { count: mods.length - 4 })}`}
+              : `${mods.slice(0, maxMods).join(", ")}, ${t("lobby.browser.moreMods", { count: mods.length - maxMods })}`}
           </span>
         </section>
       )}
@@ -334,8 +346,12 @@ function GameLineupTeam({
   const ratings = profiles.map(displayedRating);
   const total = teamRating(players, profileFor);
 
+  const isSinglePlayer = soleTeam && players.length === 1;
+
   return (
-    <section className={`game-lineup-team is-${side}${soleTeam ? " is-sole" : ""}`}>
+    <section
+      className={`game-lineup-team is-${side}${soleTeam ? " is-sole" : ""}${isSinglePlayer ? " is-single-player" : ""}`}
+    >
       <header>
         <b>{displayTeamName(team, soleTeam)}</b>
         {total === null ? (
