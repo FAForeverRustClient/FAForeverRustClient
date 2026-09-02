@@ -14,7 +14,7 @@
 //! adapter and emit `LaunchFailed`.
 
 use faf_domain::state::{
-    Game, GameLaunch, LobbyEvent, NotificationKind, PlayerProfile, ReplayEvent,
+    Game, GameLaunch, HostGameConfig, LobbyEvent, NotificationKind, PlayerProfile, ReplayEvent,
 };
 use serde_json::Value;
 use tokio::sync::mpsc;
@@ -201,8 +201,6 @@ pub(crate) async fn prepare_custom_join(
     ctx: &ServiceCtx,
     out: &EventSink,
 ) -> Result<(), String> {
-    use faf_domain::protocol::map_generator::is_generated_map;
-
     // Validate this before generating or downloading anything. Apart from
     // producing a much more useful error, this prevents spending minutes on
     // preparation for a game that cannot possibly be launched.
@@ -212,17 +210,7 @@ pub(crate) async fn prepare_custom_join(
         );
     }
 
-    ensure_generated_map(&game.map, ctx, out).await?;
-    prepare_request(
-        GamePreparation {
-            featured_mod: game.mod_name.clone(),
-            map_folder: (!game.map.is_empty() && !is_generated_map(&game.map))
-                .then(|| game.map.clone()),
-        },
-        ctx,
-        out,
-    )
-    .await?;
+    prepare_map_and_mod(&game.map, &game.mod_name, ctx, out).await?;
 
     let mod_uids: Vec<String> = game.sim_mods.keys().cloned().collect();
     if !mod_uids.is_empty() {
@@ -241,6 +229,60 @@ pub(crate) async fn prepare_custom_join(
             .map_err(|error| format!("could not prepare simulation mods: {error}"))?;
     }
     Ok(())
+}
+
+/// Prepare the map a host picked, before the host request reaches the server.
+///
+/// The server's `game_launch` names no map for a host: `mapname` is part of the
+/// matchmaker's `GameLaunchOptions`, which is how the server tells a client
+/// about a map *it* chose. A host already told the server which map to use, so
+/// the reply carries none - and the launch path's map download, which reads
+/// exactly that field, therefore had nothing to fetch. The host went straight
+/// into a lobby whose scenario was not on disk.
+///
+/// Downloading here rather than at launch also matches the Java client, which
+/// resolves the map in `GameRunner.host` before the host request goes out, and
+/// it means a map that cannot be fetched is reported before a lobby exists for
+/// other players to join.
+pub(crate) async fn prepare_host(
+    config: &HostGameConfig,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> Result<(), String> {
+    // Same reasoning as the join path: a missing install makes everything
+    // below pointless, and says so far more clearly than a failed launch.
+    if ctx.ports.process.game_install_dir().is_none() {
+        return Err(
+            "no game install configured: locate ForgedAlliance.exe in Settings → Paths".to_string(),
+        );
+    }
+
+    prepare_map_and_mod(&config.map, &config.mod_name, ctx, out).await
+}
+
+/// Bring the featured mod up to date and put `map` on disk.
+///
+/// A generated map is rebuilt from its name and never exists in the vault, so
+/// it is produced first and then deliberately kept out of the download request:
+/// asking the CDN for one is a guaranteed 404.
+async fn prepare_map_and_mod(
+    map: &str,
+    featured_mod: &str,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> Result<(), String> {
+    use faf_domain::protocol::map_generator::is_generated_map;
+
+    ensure_generated_map(map, ctx, out).await?;
+    prepare_request(
+        GamePreparation {
+            featured_mod: featured_mod.to_string(),
+            map_folder: (!map.is_empty() && !is_generated_map(map)).then(|| map.to_string()),
+        },
+        ctx,
+        out,
+    )
+    .await
 }
 
 /// Make sure a generated map exists locally, generating it if not.
