@@ -66,6 +66,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                     ..LiveReplayFilters::default()
                 },
                 host_game: HostGamePreferences::default(),
+                host_coop: HostGamePreferences::default(),
                 favorite_maps: vec!["adaptive_tabula.v0006".into()],
                 favorite_mods: vec!["eco_graph".into()],
                 map_vault_preset: "newest".into(),

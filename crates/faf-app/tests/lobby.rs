@@ -150,6 +150,48 @@ async fn valid_host_requests_are_normalized_sent_and_remembered() {
 }
 
 #[tokio::test]
+async fn a_co_op_host_is_remembered_without_touching_the_custom_game_form() {
+    // The two dialogs are separate surfaces, and mixing them is why the co-op
+    // one used to remember nothing at all: rather than overwrite the skirmish
+    // form with a mission's lobby name, it saved nowhere - so leaving the tab,
+    // which unmounts the whole play view, threw the setup away.
+    let lobby = FakeLobby::default();
+    let saved = Arc::new(Mutex::new(Vec::new()));
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        settings: Arc::new(RecordingSettings {
+            saved: saved.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+
+    let mut config = host_config();
+    config.mod_name = "coop".into();
+    config.map = "SCCA_Coop_A03.v0023".into();
+    config.title = "Operation Ivy".into();
+    app.dispatch(LobbyCommand::Host { config }.into())
+        .await
+        .unwrap();
+
+    for _ in 0..100 {
+        if !saved.lock().unwrap().is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    assert_eq!(lobby.hosted_configs().len(), 1);
+    let browsing = app.snapshot().settings.browsing;
+    assert_eq!(browsing.host_coop.title, "Operation Ivy");
+    assert_eq!(browsing.host_coop.map, "SCCA_Coop_A03.v0023");
+    assert_eq!(browsing.host_coop.featured_mod, "coop");
+    // Untouched: the skirmish form is somebody else's setup.
+    assert_eq!(browsing.host_game, Default::default());
+}
+
+#[tokio::test]
 async fn invalid_host_requests_never_reach_the_lobby_port() {
     let lobby = FakeLobby::default();
     let ports = Ports {

@@ -1119,6 +1119,18 @@ pub struct BrowsingPreferences {
     pub matchmaker_factions: Vec<String>,
     pub live_replay_filters: LiveReplayFilters,
     pub host_game: HostGamePreferences,
+    /// The co-op host dialog's own copy of the same form.
+    ///
+    /// Separate from `host_game` on purpose, and for the same reason the co-op
+    /// launch surface is separate in both reference clients: a mission's
+    /// lobby name has no business replacing the one somebody set up for
+    /// skirmishes. That separation is also why the co-op dialog remembered
+    /// nothing at all - and why switching to the chat tab, which unmounts the
+    /// whole play view, threw away the title, the password and the mission.
+    ///
+    /// `map` holds the chosen mission's map folder, which is what `map` means
+    /// for the custom dialog too: the thing that will be hosted.
+    pub host_coop: HostGamePreferences,
     /// Stable map folder names starred by the user. Python persists the same
     /// key and uses it in the host picker and generated-map cleanup.
     pub favorite_maps: Vec<String>,
@@ -1169,6 +1181,7 @@ impl Default for BrowsingPreferences {
                 .collect(),
             live_replay_filters: LiveReplayFilters::default(),
             host_game: HostGamePreferences::default(),
+            host_coop: HostGamePreferences::default(),
             favorite_maps: Vec::new(),
             favorite_mods: Vec::new(),
             map_vault_preset: "recommended".into(),
@@ -1199,6 +1212,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_factions: Vec<String>,
             live_replay_filters: LiveReplayFilters,
             host_game: HostGamePreferences,
+            host_coop: HostGamePreferences,
             favorite_maps: Vec<String>,
             favorite_mods: Vec<String>,
             map_vault_preset: String,
@@ -1220,6 +1234,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     matchmaker_factions: defaults.matchmaker_factions,
                     live_replay_filters: defaults.live_replay_filters,
                     host_game: defaults.host_game,
+                    host_coop: defaults.host_coop,
                     favorite_maps: defaults.favorite_maps,
                     favorite_mods: defaults.favorite_mods,
                     map_vault_preset: defaults.map_vault_preset,
@@ -1241,6 +1256,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_factions: wire.matchmaker_factions,
             live_replay_filters: wire.live_replay_filters,
             host_game: wire.host_game,
+            host_coop: wire.host_coop,
             favorite_maps: wire.favorite_maps,
             favorite_mods: wire.favorite_mods,
             map_vault_preset: wire.map_vault_preset,
@@ -1293,6 +1309,7 @@ impl BrowsingPreferences {
         self.live_replay_filters.max_players =
             normalize_player_count(self.live_replay_filters.max_players);
         self.host_game = self.host_game.normalized();
+        self.host_coop = self.host_coop.normalized();
         self.favorite_maps = normalize_labels(self.favorite_maps, 512, 256)
             .into_iter()
             .map(|folder| folder.to_ascii_lowercase())
@@ -1998,6 +2015,17 @@ mod tests {
                     rating_min: 1_500,
                     rating_max: 800,
                 },
+                host_coop: HostGamePreferences {
+                    title: "  Operation Ivy  ".into(),
+                    featured_mod: "coop".into(),
+                    visibility: "public".into(),
+                    map: "  SCCA_Coop_A03.v0023  ".into(),
+                    password_enabled: false,
+                    password: String::new(),
+                    enforce_rating_range: false,
+                    rating_min: 800,
+                    rating_max: 1_500,
+                },
                 favorite_maps: vec![
                     "  Adaptive_Tabula.v0006  ".into(),
                     "adaptive_tabula.v0006".into(),
@@ -2048,6 +2076,8 @@ mod tests {
         assert!(settings.browsing.live_replay_filters.hide_modded);
         assert!(settings.browsing.live_replay_filters.friends_only);
         assert_eq!(settings.browsing.host_game.title, "Friday night");
+        assert_eq!(settings.browsing.host_coop.title, "Operation Ivy");
+        assert_eq!(settings.browsing.host_coop.map, "SCCA_Coop_A03.v0023");
         assert_eq!(settings.browsing.host_game.featured_mod, "faf");
         assert_eq!(settings.browsing.host_game.visibility, "friends");
         assert_eq!(settings.browsing.host_game.map, "scmp_009");

@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "../../../i18n/useTranslation";
+import type { HostGamePreferences } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
@@ -19,6 +20,9 @@ export interface HostAdmissionConfig {
   ratingMin: number | null;
   ratingMax: number | null;
 }
+
+/** Which remembered form a dialog seeds from and writes back to. */
+export type HostFormSlot = "hostGame" | "hostCoop";
 
 export interface HostLobbySettings {
   title: string;
@@ -40,12 +44,25 @@ export interface HostLobbySettings {
   passwordError: string;
   ratingError: string;
   hostConfig: () => HostAdmissionConfig;
+  /**
+   * The form as a remembered block, for writing back on the way out.
+   *
+   * `featuredMod` and `map` are the caller's to fill in: this hook owns the
+   * admission fields and knows nothing about what is being hosted.
+   */
+  remembered: (featuredMod: string, map: string) => HostGamePreferences;
 }
 
-export function useHostLobbySettings(initialTitle?: string): HostLobbySettings {
+export function useHostLobbySettings(
+  initialTitle?: string,
+  slot: HostFormSlot = "hostGame",
+): HostLobbySettings {
   const { t } = useTranslation();
   const player = useAppStore((state) => state.state.auth.player);
-  const remembered = useAppStore((state) => state.state.settings.browsing.hostGame);
+  // Co-op seeds from its own slot. Sharing `hostGame` would mean a mission's
+  // lobby name replacing the skirmish form, which is what kept the two apart
+  // in the first place.
+  const remembered = useAppStore((state) => state.state.settings.browsing[slot]);
 
   const [title, setTitle] = useState(
     initialTitle ??
@@ -93,6 +110,17 @@ export function useHostLobbySettings(initialTitle?: string): HostLobbySettings {
       enforceRatingRange: ratingEnabled,
       ratingMin: ratingEnabled ? ratingMin : null,
       ratingMax: ratingEnabled ? ratingMax : null,
+    }),
+    remembered: (featuredMod, map) => ({
+      title,
+      featuredMod,
+      visibility,
+      map,
+      passwordEnabled,
+      password,
+      enforceRatingRange: ratingEnabled,
+      ratingMin,
+      ratingMax,
     }),
   };
 }

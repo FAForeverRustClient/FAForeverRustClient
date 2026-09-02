@@ -4380,6 +4380,19 @@ fn cases() -> Vec<Case> {
                             rating_min: 700,
                             rating_max: 1_700,
                         },
+                        // Its own block, normalised the same way: one dialog's
+                        // setup must never land in the other's.
+                        host_coop: HostGamePreferences {
+                            title: " Operation Ivy ".into(),
+                            featured_mod: "coop".into(),
+                            visibility: "public".into(),
+                            map: " SCCA_Coop_A03.v0023 ".into(),
+                            password_enabled: false,
+                            password: String::new(),
+                            enforce_rating_range: false,
+                            rating_min: 800,
+                            rating_max: 1_500,
+                        },
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
                         favorite_mods: vec!["eco_graph".into()],
                         map_vault_preset: "recommended".into(),

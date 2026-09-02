@@ -81,12 +81,20 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
 
   const scenarios = useMemo(() => sortCoopScenarios(coop.scenarios), [coop.scenarios]);
 
-  // Set default scenario when catalog loads
+  // Which campaign to open on.
+  //
+  // The selected mission outlives this component - it is application state,
+  // not a local `useState` - while the campaign around it was not, so coming
+  // back to the tab, which is remounted from scratch every time, dropped the
+  // list back to the first campaign with the chosen mission nowhere in it.
+  // Deriving the campaign from the mission puts the two back together.
   useEffect(() => {
-    if (selectedScenarioId === null && scenarios.length > 0) {
-      setSelectedScenarioId(scenarios[0].id);
-    }
-  }, [scenarios, selectedScenarioId]);
+    if (selectedScenarioId !== null || scenarios.length === 0) return;
+    const mission = coop.missions.find((entry) => entry.id === coop.selectedMissionId);
+    setSelectedScenarioId(
+      mission ? (mission.scenarioId ?? NO_CAMPAIGN) : scenarios[0].id,
+    );
+  }, [coop.missions, coop.selectedMissionId, scenarios, selectedScenarioId]);
 
   const activeScenarioId = selectedScenarioId ?? scenarios[0]?.id ?? null;
 
