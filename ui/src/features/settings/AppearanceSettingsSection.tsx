@@ -11,6 +11,16 @@ const save = (preferences: AppearancePreferences) =>
 /** Within `MIN_UI_SCALE`/`MAX_UI_SCALE` in the domain, which clamps anything else. */
 const UI_SCALES = [100, 125, 150, 175] as const;
 
+const TILE_COLUMN_OPTIONS = [
+  { value: 0, labelKey: "settings.appearance.tileColumnsAuto" as const },
+  { value: 1, label: "1" },
+  { value: 2, label: "2" },
+  { value: 3, label: "3" },
+  { value: 4, label: "4" },
+  { value: 5, label: "5" },
+  { value: 6, label: "6" },
+] as const;
+
 export function AppearanceSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.appearance);
@@ -53,6 +63,27 @@ export function AppearanceSettingsSection() {
               {scale}%
             </button>
           ))}
+        </div>
+      </SettingRow>
+      <SettingRow
+        label={t("settings.appearance.tileColumns")}
+        hint={t("settings.appearance.tileColumnsHint")}
+      >
+        <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.tileColumns")}>
+          {TILE_COLUMN_OPTIONS.map((option) => {
+            const isActive = (preferences.gameTileColumns ?? 0) === option.value;
+            return (
+              <button
+                type="button"
+                key={option.value}
+                className={isActive ? "is-active" : ""}
+                aria-pressed={isActive}
+                onClick={() => void save({ ...preferences, gameTileColumns: option.value })}
+              >
+                {"labelKey" in option ? t(option.labelKey) : option.label}
+              </button>
+            );
+          })}
         </div>
       </SettingRow>
       <SettingRow label={t("settings.appearance.reduceMotion")} hint={t("settings.appearance.reduceMotionHint")}>

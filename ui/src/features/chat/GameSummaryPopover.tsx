@@ -44,11 +44,16 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
+    const handleClose = () => setOpen(false);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("blur", handleClose);
+    document.addEventListener("visibilitychange", handleClose);
     return () => {
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("blur", handleClose);
+      document.removeEventListener("visibilitychange", handleClose);
     };
   }, [open, updatePosition]);
 

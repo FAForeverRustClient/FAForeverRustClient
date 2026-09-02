@@ -123,7 +123,7 @@ pub async fn start(
         player_id: player.id,
         player_login: player.name.clone(),
         args: launch_arguments(launch, player_profile.as_ref()),
-        replay: replay_metadata(launch, &player.name, out),
+        replay: replay_metadata(launch, &player.name, ctx, out),
     };
     if let Err(e) = ctx.ports.process.launch_game(game_params).await {
         ctx.ports.ice.stop();
@@ -265,11 +265,13 @@ async fn prepare_map_and_mod(
 ) -> Result<(), String> {
     use faf_domain::protocol::map_generator::is_generated_map;
 
+    let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
     ensure_generated_map(map, ctx, out).await?;
     prepare_request(
         GamePreparation {
             featured_mod: featured_mod.to_string(),
             map_folder: (!map.is_empty() && !is_generated_map(map)).then(|| map.to_string()),
+            cache_rolling_branches,
         },
         ctx,
         out,
@@ -347,10 +349,13 @@ async fn prepare_install(
     let map_folder = (!launch.mapname.is_empty() && !is_generated_map(&launch.mapname))
         .then(|| launch.mapname.clone());
 
+    let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
+
     prepare_request(
         GamePreparation {
             featured_mod: launch.mod_name.clone(),
             map_folder,
+            cache_rolling_branches,
         },
         ctx,
         out,
@@ -418,7 +423,12 @@ fn init_mode_for(game_type: &str) -> i32 {
 /// the game exists before it is ever listed publicly; the recording still gets a
 /// correct map, title and mod, and falls back to its own start time for the
 /// date. Nothing here is worth failing a launch over.
-fn replay_metadata(launch: &GameLaunch, player: &str, out: &EventSink) -> ReplayMetadata {
+fn replay_metadata(
+    launch: &GameLaunch,
+    player: &str,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> ReplayMetadata {
     let game = out.with_state(|state| {
         state
             .lobby
@@ -427,6 +437,39 @@ fn replay_metadata(launch: &GameLaunch, player: &str, out: &EventSink) -> Replay
             .find(|game| game.id == launch.uid)
             .cloned()
     });
+    let build_info: Option<serde_json::Value> = ctx
+        .ports
+        .process
+        .game_install_dir()
+        .and_then(|p| {
+            let path = p.join(".faf_build.json");
+            std::fs::read_to_string(path).ok()
+        })
+        .and_then(|c| serde_json::from_str(&c).ok());
+    let (git_sha, git_short_sha, signature, version_name) = if let Some(info) = build_info {
+        let sha = info
+            .get("gitSha")
+            .and_then(|s| s.as_str())
+            .map(String::from);
+        let short = info
+            .get("gitShortSha")
+            .and_then(|s| s.as_str())
+            .map(String::from);
+        let sig = info
+            .get("signature")
+            .and_then(|s| s.as_str())
+            .map(String::from);
+        let name = if launch.mod_name == "fafdevelop" {
+            short.as_ref().map(|s| format!("FAF Develop ({s})"))
+        } else if launch.mod_name == "fafbeta" {
+            short.as_ref().map(|s| format!("FAF Beta ({s})"))
+        } else {
+            None
+        };
+        (sha, short, sig, name)
+    } else {
+        (None, None, None, None)
+    };
     ReplayMetadata {
         uid: launch.uid,
         recorder: player.to_string(),
@@ -451,6 +494,10 @@ fn replay_metadata(launch: &GameLaunch, player: &str, out: &EventSink) -> Replay
             .map(|game| game.teams.clone())
             .unwrap_or_default(),
         sim_mods: game.map(|game| game.sim_mods).unwrap_or_default(),
+        git_sha,
+        git_short_sha,
+        signature,
+        version_name,
     }
 }
 

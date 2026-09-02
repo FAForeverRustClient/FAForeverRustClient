@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useState } from "react";
+import { memo, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -86,9 +86,58 @@ function formatAge(hostedAt: string | null, now: number): string {
   return formatRelativeDuration((now - hosted) / 1000);
 }
 
-function useGameLineupPosition() {
+type ActiveLineup = {
+  gameId: number;
+  position: TooltipPosition;
+} | null;
+
+let activeLineup: ActiveLineup = null;
+const lineupListeners = new Set<() => void>();
+
+function subscribeLineup(listener: () => void) {
+  lineupListeners.add(listener);
+  return () => {
+    lineupListeners.delete(listener);
+  };
+}
+
+export function getActiveLineupSnapshot() {
+  return activeLineup;
+}
+
+export function hideGlobalLineup() {
+  if (activeLineup !== null) {
+    activeLineup = null;
+    for (const listener of lineupListeners) {
+      listener();
+    }
+  }
+}
+
+export function setGlobalLineup(gameId: number, position: TooltipPosition) {
+  activeLineup = { gameId, position };
+  for (const listener of lineupListeners) {
+    listener();
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("blur", hideGlobalLineup);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) hideGlobalLineup();
+  });
+  window.addEventListener("scroll", hideGlobalLineup, true);
+  window.addEventListener("resize", hideGlobalLineup);
+  document.addEventListener("mouseleave", hideGlobalLineup);
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideGlobalLineup();
+  });
+}
+
+function useGameLineupPosition(gameId: number) {
   const tooltipId = useId();
-  const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null);
+  const currentActive = useSyncExternalStore(subscribeLineup, getActiveLineupSnapshot, () => null);
+  const tooltipPosition = currentActive?.gameId === gameId ? currentActive.position : null;
 
   const showLineup = (target: HTMLElement) => {
     const bounds = target.getBoundingClientRect();
@@ -101,16 +150,31 @@ function useGameLineupPosition() {
       Math.max(16 + halfWidth, bounds.left + bounds.width / 2),
     );
     const hasRoomBelow = viewportHeight - bounds.bottom >= 260;
-    setTooltipPosition(hasRoomBelow
+    const position = hasRoomBelow
       ? { left, top: bounds.bottom + 6 }
-      : { left, bottom: viewportHeight - bounds.top + 6 });
+      : { left, bottom: viewportHeight - bounds.top + 6 };
+    setGlobalLineup(gameId, position);
   };
+
+  const hideLineup = () => {
+    if (currentActive?.gameId === gameId) {
+      hideGlobalLineup();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (activeLineup?.gameId === gameId) {
+        hideGlobalLineup();
+      }
+    };
+  }, [gameId]);
 
   return {
     tooltipId,
     tooltipPosition,
     showLineup,
-    hideLineup: () => setTooltipPosition(null),
+    hideLineup,
   };
 }
 
@@ -144,7 +208,15 @@ function GameLineup({
       <header className="game-lineup-title">{game.title}</header>
       {mirrored && <TeamBalance teams={teams} profileFor={profileFor} />}
       {teams.length > 0 ? (
-        <div className={mirrored ? "game-lineup-teams is-mirrored" : "game-lineup-teams"}>
+        <div
+          className={
+            mirrored
+              ? "game-lineup-teams is-mirrored"
+              : teams.length === 1
+              ? "game-lineup-teams is-single"
+              : "game-lineup-teams"
+          }
+        >
           {teams.map(([team, players], index) => (
             <GameLineupTeam
               key={team}
@@ -263,7 +335,7 @@ function GameLineupTeam({
   const total = teamRating(players, profileFor);
 
   return (
-    <section className={`game-lineup-team is-${side}`}>
+    <section className={`game-lineup-team is-${side}${soleTeam ? " is-sole" : ""}`}>
       <header>
         <b>{displayTeamName(team, soleTeam)}</b>
         {total === null ? (
@@ -335,12 +407,15 @@ export const GameTile = memo(function GameTile({
   const simModCount = Object.keys(game.simMods).length;
   const isRanked = isCustomGameRanked(game, vault, vaultMods);
   const players = playingCount(game);
-  const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition();
+  const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
 
   return (
     <article
       className={selected ? "game-tile surface-panel active" : "game-tile surface-panel"}
-      onContextMenu={onContextMenu}
+      onContextMenu={(event) => {
+        hideGlobalLineup();
+        onContextMenu?.(event);
+      }}
       onMouseEnter={(event) => showLineup(event.currentTarget)}
       onMouseLeave={hideLineup}
       onFocus={(event) => showLineup(event.currentTarget)}
@@ -432,7 +507,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   const simModCount = Object.keys(game.simMods).length;
   const players = playingCount(game);
   const currentNow = now ?? Date.now();
-  const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition();
+  const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
   return (
     <>
       <button
@@ -440,7 +515,10 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         className={selected ? "game-browser-row active" : "game-browser-row"}
         onClick={onSelect}
         onDoubleClick={onJoin}
-        onContextMenu={onContextMenu}
+        onContextMenu={(event) => {
+          hideGlobalLineup();
+          onContextMenu?.(event);
+        }}
         onMouseEnter={(event) => showLineup(event.currentTarget)}
         onMouseLeave={hideLineup}
         onFocus={(event) => showLineup(event.currentTarget)}
@@ -796,6 +874,7 @@ export function CustomGamesBrowser({
 
   const openContextMenu = (event: React.MouseEvent, game: Game) => {
     event.preventDefault();
+    hideGlobalLineup();
     onSelect(game.id);
     setContextMenu({
       game,
@@ -803,6 +882,11 @@ export function CustomGamesBrowser({
       y: Math.min(event.clientY, window.innerHeight - 112),
     });
   };
+
+  const tileColumns = useAppStore((state) => state.state.settings.appearance.gameTileColumns) ?? 0;
+  const tileGridStyle = viewMode === "tiles" && tileColumns > 0
+    ? { gridTemplateColumns: `repeat(${tileColumns}, minmax(0, 1fr))` }
+    : undefined;
 
   return (
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
@@ -815,7 +899,10 @@ export function CustomGamesBrowser({
           <span>{t("lobby.browser.column.age")}</span>
         </div>
       )}
-      <div className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}>
+      <div
+        className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}
+        style={tileGridStyle}
+      >
         {games.length === 0 ? (
           <EmptyState
             icon="search"

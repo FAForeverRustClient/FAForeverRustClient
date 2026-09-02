@@ -219,7 +219,7 @@ pub(crate) fn build_fafreplay(
     complete: bool,
 ) -> Result<Vec<u8>, String> {
     let now = unix_seconds();
-    let header = serde_json::json!({
+    let mut header = serde_json::json!({
         "uid": metadata.uid,
         "recorder": metadata.recorder,
         "featured_mod": metadata.featured_mod,
@@ -238,6 +238,18 @@ pub(crate) fn build_fafreplay(
         "compression": "zstd",
         "version": 2,
     });
+    if let Some(sha) = &metadata.git_sha {
+        header["git_sha"] = serde_json::Value::String(sha.clone());
+    }
+    if let Some(short) = &metadata.git_short_sha {
+        header["git_short_sha"] = serde_json::Value::String(short.clone());
+    }
+    if let Some(sig) = &metadata.signature {
+        header["build_signature"] = serde_json::Value::String(sig.clone());
+    }
+    if let Some(name) = &metadata.version_name {
+        header["version_name"] = serde_json::Value::String(name.clone());
+    }
 
     let mut file = serde_json::to_vec(&header)
         .map_err(|error| format!("could not build the replay header: {error}"))?;
@@ -326,6 +338,10 @@ mod tests {
                 .into_iter()
                 .collect(),
             sim_mods: Default::default(),
+            git_sha: None,
+            git_short_sha: None,
+            signature: None,
+            version_name: None,
         }
     }
 

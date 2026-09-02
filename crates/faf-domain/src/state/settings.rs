@@ -157,6 +157,10 @@ pub struct AppearancePreferences {
     /// reader below, which is how every other preference block in this module
     /// gains a field without making the generated IPC type optional.
     pub ui_scale: u16,
+    /// Number of columns to render in the custom games tile browser.
+    /// `0` means automatic / responsive (adapting dynamically to window width).
+    /// `1..=6` specifies a fixed column count.
+    pub game_tile_columns: u8,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -174,6 +178,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             density: UiDensity,
             reduce_motion: bool,
             ui_scale: u16,
+            game_tile_columns: u8,
         }
 
         impl Default for Wire {
@@ -183,6 +188,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     density: defaults.density,
                     reduce_motion: defaults.reduce_motion,
                     ui_scale: defaults.ui_scale,
+                    game_tile_columns: defaults.game_tile_columns,
                 }
             }
         }
@@ -192,6 +198,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             density: wire.density,
             reduce_motion: wire.reduce_motion,
             ui_scale: wire.ui_scale,
+            game_tile_columns: wire.game_tile_columns.min(6),
         })
     }
 }
@@ -214,7 +221,16 @@ impl Default for AppearancePreferences {
             density: UiDensity::Comfortable,
             reduce_motion: false,
             ui_scale: default_ui_scale(),
+            game_tile_columns: 0,
         }
+    }
+}
+
+impl AppearancePreferences {
+    pub fn normalized(mut self) -> Self {
+        self.ui_scale = self.ui_scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE);
+        self.game_tile_columns = self.game_tile_columns.min(6);
+        self
     }
 }
 
@@ -1522,10 +1538,7 @@ impl SettingsState {
         self.game = self.game.normalized();
         self.paths = self.paths.normalized();
         self.browsing = self.browsing.normalized();
-        // Clamped at the state boundary, so a hand-edited settings file cannot
-        // zoom the interface to something unusable that is then hard to undo:
-        // the control for fixing it would be off screen.
-        self.appearance.ui_scale = self.appearance.ui_scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE);
+        self.appearance = self.appearance.normalized();
         self
     }
 }
@@ -1687,7 +1700,9 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
             }
         }
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
-        SettingsEvent::AppearanceChanged { preferences } => state.appearance = preferences.clone(),
+        SettingsEvent::AppearanceChanged { preferences } => {
+            state.appearance = preferences.clone().normalized()
+        }
         SettingsEvent::SocialChanged { preferences } => {
             state.social = preferences.clone().normalized()
         }
@@ -2350,5 +2365,28 @@ mod tests {
         assert_eq!(settings.social.player_notes.len(), 1);
         assert_eq!(settings.social.player_notes[0].login, "Aurora");
         assert_eq!(settings.social.player_notes[0].note, "useful");
+    }
+
+    #[test]
+    fn game_tile_columns_defaults_to_auto_and_is_bounded() {
+        let default_pref = AppearancePreferences::default();
+        assert_eq!(default_pref.game_tile_columns, 0);
+
+        let parsed: AppearancePreferences =
+            serde_json::from_str(r#"{"density":"compact","reduceMotion":true,"uiScale":125}"#)
+                .unwrap();
+        assert_eq!(parsed.game_tile_columns, 0);
+
+        let parsed_with_cols: AppearancePreferences = serde_json::from_str(
+            r#"{"density":"compact","reduceMotion":true,"uiScale":125,"gameTileColumns":4}"#,
+        )
+        .unwrap();
+        assert_eq!(parsed_with_cols.game_tile_columns, 4);
+
+        let parsed_exceeding: AppearancePreferences = serde_json::from_str(
+            r#"{"density":"compact","reduceMotion":true,"uiScale":125,"gameTileColumns":99}"#,
+        )
+        .unwrap();
+        assert_eq!(parsed_exceeding.game_tile_columns, 6);
     }
 }

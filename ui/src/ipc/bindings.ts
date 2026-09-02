@@ -63,6 +63,12 @@ export type AppearancePreferences = {
 	 *  gains a field without making the generated IPC type optional.
 	 */
 	uiScale: number,
+	/**
+	 *  Number of columns to render in the custom games tile browser.
+	 *  `0` means automatic / responsive (adapting dynamically to window width).
+	 *  `1..=6` specifies a fixed column count.
+	 */
+	gameTileColumns: number,
 };
 
 /**

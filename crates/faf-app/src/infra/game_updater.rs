@@ -129,6 +129,7 @@ pub async fn ensure_game_version(
         featured_mod,
         Some(version),
         exe_name,
+        false,
         &|_| {},
     )
     .await?;
@@ -179,13 +180,23 @@ pub async fn ensure_latest_game_version(
     target_dir: &Path,
     featured_mod: &str,
     exe_name: &str,
+    cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<i32, String> {
     let mut base = None;
     if !BASE_FEATURED_MODS.contains(&featured_mod) {
         base = Some(
             install_featured_mod(
-                http, token, api_base, cache_dir, target_dir, "faf", None, exe_name, progress,
+                http,
+                token,
+                api_base,
+                cache_dir,
+                target_dir,
+                "faf",
+                None,
+                exe_name,
+                cache_rolling_branches,
+                progress,
             )
             .await?,
         );
@@ -200,6 +211,7 @@ pub async fn ensure_latest_game_version(
         featured_mod,
         None,
         exe_name,
+        cache_rolling_branches,
         progress,
     )
     .await?;
@@ -233,7 +245,21 @@ struct InstalledMod {
     engine_version: Option<i32>,
 }
 
+static GITHUB_SHA_CACHE: std::sync::Mutex<
+    Option<std::collections::HashMap<String, (String, String, std::time::Instant)>>,
+> = std::sync::Mutex::new(None);
+
 async fn fetch_github_commit_sha(http: &reqwest::Client, branch: &str) -> Option<(String, String)> {
+    if let Ok(guard) = GITHUB_SHA_CACHE.lock() {
+        if let Some(map) = guard.as_ref() {
+            if let Some((sha, url, exp)) = map.get(branch) {
+                if std::time::Instant::now() < *exp {
+                    return Some((sha.clone(), url.clone()));
+                }
+            }
+        }
+    }
+
     let url = format!("https://api.github.com/repos/FAForever/fa/commits/{branch}");
     let resp = http
         .get(&url)
@@ -255,6 +281,18 @@ async fn fetch_github_commit_sha(http: &reqwest::Client, branch: &str) -> Option
         .map(|s| s.to_string())
         .unwrap_or_else(|| format!("https://github.com/FAForever/fa/commit/{sha}"));
 
+    if let Ok(mut guard) = GITHUB_SHA_CACHE.lock() {
+        let map = guard.get_or_insert_with(std::collections::HashMap::new);
+        map.insert(
+            branch.to_string(),
+            (
+                sha.clone(),
+                html_url.clone(),
+                std::time::Instant::now() + std::time::Duration::from_secs(600),
+            ),
+        );
+    }
+
     Some((sha, html_url))
 }
 
@@ -275,6 +313,7 @@ async fn install_featured_mod(
     featured_mod: &str,
     version: Option<i32>,
     exe_name: &str,
+    cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<InstalledMod, String> {
     let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
@@ -440,7 +479,10 @@ async fn install_featured_mod(
             .unwrap_or(0),
     };
 
-    save_cache_manifest_entry(cache_dir, manifest_entry);
+    let is_rolling = featured_mod == "fafdevelop" || featured_mod == "fafbeta";
+    if !is_rolling || cache_rolling_branches {
+        save_cache_manifest_entry(cache_dir, manifest_entry);
+    }
 
     Ok(InstalledMod {
         version: resolved,
@@ -1090,6 +1132,17 @@ pub fn read_exe_version(exe_path: &Path) -> Option<i32> {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ReplayVersionInfo {
+    pub mod_name: String,
+    pub game_version: Option<i32>,
+    pub git_sha: Option<String>,
+    pub git_short_sha: Option<String>,
+    pub build_signature: Option<String>,
+    pub version_name: Option<String>,
+    pub launched_at: Option<u64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct CacheManifest {
     #[serde(default)]
@@ -1098,7 +1151,7 @@ struct CacheManifest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CacheManifestEntry {
+pub struct CacheManifestEntry {
     pub featured_mod: String,
     pub version: Option<i32>,
     pub resolved_version: i32,
@@ -1114,11 +1167,212 @@ struct CacheManifestEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CachedFileInfo {
+pub struct CachedFileInfo {
     pub group: String,
     pub md5: String,
     #[serde(default)]
     pub name: Option<String>,
+}
+
+fn stage_entry_files(
+    cache_dir: &Path,
+    target_dir: &Path,
+    entry: &CacheManifestEntry,
+) -> Result<(), String> {
+    for f in &entry.files {
+        let file_name = match &f.name {
+            Some(n) => n.as_str(),
+            None => f.md5.as_str(),
+        };
+        let src = cache_dir.join(&f.group).join(&f.md5);
+        if !src.is_file() {
+            return Err(format!(
+                "cached file {}/{} is missing from cache",
+                f.group, file_name
+            ));
+        }
+        let dst = target_dir.join(&f.group).join(file_name);
+        if let Some(parent) = dst.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if file_name.eq_ignore_ascii_case("ForgedAlliance.exe") {
+            std::fs::copy(&src, &dst).map_err(|e| format!("could not copy {file_name}: {e}"))?;
+        } else {
+            link_or_copy(&src, &dst)
+                .map_err(|e| format!("could not copy cached file {file_name}: {e}"))?;
+        }
+    }
+    Ok(())
+}
+
+fn stage_cached_version(
+    cache_dir: &Path,
+    target_dir: &Path,
+    entry: &CacheManifestEntry,
+    manifest: &CacheManifest,
+) -> Result<i32, String> {
+    if !BASE_FEATURED_MODS.contains(&entry.featured_mod.as_str()) {
+        if let Some(base_entry) = manifest.entries.iter().rfind(|e| e.featured_mod == "faf") {
+            let _ = stage_entry_files(cache_dir, target_dir, base_entry);
+        }
+    }
+    stage_entry_files(cache_dir, target_dir, entry)?;
+
+    let exe_path = target_dir.join("bin").join("ForgedAlliance.exe");
+    if exe_path.is_file() {
+        let _ = patch_exe_version(&exe_path, entry.resolved_version);
+    }
+
+    write_fa_path_lua(
+        target_dir,
+        &retail_install_dir(target_dir),
+        &entry.featured_mod,
+        entry.resolved_version,
+    )?;
+
+    let build_info = serde_json::json!({
+        "featuredMod": entry.featured_mod,
+        "version": entry.version,
+        "resolvedVersion": entry.resolved_version,
+        "signature": entry.signature,
+        "gitShortSha": entry.git_short_sha,
+        "commitUrl": entry.url,
+    });
+    let _ = std::fs::write(
+        target_dir.join(".faf_build.json"),
+        serde_json::to_string(&build_info).unwrap_or_default(),
+    );
+
+    Ok(entry.resolved_version)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn resolve_and_stage_replay_version(
+    http: &reqwest::Client,
+    token: &str,
+    api_base: &str,
+    cache_dir: &Path,
+    target_dir: &Path,
+    replay_info: &ReplayVersionInfo,
+    exe_name: &str,
+) -> Result<Option<String>, String> {
+    let mod_name = &replay_info.mod_name;
+    let is_rolling = mod_name == "fafdevelop" || mod_name == "fafbeta";
+    let manifest = load_cache_manifest(cache_dir);
+
+    if is_rolling {
+        let candidates: Vec<&CacheManifestEntry> = manifest
+            .entries
+            .iter()
+            .filter(|e| e.featured_mod == *mod_name)
+            .collect();
+
+        let chosen = if !candidates.is_empty() {
+            // 1. Exact match by git_sha or git_short_sha or signature
+            candidates
+                .iter()
+                .find(|e| {
+                    (replay_info.git_sha.is_some()
+                        && e.git_short_sha.is_some()
+                        && replay_info
+                            .git_sha
+                            .as_ref()
+                            .unwrap()
+                            .starts_with(e.git_short_sha.as_ref().unwrap()))
+                        || (replay_info.git_short_sha.is_some()
+                            && e.git_short_sha == replay_info.git_short_sha)
+                        || (replay_info.build_signature.is_some()
+                            && e.signature == replay_info.build_signature)
+                })
+                .copied()
+                // 2. Closest snapshot by timestamp proximity to launched_at
+                .or_else(|| {
+                    if let Some(launched) = replay_info.launched_at {
+                        candidates
+                            .iter()
+                            .min_by_key(|e| e.updated_at.abs_diff(launched))
+                            .copied()
+                    } else {
+                        None
+                    }
+                })
+                // 3. Fallback to newest cached snapshot
+                .or_else(|| candidates.last().copied())
+        } else {
+            None
+        };
+
+        if let Some(entry) = chosen {
+            match stage_cached_version(cache_dir, target_dir, entry, &manifest) {
+                Ok(_) => {
+                    tracing::info!(mod_name, name = %entry.name, "restored replay environment from local cache snapshot");
+                    return Ok(None);
+                }
+                Err(err) => {
+                    tracing::warn!(%err, "cached snapshot incomplete, falling back to server latest");
+                }
+            }
+        }
+
+        // Rolling mod has no working cache snapshot: update from server latest
+        ensure_latest_game_version(
+            http,
+            token,
+            api_base,
+            cache_dir,
+            target_dir,
+            mod_name,
+            exe_name,
+            true,
+            &|_| {},
+        )
+        .await?;
+
+        let warning = format!(
+            "This replay was played on a rolling development build ({mod_name}) that was not in your local cache. Playback is running with the current development build and may desync if scripts changed."
+        );
+        return Ok(Some(warning));
+    }
+
+    // Fixed / numbered release (e.g. faf build 3839)
+    if let Some(version) = replay_info.game_version {
+        if let Some(entry) = manifest
+            .entries
+            .iter()
+            .find(|e| e.featured_mod == *mod_name && e.resolved_version == version)
+        {
+            if stage_cached_version(cache_dir, target_dir, entry, &manifest).is_ok() {
+                tracing::info!(
+                    mod_name,
+                    version,
+                    "staged replay environment instantly from local cache"
+                );
+                return Ok(None);
+            }
+        }
+
+        // Cache miss: download from server API
+        ensure_game_version(
+            http, token, api_base, cache_dir, target_dir, mod_name, version, exe_name,
+        )
+        .await?;
+        return Ok(None);
+    }
+
+    // Fallback if version was unknown
+    ensure_latest_game_version(
+        http,
+        token,
+        api_base,
+        cache_dir,
+        target_dir,
+        mod_name,
+        exe_name,
+        false,
+        &|_| {},
+    )
+    .await?;
+    Ok(None)
 }
 
 fn link_or_copy(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -2140,5 +2394,165 @@ mod tests {
         );
 
         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+    }
+
+    #[tokio::test]
+    async fn cache_manifest_stage_and_restore_replay_version_works() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("forge-stage-test-{}", std::process::id()));
+        let target_dir =
+            std::env::temp_dir().join(format!("forge-target-test-{}", std::process::id()));
+        tokio::fs::create_dir_all(temp_dir.join("bin"))
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(temp_dir.join("gamedata"))
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(&target_dir).await.unwrap();
+
+        // 10000-byte fake exe (large enough for version offset)
+        let exe_bytes = vec![0u8; 10000];
+        tokio::fs::write(temp_dir.join("bin").join("md5_exe_3837"), &exe_bytes)
+            .await
+            .unwrap();
+        tokio::fs::write(
+            temp_dir.join("gamedata").join("md5_lua_3837"),
+            b"lua_content_3837",
+        )
+        .await
+        .unwrap();
+        tokio::fs::write(
+            temp_dir.join("gamedata").join("md5_dev_lua"),
+            b"lua_content_develop",
+        )
+        .await
+        .unwrap();
+
+        let entry_3837 = CacheManifestEntry {
+            featured_mod: "faf".to_string(),
+            version: Some(3837),
+            resolved_version: 3837,
+            name: "FAF Build 3837".to_string(),
+            url: Some("https://github.com/FAForever/fa/releases/tag/3837".to_string()),
+            git_short_sha: None,
+            signature: None,
+            files: vec![
+                CachedFileInfo {
+                    group: "bin".to_string(),
+                    md5: "md5_exe_3837".to_string(),
+                    name: Some("ForgedAlliance.exe".to_string()),
+                },
+                CachedFileInfo {
+                    group: "gamedata".to_string(),
+                    md5: "md5_lua_3837".to_string(),
+                    name: Some("lua.nx2".to_string()),
+                },
+            ],
+            updated_at: 100,
+        };
+        save_cache_manifest_entry(&temp_dir, entry_3837);
+
+        let entry_dev = CacheManifestEntry {
+            featured_mod: "fafdevelop".to_string(),
+            version: None,
+            resolved_version: 0,
+            name: "FAF Develop (abcdef1)".to_string(),
+            url: Some("https://github.com/FAForever/fa/commits/abcdef1".to_string()),
+            git_short_sha: Some("abcdef1".to_string()),
+            signature: Some("abcdef1".to_string()),
+            files: vec![CachedFileInfo {
+                group: "gamedata".to_string(),
+                md5: "md5_dev_lua".to_string(),
+                name: Some("lua.nx2".to_string()),
+            }],
+            updated_at: 500,
+        };
+        save_cache_manifest_entry(&temp_dir, entry_dev);
+
+        // Test 1: Staging numbered version from cache
+        let manifest = load_cache_manifest(&temp_dir);
+        let e_3837 = manifest
+            .entries
+            .iter()
+            .find(|e| e.resolved_version == 3837)
+            .unwrap();
+        stage_cached_version(&temp_dir, &target_dir, e_3837, &manifest).unwrap();
+
+        assert!(target_dir.join("bin").join("ForgedAlliance.exe").is_file());
+        assert!(target_dir.join("gamedata").join("lua.nx2").is_file());
+        assert_eq!(
+            tokio::fs::read(target_dir.join("gamedata").join("lua.nx2"))
+                .await
+                .unwrap(),
+            b"lua_content_3837"
+        );
+        assert!(target_dir.join("fa_path.lua").is_file());
+        assert!(target_dir.join(".faf_build.json").is_file());
+
+        // Test 2: Resolve fafdevelop replay by exact commit SHA
+        let http = reqwest::Client::new();
+        let replay_info_sha = ReplayVersionInfo {
+            mod_name: "fafdevelop".to_string(),
+            game_version: None,
+            git_sha: Some("abcdef1987654321".to_string()),
+            git_short_sha: Some("abcdef1".to_string()),
+            build_signature: Some("abcdef1".to_string()),
+            version_name: Some("FAF Develop (abcdef1)".to_string()),
+            launched_at: Some(510),
+        };
+
+        let warn = resolve_and_stage_replay_version(
+            &http,
+            "token",
+            "http://127.0.0.1",
+            &temp_dir,
+            &target_dir,
+            &replay_info_sha,
+            "ForgedAlliance.exe",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(warn, None);
+        assert_eq!(
+            tokio::fs::read(target_dir.join("gamedata").join("lua.nx2"))
+                .await
+                .unwrap(),
+            b"lua_content_develop"
+        );
+
+        // Test 3: Resolve fafdevelop replay by timestamp proximity (no git SHA in replay)
+        let replay_info_time = ReplayVersionInfo {
+            mod_name: "fafdevelop".to_string(),
+            game_version: None,
+            git_sha: None,
+            git_short_sha: None,
+            build_signature: None,
+            version_name: None,
+            launched_at: Some(505), // Close to updated_at = 500
+        };
+
+        let warn2 = resolve_and_stage_replay_version(
+            &http,
+            "token",
+            "http://127.0.0.1",
+            &temp_dir,
+            &target_dir,
+            &replay_info_time,
+            "ForgedAlliance.exe",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(warn2, None);
+        assert_eq!(
+            tokio::fs::read(target_dir.join("gamedata").join("lua.nx2"))
+                .await
+                .unwrap(),
+            b"lua_content_develop"
+        );
+
+        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+        let _ = tokio::fs::remove_dir_all(&target_dir).await;
     }
 }

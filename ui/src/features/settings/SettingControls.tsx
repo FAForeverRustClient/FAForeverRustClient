@@ -26,17 +26,22 @@ export function SettingRow({
   label,
   hint,
   className,
+  badge,
   children,
 }: {
-  label: string;
-  hint: string;
+  label: ReactNode;
+  hint: ReactNode;
   className?: string;
+  badge?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className={`setting-row${className ? ` ${className}` : ""}`}>
       <div className="setting-copy">
-        <span className="setting-label">{label}</span>
+        <span className="setting-label">
+          {label}
+          {badge}
+        </span>
         <span className="muted">{hint}</span>
       </div>
       <div className="setting-control">{children}</div>

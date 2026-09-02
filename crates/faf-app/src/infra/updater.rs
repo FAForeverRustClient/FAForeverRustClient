@@ -90,6 +90,7 @@ impl GameUpdaterClient {
             &target_dir,
             &request.featured_mod,
             &self.config.exe_name,
+            request.cache_rolling_branches,
             progress,
         )
         .await
@@ -186,6 +187,7 @@ mod tests {
             .prepare(GamePreparation {
                 featured_mod: "faf".into(),
                 map_folder: Some("adaptive_gadostb.v0002".into()),
+                cache_rolling_branches: false,
             })
             .await;
         assert_eq!(rx.recv().await, Some(UpdateProgress::Finished(Ok(()))));
@@ -210,6 +212,7 @@ mod tests {
             .prepare(GamePreparation {
                 featured_mod: "faf".into(),
                 map_folder: None,
+                cache_rolling_branches: false,
             })
             .await;
 

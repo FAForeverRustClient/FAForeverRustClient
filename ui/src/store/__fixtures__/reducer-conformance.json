@@ -562,7 +562,8 @@
       "appearance": {
         "density": "comfortable",
         "reduceMotion": false,
-        "uiScale": 100
+        "uiScale": 100,
+        "gameTileColumns": 0
       },
       "social": {
         "playerNotes": []
@@ -20332,6 +20333,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -20537,6 +20539,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -20750,6 +20753,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -20959,6 +20963,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21168,6 +21173,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21399,6 +21405,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21621,6 +21628,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },
@@ -21920,6 +21928,7 @@
           "expected": {
             "appearance": {
               "density": "comfortable",
+              "gameTileColumns": 0,
               "reduceMotion": false,
               "uiScale": 100
             },

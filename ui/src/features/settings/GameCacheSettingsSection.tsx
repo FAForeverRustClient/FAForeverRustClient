@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
@@ -22,6 +23,7 @@ export function GameCacheSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.game);
   const cacheInfo = useAppStore((state) => state.state.settings.cacheInfo);
+  const [showDoc, setShowDoc] = useState(false);
 
   const setCacheLifetime = (days: number) => {
     void save({
@@ -99,6 +101,7 @@ export function GameCacheSettingsSection() {
 
       <SettingRow
         label={t("settings.game.cacheRollingBranches")}
+        badge={<span className="setting-experimental-badge">{t("settings.game.experimentalBadge")}</span>}
         hint={t("settings.game.cacheRollingBranchesHint")}
       >
         <SettingsSwitch
@@ -107,6 +110,49 @@ export function GameCacheSettingsSection() {
           label={t("settings.game.cacheRollingBranches")}
         />
       </SettingRow>
+
+      <div className="settings-cache-doc-box">
+        <button
+          type="button"
+          className="settings-cache-doc-toggle"
+          onClick={() => setShowDoc((prev) => !prev)}
+          aria-expanded={showDoc}
+        >
+          <svg
+            className={`settings-cache-doc-chevron${showDoc ? " expanded" : ""}`}
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+          <span>{t("settings.game.cacheRollingBranchesDocTitle")}</span>
+        </button>
+        {showDoc && (
+          <div className="settings-cache-doc-content">
+            <p>{t("settings.game.cacheRollingBranchesDocOverview")}</p>
+            <ul className="settings-cache-doc-list">
+              <li>
+                <strong>{t("settings.game.cacheRollingBranchesDocHowTitle")}:</strong>{" "}
+                {t("settings.game.cacheRollingBranchesDocHowDesc")}
+              </li>
+              <li>
+                <strong>{t("settings.game.cacheRollingBranchesDocReplayTitle")}:</strong>{" "}
+                {t("settings.game.cacheRollingBranchesDocReplayDesc")}
+              </li>
+              <li>
+                <strong>{t("settings.game.cacheRollingBranchesDocStorageTitle")}:</strong>{" "}
+                {t("settings.game.cacheRollingBranchesDocStorageDesc")}
+              </li>
+            </ul>
+          </div>
+        )}
+      </div>
 
       <div className="setting-block">
         <div className="setting-copy">
