@@ -1339,7 +1339,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.search.preset.bestReviewed": "Beste Bewertungen",
   "replays.search.preset.lastYear": "Letztes Jahr",
   "replays.search.recentOnly": "Nur aktuelle",
-  "replays.search.recentOnlyHint": "Eine Datumsgrenze für die aktuelle Suche: an nur das letzte Jahr, aus die gesamte FAF-Historie, was langsamer ist. Kein Preset — die übrigen Filter bleiben stehen.",
+  "replays.search.recentOnlyHint": "Eine Datumsgrenze für die aktuelle Suche: an nur das letzte Jahr, aus die gesamte FAF-Historie, was langsamer ist. Kein Preset: die übrigen Filter bleiben stehen.",
   "replays.search.preset.myReplays": "Meine Replays",
   "replays.search.sort.datePlayed": "Spieldatum",
   "replays.search.sort.dateFinished": "Enddatum",

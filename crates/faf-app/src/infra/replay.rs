@@ -584,7 +584,7 @@ impl ReplayClient {
     /// The scans run newest-first by id, which is already the answer for the
     /// default sort and its reverse. Any other ordering lives in columns the
     /// scan never fetched (duration, title, review score), so the server is
-    /// asked to sort the ids it has just been handed — one extra request, and
+    /// asked to sort the ids it has just been handed: one extra request, and
     /// only when the intersection is small enough to order in a single one.
     async fn sort_shared_games(
         &self,

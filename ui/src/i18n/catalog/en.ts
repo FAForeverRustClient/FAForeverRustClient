@@ -1448,7 +1448,7 @@ export const en = {
   "replays.search.preset.bestReviewed": "Best reviewed",
   "replays.search.preset.lastYear": "Last year",
   "replays.search.recentOnly": "Recent only",
-  "replays.search.recentOnlyHint": "A date bound on the current search: on, only the last year; off, all of FAF history, which is slower. Not a preset — it keeps your other filters.",
+  "replays.search.recentOnlyHint": "A date bound on the current search: on, only the last year; off, all of FAF history, which is slower. Not a preset: it keeps your other filters.",
   "replays.search.preset.myReplays": "My replays",
   "replays.search.sort.datePlayed": "Date played",
   "replays.search.sort.dateFinished": "Date finished",

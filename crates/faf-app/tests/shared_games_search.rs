@@ -7,7 +7,7 @@
 //!
 //! The pieces are unit-tested where they are pure (`replay_query`), and the two
 //! API constructs the workaround relies on are already carried by shipped code
-//! elsewhere in this client — the `fields[game]` sparse fieldset by
+//! elsewhere in this client: the `fields[game]` sparse fieldset by
 //! `infra::player_card`, `id=in=(…)` by `infra::leaderboard`. What no offline
 //! test can check is the whole loop against the live database: that the scans
 //! page to the end, that the intersection is the games the pair really shared,

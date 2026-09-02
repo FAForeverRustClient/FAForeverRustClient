@@ -50,7 +50,7 @@ export const ALL_TIME_AFTER = "2010-01-01";
  *
  * Three states hide in one string field: a date the user (or a preset) chose,
  * [`ALL_TIME_AFTER`] meaning "explicitly all of history", and empty meaning "no
- * bound in the query" — which the backend may then floor invisibly, or not at
+ * bound in the query", which the backend may then floor invisibly, or not at
  * all when nothing else narrows the search. Only the first is "Recent only".
  */
 export function isRecentBound(after: string): boolean {
