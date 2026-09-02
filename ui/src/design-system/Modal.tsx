@@ -1,6 +1,7 @@
 // Modal primitive: overlay + centered panel, no animation library (matches
-// the plain-CSS approach the rest of this design system uses). Closes on
-// backdrop click or the close button; callers own open/closed state.
+// the plain-CSS approach the rest of this design system uses). Closes on a
+// backdrop click that starts and ends on the backdrop, or the close button;
+// callers own open/closed state.
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import "./modal.css";
@@ -29,11 +30,24 @@ const CONTENT_FOCUSABLE = FOCUSABLE.split(",")
   .map((selector) => `${selector}:not(.modal-close)`)
   .join(",");
 
+/// Whether a backdrop click should dismiss the dialog.
+///
+/// A click event is delivered to the nearest common ancestor of where the
+/// press started and where it ended. Marking the lobby name in the host
+/// dialog and releasing the button outside the panel therefore lands a click
+/// on the backdrop itself, and dismissing on that alone closed the dialog
+/// under the player mid-selection, losing everything they had filled in.
+/// Only a gesture that both began and ended on the backdrop is a dismissal.
+export function isBackdropDismissal(pressStartedOnBackdrop: boolean, releasedOnBackdrop: boolean): boolean {
+  return pressStartedOnBackdrop && releasedOnBackdrop;
+}
+
 export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
   const { t } = useTranslation();
   // Most callers rely on this default for the dialog's accessible name.
   const label = ariaLabel ?? t("designSystem.modal.dialog");
   const panelRef = useRef<HTMLDivElement>(null);
+  const pressStartedOnBackdrop = useRef(false);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 
@@ -87,7 +101,17 @@ export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
   };
 
   return (
-    <div className="modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div
+      className="modal-backdrop"
+      onPointerDown={(event) => {
+        pressStartedOnBackdrop.current = event.target === event.currentTarget;
+      }}
+      onClick={(event) => {
+        const started = pressStartedOnBackdrop.current;
+        pressStartedOnBackdrop.current = false;
+        if (isBackdropDismissal(started, event.target === event.currentTarget)) onClose();
+      }}
+    >
       <div
         ref={panelRef}
         className={className ? `modal-panel ${className}` : "modal-panel"}
