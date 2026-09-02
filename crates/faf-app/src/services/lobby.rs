@@ -104,30 +104,31 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                         return;
                     }
                 }
-                // Co-op owns a separate launch surface in both references; do
-                // not let one mission replace the remembered custom-game form.
-                let remember = config.mod_name != "coop";
-                if remember {
-                    let mut browsing = out.with_state(|state| state.settings.browsing.clone());
-                    browsing.host_game = HostGamePreferences {
-                        title: config.title.clone(),
-                        featured_mod: config.mod_name.clone(),
-                        visibility: config.visibility.clone(),
-                        map: config.map.clone(),
-                        password_enabled: config.password.is_some(),
-                        password: config.password.clone().unwrap_or_default(),
-                        enforce_rating_range: config.enforce_rating_range,
-                        rating_min: config.rating_min.unwrap_or(800),
-                        rating_max: config.rating_max.unwrap_or(1_500),
-                    };
-                    out.emit(SettingsEvent::BrowsingChanged {
-                        preferences: Box::new(browsing),
-                    });
+                // Co-op owns a separate launch surface in both references, so
+                // it remembers into its own slot: one mission must not replace
+                // the custom-game form somebody set up for skirmishes.
+                let mut browsing = out.with_state(|state| state.settings.browsing.clone());
+                let remembered = HostGamePreferences {
+                    title: config.title.clone(),
+                    featured_mod: config.mod_name.clone(),
+                    visibility: config.visibility.clone(),
+                    map: config.map.clone(),
+                    password_enabled: config.password.is_some(),
+                    password: config.password.clone().unwrap_or_default(),
+                    enforce_rating_range: config.enforce_rating_range,
+                    rating_min: config.rating_min.unwrap_or(800),
+                    rating_max: config.rating_max.unwrap_or(1_500),
+                };
+                if config.mod_name == "coop" {
+                    browsing.host_coop = remembered;
+                } else {
+                    browsing.host_game = remembered;
                 }
+                out.emit(SettingsEvent::BrowsingChanged {
+                    preferences: Box::new(browsing),
+                });
                 ctx.ports.lobby.host(config);
-                if remember {
-                    crate::services::settings::persist(ctx, out).await;
-                }
+                crate::services::settings::persist(ctx, out).await;
             }
             Err(reason) => {
                 tracing::warn!(reason, "invalid host-game request rejected");

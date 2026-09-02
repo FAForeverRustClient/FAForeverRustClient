@@ -665,6 +665,17 @@
           "ratingMin": 800,
           "ratingMax": 1500
         },
+        "hostCoop": {
+          "title": "",
+          "featuredMod": "faf",
+          "visibility": "public",
+          "map": "",
+          "passwordEnabled": false,
+          "password": "",
+          "enforceRatingRange": false,
+          "ratingMin": 800,
+          "ratingMax": 1500
+        },
         "favoriteMaps": [],
         "favoriteMods": [],
         "mapVaultPreset": "recommended",
@@ -20326,6 +20337,17 @@
               "customGamesView": "tiles",
               "favoriteMaps": [],
               "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -20510,6 +20532,17 @@
               "customGamesView": "tiles",
               "favoriteMaps": [],
               "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -20702,6 +20735,17 @@
               "customGamesView": "tiles",
               "favoriteMaps": [],
               "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -20890,6 +20934,17 @@
               "customGamesView": "tiles",
               "favoriteMaps": [],
               "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -21078,6 +21133,17 @@
               "customGamesView": "tiles",
               "favoriteMaps": [],
               "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -21288,6 +21354,17 @@
               "customGamesView": "tiles",
               "favoriteMaps": [],
               "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -21489,6 +21566,17 @@
               "customGamesView": "tiles",
               "favoriteMaps": [],
               "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
@@ -21716,6 +21804,17 @@
                     "ratingMin": 700,
                     "ratingMax": 1700
                   },
+                  "hostCoop": {
+                    "title": " Operation Ivy ",
+                    "featuredMod": "coop",
+                    "visibility": "public",
+                    "map": " SCCA_Coop_A03.v0023 ",
+                    "passwordEnabled": false,
+                    "password": "",
+                    "enforceRatingRange": false,
+                    "ratingMin": 800,
+                    "ratingMax": 1500
+                  },
                   "favoriteMaps": [
                     "adaptive_tabula.v0006"
                   ],
@@ -21766,6 +21865,17 @@
               "favoriteMods": [
                 "eco_graph"
               ],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "coop",
+                "map": "SCCA_Coop_A03.v0023",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "Operation Ivy",
+                "visibility": "public"
+              },
               "hostGame": {
                 "enforceRatingRange": true,
                 "featuredMod": "faf",

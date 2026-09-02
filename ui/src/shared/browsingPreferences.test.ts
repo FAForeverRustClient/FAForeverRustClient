@@ -59,6 +59,17 @@ describe("browsing preferences", () => {
         ratingMin: 1500,
         ratingMax: 800,
       },
+      hostCoop: {
+        title: " Operation Ivy ",
+        featuredMod: "coop",
+        visibility: "public",
+        map: " SCCA_Coop_A03.v0023 ",
+        passwordEnabled: false,
+        password: "",
+        enforceRatingRange: false,
+        ratingMin: 800,
+        ratingMax: 1500,
+      },
       favoriteMaps: [" Adaptive_Tabula.v0006 ", "adaptive_tabula.v0006", ""],
       favoriteMods: [" Eco_Graph ", "eco_graph", ""],
       mapVaultPreset: "  NEWEST  ",
@@ -105,6 +116,13 @@ describe("browsing preferences", () => {
       password: " secret ",
       ratingMin: 800,
       ratingMax: 1500,
+    });
+    // The co-op form goes through the same normalisation and stays its own
+    // block: one dialog must never overwrite the other's remembered setup.
+    expect(normalized.hostCoop).toMatchObject({
+      title: "Operation Ivy",
+      featuredMod: "coop",
+      map: "SCCA_Coop_A03.v0023",
     });
     expect(normalized.favoriteMaps).toEqual(["adaptive_tabula.v0006"]);
     expect(normalized.mapVaultPreset).toBe("newest");

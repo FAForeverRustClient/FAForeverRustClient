@@ -218,6 +218,20 @@ export type BrowsingPreferences = {
 	liveReplayFilters: LiveReplayFilters,
 	hostGame: HostGamePreferences,
 	/**
+	 *  The co-op host dialog's own copy of the same form.
+	 *
+	 *  Separate from `host_game` on purpose, and for the same reason the co-op
+	 *  launch surface is separate in both reference clients: a mission's
+	 *  lobby name has no business replacing the one somebody set up for
+	 *  skirmishes. That separation is also why the co-op dialog remembered
+	 *  nothing at all - and why switching to the chat tab, which unmounts the
+	 *  whole play view, threw away the title, the password and the mission.
+	 *
+	 *  `map` holds the chosen mission's map folder, which is what `map` means
+	 *  for the custom dialog too: the thing that will be hosted.
+	 */
+	hostCoop: HostGamePreferences,
+	/**
 	 *  Stable map folder names starred by the user. Python persists the same
 	 *  key and uses it in the host picker and generated-map cleanup.
 	 */

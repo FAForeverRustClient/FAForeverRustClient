@@ -40,15 +40,35 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
   const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const vault = useAppStore((state) => state.state.maps.vault);
-  const settings = useHostLobbySettings(initialTitle);
+  const remembered = useAppStore((state) => state.state.settings.browsing.hostCoop);
+  const settings = useHostLobbySettings(initialTitle, "hostCoop");
 
   // Whether the host has written their own title. Until they do, it follows
   // the selected mission, which is what makes clicking through the list
   // useful: the lobby name is right without anyone typing it.
-  const [titleTouched, setTitleTouched] = useState(initialTitle !== undefined);
+  // A remembered title counts as written too: it was typed in an earlier
+  // visit, and letting the mission's name overwrite it would undo exactly the
+  // thing this dialog now remembers.
+  const [titleTouched, setTitleTouched] = useState(
+    initialTitle !== undefined || remembered.title !== "",
+  );
   const [missionSearch, setMissionSearch] = useState("");
   const [campaignId, setCampaignId] = useState<number | null>(null);
-  const [missionId, setMissionId] = useState<number | null>(initialMissionId ?? null);
+  // Where the mission comes from, in order: an explicit "host this one" from
+  // the leaderboard, then the mission this dialog was last on, then whatever
+  // the campaign lists first. The middle one is what survives leaving the tab:
+  // the play view is unmounted on every tab switch, taking this state with it.
+  const [missionId, setMissionId] = useState<number | null>(() => {
+    if (initialMissionId != null) return initialMissionId;
+    const folder = remembered.map.toLocaleLowerCase();
+    if (!folder) return null;
+    const previous = useAppStore
+      .getState()
+      .state.coop.missions.find(
+        (mission) => mission.mapFolderName.toLocaleLowerCase() === folder,
+      );
+    return previous?.id ?? null;
+  });
   const missionListRef = useRef<HTMLDivElement>(null);
   const campaignListRef = useRef<HTMLDivElement>(null);
 
@@ -134,6 +154,27 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
     // `settings` is rebuilt every render; the mission is what this reacts to.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id, titleTouched]);
+
+  // Remember the form on the way out rather than on every keystroke: one
+  // settings write per dialog, and being unmounted by a tab switch is exactly
+  // the case this is for. A ref because the cleanup runs once, with whatever
+  // the form held at that moment.
+  const draft = useRef(() => remembered);
+  draft.current = () => settings.remembered(COOP_FEATURED_MOD, selected?.mapFolderName ?? "");
+  useEffect(
+    () => () => {
+      const browsing = useAppStore.getState().state.settings.browsing;
+      const hostCoop = draft.current();
+      // Nothing changed: a dialog opened and closed again should not cost a
+      // settings write.
+      if (JSON.stringify(browsing.hostCoop) === JSON.stringify(hostCoop)) return;
+      ipc.send({
+        kind: "Settings",
+        command: { type: "setBrowsing", payload: { preferences: { ...browsing, hostCoop } } },
+      });
+    },
+    [],
+  );
 
   const scenario = coop.scenarios.find((entry) => entry.id === selected?.scenarioId);
 
