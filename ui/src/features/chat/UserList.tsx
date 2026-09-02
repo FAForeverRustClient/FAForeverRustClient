@@ -117,6 +117,10 @@ export const UserList = memo(function UserList({
     () => new Set(social.friends.map((f) => f.toLowerCase())),
     [social.friends],
   );
+  const foesSet = useMemo(
+    () => new Set(social.foes.map((f) => f.toLowerCase())),
+    [social.foes],
+  );
 
   const groups = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -134,6 +138,11 @@ export const UserList = memo(function UserList({
       let category: UserCategory;
       if (self && user.name === self) {
         category = "self";
+      } else if (foesSet.has(lower)) {
+        // Foes leave the normal list entirely: `USER_CATEGORY_ORDER` puts them
+        // last, and this branch runs before the others so a foe stays there
+        // even when they are a moderator or a known player.
+        category = "foes";
       } else if (isModerator(user)) {
         category = "moderators";
       } else if (friendsSet.has(lower)) {
@@ -146,7 +155,7 @@ export const UserList = memo(function UserList({
       buckets.get(category)?.push(user);
     }
     return buckets;
-  }, [users, self, social, friendsSet, profilesByLogin, filter]);
+  }, [users, self, social, friendsSet, foesSet, profilesByLogin, filter]);
 
   // Flatten ordered categories and users into a unified virtualization list.
   const flatItems = useMemo<RosterFlatItem[]>(() => {

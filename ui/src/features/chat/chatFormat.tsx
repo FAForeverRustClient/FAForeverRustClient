@@ -51,8 +51,13 @@ export function resolvedNickStyle(
  * client's `ChatUserCategory` shape; `ircOnly` is its `CHAT_ONLY`: a nickname
  * in the channel that doesn't belong to any FAF account (bots, webchat guests),
  * which both reference clients sink to the bottom of the list.
+ *
+ * `foes` sits below even that: someone you have foed is not meant to show up
+ * among the people you are chatting with, so they leave their usual bucket
+ * entirely and collect at the very bottom, where the group can be collapsed
+ * away in one click.
  */
-export type UserCategory = "self" | "moderators" | "friends" | "players" | "ircOnly";
+export type UserCategory = "self" | "moderators" | "friends" | "players" | "ircOnly" | "foes";
 
 export const USER_CATEGORY_LABELS = {
   self: "chat.category.self",
@@ -60,6 +65,7 @@ export const USER_CATEGORY_LABELS = {
   friends: "chat.category.friends",
   players: "chat.category.players",
   ircOnly: "chat.category.ircOnly",
+  foes: "chat.category.foes",
 } as const satisfies Record<UserCategory, MessageKey>;
 
 export const USER_CATEGORY_ORDER: UserCategory[] = [
@@ -68,6 +74,7 @@ export const USER_CATEGORY_ORDER: UserCategory[] = [
   "friends",
   "players",
   "ircOnly",
+  "foes",
 ];
 
 /**
@@ -78,6 +85,9 @@ export const USER_CATEGORY_ORDER: UserCategory[] = [
  * bot. Until the lobby connects, `social.players` is empty and everyone would
  * land in `ircOnly`, so callers pass `socialKnown` to fall back to `players`
  * instead of mislabelling the whole channel.
+ *
+ * Being a foe outranks every bucket but `self`: a foe who also carries a
+ * channel op prefix still belongs at the bottom, not among the moderators.
  */
 export function categoryOf(
   user: ChatUser,
@@ -86,6 +96,7 @@ export function categoryOf(
   socialKnown: boolean,
 ): UserCategory {
   if (self && user.name === self) return "self";
+  if (social.foes.includes(user.name)) return "foes";
   if (isModerator(user)) return "moderators";
   if (social.friends.includes(user.name)) return "friends";
   if (!socialKnown) return "players";
