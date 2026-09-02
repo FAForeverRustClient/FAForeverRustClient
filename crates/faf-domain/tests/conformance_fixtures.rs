@@ -3199,12 +3199,22 @@ fn cases() -> Vec<Case> {
                             team_size: 4,
                             num_players: 1,
                             queue_pop_time_seconds: 90,
+                            boundary_80s: Vec::new(),
+                            boundary_75s: Vec::new(),
                         },
                         MatchmakerQueue {
                             queue_name: "ladder1v1".into(),
                             team_size: 1,
                             num_players: 7,
                             queue_pop_time_seconds: 30,
+                            boundary_80s: vec![RatingRange {
+                                min: 900,
+                                max: 1_300,
+                            }],
+                            boundary_75s: vec![RatingRange {
+                                min: 800,
+                                max: 1_400,
+                            }],
                         },
                     ],
                 }
@@ -3216,15 +3226,34 @@ fn cases() -> Vec<Case> {
                         team_size: 2,
                         num_players: 3,
                         queue_pop_time_seconds: 60,
+                        boundary_80s: Vec::new(),
+                        boundary_75s: Vec::new(),
                     }],
                 }
                 .into(),
                 LobbyEvent::MatchmakerQueuesUpdated {
+                    // The windows travel with the queue: a later push
+                    // replaces them rather than merging, because the set of
+                    // searches is only ever a snapshot.
                     queues: vec![MatchmakerQueue {
                         queue_name: "ladder1v1".into(),
                         team_size: 1,
                         num_players: 12,
                         queue_pop_time_seconds: 20,
+                        boundary_80s: vec![
+                            RatingRange {
+                                min: 900,
+                                max: 1_300,
+                            },
+                            RatingRange {
+                                min: 1_200,
+                                max: 1_600,
+                            },
+                        ],
+                        boundary_75s: vec![RatingRange {
+                            min: 800,
+                            max: 1_400,
+                        }],
                     }],
                 }
                 .into(),

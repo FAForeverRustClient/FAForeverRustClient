@@ -374,6 +374,8 @@ export const en = {
   "lobby.galacticWar.how.battles.body": "An attack on a planet resolves into a game of Forged Alliance. The cycle figures show how many attacks are in progress and how many battles have already been fought.",
   "lobby.galacticWar.how.client.title": "The separate client",
   "lobby.galacticWar.how.client.body": "Galactic War runs as its own application with its own login. This client installs it, keeps it current and starts it; everything after that happens in the Galactic War window.",
+  "lobby.matchmaker.inRange": "{count} in your range",
+  "lobby.matchmaker.inRangeHint": "Players waiting in this queue whose rating range overlaps yours, excluding your own search. Outside 1v1 the server derives this from each party's first player.",
   "lobby.matchmaker.mapPool": "Map pool",
   "lobby.matchmaker.queue.ranked1v1": "Ranked 1 vs 1",
   "lobby.matchmaker.state.searching": "Searching",

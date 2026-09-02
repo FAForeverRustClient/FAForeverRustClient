@@ -10,6 +10,7 @@ import { MatchmakerPartyPanel } from "./MatchmakerPartyPanel";
 import { MatchmakerPlayerCard } from "./MatchmakerPlayerCard";
 import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./MatchmakerQueueCard";
 import { ratingForQueue } from "./matchmakerRatings";
+import { playersInRatingRange } from "./queueRatingRange";
 import "./matchmaker.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -195,6 +196,10 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
               const clockState = queueClocks[queue.queueName];
               const remaining = clockState ? Math.max(0, clockState.seconds - Math.floor((clock - clockState.receivedAt) / 1000)) : queue.queuePopTimeSeconds;
               const activeGames = activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
+              const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName);
+              const searchingThisQueue =
+                matchmaking.type === "searching" &&
+                matchmaking.payload.queueNames.includes(queue.queueName);
               return (
                 <MatchmakerQueueCard
                   key={queue.queueName}
@@ -204,7 +209,10 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
                   status={stateForQueue(matchmaking, queue.queueName)}
                   activeGames={activeGames}
                   secondsUntilPop={remaining}
-                  rating={ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName)}
+                  rating={queueRating}
+                  // Your own search is in the server's numbers and is not
+                  // somebody you could be matched against.
+                  inRange={playersInRatingRange(queue, queueRating, searchingThisQueue ? 1 : 0)}
                   onToggle={() => toggleQueue(queue)}
                   onOpenMapPool={() => openMapPool(queue)}
                 />

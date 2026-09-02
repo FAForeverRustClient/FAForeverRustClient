@@ -33,7 +33,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use faf_domain::state::{
     AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
-    PartyMember, PartyState, PlayerLobbyRating, PlayerProfile, PlayerVeto, Relation,
+    PartyMember, PartyState, PlayerLobbyRating, PlayerProfile, PlayerVeto, RatingRange, Relation,
 };
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
@@ -1399,6 +1399,27 @@ fn value_as_f64(value: &Value) -> Option<f64> {
         .or_else(|| value.as_str()?.parse::<f64>().ok())
 }
 
+/// One queue's published rating windows, as `[[min, max], ...]`.
+///
+/// A malformed pair is dropped rather than defaulted: an entry that became
+/// `0..0` would silently fail to contain anybody's rating, which reads as a
+/// quiet queue rather than as bad data.
+fn parse_rating_ranges(queue: &Value, key: &str) -> Vec<RatingRange> {
+    queue
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|pair| {
+            let pair = pair.as_array()?;
+            Some(RatingRange {
+                min: pair.first()?.as_f64()?.round() as i32,
+                max: pair.get(1)?.as_f64()?.round() as i32,
+            })
+        })
+        .collect()
+}
+
 fn parse_matchmaker_queues(message: &Value) -> Vec<MatchmakerQueue> {
     message
         .get("queues")
@@ -1421,6 +1442,8 @@ fn parse_matchmaker_queues(message: &Value) -> Vec<MatchmakerQueue> {
                 .and_then(Value::as_f64)
                 .unwrap_or_default()
                 .round() as i32,
+            boundary_80s: parse_rating_ranges(queue, "boundary_80s"),
+            boundary_75s: parse_rating_ranges(queue, "boundary_75s"),
         })
         .filter(|queue| !queue.queue_name.is_empty())
         .collect()
@@ -2062,6 +2085,60 @@ mod tests {
         }
         assert_eq!(set.snapshot().len(), 0);
         assert_eq!(set.snapshot_live().len(), 1);
+    }
+
+    #[test]
+    fn parses_the_rating_windows_a_queue_publishes() {
+        let message = json!({
+            "command": "matchmaker_info",
+            "queues": [{
+                "queue_name": "ladder1v1",
+                "team_size": 1,
+                "num_players": 3,
+                "queue_pop_time_delta": 42.4,
+                "boundary_80s": [[800, 1200], [1100.0, 1500.0]],
+                // Malformed entries are dropped rather than defaulted: a
+                // `0..0` window silently contains nobody, which would read as
+                // a quiet queue instead of as bad data.
+                "boundary_75s": [[700, 1300], [900], "nonsense", []],
+            }],
+        });
+
+        let queues = parse_matchmaker_queues(&message);
+        assert_eq!(queues.len(), 1);
+        assert_eq!(
+            queues[0].boundary_80s,
+            vec![
+                RatingRange {
+                    min: 800,
+                    max: 1_200
+                },
+                RatingRange {
+                    min: 1_100,
+                    max: 1_500
+                },
+            ]
+        );
+        assert_eq!(
+            queues[0].boundary_75s,
+            vec![RatingRange {
+                min: 700,
+                max: 1_300
+            }]
+        );
+    }
+
+    #[test]
+    fn a_queue_without_rating_windows_still_parses() {
+        // Older servers, and any queue the server has nothing queued for.
+        let message = json!({
+            "command": "matchmaker_info",
+            "queues": [{ "queue_name": "tmm2v2", "team_size": 2, "num_players": 0 }],
+        });
+        let queues = parse_matchmaker_queues(&message);
+        assert_eq!(queues.len(), 1);
+        assert!(queues[0].boundary_80s.is_empty());
+        assert!(queues[0].boundary_75s.is_empty());
     }
 
     #[test]

@@ -29,6 +29,13 @@ interface Props {
   activeGames: number;
   secondsUntilPop: number;
   rating: PlayerRatingSummary | null;
+  /**
+   * Searches in this queue whose rating window contains yours, or `null` when
+   * that cannot be said - see `playersInRatingRange`. `null` is not zero: an
+   * unrated queue and an empty one are different facts and only one of them is
+   * worth a number.
+   */
+  inRange: number | null;
   onToggle: () => void;
   onOpenMapPool: () => void;
 }
@@ -41,6 +48,7 @@ export function MatchmakerQueueCard({
   activeGames,
   secondsUntilPop,
   rating,
+  inRange,
   onToggle,
   onOpenMapPool,
 }: Props) {
@@ -76,6 +84,13 @@ export function MatchmakerQueueCard({
           <span><Icon name="hourglass" size={14} /> {formatClockDuration(secondsUntilPop)}</span>
           <span><Icon name="users" size={14} /> {queue.numPlayers} queued</span>
           <span><Icon name="play" size={14} /> {activeGames} active</span>
+          {/* The number that decides whether waiting is worth it: how many of
+              those queued would actually be matched with you. */}
+          {inRange !== null && (
+            <span title={t("lobby.matchmaker.inRangeHint")}>
+              <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}
+            </span>
+          )}
         </span>
       </button>
 

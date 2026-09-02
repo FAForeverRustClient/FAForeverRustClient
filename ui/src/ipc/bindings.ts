@@ -2894,6 +2894,20 @@ export type MatchmakerQueue = {
 	teamSize: number,
 	numPlayers: number,
 	queuePopTimeSeconds: number,
+	/**
+	 *  The rating windows of the searches queued right now, at roughly 80%
+	 *  match quality. One entry per search, not per player.
+	 *
+	 *  The server derives each from the first player of that search's party
+	 *  ("only works for 1v1", as its own comment puts it), so outside the 1v1
+	 *  queues this is the party leader's window rather than the team's.
+	 */
+	boundary80s: RatingRange[],
+	/**
+	 *  The same at roughly 75%, which is the *wider* rating window despite the
+	 *  lower number - the server's own comment wonders about that too.
+	 */
+	boundary75s: RatingRange[],
 };
 
 export type MatchmakingState = { type: "idle" } | { type: "searching"; payload: {
@@ -3820,6 +3834,20 @@ export type RatingQuery = {
 	updatedAfter: string | null,
 	updatedBefore: string | null,
 	player: string,
+};
+
+/**
+ *  One queued search's acceptable opponent rating window.
+ *
+ *  The server publishes these per queue in `matchmaker_info` and computes them
+ *  from the searching party's rating, at two match qualities: roughly 80% and
+ *  roughly 75%. Which of the two to read depends on how sure the server is of
+ *  *your* rating - see `playersInRatingRange` on the frontend, which mirrors
+ *  the Python client's `handle_matchmaker_info`.
+ */
+export type RatingRange = {
+	min: number,
+	max: number,
 };
 
 /**  One emoji on one message, and who put it there. */
