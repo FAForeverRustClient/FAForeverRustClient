@@ -17,12 +17,23 @@
 //! have. The Java client carries a `//TODO` about it; we inherit the same
 //! approximation so a search for "1500+" means the same thing in all three.
 //!
+//! **Two values of one field cannot be ANDed.** Elide derives a filter's join
+//! alias from the property path alone (`TypeHelper.getPathAlias`), so
+//! `playerStats.player.login=="A";playerStats.player.login=="B"` compiles to a
+//! *single* join asked to be both players at once, and matches nothing. The
+//! filter builders here therefore take one login at a time
+//! ([`build_filter`]'s `player` argument); a search naming several players
+//! runs once per name and intersects the game ids
+//! ([`intersect_game_ids`], [`ids_filter`]).
+//!
 //! **Unbounded searches get a date floor.** The Python client's comment is
 //! blunt about why: a filtered query with no time bound can take the database
 //! tens of seconds. It therefore adds `startTime=ge=<3 months ago>` (6 months
 //! when a player name narrows it) whenever the user set filters but no
 //! explicit dates. [`ReplayQuery::fallback_months`] is that rule; the caller
 //! supplies the resulting timestamp so this module stays clock-free.
+
+use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -205,6 +216,20 @@ impl ReplayQuery {
             || self.only_ranked
     }
 
+    /// The logins this query searches for, in the order they were typed.
+    ///
+    /// The field is one comma-separated box (the Java client's is too), and
+    /// [`escape`] strips commas from a login, so splitting on them is
+    /// unambiguous. More than one name means "everyone in the same game",
+    /// which the API cannot express in one filter: see the module docs.
+    pub fn player_names(&self) -> Vec<&str> {
+        self.player
+            .split(',')
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .collect()
+    }
+
     /// The API's `sort` parameter. A leading `-` means descending.
     pub fn sort_param(&self) -> String {
         let property = self.sort_by.property();
@@ -263,28 +288,83 @@ fn as_instant(value: &str, end_of_day: bool) -> String {
 /// `fallback_after` is the timestamp computed from [`ReplayQuery::fallback_months`]
 ///: passed in rather than derived here so this stays clock-free (same posture
 /// as chat message timestamps being stamped by the port).
-pub fn build_filter(query: &ReplayQuery, fallback_after: Option<&str>) -> Option<String> {
+///
+/// `player` is the one login this filter narrows to, overriding the query's
+/// player field. A multi-player search calls this once per name and intersects
+/// the results, because two logins in one filter match nothing: see the module
+/// docs. `None` uses the query's field as typed, which is what the single-name
+/// and no-name searches want.
+pub fn build_filter(
+    query: &ReplayQuery,
+    fallback_after: Option<&str>,
+    player: Option<&str>,
+) -> Option<String> {
+    let mut clauses: Vec<String> = Vec::new();
+    for player_name in player.map_or_else(|| query.player_names(), |name| vec![name]) {
+        let pattern = if query.exact_player {
+            escape(player_name)
+        } else {
+            glob(player_name)
+        };
+        if !pattern.is_empty() {
+            clauses.push(format!(r#"playerStats.player.login=="{pattern}""#));
+        }
+    }
+    clauses.extend(common_clauses(query, fallback_after));
+    join_clauses(clauses)
+}
+
+/// The filter for one page of a shared-games id scan.
+///
+/// Two things make this different from [`build_filter`], and both are the
+/// difference between a search that answers in a second and one that takes
+/// minutes:
+///
+/// **It matches on the player's id, not their login.** `login=="*name*"` is a
+/// leading-wildcard `LIKE`, which no index can serve: the database reads every
+/// login there is, on every page of every scan. The ids are resolved once up
+/// front, and `playerStats.player.id` is the indexed column the join is on
+/// anyway.
+///
+/// **It seeks instead of paging.** `page[number]=20` becomes a SQL `OFFSET`,
+/// so the database builds and discards nineteen pages of results to hand over
+/// the twentieth, and a scan's total cost grows with the square of its length.
+/// Passing the lowest id of the previous page as `before_id` turns every page
+/// into the same bounded index range. This is why the scan sorts by `-id` and
+/// not by the user's choice: the seek key has to be the sort key, and the
+/// caller reorders the (small) intersection afterwards.
+pub fn build_scan_filter(
+    query: &ReplayQuery,
+    player_ids: &[i32],
+    before_id: Option<i32>,
+) -> Option<String> {
+    let mut clauses: Vec<String> = Vec::new();
+    clauses.push(in_clause(
+        "playerStats.player.id",
+        &player_ids.iter().map(i32::to_string).collect::<Vec<_>>(),
+    )?);
+    if let Some(id) = before_id {
+        clauses.push(format!(r#"id=lt="{id}""#));
+    }
+    clauses.extend(common_clauses(query, None));
+    join_clauses(clauses)
+}
+
+/// `(a;b;c)`, or `None` when nothing narrows the search.
+fn join_clauses(clauses: Vec<String>) -> Option<String> {
+    if clauses.is_empty() {
+        return None;
+    }
+    Some(format!("({})", clauses.join(";")))
+}
+
+/// Every clause except the player field, which the two builders above spell
+/// differently.
+fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<String> {
     let mut clauses: Vec<String> = Vec::new();
 
     if query.only_ranked {
         clauses.push(r#"validity=="VALID""#.to_string());
-    }
-    if !query.player.is_empty() {
-        for player_name in query
-            .player
-            .split(',')
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-        {
-            let pattern = if query.exact_player {
-                escape(player_name)
-            } else {
-                glob(player_name)
-            };
-            if !pattern.is_empty() {
-                clauses.push(format!(r#"playerStats.player.login=="{pattern}""#));
-            }
-        }
     }
     if !query.map.is_empty() {
         clauses.push(format!(
@@ -383,10 +463,96 @@ pub fn build_filter(query: &ReplayQuery, fallback_after: Option<&str>) -> Option
         ));
     }
 
+    clauses
+}
+
+/// The filter that resolves the typed names to player records, in one request.
+///
+/// RSQL's `,` is OR, so all the names are looked up together. An exact search
+/// becomes an `=in=` over the login index; a substring search stays a wildcard
+/// match, but pays for it *once* per search instead of once per scanned page.
+pub fn logins_filter(names: &[&str], exact: bool) -> Option<String> {
+    if names.is_empty() {
+        return None;
+    }
+    if exact {
+        return in_clause(
+            "login",
+            &names.iter().map(|n| (*n).to_string()).collect::<Vec<_>>(),
+        );
+    }
+    let clauses: Vec<String> = names
+        .iter()
+        .map(|name| format!(r#"login=="{}""#, glob(name)))
+        .filter(|clause| !clause.is_empty())
+        .collect();
     if clauses.is_empty() {
         return None;
     }
-    Some(format!("({})", clauses.join(";")))
+    Some(clauses.join(","))
+}
+
+/// Whether a resolved login belongs to one of the typed names, so a batched
+/// lookup can be sorted back into one id set per name. Case-insensitive, like
+/// the API's own matching.
+pub fn login_matches(login: &str, name: &str, exact: bool) -> bool {
+    if exact {
+        return login.eq_ignore_ascii_case(name);
+    }
+    login.to_lowercase().contains(&name.to_lowercase())
+}
+
+/// The games every one of these lists has in common, in the order of the first.
+///
+/// One list per searched player, each already in the server's sort order, so
+/// the first list doubles as the ordering for the whole intersection: no
+/// second sort, and no need to have fetched the sort key at all.
+///
+/// The lists are complete, not sampled, so the result is every game the named
+/// players shared and its length is the exact total the pager needs.
+pub fn intersect_game_ids(lists: &[Vec<i32>]) -> Vec<i32> {
+    let Some((first, rest)) = lists.split_first() else {
+        return Vec::new();
+    };
+    let others: Vec<HashSet<i32>> = rest
+        .iter()
+        .map(|ids| ids.iter().copied().collect())
+        .collect();
+    let mut seen = HashSet::with_capacity(first.len());
+    first
+        .iter()
+        .copied()
+        // A player has one stats row per game, so ids do not repeat; dedupe
+        // anyway rather than trust that across a paged scan.
+        .filter(|id| seen.insert(*id))
+        .filter(|id| others.iter().all(|list| list.contains(id)))
+        .collect()
+}
+
+/// The slice of an intersection that page `page` shows, 1-based like the API's
+/// `page[number]`. Out-of-range pages are empty rather than an error: the pager
+/// can ask for a page that a narrowed search no longer has.
+pub fn page_slice(ids: &[i32], page: u32, page_size: u32) -> &[i32] {
+    if page_size == 0 {
+        return &[];
+    }
+    let start = (page.max(1) as usize - 1).saturating_mul(page_size as usize);
+    if start >= ids.len() {
+        return &[];
+    }
+    let end = start.saturating_add(page_size as usize).min(ids.len());
+    &ids[start..end]
+}
+
+/// `id=in=("1","2")`, which fetches exactly the games an intersection resolved
+/// to. `None` for an empty set: an empty `=in=()` is a syntax error, and there
+/// is nothing to ask for anyway.
+pub fn ids_filter(ids: &[i32]) -> Option<String> {
+    if ids.is_empty() {
+        return None;
+    }
+    let values: Vec<String> = ids.iter().map(|id| format!("\"{id}\"")).collect();
+    Some(format!("(id=in=({}))", values.join(",")))
 }
 
 /// An `=in=("a","b")` clause, or `None` when nothing is selected (which means
@@ -436,7 +602,7 @@ mod tests {
 
     #[test]
     fn an_empty_query_has_no_filter() {
-        assert_eq!(build_filter(&query(), None), None);
+        assert_eq!(build_filter(&query(), None, None), None);
     }
 
     #[test]
@@ -446,7 +612,7 @@ mod tests {
             ..query()
         };
         assert_eq!(
-            build_filter(&q, None).unwrap(),
+            build_filter(&q, None, None).unwrap(),
             r#"(playerStats.player.login=="*Stormlord*")"#
         );
     }
@@ -459,31 +625,176 @@ mod tests {
             ..query()
         };
         assert_eq!(
-            build_filter(&q, None).unwrap(),
+            build_filter(&q, None, None).unwrap(),
             r#"(playerStats.player.login=="Stormlord")"#
         );
     }
 
     #[test]
-    fn multiple_comma_separated_players_are_anded() {
+    fn several_names_are_searched_one_at_a_time() {
+        // Not one filter with both logins: that is the AND the API cannot
+        // answer (module docs). The caller walks `player_names` and keeps the
+        // rest of the query identical, so only the login clause differs.
+        let q = ReplayQuery {
+            player: "Stormlord, Foley".into(),
+            map: "Setons".into(),
+            ..query()
+        };
+        assert_eq!(q.player_names(), vec!["Stormlord", "Foley"]);
+        assert_eq!(
+            build_filter(&q, None, Some("Stormlord")).unwrap(),
+            r#"(playerStats.player.login=="*Stormlord*";mapVersion.map.displayName=="*Setons*")"#
+        );
+        assert_eq!(
+            build_filter(&q, None, Some("Foley")).unwrap(),
+            r#"(playerStats.player.login=="*Foley*";mapVersion.map.displayName=="*Setons*")"#
+        );
+
+        let q_exact = ReplayQuery {
+            exact_player: true,
+            ..q
+        };
+        assert_eq!(
+            build_filter(&q_exact, None, Some("Foley")).unwrap(),
+            r#"(playerStats.player.login=="Foley";mapVersion.map.displayName=="*Setons*")"#
+        );
+    }
+
+    #[test]
+    fn a_scan_filter_matches_on_ids_and_seeks_by_id() {
+        let q = ReplayQuery {
+            player: "Stormlord, Foley".into(),
+            only_ranked: true,
+            ..query()
+        };
+        // No login wildcard anywhere: that is the whole point of resolving the
+        // names first. The player field is not consulted here at all.
+        assert_eq!(
+            build_scan_filter(&q, &[42], None).unwrap(),
+            r#"(playerStats.player.id=in=("42");validity=="VALID")"#
+        );
+        // The seek bound replaces `page[number]`, and a substring name that
+        // resolved to several accounts stays one clause.
+        assert_eq!(
+            build_scan_filter(&q, &[42, 43], Some(27634581)).unwrap(),
+            r#"(playerStats.player.id=in=("42","43");id=lt="27634581";validity=="VALID")"#
+        );
+        // The other filters still narrow the scan, so the intersection only
+        // ever contains games the whole query matches.
+        let mapped = ReplayQuery {
+            map: "Setons".into(),
+            ..q
+        };
+        assert!(build_scan_filter(&mapped, &[42], None)
+            .unwrap()
+            .contains(r#"mapVersion.map.displayName=="*Setons*""#));
+        assert_eq!(
+            build_scan_filter(&mapped, &[], None),
+            None,
+            "no resolved account means nothing to scan"
+        );
+    }
+
+    #[test]
+    fn the_scan_filter_carries_no_implicit_date_floor() {
+        // Completeness: two players who last met years ago must still be found.
         let q = ReplayQuery {
             player: "Stormlord, Foley".into(),
             ..query()
         };
         assert_eq!(
-            build_filter(&q, None).unwrap(),
-            r#"(playerStats.player.login=="*Stormlord*";playerStats.player.login=="*Foley*")"#
+            q.fallback_months(),
+            Some(6),
+            "the single-name path still has one"
         );
+        assert!(!build_scan_filter(&q, &[42], None)
+            .unwrap()
+            .contains("startTime"));
 
-        let q_exact = ReplayQuery {
-            player: "Stormlord, Foley".into(),
-            exact_player: true,
+        let bounded = ReplayQuery {
+            after: "2024-01-01".into(),
+            ..q
+        };
+        assert!(
+            build_scan_filter(&bounded, &[42], None)
+                .unwrap()
+                .contains(r#"startTime=ge="2024-01-01T00:00:00Z""#),
+            "an explicit bound the user set is still applied"
+        );
+    }
+
+    #[test]
+    fn logins_resolve_in_one_request() {
+        assert_eq!(
+            logins_filter(&["Stormlord", "Foley"], true).unwrap(),
+            r#"login=in=("Stormlord","Foley")"#
+        );
+        // `,` is RSQL's OR: both names are looked up together.
+        assert_eq!(
+            logins_filter(&["Storm", "Fol"], false).unwrap(),
+            r#"login=="*Storm*",login=="*Fol*""#
+        );
+        assert_eq!(logins_filter(&[], true), None);
+    }
+
+    #[test]
+    fn resolved_logins_sort_back_to_the_typed_names() {
+        assert!(login_matches("Stormlord", "stormlord", true));
+        assert!(!login_matches("Stormlord2", "Stormlord", true));
+        assert!(login_matches("Stormlord2", "stormlord", false));
+        assert!(!login_matches("Foley", "Storm", false));
+    }
+
+    #[test]
+    fn player_names_ignores_blanks_and_whitespace() {
+        let q = ReplayQuery {
+            player: " Stormlord ,, , Foley,".into(),
             ..query()
         };
+        assert_eq!(q.player_names(), vec!["Stormlord", "Foley"]);
+        assert!(ReplayQuery::default().player_names().is_empty());
+    }
+
+    #[test]
+    fn the_intersection_keeps_the_first_list_order() {
+        let a = vec![90, 80, 70, 60, 50];
+        let b = vec![80, 60, 40];
+        let c = vec![60, 80];
+        assert_eq!(intersect_game_ids(&[a.clone(), b.clone(), c]), vec![80, 60]);
+        // One player alone is just that player's games.
+        assert_eq!(intersect_game_ids(std::slice::from_ref(&a)), a);
+        // No overlap, and no lists at all, are both simply empty.
+        assert_eq!(intersect_game_ids(&[a, vec![1, 2]]), Vec::<i32>::new());
+        assert_eq!(intersect_game_ids(&[]), Vec::<i32>::new());
+    }
+
+    #[test]
+    fn the_intersection_drops_repeated_ids() {
         assert_eq!(
-            build_filter(&q_exact, None).unwrap(),
-            r#"(playerStats.player.login=="Stormlord";playerStats.player.login=="Foley")"#
+            intersect_game_ids(&[vec![9, 9, 8], vec![8, 9]]),
+            vec![9, 8],
+            "a duplicate from a paged scan must not become a duplicate row"
         );
+    }
+
+    #[test]
+    fn pages_slice_the_intersection() {
+        let ids: Vec<i32> = (1..=25).collect();
+        assert_eq!(page_slice(&ids, 1, 10), &ids[0..10]);
+        assert_eq!(page_slice(&ids, 3, 10), &ids[20..25], "a short last page");
+        assert!(page_slice(&ids, 4, 10).is_empty(), "past the end");
+        assert_eq!(page_slice(&ids, 0, 10), &ids[0..10], "page 0 means page 1");
+        assert!(page_slice(&ids, 1, 0).is_empty());
+        assert!(page_slice(&[], 1, 10).is_empty());
+    }
+
+    #[test]
+    fn an_id_set_becomes_an_in_clause() {
+        assert_eq!(
+            ids_filter(&[27634581, 27634582]).unwrap(),
+            r#"(id=in=("27634581","27634582"))"#
+        );
+        assert_eq!(ids_filter(&[]), None, "an empty =in=() is a syntax error");
     }
 
     #[test]
@@ -494,7 +805,7 @@ mod tests {
             ..query()
         };
         assert_eq!(
-            build_filter(&q, None).unwrap(),
+            build_filter(&q, None, None).unwrap(),
             r#"(validity=="VALID";mapVersion.map.displayName=="*Setons*")"#
         );
     }
@@ -507,7 +818,7 @@ mod tests {
             max_rating: Some(2000),
             ..query()
         };
-        let filter = build_filter(&q, None).unwrap();
+        let filter = build_filter(&q, None, None).unwrap();
         assert!(filter.contains(r#"meanBefore=ge="1800""#), "{filter}");
         assert!(filter.contains(r#"meanBefore=le="2300""#), "{filter}");
     }
@@ -519,7 +830,7 @@ mod tests {
             max_duration_minutes: Some(60),
             ..query()
         };
-        let filter = build_filter(&q, None).unwrap();
+        let filter = build_filter(&q, None, None).unwrap();
         assert!(filter.contains(r#"replayTicks=ge="6000""#), "{filter}");
         assert!(filter.contains(r#"replayTicks=le="36000""#), "{filter}");
     }
@@ -534,7 +845,7 @@ mod tests {
             host: "Stormlord".into(),
             ..query()
         };
-        let filter = build_filter(&q, None).unwrap();
+        let filter = build_filter(&q, None, None).unwrap();
         for expected in [
             r#"mapVersion.map.displayName=="*Setons*""#,
             r#"mapVersion.map.author.login=="*Ozonex*""#,
@@ -555,7 +866,7 @@ mod tests {
             victory_conditions: vec!["DEMORALIZATION".into()],
             ..query()
         };
-        let filter = build_filter(&q, None).unwrap();
+        let filter = build_filter(&q, None, None).unwrap();
         for expected in [
             r#"featuredMod.technicalName=in=("faf","ladder1v1")"#,
             r#"playerStats.ratingChanges.leaderboard.technicalName=in=("global")"#,
@@ -575,7 +886,7 @@ mod tests {
             factions: vec![],
             ..query()
         };
-        assert_eq!(build_filter(&q, None), None);
+        assert_eq!(build_filter(&q, None, None), None);
     }
 
     #[test]
@@ -585,7 +896,7 @@ mod tests {
             max_review_score: Some(5.0),
             ..query()
         };
-        let filter = build_filter(&q, None).unwrap();
+        let filter = build_filter(&q, None, None).unwrap();
         assert!(
             filter.contains(r#"reviewsSummary.averageScore=ge="4""#),
             "{filter}"
@@ -606,7 +917,7 @@ mod tests {
             map_max_size_km: Some(20),
             ..query()
         };
-        let filter = build_filter(&q, None).unwrap();
+        let filter = build_filter(&q, None, None).unwrap();
         assert!(
             filter.contains(r#"mapVersion.maxPlayers=ge="4""#),
             "{filter}"
@@ -625,7 +936,7 @@ mod tests {
             ranked_map_only: true,
             ..query()
         };
-        assert!(build_filter(&q, None)
+        assert!(build_filter(&q, None, None)
             .unwrap()
             .contains(r#"mapVersion.ranked=="true""#));
     }
@@ -667,7 +978,7 @@ mod tests {
         // Date-only bounds are widened to instants: the API rejects a bare
         // date against `startTime`, which is what broke every dated search.
         assert_eq!(
-            build_filter(&q, None).unwrap(),
+            build_filter(&q, None, None).unwrap(),
             r#"(startTime=ge="2024-01-01T00:00:00Z";startTime=le="2024-02-01T23:59:59Z")"#
         );
     }
@@ -679,7 +990,7 @@ mod tests {
             ..query()
         };
         assert!(
-            build_filter(&q, None)
+            build_filter(&q, None, None)
                 .unwrap()
                 .contains(r#"startTime=ge="2024-01-01T12:30:00Z""#),
             "an explicit instant must not be rewritten"
@@ -694,7 +1005,7 @@ mod tests {
             before: "2024-02-01".into(),
             ..query()
         };
-        assert!(build_filter(&q, None)
+        assert!(build_filter(&q, None, None)
             .unwrap()
             .contains("2024-02-01T23:59:59Z"));
     }
@@ -740,7 +1051,7 @@ mod tests {
             map: "Setons".into(),
             ..query()
         };
-        let filter = build_filter(&q, Some("2024-01-01T00:00:00Z")).unwrap();
+        let filter = build_filter(&q, Some("2024-01-01T00:00:00Z"), None).unwrap();
         assert!(
             filter.contains(r#"startTime=ge="2024-01-01T00:00:00Z""#),
             "{filter}"
@@ -750,7 +1061,7 @@ mod tests {
             after: "2020-06-01".into(),
             ..q
         };
-        let filter = build_filter(&explicit, Some("2024-01-01T00:00:00Z")).unwrap();
+        let filter = build_filter(&explicit, Some("2024-01-01T00:00:00Z"), None).unwrap();
         // Widened to an instant like any other date-only bound; the point of
         // this case is that the explicit bound wins over the fallback.
         assert!(
@@ -770,7 +1081,7 @@ mod tests {
             ..query()
         };
         assert_eq!(
-            build_filter(&q, None).unwrap(),
+            build_filter(&q, None, None).unwrap(),
             r#"(playerStats.player.login=="abc")"#
         );
     }

@@ -1280,7 +1280,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.search.clear": "Wyczyść",
   "replays.search.refresh": "Odśwież",
   "replays.search.openFile": "Otwórz plik…",
-  "replays.search.preset.newest": "Najnowsze",
+  "replays.search.preset.newest": "Wszystkie powtórki",
   "replays.search.preset.bestReviewed": "Najlepiej oceniane",
   "replays.search.preset.myReplays": "Moje powtórki",
   "replays.search.sort.datePlayed": "Data rozegrania",

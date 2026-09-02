@@ -1332,7 +1332,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.search.clear": "Сбросить",
   "replays.search.refresh": "Обновить",
   "replays.search.openFile": "Открыть файл…",
-  "replays.search.preset.newest": "Самые новые",
+  "replays.search.preset.newest": "Все реплеи",
   "replays.search.preset.bestReviewed": "С лучшей оценкой",
   "replays.search.preset.myReplays": "Мои реплеи",
   "replays.search.sort.datePlayed": "Дата игры",
