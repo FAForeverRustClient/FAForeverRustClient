@@ -5,6 +5,7 @@ import { Modal } from "../../design-system/Modal";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { focusListboxOption, nextListboxIndex } from "../../shared/listboxNavigation";
 import { OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
 import { GameMapImage } from "./GameMapImage";
 import { GenerateMapModal } from "../maps/GenerateMapModal";
@@ -117,6 +118,8 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   const [playerCount, setPlayerCount] = useState<Range>(NO_RANGE);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const mapListRef = useRef<HTMLDivElement>(null);
+  const modListRef = useRef<HTMLDivElement>(null);
   const [selectedMap, setSelectedMap] = useState(remembered.map);
   const [generating, setGenerating] = useState(false);
 
@@ -291,6 +294,31 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
     setSelectedMap(availableMaps[index].folderName);
   };
 
+  /// The same for the game-type column beside it. A column that ignores the
+  /// arrow keys next to one that answers them reads as broken.
+  const onModListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const current = FEATURED_MODS.findIndex((mod) => mod.id === featuredMod);
+    const next = nextListboxIndex(event.key, current, FEATURED_MODS.length);
+    if (next === null) return;
+    event.preventDefault();
+    setFeaturedMod(FEATURED_MODS[next].id);
+    focusListboxOption(modListRef.current, next);
+  };
+
+  /// Walk the map list from the keyboard, selecting as it goes: the preview,
+  /// the size and the player count all hang off the selection, so moving only
+  /// focus - which is all the browser did - showed none of them.
+  const onMapListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const current = availableMaps.findIndex((map) => map.folderName === chosen?.folderName);
+    const next = nextListboxIndex(event.key, current, availableMaps.length);
+    if (next === null) return;
+    // Otherwise the arrow key also scrolls the column, away from the row it
+    // just moved to.
+    event.preventDefault();
+    setSelectedMap(availableMaps[next].folderName);
+    focusListboxOption(mapListRef.current, next);
+  };
+
   const host = () => {
     if (formError || !chosen) return;
     ipc.send({
@@ -453,7 +481,13 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
           <div className="host-column-header">
             <h3>{t("lobby.host.gameType")}</h3>
           </div>
-          <div className="host-column-body host-gametype-list" role="listbox">
+          <div
+            ref={modListRef}
+            className="host-column-body host-gametype-list"
+            role="listbox"
+            aria-label={t("lobby.host.gameType")}
+            onKeyDown={onModListKeyDown}
+          >
             {FEATURED_MODS.map((mod) => {
               const active = featuredMod === mod.id;
               return (
@@ -560,7 +594,13 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
             </div>
           </div>
 
-          <div className="host-column-body host-map-list" role="listbox" aria-label={t("lobby.host.availableMaps")}>
+          <div
+            ref={mapListRef}
+            className="host-column-body host-map-list"
+            role="listbox"
+            aria-label={t("lobby.host.availableMaps")}
+            onKeyDown={onMapListKeyDown}
+          >
             {availableMaps.length === 0 ? (
               <p className="play-empty">{t("lobby.host.noMaps")}</p>
             ) : (

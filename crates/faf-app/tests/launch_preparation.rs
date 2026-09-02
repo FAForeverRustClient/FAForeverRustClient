@@ -11,14 +11,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use faf_app::infra::{fake_ports, FakeAuth};
+use faf_app::infra::{fake_ports, FakeAuth, FakeLobby};
 use faf_app::ports::{
     GameLaunchParams, GamePreparation, GameUpdaterPort, InstallPresence, PreparationStep,
     ProcessPort, UpdateProgress,
 };
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    AuthCommand, JoinState, LobbyCommand, LobbyEvent, NotificationKind, Player,
+    AuthCommand, HostGameConfig, JoinState, LobbyCommand, LobbyEvent, NotificationKind, Player,
 };
 use faf_domain::AppEvent;
 use tokio::sync::mpsc;
@@ -346,4 +346,120 @@ async fn a_base_game_map_is_still_handed_to_the_updater() {
 
     let prepared = h.prepared.lock().unwrap().clone();
     assert_eq!(prepared[0].map_folder.as_deref(), Some("Theta Passage"));
+}
+
+/// Hosting, with a lobby port whose requests the test can inspect.
+fn host_harness(outcome: Result<(), String>) -> (App, FakeLobby, Arc<Mutex<Vec<GamePreparation>>>) {
+    let prepared = Arc::new(Mutex::new(Vec::new()));
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess {
+            launched: Arc::new(Mutex::new(false)),
+            install_dir: Some(PathBuf::from("C:/fake-fa-install")),
+            exits_after: None,
+        }),
+        updater: Arc::new(ScriptedUpdater {
+            steps: Vec::new(),
+            outcome,
+            seen: prepared.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    (app, lobby, prepared)
+}
+
+fn host_config(map: &str) -> HostGameConfig {
+    HostGameConfig {
+        title: "Friday game".into(),
+        mod_name: "faf".into(),
+        visibility: "public".into(),
+        map: map.into(),
+        password: None,
+        enforce_rating_range: false,
+        rating_min: None,
+        rating_max: None,
+    }
+}
+
+async fn wait_for<F: Fn() -> bool>(condition: F) -> bool {
+    for _ in 0..200 {
+        if condition() {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    false
+}
+
+#[tokio::test]
+async fn hosting_downloads_the_map_the_host_chose() {
+    // The reported failure: hosting never downloaded the map. The server's
+    // `game_launch` names a map only for the matchmaker - a host already told
+    // the server which map to use, so the reply carries no `mapname` - and the
+    // launch path reads exactly that field. Nothing else asked for the map, so
+    // the host arrived in a lobby whose scenario was not on disk.
+    let (app, lobby, prepared) = host_harness(Ok(()));
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        wait_for(|| !lobby.hosted_configs().is_empty()).await,
+        "the host request never reached the lobby"
+    );
+    let requests = prepared.lock().unwrap().clone();
+    assert_eq!(requests.len(), 1, "the map was prepared exactly once");
+    assert_eq!(
+        requests[0].map_folder.as_deref(),
+        Some("adaptive_gadostb.v0002")
+    );
+    assert_eq!(requests[0].featured_mod, "faf");
+}
+
+#[tokio::test]
+async fn a_map_that_cannot_be_downloaded_stops_the_host_request() {
+    // Better a clear failure than a lobby other players can join and nobody,
+    // including its host, can load.
+    let (app, lobby, prepared) = host_harness(Err("map archive is not on the CDN".into()));
+    let mut events = app.subscribe();
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let failed = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let Ok(AppEvent::Lobby(LobbyEvent::LaunchFailed { reason })) = events.recv().await {
+                return reason;
+            }
+        }
+    })
+    .await
+    .expect("the host attempt never settled");
+
+    assert!(failed.contains("map archive is not on the CDN"));
+    assert!(!prepared.lock().unwrap().is_empty());
+    assert!(
+        lobby.hosted_configs().is_empty(),
+        "no lobby should exist for a map that could not be fetched"
+    );
 }

@@ -2,8 +2,14 @@ import { native } from "../ipc/native";
 import { isDesktopShell } from "./webviewEngine";
 
 const FAF_HOSTS = ["faforever.com", "www.faforever.com"];
+// Accounts do not live on the website. Registration, recovery and the user
+// control panel are served by faf-user-service on its own host, and the
+// `/account/...` paths the website once carried are gone - every one of them
+// answered 404, including the two links the login screen offers before a
+// player can sign in at all.
+const USER_HOSTS = ["user.faforever.com"];
 const FORUM_HOSTS = ["forum.faforever.com"];
-const EXTERNAL_HOSTS = [...FAF_HOSTS, ...FORUM_HOSTS];
+const EXTERNAL_HOSTS = [...FAF_HOSTS, ...USER_HOSTS, ...FORUM_HOSTS];
 
 /** Accept an ordinary HTTPS URL without credentials or a non-standard port. */
 export function validateHttpsUrl(value: string): string {
@@ -76,10 +82,10 @@ function configuredLink(envKey: string, fallback: string, allowedHosts: readonly
 }
 
 export const ACCOUNT_LINKS = {
-  create: configuredLink("VITE_FAF_CREATE_ACCOUNT_URL", "https://faforever.com/account/register", FAF_HOSTS),
-  recover: configuredLink("VITE_FAF_PASSWORD_RECOVERY_URL", "https://faforever.com/account/password/reset", FAF_HOSTS),
-  rename: configuredLink("VITE_FAF_NAME_CHANGE_URL", "https://faforever.com/account/username/change", FAF_HOSTS),
-  steam: configuredLink("VITE_FAF_STEAM_LINK_URL", "https://faforever.com/account/link", FAF_HOSTS),
+  create: configuredLink("VITE_FAF_CREATE_ACCOUNT_URL", "https://user.faforever.com/register", USER_HOSTS),
+  recover: configuredLink("VITE_FAF_PASSWORD_RECOVERY_URL", "https://user.faforever.com/recover-account", USER_HOSTS),
+  rename: configuredLink("VITE_FAF_NAME_CHANGE_URL", "https://user.faforever.com/ucp/username", USER_HOSTS),
+  steam: configuredLink("VITE_FAF_STEAM_LINK_URL", "https://user.faforever.com/ucp/linking", USER_HOSTS),
   support: configuredLink(
     "VITE_FAF_SUPPORT_URL",
     "https://forum.faforever.com/category/9/faf-support-client-and-account-issues",

@@ -806,6 +806,25 @@ fn live_map_dirs(maps_dir: &Path, vault_maps: Option<PathBuf>, map_folder: &str)
     dirs
 }
 
+/// Where the vault keeps `map_folder`'s archive.
+///
+/// Lower-cased, because the vault stores every archive under a lower-case name
+/// while folder names carry whatever capitalisation their author used - the
+/// co-op missions are `SCCA_Coop_A03.v0023`. The CDN is case-sensitive, so
+/// asking for the name as given is a 404 for every map with a capital letter
+/// in it, which is most co-op missions and a large share of the vault.
+///
+/// Checked against the live CDN: `scca_coop_a03.v0023.zip` and
+/// `africa.v0005.zip` answer 200, and neither answers to its mixed-case
+/// spelling. The extracted folder keeps the archive's own capitalisation;
+/// only the request is normalised.
+fn vault_map_url(content_base: &str, map_folder: &str) -> String {
+    format!(
+        "{content_base}/maps/{}.zip",
+        map_folder.to_ascii_lowercase()
+    )
+}
+
 /// Download `map_folder` from the vault CDN and extract it into every
 /// directory in `dirs`, unless it is already present in one of them.
 async fn stage_map(
@@ -823,7 +842,7 @@ async fn stage_map(
         return Ok(()); // already somewhere FA will find it
     }
 
-    let url = format!("{content_base}/maps/{map_folder}.zip");
+    let url = vault_map_url(content_base, map_folder);
     validate_url(&url, content_base, "maps")?;
     let resp = http
         .get(&url)
@@ -855,6 +874,23 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::io::Read as _;
+
+    #[test]
+    fn a_vault_map_is_requested_under_its_lower_case_name() {
+        // The reported failure: hosting never got its map. The vault serves
+        // `scca_coop_a03.v0023.zip`, the co-op API names the folder
+        // `SCCA_Coop_A03.v0023`, and the CDN is case-sensitive - so the
+        // request 404'd for every map with a capital letter in its name.
+        assert_eq!(
+            vault_map_url("https://content.faforever.com", "SCCA_Coop_A03.v0023"),
+            "https://content.faforever.com/maps/scca_coop_a03.v0023.zip"
+        );
+        // A name that is already lower case is untouched.
+        assert_eq!(
+            vault_map_url("https://content.faforever.com", "adaptive_gadostb.v0002"),
+            "https://content.faforever.com/maps/adaptive_gadostb.v0002.zip"
+        );
+    }
 
     #[test]
     fn extracts_game_version_from_supcom_header_string() {

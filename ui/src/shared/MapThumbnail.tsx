@@ -9,6 +9,7 @@ import {
   mapThumbnailCandidates,
   normalizeMapName,
 } from "./mapPresentation";
+import { firstLiveCandidate, markThumbnailMissing } from "./thumbnailCache";
 import { useLocalMapPreview } from "./useLocalMapPreview";
 
 const COOP_FACTION_IDS: Record<string, number> = {
@@ -52,9 +53,9 @@ export function MapThumbnail({
     () => mapThumbnailCandidates(vault, mapName, large, undefined, generatedPreview, undefined, preferCanonicalPreview),
     [generatedPreview, large, mapName, preferCanonicalPreview, vault],
   );
-  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [candidateIndex, setCandidateIndex] = useState(() => firstLiveCandidate(candidates));
 
-  useEffect(() => setCandidateIndex(0), [candidates]);
+  useEffect(() => setCandidateIndex(firstLiveCandidate(candidates)), [candidates]);
 
   const url = candidates[candidateIndex];
   // Only once every remote candidate has 404'd. Kept out of `candidates` on
@@ -107,7 +108,12 @@ export function MapThumbnail({
       alt={`${presentation.displayName} preview`}
       loading="lazy"
       decoding="async"
-      onError={() => setCandidateIndex((index) => index + 1)}
+      onError={() => {
+        markThumbnailMissing(url);
+        // Never the same index twice: `url` is the candidate at the current
+        // index, so skipping every remembered miss lands strictly past it.
+        setCandidateIndex(firstLiveCandidate(candidates));
+      }}
     />
   );
 }

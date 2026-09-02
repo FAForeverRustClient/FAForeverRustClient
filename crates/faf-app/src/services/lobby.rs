@@ -94,6 +94,16 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
         LobbyCommand::ClearHostPrefill => out.emit(LobbyEvent::HostPrefillCleared),
         LobbyCommand::Host { config } => match config.validated() {
             Ok(config) => {
+                // The map has to be on disk before the server is asked for a
+                // lobby, because its reply will not mention one: see
+                // `launcher::prepare_host`. Guarded the way the join path is,
+                // so an offline shell still exercises the request itself.
+                if ctx.ports.process.supports_live_launch() {
+                    if let Err(reason) = launcher::prepare_host(&config, ctx, out).await {
+                        launcher::report_failure(ctx, out, reason);
+                        return;
+                    }
+                }
                 // Co-op owns a separate launch surface in both references; do
                 // not let one mission replace the remembered custom-game form.
                 let remember = config.mod_name != "coop";
