@@ -384,7 +384,9 @@ impl ReplayClient {
                 tracing::info!(
                     names = names.len(),
                     exact = query.exact_player,
-                    accounts = resolved.as_ref().map(|r| r.iter().map(Vec::len).sum::<usize>()),
+                    accounts = resolved
+                        .as_ref()
+                        .map(|r| r.iter().map(Vec::len).sum::<usize>()),
                     elapsed_ms = started.elapsed().as_millis() as u64,
                     "shared games: resolved player names"
                 );
@@ -544,8 +546,7 @@ impl ReplayClient {
                     .append_pair("sort", "-id")
                     .append_pair("page[size]", &ID_SCAN_PAGE_SIZE.to_string())
                     .append_pair("fields[game]", "startTime");
-                if let Some(filter) =
-                    replay_query::build_scan_filter(query, player_ids, before_id)
+                if let Some(filter) = replay_query::build_scan_filter(query, player_ids, before_id)
                 {
                     pairs.append_pair("filter", &filter);
                 }

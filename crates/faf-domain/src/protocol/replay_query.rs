@@ -514,7 +514,10 @@ pub fn intersect_game_ids(lists: &[Vec<i32>]) -> Vec<i32> {
     let Some((first, rest)) = lists.split_first() else {
         return Vec::new();
     };
-    let others: Vec<HashSet<i32>> = rest.iter().map(|ids| ids.iter().copied().collect()).collect();
+    let others: Vec<HashSet<i32>> = rest
+        .iter()
+        .map(|ids| ids.iter().copied().collect())
+        .collect();
     let mut seen = HashSet::with_capacity(first.len());
     first
         .iter()
@@ -699,8 +702,14 @@ mod tests {
             player: "Stormlord, Foley".into(),
             ..query()
         };
-        assert_eq!(q.fallback_months(), Some(6), "the single-name path still has one");
-        assert!(!build_scan_filter(&q, &[42], None).unwrap().contains("startTime"));
+        assert_eq!(
+            q.fallback_months(),
+            Some(6),
+            "the single-name path still has one"
+        );
+        assert!(!build_scan_filter(&q, &[42], None)
+            .unwrap()
+            .contains("startTime"));
 
         let bounded = ReplayQuery {
             after: "2024-01-01".into(),
