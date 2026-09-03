@@ -101,9 +101,16 @@ pnpm run bindings           # regenerate ui/src/ipc/bindings.ts from Rust
 pnpm run tauri dev          # run the app (Vite + Tauri)
 ```
 
-The Tauri command prepares the platform-specific `faf-uid` helper in the ignored
-`natives/` directory. Set `FAF_SKIP_UID_DOWNLOAD=1` for an offline/test run, or
-provide `FAF_UID_PATH` when using a locally managed binary.
+The Tauri command prepares the platform-specific helpers in the ignored `natives/`
+directory, each pinned to a version and checked against a SHA-256 digest before it
+is used: `faf-uid` for the anti-smurf fingerprint and `faf-pioneer`, FAF's Go ICE
+adapter. Neither is committed.
+
+- `FAF_SKIP_UID_DOWNLOAD=1` / `FAF_SKIP_PIONEER_DOWNLOAD=1` skip a download for an
+  offline or test run.
+- `FAF_UID_PATH` / `FAF_ICE_ADAPTER_PATH` point at a locally managed binary instead.
+- Both are skipped automatically when `FAF_FAKE_AUTH` is set without
+  `FAF_REAL_LOBBY`, since neither is reachable in that mode anyway.
 
 Other commands:
 
