@@ -581,8 +581,22 @@
   padding: var(--space-2) 0;
 }
 
+/* `.check-field` is built for the lobby's one word toggles and forbids wrapping.
+   This label is a sentence, so nowrap made it push the dialog wider than the
+   window and put a horizontal scrollbar under it. */
 .mod-upload-rules-check {
+  align-items: flex-start;
   padding-top: var(--space-1);
+  white-space: normal;
+}
+
+.mod-upload-rules-check input {
+  flex: none;
+  margin-top: 2px;
+}
+
+.mod-upload-rules-check > span {
+  min-width: 0;
 }
 
 .mod-upload-progress-box {
