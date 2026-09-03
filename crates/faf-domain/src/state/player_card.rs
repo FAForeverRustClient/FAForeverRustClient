@@ -112,6 +112,12 @@ pub struct PlayerRatingSummary {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerLeaguePlacement {
+    /// The leaderboard's technical name (`ladder_1v1`, `tmm_2v2`, ...).
+    ///
+    /// Kept beside the display name because the two are joined on: the
+    /// matchmaker shows a division per queue, and matching a queue against
+    /// "4v4 Full Share" would tie that join to a string written for humans.
+    pub technical_name: String,
     pub leaderboard: String,
     pub season: String,
     pub division: String,

@@ -1,10 +1,23 @@
-import type { MatchmakerPlayerProfile, PlayerCardStatus } from "../../ipc/bindings";
+import type { MatchmakerPlayerProfile, MatchmakerQueue, PlayerCardStatus } from "../../ipc/bindings";
+import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
 import { flagSrc } from "../../shared/countryFlags";
 import { openPlayerCard } from "../player-card/playerCardActions";
-import { MatchmakerFactionPicker } from "./MatchmakerFactionPicker";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
+
+/**
+ * The short form the divisions row uses: "1v1", "4v4". `queueTitle` spells the
+ * ladder queue out for the cards, which is too long for a tile this size.
+ */
+/**
+ * The badge shown for a queue the player has no placement in. Taken from the
+ * Java client (`images/leagueUnlistedDivision.png`) so the two clients say
+ * "unplaced" with the same picture rather than each inventing one.
+ */
+export const UNLISTED_DIVISION_IMAGE = "/images/league-unlisted-division.png";
+
+const queueLabel = (queue: MatchmakerQueue) => `${queue.teamSize}v${queue.teamSize}`;
 
 interface Props {
   playerId: number | null;
@@ -21,9 +34,8 @@ interface Props {
    * client's `countryImageView` gets it.
    */
   country: string;
-  factions: string[];
-  disabled: boolean;
-  onFactionsChange: (factions: string[]) => void;
+  /** The queues to show a division for, in the order they are offered. */
+  queues: MatchmakerQueue[];
 }
 
 export function MatchmakerPlayerCard({
@@ -33,12 +45,19 @@ export function MatchmakerPlayerCard({
   status,
   error,
   country,
-  factions,
-  disabled,
-  onFactionsChange,
+  queues,
 }: Props) {
   const { t } = useTranslation();
-  const placement = profile?.leaguePlacements[0] ?? null;
+  const placements = profile?.leaguePlacements ?? [];
+  // One tile per queue the server offers, not per placement the player has: a
+  // queue nobody has played yet still belongs in the row, saying so.
+  const divisions = queues.map((queue) => ({
+    queueName: queue.queueName,
+    label: queueLabel(queue),
+    placement: placementForQueue(placements, queue.queueName),
+    rating: ratingForQueue(profile?.ratings ?? [], queue.queueName),
+  }));
+  const placement = placements[0] ?? null;
   const displayName = profile?.login || playerName;
   const clan = profile?.clanTag ? `[${profile.clanTag}]` : "";
   // The REST profile keeps its country only as a fallback; in practice the
@@ -102,12 +121,43 @@ export function MatchmakerPlayerCard({
             <span>{placement?.division || t(status === "loading" ? "lobby.playerCard.loadingPlacement" : "lobby.playerCard.unlisted")}</span>
             <span>{profile ? t("lobby.playerCard.games", { count: formatNumber(profile.gamesPlayed) }) : t("lobby.playerCard.ratingsLoading")}</span>
           </div>
+          {divisions.length > 0 && (
+            <div className="matchmaker-divisions">
+              <span className="matchmaker-kicker">{t("lobby.matchmaker.divisions")}</span>
+              <ul>
+                {divisions.map((entry) => (
+                  <li key={entry.queueName} className="matchmaker-division">
+                    {/* Always a badge, never a gap: an unplaced queue gets the
+                        same "unlisted" art the Java client uses, so the row
+                        keeps its shape whatever the player has played. */}
+                    <img
+                      className="matchmaker-division-badge"
+                      src={entry.placement?.imageUrl || UNLISTED_DIVISION_IMAGE}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      draggable={false}
+                      onError={(event) => { event.currentTarget.src = UNLISTED_DIVISION_IMAGE; }}
+                    />
+                    <span className="matchmaker-division-copy">
+                      <span className="matchmaker-division-queue">{entry.label}</span>
+                      <span className="matchmaker-division-rank">
+                        {entry.placement?.division || t("lobby.matchmaker.unplaced")}
+                      </span>
+                      <strong className={`matchmaker-division-rating${entry.rating ? "" : " is-empty"}`}>
+                        {entry.rating ? entry.rating.rating.toLocaleString("en-US") : t("lobby.matchmaker.noRating")}
+                      </strong>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {status === "failed" && <small className="matchmaker-profile-warning" title={error}>{t(profile ? "lobby.playerCard.refreshFailed" : "lobby.playerCard.unavailable")}</small>}
           {profile && profile.warnings.length > 0 && <small className="matchmaker-profile-warning" title={profile.warnings.join("\n")}>{t("lobby.matchmaker.detailsUnavailable")}</small>}
         </div>
       </div>
 
-      <MatchmakerFactionPicker selected={factions} disabled={disabled} onChange={onFactionsChange} />
     </section>
   );
 }

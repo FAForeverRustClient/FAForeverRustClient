@@ -1,6 +1,7 @@
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import type { MatchmakerQueue, PlayerRatingSummary } from "../../ipc/bindings";
+import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../ipc/bindings";
+import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../shared/durations";
 import { t } from "../../i18n";
 
@@ -36,6 +37,8 @@ interface Props {
    * worth a number.
    */
   inRange: number | null;
+  /** This queue's league placement, for the badge under the rating. */
+  placement: PlayerLeaguePlacement | null;
   onToggle: () => void;
   onOpenMapPool: () => void;
 }
@@ -49,6 +52,7 @@ export function MatchmakerQueueCard({
   secondsUntilPop,
   rating,
   inRange,
+  placement,
   onToggle,
   onOpenMapPool,
 }: Props) {
@@ -77,15 +81,31 @@ export function MatchmakerQueueCard({
           <span className="matchmaker-queue-rating">
             <strong>{rating ? rating.rating.toLocaleString("en-US") : "N/A"}</strong>
             <small>{rating ? "your rating" : "unrated"}</small>
+            {/* The division for *this* queue, under its rating. A player is
+                placed per leaderboard, so the badge only means anything next
+                to the queue it belongs to. */}
+            <img
+              className="matchmaker-queue-division"
+              src={placement?.imageUrl || UNLISTED_DIVISION_IMAGE}
+              alt=""
+              title={placement?.division || undefined}
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              onError={(event) => { event.currentTarget.src = UNLISTED_DIVISION_IMAGE; }}
+            />
           </span>
         </span>
 
+        {/* One fact per line. Four of them wrapped across a card this narrow
+            broke wherever the numbers happened to be widest, so the same card
+            read differently for a four digit rating than for a three digit one,
+            and the one that decides whether to queue, how many of those waiting
+            would actually match you, was whichever fragment landed last. */}
         <span className="matchmaker-queue-facts">
           <span><Icon name="hourglass" size={14} /> {formatClockDuration(secondsUntilPop)}</span>
           <span><Icon name="users" size={14} /> {queue.numPlayers} queued</span>
           <span><Icon name="play" size={14} /> {activeGames} active</span>
-          {/* The number that decides whether waiting is worth it: how many of
-              those queued would actually be matched with you. */}
           {inRange !== null && (
             <span title={t("lobby.matchmaker.inRangeHint")}>
               <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}

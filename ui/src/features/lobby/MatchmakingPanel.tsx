@@ -7,9 +7,10 @@ import { useAppStore } from "../../store/store";
 import { MatchmakerMapPoolModal } from "./MatchmakerMapPoolModal";
 import { MatchmakerPartyChat } from "./MatchmakerPartyChat";
 import { MatchmakerPartyPanel } from "./MatchmakerPartyPanel";
+import { MatchmakerFactionPicker } from "./MatchmakerFactionPicker";
 import { MatchmakerPlayerCard } from "./MatchmakerPlayerCard";
 import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./MatchmakerQueueCard";
-import { ratingForQueue } from "./matchmakerRatings";
+import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
 import { playersInRatingRange } from "./queueRatingRange";
 import "./matchmaker.css";
 import { t } from "../../i18n";
@@ -29,8 +30,11 @@ function searchingQueues(state: MatchmakingState) {
   return state.type === "searching" ? state.payload.queueNames : [];
 }
 
-function MatchmakerSearchSummary({ state, selectedCount }: { state: MatchmakingState; selectedCount: number }) {
-  if (state.type === "idle") return <span>{t("lobby.matchmaker.summary.selected", { count: selectedCount })}</span>;
+// No "n queues selected" while idle: the cards carry their own checkmarks, and
+// counting them back at the user in the corner said nothing the row of ticked
+// cards above it did not already say.
+function MatchmakerSearchSummary({ state }: { state: MatchmakingState }) {
+  if (state.type === "idle") return null;
   if (state.type === "searching") return <span>{t("lobby.matchmaker.summary.searching", { count: state.payload.queueNames.length })}</span>;
   if (state.type === "matchFound") return <span>{t("lobby.matchmaker.summary.found", { queue: state.payload.queueName })}</span>;
   if (state.type === "launching") return <span>{t("lobby.matchmaker.summary.launching")}</span>;
@@ -175,9 +179,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           status={playerCard.matchmakerProfileStatus}
           error={playerCard.matchmakerProfileError}
           country={social.players.find((entry) => entry.id === playerId)?.country ?? ""}
-          factions={selectedFactions}
-          disabled={isSearching || searchLocked || partyNeedsLeader}
-          onFactionsChange={setFactions}
+          queues={sortedQueues}
         />
 
         <MatchmakerPartyPanel party={party} social={social} playerId={playerId} playerName={playerName} searching={isSearching || searchLocked} />
@@ -185,6 +187,14 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
         <section className="matchmaker-card surface-panel matchmaker-queues-section" aria-labelledby="matchmaker-queues-title">
           <div className="matchmaker-section-copy">
             <div><span className="matchmaker-kicker">{t("lobby.matchmaker.gameModes")}</span><h2 id="matchmaker-queues-title">{t("lobby.matchmaker.selectQueues")}</h2></div>
+            {/* The faction choice sits with the modes it applies to. In the
+                identity card above it read as part of who you are rather than
+                as a setting for the search about to start. */}
+            <MatchmakerFactionPicker
+              selected={selectedFactions}
+              disabled={isSearching || searchLocked || partyNeedsLeader}
+              onChange={setFactions}
+            />
             {/* Only says something when it is not obvious from the cards: a
                 party has a size floor that silently disables some of them. */}
             {party.members.length > 1 && (
@@ -197,6 +207,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
               const remaining = clockState ? Math.max(0, clockState.seconds - Math.floor((clock - clockState.receivedAt) / 1000)) : queue.queuePopTimeSeconds;
               const activeGames = activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
               const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName);
+              const queuePlacement = placementForQueue(matchmakerProfile?.leaguePlacements ?? [], queue.queueName);
               const searchingThisQueue =
                 matchmaking.type === "searching" &&
                 matchmaking.payload.queueNames.includes(queue.queueName);
@@ -213,6 +224,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
                   // Your own search is in the server's numbers and is not
                   // somebody you could be matched against.
                   inRange={playersInRatingRange(queue, queueRating, searchingThisQueue ? 1 : 0)}
+                  placement={queuePlacement}
                   onToggle={() => toggleQueue(queue)}
                   onOpenMapPool={() => openMapPool(queue)}
                 />
@@ -227,12 +239,13 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
             <div className="matchmaker-search-copy">
               <i />
               <div>
-                <strong><MatchmakerSearchSummary state={matchmaking} selectedCount={compatibleQueues.length} /></strong>
-                <span>{isSearching
-                  ? t("lobby.matchmaker.hint.editable")
-                  : compatibleQueues.length === 0
-                    ? t("lobby.matchmaker.hint.selectOne")
-                    : t("lobby.matchmaker.hint.filesChecked")}</span>
+                <strong><MatchmakerSearchSummary state={matchmaking} /></strong>
+                {/* Nothing to say once a queue is picked: the button beside
+                    this says what happens next, and "maps and game files are
+                    checked" described plumbing nobody asked about. */}
+                {(isSearching || compatibleQueues.length === 0) && (
+                  <span>{t(isSearching ? "lobby.matchmaker.hint.editable" : "lobby.matchmaker.hint.selectOne")}</span>
+                )}
               </div>
             </div>
             <Button variant="primary" className="matchmaker-search-button" disabled={partyNeedsLeader || (!isSearching && !canSearch)} onClick={toggleSearch}>
