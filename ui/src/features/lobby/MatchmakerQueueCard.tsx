@@ -16,15 +16,6 @@ export function queueTitle(queue: MatchmakerQueue) {
   return `${queue.teamSize} vs ${queue.teamSize}`;
 }
 
-function statusText(status: QueueDisplayState) {
-  switch (status) {
-    case "searching": return t("lobby.matchmaker.state.searching");
-    case "found": return t("lobby.matchmaker.state.found");
-    case "launching": return t("lobby.matchmaker.state.launching");
-    case "cancelled": return t("lobby.matchmaker.state.cancelled");
-    case "idle": return null;
-  }
-}
 
 interface Props {
   queue: MatchmakerQueue;
@@ -60,7 +51,6 @@ export function MatchmakerQueueCard({
   onToggle,
   onOpenMapPool,
 }: Props) {
-  const statusLabel = statusText(status);
   return (
     <article className={`matchmaker-queue-card surface-panel${selected ? " is-selected" : ""}${disabled ? " incompatible" : ""}`} data-status={status}>
       {/* The whole card toggles, not a checkbox-sized strip at the top of it.
@@ -115,10 +105,9 @@ export function MatchmakerQueueCard({
               <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}
             </span>
           )}
-          {/* Why the queue cannot be entered, or what it is doing right now, is
-              one more line about the queue. As a band of its own under the
-              facts it was a second place to look for the same kind of thing. */}
-          {disabled ? <span className="matchmaker-queue-note">{t("lobby.matchmaker.partyTooLarge")}</span> : statusLabel ? <span className="matchmaker-queue-status"><i />{statusLabel}</span> : null}
+          {disabled && (
+            <span className="matchmaker-queue-note">{t("lobby.matchmaker.partyTooLarge")}</span>
+          )}
         </span>
       </button>
 

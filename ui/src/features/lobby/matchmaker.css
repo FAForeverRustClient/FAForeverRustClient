@@ -31,19 +31,27 @@
 .faction-chip {
   --faction: var(--color-border-strong);
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 0 6px;
+  gap: 9px;
+  padding: 0 14px 0 12px;
   color: var(--color-muted);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
   line-height: 1;
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.faction-chip span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .faction-chip[data-faction="uef"] { --faction: var(--color-faction-uef); }
@@ -115,7 +123,17 @@
 
 .party-strip-actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
+}
+
+.party-strip-locked,
+.party-strip-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .party-seats {
@@ -285,6 +303,14 @@
 .map-pool-card.vetoed { border-color: var(--color-error); }
 .map-pool-card.vetoed .map-pool-card-foot { color: var(--color-subtle); }
 
+.map-pool-card.is-disabled {
+  cursor: default;
+}
+
+.map-pool-card.is-disabled:hover {
+  border-color: var(--color-border);
+}
+
 /* A band across the whole card rather than a rotated sticker: the map behind it
    stays readable, and a horizontal edge reads as a state the card is in instead
    of a label dropped on top of it.
@@ -326,10 +352,6 @@
 }
 
 .matchmaker-queues-section {
-  /* Overwritten per render with the number of queues the server offers, so the
-     faction picker can size itself to one game mode card. */
-  --matchmaker-queue-columns: 4;
-  --matchmaker-queue-gap: 16px;
   padding: 20px;
 }
 
@@ -342,12 +364,19 @@
   padding: 16px 20px;
 }
 
-/* Who you are, kept to the width its own text needs. The card's other half is
-   the league headline, which is the part worth the room. */
+.matchmaker-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+
+/* Who you are, kept to the width its own text needs. */
 .matchmaker-player-copy {
   display: flex;
   min-width: 0;
-  flex: 1 1 240px;
   flex-direction: column;
   gap: 4px;
 }
@@ -415,19 +444,6 @@
   flex-wrap: wrap;
 }
 
-/* The picker sits above the last game mode card and is cut to that card's
-   width, so the two read as one column rather than as a wide bar over a narrow
-   tile. The grid resolves its own tracks with `auto-fit`, which nothing outside
-   it can query, so the arithmetic is repeated here from the column count the
-   panel passes in. */
-.matchmaker-section-copy .faction-chips {
-  flex: 0 0 auto;
-  width: max(
-    196px,
-    calc((100% - (var(--matchmaker-queue-columns) - 1) * var(--matchmaker-queue-gap)) / var(--matchmaker-queue-columns))
-  );
-}
-
 .matchmaker-section-copy h1,
 .matchmaker-section-copy h2 {
   margin: 3px 0 0;
@@ -451,7 +467,7 @@
 .matchmaker-queue-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
-  gap: var(--matchmaker-queue-gap);
+  gap: 16px;
   margin-top: 18px;
 }
 
@@ -475,18 +491,18 @@
   box-shadow: inset 0 0 0 1px var(--color-accent);
 }
 
-/* An in-flight search outranks selection: it is the state that changes on its
-   own, so it keeps the status stripe and gives up the accent outline. */
 .matchmaker-queue-card[data-status="searching"],
 .matchmaker-queue-card[data-status="found"],
 .matchmaker-queue-card[data-status="launching"] {
   border-color: var(--color-ok);
-  box-shadow: inset 3px 0 var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 6%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--color-ok);
 }
 
 .matchmaker-queue-card[data-status="cancelled"] {
   border-color: var(--color-warn);
-  box-shadow: inset 3px 0 var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 6%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--color-warn);
 }
 
 .matchmaker-queue-card.incompatible {
@@ -623,24 +639,12 @@
   font-size: 12px;
 }
 
-.matchmaker-queue-note,
-.matchmaker-queue-status {
+.matchmaker-queue-note {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   color: var(--color-muted);
   font-size: 12px;
-}
-
-.matchmaker-queue-status i {
-  width: 6px;
-  height: 6px;
-  background: var(--color-ok);
-  border-radius: 50%;
-}
-
-[data-status="cancelled"] .matchmaker-queue-status i {
-  background: var(--color-warn);
 }
 
 /* A footer of the queues card, not a floating strip of its own. */
@@ -655,9 +659,14 @@
 }
 
 .matchmaker-search-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
   min-height: 40px;
-  padding-inline: 20px;
+  padding: 0 20px 2px;
   font-size: 14px;
+  line-height: 1;
 }
 
 .matchmaker-search-copy {
@@ -699,13 +708,6 @@
 .matchmaker-search-copy span {
   color: var(--color-muted);
   font-size: 12px;
-}
-
-.party-panel-note {
-  margin: 10px 0 0;
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.45;
 }
 
 /* Party chat now sits in a full-width card rather than a 290px rail, so it
@@ -871,7 +873,19 @@
   gap: 12px;
   margin-top: 8px;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
+}
+
+.matchmaker-bracket-name {
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.matchmaker-veto-unavailable {
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 13px;
 }
 
 .matchmaker-token-wallet {
@@ -894,70 +908,10 @@
   border-color: var(--color-warn);
 }
 
-.matchmaker-token-wallet small {
+.matchmaker-token-wallet span {
   margin-left: 4px;
-  color: var(--color-subtle);
-}
-
-.matchmaker-map-preview {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 28px;
-  align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-  padding: 8px;
-  background: var(--color-surface-raised);
-}
-
-.matchmaker-map-preview > img,
-.matchmaker-map-preview > .map-preview-placeholder {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-}
-
-.matchmaker-map-preview > span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-}
-
-.matchmaker-map-preview strong {
-  font-size: 12px;
-}
-
-.matchmaker-map-preview small {
-  overflow: hidden;
-  color: var(--color-subtle);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.matchmaker-map-preview > button {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  padding: 0;
   color: var(--color-muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.matchmaker-map-preview > button:hover,
-.matchmaker-map-preview > button:focus-visible {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  outline: none;
-}
-
-.map-pool-card.previewed {
-  border-color: var(--color-border-strong);
-  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  font-size: 13px;
 }
 
 /* Below this the chat rail costs the queue cards more width than it is worth,
@@ -982,7 +936,12 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .matchmaker-section-copy .faction-chips,
+  .matchmaker-player-factions {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .matchmaker-player-factions .faction-chips,
   .faction-chips {
     width: 100%;
   }
@@ -1016,117 +975,39 @@
   }
 }
 
-/* The league headline: the highest division the account holds and the best
-   rating behind it, given the room the per queue divisions row used to spend
-   saying four smaller versions of the same thing. */
-.matchmaker-league-summary {
-  display: flex;
-  align-items: center;
-  flex: 0 1 auto;
-  gap: 18px;
-  padding: 12px 18px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+/* No border or fill: the badge art carries its own frame, and a box around it
+   read as an empty placeholder whenever the image was missing. */
+.matchmaker-league-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
 }
 
-/* Big enough to be the thing the eye lands on. The art is a badge with its own
-   frame, so it needs no box around it. */
-.matchmaker-league-summary-badge {
-  width: 64px;
-  height: 64px;
-  flex: none;
+.matchmaker-league-mark img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
-.matchmaker-league-summary-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.matchmaker-league-summary-copy .matchmaker-kicker {
+/* Factions in the player card, mirroring the Java client (team_matchmaking.fxml). */
+.matchmaker-player-factions {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
+}
+
+.matchmaker-player-factions .faction-chips {
+  display: flex;
   gap: 6px;
 }
 
-/* The queue the division belongs to. A player is placed per leaderboard, so
-   "Diamond III" on its own leaves out half the fact. */
-.matchmaker-league-summary-copy .matchmaker-kicker em {
-  padding: 1px 6px;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border-radius: var(--radius-sm);
-  font-style: normal;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.matchmaker-league-summary-division {
-  font-size: 22px;
-  font-weight: 650;
-  letter-spacing: -.02em;
-  line-height: 1.1;
-}
-
-/* Java draws this as an arc around the badge; a bar reads the same and keeps
-   the number beside it on one baseline. */
-.matchmaker-league-progress {
-  display: block;
-  width: 100%;
-  min-width: 160px;
-  height: 6px;
-  margin-top: 2px;
-  overflow: hidden;
-  background: var(--color-surface);
-  border-radius: 999px;
-}
-
-.matchmaker-league-progress > span {
-  display: block;
-  height: 100%;
-  background: var(--color-accent);
-  border-radius: inherit;
-}
-
-.matchmaker-league-summary-copy small {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-/* The number, not a label with a number under it: the rating is what a player
-   compares against a queue card, so it is set at the same weight as the
-   division beside it. */
-.matchmaker-league-summary-rating {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  padding-left: 18px;
-  border-left: 1px solid var(--color-border);
-}
-
-.matchmaker-league-summary-rating strong {
-  font-size: 26px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -.02em;
-  line-height: 1.1;
-}
-
-/* An account with no rated queue has no number, and setting the words at the
-   size of a rating made "No rating" look like one. */
-.matchmaker-league-summary-rating strong.is-empty {
-  color: var(--color-muted);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.matchmaker-league-summary-rating small {
-  color: var(--color-muted);
-  font-size: 12px;
+.matchmaker-player-factions .faction-chip {
+  width: 112px;
 }
 
 /* The single invite placeholder. Shaped like a seat so the row stays even,
