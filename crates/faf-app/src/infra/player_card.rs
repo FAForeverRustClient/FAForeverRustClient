@@ -850,6 +850,7 @@ fn parse_placements(doc: &JsonApiDoc) -> Vec<PlayerLeaguePlacement> {
             Some((
                 order,
                 PlayerLeaguePlacement {
+                    technical_name: technical_name.clone(),
                     leaderboard: pretty_board(&technical_name, &text(board, "nameKey")),
                     season: display_key(&text(season, "nameKey")),
                     division: format!(
@@ -1191,6 +1192,7 @@ impl PlayerCardPort for FakePlayerCard {
                 },
             ],
             league_placements: vec![PlayerLeaguePlacement {
+                technical_name: "ladder_1v1".into(),
                 leaderboard: "1v1 Ladder".into(),
                 season: "Season 12".into(),
                 division: "Diamond II".into(),

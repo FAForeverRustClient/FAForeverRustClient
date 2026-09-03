@@ -3514,6 +3514,14 @@ export type PlayerEventCount = {
 };
 
 export type PlayerLeaguePlacement = {
+	/**
+	 *  The leaderboard's technical name (`ladder_1v1`, `tmm_2v2`, ...).
+	 *
+	 *  Kept beside the display name because the two are joined on: the
+	 *  matchmaker shows a division per queue, and matching a queue against
+	 *  "4v4 Full Share" would tie that join to a string written for humans.
+	 */
+	technicalName: string,
 	leaderboard: string,
 	season: string,
 	division: string,
