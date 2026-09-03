@@ -2293,9 +2293,17 @@ mod tests {
 
     #[tokio::test]
     async fn cache_manifest_indexing_and_multi_version_inspection_works() {
-        let temp_dir =
+        // Nested under a directory of its own, because `sync_version_folder`
+        // writes to `cache_dir.parent()/versions/<entry name>`: with the cache
+        // directly in the temp directory, every test in this file shared one
+        // `versions` folder. This test and the staging one below both index an
+        // entry called "FAF Develop (abcdef1)" holding a `lua.nx2`, so they
+        // wrote the same file with different contents, in parallel, and
+        // whichever finished second decided what the other one read back.
+        let root =
             std::env::temp_dir().join(format!("faf-test-cache-manifest-{}", std::process::id()));
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+        let temp_dir = root.join("cache");
+        let _ = tokio::fs::remove_dir_all(&root).await;
         tokio::fs::create_dir_all(temp_dir.join("bin"))
             .await
             .unwrap();
@@ -2394,15 +2402,17 @@ mod tests {
             Some("https://github.com/FAForever/fa/commits/abcdef1")
         );
 
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+        let _ = tokio::fs::remove_dir_all(&root).await;
     }
 
     #[tokio::test]
     async fn cache_manifest_stage_and_restore_replay_version_works() {
-        let temp_dir =
-            std::env::temp_dir().join(format!("forge-stage-test-{}", std::process::id()));
-        let target_dir =
-            std::env::temp_dir().join(format!("forge-target-test-{}", std::process::id()));
+        // Its own root, for the shared `versions` folder described on the
+        // manifest test above.
+        let root = std::env::temp_dir().join(format!("forge-stage-test-{}", std::process::id()));
+        let temp_dir = root.join("cache");
+        let target_dir = root.join("target");
+        let _ = tokio::fs::remove_dir_all(&root).await;
         tokio::fs::create_dir_all(temp_dir.join("bin"))
             .await
             .unwrap();
@@ -2553,7 +2563,7 @@ mod tests {
             b"lua_content_develop"
         );
 
-        let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-        let _ = tokio::fs::remove_dir_all(&target_dir).await;
+        // The root, so the `versions` folder beside the cache goes with it.
+        let _ = tokio::fs::remove_dir_all(&root).await;
     }
 }
