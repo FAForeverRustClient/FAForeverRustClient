@@ -1,0 +1,132 @@
+name: Release
+
+# Started by hand from the Actions tab. The version is not typed in: it comes
+# from `src-tauri/tauri.conf.json`, and the tag `v<version>` is created by the
+# build, so the thing that ships and the thing that names it cannot disagree.
+#
+# Not a push trigger on purpose. A version bump rides along in ordinary pull
+# requests, and publishing to every user is not something a merge should do on
+# its own.
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: 'Mark as a prerelease (every release so far has been one)'
+        type: boolean
+        default: true
+      allow_existing_tag:
+        description: 'Add to the existing tag instead of refusing. For retrying one failed platform.'
+        type: boolean
+        default: false
+
+jobs:
+  prepare:
+    name: Check the version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags, so an existing release is noticed before four builds run
+
+      # The client's updater reads the version out of the tag, the in-app "about"
+      # reads it out of the binary, and the frontend reads it out of package.json.
+      # Three files that must agree, checked here rather than discovered by a user
+      # whose client reports a version nobody released.
+      - name: Read and cross check the version
+        id: version
+        run: |
+          TAURI=$(jq -r '.version' src-tauri/tauri.conf.json)
+          NODE=$(jq -r '.version' package.json)
+          CARGO=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "tauri.conf.json=$TAURI package.json=$NODE Cargo.toml=$CARGO"
+          if [ "$TAURI" != "$NODE" ] || [ "$TAURI" != "$CARGO" ]; then
+            echo "::error::Version mismatch. All three must agree before a release."
+            exit 1
+          fi
+          # `is_release_version` in faf-domain accepts this shape and nothing
+          # else, and it is what decides whether a client sees the release at all.
+          if ! echo "$TAURI" | grep -Eq '^[0-9]+(\.[0-9]+)*([-+][0-9A-Za-z.-]+)?$'; then
+            echo "::error::Version '$TAURI' is not a shape the client's updater accepts."
+            exit 1
+          fi
+          echo "version=$TAURI" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to reuse a tag
+        if: ${{ !inputs.allow_existing_tag }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::$TAG already exists. Bump the version, or re-run with allow_existing_tag to add to it."
+            exit 1
+          fi
+          echo "$TAG is free"
+
+  publish-tauri:
+    name: Build ${{ matrix.platform }}
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest' # Apple Silicon
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest' # Intel
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      # No version here: package.json's `packageManager` field is the single
+      # source, and passing both makes the action refuse to guess.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `beforeBuildCommand` is only the frontend bundle. The helpers the app
+      # ships as resources (faf-uid, faf-pioneer, the JRE, the Java adapter) are
+      # downloaded here, and without this step `natives/` is empty and they are
+      # silently missing from the installer.
+      - name: Prepare bundled helpers
+        run: pnpm run prepare:native
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # `v<version>`, because `strip_version_prefix` in faf-domain strips a
+          # leading `v` and nothing else: a tag shaped any other way is invisible
+          # to the client's own update check.
+          tagName: v__VERSION__
+          releaseName: 'FAForever Client v__VERSION__'
+          releaseBody: 'Download the installer for your platform from the assets below.'
+          releaseDraft: false
+          prerelease: ${{ inputs.prerelease }}
+          args: ${{ matrix.args }}
