@@ -406,6 +406,7 @@ export const en = {
   "lobby.mapPool.title": "{queue} map pool",
   "lobby.mapPool.subtitle": "Inspect every rating bracket and use veto tokens on maps you prefer not to play.",
   "lobby.mapPool.brackets": "Rating brackets",
+  "lobby.mapPool.banned": "Banned",
   "lobby.mapPool.reset": "Reset bracket",
   "lobby.mapPool.closePreview": "Close map preview",
   "lobby.mapPool.empty": "No map pool is available for this queue.",
