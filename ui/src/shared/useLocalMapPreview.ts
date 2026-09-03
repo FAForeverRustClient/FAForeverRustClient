@@ -47,6 +47,22 @@ export function resetLocalMapPreviewRequests(): void {
   guardedList = null;
 }
 
+// Base folder names of the installed maps, cached against the identity of the
+// list they came from. The check below runs inside a store selector, so it is
+// re-evaluated for every mounted tile on every event the client receives; as a
+// scan of several hundred installed folders that was a few hundred thousand
+// string comparisons per event on a full page of tiles.
+const INSTALLED_BASES = new WeakMap<object, Set<string>>();
+
+function installedBases(installed: { folderName: string }[]): Set<string> {
+  let bases = INSTALLED_BASES.get(installed);
+  if (!bases) {
+    bases = new Set(installed.map((map) => baseMapName(map.folderName)));
+    INSTALLED_BASES.set(installed, bases);
+  }
+  return bases;
+}
+
 /**
  * The map's local preview, requesting it once when `enabled`.
  *
@@ -59,9 +75,7 @@ export function useLocalMapPreview(mapName: string, enabled: boolean, large = fa
   const preview = useAppStore((state) => state.state.maps.localPreviews[base]);
   // Only for maps that are actually here: asking about one that is not costs a
   // scan of a maps folder several hundred entries deep, for a certain miss.
-  const installed = useAppStore((state) =>
-    state.state.maps.installed.some((map) => baseMapName(map.folderName) === base),
-  );
+  const installed = useAppStore((state) => installedBases(state.state.maps.installed).has(base));
 
   useEffect(() => {
     if (!enabled || !base || preview !== undefined || !installed) return;

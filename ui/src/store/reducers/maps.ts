@@ -1,5 +1,11 @@
 import type { MapsEvent, MapsState } from "../../ipc/bindings";
 
+/**
+ * Twin of `MAX_LOCAL_PREVIEWS` in crates/faf-domain/src/state/maps.rs, where
+ * the number is justified against measured preview sizes.
+ */
+const MAX_LOCAL_PREVIEWS = 128;
+
 export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
   switch (event.type) {
     case "vaultLoading":
@@ -47,14 +53,28 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
     // stops the image error handler asking again.
     case "localPreviewsLoaded": {
       const localPreviews = { ...state.localPreviews };
-      for (const [folder, preview] of Object.entries(event.payload.previews)) {
+      const localPreviewOrder = [...state.localPreviewOrder];
+      // Sorted, because the twin reads a `BTreeMap` and the eviction queue has
+      // to end up in the same order on both sides. Object key order would
+      // agree for every real folder name and quietly disagree for a numeric
+      // one, which JavaScript hoists to the front.
+      for (const folder of Object.keys(event.payload.previews).sort()) {
+        const preview = event.payload.previews[folder];
         const known = localPreviews[folder];
         localPreviews[folder] = {
           small: preview.small ?? known?.small ?? null,
           large: preview.large ?? known?.large ?? null,
         };
+        if (!known) localPreviewOrder.push(folder);
       }
-      return { ...state, localPreviews };
+      // Oldest first, so what the user is looking at now survives. See
+      // `MAX_LOCAL_PREVIEWS`: this art is held as `data:` URLs and an
+      // unbounded cache of it reached tens of megabytes on each side.
+      while (Object.keys(localPreviews).length > MAX_LOCAL_PREVIEWS && localPreviewOrder.length > 0) {
+        const evicted = localPreviewOrder.shift();
+        if (evicted !== undefined) delete localPreviews[evicted];
+      }
+      return { ...state, localPreviews, localPreviewOrder };
     }
     case "matchmakerPoolsLoading":
       return { ...state, matchmakerPoolsStatus: { type: "loading" } };
@@ -84,6 +104,7 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
         installedStatus: { type: "ready" },
         installStatus: { type: "idle" },
         localPreviews: {},
+        localPreviewOrder: [],
       };
     case "installFailed":
       return { ...state, installStatus: { type: "failed", payload: { reason: event.payload.reason } } };
@@ -94,6 +115,7 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
         installedStatus: { type: "ready" },
         installStatus: { type: "idle" },
         localPreviews: {},
+        localPreviewOrder: [],
       };
     case "uninstallFailed":
       return { ...state, installStatus: { type: "failed", payload: { reason: event.payload.reason } } };

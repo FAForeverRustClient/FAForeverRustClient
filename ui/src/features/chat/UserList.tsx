@@ -17,7 +17,7 @@ import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, Vault
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { isModerator } from "../../store/reducer";
+import { isModerator, playersByNickname } from "../../store/reducer";
 import { useTranslation } from "../../i18n/useTranslation";
 import {
   USER_CATEGORY_LABELS,
@@ -109,10 +109,8 @@ export const UserList = memo(function UserList({
     [],
   );
 
-  const profilesByLogin = useMemo(
-    () => new Map(social.players.map((p) => [p.login.toLowerCase(), p])),
-    [social.players],
-  );
+  // Shared with the message list, which needs exactly the same index.
+  const profilesByLogin = playersByNickname(social.players);
   const friendsSet = useMemo(
     () => new Set(social.friends.map((f) => f.toLowerCase())),
     [social.friends],

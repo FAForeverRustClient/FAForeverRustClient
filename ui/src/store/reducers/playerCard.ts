@@ -3,7 +3,12 @@ import type { PlayerCardEvent, PlayerCardState, RatingHistoryPoint } from "../..
 function mergeHistory(current: RatingHistoryPoint[], incoming: RatingHistoryPoint[]): RatingHistoryPoint[] {
   const byTime = new Map(current.map((point) => [point.timestamp, point]));
   for (const point of incoming) byTime.set(point.timestamp, point);
-  return [...byTime.values()].sort((left, right) => left.timestamp.localeCompare(right.timestamp));
+  // Code-unit comparison, matching the twin's `timestamp.cmp`. These are RFC
+  // 3339 instants, so byte order is chronological order, and running a collator
+  // over a paged-in history of thousands of points bought nothing.
+  return [...byTime.values()].sort((left, right) =>
+    left.timestamp < right.timestamp ? -1 : left.timestamp > right.timestamp ? 1 : 0,
+  );
 }
 
 export function reducePlayerCard(state: PlayerCardState, event: PlayerCardEvent): PlayerCardState {

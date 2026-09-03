@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { MatchmakerPlayerProfile, MatchmakerQueue, PlayerCardStatus } from "../../ipc/bindings";
 import { flagSrc } from "../../shared/countryFlags";
 import { openPlayerCard } from "../player-card/playerCardActions";
@@ -34,7 +35,11 @@ interface Props {
   onFactionsChange: (factions: string[]) => void;
 }
 
-export function MatchmakerPlayerCard({
+/**
+ * Memoised because the panel around it holds a one second clock for the queue
+ * countdowns, and none of this changes on that tick.
+ */
+export const MatchmakerPlayerCard = memo(function MatchmakerPlayerCard({
   playerId,
   playerName,
   profile,
@@ -123,4 +128,4 @@ export function MatchmakerPlayerCard({
       </div>
     </section>
   );
-}
+});

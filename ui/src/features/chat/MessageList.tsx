@@ -17,6 +17,7 @@ import { Icon } from "../../design-system/Icon";
 import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
 import type { ChatGameLink } from "./chatFormat";
 import { useTranslation } from "../../i18n/useTranslation";
+import { playersByNickname } from "../../store/reducer";
 
 /** Distance from the bottom, in px, still counted as "at the bottom". */
 const STICK_THRESHOLD = 48;
@@ -103,13 +104,12 @@ export const MessageList = memo(function MessageList({
     else rowRefs.current.delete(id);
   }, []);
   const usersByName = useMemo(
-    () => new Map(users.map((user) => [user.name.toLocaleLowerCase(), user])),
+    () => new Map(users.map((user) => [user.name.toLowerCase(), user])),
     [users],
   );
-  const profilesByName = useMemo(
-    () => new Map(social.players.map((profile) => [profile.login.toLocaleLowerCase(), profile])),
-    [social.players],
-  );
+  // Shared with the roster rather than a second copy of the same few thousand
+  // entries, and rebuilt only when the directory itself changes.
+  const profilesByName = playersByNickname(social.players);
 
   const isFiltered = searchOpen && search.trim().length > 0;
   const displayedMessages = isFiltered
@@ -261,8 +261,8 @@ export const MessageList = memo(function MessageList({
                 && showsTime(message.timestamp, displayedMessages[i - 1]?.timestamp, use24HourTime)
               }
               use24HourTime={use24HourTime}
-              user={usersByName.get(message.sender.toLocaleLowerCase())}
-              profile={profilesByName.get(message.sender.toLocaleLowerCase())}
+              user={usersByName.get(message.sender.toLowerCase())}
+              profile={profilesByName.get(message.sender.toLowerCase())}
               social={social}
               preferences={preferences}
               search={searchOpen ? search : ""}

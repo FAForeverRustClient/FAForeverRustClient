@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
@@ -123,7 +123,10 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     });
   }, [activeSearches, party.members.length, queues]);
 
-  const setFactions = (factions: string[]) => {
+  // Stable, so the identity card's `memo` actually holds: this panel re-renders
+  // once a second for the queue countdowns, and a fresh handler on every one of
+  // those would hand the card a changed prop each tick.
+  const setFactions = useCallback((factions: string[]) => {
     setSelectedFactions(factions);
     ipc.send({
       kind: "Settings",
@@ -133,7 +136,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
       },
     });
     ipc.send({ kind: "Lobby", command: { type: "setPartyFactions", payload: { factions } } });
-  };
+  }, [browsing]);
 
   const toggleQueue = (queue: MatchmakerQueue) => {
     const selected = !unselectedQueues.includes(queue.queueName);
