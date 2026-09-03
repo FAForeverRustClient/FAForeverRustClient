@@ -208,10 +208,12 @@
   outline-offset: -2px;
 }
 
+/* Wider tracks than the old fixed three, because the card is now a picture
+   rather than a line of text with a thumbnail glued to its left. */
 .map-pool-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
   max-height: 56vh;
   margin-top: 18px;
   overflow: auto;
@@ -242,25 +244,87 @@
   border-color: var(--color-border);
 }
 
+/* The map first: the picture fills the card and the words sit under it in a
+   strip. Choosing a map is looking at terrain, and the previous card gave that
+   a 54 px square beside two lines of text. */
 .map-pool-card {
   position: relative;
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
+  display: flex;
   min-width: 0;
-  padding: 7px;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
   color: var(--color-text);
   background: var(--color-surface-raised);
+  text-align: left;
 }
 
-.map-pool-card.vetoed { opacity: .55; border-color: var(--color-error); }
-.map-pool-card img,
-.map-pool-card > .map-preview-placeholder { width: 54px; height: 54px; object-fit: cover; border-radius: var(--radius-sm); }
-.map-pool-card > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.map-pool-card-art {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--color-surface);
+}
+
+.map-pool-card-art img,
+.map-pool-card-art > .map-preview-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-pool-card-foot {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 9px 7px;
+}
+
 .map-pool-card strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.map-pool-card small { color: var(--color-subtle); font-size: 12px; }
-.map-pool-card em { position: absolute; top: 5px; right: 5px; color: var(--color-error); font-size: 12px; font-style: normal; text-transform: uppercase; }
+.map-pool-card small { color: var(--color-subtle); font-size: 11px; }
+
+/* Vetoed: the colour goes, and a band says why. Dimming alone read as a tile
+   still loading rather than as one the player had struck off. */
+.map-pool-card.vetoed .map-pool-card-art img,
+.map-pool-card.vetoed .map-pool-card-art > .map-preview-placeholder {
+  filter: grayscale(1) brightness(0.72);
+}
+
+.map-pool-card.vetoed { border-color: var(--color-error); }
+.map-pool-card.vetoed .map-pool-card-foot { color: var(--color-subtle); }
+
+/* A band across the whole card rather than a rotated sticker: the map behind it
+   stays readable, and a horizontal edge reads as a state the card is in instead
+   of a label dropped on top of it.
+ *
+ * Frosted rather than solid, the same `blur` + `color-mix` treatment the vault
+ * badges and the modal backdrop use, so the terrain still shows through and it
+ * is obvious which map is struck off. */
+.map-pool-banned {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  padding: 7px 8px;
+  transform: translateY(-50%);
+  border-top: 1px solid color-mix(in srgb, var(--color-error) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-error) 60%, transparent);
+  color: var(--color-error);
+  /* Frosted over the theme's own background rather than tinted red: the word has
+     to hold up over a pale desert as well as over dark water, and red on a red
+     wash disappears against bright terrain. Same recipe as the vault badges. */
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  backdrop-filter: blur(5px) saturate(115%);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 
 /* Matchmaker ------------------------------------------------------------- */
 .matchmaker-main {

@@ -361,6 +361,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.title": "Kartenpool: {queue}",
   "lobby.mapPool.subtitle": "Sieh dir jede Ratingstufe an und setze Veto-Marken auf Karten, die du lieber nicht spielst.",
   "lobby.mapPool.brackets": "Ratingstufen",
+  "lobby.mapPool.banned": "Gebannt",
   "lobby.mapPool.reset": "Stufe zurücksetzen",
   "lobby.mapPool.closePreview": "Kartenvorschau schließen",
   "lobby.mapPool.empty": "Für diese Warteschlange gibt es keinen Kartenpool.",

@@ -123,9 +123,23 @@ export function MatchmakerMapPoolModal({ queueTitle, pools, status, vault, serve
                     className={`map-pool-card surface surface-interactive${tokens > 0 ? " vetoed" : ""}${previewed ? " previewed" : ""}`}
                     onClick={() => vetoMode ? toggleVeto(map.assignmentId) : setPreviewAssignmentId(map.assignmentId)}
                   >
-                    <GameMapImage mapName={map.folderName} vault={vault} placeholderClassName="map-preview-placeholder" />
-                    <span><strong>{map.displayName}</strong><small>{formatMapSize(map.width, map.height)} · {map.maxPlayers} players</small></span>
-                    {tokens > 0 && <em>{tokens} token{tokens === 1 ? "" : "s"}</em>}
+                    {/* The picture is what the choice is made on, so it gets
+                        the card and the words get a strip under it. A vetoed
+                        map is drained of colour and struck through with a
+                        banner: the old treatment was a slightly dimmer tile,
+                        which read as "loading" rather than "banned". */}
+                    <span className="map-pool-card-art">
+                      <GameMapImage mapName={map.folderName} vault={vault} placeholderClassName="map-preview-placeholder" />
+                      {tokens > 0 && (
+                        <span className="map-pool-banned">
+                          {t("lobby.mapPool.banned")}{tokens > 1 ? ` ×${tokens}` : ""}
+                        </span>
+                      )}
+                    </span>
+                    <span className="map-pool-card-foot">
+                      <strong>{map.displayName}</strong>
+                      <small>{formatMapSize(map.width, map.height)} · {map.maxPlayers} players</small>
+                    </span>
                   </button>
                 );
               })}
