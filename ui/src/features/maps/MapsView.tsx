@@ -264,6 +264,19 @@ function VaultView({ busy }: { busy: boolean }) {
     setPage(1);
   };
 
+  // Sorting is not a preset, and used to be routed through one: the select
+  // called `choosePreset("all")`, which forced the sort back to "name" and
+  // dropped whatever the preset was filtering on, so every choice but "Name"
+  // appeared to do nothing and "My maps" quietly became all maps.
+  //
+  // It also read `sort` for the new value, which React has not applied yet at
+  // that point, so the state it saved was the previous selection.
+  const chooseSort = (nextSort: VaultSort) => {
+    setSort(nextSort);
+    setApplied((prev) => ({ ...prev, sort: nextSort }));
+    setPage(1);
+  };
+
   const choosePreset = (next: VaultPreset) => {
     let nextSort: VaultSort = sort;
     if (next === "rating" || next === "recommended" || next === "favorites") nextSort = "rating";
@@ -460,7 +473,7 @@ function VaultView({ busy }: { busy: boolean }) {
           <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("maps.view.any")}</option><option value="ranked">{t("maps.view.ranked")}</option><option value="unranked">{t("maps.view.unranked")}</option></select>
         </SearchField>
         <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => { setSort(event.target.value as VaultSort); choosePreset("all"); }}><option value="rating">{t("maps.view.preset.rating")}</option><option value="newest">{t("maps.view.preset.newest")}</option><option value="played">{t("maps.view.preset.played")}</option><option value="name">{t("maps.view.sort.name")}</option><option value="size">{t("maps.view.sort.size")}</option></select>
+          <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as VaultSort)}><option value="rating">{t("maps.view.preset.rating")}</option><option value="newest">{t("maps.view.preset.newest")}</option><option value="played">{t("maps.view.preset.played")}</option><option value="name">{t("maps.view.sort.name")}</option><option value="size">{t("maps.view.sort.size")}</option></select>
         </SearchField>
         <SearchPanelSubmit />
       </SearchPanel>
