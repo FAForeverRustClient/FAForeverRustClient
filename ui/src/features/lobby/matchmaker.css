@@ -175,8 +175,12 @@
 }
 
 .party-seat-slot {
+  display: inline-flex;
   width: 28px;
   height: 28px;
+  align-items: center;
+  justify-content: center;
+  flex: none;
   border: 1px dashed var(--color-border-strong);
   border-radius: 50%;
 }
@@ -1034,3 +1038,32 @@
   font-weight: 400;
 }
 
+/* The single invite placeholder. Shaped like a seat so the row stays even,
+   drawn as an outline so it does not read as an occupied one. */
+.party-seat-invite {
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.party-seat-invite:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.party-seat-invite:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The division badge under a queue's rating. Sized to the number above it so
+   the two read as one block rather than as a picture stuck to a statistic. */
+.matchmaker-queue-division {
+  width: 30px;
+  height: 30px;
+  margin-top: 2px;
+  object-fit: contain;
+}

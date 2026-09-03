@@ -3,7 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
-import type { PartyState, PlayerProfile, SocialState } from "../../ipc/bindings";
+import type { PartyMember, PartyState, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 
@@ -30,6 +30,11 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
       });
   }, [friendNames, partyMemberIds, query, selfId, social.players]);
 
+  // Sending again is allowed, and has to be: an invitation is a notification the
+  // other side can dismiss, miss, or let expire, and the only recourse is to
+  // send another one. The button used to disable itself on the first click,
+  // which left the inviter watching a greyed out "Invited" with nothing to do
+  // but close the dialog and reopen it.
   const invite = (player: PlayerProfile) => {
     ipc.send({ kind: "Lobby", command: { type: "inviteToParty", payload: { playerId: player.id } } });
     setInvited((current) => new Set(current).add(player.id));
@@ -52,7 +57,7 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
             <div className="matchmaker-invite-row" key={player.id}>
               <span className="profile-avatar" aria-hidden>{player.login.charAt(0).toUpperCase()}</span>
               <span><strong>{player.login}</strong><small>{isFriend ? t("lobby.party.friend") : player.clan ? `[${player.clan}]` : t("lobby.party.player")}</small></span>
-              <Button disabled={wasInvited} onClick={() => invite(player)}>{t(wasInvited ? "lobby.party.invited" : "lobby.party.invite")}</Button>
+              <Button onClick={() => invite(player)}>{t(wasInvited ? "lobby.party.inviteAgain" : "lobby.party.invite")}</Button>
             </div>
           );
         })}
@@ -77,16 +82,39 @@ export function MatchmakerPartyPanel({ party, social, playerId, playerName, sear
   const [inviteOpen, setInviteOpen] = useState(false);
   const isParty = party.members.length > 1;
   const canManageParty = playerId !== null && (party.ownerId === null || playerId === party.ownerId);
+  // The lobby's party message carries no names. `PartyMember.to_dict` on the
+  // server sends the player id and the factions, nothing else, so every member
+  // arrives labelled "Player 123456" by the adapter's fallback. That was
+  // visible as soon as a party existed at all: on your own you saw your name,
+  // because the seat below is synthesised from the signed-in account, and the
+  // moment the server sent a real party it turned into your id.
+  //
+  // The live player directory is the client's answer to an id everywhere else,
+  // and it self heals: a `player_info` arriving after the party message fills
+  // the name in rather than freezing whatever was known at the time.
+  const nameFor = useMemo(() => {
+    const byId = new Map(social.players.map((player) => [player.id, player.login]));
+    // `||`, not `??`: an empty login is as useless as a missing one, and the
+    // adapter's "Player 123456" is the last thing to fall back to, not the
+    // first.
+    return (member: PartyMember) =>
+      byId.get(member.playerId)
+      || (member.playerId === playerId ? playerName : "")
+      || member.name;
+  }, [social.players, playerId, playerName]);
+
   const members = useMemo(() => party.members.length > 0
     ? party.members
     : playerId === null ? [] : [{ playerId, name: playerName, factions: [] }],
   [party.members, playerId, playerName]);
   const memberIds = useMemo(() => new Set(members.map((member) => member.playerId)), [members]);
 
-  // Free slots are drawn rather than implied. A solo player's "1 / 4" is
-  // otherwise a number with no affordance, and the empty seats are what make
-  // the invite button look like the next step.
-  const freeSlots = Math.max(0, PARTY_CAPACITY - members.length);
+  // One placeholder, not one per free seat. Three identical empty tiles beside a
+  // solo player padded the row out to a width that suggested the party was
+  // mostly missing rather than simply not started; the count in the heading
+  // already says how many seats are open. It disappears at capacity, where
+  // there is nothing left to invite into.
+  const canInvite = members.length < PARTY_CAPACITY;
 
   return (
     <section className="matchmaker-card surface-panel party-strip">
@@ -96,9 +124,8 @@ export function MatchmakerPartyPanel({ party, social, playerId, playerName, sear
           <h2>{members.length || 1} of {PARTY_CAPACITY} players</h2>
         </div>
         <div className="party-strip-actions">
-          <Button disabled={!canManageParty || searching} onClick={() => setInviteOpen(true)}>
-            <Icon name="plus" size={15} /> {t("lobby.party.invitePlayer")}
-          </Button>
+          {/* No invite button here any more: the placeholder seat below is the
+              same action, in the place the eye already goes. */}
           {isParty && !canManageParty && (
             <Button disabled={searching} onClick={() => ipc.send({ kind: "Lobby", command: { type: "leaveParty" } })}>
               {t("lobby.party.leave")}
@@ -112,25 +139,30 @@ export function MatchmakerPartyPanel({ party, social, playerId, playerName, sear
           const leader = member.playerId === party.ownerId || (!isParty && member.playerId === playerId);
           return (
             <div className="party-seat" key={member.playerId}>
-              <span className="profile-avatar" aria-hidden>{member.name.charAt(0).toUpperCase()}</span>
+              <span className="profile-avatar" aria-hidden>{nameFor(member).charAt(0).toUpperCase()}</span>
               <span className="party-seat-text">
-                <strong><PlayerName name={member.name} />{member.playerId === playerId ? t("lobby.party.youSuffix") : ""}</strong>
+                <strong><PlayerName name={nameFor(member)} />{member.playerId === playerId ? t("lobby.party.youSuffix") : ""}</strong>
                 <small>{leader ? t("lobby.party.leader") : member.factions.length > 0 ? member.factions.join(", ") : t("lobby.party.randomFaction")}</small>
               </span>
               {canManageParty && member.playerId !== playerId ? (
-                <button type="button" className="party-seat-kick" title={`Remove ${member.name}`} aria-label={`Remove ${member.name}`} onClick={() => ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: member.playerId } } })}>
+                <button type="button" className="party-seat-kick" title={`Remove ${nameFor(member)}`} aria-label={`Remove ${nameFor(member)}`} onClick={() => ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: member.playerId } } })}>
                   <Icon name="close" size={15} />
                 </button>
               ) : null}
             </div>
           );
         })}
-        {Array.from({ length: freeSlots }, (_, index) => (
-          <div className="party-seat party-seat-empty" key={`empty-${index}`} aria-hidden>
-            <span className="party-seat-slot" />
-            <span className="party-seat-text"><small>{t("lobby.party.openSlot")}</small></span>
-          </div>
-        ))}
+        {canInvite && (
+          <button
+            type="button"
+            className="party-seat party-seat-invite"
+            disabled={!canManageParty || searching}
+            onClick={() => setInviteOpen(true)}
+          >
+            <span className="party-seat-slot"><Icon name="plus" size={15} /></span>
+            <span className="party-seat-text"><small>{t("lobby.party.invitePlayer")}</small></span>
+          </button>
+        )}
       </div>
 
       {!canManageParty && <p className="party-panel-note">{t("lobby.party.leaderOnly")}</p>}

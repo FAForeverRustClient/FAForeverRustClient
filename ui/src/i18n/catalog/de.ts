@@ -700,6 +700,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.party.friend": "Freund",
   "lobby.party.player": "Spieler",
   "lobby.party.invited": "Eingeladen",
+  "lobby.party.inviteAgain": "Erneut einladen",
   "lobby.party.invite": "Einladen",
   "lobby.party.leader": "Gruppenleitung",
   "lobby.party.youSuffix": " (du)",

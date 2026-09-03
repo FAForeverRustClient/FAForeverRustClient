@@ -1471,6 +1471,11 @@ fn parse_party(message: &Value) -> PartyState {
                 .collect();
             Some(PartyMember {
                 player_id,
+                // The server never sends one: `PartyMember.to_dict` is the
+                // player id and the factions, nothing else. This is read
+                // anyway in case that changes, but the label below is what
+                // actually ships, and the UI resolves the id against the live
+                // player directory rather than showing it.
                 name: member
                     .get("name")
                     .and_then(Value::as_str)

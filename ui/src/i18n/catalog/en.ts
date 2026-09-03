@@ -777,6 +777,7 @@ export const en = {
   "lobby.party.friend": "Friend",
   "lobby.party.player": "Player",
   "lobby.party.invited": "Invited",
+  "lobby.party.inviteAgain": "Invite again",
   "lobby.party.invite": "Invite",
   "lobby.party.leader": "Party leader",
   "lobby.party.youSuffix": " (you)",
