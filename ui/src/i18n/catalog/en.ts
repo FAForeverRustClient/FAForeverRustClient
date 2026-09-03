@@ -1472,6 +1472,7 @@ export const en = {
   "replays.search.playedAfter": "Played after",
   "replays.search.playedBefore": "Played before",
   "replays.search.exactPlayer": "Exact player name",
+  "replays.search.exactPlayerHint": "On, a name matches only that player. Off, it matches every name containing it, so Deli also finds Delio.",
   "replays.search.watchableOnly": "Watchable files only",
 
   // Replay cards and the online result list.

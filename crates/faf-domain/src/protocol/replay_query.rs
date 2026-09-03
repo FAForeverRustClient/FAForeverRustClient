@@ -101,9 +101,13 @@ pub const VICTORY_CONDITIONS: [&str; 4] =
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplayQuery {
-    /// Player login. Substring by default, exact when [`Self::exact_player`].
+    /// Player login. Exact by default, a substring match when
+    /// [`Self::exact_player`] is off.
     pub player: String,
-    /// The Python client's "match username exactly" checkbox.
+    /// The Python client's "match username exactly" checkbox, on by default
+    /// here where both reference clients leave it off. Searching "Deli" and
+    /// getting Delio's games back is the more surprising of the two defaults,
+    /// and the box is right there to widen the search again.
     pub exact_player: bool,
     pub map: String,
     pub map_author: String,
@@ -157,7 +161,7 @@ impl Default for ReplayQuery {
     fn default() -> Self {
         Self {
             player: String::new(),
-            exact_player: false,
+            exact_player: true,
             map: String::new(),
             map_author: String::new(),
             title: String::new(),
@@ -606,27 +610,29 @@ mod tests {
     }
 
     #[test]
-    fn player_defaults_to_a_substring_match() {
+    fn player_defaults_to_an_exact_match() {
         let q = ReplayQuery {
             player: "Stormlord".into(),
+            ..query()
+        };
+        assert!(q.exact_player, "the default is the narrow one");
+        assert_eq!(
+            build_filter(&q, None, None).unwrap(),
+            r#"(playerStats.player.login=="Stormlord")"#,
+            "no wildcards, so Stormlord2 is not in the results"
+        );
+    }
+
+    #[test]
+    fn unticking_exact_widens_to_a_substring() {
+        let q = ReplayQuery {
+            player: "Stormlord".into(),
+            exact_player: false,
             ..query()
         };
         assert_eq!(
             build_filter(&q, None, None).unwrap(),
             r#"(playerStats.player.login=="*Stormlord*")"#
-        );
-    }
-
-    #[test]
-    fn exact_player_drops_the_wildcards() {
-        let q = ReplayQuery {
-            player: "Stormlord".into(),
-            exact_player: true,
-            ..query()
-        };
-        assert_eq!(
-            build_filter(&q, None, None).unwrap(),
-            r#"(playerStats.player.login=="Stormlord")"#
         );
     }
 
@@ -643,20 +649,20 @@ mod tests {
         assert_eq!(q.player_names(), vec!["Stormlord", "Foley"]);
         assert_eq!(
             build_filter(&q, None, Some("Stormlord")).unwrap(),
-            r#"(playerStats.player.login=="*Stormlord*";mapVersion.map.displayName=="*Setons*")"#
+            r#"(playerStats.player.login=="Stormlord";mapVersion.map.displayName=="*Setons*")"#
         );
         assert_eq!(
             build_filter(&q, None, Some("Foley")).unwrap(),
-            r#"(playerStats.player.login=="*Foley*";mapVersion.map.displayName=="*Setons*")"#
+            r#"(playerStats.player.login=="Foley";mapVersion.map.displayName=="*Setons*")"#
         );
 
-        let q_exact = ReplayQuery {
-            exact_player: true,
+        let q_wide = ReplayQuery {
+            exact_player: false,
             ..q
         };
         assert_eq!(
-            build_filter(&q_exact, None, Some("Foley")).unwrap(),
-            r#"(playerStats.player.login=="Foley";mapVersion.map.displayName=="*Setons*")"#
+            build_filter(&q_wide, None, Some("Foley")).unwrap(),
+            r#"(playerStats.player.login=="*Foley*";mapVersion.map.displayName=="*Setons*")"#
         );
     }
 

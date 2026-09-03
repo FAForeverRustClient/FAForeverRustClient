@@ -288,6 +288,22 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         >
           {t("replays.search.recentOnly")}
         </Button>
+        {/* Next to "Recent only" rather than in the advanced panel: both narrow
+            the search you already have, and an option nobody can find is the
+            same as no option. On by default, so a name means that player. */}
+        <Button
+          type="button"
+          className={form.exactPlayer ? "active" : ""}
+          aria-pressed={form.exactPlayer}
+          title={t("replays.search.exactPlayerHint")}
+          onClick={() => {
+            const query = { ...form, exactPlayer: !form.exactPlayer, page: 1 };
+            setForm(query);
+            onSearch(query);
+          }}
+        >
+          {t("replays.search.exactPlayer")}
+        </Button>
         <span className="spacer" />
         <button
           type="button"

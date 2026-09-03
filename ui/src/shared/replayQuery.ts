@@ -3,7 +3,9 @@ import type { ReplayQuery } from "../ipc/bindings";
 /** Mirrors `ReplayQuery::default`: the shared unfiltered, newest-first query. */
 export const EMPTY_REPLAY_QUERY: ReplayQuery = {
   player: "",
-  exactPlayer: false,
+  // Mirrors `ReplayQuery::default`: exact, so searching "Deli" does not return
+  // Delio's games. The search form's checkbox widens it again.
+  exactPlayer: true,
   map: "",
   mapAuthor: "",
   title: "",
@@ -81,7 +83,9 @@ export function personalReplayQuery(player: string, after: string): ReplayQuery 
 /** Number of logical filters hidden by the replay search's compact view. */
 export function advancedReplayFilterCount(query: ReplayQuery): number {
   return [
-    query.exactPlayer,
+    // `exactPlayer` is not in here: it sits in the search bar next to "Recent
+    // only", so it is neither hidden nor a surprise, same reason the leaderboard
+    // filter is left out.
     query.host !== "",
     query.mapAuthor !== "",
     query.title !== "",

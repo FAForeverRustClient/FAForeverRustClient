@@ -4106,9 +4106,17 @@ export type ReplayPlayer = {
  *  and the API matches them as glob patterns.
  */
 export type ReplayQuery = {
-	/**  Player login. Substring by default, exact when [`Self::exact_player`]. */
+	/**
+	 *  Player login. Exact by default, a substring match when
+	 *  [`Self::exact_player`] is off.
+	 */
 	player: string,
-	/**  The Python client's "match username exactly" checkbox. */
+	/**
+	 *  The Python client's "match username exactly" checkbox, on by default
+	 *  here where both reference clients leave it off. Searching "Deli" and
+	 *  getting Delio's games back is the more surprising of the two defaults,
+	 *  and the box is right there to widen the search again.
+	 */
 	exactPlayer: boolean,
 	map: string,
 	mapAuthor: string,

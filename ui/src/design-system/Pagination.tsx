@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "../i18n/useTranslation";
 import "./pagination.css";
 
@@ -77,6 +77,25 @@ export function getPageItems(
   return Array.from({ length: maxVisible }, (_, index) => page(start + index));
 }
 
+
+/**
+ * The nearest ancestor that actually scrolls.
+ *
+ * Not a fixed selector: some tabs scroll in the shell's content area and others
+ * hand a pane its own scrollbar, so the container differs per view. Walking up
+ * until an element both allows overflow and has content past its box finds
+ * whichever one it is, and returns null when nothing scrolls at all.
+ */
+function scrollableAncestor(from: HTMLElement | null): HTMLElement | null {
+  for (let element = from?.parentElement ?? null; element; element = element.parentElement) {
+    const overflowY = getComputedStyle(element).overflowY;
+    if ((overflowY === "auto" || overflowY === "scroll") && element.scrollHeight > element.clientHeight) {
+      return element;
+    }
+  }
+  return null;
+}
+
 export function Pagination({
   currentPage,
   totalPages,
@@ -88,6 +107,18 @@ export function Pagination({
 }: PaginationProps) {
   const { t } = useTranslation();
   const [jump, setJump] = useState("");
+  const navRef = useRef<HTMLElement>(null);
+
+  // Turning a page keeps the scroll position, which puts the reader at the
+  // bottom of a list they have not seen the top of: the pager is at the end of
+  // the list, so the click that changes the page happens exactly where the new
+  // one should not start. Every paged view in the client goes through here, so
+  // this is one fix rather than six.
+  const changePage = (page: number) => {
+    onPageChange(page);
+    const scroller = scrollableAncestor(navRef.current);
+    if (scroller) scroller.scrollTop = 0;
+  };
   const unknownTotal = totalPages === null;
   if (!unknownTotal && totalPages <= 1 && !hasMore) return null;
   if (unknownTotal && currentPage <= 1 && !hasMore) return null;
@@ -111,7 +142,7 @@ export function Pagination({
   const showEnds = !unknownTotal && effectiveTotal > maxVisiblePages;
 
   return (
-    <nav className={`pagination ${className}`.trim()} aria-label={ariaLabel ?? t("designSystem.pagination.aria")}>
+    <nav ref={navRef} className={`pagination ${className}`.trim()} aria-label={ariaLabel ?? t("designSystem.pagination.aria")}>
       {unknownTotal && (
         <span className="pagination-position" aria-current="page">
           {t("designSystem.pagination.page", { page: currentPage })}
@@ -126,7 +157,7 @@ export function Pagination({
           type="button"
           className="pagination-btn pagination-end"
           disabled={currentPage <= 1}
-          onClick={() => onPageChange(1)}
+          onClick={() => changePage(1)}
           aria-label={t("designSystem.pagination.firstPage")}
           title={t("designSystem.pagination.firstPage")}
         >
@@ -139,7 +170,7 @@ export function Pagination({
           key={`page-${item.page}`}
           type="button"
           className={`pagination-btn${item.current ? " active" : ""}`}
-          onClick={() => onPageChange(item.page)}
+          onClick={() => changePage(item.page)}
           aria-label={t("designSystem.pagination.page", { page: item.page })}
           aria-current={item.current ? "page" : undefined}
         >
@@ -152,7 +183,7 @@ export function Pagination({
           type="button"
           className="pagination-btn pagination-end"
           disabled={currentPage >= (totalPages ?? 1)}
-          onClick={() => onPageChange(totalPages ?? 1)}
+          onClick={() => changePage(totalPages ?? 1)}
           aria-label={t("designSystem.pagination.lastPage", { page: totalPages ?? 0 })}
           title={t("designSystem.pagination.lastPage", { page: totalPages ?? 0 })}
         >
@@ -169,7 +200,7 @@ export function Pagination({
           const entered = Number.parseInt(jump, 10);
           if (!Number.isFinite(entered)) return;
           const highest = unknownTotal ? entered : totalPages;
-          onPageChange(Math.min(Math.max(1, entered), Math.max(1, highest)));
+          changePage(Math.min(Math.max(1, entered), Math.max(1, highest)));
           setJump("");
         }}
       >

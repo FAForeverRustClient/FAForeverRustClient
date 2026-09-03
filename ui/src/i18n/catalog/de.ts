@@ -1363,6 +1363,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.search.playedAfter": "Gespielt nach",
   "replays.search.playedBefore": "Gespielt vor",
   "replays.search.exactPlayer": "Exakter Spielername",
+  "replays.search.exactPlayerHint": "An trifft ein Name genau diesen Spieler. Aus trifft er jeden Namen, der ihn enthält, dann findet Deli auch Delio.",
   "replays.search.watchableOnly": "Nur abspielbare Dateien",
 
   "replays.card.played": "Gespielt",

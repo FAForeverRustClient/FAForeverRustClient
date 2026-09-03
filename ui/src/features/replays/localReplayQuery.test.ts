@@ -43,8 +43,10 @@ describe("local replay query", () => {
       mod: "FAF",
     };
 
-    expect(filterLocalReplays([candidate], query)).toEqual([candidate]);
-    expect(filterLocalReplays([candidate], { ...query, exactPlayer: true })).toEqual([]);
+    // The default is exact, so a partial name matches nobody: "test" is not the
+    // player, "TestPlayer" is. Unticking the box is what widens it again.
+    expect(filterLocalReplays([candidate], query)).toEqual([]);
+    expect(filterLocalReplays([candidate], { ...query, exactPlayer: false })).toEqual([candidate]);
 
     // Multi-player search: matches only games where ALL listed players participated
     expect(
