@@ -89,7 +89,7 @@
       },
       "vaultQuery": {
         "player": "",
-        "exactPlayer": false,
+        "exactPlayer": true,
         "map": "",
         "mapAuthor": "",
         "title": "",
@@ -18661,7 +18661,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -18731,7 +18731,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -18795,7 +18795,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -18880,7 +18880,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -18944,7 +18944,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19008,7 +19008,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19052,7 +19052,7 @@
                 "replays": [],
                 "query": {
                   "player": "",
-                  "exactPlayer": false,
+                  "exactPlayer": true,
                   "map": "",
                   "mapAuthor": "",
                   "title": "",
@@ -19109,7 +19109,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19179,7 +19179,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19289,7 +19289,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19379,7 +19379,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19471,7 +19471,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19561,7 +19561,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19652,7 +19652,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19745,7 +19745,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",
@@ -19835,7 +19835,7 @@
             "vaultQuery": {
               "after": "",
               "before": "",
-              "exactPlayer": false,
+              "exactPlayer": true,
               "factions": [],
               "featuredMods": [],
               "host": "",

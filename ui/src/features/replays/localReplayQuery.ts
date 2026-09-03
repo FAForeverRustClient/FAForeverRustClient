@@ -24,7 +24,9 @@ export interface LocalReplayQuery {
 
 export const EMPTY_LOCAL_REPLAY_QUERY: LocalReplayQuery = {
   player: "",
-  exactPlayer: false,
+  // Same default as the vault search: a name means that player, not everyone
+  // whose name contains it.
+  exactPlayer: true,
   map: "",
   replayId: "",
   mod: "",
