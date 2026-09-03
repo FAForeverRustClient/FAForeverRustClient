@@ -7,6 +7,8 @@
 //! list, with unread counters driving the channel switcher. Mirrors the lobby
 //! slice's status/stream shape (ARCHITECTURE.md §5) for the connection itself.
 
+use std::cmp::Ordering;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -611,8 +613,33 @@ fn sort_channels(channels: &mut [ChatChannel]) {
     });
 }
 
+/// Roster order: case-insensitive by name.
+///
+/// `sort_by_cached_key`, not `sort_by_key`: the key is a fresh `String`, and
+/// `sort_by_key` builds one on every comparison. A 1500 user channel, which is
+/// what `#aeolus` is, made tens of thousands of them per sort.
 fn sort_users(users: &mut [ChatUser]) {
-    users.sort_by_key(|u| u.name.to_lowercase());
+    users.sort_by_cached_key(|u| u.name.to_lowercase());
+}
+
+/// Compare `name` case-insensitively against an already lowercased key,
+/// without allocating a lowercased copy of `name` to do it.
+fn cmp_lowercased(name: &str, lowercased: &str) -> Ordering {
+    name.chars()
+        .flat_map(char::to_lowercase)
+        .cmp(lowercased.chars())
+}
+
+/// Put `user` in an already sorted roster.
+///
+/// Past every entry whose key compares less **or equal**, which is exactly
+/// where a `push` followed by a stable sort would have left it: the roster is
+/// resorted on nothing else, so this keeps the order identical while turning a
+/// join from a full resort into a binary search.
+fn insert_user(users: &mut Vec<ChatUser>, user: ChatUser) {
+    let key = user.name.to_lowercase();
+    let at = users.partition_point(|u| cmp_lowercased(&u.name, &key) != Ordering::Greater);
+    users.insert(at, user);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -876,10 +903,7 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
             let c = state.ensure_channel(channel);
             match c.users.iter_mut().find(|u| u.name == user.name) {
                 Some(existing) => existing.elevation = user.elevation.clone(),
-                None => {
-                    c.users.push(user.clone());
-                    sort_users(&mut c.users);
-                }
+                None => insert_user(&mut c.users, user.clone()),
             }
         }
         ChatEvent::UserLeft { channel, user } => {
@@ -903,9 +927,10 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                 state.username = new_name.clone();
             }
             for c in &mut state.channels {
-                if let Some(u) = c.users.iter_mut().find(|u| &u.name == old_name) {
-                    u.name = new_name.clone();
-                    sort_users(&mut c.users);
+                if let Some(index) = c.users.iter().position(|u| &u.name == old_name) {
+                    let mut user = c.users.remove(index);
+                    user.name = new_name.clone();
+                    insert_user(&mut c.users, user);
                 }
             }
         }

@@ -154,8 +154,13 @@ impl EventSink {
             .revision
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             .wrapping_add(1);
-        // Err only means "no subscribers yet": fine to ignore.
-        let _ = self.tx.send(event.clone());
+        // Err only means "no subscribers yet": fine to ignore. The clone is
+        // skipped when nobody is listening on the plain stream, because some
+        // events carry the whole player directory and this would otherwise
+        // deep copy it for a channel with no receiver.
+        if self.tx.receiver_count() > 0 {
+            let _ = self.tx.send(event.clone());
+        }
         let _ = self.versioned_tx.send(VersionedEvent { revision, event });
     }
 

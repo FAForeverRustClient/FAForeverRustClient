@@ -230,12 +230,23 @@ function fallbackDisplayName(mapName: string): string {
 }
 
 export function findVaultMap(vault: VaultMap[], mapName: string): VaultMap | undefined {
-  const normalized = normalizeMapName(mapName);
-  const baseName = baseMapName(mapName);
+  return findVaultMapByFolder(vault, mapName)
+    ?? vaultMapLookup(vault).byDisplayName.get(mapName.trim().toLocaleLowerCase());
+}
+
+/**
+ * The catalogue entry whose *folder* a map name refers to, ignoring the
+ * `.vNNNN` the name may carry and the catalogue's folder does not.
+ *
+ * Separate from [`findVaultMap`] because a caller deciding whether a game is
+ * ranked must not fall through to a display-name match: the name it holds came
+ * off the wire as a folder, and a coincidental title collision would quietly
+ * mark somebody's game unranked.
+ */
+export function findVaultMapByFolder(vault: VaultMap[], mapName: string): VaultMap | undefined {
   const lookup = vaultMapLookup(vault);
-  return lookup.byFolderName.get(normalized)
-    ?? lookup.byBaseName.get(baseName)
-    ?? lookup.byDisplayName.get(mapName.trim().toLocaleLowerCase());
+  return lookup.byFolderName.get(normalizeMapName(mapName))
+    ?? lookup.byBaseName.get(baseMapName(mapName));
 }
 
 export function mapThumbnailCandidates(

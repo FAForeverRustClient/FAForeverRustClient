@@ -178,7 +178,8 @@
       "matchmakerPoolsStatus": {
         "type": "idle"
       },
-      "localPreviews": {}
+      "localPreviews": {},
+      "localPreviewOrder": []
     },
     "mapGenerator": {
       "status": {
@@ -14316,6 +14317,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -14374,6 +14376,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -14432,6 +14435,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -14515,6 +14519,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -14579,6 +14584,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -14640,6 +14646,7 @@
             "installedStatus": {
               "type": "loading"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -14724,6 +14731,7 @@
             "installedStatus": {
               "type": "ready"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -14795,6 +14803,9 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [
+              "scca_coop_a01"
+            ],
             "localPreviews": {
               "scca_coop_a01": {
                 "large": null,
@@ -14867,6 +14878,10 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [
+              "scca_coop_a01",
+              "plain_map"
+            ],
             "localPreviews": {
               "plain_map": {
                 "large": null,
@@ -15063,6 +15078,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -15172,6 +15188,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -15285,6 +15302,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -15394,6 +15412,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -15506,6 +15525,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {
@@ -15615,6 +15635,7 @@
             "installedStatus": {
               "type": "idle"
             },
+            "localPreviewOrder": [],
             "localPreviews": {},
             "matchmakerPools": {},
             "matchmakerPoolsStatus": {

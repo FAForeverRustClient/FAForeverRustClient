@@ -2753,6 +2753,15 @@ export type MapsState = {
 	 *  "looked, found nothing": it stops the UI asking again every render.
 	 */
 	localPreviews: { [key in string]: LocalMapPreview },
+	/**
+	 *  The keys of `local_previews` in the order they were first read, oldest
+	 *  first: the eviction queue that keeps that cache bounded.
+	 *
+	 *  A `BTreeMap` has no insertion order of its own, and eviction has to be
+	 *  identical in both reducers, so the order is state rather than something
+	 *  either side infers.
+	 */
+	localPreviewOrder: string[],
 };
 
 /**

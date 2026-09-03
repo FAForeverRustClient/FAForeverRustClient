@@ -223,7 +223,26 @@ pub struct MapsState {
     /// version still finds the installed copy. A key with an empty value means
     /// "looked, found nothing": it stops the UI asking again every render.
     pub local_previews: BTreeMap<String, LocalMapPreview>,
+    /// The keys of `local_previews` in the order they were first read, oldest
+    /// first: the eviction queue that keeps that cache bounded.
+    ///
+    /// A `BTreeMap` has no insertion order of its own, and eviction has to be
+    /// identical in both reducers, so the order is state rather than something
+    /// either side infers.
+    pub local_preview_order: Vec<String>,
 }
+
+/// How many map folders' preview art to keep decoded in memory.
+///
+/// The art is held as `data:` URLs, so it costs its file size plus a third,
+/// twice: once in this state and once again in the webview's mirror. Measured
+/// on a real installation of 436 maps, the art averages 23 KiB small and
+/// 126 KiB large per folder with a worst case above 2 MiB, so an unbounded
+/// cache reached roughly 86 MiB on each side once somebody had scrolled the
+/// whole Maps tab. One page of that tab is 36 tiles and one request may ask
+/// for 64 folders, so this holds several pages' worth and still bounds the
+/// cache at a few tens of megabytes. An evicted folder is simply read again.
+pub const MAX_LOCAL_PREVIEWS: usize = 128;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
@@ -402,6 +421,7 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             // Merge per size: a later `large` read must not drop the `small`
             // one an earlier tile already paid for, and vice versa.
             for (folder, preview) in previews {
+                let known = state.local_previews.contains_key(folder);
                 let entry = state.local_previews.entry(folder.clone()).or_default();
                 if preview.small.is_some() {
                     entry.small = preview.small.clone();
@@ -409,6 +429,16 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
                 if preview.large.is_some() {
                     entry.large = preview.large.clone();
                 }
+                if !known {
+                    state.local_preview_order.push(folder.clone());
+                }
+            }
+            // Oldest first, so what the user is looking at now survives.
+            while state.local_previews.len() > MAX_LOCAL_PREVIEWS
+                && !state.local_preview_order.is_empty()
+            {
+                let evicted = state.local_preview_order.remove(0);
+                state.local_previews.remove(&evicted);
             }
         }
         MapsEvent::MatchmakerPoolsLoading => state.matchmaker_pools_status = MapListStatus::Loading,
@@ -436,6 +466,7 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             // empty "looked, found nothing" markers would otherwise outlive the
             // folder they describe.
             state.local_previews.clear();
+            state.local_preview_order.clear();
         }
         MapsEvent::InstallFailed { reason } => {
             state.install_status = MapInstallStatus::Failed {
@@ -447,6 +478,7 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             state.installed = installed.clone();
             state.installed_status = MapListStatus::Ready;
             state.local_previews.clear();
+            state.local_preview_order.clear();
         }
         MapsEvent::UninstallFailed { reason } => {
             state.install_status = MapInstallStatus::Failed {
@@ -709,5 +741,74 @@ mod tests {
         reduce(&mut s, &MapsEvent::Uninstalled { installed: vec![] });
         assert_eq!(s.install_status, MapInstallStatus::Idle);
         assert!(s.installed.is_empty());
+    }
+
+    fn preview_of(folder: &str) -> MapsEvent {
+        MapsEvent::LocalPreviewsLoaded {
+            previews: BTreeMap::from([(
+                folder.to_string(),
+                LocalMapPreview {
+                    small: Some("data:art".into()),
+                    large: None,
+                },
+            )]),
+        }
+    }
+
+    /// Twin of "evicts the oldest entries once the cache is full" in
+    /// `ui/src/store/reducers/maps.test.ts`.
+    #[test]
+    fn the_preview_cache_evicts_its_oldest_entries() {
+        let mut s = MapsState::default();
+        for index in 0..(MAX_LOCAL_PREVIEWS + 12) {
+            reduce(&mut s, &preview_of(&format!("map_{index:04}")));
+        }
+
+        assert_eq!(s.local_previews.len(), MAX_LOCAL_PREVIEWS);
+        assert_eq!(s.local_preview_order.len(), MAX_LOCAL_PREVIEWS);
+        assert!(!s.local_previews.contains_key("map_0000"));
+        assert!(!s.local_previews.contains_key("map_0011"));
+        assert!(s.local_previews.contains_key("map_0012"));
+        assert!(s.local_previews.contains_key("map_0139"));
+        assert_eq!(
+            s.local_preview_order.first().map(String::as_str),
+            Some("map_0012")
+        );
+    }
+
+    #[test]
+    fn a_second_size_does_not_queue_the_same_folder_twice() {
+        let mut s = MapsState::default();
+        reduce(&mut s, &preview_of("one_map"));
+        reduce(
+            &mut s,
+            &MapsEvent::LocalPreviewsLoaded {
+                previews: BTreeMap::from([(
+                    "one_map".to_string(),
+                    LocalMapPreview {
+                        small: None,
+                        large: Some("data:large".into()),
+                    },
+                )]),
+            },
+        );
+
+        assert_eq!(s.local_preview_order, vec!["one_map".to_string()]);
+        assert_eq!(
+            s.local_previews
+                .get("one_map")
+                .and_then(|p| p.small.clone()),
+            Some("data:art".to_string())
+        );
+    }
+
+    #[test]
+    fn installing_empties_the_eviction_queue_with_the_cache() {
+        let mut s = MapsState::default();
+        reduce(&mut s, &preview_of("one_map"));
+        reduce(&mut s, &MapsEvent::Installed { installed: vec![] });
+
+        assert!(s.local_previews.is_empty());
+        assert!(s.local_preview_order.is_empty());
     }
 }

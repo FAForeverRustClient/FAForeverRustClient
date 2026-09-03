@@ -25,7 +25,7 @@ import { reduceUploads } from "./reducers/uploads";
 import { reduceTourney } from "./reducers/tourney";
 
 export { isModerator, isPrivateChannel, mentions } from "./reducers/chat";
-export { findPlayer } from "./reducers/social";
+export { findPlayer, playersByNickname } from "./reducers/social";
 
 export function applyEvent(state: AppState, event: AppEvent): AppState {
   switch (event.kind) {

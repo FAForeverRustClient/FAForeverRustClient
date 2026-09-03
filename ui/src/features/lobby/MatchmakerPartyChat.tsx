@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { ipc } from "../../ipc/client";
 import type { Game, PartyState, Reaction } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -10,7 +10,11 @@ import { partyChatChannel } from "./partyChat";
 import "../chat/chat.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
-export function MatchmakerPartyChat({ party }: { party: PartyState }) {
+/**
+ * Memoised: this renders a full message list, and the queue countdown clock in
+ * the panel beside it ticks once a second regardless of the conversation.
+ */
+export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: { party: PartyState }) {
   const { t } = useTranslation();
   const chat = useAppStore((state) => state.state.chat);
   const social = useAppStore((state) => state.state.social);
@@ -125,7 +129,7 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
       />
     </aside>
   );
-}
+});
 
 function watchGame(game: Game): void {
   ipc.send({

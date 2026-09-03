@@ -72,6 +72,7 @@ const INITIAL: AppState = {
     matchmakerPools: {},
     matchmakerPoolsStatus: { type: "idle" },
     localPreviews: {},
+    localPreviewOrder: [],
   },
   mapGenerator: {
     status: { type: "idle" },

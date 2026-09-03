@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, memo } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -77,7 +77,11 @@ interface Props {
   searching: boolean;
 }
 
-export function MatchmakerPartyPanel({ party, social, playerId, playerName, searching }: Props) {
+/**
+ * Memoised: the panel above holds a one second clock for the queue countdowns,
+ * and a party does not change on that tick.
+ */
+export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, social, playerId, playerName, searching }: Props) {
   const { t } = useTranslation();
   const [inviteOpen, setInviteOpen] = useState(false);
   const isParty = party.members.length > 1;
@@ -171,4 +175,4 @@ export function MatchmakerPartyPanel({ party, social, playerId, playerName, sear
       {inviteOpen && <InvitePlayerModal social={social} selfId={playerId} partyMemberIds={memberIds} onClose={() => setInviteOpen(false)} />}
     </section>
   );
-}
+});
