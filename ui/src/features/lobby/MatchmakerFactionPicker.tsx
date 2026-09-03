@@ -57,11 +57,11 @@ export function MatchmakerFactionPicker({ selected, disabled, onChange }: Props)
             disabled={disabled}
             aria-pressed={active}
             className={active ? "faction-chip is-active" : "faction-chip"}
-            aria-label={faction}
             title={active ? `Queuing as ${faction}` : `Also queue as ${faction}`}
             onClick={() => toggle(faction)}
           >
             <FactionIcon faction={FACTION_IDS[faction]} size={22} />
+            <span>{faction}</span>
           </button>
         );
       })}

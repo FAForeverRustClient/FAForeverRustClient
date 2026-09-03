@@ -128,6 +128,17 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
           <h2>{members.length || 1} of {PARTY_CAPACITY} players</h2>
         </div>
         <div className="party-strip-actions">
+          {searching && isParty && (
+            <span className="party-strip-locked" title={t("lobby.party.lockedWhileSearching")}>
+              <Icon name="lock" size={13} />
+              {t("lobby.party.lockedWhileSearching")}
+            </span>
+          )}
+          {isParty && !canManageParty && (
+            <span className="party-strip-note">
+              {t("lobby.party.leaderOnly")}
+            </span>
+          )}
           {/* No invite button here any more: the placeholder seat below is the
               same action, in the place the eye already goes. */}
           {isParty && !canManageParty && (
@@ -149,7 +160,14 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
                 <small>{leader ? t("lobby.party.leader") : member.factions.length > 0 ? member.factions.join(", ") : t("lobby.party.randomFaction")}</small>
               </span>
               {canManageParty && member.playerId !== playerId ? (
-                <button type="button" className="party-seat-kick" title={`Remove ${nameFor(member)}`} aria-label={`Remove ${nameFor(member)}`} onClick={() => ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: member.playerId } } })}>
+                <button
+                  type="button"
+                  className="party-seat-kick"
+                  disabled={searching}
+                  title={searching ? t("lobby.party.lockedWhileSearching") : `Remove ${nameFor(member)}`}
+                  aria-label={`Remove ${nameFor(member)}`}
+                  onClick={() => ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: member.playerId } } })}
+                >
                   <Icon name="close" size={15} />
                 </button>
               ) : null}
@@ -162,15 +180,13 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
             className="party-seat party-seat-invite"
             disabled={!canManageParty || searching}
             onClick={() => setInviteOpen(true)}
+            title={searching ? t("lobby.party.lockedWhileSearching") : !canManageParty ? t("lobby.party.leaderOnly") : undefined}
           >
             <span className="party-seat-slot"><Icon name="plus" size={15} /></span>
             <span className="party-seat-text"><small>{t("lobby.party.invitePlayer")}</small></span>
           </button>
         )}
       </div>
-
-      {!canManageParty && <p className="party-panel-note">{t("lobby.party.leaderOnly")}</p>}
-      {searching && <p className="party-panel-note">{t("lobby.party.lockedWhileSearching")}</p>}
 
       {inviteOpen && <InvitePlayerModal social={social} selfId={playerId} partyMemberIds={memberIds} onClose={() => setInviteOpen(false)} />}
     </section>
