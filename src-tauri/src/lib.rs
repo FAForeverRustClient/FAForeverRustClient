@@ -328,37 +328,61 @@ const NEWS_EXTERNAL_LINK_SCRIPT: &str = r##"
 })();
 "##;
 
+/// Where the client's own pages live. Tauri does not serve them from one origin:
+/// Windows serves the bundle over `http://tauri.localhost`, macOS and Linux over
+/// the custom `tauri://` scheme, and a development build over the Vite server on
+/// localhost. Miss one and the hooks below hand the app's own first navigation to
+/// the OS browser, leaving an empty window behind.
+fn is_app_origin(url: &tauri::Url) -> bool {
+    match url.scheme() {
+        "tauri" => true,
+        // The url crate lowercases hosts, so an exact match is enough here, and
+        // it is what keeps `http://localhost.example.com` from passing as ours.
+        "http" | "https" => matches!(
+            url.host_str(),
+            Some("localhost" | "tauri.localhost" | "ipc.localhost" | "asset.localhost")
+        ),
+        _ => false,
+    }
+}
+
+/// The app's own pages plus the two site roots the client embeds. Anything else
+/// is a link the user followed out of an embed and belongs in their browser.
+fn is_internal_navigation(url: &tauri::Url) -> bool {
+    let url_str = url.as_str();
+    is_app_origin(url)
+        || url_str == "https://www.faforever.com/newshub"
+        || url_str == "https://faforever.com/newshub"
+        || url_str.starts_with("https://www.faforever.com/dist/")
+        || url_str.starts_with("https://faforever.github.io/spooky-db")
+}
+
+/// News Hub video links arrive with the destination pasted onto the hub's own
+/// path. Unwrap those before handing the link to the browser.
+fn external_target(url: &tauri::Url) -> String {
+    let url_str = url.as_str();
+    if let Some(stripped) = url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/") {
+        format!("https://www.youtube.com/{stripped}")
+    } else if let Some(stripped) =
+        url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
+    {
+        format!("https://youtu.be/{stripped}")
+    } else {
+        url_str.to_string()
+    }
+}
+
 fn external_link_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     tauri::plugin::Builder::<R>::new("external-link-handler")
         .on_navigation(|webview, url| {
-            let url_str = url.as_str();
-            let is_internal = url_str.starts_with("http://localhost")
-                || url_str.starts_with("https://localhost")
-                || url_str.starts_with("https://tauri.localhost")
-                || url_str.starts_with("http://ipc.localhost")
-                || url_str == "https://www.faforever.com/newshub"
-                || url_str == "https://faforever.com/newshub"
-                || url_str.starts_with("https://www.faforever.com/dist/")
-                || url_str.starts_with("https://faforever.github.io/spooky-db");
-            if !is_internal {
-                let target_url = if let Some(stripped) =
-                    url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/")
-                {
-                    format!("https://www.youtube.com/{stripped}")
-                } else if let Some(stripped) =
-                    url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
-                {
-                    format!("https://youtu.be/{stripped}")
-                } else {
-                    url_str.to_string()
-                };
-                let _ = webview
-                    .app_handle()
-                    .opener()
-                    .open_url(&target_url, None::<&str>);
-                return false;
+            if is_internal_navigation(url) {
+                return true;
             }
-            true
+            let _ = webview
+                .app_handle()
+                .opener()
+                .open_url(external_target(url), None::<&str>);
+            false
         })
         .build()
 }
@@ -544,50 +568,22 @@ pub fn run() {
             .resizable(true)
             .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
             .on_navigation(move |url| {
-                let url_str = url.as_str();
                 // Allow the Tauri app origin and the two embedded site roots.
-                let is_internal = url_str.starts_with("http://localhost")
-                    || url_str.starts_with("https://localhost")
-                    || url_str.starts_with("https://tauri.localhost")
-                    || url_str.starts_with("http://ipc.localhost")
-                    || url_str == "https://www.faforever.com/newshub"
-                    || url_str == "https://faforever.com/newshub"
-                    || url_str.starts_with("https://www.faforever.com/dist/")
-                    || url_str.starts_with("https://faforever.github.io/spooky-db");
-                if !is_internal {
-                    let target_url = if let Some(stripped) =
-                        url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/")
-                    {
-                        format!("https://www.youtube.com/{stripped}")
-                    } else if let Some(stripped) =
-                        url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
-                    {
-                        format!("https://youtu.be/{stripped}")
-                    } else {
-                        url_str.to_string()
-                    };
-                    let _ = nav_handle.opener().open_url(&target_url, None::<&str>);
-                    return false;
+                if is_internal_navigation(url) {
+                    return true;
                 }
-                true
+                let _ = nav_handle
+                    .opener()
+                    .open_url(external_target(url), None::<&str>);
+                false
             })
             .on_new_window(move |url, _features| {
                 // Any new-window request (target="_blank", window.open, popup)
                 // that escapes the iframe sandbox is routed to the OS browser.
-                let url_str = url.as_str();
-                if url_str.starts_with("http://") || url_str.starts_with("https://") {
-                    let target_url = if let Some(stripped) =
-                        url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/")
-                    {
-                        format!("https://www.youtube.com/{stripped}")
-                    } else if let Some(stripped) =
-                        url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
-                    {
-                        format!("https://youtu.be/{stripped}")
-                    } else {
-                        url_str.to_string()
-                    };
-                    let _ = new_win_handle.opener().open_url(&target_url, None::<&str>);
+                if matches!(url.scheme(), "http" | "https") {
+                    let _ = new_win_handle
+                        .opener()
+                        .open_url(external_target(&url), None::<&str>);
                 }
                 tauri::webview::NewWindowResponse::Deny
             })
@@ -764,6 +760,75 @@ mod tests {
             .expect("development connect-src string");
         assert!(dev_connect.contains("ipc: http://ipc.localhost"));
         assert!(dev_connect.contains("ws://localhost:5173"));
+    }
+
+    fn url(raw: &str) -> tauri::Url {
+        tauri::Url::parse(raw).expect("valid url")
+    }
+
+    /// The bug this guards: a packaged Windows build loads its own frontend from
+    /// `http://tauri.localhost`, and an allow list that only knew the `https`
+    /// spelling classified that first navigation as an outbound link. The window
+    /// stayed empty and the user's browser opened on `http://tauri.localhost/`.
+    #[test]
+    fn every_packaged_app_origin_stays_inside_the_window() {
+        for origin in [
+            "http://tauri.localhost/",
+            "http://tauri.localhost/assets/index.js",
+            "tauri://localhost/",
+            "tauri://localhost/index.html",
+            "http://localhost:5173/",
+            "http://ipc.localhost/",
+            "http://asset.localhost/maps/preview.png",
+        ] {
+            assert!(
+                super::is_internal_navigation(&url(origin)),
+                "{origin} is the app loading itself, not a link to hand to the browser"
+            );
+        }
+    }
+
+    #[test]
+    fn embedded_site_roots_load_in_place_and_anything_else_leaves() {
+        for embedded in [
+            "https://www.faforever.com/newshub",
+            "https://faforever.com/newshub",
+            "https://www.faforever.com/dist/main.js",
+            "https://faforever.github.io/spooky-db/",
+        ] {
+            assert!(super::is_internal_navigation(&url(embedded)));
+        }
+
+        for external in [
+            "https://www.youtube.com/watch?v=abc",
+            "https://forum.faforever.com/topic/1",
+            // A host that merely starts with an origin we trust is not that origin.
+            "http://localhost.example.com/",
+            "https://tauri.localhost.example.com/",
+        ] {
+            assert!(
+                !super::is_internal_navigation(&url(external)),
+                "{external} must be opened in the OS browser"
+            );
+        }
+    }
+
+    #[test]
+    fn news_hub_unwraps_video_links_before_handing_them_over() {
+        assert_eq!(
+            super::external_target(&url(
+                "https://www.faforever.com/newshub/youtube.com/watch?v=abc"
+            )),
+            "https://www.youtube.com/watch?v=abc"
+        );
+        assert_eq!(
+            super::external_target(&url("https://www.faforever.com/newshub/youtu.be/abc")),
+            "https://youtu.be/abc"
+        );
+        assert_eq!(
+            super::external_target(&url("https://forum.faforever.com/topic/1")),
+            "https://forum.faforever.com/topic/1"
+        );
     }
 
     #[test]
