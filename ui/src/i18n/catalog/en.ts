@@ -324,6 +324,7 @@ export const en = {
     "Applies immediately. Untranslated text stays in English.",
 
   // Matchmaker.
+  "lobby.matchmaker.factions": "Factions",
   "lobby.matchmaker.factions.aria": "Factions you are willing to play",
   "lobby.matchmaker.partyChat": "Party chat",
   "lobby.matchmaker.openProfile": "Open complete player profile",
@@ -399,7 +400,7 @@ export const en = {
   "lobby.matchmaker.summary.found": "Match found in {queue}",
   "lobby.matchmaker.summary.launching": "Starting your match…",
   "lobby.matchmaker.hint.editable": "Queue selection stays editable while searching.",
-  "lobby.matchmaker.hint.selectOne": "Select at least one compatible queue.",
+  "lobby.matchmaker.hint.selectOne": "Select at least one queue.",
   "lobby.matchmaker.partyFloor": "Your {count}-player party can enter queues sized {size} or larger.",
   "lobby.matchmaker.hint.filesChecked": "Maps and game files are checked when a match is prepared.",
   "lobby.matchmaker.stopSearching": "Stop searching",
@@ -408,14 +409,19 @@ export const en = {
 
   // Matchmaker map pool.
   "lobby.mapPool.title": "{queue} map pool",
-  "lobby.mapPool.subtitle": "Inspect every rating bracket and use veto tokens on maps you prefer not to play.",
+  "lobby.mapPool.subtitle": "Inspect every rating bracket and veto maps you prefer not to play.",
   "lobby.mapPool.brackets": "Rating brackets",
-  "lobby.mapPool.banned": "Banned",
-  "lobby.mapPool.reset": "Reset bracket",
+  "lobby.mapPool.banned": "Vetoed",
+  "lobby.mapPool.reset": "Reset vetoes",
   "lobby.mapPool.closePreview": "Close map preview",
   "lobby.mapPool.empty": "No map pool is available for this queue.",
   "lobby.mapPool.cancel": "Cancel",
   "lobby.mapPool.save": "Save vetoes",
+  "lobby.mapPool.vetoes": "vetoes",
+  "lobby.mapPool.noVetoesAvailable": "No vetoes available in this bracket",
+  "lobby.mapPool.vetoMapHint": "Click to veto this map",
+  "lobby.mapPool.removeVetoHint": "Click to remove veto",
+  "lobby.mapPool.vetoLimitReached": "Veto limit reached ({limit}/{limit})",
 
   // Party.
   "lobby.party.invite.title": "Invite a player",
@@ -773,7 +779,7 @@ export const en = {
   "lobby.mapPool.noVetoes": "No vetoes",
   "lobby.mapPool.applyVetoes": "Apply vetoes",
   "lobby.mapPool.noBracket": "No rating bracket",
-  "lobby.mapPool.vetoHint": "Click a map to add or remove veto tokens.",
+  "lobby.mapPool.vetoHint": "Click a map to add or remove vetoes.",
   "lobby.mapPool.selectHint": "Select a map for details, or enter veto mode to edit.",
   "lobby.browser.new": "New",
   "lobby.browser.any": "Any",

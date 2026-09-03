@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
@@ -7,7 +7,6 @@ import { useAppStore } from "../../store/store";
 import { MatchmakerMapPoolModal } from "./MatchmakerMapPoolModal";
 import { MatchmakerPartyChat } from "./MatchmakerPartyChat";
 import { MatchmakerPartyPanel } from "./MatchmakerPartyPanel";
-import { MatchmakerFactionPicker } from "./MatchmakerFactionPicker";
 import { MatchmakerPlayerCard } from "./MatchmakerPlayerCard";
 import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./MatchmakerQueueCard";
 import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
@@ -30,11 +29,19 @@ function searchingQueues(state: MatchmakingState) {
   return state.type === "searching" ? state.payload.queueNames : [];
 }
 
-// No "n queues selected" while idle: the cards carry their own checkmarks, and
-// counting them back at the user in the corner said nothing the row of ticked
-// cards above it did not already say.
-function MatchmakerSearchSummary({ state }: { state: MatchmakingState }) {
-  if (state.type === "idle") return null;
+function MatchmakerSearchSummary({
+  state,
+  queueCount,
+}: {
+  state: MatchmakingState;
+  queueCount: number;
+}) {
+  if (state.type === "idle") {
+    if (queueCount === 0) {
+      return <span>{t("lobby.matchmaker.hint.selectOne")}</span>;
+    }
+    return <span>{t("lobby.matchmaker.summary.selected", { count: queueCount })}</span>;
+  }
   if (state.type === "searching") return <span>{t("lobby.matchmaker.summary.searching", { count: state.payload.queueNames.length })}</span>;
   if (state.type === "matchFound") return <span>{t("lobby.matchmaker.summary.found", { queue: state.payload.queueName })}</span>;
   if (state.type === "launching") return <span>{t("lobby.matchmaker.summary.launching")}</span>;
@@ -180,30 +187,22 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           error={playerCard.matchmakerProfileError}
           country={social.players.find((entry) => entry.id === playerId)?.country ?? ""}
           queues={sortedQueues}
+          selectedFactions={selectedFactions}
+          factionsDisabled={isSearching || searchLocked || partyNeedsLeader}
+          onFactionsChange={setFactions}
         />
 
         <MatchmakerPartyPanel party={party} social={social} playerId={playerId} playerName={playerName} searching={isSearching || searchLocked} />
 
-        {/* The column count the queue grid resolves to on a full row. The
-            faction picker sizes itself to one of those columns so it lines up
-            with the last game mode card directly beneath it, which CSS alone
-            cannot work out: `auto-fit` hides the track count from everything
-            outside the grid. */}
         <section
           className="matchmaker-card surface-panel matchmaker-queues-section"
-          style={{ "--matchmaker-queue-columns": sortedQueues.length } as CSSProperties}
           aria-labelledby="matchmaker-queues-title"
         >
           <div className="matchmaker-section-copy">
-            <div><span className="matchmaker-kicker">{t("lobby.matchmaker.gameModes")}</span><h2 id="matchmaker-queues-title">{t("lobby.matchmaker.selectQueues")}</h2></div>
-            {/* The faction choice sits with the modes it applies to. In the
-                identity card above it read as part of who you are rather than
-                as a setting for the search about to start. */}
-            <MatchmakerFactionPicker
-              selected={selectedFactions}
-              disabled={isSearching || searchLocked || partyNeedsLeader}
-              onChange={setFactions}
-            />
+            <div>
+              <span className="matchmaker-kicker">{t("lobby.matchmaker.gameModes")}</span>
+              <h2 id="matchmaker-queues-title">{t("lobby.matchmaker.selectQueues")}</h2>
+            </div>
           </div>
           <div className="matchmaker-queue-grid">
             {sortedQueues.map((queue) => {
@@ -243,12 +242,9 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
             <div className="matchmaker-search-copy">
               <i />
               <div>
-                <strong><MatchmakerSearchSummary state={matchmaking} /></strong>
-                {/* Nothing to say once a queue is picked: the button beside
-                    this says what happens next, and "maps and game files are
-                    checked" described plumbing nobody asked about. */}
-                {(isSearching || compatibleQueues.length === 0) && (
-                  <span>{t(isSearching ? "lobby.matchmaker.hint.editable" : "lobby.matchmaker.hint.selectOne")}</span>
+                <strong><MatchmakerSearchSummary state={matchmaking} queueCount={compatibleQueues.length} /></strong>
+                {isSearching && (
+                  <span>{t("lobby.matchmaker.hint.editable")}</span>
                 )}
                 {/* A party has a size floor that silently disables some cards.
                     It belongs with the rest of the search's conditions rather
@@ -283,6 +279,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           status={maps.matchmakerPoolsStatus}
           vault={maps.vault}
           serverVetoes={serverVetoes}
+          playerRating={ratingForQueue(matchmakerProfile?.ratings ?? [], mapPoolQueue.queueName)?.rating ?? null}
           onClose={() => setMapPoolQueueName(null)}
         />
       )}
