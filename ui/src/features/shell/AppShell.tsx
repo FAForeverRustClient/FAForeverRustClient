@@ -2,7 +2,7 @@
 // and the active tab's view. Routing is a pure lookup in the tab registry on nav
 // state: no router. Theme selection now lives in the Settings tab.
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -42,8 +42,18 @@ export function AppShell() {
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const joinedPartyChannelRef = useRef<string | null>(null);
+  const contentRef = useRef<HTMLElement>(null);
 
   const ActiveView = TABS[activeTab].Component;
+
+  // The scroll container outlives the view inside it: only the class and the
+  // children change on a tab switch, so the previous tab's scroll position was
+  // still there and a tab opened halfway down. Before paint, so the new tab is
+  // never seen scrolled. Tabs that scroll internally are unaffected, their own
+  // container unmounts with the view.
+  useLayoutEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+  }, [activeTab]);
 
   useEffect(() => {
     if (!isResizingSidebar) return;
@@ -158,7 +168,11 @@ export function AppShell() {
           <InstallBanner />
           <WebviewEngineBanner />
         </div>
-        <section className={`content content-tab-${activeTab}`} aria-label={t("nav.content.aria", { tab: t(TABS[activeTab].label) })}>
+        <section
+          ref={contentRef}
+          className={`content content-tab-${activeTab}`}
+          aria-label={t("nav.content.aria", { tab: t(TABS[activeTab].label) })}
+        >
           <div className={`content-inner content-${activeTab}`}>
             <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
               <ActiveView />
