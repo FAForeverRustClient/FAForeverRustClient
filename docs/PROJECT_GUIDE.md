@@ -219,7 +219,44 @@ pnpm run build         # Build frontend to ui/dist
 
 ---
 
-## 8. Current Status
+## 8. Repository Guardrails
+
+CI enforces a few repository rules that no linter catches. They live in
+`scripts/check-architecture.mjs` and in the workflow, and they run **before**
+typecheck, lint and tests, so breaking one fails the build in seconds with
+everything after it skipped.
+
+| Rule | Where |
+|---|---|
+| No em dash (U+2014) in any `.css .html .js .json .md .mjs .rs .ts .tsx` file. Use the punctuation the sentence wants: a colon where the clause explains the one before it, a comma where it interrupts. | `check-architecture.mjs`, plus a second grep in the workflow over `crates ui/src src-tauri/src docs .github` |
+| No `font-size` below 11 px in `ui/src/**/*.css`. | `check-architecture.mjs` |
+| No hex colours in `ui/src/**/*.css` outside `design-system/tokens.css`. Components reference semantic tokens so a new theme never revisits a component. | workflow |
+| Crate layering: the boundaries in [`ARCHITECTURE.md`](ARCHITECTURE.md). | `check-architecture.mjs` |
+
+Reproduce the whole frontend gate locally, in the order CI runs it:
+
+```bash
+pnpm run architecture && pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build
+```
+
+And the Rust half, where `cargo fmt` is a separate gate that a clean clippy run
+does **not** imply:
+
+```bash
+cargo test --workspace
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings -D clippy::print_stderr
+```
+
+Two generated files drift if you forget them, each with its own CI job:
+`pnpm run bindings` after changing a cross-boundary Rust type (the doc comments
+travel into the generated TypeScript too, so editing only a comment still
+counts), and `cargo test -p faf-domain --test conformance_fixtures` after
+changing a state type or a default.
+
+---
+
+## 9. Current Status
 
 - **Implemented:** 22 state slices (session, auth, nav, lobby, chat, social, maps, mods,
   replays, settings, notifications, player card, coop, tournaments, tutorials, reviews,
