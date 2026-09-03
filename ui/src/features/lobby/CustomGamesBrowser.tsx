@@ -121,8 +121,25 @@ export function setGlobalLineup(gameId: number, position: TooltipPosition) {
   }
 }
 
+// The tooltip is opened by hover and closed by the matching `mouseleave`, so
+// anything that takes the pointer away without one leaves it on screen. These
+// are those cases.
 if (typeof window !== "undefined") {
   window.addEventListener("blur", hideGlobalLineup);
+  // Coming back matters as much as leaving. Alt-tabbing away with the pointer
+  // resting on a tile and moving it elsewhere in another window produces no
+  // `mouseleave` here at all, because this window is not receiving the pointer:
+  // the tooltip was still up on return, over a tile the pointer had long left.
+  //
+  // Asking what is hovered rather than closing outright, because the pointer
+  // may genuinely still be on the tile: clicking back into the window would
+  // otherwise take the tooltip away and, with no `mouseenter` left to fire,
+  // not give it back until the pointer had left the tile and returned.
+  window.addEventListener("focus", () => {
+    if (!document.querySelector(".game-tile:hover, .game-browser-row:hover")) {
+      hideGlobalLineup();
+    }
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) hideGlobalLineup();
   });
