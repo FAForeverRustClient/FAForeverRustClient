@@ -1,4 +1,17 @@
-feature-list
+# Feature wishlist
+
+Collected from players on 2026-08-14 and kept in their words. A snapshot, not a
+backlog: nothing here is scheduled, and the client has moved since. Verified
+against the tree on 2026-09-03:
+
+- **Shipped:** switching the map generator version (item 3), the advanced
+  replay search (item 7).
+- **Not shipped:** everything else. Note that item 4 asks for saving and
+  restoring a set of enabled mods, which the "presets" in the installed mods
+  view are not: those only filter what the list shows.
+
+---
+
 1) generating multiple mapgens at once
 2) multiple tabs should be possible to have run imoultaneously e.g. chatwindow 50% playtab 50%.
 3) Also generally (if youre note already doing this) i recommend checking out the options of the python client. It has insane customization options. Some very important things to me:

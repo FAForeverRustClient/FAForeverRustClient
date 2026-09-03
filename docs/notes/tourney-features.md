@@ -1,6 +1,6 @@
 # The tournament tab: every feature, and where it stands
 
-Written by reading `server.js` (109 per-tournament actions, 16 top-level routes)
+Written 2026-08-19 by reading `server.js` (109 per-tournament actions, 16 top-level routes)
 and the website's own `public/app*.js` (~8,500 lines). The point of the list is
 that "build the rest of the website" is otherwise unanswerable: there is no
 schema, no API document, and no feature list on the far side.

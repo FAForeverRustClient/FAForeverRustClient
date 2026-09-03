@@ -1,6 +1,10 @@
 # FAF-Client Feature-Vergleich: Rust vs. Python vs. Java
 
-Stand: 2026-08-14 · Rust-Repo Branch `pr-2`, Basis `56e5b5e` (*feat: complete client implementation and UI modernization*)
+Stand: 2026-08-14 · Rust-Repo Basis `56e5b5e` (*feat: complete client implementation and UI modernization*)
+
+> Momentaufnahme, nicht gepflegt. Seither sind unter anderem die erweiterte
+> Replay-Suche, die Coop-Kampagne, der Turnier-Tab und die Kartensuche
+> dazugekommen; die Tabellen unten kennen davon nichts.
 
 Vergleichsbasis:
 
