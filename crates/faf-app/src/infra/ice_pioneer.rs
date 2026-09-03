@@ -11,8 +11,9 @@
 //! [`RelayMsg`]s for the lobby, injects the Go-only `CreateLobby` reply on the
 //! game's `Idle` state, and encodes lobby messages back to the adapter.
 //!
-//! The binary is located via `FAF_ICE_ADAPTER_PATH` or beside the packaged app
-//! (default `faf-pioneer[.exe]`). It is an experimental fallback; explicit
+//! The binary is located via `FAF_ICE_ADAPTER_PATH`, or as `faf-pioneer[.exe]`
+//! in `natives/` beside the packaged app, where `scripts/ensure-faf-pioneer.mjs`
+//! downloads it during `pnpm run tauri`. It is an experimental fallback; explicit
 //! offline/test sessions inject [`FakeIce`] instead.
 
 use std::path::{Path, PathBuf};
@@ -91,7 +92,19 @@ fn resolve_adapter_path(
 
     executable_roots
         .chain(working_roots)
-        .flat_map(|root| [root.join(file_name), root.join("resources").join(file_name)])
+        // `natives/` is where the build script downloads it and where the
+        // bundle puts it, alongside faf-uid and the Java adapter. The bare and
+        // `resources/` candidates stay: an installed build from before the
+        // adapter was fetched rather than committed still has it there, and a
+        // hand-placed binary beside the executable is the documented escape
+        // hatch when someone runs their own build of the adapter.
+        .flat_map(|root| {
+            [
+                root.join("natives").join(file_name),
+                root.join(file_name),
+                root.join("resources").join(file_name),
+            ]
+        })
         .find(|candidate| candidate.is_file())
 }
 
@@ -546,6 +559,43 @@ mod tests {
         assert_eq!(
             resolve_adapter_path("faf-pioneer.exe", Some(&executable), None),
             Some(adapter)
+        );
+    }
+
+    #[test]
+    fn the_adapter_is_found_where_the_build_script_downloads_it() {
+        // `scripts/ensure-faf-pioneer.mjs` writes it here, and the bundle ships
+        // it here, so this is the path that matters now that the binary is no
+        // longer committed at the repository root.
+        let root = tempfile::tempdir().unwrap();
+        let executable = root.path().join("target").join("debug").join("client.exe");
+        let adapter = root.path().join("natives").join("faf-pioneer.exe");
+        fs::create_dir_all(executable.parent().unwrap()).unwrap();
+        fs::create_dir_all(adapter.parent().unwrap()).unwrap();
+        fs::write(&adapter, b"test adapter").unwrap();
+
+        assert_eq!(
+            resolve_adapter_path("faf-pioneer.exe", Some(&executable), None),
+            Some(adapter)
+        );
+    }
+
+    #[test]
+    fn natives_wins_over_a_leftover_beside_the_executable() {
+        // An installed build from before this change has the old copy next to
+        // the app. Both exist during an upgrade, and the one the build script
+        // maintains is the one to run.
+        let root = tempfile::tempdir().unwrap();
+        let executable = root.path().join("client.exe");
+        let stale = root.path().join("faf-pioneer.exe");
+        let current = root.path().join("natives").join("faf-pioneer.exe");
+        fs::create_dir_all(current.parent().unwrap()).unwrap();
+        fs::write(&stale, b"old adapter").unwrap();
+        fs::write(&current, b"downloaded adapter").unwrap();
+
+        assert_eq!(
+            resolve_adapter_path("faf-pioneer.exe", Some(&executable), None),
+            Some(current)
         );
     }
 }

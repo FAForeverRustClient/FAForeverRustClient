@@ -44,7 +44,7 @@
         "../natives/faf-uid*": "natives/",
         "../natives/jre/": "natives/jre/",
         "../natives/java-ice-adapter/faf-ice-adapter.jar": "natives/java-ice-adapter/faf-ice-adapter.jar",
-        "../faf-pioneer.exe": "faf-pioneer.exe"
+        "../natives/faf-pioneer*": "natives/"
       },
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"]
   }

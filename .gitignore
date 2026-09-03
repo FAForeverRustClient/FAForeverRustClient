@@ -79,6 +79,11 @@ client-settings.json
 # FAF anti-smurf binary (downloaded from github.com/FAForever/uid/releases)
 /faf-uid
 /faf-uid.exe
+# FAF's Go ICE adapter, downloaded from github.com/FAForever/faf-pioneer/releases
+# by scripts/ensure-faf-pioneer.mjs. The root entries cover the copy this used to
+# be committed as, so an old checkout does not offer it back.
+/faf-pioneer
+/faf-pioneer.exe
 /natives/*
 !/natives/.gitkeep
 
