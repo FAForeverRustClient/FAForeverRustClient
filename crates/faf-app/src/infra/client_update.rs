@@ -56,7 +56,12 @@ pub const ASSET_SUFFIXES: [&str; 2] = [".dmg", ".app.tar.gz"];
 pub const ASSET_SUFFIXES: [&str; 3] = [".AppImage", ".deb", ".rpm"];
 
 /// The default source of releases: this client's own repository.
-const DEFAULT_REPO: &str = "FAForeverRustClient/FAForever-Rust-Client";
+///
+/// It has to be the repository's real name, not a readable version of it. This
+/// was `FAForeverRustClient/FAForever-Rust-Client`, which GitHub answers with a
+/// 404, so every update check failed and no client would ever have been offered
+/// a release however well one was published.
+const DEFAULT_REPO: &str = "FAForeverRustClient/FAForeverRustClient";
 
 /// GitHub rejects unidentified API clients, so this is required, not polite.
 const USER_AGENT: &str = concat!("faforever-rust-client/", env!("CARGO_PKG_VERSION"));
