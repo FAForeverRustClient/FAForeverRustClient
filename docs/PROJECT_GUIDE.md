@@ -71,7 +71,10 @@ ui/          ← depends only on the generated TS types
 | `docs/ARCHITECTURE.md` | The **architecture contract** (rules, rationale, phase plan). |
 | `docs/PROJECT_GUIDE.md` | **This document** (the map). |
 | `app-icon.png` | Source icon from which Tauri icons are generated. |
-| `.gitignore` | Ignores `target/`, `node_modules/`, `ui/dist/`, `src-tauri/gen/`. |
+| `.gitignore` | Build output, local config, and anything that could carry a secret or a player identity. Also `AGENTS.md` and `docs/env.txt`, which are personal files by design. |
+| `docs/` | Documentation. [`docs/README.md`](README.md) says which documents are kept current and which are dated notes. |
+| `scripts/` | Build and check scripts run through pnpm, including the repository guardrails in §8. |
+| `natives/` | Where the `faf-uid` helper is downloaded at build time. Ignored except for its `.gitkeep`. |
 
 ### `crates/faf-domain/`: the pure domain (no IO, no async)
 
@@ -157,12 +160,11 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/design-system/tokens.css` | **Theming contract.** Semantic CSS variables under `:root` (= `forgeDark`) + one `[data-theme="…"]` block per theme (`forgeLight`/`javaClient`/`pythonClient`). Components reference these only. |
 | `src/design-system/Button.tsx` | **`Button` primitive**: encapsulates control structure/classes so theme-specific shape changes touch one file. |
 | `src/styles.css` | Global styles + component classes (token-driven; no hardcoded hex: enforced in CI). |
-| `src/features/status/StatusBar.tsx` | View: connection status. |
-| `src/features/auth/LoginView.tsx` | View: login screen. |
-| `src/features/shell/AppShell.tsx` | The logged-in shell: topbar + `TabBar` + `ThemePicker` + active tab content. |
-| `src/features/nav/TabBar.tsx` | View: tab bar (dispatches nav commands). |
-| `src/features/lobby/LobbyView.tsx` | View: play tab: live game list. |
-| `src/features/settings/ThemePicker.tsx` | View: theme dropdown (dispatches `SetTheme`). |
+| `src/shared/` | Helpers a feature folder should not own alone: query shapes, formatting, storage. Pure, and unit tested next to the code. |
+| `src/i18n/` | The message catalogues. `catalog/en.ts` is the source of truth: a missing **key** is a compile error, a missing translation falls back to English. |
+| `src/features/shell/AppShell.tsx` | The logged-in shell: sidebar, tab bar, status bar, and the active tab's view. Routing is a lookup in the tab registry, not a router. |
+| `src/features/nav/tabs.ts` | The tab registry: the one place a new tab is added. |
+| `src/features/<tab>/` | One folder per tab. 24 of them today (auth, chat, lobby, replays, maps, mods, leaderboard, tournaments, settings, …). Listing them here would go stale faster than it would help: `ls ui/src/features` is the current answer. |
 
 > **Feature structure:** A folder `features/<name>/`. Components **select state +
 > dispatch commands**, nothing else. No business logic, no direct IPC calls.
