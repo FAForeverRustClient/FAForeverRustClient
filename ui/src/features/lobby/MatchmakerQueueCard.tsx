@@ -7,8 +7,12 @@ import { t } from "../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
 
+/**
+ * Every queue is named by its team size, the ladder included. Calling that one
+ * "Ranked 1 vs 1" while the rest went by their size implied the others were
+ * unranked, which none of them are.
+ */
 export function queueTitle(queue: MatchmakerQueue) {
-  if (queue.queueName.toLocaleLowerCase() === "ladder1v1") return t("lobby.matchmaker.queue.ranked1v1");
   return `${queue.teamSize} vs ${queue.teamSize}`;
 }
 
@@ -111,14 +115,20 @@ export function MatchmakerQueueCard({
               <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}
             </span>
           )}
+          {/* Why the queue cannot be entered, or what it is doing right now, is
+              one more line about the queue. As a band of its own under the
+              facts it was a second place to look for the same kind of thing. */}
+          {disabled ? <span className="matchmaker-queue-note">{t("lobby.matchmaker.partyTooLarge")}</span> : statusLabel ? <span className="matchmaker-queue-status"><i />{statusLabel}</span> : null}
         </span>
       </button>
 
+      {/* Parked in the bottom right corner of the card rather than given a row
+          of its own: the button is the same height as the fact lines it sits
+          beside, so it costs the card nothing. */}
       <div className="matchmaker-queue-footer">
         <Button className="matchmaker-map-pool-button" onClick={onOpenMapPool}>
           <Icon name="maps" size={15} /> {t("lobby.matchmaker.mapPool")}
         </Button>
-        {disabled ? <span className="matchmaker-queue-note">{t("lobby.matchmaker.partyTooLarge")}</span> : statusLabel ? <span className="matchmaker-queue-status"><i />{statusLabel}</span> : null}
       </div>
     </article>
   );

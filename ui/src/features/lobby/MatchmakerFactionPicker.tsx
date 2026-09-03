@@ -28,6 +28,11 @@ interface Props {
  * Java version readable at a glance: four grey chips differing only by a small
  * glyph make "which factions am I queuing as" a reading task rather than a
  * glance. `data-faction` picks the token; the colour never appears here.
+ *
+ * Glyph only, no written name, as in `team_matchmaking.fxml`, whose toggles
+ * carry a bare `<Region styleClass="uef-icon"/>`. The row is cut to the width
+ * of one game mode card and stays a single line, which four names would not
+ * survive; the name is on the button as its accessible label and its tooltip.
  */
 export function MatchmakerFactionPicker({ selected, disabled, onChange }: Props) {
   const { t } = useTranslation();
@@ -52,11 +57,11 @@ export function MatchmakerFactionPicker({ selected, disabled, onChange }: Props)
             disabled={disabled}
             aria-pressed={active}
             className={active ? "faction-chip is-active" : "faction-chip"}
+            aria-label={faction}
             title={active ? `Queuing as ${faction}` : `Also queue as ${faction}`}
             onClick={() => toggle(faction)}
           >
             <FactionIcon faction={FACTION_IDS[faction]} size={22} />
-            <span>{faction}</span>
           </button>
         );
       })}

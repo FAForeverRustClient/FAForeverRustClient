@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
@@ -184,7 +184,16 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
 
         <MatchmakerPartyPanel party={party} social={social} playerId={playerId} playerName={playerName} searching={isSearching || searchLocked} />
 
-        <section className="matchmaker-card surface-panel matchmaker-queues-section" aria-labelledby="matchmaker-queues-title">
+        {/* The column count the queue grid resolves to on a full row. The
+            faction picker sizes itself to one of those columns so it lines up
+            with the last game mode card directly beneath it, which CSS alone
+            cannot work out: `auto-fit` hides the track count from everything
+            outside the grid. */}
+        <section
+          className="matchmaker-card surface-panel matchmaker-queues-section"
+          style={{ "--matchmaker-queue-columns": sortedQueues.length } as CSSProperties}
+          aria-labelledby="matchmaker-queues-title"
+        >
           <div className="matchmaker-section-copy">
             <div><span className="matchmaker-kicker">{t("lobby.matchmaker.gameModes")}</span><h2 id="matchmaker-queues-title">{t("lobby.matchmaker.selectQueues")}</h2></div>
             {/* The faction choice sits with the modes it applies to. In the
@@ -195,11 +204,6 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
               disabled={isSearching || searchLocked || partyNeedsLeader}
               onChange={setFactions}
             />
-            {/* Only says something when it is not obvious from the cards: a
-                party has a size floor that silently disables some of them. */}
-            {party.members.length > 1 && (
-              <p>{`Your ${party.members.length}-player party can enter queues sized ${party.members.length} vs ${party.members.length} or larger.`}</p>
-            )}
           </div>
           <div className="matchmaker-queue-grid">
             {sortedQueues.map((queue) => {
@@ -245,6 +249,16 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
                     checked" described plumbing nobody asked about. */}
                 {(isSearching || compatibleQueues.length === 0) && (
                   <span>{t(isSearching ? "lobby.matchmaker.hint.editable" : "lobby.matchmaker.hint.selectOne")}</span>
+                )}
+                {/* A party has a size floor that silently disables some cards.
+                    It belongs with the rest of the search's conditions rather
+                    than in the section heading, where it displaced the faction
+                    picker out of the column it lines up with. */}
+                {party.members.length > 1 && (
+                  <span>{t("lobby.matchmaker.partyFloor", {
+                    count: party.members.length,
+                    size: `${party.members.length} vs ${party.members.length}`,
+                  })}</span>
                 )}
               </div>
             </div>

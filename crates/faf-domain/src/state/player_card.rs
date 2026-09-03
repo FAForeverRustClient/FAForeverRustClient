@@ -122,6 +122,13 @@ pub struct PlayerLeaguePlacement {
     pub season: String,
     pub division: String,
     pub score: i32,
+    /// The score that ends this subdivision, or zero when the API omitted it.
+    ///
+    /// Java draws its league arc as `score / subdivision.highestScore()`
+    /// (`LeaderboardPlayerDetailsController`), which is the only statement of
+    /// "how far to the next division" the API carries: the placement knows the
+    /// ceiling of the band it is in, not the name of the one above it.
+    pub highest_score: i32,
     pub games_played: i32,
     pub image_url: String,
 }

@@ -861,6 +861,7 @@ fn parse_placements(doc: &JsonApiDoc) -> Vec<PlayerLeaguePlacement> {
                     .trim()
                     .to_string(),
                     score: integer(score, "score"),
+                    highest_score: integer(subdivision, "highestScore"),
                     games_played: integer(score, "gameCount"),
                     image_url: {
                         let medium = text(subdivision, "mediumImageUrl");
@@ -1197,6 +1198,7 @@ impl PlayerCardPort for FakePlayerCard {
                 season: "Season 12".into(),
                 division: "Diamond II".into(),
                 score: 1470,
+                highest_score: 1600,
                 games_played: 38,
                 image_url: String::new(),
             }],
@@ -1434,13 +1436,19 @@ mod tests {
                 { "type": "leagueSeasonDivision", "id": "bronze", "attributes": { "nameKey": "bronze", "divisionIndex": 1 } },
                 { "type": "leagueSeasonDivision", "id": "diamond", "attributes": { "nameKey": "diamond", "divisionIndex": 4 } },
                 { "type": "leagueSeasonDivisionSubdivision", "id": "low", "attributes": { "nameKey": "ii", "subdivisionIndex": 2 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "bronze" } } } },
-                { "type": "leagueSeasonDivisionSubdivision", "id": "high", "attributes": { "nameKey": "i", "subdivisionIndex": 1 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "diamond" } } } }
+                { "type": "leagueSeasonDivisionSubdivision", "id": "high", "attributes": { "nameKey": "i", "subdivisionIndex": 1, "highestScore": 1500 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "diamond" } } } }
             ]
         })).unwrap();
 
         let placements = parse_placements(&doc);
         assert_eq!(placements[0].division, "Diamond I");
         assert_eq!(placements[1].division, "Bronze Ii");
+        // The subdivision's ceiling, which is what the progress bar in the
+        // matchmaker identity divides the score by.
+        assert_eq!(placements[0].highest_score, 1500);
+        // Absent from the payload rather than defaulted to something wrong: a
+        // subdivision without a ceiling renders no progress at all.
+        assert_eq!(placements[1].highest_score, 0);
     }
 }
 

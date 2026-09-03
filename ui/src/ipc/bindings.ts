@@ -3526,6 +3526,15 @@ export type PlayerLeaguePlacement = {
 	season: string,
 	division: string,
 	score: number,
+	/**
+	 *  The score that ends this subdivision, or zero when the API omitted it.
+	 *
+	 *  Java draws its league arc as `score / subdivision.highestScore()`
+	 *  (`LeaderboardPlayerDetailsController`), which is the only statement of
+	 *  "how far to the next division" the API carries: the placement knows the
+	 *  ceiling of the band it is in, not the name of the one above it.
+	 */
+	highestScore: number,
 	gamesPlayed: number,
 	imageUrl: string,
 };

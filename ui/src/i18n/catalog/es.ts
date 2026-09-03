@@ -1509,7 +1509,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.inRange": "{count} en tu rango",
   "lobby.matchmaker.inRangeHint": "Jugadores en esta cola cuyo rango de puntuación se solapa con el tuyo, sin contar tu propia búsqueda. Fuera del 1v1 el servidor lo deriva del primer jugador de cada grupo.",
   "lobby.matchmaker.mapPool": "Conjunto de mapas",
-  "lobby.matchmaker.queue.ranked1v1": "1 contra 1 clasificatorio",
   "lobby.matchmaker.state.searching": "Buscando",
   "lobby.matchmaker.state.found": "Partida encontrada",
   "lobby.matchmaker.state.launching": "Iniciando la partida",

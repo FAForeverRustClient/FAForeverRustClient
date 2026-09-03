@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { ipc } from "../../ipc/client";
-import type { Game, PartyState } from "../../ipc/bindings";
+import type { Game, PartyState, Reaction } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { Composer } from "../chat/Composer";
-import { MessageList } from "../chat/MessageList";
+import { MessageList, type MessageReactionsMap } from "../chat/MessageList";
 import type { ChatGameLink } from "../chat/chatFormat";
 import { visibleChatMessages } from "../chat/messageFilters";
 import { partyChatChannel } from "./partyChat";
@@ -19,7 +19,7 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
   const games = useAppStore((state) => state.state.lobby.games);
   const liveGames = useAppStore((state) => state.state.lobby.liveGames);
   const [gameLinkNotice, setGameLinkNotice] = useState("");
-  const roomName = partyChatChannel(party);
+  const roomName = partyChatChannel(party, social, player);
   const room = roomName
     ? chat.channels.find((channel) => channel.name.localeCompare(
         roomName,
@@ -32,6 +32,14 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
     [preferences, room?.messages, social],
   );
   const self = chat.username || player?.name || "";
+  // Same shape the Chat tab builds: the reaction buttons in a message row are
+  // rendered either way, so leaving the map and the handlers out here did not
+  // hide them, it only made them do nothing when pressed.
+  const reactionsByMessage = useMemo<MessageReactionsMap>(() => {
+    const map: Record<string, readonly Reaction[]> = {};
+    for (const entry of room?.reactions ?? []) map[entry.msgid] = entry.entries;
+    return map;
+  }, [room]);
   useEffect(() => {
     if (!gameLinkNotice) return;
     const timeout = window.setTimeout(() => setGameLinkNotice(""), 5_000);
@@ -63,6 +71,11 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
   // party must not open a private-looking IRC room. The panel still renders, so
   // the feature is discoverable, but it says what it is waiting for instead of
   // showing an inert message list.
+  //
+  // It also returns null for a real party whose owner the player directory has
+  // not named yet, and the two are different situations: telling somebody who
+  // is demonstrably in a party to invite someone would send them looking for a
+  // problem that is not there.
   if (!roomName) {
     return (
       <aside className="matchmaker-party-chat is-empty" aria-label={t("lobby.matchmaker.partyChat")}>
@@ -70,8 +83,7 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
           <strong>{t("lobby.matchmaker.partyChat")}</strong>
         </header>
         <p className="muted">
-          Invite someone to your party and this becomes a private room for
-          agreeing factions and queues before you search.
+          {t(party.members.length > 1 ? "lobby.party.chat.awaitingOwner" : "lobby.party.chat.invite")}
         </p>
       </aside>
     );
@@ -98,6 +110,9 @@ export function MatchmakerPartyChat({ party }: { party: PartyState }) {
         users={room?.users ?? []}
         social={social}
         preferences={preferences}
+        reactions={reactionsByMessage}
+        onReact={(msgid, emoji) => ipc.send({ kind: "Chat", command: { type: "react", payload: { channel: roomName, msgid, emoji } } })}
+        onUnreact={(msgid, emoji) => ipc.send({ kind: "Chat", command: { type: "unreact", payload: { channel: roomName, msgid, emoji } } })}
         onGameLink={activateGameLink}
       />
       <Composer

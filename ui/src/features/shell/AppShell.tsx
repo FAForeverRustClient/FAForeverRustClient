@@ -37,6 +37,9 @@ export function AppShell() {
   const auth = useAppStore((s) => s.state.auth);
   const chatStatus = useAppStore((s) => s.state.chat.status);
   const party = useAppStore((s) => s.state.lobby.party);
+  // The party message carries ids, not names: the room name needs the owner's
+  // real login, which only the live directory has. See `partyChatChannel`.
+  const social = useAppStore((s) => s.state.social);
   const player = auth.player;
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
@@ -76,7 +79,7 @@ export function AppShell() {
     };
   }, [isResizingSidebar]);
 
-  const currentPartyChannel = partyChatChannel(party);
+  const currentPartyChannel = partyChatChannel(party, social, player);
   useEffect(() => {
     // Match the Java/Python lifecycle: changing leaders parts the old room and
     // joins the new one; dissolving/leaving a party only parts. Resetting the

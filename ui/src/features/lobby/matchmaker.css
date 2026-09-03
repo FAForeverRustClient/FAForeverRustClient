@@ -22,7 +22,6 @@
    glance instead of requiring a check mark hunt. */
 .faction-chips {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -32,29 +31,19 @@
 .faction-chip {
   --faction: var(--color-border-strong);
   display: inline-flex;
-  min-height: 44px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   flex: 1 1 0;
-  min-width: 100px;
-  gap: 9px;
-  padding: 0 12px;
+  min-width: 0;
+  padding: 0 6px;
   color: var(--color-muted);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 550;
   line-height: 1;
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
-}
-
-.faction-chip span {
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
 }
 
 .faction-chip[data-faction="uef"] { --faction: var(--color-faction-uef); }
@@ -337,6 +326,10 @@
 }
 
 .matchmaker-queues-section {
+  /* Overwritten per render with the number of queues the server offers, so the
+     faction picker can size itself to one game mode card. */
+  --matchmaker-queue-columns: 4;
+  --matchmaker-queue-gap: 16px;
   padding: 20px;
 }
 
@@ -349,42 +342,12 @@
   padding: 16px 20px;
 }
 
-/* The whole card, not a 320 px column with the divisions squeezed into the
-   remainder: that is what stacked four tiles on top of each other. Aligned to
-   the top because the copy beside the badge is now three rows tall. */
-.matchmaker-player-identity {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  flex: 1 1 100%;
-  gap: 14px;
-}
-
-/* No border or fill: the badge art carries its own frame, and a box around it
-   read as an empty placeholder whenever the image was missing. */
-.matchmaker-league-mark {
-  display: grid;
-  width: 74px;
-  height: 44px;
-  flex: 0 0 auto;
-  place-items: center;
-  overflow: hidden;
-}
-
-.matchmaker-league-mark img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-/* Takes the width the identity row has left rather than shrinking to its own
-   content. Without the grow it sized itself to the widest child, which is the
-   divisions grid, which in turn sizes itself to its container: the two settled
-   on one column and stacked four tiles down the card. */
+/* Who you are, kept to the width its own text needs. The card's other half is
+   the league headline, which is the part worth the room. */
 .matchmaker-player-copy {
   display: flex;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 240px;
   flex-direction: column;
   gap: 4px;
 }
@@ -449,6 +412,20 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* The picker sits above the last game mode card and is cut to that card's
+   width, so the two read as one column rather than as a wide bar over a narrow
+   tile. The grid resolves its own tracks with `auto-fit`, which nothing outside
+   it can query, so the arithmetic is repeated here from the column count the
+   panel passes in. */
+.matchmaker-section-copy .faction-chips {
+  flex: 0 0 auto;
+  width: max(
+    196px,
+    calc((100% - (var(--matchmaker-queue-columns) - 1) * var(--matchmaker-queue-gap)) / var(--matchmaker-queue-columns))
+  );
 }
 
 .matchmaker-section-copy h1,
@@ -457,14 +434,6 @@
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -.025em;
-}
-
-.matchmaker-section-copy p {
-  max-width: 510px;
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 12px;
-  text-align: right;
 }
 
 /* `auto-fit` rather than `auto-fill`, so the queues the server offers share the
@@ -482,7 +451,7 @@
 .matchmaker-queue-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
-  gap: 10px;
+  gap: var(--matchmaker-queue-gap);
   margin-top: 18px;
 }
 
@@ -491,6 +460,7 @@
 }
 
 .matchmaker-queue-card {
+  position: relative;
   min-width: 0;
   overflow: hidden;
   background: var(--color-surface-raised);
@@ -598,6 +568,9 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  /* The corner the map pool button occupies, kept clear so a long line cannot
+     run underneath it. */
+  padding-right: 108px;
   color: var(--color-muted);
   font-size: 12px;
 }
@@ -632,12 +605,16 @@
   border-color: var(--color-accent);
 }
 
+/* Laid over the last fact lines instead of below them. As its own band the map
+   pool button added a row of card height that said nothing, and the taller
+   card pushed the queue grid down for every player. Bottom offset matches the
+   toggle's bottom padding, so the two sit on one baseline. */
 .matchmaker-queue-footer {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 16px 16px;
 }
 
 .matchmaker-map-pool-button {
@@ -781,19 +758,43 @@
   border-radius: var(--radius-md);
 }
 
+/* One template for every kind of line, exactly as the full chat does it, so
+   the text column starts at the same place in all of them.
+ *
+ * The sender track is a share of the rail, not `auto`: each row is its own
+ * grid, so a content-sized track made every message begin wherever that
+ * sender's name happened to end. A percentage resolves against the same
+ * container in every row, so the column still lines up, and a wider rail
+ * spends the extra width on names rather than clipping them. `.chat-nick`
+ * already ellipsises, so a long name loses its tail rather than the column.
+ *
+ * Three columns whatever the row holds. `.chat-quote` and `.chat-reactions`
+ * are placed at `grid-column: 3 / -1`, so a row with fewer explicit columns
+ * pushes them into an implicit one and takes the body's width away from it.
+ * An info line fills the middle track with its empty prefix span and an action
+ * line with its `*`, which is where both belong anyway. */
 .matchmaker-party-chat .chat-message {
-  grid-template-columns: 0 minmax(0, auto) minmax(0, 1fr);
+  grid-template-columns: 0 minmax(0, 30%) minmax(0, 1fr);
   gap: 7px;
   font-size: 12px;
 }
 
-.matchmaker-party-chat .chat-message.is-info,
-.matchmaker-party-chat .chat-message.is-error,
-.matchmaker-party-chat .chat-message.is-action {
-  grid-template-columns: 0 minmax(0, 1fr);
-}
+/* The rail shows no timestamps: the column that would hold them is not in its
+   template. Clipping the element left it in the flow, where it took a grid
+   cell of its own on a second row, so a message carrying a time was 16px
+   taller than its neighbours and one without still paid the row gap. Since
+   `showsTime` only marks the first message of each minute, that turned into
+   rows of visibly different heights down the conversation. */
+.matchmaker-party-chat .chat-message-time { display: none; }
 
-.matchmaker-party-chat .chat-message-time { overflow: hidden; }
+/* The rail has no room for an avatar column, which is why its track is zero
+   wide. The element still has to occupy that track, or every later cell shifts
+   one column left, so it is the element that must be zero: sized 32px by the
+   base rule it simply spilled out of the track and sat on top of the nick
+   beside it. Invisible until somebody in the party had an avatar at all. */
+.matchmaker-party-chat .chat-message-avatar {
+  width: 0;
+}
 
 .matchmaker-party-chat .chat-compose {
   gap: 5px;
@@ -981,13 +982,9 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .matchmaker-section-copy .faction-chips,
   .faction-chips {
     width: 100%;
-  }
-
-  .faction-chip {
-    flex: 1 1 calc(50% - 3px);
-    justify-content: center;
   }
 
   .matchmaker-queue-grid {
@@ -998,10 +995,6 @@
   .matchmaker-map-pool-head {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .matchmaker-section-copy p {
-    text-align: left;
   }
 
   .matchmaker-search-bar {
@@ -1023,83 +1016,117 @@
   }
 }
 
-/* The divisions row in the identity card: one tile per queue the server offers,
-   including the ones the player has never been placed in. No league emblems
-   here on purpose; four of them turn a line of facts into a badge collection,
-   and the placement image already has its place next to the name. */
-.matchmaker-divisions {
+/* The league headline: the highest division the account holds and the best
+   rating behind it, given the room the per queue divisions row used to spend
+   saying four smaller versions of the same thing. */
+.matchmaker-league-summary {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* A grid, not a wrapping flex row: when the card is too narrow for four the
-   leftover tile keeps its column width instead of stretching across the whole
-   row, which made a single unplaced queue look like a banner. */
-.matchmaker-divisions ul {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Sized to share the row rather than to a fixed width: four tiles at 132 px
-   plus gaps did not fit the card, so the last queue dropped onto a line of its
-   own and the row stopped reading as one set. */
-/* Badge on the left, the three lines of text beside it. The row has the width
-   of the card to itself, so the tiles are sized to be read at a glance rather
-   than squeezed to fit. */
-.matchmaker-division {
-  display: flex;
-  min-width: 0;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  flex: 0 1 auto;
+  gap: 18px;
+  padding: 12px 18px;
   background: var(--color-surface-raised);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
-.matchmaker-division-badge {
-  width: 38px;
-  height: 38px;
+/* Big enough to be the thing the eye lands on. The art is a badge with its own
+   frame, so it needs no box around it. */
+.matchmaker-league-summary-badge {
+  width: 64px;
+  height: 64px;
   flex: none;
   object-fit: contain;
 }
 
-.matchmaker-division-copy {
+.matchmaker-league-summary-copy {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 1px;
+  gap: 4px;
 }
 
-.matchmaker-division-queue {
+.matchmaker-league-summary-copy .matchmaker-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The queue the division belongs to. A player is placed per leaderboard, so
+   "Diamond III" on its own leaves out half the fact. */
+.matchmaker-league-summary-copy .matchmaker-kicker em {
+  padding: 1px 6px;
   color: var(--color-text);
-  font-size: 13px;
-  font-weight: 600;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
-.matchmaker-division-rank {
+.matchmaker-league-summary-division {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+
+/* Java draws this as an arc around the badge; a bar reads the same and keeps
+   the number beside it on one baseline. */
+.matchmaker-league-progress {
+  display: block;
+  width: 100%;
+  min-width: 160px;
+  height: 6px;
+  margin-top: 2px;
   overflow: hidden;
-  color: var(--color-muted);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  background: var(--color-surface);
+  border-radius: 999px;
 }
 
-.matchmaker-division-rating {
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
+.matchmaker-league-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: inherit;
 }
 
-/* An unplaced queue has no number, and setting the words in the same weight as
-   a rating made "No rating" look like one. */
-.matchmaker-division-rating.is-empty {
+.matchmaker-league-summary-copy small {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 400;
+}
+
+/* The number, not a label with a number under it: the rating is what a player
+   compares against a queue card, so it is set at the same weight as the
+   division beside it. */
+.matchmaker-league-summary-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding-left: 18px;
+  border-left: 1px solid var(--color-border);
+}
+
+.matchmaker-league-summary-rating strong {
+  font-size: 26px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+
+/* An account with no rated queue has no number, and setting the words at the
+   size of a rating made "No rating" look like one. */
+.matchmaker-league-summary-rating strong.is-empty {
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.matchmaker-league-summary-rating small {
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 /* The single invite placeholder. Shaped like a seat so the row stays even,

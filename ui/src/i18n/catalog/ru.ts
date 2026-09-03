@@ -1557,7 +1557,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.inRange": "{count} в вашем диапазоне",
   "lobby.matchmaker.inRangeHint": "Игроки в этой очереди, чей диапазон рейтинга пересекается с вашим, без учёта вашего собственного поиска. Вне 1v1 сервер выводит это из первого игрока каждой группы.",
   "lobby.matchmaker.mapPool": "Пул карт",
-  "lobby.matchmaker.queue.ranked1v1": "Рейтинговый 1 на 1",
   "lobby.matchmaker.state.searching": "Поиск",
   "lobby.matchmaker.state.found": "Матч найден",
   "lobby.matchmaker.state.launching": "Игра запускается",

@@ -8,6 +8,7 @@ const placement = (technicalName: string, division: string, score: number): Play
   season: "Season 12",
   division,
   score,
+  highestScore: score + 100,
   gamesPlayed: 20,
   imageUrl: "",
 });
