@@ -596,6 +596,23 @@ pub(crate) fn handle_line(
                 }
             }
         }
+        // A refused JOIN, and the rest of the channel-command errors that
+        // arrive in the same shape. Ergochat answers such a request with one
+        // of these numerics and nothing else: no echo, no `ChannelJoined`, and
+        // nothing anywhere in the client that says why. A panel waiting for
+        // the channel then waits forever, which is exactly how the matchmaker
+        // party chat gets stuck on "Joining the party channel". Only logged,
+        // because the state these numerics describe is the absence of a
+        // channel and there is nothing to put in the store.
+        "403" | "405" | "435" | "437" | "471" | "473" | "474" | "475" | "476" | "477" | "479"
+        | "480" | "485" => {
+            tracing::warn!(
+                numeric = %line.command,
+                channel = %line.params.get(1).map(String::as_str).unwrap_or_default(),
+                reason = %line.params.last().map(String::as_str).unwrap_or_default(),
+                "the chat server refused a channel command",
+            );
+        }
         _ => {} // numeric replies we don't need yet
     }
 

@@ -1511,7 +1511,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.inRange": "{count} dans votre plage",
   "lobby.matchmaker.inRangeHint": "Joueurs en attente dans cette file dont la plage de classement recoupe la vôtre, votre propre recherche exclue. Hors 1v1, le serveur la déduit du premier joueur de chaque groupe.",
   "lobby.matchmaker.mapPool": "Pool de cartes",
-  "lobby.matchmaker.queue.ranked1v1": "1 contre 1 classé",
   "lobby.matchmaker.state.searching": "Recherche",
   "lobby.matchmaker.state.found": "Partie trouvée",
   "lobby.matchmaker.state.launching": "Partie en démarrage",

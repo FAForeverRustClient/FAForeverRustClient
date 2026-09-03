@@ -351,8 +351,12 @@ impl ChatPort for IrcClient {
             return;
         }
         self.wanted_channels.lock().unwrap().insert(channel.clone());
+        // Logged so a channel that never confirms can be told apart from one
+        // that was never asked for: the JOIN itself is the only half of this
+        // exchange the client controls.
+        tracing::info!(%channel, "chat join requested");
         if !self.send_line(irc::format_line("JOIN", &[&channel])) {
-            tracing::warn!("chat join ignored because there is no active connection");
+            tracing::warn!(%channel, "chat join ignored because there is no active connection");
         }
         // The server's own JOIN echo confirms it; no optimistic event here.
     }
