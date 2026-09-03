@@ -223,6 +223,15 @@ function VaultView({ busy }: { busy: boolean }) {
     setPage(1);
   };
 
+  // Sorting is not a preset. Routed through `choosePreset("all")` it forced the
+  // sort back to "name" and dropped the preset's own filter, so every choice
+  // but "Name" looked like it did nothing. See the twin in MapsView.
+  const chooseSort = (nextSort: ModSort) => {
+    setSort(nextSort);
+    setApplied((prev) => ({ ...prev, sort: nextSort }));
+    setPage(1);
+  };
+
   const choosePreset = (next: ModPreset) => {
     let nextSort: ModSort = sort;
     if (next === "recommended" || next === "rating" || next === "ui" || next === "favorites") nextSort = "rating";
@@ -405,7 +414,7 @@ function VaultView({ busy }: { busy: boolean }) {
           <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("mods.view.any")}</option><option value="ranked">{t("mods.view.rankedSafe")}</option><option value="unranked">{t("mods.view.unranked")}</option></select>
         </SearchField>
         <SearchField label={t("mods.view.sortBy")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => { setSort(event.target.value as ModSort); choosePreset("all"); }}><option value="rating">{t("mods.view.preset.rating")}</option><option value="newest">{t("mods.view.preset.newest")}</option><option value="updated">{t("mods.view.recentlyUpdated")}</option><option value="name">{t("mods.view.name")}</option></select>
+          <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as ModSort)}><option value="rating">{t("mods.view.preset.rating")}</option><option value="newest">{t("mods.view.preset.newest")}</option><option value="updated">{t("mods.view.recentlyUpdated")}</option><option value="name">{t("mods.view.name")}</option></select>
         </SearchField>
         <SearchPanelSubmit />
       </SearchPanel>
