@@ -84,7 +84,7 @@ jobs:
         run: |
           hits=$(grep -rnP '\x{2014}' crates ui/src src-tauri/src docs .github --include='*' || true)
           if [ -n "$hits" ]; then
-            echo "::error::Em dashes are forbidden by AGENTS.md. Use punctuation appropriate to the sentence:"
+            echo "::error::Em dashes are forbidden: see docs/PROJECT_GUIDE.md section 8. Use punctuation appropriate to the sentence:"
             echo "$hits"
             exit 1
           fi

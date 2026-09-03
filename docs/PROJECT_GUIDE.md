@@ -71,7 +71,10 @@ ui/          ← depends only on the generated TS types
 | `docs/ARCHITECTURE.md` | The **architecture contract** (rules, rationale, phase plan). |
 | `docs/PROJECT_GUIDE.md` | **This document** (the map). |
 | `app-icon.png` | Source icon from which Tauri icons are generated. |
-| `.gitignore` | Ignores `target/`, `node_modules/`, `ui/dist/`, `src-tauri/gen/`. |
+| `.gitignore` | Build output, local config, and anything that could carry a secret or a player identity. Also `AGENTS.md` and `docs/env.txt`, which are personal files by design. |
+| `docs/` | Documentation. [`docs/README.md`](README.md) says which documents are kept current and which are dated notes. |
+| `scripts/` | Build and check scripts run through pnpm, including the repository guardrails in §8. |
+| `natives/` | Where the `faf-uid` helper is downloaded at build time. Ignored except for its `.gitkeep`. |
 
 ### `crates/faf-domain/`: the pure domain (no IO, no async)
 
@@ -157,12 +160,11 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/design-system/tokens.css` | **Theming contract.** Semantic CSS variables under `:root` (= `forgeDark`) + one `[data-theme="…"]` block per theme (`forgeLight`/`javaClient`/`pythonClient`). Components reference these only. |
 | `src/design-system/Button.tsx` | **`Button` primitive**: encapsulates control structure/classes so theme-specific shape changes touch one file. |
 | `src/styles.css` | Global styles + component classes (token-driven; no hardcoded hex: enforced in CI). |
-| `src/features/status/StatusBar.tsx` | View: connection status. |
-| `src/features/auth/LoginView.tsx` | View: login screen. |
-| `src/features/shell/AppShell.tsx` | The logged-in shell: topbar + `TabBar` + `ThemePicker` + active tab content. |
-| `src/features/nav/TabBar.tsx` | View: tab bar (dispatches nav commands). |
-| `src/features/lobby/LobbyView.tsx` | View: play tab: live game list. |
-| `src/features/settings/ThemePicker.tsx` | View: theme dropdown (dispatches `SetTheme`). |
+| `src/shared/` | Helpers a feature folder should not own alone: query shapes, formatting, storage. Pure, and unit tested next to the code. |
+| `src/i18n/` | The message catalogues. `catalog/en.ts` is the source of truth: a missing **key** is a compile error, a missing translation falls back to English. |
+| `src/features/shell/AppShell.tsx` | The logged-in shell: sidebar, tab bar, status bar, and the active tab's view. Routing is a lookup in the tab registry, not a router. |
+| `src/features/nav/tabs.ts` | The tab registry: the one place a new tab is added. |
+| `src/features/<tab>/` | One folder per tab. 24 of them today (auth, chat, lobby, replays, maps, mods, leaderboard, tournaments, settings, …). Listing them here would go stale faster than it would help: `ls ui/src/features` is the current answer. |
 
 > **Feature structure:** A folder `features/<name>/`. Components **select state +
 > dispatch commands**, nothing else. No business logic, no direct IPC calls.
@@ -219,7 +221,44 @@ pnpm run build         # Build frontend to ui/dist
 
 ---
 
-## 8. Current Status
+## 8. Repository Guardrails
+
+CI enforces a few repository rules that no linter catches. They live in
+`scripts/check-architecture.mjs` and in the workflow, and they run **before**
+typecheck, lint and tests, so breaking one fails the build in seconds with
+everything after it skipped.
+
+| Rule | Where |
+|---|---|
+| No em dash (U+2014) in any `.css .html .js .json .md .mjs .rs .ts .tsx` file. Use the punctuation the sentence wants: a colon where the clause explains the one before it, a comma where it interrupts. | `check-architecture.mjs`, plus a second grep in the workflow over `crates ui/src src-tauri/src docs .github` |
+| No `font-size` below 11 px in `ui/src/**/*.css`. | `check-architecture.mjs` |
+| No hex colours in `ui/src/**/*.css` outside `design-system/tokens.css`. Components reference semantic tokens so a new theme never revisits a component. | workflow |
+| Crate layering: the boundaries in [`ARCHITECTURE.md`](ARCHITECTURE.md). | `check-architecture.mjs` |
+
+Reproduce the whole frontend gate locally, in the order CI runs it:
+
+```bash
+pnpm run architecture && pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build
+```
+
+And the Rust half, where `cargo fmt` is a separate gate that a clean clippy run
+does **not** imply:
+
+```bash
+cargo test --workspace
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings -D clippy::print_stderr
+```
+
+Two generated files drift if you forget them, each with its own CI job:
+`pnpm run bindings` after changing a cross-boundary Rust type (the doc comments
+travel into the generated TypeScript too, so editing only a comment still
+counts), and `cargo test -p faf-domain --test conformance_fixtures` after
+changing a state type or a default.
+
+---
+
+## 9. Current Status
 
 - **Implemented:** 22 state slices (session, auth, nav, lobby, chat, social, maps, mods,
   replays, settings, notifications, player card, coop, tournaments, tutorials, reviews,

@@ -84,7 +84,8 @@ crates/
   faf-ipc/      generates ui/src/ipc/bindings.ts from the Rust types
 src-tauri/      thin Tauri shell (commands + event forwarding)
 ui/             React frontend (ipc bridge, Zustand store, features)
-docs/           ARCHITECTURE.md
+docs/           ARCHITECTURE.md (the contract), PROJECT_GUIDE.md (the map),
+                notes/ (dated research, not maintained). See docs/README.md.
 ```
 
 ## Develop
@@ -126,3 +127,7 @@ When you add anything, follow [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §8
 
 Never: mutate state outside a reducer; do IO outside `infra`; put logic in a component;
 hand-write a cross-boundary type.
+
+CI also enforces a few repository rules that no linter catches, including a ban on
+em dashes across the whole tree. They are listed with the commands that reproduce
+them in [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md#8-repository-guardrails).
