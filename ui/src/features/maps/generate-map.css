@@ -182,11 +182,16 @@
   min-width: 0;
 }
 
+/* Square, and capped on the width rather than the height. `max-height` cannot
+   hold an aspect ratio: on a wide pane it made the box wider than tall, and the
+   square map inside it then either got cropped or sat between two grey bands.
+   Bounding the width keeps the box 1:1 at every pane size, so the preview fills
+   it exactly. */
 .generate-map-preview-img-wrap {
   position: relative;
-  width: 100%;
+  width: min(100%, 360px);
   aspect-ratio: 1 / 1;
-  max-height: 360px;
+  margin-inline: auto;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -196,10 +201,9 @@
   justify-content: center;
 }
 
-/* `contain`, not `cover`: `max-height` above caps the square the aspect ratio
-   asks for, so on a wide dialog the box is no longer 1:1 and `cover` cropped
-   the top and bottom off the map. The map is the whole point of the pane, so
-   it is shown whole and the leftover space stays background. */
+/* `contain`, not `cover`: the box above is square and a generated preview is
+   square, so the two are the same picture here. They differ only if a preview
+   ever is not square, and then showing the whole map beats cropping it. */
 .generate-map-preview-img {
   width: 100%;
   height: 100%;

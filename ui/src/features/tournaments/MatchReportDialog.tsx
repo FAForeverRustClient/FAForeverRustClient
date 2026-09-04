@@ -14,6 +14,7 @@ import { Modal } from "../../design-system/Modal";
 import type { MatchReport, Tourney, TourneyMatch } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { isSubmittable } from "../../shared/tourneyRules";
+import { NumberInput } from "../../design-system/NumberInput";
 
 interface MatchReportDialogProps {
   event: Tourney;
@@ -55,13 +56,7 @@ export function MatchReportDialog({
   const scoreBox = (teamId: string | null, value: number, set: (next: number) => void) => (
     <label className="tournament-field tournament-score-field">
       <span>{teamName(teamId)}</span>
-      <input
-        type="number"
-        min={0}
-        max={needed}
-        value={value}
-        onChange={(changed) => set(Number(changed.target.value))}
-      />
+      <NumberInput min={0} max={needed} value={value} onChange={set} />
     </label>
   );
 

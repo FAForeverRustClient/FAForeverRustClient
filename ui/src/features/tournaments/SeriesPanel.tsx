@@ -23,6 +23,7 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { qualifierRejection, seriesIsSubmittable } from "../../shared/tourneyRules";
 import { formatDay } from "./tourneyPresentation";
+import { NumberInput } from "../../design-system/NumberInput";
 
 interface SeriesPanelProps {
   event: Tourney;
@@ -229,14 +230,11 @@ export function SeriesPanel(props: SeriesPanelProps) {
           </label>
           <label className="tournament-field">
             <span>{t("tournaments.qualifiers.cutoff")}</span>
-            <input
-              type="number"
+            <NumberInput
               min={1}
               value={rule.n}
               disabled={busy}
-              onChange={(changed) =>
-                setRule((held) => ({ ...held, n: Number(changed.target.value) }))
-              }
+              onChange={(n) => setRule((held) => ({ ...held, n }))}
             />
           </label>
           <Button
