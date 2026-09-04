@@ -27,6 +27,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -255,6 +256,10 @@ pub struct NeroxisMapGenerator {
     /// because the lock is held across the fetch itself: two commands asking
     /// at once should cost one round trip, not two.
     releases: RememberedReleases,
+    /// Whether a run may keep the JVM's console window. Off unless the user
+    /// asked for it in Settings; shared with the run task, which is why it is
+    /// behind an `Arc` like the cancel signal.
+    show_window: Arc<AtomicBool>,
 }
 
 impl NeroxisMapGenerator {
@@ -266,6 +271,7 @@ impl NeroxisMapGenerator {
             cancel: Arc::new(CancelSignal::default()),
             installing: Arc::new(tokio::sync::Mutex::new(())),
             releases: Arc::new(tokio::sync::Mutex::new(None)),
+            show_window: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -290,6 +296,7 @@ impl NeroxisMapGenerator {
             cancel: Arc::clone(&self.cancel),
             installing: Arc::clone(&self.installing),
             releases: Arc::clone(&self.releases),
+            show_window: Arc::clone(&self.show_window),
         }
     }
 
@@ -476,19 +483,34 @@ impl NeroxisMapGenerator {
             let _ = tokio::fs::create_dir_all(self.preview_dir()).await;
         }
 
-        self.log_line(&format!("--- run {version} {}", shell_quote_all(&args)))
-            .await;
+        // Opened before the first line is written, so the window has the whole
+        // run in it. Bound to a name rather than dropped: it lives until this
+        // function returns, on every path out of it, and closes then.
+        let mut window = self
+            .show_window
+            .load(Ordering::Relaxed)
+            .then(RunWindow::open)
+            .flatten();
 
-        let mut child = match Command::new(&self.config.java_path)
+        let header = format!("--- run {version} {}", shell_quote_all(&args));
+        if let Some(window) = window.as_mut() {
+            window.write_line(&header).await;
+        }
+        self.log_line(&header).await;
+
+        let mut command = Command::new(&self.config.java_path);
+        command
             .arg("-jar")
             .arg(jar)
             .args(&args)
             // The generator writes into its working directory.
             .current_dir(&self.config.maps_dir)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-        {
+            .stderr(Stdio::piped());
+        // Always hidden: what the switch opens is the log window above, which
+        // is the only one that can show anything.
+        crate::infra::hide_console(&mut command);
+        let mut child = match command.spawn() {
             Ok(child) => child,
             Err(e) => {
                 return RunOutcome::Failed(format!(
@@ -558,6 +580,9 @@ impl NeroxisMapGenerator {
                     return RunOutcome::Failed(self.abandon(&mut child, untimed).await);
                 }
                 Ok(Ok(Some(line))) => {
+                    if let Some(window) = window.as_mut() {
+                        window.write_line(&line).await;
+                    }
                     self.log_line(&line).await;
                     for name in map_generator::scrape_map_names(&line) {
                         if !names.contains(&name) {
@@ -638,30 +663,31 @@ impl NeroxisMapGenerator {
         args: &[&str],
         limit: Duration,
     ) -> Result<String, String> {
-        let output = tokio::time::timeout(
-            limit,
-            Command::new(&self.config.java_path)
-                .arg("-jar")
-                .arg(jar)
-                .args(args)
-                // None of these queries writes anything, but a release that
-                // does not know the flag it was given answers by generating a
-                // map into its working directory. Beside the JAR that is at
-                // least findable; in the client's own working directory it is
-                // litter nobody would connect to the map generator.
-                .current_dir(&self.config.generator_dir)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .output(),
-        )
-        .await
-        .map_err(|_| "the map generator did not answer in time".to_string())?
-        .map_err(|e| {
-            format!(
+        let mut command = Command::new(&self.config.java_path);
+        command
+            .arg("-jar")
+            .arg(jar)
+            .args(args)
+            // None of these queries writes anything, but a release that
+            // does not know the flag it was given answers by generating a
+            // map into its working directory. Beside the JAR that is at
+            // least findable; in the client's own working directory it is
+            // litter nobody would connect to the map generator.
+            .current_dir(&self.config.generator_dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        // Never windowed: these run while the dialog is being filled in, and
+        // are not the run anybody asked to watch.
+        crate::infra::hide_console(&mut command);
+        let output = tokio::time::timeout(limit, command.output())
+            .await
+            .map_err(|_| "the map generator did not answer in time".to_string())?
+            .map_err(|e| {
+                format!(
                 "could not start the map generator ({}): {e}. Java is required to generate maps.",
                 self.config.java_path
             )
-        })?;
+            })?;
 
         if output.status.success() {
             return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
@@ -1081,6 +1107,66 @@ impl NeroxisMapGenerator {
 /// object gains fields between releases, and this client already has a pure
 /// decoder that expands the name into all of them. Taking only the name keeps
 /// the shape of the JSON from becoming a compatibility surface.
+/// A console window showing one generation run, line by line.
+///
+/// Not the JVM's own console. The generator writes everything to stdout and the
+/// client reads that stdout: the map names and the progress the dialog shows
+/// both come out of it, so handing the stream to a console would take both
+/// away, and leaving it piped makes the JVM's window an empty black box (a
+/// console shows what its process writes to it, and a redirected process writes
+/// nowhere near it). So the client opens a console of its own and writes the
+/// lines into it as it reads them. `findstr` with a pattern every line matches
+/// is the shortest thing in a stock Windows that copies its input to its
+/// output a line at a time.
+struct RunWindow {
+    /// Killed on drop, which closes the window when the run ends, the way the
+    /// generator's own console used to close with the process.
+    _child: tokio::process::Child,
+    input: tokio::process::ChildStdin,
+}
+
+impl RunWindow {
+    #[cfg(windows)]
+    fn open() -> Option<Self> {
+        let mut command = Command::new("cmd.exe");
+        command
+            .arg("/c")
+            .arg("findstr")
+            .arg("/r")
+            .arg(".*")
+            .stdin(Stdio::piped())
+            .kill_on_drop(true);
+        crate::infra::console_window(&mut command, true);
+        let mut child = match command.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                tracing::warn!(%error, "could not open the map generator window");
+                return None;
+            }
+        };
+        let input = child.stdin.take()?;
+        Some(Self {
+            _child: child,
+            input,
+        })
+    }
+
+    /// Windows has the console; everywhere else a run has no window to open.
+    #[cfg(not(windows))]
+    fn open() -> Option<Self> {
+        None
+    }
+
+    /// Best effort throughout: a user who closes the window mid-run must not
+    /// take the generation down with it.
+    async fn write_line(&mut self, line: &str) {
+        use tokio::io::AsyncWriteExt as _;
+        let _ = self.input.write_all(line.as_bytes()).await;
+        let _ = self.input.write_all(b"\r\n").await;
+        let _ = self.input.flush().await;
+    }
+}
+
 fn parse_map_name_from_json(stdout: &str) -> Option<String> {
     let value: serde_json::Value = serde_json::from_str(stdout.trim()).ok()?;
     let name = value.get("mapName")?.as_str()?;
@@ -1154,6 +1240,10 @@ fn releases_from_tags(tags: &[String]) -> Vec<GitHubRelease> {
 
 #[async_trait]
 impl MapGeneratorPort for NeroxisMapGenerator {
+    fn set_show_window(&self, show: bool) {
+        self.show_window.store(show, Ordering::Relaxed);
+    }
+
     async fn generate_named(&self, map_name: String) -> mpsc::Receiver<GeneratorUpdate> {
         let (tx, rx) = mpsc::channel(32);
         // A stale cancellation must not stop the run that follows it.

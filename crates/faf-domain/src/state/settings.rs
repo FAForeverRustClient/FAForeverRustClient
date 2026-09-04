@@ -700,6 +700,61 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
     }
 }
 
+/// Diagnostic windows the helper processes can put on screen.
+///
+/// Every one of these is off, and that is the point: a GUI client spawning a
+/// console-subsystem child (`java.exe`, the Go adapter, `faf-uid`) makes
+/// Windows open a console window for it, and the Java ICE adapter can raise two
+/// JavaFX windows of its own. None of that is something a player asked for, so
+/// the client suppresses all of it and these switches hand it back to whoever
+/// is actually debugging a connection or a generator run.
+///
+/// The two adapter windows are the same pair the Java client exposes, and map
+/// onto `faf-ice-adapter`'s `--debug-window` and `--info-window`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DebugPreferences {
+    /// `--debug-window`: the adapter's peer and candidate table.
+    pub ice_adapter_debug_window: bool,
+    /// `--info-window`: the adapter's smaller status window.
+    pub ice_adapter_info_window: bool,
+    /// The console window the adapter's JVM would otherwise open, carrying its
+    /// stdout. Separate from the two above because it is a different thing to
+    /// look at: those are the adapter's own view of the connection, this is the
+    /// raw log it prints while forming one.
+    pub ice_adapter_console_window: bool,
+    /// The console window the map generator's JVM would otherwise open, which
+    /// carries the generator's own output.
+    pub map_generator_window: bool,
+}
+
+impl<'de> Deserialize<'de> for DebugPreferences {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        /// As on [`SettingsState`]: read tolerance belongs here rather than on
+        /// the exported type, where `#[serde(default)]` would make every
+        /// TypeScript field optional.
+        #[derive(Default, Deserialize)]
+        #[serde(rename_all = "camelCase", default)]
+        struct Wire {
+            ice_adapter_debug_window: bool,
+            ice_adapter_info_window: bool,
+            ice_adapter_console_window: bool,
+            map_generator_window: bool,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Ok(Self {
+            ice_adapter_debug_window: wire.ice_adapter_debug_window,
+            ice_adapter_info_window: wire.ice_adapter_info_window,
+            ice_adapter_console_window: wire.ice_adapter_console_window,
+            map_generator_window: wire.map_generator_window,
+        })
+    }
+}
+
 /// Where the client looks for the game's files and the user's content.
 ///
 /// Every field is a complete path and an empty one means "work it out": the
@@ -1456,6 +1511,7 @@ pub struct SettingsState {
     pub game: GamePreferences,
     pub discord: DiscordPreferences,
     pub connectivity: ConnectivityPreferences,
+    pub debug: DebugPreferences,
     pub updates: UpdatePreferences,
     pub browsing: BrowsingPreferences,
     /// Generated maps the user asked to keep, by folder name.
@@ -1501,6 +1557,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             game: GamePreferences,
             discord: DiscordPreferences,
             connectivity: ConnectivityPreferences,
+            debug: DebugPreferences,
             updates: UpdatePreferences,
             browsing: BrowsingPreferences,
             kept_generated_maps: Vec<String>,
@@ -1521,6 +1578,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             game: wire.game,
             discord: wire.discord,
             connectivity: wire.connectivity,
+            debug: wire.debug,
             updates: wire.updates,
             browsing: wire.browsing,
             kept_generated_maps: wire.kept_generated_maps,
@@ -1597,6 +1655,9 @@ pub enum SettingsEvent {
     ConnectivityChanged {
         preferences: ConnectivityPreferences,
     },
+    DebugChanged {
+        preferences: DebugPreferences,
+    },
     UpdatesChanged {
         preferences: UpdatePreferences,
     },
@@ -1659,6 +1720,9 @@ pub enum SettingsCommand {
     SetConnectivity {
         preferences: ConnectivityPreferences,
     },
+    SetDebug {
+        preferences: DebugPreferences,
+    },
     SetUpdates {
         preferences: UpdatePreferences,
     },
@@ -1713,6 +1777,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::GameChanged { preferences } => state.game = preferences.clone(),
         SettingsEvent::DiscordChanged { preferences } => state.discord = *preferences,
         SettingsEvent::ConnectivityChanged { preferences } => state.connectivity = *preferences,
+        SettingsEvent::DebugChanged { preferences } => state.debug = *preferences,
         SettingsEvent::UpdatesChanged { preferences } => state.updates = *preferences,
         SettingsEvent::BrowsingChanged { preferences } => {
             state.browsing = preferences.as_ref().clone().normalized()

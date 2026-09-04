@@ -6,6 +6,7 @@ import { AppearanceSettingsSection } from "./AppearanceSettingsSection";
 import { AccountSupportSettingsSection } from "./AccountSupportSettingsSection";
 import { ChatSettingsSection } from "./ChatSettingsSection";
 import { ConnectivitySettingsSection } from "./ConnectivitySettingsSection";
+import { DebugWindowsSettingsSection } from "./DebugWindowsSettingsSection";
 import { DiscordSettingsSection } from "./DiscordSettingsSection";
 import { DiagnosticsSettingsSection } from "./DiagnosticsSettingsSection";
 import { FoldersSettingsSection } from "./FoldersSettingsSection";
@@ -20,7 +21,7 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./settings.css";
 
-type SectionKey = "general" | "account" | "appearance" | "notifications" | "chat" | "discord" | "connectivity" | "folders" | "diagnostics" | "updates" | "game" | "gameCache" | "paths";
+type SectionKey = "general" | "account" | "appearance" | "notifications" | "chat" | "discord" | "connectivity" | "folders" | "diagnostics" | "debugWindows" | "updates" | "game" | "gameCache" | "paths";
 type SettingsCategory = "all" | "general" | "chat" | "notifications" | "account" | "connectivity" | "game" | "paths" | "maintenance";
 
 interface SectionDef {
@@ -220,6 +221,22 @@ const SECTIONS = {
     ],
     Component: DiagnosticsSettingsSection,
   },
+  debugWindows: {
+    title: "settings.section.debugWindows.title",
+    description: "settings.section.debugWindows.description",
+    keywords: "settings.section.debugWindows.keywords",
+    labels: [
+      "settings.debug.iceAdapterDebugWindow",
+      "settings.debug.iceAdapterDebugWindowHint",
+      "settings.debug.iceAdapterInfoWindow",
+      "settings.debug.iceAdapterInfoWindowHint",
+      "settings.debug.iceAdapterConsoleWindow",
+      "settings.debug.iceAdapterConsoleWindowHint",
+      "settings.debug.mapGeneratorWindow",
+      "settings.debug.mapGeneratorWindowHint",
+    ],
+    Component: DebugWindowsSettingsSection,
+  },
   updates: {
     title: "settings.section.updates.title",
     description: "settings.section.updates.description",
@@ -295,7 +312,7 @@ const SECTIONS = {
 } as const satisfies Record<SectionKey, SectionDef>;
 
 const CATEGORY_SECTIONS: Record<SettingsCategory, readonly SectionKey[]> = {
-  all: ["general", "appearance", "chat", "notifications", "account", "discord", "connectivity", "game", "gameCache", "paths", "folders", "diagnostics", "updates"],
+  all: ["general", "appearance", "chat", "notifications", "account", "discord", "connectivity", "game", "gameCache", "paths", "folders", "diagnostics", "debugWindows", "updates"],
   general: ["general", "appearance"],
   chat: ["chat"],
   notifications: ["notifications"],
@@ -303,7 +320,7 @@ const CATEGORY_SECTIONS: Record<SettingsCategory, readonly SectionKey[]> = {
   connectivity: ["connectivity"],
   game: ["game", "gameCache"],
   paths: ["paths"],
-  maintenance: ["folders", "gameCache", "updates", "diagnostics"],
+  maintenance: ["folders", "gameCache", "updates", "diagnostics", "debugWindows"],
 };
 
 const CATEGORY_TABS = [

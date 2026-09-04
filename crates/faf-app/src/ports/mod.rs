@@ -38,7 +38,7 @@ pub use coop::CoopPort;
 pub use discord::{DiscordPort, DiscordRequest};
 pub use error::RequestError;
 pub use galactic_war::{GalacticWarPort, InstallProgress};
-pub use ice::{ConnectivitySession, IceParams, IcePort, RelayMsg};
+pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
 pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};

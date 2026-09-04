@@ -113,6 +113,41 @@ use crate::ports::{
 
 const MAX_ACCESS_RESPONSE_BYTES: u64 = 1024 * 1024;
 
+/// Decide whether a console-subsystem child gets a window of its own.
+///
+/// The client is a GUI process, so Windows gives every console child it spawns
+/// (`java.exe` for the ICE adapter and the map generator, the Go adapter,
+/// `faf-uid`) a console window. That black window popping up on game start is
+/// what users report as a debugger appearing; the output in it is already
+/// captured and logged.
+///
+/// `show` is not merely the absence of that suppression, which is why this
+/// takes a flag rather than being two callers of one hide function: a child
+/// left to its own devices inherits the terminal's console in a development
+/// build and is given none at all in the packaged one, so a debug switch that
+/// only stopped suppressing would open nothing in either. Asking for a new
+/// console makes the switch mean the same thing in both builds.
+#[cfg(windows)]
+pub(crate) fn console_window(command: &mut tokio::process::Command, show: bool) {
+    /// From `processthreadsapi.h`. Tokio exposes `creation_flags` directly on
+    /// Windows, so no extension trait is needed.
+    const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(if show {
+        CREATE_NEW_CONSOLE
+    } else {
+        CREATE_NO_WINDOW
+    });
+}
+
+#[cfg(not(windows))]
+pub(crate) fn console_window(_command: &mut tokio::process::Command, _show: bool) {}
+
+/// [`console_window`] for the helpers that never have a window to offer.
+pub(crate) fn hide_console(command: &mut tokio::process::Command) {
+    console_window(command, false);
+}
+
 /// Reserve a free loopback TCP port by binding then dropping. Used by the adapter
 /// backends to pick GPGNet/RPC ports for subprocesses. Mirrors the Python client's
 /// `tcp_server()` helper; the brief gap before the subprocess binds is the same

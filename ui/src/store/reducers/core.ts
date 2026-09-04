@@ -59,6 +59,8 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
       return { ...state, discord: event.payload.preferences };
     case "connectivityChanged":
       return { ...state, connectivity: event.payload.preferences };
+    case "debugChanged":
+      return { ...state, debug: event.payload.preferences };
     case "updatesChanged":
       return { ...state, updates: event.payload.preferences };
     case "browsingChanged":

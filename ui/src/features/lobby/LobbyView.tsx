@@ -22,10 +22,11 @@ import {
 } from "./CustomGamesBrowser";
 import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
 import { GameMapImage } from "./GameMapImage";
+import { requestModVaultFocus } from "../mods/modVaultFocus";
 import { PlayModeTabs } from "./PlayModeTabs";
 import { PrivateGameDialog } from "./PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
-import { mapPresentation } from "../../shared/mapPresentation";
+import { isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
 import { UserMenu, type UserMenuTarget } from "../chat/UserMenu";
@@ -114,6 +115,17 @@ function GameDetails({
   const social = useAppStore((state) => state.state.social);
   const player = useAppStore((state) => state.state.auth.player);
   const presentation = mapPresentation(maps.vault, game.map);
+  const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
+  const isGenerated = isGeneratedMap(game.map);
+  const mapInstalled = maps.installed.some(
+    (map) =>
+      map.folderName.toLowerCase() === game.map.toLowerCase() ||
+      map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`),
+  );
+  const isGeneratingThisMap =
+    mapGenStatus.type === "generating" ||
+    mapGenStatus.type === "downloading" ||
+    mapGenStatus.type === "resolvingVersion";
   const teams = useMemo(() => {
     return Object.entries(game.teams)
       .filter(([, players]) => players.length > 0)
@@ -126,7 +138,7 @@ function GameDetails({
         return a.localeCompare(b);
       });
   }, [game.teams]);
-  const simMods = Object.values(game.simMods);
+  const simMods = Object.entries(game.simMods);
   const [expandedMods, setExpandedMods] = useState(false);
   useEffect(() => {
     setExpandedMods(false);
@@ -170,28 +182,58 @@ function GameDetails({
 
   const hostProfile = findPlayer(social, game.host);
 
+  // The same jump the preview dialog offers, here in the sidebar: a player
+  // reading the mod list should not have to open the map preview first to find
+  // out what one of these mods is.
+  const openModInVault = (mod: string) => {
+    requestModVaultFocus(mod);
+    ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "mods" } } });
+  };
+
   return (
     <aside className="game-detail-panel surface-panel">
-      <button
-        type="button"
-        className="game-map-preview"
-        onClick={onPreview}
-        title={t("lobby.browser.previewMap")}
-        aria-label={t("lobby.browser.previewMap")}
-      >
-        <GameMapImage
-          mapName={game.map}
-          vault={maps.vault}
-          className="game-detail-map-image"
-          placeholderClassName="map-preview-placeholder"
-          large
-        />
-        {game.passwordProtected && (
-          <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>
-            <Icon name="lock" size={13} />
-          </span>
+      <div className="game-map-preview-wrap">
+        <button
+          type="button"
+          className="game-map-preview"
+          onClick={onPreview}
+          title={t("lobby.browser.previewMap")}
+          aria-label={t("lobby.browser.previewMap")}
+        >
+          <GameMapImage
+            mapName={game.map}
+            vault={maps.vault}
+            className="game-detail-map-image"
+            placeholderClassName="map-preview-placeholder"
+            large
+          />
+          {game.passwordProtected && (
+            <span className="private-badge" role="img" aria-label={t("lobby.details.privateGame")} title={t("lobby.details.privateGame")}>
+              <Icon name="lock" size={13} />
+            </span>
+          )}
+        </button>
+        {!mapInstalled && isGenerated && (
+          <Button
+            className="game-map-preview-action"
+            disabled={isGeneratingThisMap}
+            onClick={() =>
+              ipc.send({
+                kind: "MapGenerator",
+                command: {
+                  type: "generateNamed",
+                  payload: {
+                    mapName: game.map,
+                  },
+                },
+              })
+            }
+          >
+            <Icon name="plus" size={13} />
+            {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
+          </Button>
         )}
-      </button>
+      </div>
       <div className="game-detail-content">
         <div className="game-detail-title">
           <h2>{game.title}</h2>
@@ -218,8 +260,16 @@ function GameDetails({
           <div className="game-detail-section">
             <h3>{t("lobby.details.simMods")}</h3>
             <div className="game-detail-tags">
-              {(expandedMods ? simMods : simMods.slice(0, 4)).map((mod) => (
-                <span className="tag" key={mod}>{mod}</span>
+              {(expandedMods ? simMods : simMods.slice(0, 4)).map(([uid, mod]) => (
+                <button
+                  type="button"
+                  className="tag tag-action"
+                  key={uid}
+                  title={t("lobby.details.openModInVault", { mod })}
+                  onClick={() => openModInVault(mod)}
+                >
+                  {mod}
+                </button>
               ))}
               {simMods.length > 4 && (
                 <button
