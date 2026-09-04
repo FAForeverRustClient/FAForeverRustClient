@@ -58,6 +58,7 @@ import {
   summariseDecodedName,
 } from "./generatorPresentation";
 import "./generate-map.css";
+import { NumberInput } from "../../design-system/NumberInput";
 
 /** Labels from the Java client's `game.generateMap.*` strings. */
 const GENERATION_TYPES = {
@@ -436,14 +437,13 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   label={t("maps.generate.count")}
                   hint={seedPinsOneMap ? t("maps.generate.seedPinsOneMap") : undefined}
                 >
-                  <input
-                    type="number"
+                  <NumberInput
                     className="generate-map-control"
                     min={1}
                     max={MAX_MAPS_PER_RUN}
                     disabled={seedPinsOneMap}
                     value={seedPinsOneMap ? 1 : (form.numToGenerate ?? 1)}
-                    onChange={(e) => set("numToGenerate", Number(e.target.value))}
+                    onChange={(count) => set("numToGenerate", count)}
                   />
                 </Row>
 

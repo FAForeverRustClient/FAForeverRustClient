@@ -13,6 +13,7 @@ import { HostModsColumn } from "./host/HostModsColumn";
 import { FeaturedModIcon } from "./FeaturedModIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n/catalog/en";
+import { NumberInput } from "../../design-system/NumberInput";
 
 interface Props {
   onClose: () => void;
@@ -445,27 +446,25 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
             <span>{t("lobby.host.enforceRating")}</span>
           </label>
           <div className="host-rating-inputs">
-            <input
+            <NumberInput
               className="number-input"
-              type="number"
               disabled={!ratingEnabled}
               value={ratingMin}
               min={-9999}
               max={9999}
               aria-invalid={Boolean(ratingError)}
-              onChange={(event) => setRatingMin(Number(event.target.value))}
+              onChange={setRatingMin}
               aria-label={t("lobby.host.minRating")}
             />
             <span className="muted">to</span>
-            <input
+            <NumberInput
               className="number-input"
-              type="number"
               disabled={!ratingEnabled}
               value={ratingMax}
               min={-9999}
               max={9999}
               aria-invalid={Boolean(ratingError)}
-              onChange={(event) => setRatingMax(Number(event.target.value))}
+              onChange={setRatingMax}
               aria-label={t("lobby.host.maxRating")}
             />
           </div>

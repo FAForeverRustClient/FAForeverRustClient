@@ -17,6 +17,7 @@ import type { BracketConfig, Tourney } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { bracketConfigOf, configIsSubmittable, roundsFor } from "../../shared/tourneyRules";
+import { NumberInput } from "../../design-system/NumberInput";
 
 /** The series lengths the service accepts. Anything else it silently makes 3. */
 const BEST_OF = [1, 3, 5, 7];
@@ -140,13 +141,12 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
             <p className="muted">{t("tournaments.setup.swiss", { teams: String(teams) })}</p>
             <label className="tournament-field">
               <span>{t("tournaments.setup.rounds")}</span>
-              <input
-                type="number"
+              <NumberInput
                 min={1}
                 max={15}
                 value={count}
                 disabled={busy}
-                onChange={(changed) => set({ rounds: Number(changed.target.value) })}
+                onChange={(rounds) => set({ rounds })}
               />
             </label>
             <label className="tournament-field">

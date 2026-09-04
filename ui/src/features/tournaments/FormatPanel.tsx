@@ -18,6 +18,7 @@ import type { BracketKind, Competition, Formation, FormatDraft, Tourney } from "
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { isStructural, mayEditTeamSetup } from "../../shared/tourneyRules";
+import { NumberInput } from "../../design-system/NumberInput";
 
 interface FormatPanelProps {
   event: Tourney;
@@ -78,13 +79,12 @@ export function FormatPanel({ event, busy, onSave }: FormatPanelProps) {
           {/* The service clamps to 1..6 for a team event and 1..3 for a
               free-for-all, so the input says the same rather than accepting a
               number that comes back changed. */}
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={draft.competition === "freeForAll" ? 3 : 6}
             value={draft.teamSize}
             disabled={busy || !setup}
-            onChange={(changed) => change({ teamSize: Number(changed.target.value) })}
+            onChange={(teamSize) => change({ teamSize })}
           />
         </label>
 

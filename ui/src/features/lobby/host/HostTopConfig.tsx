@@ -4,6 +4,7 @@
 
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { HostLobbySettings } from "./hostLobbySettings";
+import { NumberInput } from "../../../design-system/NumberInput";
 
 export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
   const { t } = useTranslation();
@@ -83,27 +84,25 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
             <span>{t("lobby.host.enforceRating")}</span>
           </label>
           <div className="host-rating-inputs">
-            <input
+            <NumberInput
               className="number-input"
-              type="number"
               disabled={!settings.ratingEnabled}
               value={settings.ratingMin}
               min={-9999}
               max={9999}
               aria-invalid={Boolean(settings.ratingError)}
-              onChange={(event) => settings.setRatingMin(Number(event.target.value))}
+              onChange={settings.setRatingMin}
               aria-label={t("lobby.host.minRating")}
             />
             <span className="muted">to</span>
-            <input
+            <NumberInput
               className="number-input"
-              type="number"
               disabled={!settings.ratingEnabled}
               value={settings.ratingMax}
               min={-9999}
               max={9999}
               aria-invalid={Boolean(settings.ratingError)}
-              onChange={(event) => settings.setRatingMax(Number(event.target.value))}
+              onChange={settings.setRatingMax}
               aria-label={t("lobby.host.maxRating")}
             />
           </div>
