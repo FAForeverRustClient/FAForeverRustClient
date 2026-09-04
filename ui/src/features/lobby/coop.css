@@ -51,10 +51,12 @@
 .coop-layout {
   display: grid;
   flex: 1;
-  /* Wide enough for the record board to show all six of its columns without
-     scrolling sideways: rank, time, players, team, secondary and the replay
-     button. The team cell is the one that grows, so it truncates instead. */
-  grid-template-columns: minmax(0, 1fr) minmax(460px, 540px);
+  /* Wide enough for the record board to show all seven of its columns without
+     scrolling sideways: rank, time, players, team, secondary, the date it was
+     played and the replay button. The team cell is the one that grows, so it
+     truncates instead. Widened when the date joined them: the replay button sat
+     off the edge and had to be scrolled to. */
+  grid-template-columns: minmax(0, 1fr) minmax(560px, 660px);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
