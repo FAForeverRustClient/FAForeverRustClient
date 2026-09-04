@@ -196,10 +196,14 @@
   justify-content: center;
 }
 
+/* `contain`, not `cover`: `max-height` above caps the square the aspect ratio
+   asks for, so on a wide dialog the box is no longer 1:1 and `cover` cropped
+   the top and bottom off the map. The map is the whole point of the pane, so
+   it is shown whole and the leftover space stays background. */
 .generate-map-preview-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .generate-map-preview-placeholder {

@@ -89,6 +89,9 @@ pub struct CoopMission {
     pub map_folder_name: String,
     /// The scenario this mission belongs to, when the API said so.
     pub scenario_id: Option<i32>,
+    /// The campaign position the API gives the mission, which is the order the
+    /// Java client lists them in. Zero when the API did not say.
+    pub order: i32,
 }
 
 /// A campaign: an ordered run of missions for one faction.
@@ -169,10 +172,20 @@ pub fn missions_of(missions: &[CoopMission], scenario_id: i32) -> Vec<&CoopMissi
         .iter()
         .filter(|mission| mission.scenario_id == Some(scenario_id))
         .collect();
-    // `name` carries the mission number in practice ("Operation Ivory Sun 3"),
-    // so a plain name sort is the campaign order.
-    found.sort_by(|left, right| left.name.cmp(&right.name));
+    found.sort_by(compare_missions);
     found
+}
+
+/// Campaign order, the way the Java client lists missions.
+///
+/// The API's `order` is the mission's place in its campaign, and it is not the
+/// alphabet: "Operation Ivory Sun 10" sorts before "... 2" by name, and the
+/// prologue missions carry no number at all. Name only decides ties, so a
+/// response that omits `order` still lands somewhere stable.
+fn compare_missions(left: &&CoopMission, right: &&CoopMission) -> std::cmp::Ordering {
+    left.order
+        .cmp(&right.order)
+        .then_with(|| left.name.cmp(&right.name))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -343,6 +356,9 @@ mod tests {
             thumbnail_url_large: String::new(),
             map_folder_name: format!("scmp_coop_{id}"),
             scenario_id: Some(1),
+            // The helper's ids double as campaign positions, so a test that
+            // says nothing about order still gets a stable one.
+            order: id,
         }
     }
 
@@ -435,6 +451,54 @@ mod tests {
         assert_eq!(CoopCategory::parse("scfa"), CoopCategory::Scfa);
         assert_eq!(CoopCategory::parse("SC"), CoopCategory::Sc);
         assert_eq!(CoopCategory::parse("anything"), CoopCategory::Custom);
+    }
+
+    /// The reason this does not sort by name: the API's own order is the
+    /// campaign's, and names sort "10" before "2".
+    #[test]
+    fn campaign_order_beats_the_alphabet() {
+        let missions = vec![
+            CoopMission {
+                order: 2,
+                ..mission(1, "Operation Ivory Sun 10")
+            },
+            CoopMission {
+                order: 1,
+                ..mission(2, "Operation Ivory Sun 2")
+            },
+        ];
+
+        assert_eq!(
+            missions_of(&missions, 1)
+                .iter()
+                .map(|mission| mission.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Operation Ivory Sun 2", "Operation Ivory Sun 10"]
+        );
+    }
+
+    /// A response that omits `order` leaves every mission at zero, so the tie
+    /// break is all there is to go on.
+    #[test]
+    fn missions_without_an_order_fall_back_to_the_name() {
+        let missions = vec![
+            CoopMission {
+                order: 0,
+                ..mission(1, "Prothyon 16")
+            },
+            CoopMission {
+                order: 0,
+                ..mission(2, "Fort Clarke Assault")
+            },
+        ];
+
+        assert_eq!(
+            missions_of(&missions, 1)
+                .iter()
+                .map(|mission| mission.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Fort Clarke Assault", "Prothyon 16"]
+        );
     }
 
     #[test]

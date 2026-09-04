@@ -123,6 +123,22 @@
   font-weight: 650;
 }
 
+/* A FAF avatar is a wide banner, not a portrait. Cropping one into the disc
+   above would cut the artwork in half, so the disc gives way and the picture is
+   fitted inside the slot instead. The slot keeps its size: the rows this sits in
+   are grids with a fixed first column, and a wider avatar would push the name
+   out of shape. */
+.profile-avatar.has-image {
+  background: none;
+  border-radius: var(--radius-sm);
+}
+
+.profile-avatar.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* ── Surfaces ────────────────────────────────────────────────────────────────
  *
  * The panel treatment every feature draws: a quiet neutral fill, a one-pixel

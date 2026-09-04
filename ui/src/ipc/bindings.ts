@@ -1064,6 +1064,11 @@ export type CoopMission = {
 	mapFolderName: string,
 	/**  The scenario this mission belongs to, when the API said so. */
 	scenarioId: number | null,
+	/**
+	 *  The campaign position the API gives the mission, which is the order the
+	 *  Java client lists them in. Zero when the API did not say.
+	 */
+	order: number,
 };
 
 /**  One completion on the leaderboard. */
