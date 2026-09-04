@@ -17,6 +17,7 @@ import { UpdateBanner } from "../updates/UpdateBanner";
 import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
+import { ModReplacementDialog } from "../lobby/ModReplacementDialog";
 import { UploadDialog } from "../uploads/UploadDialog";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -195,6 +196,7 @@ export function AppShell() {
       </main>
 
       <ClientStatusBar />
+      <ModReplacementDialog />
       <PlayerCardModal />
       <ReviewsPanel />
       <UploadDialog />

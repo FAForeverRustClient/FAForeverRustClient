@@ -20,8 +20,8 @@ use serde_json::Value;
 use tokio::sync::mpsc;
 
 use crate::ports::{
-    GameLaunchParams, GamePreparation, IceParams, RelayMsg, ReplayMetadata, UpdateProgress,
-    DEFAULT_LOCAL_REPLAY_LIMIT,
+    GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, RelayMsg, ReplayMetadata,
+    UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
 };
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::notifications;
@@ -200,27 +200,33 @@ pub(crate) async fn prepare_custom_join(
     game: &Game,
     ctx: &ServiceCtx,
     out: &EventSink,
-) -> Result<(), String> {
+    replace_mods: bool,
+) -> Result<(), ModPrepFailure> {
     // Validate this before generating or downloading anything. Apart from
     // producing a much more useful error, this prevents spending minutes on
     // preparation for a game that cannot possibly be launched.
     if ctx.ports.process.game_install_dir().is_none() {
-        return Err(
+        return Err(ModPrepFailure::Failed(
             "no game install configured: locate ForgedAlliance.exe in Settings → Paths".to_string(),
-        );
+        ));
     }
 
-    prepare_map_and_mod(&game.map, &game.mod_name, ctx, out).await?;
+    prepare_map_and_mod(&game.map, &game.mod_name, ctx, out)
+        .await
+        .map_err(ModPrepFailure::Failed)?;
 
-    let mod_uids: Vec<String> = game.sim_mods.keys().cloned().collect();
-    if !mod_uids.is_empty() {
-        ctx.ports
-            .mods
-            .ensure_game_mods(&mod_uids)
-            .await
-            .map_err(|error| format!("could not prepare simulation mods: {error}"))?;
-    }
-    Ok(())
+    // Conflicts travel out untouched: the caller turns them into the prompt
+    // that decides whether an installed mod version is allowed to be replaced.
+    ctx.ports
+        .mods
+        .ensure_game_mods(&game.sim_mods, replace_mods)
+        .await
+        .map_err(|error| match error {
+            ModPrepFailure::Conflicts(conflicts) => ModPrepFailure::Conflicts(conflicts),
+            ModPrepFailure::Failed(reason) => {
+                ModPrepFailure::Failed(format!("could not prepare simulation mods: {reason}"))
+            }
+        })
 }
 
 /// Prepare the map a host picked, before the host request reaches the server.

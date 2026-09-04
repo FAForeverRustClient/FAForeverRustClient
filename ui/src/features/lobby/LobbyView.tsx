@@ -38,9 +38,10 @@ import "./custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import { joinGame } from "./joinGame";
 
 const connect = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
-const join = (id: number, password: string | null = null) => ipc.send({ kind: "Lobby", command: { type: "join", payload: { id, password } } });
+const join = (id: number, password: string | null = null) => joinGame(id, password);
 
 function matchesRule(game: Game, rule: GameFilterRule, vault: VaultMap[]) {
   if (rule.field === "rating") {

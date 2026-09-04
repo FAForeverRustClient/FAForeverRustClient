@@ -30,7 +30,7 @@ export function toggleNote(status: ModToggleStatus): string | null {
   }
 }
 
-function cleanDescription(value: string): string {
+export function cleanDescription(value: string): string {
   return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
 }
 

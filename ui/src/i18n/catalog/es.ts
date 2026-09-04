@@ -1812,4 +1812,19 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.passwordAscii": "Las contraseñas solo pueden contener caracteres ASCII estándar.",
   "lobby.host.error.ratingOrder": "La puntuación mínima no puede ser mayor que la máxima.",
   "lobby.host.error.selectMap": "Selecciona un mapa.",
+
+  "settings.game.pipeLiveReplay": "Solución alternativa para repeticiones en vivo",
+  "settings.game.pipeLiveReplayHint": "Transmite las repeticiones en vivo por una tubería con nombre en lugar de una conexión de red local. Evita los errores del motor \"unable to load replay from gpgnet\" y \"Premature EOF\", pero la ventana se congela mientras se pone al día y la repetición termina de forma abrupta, sin selección de ejércitos ni estadísticas finales. Solo en Windows.",
+
+  "lobby.modConflict.title": "¿Reemplazar los mods instalados?",
+  "lobby.modConflict.body": { one: "Esta partida usa una versión distinta de un mod que ya tienes instalado. Todavía no se ha cambiado nada.", other: "Esta partida usa versiones distintas de {count} mods que ya tienes instalados. Todavía no se ha cambiado nada." },
+  "lobby.modConflict.replaces": "reemplaza {installed} v{version} en {folder}",
+  "lobby.modConflict.note": "Al reemplazarlo se elimina tu versión instalada. Después puedes volver a instalarla desde el vault.",
+  "lobby.modConflict.cancel": "No entrar",
+  "lobby.modConflict.confirm": "Reemplazar y entrar",
+
+  "mods.installed.openDetails": "Ver detalles",
+  "mods.installed.folder": "Carpeta",
+  "mods.installed.uid": "UID",
+  "mods.installed.viewInVault": "Ver en el vault",
 };

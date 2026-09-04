@@ -325,6 +325,15 @@ pub enum JoinState {
     },
     /// The ICE adapter and game process were started; relay traffic is flowing.
     InGame,
+    /// Preparation stopped before the join request went out: the game needs
+    /// simulation-mod versions the user cannot have alongside what is already
+    /// installed. Nothing has been changed on disk; the user decides whether
+    /// to replace them, and the join is re-sent with that answer.
+    #[serde(rename_all = "camelCase")]
+    NeedsModReplacement {
+        id: i32,
+        conflicts: Vec<super::ModVersionConflict>,
+    },
     /// The server rejected the join (game not ready, host left, bad password).
     Failed { id: i32, reason: String },
     /// The local launch chain failed (adapter/relay/game couldn't start).
@@ -480,6 +489,12 @@ pub enum LobbyEvent {
         id: i32,
         reason: String,
     },
+    /// Join preparation found simulation mods that cannot be installed without
+    /// replacing versions already on disk. See [`JoinState::NeedsModReplacement`].
+    JoinNeedsModReplacement {
+        id: i32,
+        conflicts: Vec<super::ModVersionConflict>,
+    },
     /// The user cancelled a pending join before the socket supervisor had
     /// finished disconnecting. This clears any prepared-install marker
     /// immediately, preventing a racing launch frame from starting the game.
@@ -497,9 +512,16 @@ pub enum LobbyEvent {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum LobbyCommand {
     Connect,
+    #[serde(rename_all = "camelCase")]
     Join {
         id: i32,
         password: Option<String>,
+        /// The user approved replacing the mod versions a previous attempt
+        /// reported through [`LobbyEvent::JoinNeedsModReplacement`]. Only ever
+        /// set by re-sending the same join after that prompt; a first attempt
+        /// never destroys an installed mod.
+        #[serde(default)]
+        replace_mods: bool,
     },
     Host {
         config: HostGameConfig,
@@ -512,6 +534,11 @@ pub enum LobbyCommand {
     PrepareHost {
         title: String,
     },
+    /// The user answered "no" to the simulation-mod replacement prompt. Only
+    /// meaningful while the join is waiting on that answer; deliberately not a
+    /// general "cancel the join", which would clear the state out from under a
+    /// download that is still running.
+    DeclineModReplacement,
     /// The host dialog was closed; forget the prepared title so it does not
     /// reopen on the next visit to the tab.
     ClearHostPrefill,
@@ -625,10 +652,18 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
                 reason: reason.clone(),
             }
         }
+        LobbyEvent::JoinNeedsModReplacement { id, conflicts } => {
+            state.join = JoinState::NeedsModReplacement {
+                id: *id,
+                conflicts: conflicts.clone(),
+            }
+        }
         LobbyEvent::JoinCancelled => {
             if matches!(
                 state.join,
-                JoinState::Joining { .. } | JoinState::Preparing { .. }
+                JoinState::Joining { .. }
+                    | JoinState::Preparing { .. }
+                    | JoinState::NeedsModReplacement { .. }
             ) {
                 state.join = JoinState::Idle;
             }

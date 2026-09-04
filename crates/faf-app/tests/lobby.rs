@@ -539,6 +539,7 @@ async fn join_emits_joining_then_launching() {
         LobbyCommand::Join {
             id: 2,
             password: None,
+            replace_mods: false,
         }
         .into(),
     )

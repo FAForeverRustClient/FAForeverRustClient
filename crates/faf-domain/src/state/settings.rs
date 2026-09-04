@@ -820,6 +820,19 @@ pub struct GamePreferences {
     /// Defaults to `false` so the client always checks for fresh commits from the server.
     #[serde(default)]
     pub cache_rolling_branches: bool,
+    /// Stream live replays through a Windows named pipe instead of the local
+    /// TCP proxy (the Python client's `game/pipe_live_replay`, labelled
+    /// "Live Replays Workaround" there).
+    ///
+    /// Off by default because the pipe has a real cost: FA reads it on its
+    /// main thread, so catching up to a live game's current tick freezes the
+    /// whole window rather than only stalling the simulation, and the replay
+    /// ends abruptly with no army selection or post-game statistics. It exists
+    /// because the TCP path hits an engine bug on oversized `ScenarioInfo`
+    /// ("Premature EOF" / "unable to load replay from gpgnet"), and the pipe
+    /// does not. See `infra::replay` for the full history.
+    #[serde(default)]
+    pub pipe_live_replay: bool,
 }
 
 fn default_true() -> bool {
@@ -842,6 +855,7 @@ impl Default for GamePreferences {
             cache_lifetime_days: default_cache_lifetime_days(),
             cache_size_alert_gb: default_cache_size_alert_gb(),
             cache_rolling_branches: false,
+            pipe_live_replay: false,
         }
     }
 }

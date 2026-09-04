@@ -3190,6 +3190,31 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a mod version conflict parks the join until it is answered",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::Joining {
+                    id: 42,
+                    prepared: false,
+                }
+                .into(),
+                LobbyEvent::JoinNeedsModReplacement {
+                    id: 42,
+                    conflicts: vec![ModVersionConflict {
+                        required_uid: "old-uid".into(),
+                        required_name: "Total Mayhem".into(),
+                        folder_name: "Total Mayhem".into(),
+                        installed_uid: "new-uid".into(),
+                        installed_name: "Total Mayhem".into(),
+                        installed_version: "12".into(),
+                    }],
+                }
+                .into(),
+                // Declining goes back to idle, the same way cancelling a join does.
+                LobbyEvent::JoinCancelled.into(),
+            ],
+        ),
+        case(
             "matchmaker queues merge partial pushes and keep a stable order",
             vec![
                 LobbyEvent::MatchmakerQueuesUpdated {

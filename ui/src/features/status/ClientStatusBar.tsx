@@ -83,11 +83,13 @@ function joinStatusNote(state: JoinState, t: Translate): string | null {
     case "joining": return t("status.join.connecting", { id: state.payload.id });
     case "launched": return t("status.join.launched", { name: state.payload.launch.name });
     case "failed": return t("status.join.failed", { reason: state.payload.reason.replace(/_/g, " ") });
-    // In-game needs no narration, and a launch failure is retained by the
-    // notification centre where it can be dismissed.
+    // In-game needs no narration, a launch failure is retained by the
+    // notification centre where it can be dismissed, and a pending mod
+    // replacement is already a modal the user is looking at.
     case "inGame":
     case "launchFailed":
     case "preparing":
+    case "needsModReplacement":
     case "idle":
       return null;
   }

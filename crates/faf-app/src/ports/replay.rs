@@ -93,4 +93,17 @@ pub trait ReplayPort: Send + Sync {
     /// a replay it cannot load and drops the user on the main menu with no
     /// error anywhere.
     fn set_install_dir(&self, dir: Option<PathBuf>);
+
+    /// Choose the transport a live replay stream is handed to FA on.
+    ///
+    /// `true` is the Python client's "Live Replays Workaround"
+    /// (`game/pipe_live_replay`): a Windows named pipe, which sidesteps the
+    /// engine's `gpgnet://` TCP bug on oversized `ScenarioInfo` at the cost of
+    /// a frozen window while catching up and an abrupt end. `false`, the
+    /// default, is the local TCP proxy. Pushed from the settings service, so
+    /// the switch takes effect on the next live replay rather than at the next
+    /// restart. Ignored off Windows, where there is no pipe to use.
+    ///
+    /// The default is a no-op so a fake port does not have to care.
+    fn set_live_replay_pipe(&self, _enabled: bool) {}
 }

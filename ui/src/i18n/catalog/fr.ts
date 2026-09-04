@@ -1814,4 +1814,19 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.passwordAscii": "Les mots de passe ne peuvent contenir que des caractères ASCII standard.",
   "lobby.host.error.ratingOrder": "Le classement minimum ne peut pas dépasser le maximum.",
   "lobby.host.error.selectMap": "Sélectionnez une carte.",
+
+  "settings.game.pipeLiveReplay": "Contournement pour les replays en direct",
+  "settings.game.pipeLiveReplayHint": "Diffuse les replays en direct par un tube nommé plutôt que par une connexion réseau locale. Évite les erreurs du moteur \"unable to load replay from gpgnet\" et \"Premature EOF\", mais la fenêtre se fige pendant le rattrapage et le replay se termine brutalement, sans sélection d'armée ni statistiques de fin. Windows uniquement.",
+
+  "lobby.modConflict.title": "Remplacer les mods installés ?",
+  "lobby.modConflict.body": { one: "Cette partie utilise une autre version d'un mod que vous avez déjà installé. Rien n'a encore été modifié.", other: "Cette partie utilise d'autres versions de {count} mods que vous avez déjà installés. Rien n'a encore été modifié." },
+  "lobby.modConflict.replaces": "remplace {installed} v{version} dans {folder}",
+  "lobby.modConflict.note": "Le remplacement supprime votre version installée. Vous pourrez la réinstaller depuis le vault ensuite.",
+  "lobby.modConflict.cancel": "Ne pas rejoindre",
+  "lobby.modConflict.confirm": "Remplacer et rejoindre",
+
+  "mods.installed.openDetails": "Afficher les détails",
+  "mods.installed.folder": "Dossier",
+  "mods.installed.uid": "UID",
+  "mods.installed.viewInVault": "Afficher dans le vault",
 };

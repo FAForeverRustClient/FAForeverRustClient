@@ -104,8 +104,18 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
         ...state,
         join: { type: "failed", payload: { id: event.payload.id, reason: event.payload.reason } },
       };
+    case "joinNeedsModReplacement":
+      return {
+        ...state,
+        join: {
+          type: "needsModReplacement",
+          payload: { id: event.payload.id, conflicts: event.payload.conflicts },
+        },
+      };
     case "joinCancelled":
-      return state.join.type === "joining" || state.join.type === "preparing"
+      return state.join.type === "joining" ||
+        state.join.type === "preparing" ||
+        state.join.type === "needsModReplacement"
         ? { ...state, join: { type: "idle" } }
         : state;
     case "inGame":

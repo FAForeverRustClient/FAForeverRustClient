@@ -15,12 +15,13 @@
 use std::collections::HashMap;
 
 use faf_domain::state::{
-    ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, LobbyCommand, LobbyEvent,
-    MatchmakingState, NotificationAction, NotificationKind, NotificationPreferences,
+    ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, JoinState, LobbyCommand,
+    LobbyEvent, MatchmakingState, NotificationAction, NotificationKind, NotificationPreferences,
     PlayerCardEvent, SettingsEvent, SocialEvent,
 };
 
 use crate::ports::LobbyUpdate;
+use crate::ports::ModPrepFailure;
 use crate::ports::ServerNoticeStyle;
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::launcher::{self, LaunchSession};
@@ -29,7 +30,11 @@ use crate::services::notifications;
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         LobbyCommand::Connect => connect(ctx, out).await,
-        LobbyCommand::Join { id, password } => {
+        LobbyCommand::Join {
+            id,
+            password,
+            replace_mods,
+        } => {
             if !ctx.lobby_join_active.try_start() {
                 return;
             }
@@ -64,10 +69,21 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     });
                     return;
                 };
-                if let Err(reason) = launcher::prepare_custom_join(&game, ctx, out).await {
-                    ctx.lobby_join_active.finish();
-                    launcher::report_failure(ctx, out, reason);
-                    return;
+                match launcher::prepare_custom_join(&game, ctx, out, replace_mods).await {
+                    Ok(()) => {}
+                    // Nothing was installed or deleted: the user has to say
+                    // whether the versions already on disk may be replaced,
+                    // and the answer comes back as another `Join`.
+                    Err(ModPrepFailure::Conflicts(conflicts)) => {
+                        ctx.lobby_join_active.finish();
+                        out.emit(LobbyEvent::JoinNeedsModReplacement { id, conflicts });
+                        return;
+                    }
+                    Err(ModPrepFailure::Failed(reason)) => {
+                        ctx.lobby_join_active.finish();
+                        launcher::report_failure(ctx, out, reason);
+                        return;
+                    }
                 }
                 // Preparation can take minutes. Return to an explicit joining
                 // state while waiting for the server's accept/reject response.
@@ -228,6 +244,15 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                         players: vec![profile],
                     });
                 }
+            }
+        }
+        LobbyCommand::DeclineModReplacement => {
+            // Nothing to stop: preparation already returned, having installed
+            // nothing. This only clears the prompt.
+            if out.with_state(|state| {
+                matches!(state.lobby.join, JoinState::NeedsModReplacement { .. })
+            }) {
+                out.emit(LobbyEvent::JoinCancelled);
             }
         }
         LobbyCommand::TerminateGame => {

@@ -167,6 +167,7 @@ async fn join_and_collect(h: &Harness) -> Vec<LobbyEvent> {
             LobbyCommand::Join {
                 id: 1,
                 password: None,
+                replace_mods: false,
             }
             .into(),
         )

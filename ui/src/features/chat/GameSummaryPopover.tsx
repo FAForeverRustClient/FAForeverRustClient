@@ -9,6 +9,7 @@ import { gameTeamSummaries, type GamePresence } from "./gameSummary";
 import { GameStatusSword } from "./GameStatusSword";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { joinGame } from "../lobby/joinGame";
 
 const STATUS_LABEL = {
   hosting: "chat.presence.hosting",
@@ -79,16 +80,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
         },
       });
     } else if (presence.status === "hosting" || presence.status === "lobbying") {
-      ipc.send({
-        kind: "Lobby",
-        command: {
-          type: "join",
-          payload: {
-            id: presence.game.id,
-            password: null,
-          },
-        },
-      });
+      void joinGame(presence.game.id);
     }
   };
 
