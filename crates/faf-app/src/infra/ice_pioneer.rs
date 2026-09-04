@@ -182,12 +182,16 @@ impl IcePort for PioneerAdapter {
             "starting Go ICE adapter"
         );
 
-        let child = Command::new(&self.config.adapter_path)
+        let mut command = Command::new(&self.config.adapter_path);
+        command
             .args(&args)
             // Raw adapter output can contain local paths and network
             // candidates. The adapter already writes its own configured log.
-            .stderr(std::process::Stdio::null())
-            .spawn();
+            .stderr(std::process::Stdio::null());
+        // Nothing to read in it: the output is discarded just above, and the
+        // adapter has no debug window to offer.
+        crate::infra::hide_console(&mut command);
+        let child = command.spawn();
         let mut child = match child {
             Ok(child) => child,
             Err(error) => {

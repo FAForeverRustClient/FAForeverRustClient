@@ -173,6 +173,11 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             persist(ctx, out).await;
             sync_connectivity(ctx, out);
         }
+        SettingsCommand::SetDebug { preferences } => {
+            out.emit(SettingsEvent::DebugChanged { preferences });
+            persist(ctx, out).await;
+            sync_debug_windows(ctx, out);
+        }
         SettingsCommand::SetUpdates { preferences } => {
             // No re-check on change: switching to the prerelease channel should
             // not fire a network request the user did not ask for. The Settings
@@ -248,6 +253,26 @@ fn sync_runtime_preferences(ctx: &ServiceCtx, out: &EventSink) {
     sync_installs(ctx, out);
     sync_launch_preferences(ctx, out);
     sync_connectivity(ctx, out);
+    sync_debug_windows(ctx, out);
+}
+
+/// Tell the helper processes which diagnostic windows they may open.
+///
+/// Applied on load as well as on change, for the same reason as
+/// [`sync_connectivity`]: a switch flipped last session has to hold from the
+/// first game and the first generator run of this one.
+fn sync_debug_windows(ctx: &ServiceCtx, out: &EventSink) {
+    let debug = out.with_state(|state| state.settings.debug);
+    ctx.ports
+        .ice
+        .set_debug_windows(crate::ports::IceDebugWindows {
+            debug: debug.ice_adapter_debug_window,
+            info: debug.ice_adapter_info_window,
+            console: debug.ice_adapter_console_window,
+        });
+    ctx.ports
+        .map_generator
+        .set_show_window(debug.map_generator_window);
 }
 
 /// Re-scan what the moved directories hold.

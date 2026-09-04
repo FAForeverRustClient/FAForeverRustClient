@@ -407,6 +407,12 @@ const INITIAL: AppState = {
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "java", selectionVersion: 1 },
+    debug: {
+      iceAdapterDebugWindow: false,
+      iceAdapterInfoWindow: false,
+      iceAdapterConsoleWindow: false,
+      mapGeneratorWindow: false,
+    },
     updates: { automatic: true, preRelease: false },
     browsing: {
       customGamesView: "tiles",

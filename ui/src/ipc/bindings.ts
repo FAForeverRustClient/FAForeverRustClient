@@ -1142,6 +1142,38 @@ export type CustomGameSort = "players" | "rating" | "map" | "host" | "age";
 
 export type CustomGameView = "tiles" | "list";
 
+/**
+ *  Diagnostic windows the helper processes can put on screen.
+ *
+ *  Every one of these is off, and that is the point: a GUI client spawning a
+ *  console-subsystem child (`java.exe`, the Go adapter, `faf-uid`) makes
+ *  Windows open a console window for it, and the Java ICE adapter can raise two
+ *  JavaFX windows of its own. None of that is something a player asked for, so
+ *  the client suppresses all of it and these switches hand it back to whoever
+ *  is actually debugging a connection or a generator run.
+ *
+ *  The two adapter windows are the same pair the Java client exposes, and map
+ *  onto `faf-ice-adapter`'s `--debug-window` and `--info-window`.
+ */
+export type DebugPreferences = {
+	/**  `--debug-window`: the adapter's peer and candidate table. */
+	iceAdapterDebugWindow: boolean,
+	/**  `--info-window`: the adapter's smaller status window. */
+	iceAdapterInfoWindow: boolean,
+	/**
+	 *  The console window the adapter's JVM would otherwise open, carrying its
+	 *  stdout. Separate from the two above because it is a different thing to
+	 *  look at: those are the adapter's own view of the connection, this is the
+	 *  raw log it prints while forming one.
+	 */
+	iceAdapterConsoleWindow: boolean,
+	/**
+	 *  The console window the map generator's JVM would otherwise open, which
+	 *  carries the generator's own output.
+	 */
+	mapGeneratorWindow: boolean,
+};
+
 /**  Everything a generated map name reveals about how it was made. */
 export type DecodedMapName = {
 	/**  Generator release that produced it, e.g. `1.22.1`. */
@@ -4593,6 +4625,8 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	preferences: DiscordPreferences,
 } } | { type: "setConnectivity"; payload: {
 	preferences: ConnectivityPreferences,
+} } | { type: "setDebug"; payload: {
+	preferences: DebugPreferences,
 } } | { type: "setUpdates"; payload: {
 	preferences: UpdatePreferences,
 } } | { type: "setMapGenerator"; payload: {
@@ -4633,6 +4667,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: DiscordPreferences,
 } } | { type: "connectivityChanged"; payload: {
 	preferences: ConnectivityPreferences,
+} } | { type: "debugChanged"; payload: {
+	preferences: DebugPreferences,
 } } | { type: "updatesChanged"; payload: {
 	preferences: UpdatePreferences,
 } } | { type: "browsingChanged"; payload: {
@@ -4668,6 +4704,7 @@ export type SettingsState = {
 	game: GamePreferences,
 	discord: DiscordPreferences,
 	connectivity: ConnectivityPreferences,
+	debug: DebugPreferences,
 	updates: UpdatePreferences,
 	browsing: BrowsingPreferences,
 	/**

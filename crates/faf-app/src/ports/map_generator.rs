@@ -21,6 +21,11 @@ pub enum GeneratorUpdate {
 
 #[async_trait]
 pub trait MapGeneratorPort: Send + Sync {
+    /// Whether a run may open the JVM's console window, which carries the
+    /// generator's own output. Off unless the user turns it on in Settings:
+    /// see `DebugPreferences`.
+    fn set_show_window(&self, _show: bool) {}
+
     /// Reproduce a specific generated map. The version comes from the name, so
     /// this needs no prior version resolution: it is the path a lobby join
     /// takes and must work even for an old generator this client has never run.

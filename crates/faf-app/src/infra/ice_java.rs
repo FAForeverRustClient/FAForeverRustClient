@@ -19,10 +19,10 @@ use serde_json::Value;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 
-use crate::infra::free_port;
 use crate::infra::jsonrpc::{JsonRpcClient, RpcNotification};
 use crate::infra::session::TokenStore;
-use crate::ports::{ConnectivitySession, IceParams, IcePort, RelayMsg};
+use crate::infra::{console_window, free_port};
+use crate::ports::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 
 /// How long to wait for the adapter's RPC port to come up.
 const RPC_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -114,12 +114,31 @@ fn env_or(key: &str, fallback: impl Into<String>) -> String {
         .unwrap_or_else(|| fallback.into())
 }
 
+/// The adapter's own window flags for one launch.
+///
+/// Off unless somebody is debugging a connection. `--info-window` is the
+/// smaller of the two; the Java client offers exactly this pair. The console
+/// is not a flag: it is decided when the process is spawned.
+fn window_args(windows: IceDebugWindows) -> Vec<String> {
+    let mut args = Vec::new();
+    if windows.debug {
+        args.push("--debug-window".to_string());
+    }
+    if windows.info {
+        args.push("--info-window".to_string());
+    }
+    args
+}
+
 pub struct JavaAdapter {
     config: JavaConfig,
     tokens: TokenStore,
     http: reqwest::Client,
     child: Arc<Mutex<Option<Child>>>,
     rpc: Arc<Mutex<Option<JsonRpcClient>>>,
+    /// Pushed by the settings service. Read at launch rather than at
+    /// construction so a switch flipped mid-session applies to the next game.
+    debug_windows: Arc<Mutex<IceDebugWindows>>,
 }
 
 impl JavaAdapter {
@@ -130,6 +149,7 @@ impl JavaAdapter {
             http: super::http::shared_http_client(),
             child: Arc::new(Mutex::new(None)),
             rpc: Arc::new(Mutex::new(None)),
+            debug_windows: Arc::new(Mutex::new(IceDebugWindows::default())),
         }
     }
 
@@ -172,6 +192,8 @@ impl IcePort for JavaAdapter {
         if ice.force_relay {
             args.push("--force-relay".into());
         }
+        let windows = *self.debug_windows.lock().unwrap();
+        args.extend(window_args(windows));
 
         tracing::info!(
             game_id = params.game_id,
@@ -188,7 +210,8 @@ impl IcePort for JavaAdapter {
         // out of an ordinary log; when a join fails they are the only thing
         // that says why, and `FAF_LOG=faf_app=trace` turns them on. The Python
         // client logs the same stream at its own lowest level.
-        let mut child = Command::new(&self.config.java_path)
+        let mut command = Command::new(&self.config.java_path);
+        command
             .args(&args)
             .env("LOG_DIR", &self.config.log_dir)
             .current_dir(
@@ -196,7 +219,12 @@ impl IcePort for JavaAdapter {
                     .parent()
                     .unwrap_or_else(|| Path::new(".")),
             )
-            .stderr(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        // Its own switch: the adapter's windows are its view of the
+        // connection, the console is the log it prints while forming one, and
+        // wanting one is no reason to be given the other.
+        console_window(&mut command, windows.console);
+        let mut child = command
             .spawn()
             .map_err(|e| format!("could not start Java ICE adapter: {e}"))?;
         if let Some(stderr) = child.stderr.take() {
@@ -263,6 +291,10 @@ impl IcePort for JavaAdapter {
         if let Some(mut child) = self.child.lock().unwrap().take() {
             let _ = child.start_kill();
         }
+    }
+
+    fn set_debug_windows(&self, windows: IceDebugWindows) {
+        *self.debug_windows.lock().unwrap() = windows;
     }
 }
 
@@ -406,6 +438,53 @@ fn rpc_call_for(msg: &RelayMsg) -> Option<(String, Vec<Value>)> {
 
 #[cfg(test)]
 mod tests {
+    use crate::ports::IceDebugWindows;
+
+    #[test]
+    fn no_windows_are_requested_by_default() {
+        assert!(
+            super::window_args(IceDebugWindows::default()).is_empty(),
+            "a player who never asked for a debugger must not get one"
+        );
+    }
+
+    #[test]
+    fn each_switch_adds_its_own_adapter_flag() {
+        assert_eq!(
+            super::window_args(IceDebugWindows {
+                debug: true,
+                ..IceDebugWindows::default()
+            }),
+            vec!["--debug-window".to_string()]
+        );
+        assert_eq!(
+            super::window_args(IceDebugWindows {
+                info: true,
+                ..IceDebugWindows::default()
+            }),
+            vec!["--info-window".to_string()]
+        );
+        assert_eq!(
+            super::window_args(IceDebugWindows {
+                debug: true,
+                info: true,
+                ..IceDebugWindows::default()
+            }),
+            vec!["--debug-window".to_string(), "--info-window".to_string()]
+        );
+    }
+
+    /// The console is spawned, not asked for on the command line, so wanting it
+    /// must not smuggle a window flag in with it.
+    #[test]
+    fn the_console_switch_adds_no_adapter_flag() {
+        assert!(super::window_args(IceDebugWindows {
+            console: true,
+            ..IceDebugWindows::default()
+        })
+        .is_empty());
+    }
+
     use super::*;
     use crate::infra::jsonrpc::RpcNotification;
     use serde_json::json;

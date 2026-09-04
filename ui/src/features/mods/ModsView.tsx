@@ -31,6 +31,7 @@ import { InstalledModsView } from "./InstalledModsView";
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModUploadModal } from "./ModUploadModal";
+import { takeModVaultFocus } from "./modVaultFocus";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
@@ -166,6 +167,21 @@ function VaultView({ busy }: { busy: boolean }) {
     minimumRating: null,
     maximumRating: null,
   });
+
+  // Someone clicked a mod somewhere else and was sent here to look at it. Only
+  // on mount: tabs are unmounted when they lose focus, so this runs exactly
+  // once per visit, and the request is cleared as it is read.
+  useEffect(() => {
+    const focused = takeModVaultFocus();
+    if (!focused) return;
+    setSearch(focused);
+    setApplied((prev) => ({ ...prev, search: focused }));
+    setPage(1);
+    // The recommended preset ignores the search box, exactly as typing in it
+    // does elsewhere in this view.
+    if (preset === "recommended") choosePreset("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const note = loadStatusNote(vaultStatus, t("mods.view.loadingVault"), t("mods.view.vaultFailed"));
   const installedByUid = useMemo(() => new Map(installed.map((mod) => [mod.uid, mod])), [installed]);

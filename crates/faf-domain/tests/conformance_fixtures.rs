@@ -4360,6 +4360,15 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
+                SettingsEvent::DebugChanged {
+                    preferences: DebugPreferences {
+                        ice_adapter_debug_window: true,
+                        ice_adapter_info_window: false,
+                        ice_adapter_console_window: true,
+                        map_generator_window: true,
+                    },
+                }
+                .into(),
                 SettingsEvent::BrowsingChanged {
                     preferences: Box::new(BrowsingPreferences {
                         custom_games_view: CustomGameView::List,

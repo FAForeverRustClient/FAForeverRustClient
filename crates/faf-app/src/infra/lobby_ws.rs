@@ -906,8 +906,12 @@ fn session_to_string(value: &Value) -> String {
 /// Run `faf-uid <session>` and return its stdout: the `unique_id` blob. Errors
 /// if the binary is missing, exits non-zero, or produces nothing.
 async fn generate_unique_id(uid_path: &str, session: &str) -> Result<String, String> {
-    let output = tokio::process::Command::new(uid_path)
-        .arg(session)
+    let mut command = tokio::process::Command::new(uid_path);
+    command.arg(session);
+    // Runs on every launch. Without this it flashes a console window up in the
+    // player's face each time.
+    crate::infra::hide_console(&mut command);
+    let output = command
         .output()
         .await
         .map_err(|e| format!("could not start machine proof helper: {e}"))?;

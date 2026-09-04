@@ -8,6 +8,7 @@ import type { Game, PlayerProfile, VaultMap, VaultMod } from "../../ipc/bindings
 import { ipc } from "../../ipc/client";
 import { GameMapImage } from "./GameMapImage";
 import { findVaultMap, findVaultMapByFolder, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
+import { requestModVaultFocus } from "../mods/modVaultFocus";
 import { formatRelativeDuration } from "../../shared/durations";
 import { flagSrc } from "../../shared/countryFlags";
 import { findPlayer } from "../../store/reducer";
@@ -685,13 +686,21 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     mapGenStatus.type === "downloading" ||
     mapGenStatus.type === "resolvingVersion";
   const players = playingCount(game);
-  const simMods = Object.values(game.simMods);
+  const simMods = Object.entries(game.simMods);
   const teams = Object.entries(game.teams).filter(([, p]) => p.length > 0);
   const ratingRange = game.ratingMin !== null || game.ratingMax !== null
     ? t("lobby.browser.ratingBetween", { min: game.ratingMin ?? t("lobby.browser.any"), max: game.ratingMax ?? t("lobby.browser.any") })
     : t("lobby.browser.openRange");
 
   const [expandedMods, setExpandedMods] = useState(false);
+
+  // Hand the mod to the vault tab and go there. Closing first, because the
+  // dialog belongs to a tab that is about to be unmounted underneath it.
+  const openModInVault = (mod: string) => {
+    requestModVaultFocus(mod);
+    onClose();
+    ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "mods" } } });
+  };
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
@@ -752,6 +761,26 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
               {t("lobby.browser.private")}
             </span>
           )}
+          {!installed && isGenerated && (
+            <Button
+              className="game-preview-dialog-map-action"
+              disabled={isGeneratingThisMap}
+              onClick={() =>
+                ipc.send({
+                  kind: "MapGenerator",
+                  command: {
+                    type: "generateNamed",
+                    payload: {
+                      mapName: game.map,
+                    },
+                  },
+                })
+              }
+            >
+              <Icon name="plus" size={13} />
+              {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
+            </Button>
+          )}
         </div>
         <section className="game-preview-dialog-info" aria-label={t("lobby.browser.gameDetails")}>
           <div className="game-preview-dialog-host">
@@ -784,8 +813,16 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
             <div className="game-preview-dialog-section">
               <span>{t("lobby.browser.simMods")}</span>
               <div className="game-detail-tags">
-                {(expandedMods ? simMods : simMods.slice(0, 4)).map((mod) => (
-                  <span className="tag" key={mod}>{mod}</span>
+                {(expandedMods ? simMods : simMods.slice(0, 4)).map(([uid, mod]) => (
+                  <button
+                    type="button"
+                    className="tag tag-action"
+                    key={uid}
+                    title={t("lobby.details.openModInVault", { mod })}
+                    onClick={() => openModInVault(mod)}
+                  >
+                    {mod}
+                  </button>
                 ))}
                 {simMods.length > 4 && (
                   <button
@@ -849,25 +886,6 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
         </section>
       </div>
       <footer className="game-preview-dialog-actions play-dialog-actions">
-        {!installed && isGenerated && (
-          <Button
-            disabled={isGeneratingThisMap}
-            onClick={() =>
-              ipc.send({
-                kind: "MapGenerator",
-                command: {
-                  type: "generateNamed",
-                  payload: {
-                    mapName: game.map,
-                  },
-                },
-              })
-            }
-          >
-            <Icon name="plus" size={13} />
-            {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
-          </Button>
-        )}
         {!installed && !isGenerated && vaultMap && (
           <Button
             onClick={() =>

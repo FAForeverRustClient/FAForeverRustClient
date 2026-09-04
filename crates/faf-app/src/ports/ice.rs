@@ -40,6 +40,20 @@ pub struct ConnectivitySession {
     pub from_lobby: mpsc::Sender<RelayMsg>,
 }
 
+/// Which of the Java adapter's diagnostic surfaces the next launch shows.
+///
+/// A struct rather than three booleans in a row: they are independent, and at a
+/// call site three bare `true`s in the wrong order would be silent.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct IceDebugWindows {
+    /// `--debug-window`: the peer and candidate table.
+    pub debug: bool,
+    /// `--info-window`: the smaller status window.
+    pub info: bool,
+    /// The JVM's own console, carrying the adapter's stdout.
+    pub console: bool,
+}
+
 #[async_trait]
 pub trait IcePort: Send + Sync {
     /// Bring the adapter up for one game and return its session. Errors if the
@@ -57,4 +71,10 @@ pub trait IcePort: Send + Sync {
     /// changes, so switching takes effect on the next game rather than after
     /// a restart.
     fn set_backend(&self, _adapter: faf_domain::state::IceAdapter) {}
+
+    /// Which diagnostic surfaces the next launch should raise. All off by
+    /// default, and like [`IcePort::set_backend`] pushed by the settings
+    /// service on load and on change, so a game started right after the switch
+    /// already honours it.
+    fn set_debug_windows(&self, _windows: IceDebugWindows) {}
 }

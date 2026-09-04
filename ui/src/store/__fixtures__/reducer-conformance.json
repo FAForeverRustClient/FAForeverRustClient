@@ -629,6 +629,12 @@
         "adapter": "java",
         "selectionVersion": 1
       },
+      "debug": {
+        "iceAdapterDebugWindow": false,
+        "iceAdapterInfoWindow": false,
+        "iceAdapterConsoleWindow": false,
+        "mapGeneratorWindow": false
+      },
       "updates": {
         "automatic": true,
         "preRelease": false
@@ -20540,6 +20546,12 @@
               "adapter": "java",
               "selectionVersion": 1
             },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
             "discord": {
               "disallowJoins": false,
               "enabled": true
@@ -20745,6 +20757,12 @@
             "connectivity": {
               "adapter": "java",
               "selectionVersion": 1
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
             },
             "discord": {
               "disallowJoins": false,
@@ -20960,6 +20978,12 @@
               "adapter": "java",
               "selectionVersion": 1
             },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
             "discord": {
               "disallowJoins": false,
               "enabled": true
@@ -21170,6 +21194,12 @@
               "adapter": "java",
               "selectionVersion": 1
             },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
             "discord": {
               "disallowJoins": false,
               "enabled": true
@@ -21379,6 +21409,12 @@
             "connectivity": {
               "adapter": "java",
               "selectionVersion": 1
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
             },
             "discord": {
               "disallowJoins": false,
@@ -21612,6 +21648,12 @@
               "adapter": "java",
               "selectionVersion": 1
             },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
             "discord": {
               "disallowJoins": false,
               "enabled": true
@@ -21834,6 +21876,243 @@
             "connectivity": {
               "adapter": "java",
               "selectionVersion": 1
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
+            "discord": {
+              "disallowJoins": true,
+              "enabled": false
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "autoLogin": true,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "keepMaps": false,
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "notifications": {
+              "desktop": true,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault"
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": [
+                {
+                  "login": "Ada",
+                  "note": "Map specialist",
+                  "playerId": 7
+                },
+                {
+                  "login": "Aurora",
+                  "note": "Reliable teammate",
+                  "playerId": 42
+                }
+              ]
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "debugChanged",
+              "payload": {
+                "preferences": {
+                  "iceAdapterDebugWindow": true,
+                  "iceAdapterInfoWindow": false,
+                  "iceAdapterConsoleWindow": true,
+                  "mapGeneratorWindow": true
+                }
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "gameTileColumns": 0,
+              "reduceMotion": false,
+              "uiScale": 100
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "mapVaultPreset": "recommended",
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
+              "replaysView": "tiles"
+            },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "fontSize": 13,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "senderWidth": 116,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": true,
+              "iceAdapterDebugWindow": true,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": true
             },
             "discord": {
               "disallowJoins": true,
@@ -22143,6 +22422,12 @@
             "connectivity": {
               "adapter": "java",
               "selectionVersion": 1
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": true,
+              "iceAdapterDebugWindow": true,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": true
             },
             "discord": {
               "disallowJoins": true,

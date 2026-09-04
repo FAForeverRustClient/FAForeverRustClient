@@ -110,7 +110,7 @@ pub use session::{ConnectionStatus, SessionCommand, SessionEvent, SessionState};
 pub use settings::{
     AppearancePreferences, BrowsingPreferences, CachedGameVersion, ChatNameColors, ChatPreferences,
     ConnectivityPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
-    CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView,
+    CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, DebugPreferences,
     DiscordPreferences, GameCacheInfo, GamePreferences, GeneralPreferences, HostGamePreferences,
     IceAdapter, LiveReplayFilters, NotificationPreferences, PathPreferences, PlayerNote,
     SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme, UiDensity,

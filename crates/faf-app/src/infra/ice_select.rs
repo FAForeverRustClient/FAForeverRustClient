@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use faf_domain::state::IceAdapter;
 
 use crate::infra::env_or;
-use crate::ports::{ConnectivitySession, IceParams, IcePort};
+use crate::ports::{ConnectivitySession, IceDebugWindows, IceParams, IcePort};
 
 /// Development override. When set, it wins over the stored preference: a
 /// developer testing one backend should not have it silently swapped when
@@ -104,6 +104,13 @@ impl IcePort for SelectableIce {
 
     fn set_backend(&self, adapter: IceAdapter) {
         *self.preferred.lock().unwrap() = adapter;
+    }
+
+    /// Pushed to both backends rather than only the selected one: the
+    /// preference can change between this call and the next launch.
+    fn set_debug_windows(&self, windows: IceDebugWindows) {
+        self.java.set_debug_windows(windows);
+        self.go.set_debug_windows(windows);
     }
 }
 
