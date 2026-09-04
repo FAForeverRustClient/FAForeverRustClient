@@ -5,7 +5,9 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { ipc } from "../../ipc/client";
+import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
+import { ProfileAvatar } from "../../shared/ProfileAvatar";
 import { TabBar } from "../nav/TabBar";
 import { TABS } from "../nav/tabs";
 import { ClientStatusBar } from "../status/ClientStatusBar";
@@ -41,6 +43,9 @@ export function AppShell() {
   // real login, which only the live directory has. See `partyChatChannel`.
   const social = useAppStore((s) => s.state.social);
   const player = auth.player;
+  // The signed-in account's own entry in the live player directory, which is
+  // where the avatar the lobby knows about lives.
+  const ownProfile = player ? findPlayer(social, player.name) : null;
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -139,7 +144,11 @@ export function AppShell() {
             onClick={() => player && void openPlayerCard(player.id, player.name)}
             aria-label={player ? t("shell.sidebar.openProfile", { name: player.name }) : t("shell.sidebar.profileUnavailable")}
           >
-            <span className="profile-avatar" aria-hidden>{player?.name.charAt(0).toUpperCase() ?? "F"}</span>
+            <ProfileAvatar
+              name={player?.name ?? "F"}
+              avatarUrl={ownProfile?.avatarUrl}
+              tooltip={ownProfile?.avatarTooltip}
+            />
             <span className="profile-copy">
               <span className="player-name">{player ? <PlayerName name={player.name} /> : t("shell.sidebar.player")}</span>
               <span className="profile-status"><i /> {t("shell.sidebar.online")}</span>

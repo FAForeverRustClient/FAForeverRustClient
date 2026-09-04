@@ -6,6 +6,7 @@ import { ipc } from "../../ipc/client";
 import type { PartyMember, PartyState, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
+import { ProfileAvatar } from "../../shared/ProfileAvatar";
 
 interface InviteModalProps {
   social: SocialState;
@@ -55,7 +56,7 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
           const isFriend = friendNames.has(player.login.toLocaleLowerCase());
           return (
             <div className="matchmaker-invite-row" key={player.id}>
-              <span className="profile-avatar" aria-hidden>{player.login.charAt(0).toUpperCase()}</span>
+              <ProfileAvatar name={player.login} avatarUrl={player.avatarUrl} tooltip={player.avatarTooltip} />
               <span><strong>{player.login}</strong><small>{isFriend ? t("lobby.party.friend") : player.clan ? `[${player.clan}]` : t("lobby.party.player")}</small></span>
               <Button onClick={() => invite(player)}>{t(wasInvited ? "lobby.party.inviteAgain" : "lobby.party.invite")}</Button>
             </div>
@@ -107,6 +108,12 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
       || member.name;
   }, [social.players, playerId, playerName]);
 
+  // The picture the directory knows for that same id, when it has one.
+  const avatarFor = useMemo(() => {
+    const byId = new Map(social.players.map((player) => [player.id, player]));
+    return (member: PartyMember) => byId.get(member.playerId);
+  }, [social.players]);
+
   const members = useMemo(() => party.members.length > 0
     ? party.members
     : playerId === null ? [] : [{ playerId, name: playerName, factions: [] }],
@@ -154,7 +161,11 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
           const leader = member.playerId === party.ownerId || (!isParty && member.playerId === playerId);
           return (
             <div className="party-seat" key={member.playerId}>
-              <span className="profile-avatar" aria-hidden>{nameFor(member).charAt(0).toUpperCase()}</span>
+              <ProfileAvatar
+                name={nameFor(member)}
+                avatarUrl={avatarFor(member)?.avatarUrl}
+                tooltip={avatarFor(member)?.avatarTooltip}
+              />
               <span className="party-seat-text">
                 <strong><PlayerName name={nameFor(member)} />{member.playerId === playerId ? t("lobby.party.youSuffix") : ""}</strong>
                 <small>{leader ? t("lobby.party.leader") : member.factions.length > 0 ? member.factions.join(", ") : t("lobby.party.randomFaction")}</small>

@@ -60,6 +60,7 @@ fn mission(id: i32, name: &str) -> CoopMission {
         thumbnail_url_large: String::new(),
         map_folder_name: format!("scmp_coop_{id}"),
         scenario_id: Some(1),
+        order: id,
     }
 }
 

@@ -105,7 +105,10 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
           ? mission.scenarioId === null
           : mission.scenarioId === activeScenarioId,
       )
-      .sort((a, b) => a.name.localeCompare(b.name));
+      // Campaign order, as the Java client lists them: the API's `order` is the
+      // mission's place in its campaign, and the alphabet is not ("... 10"
+      // sorts before "... 2"). The name only breaks ties.
+      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
   }, [coop.missions, activeScenarioId]);
 
   // Selected mission

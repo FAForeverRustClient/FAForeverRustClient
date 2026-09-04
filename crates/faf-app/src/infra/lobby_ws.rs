@@ -427,6 +427,22 @@ async fn run_session(
                         break 'connection;
                     }
                 };
+                if session_id.is_empty() {
+                    // The session is the server's own handle on this
+                    // connection. Without it `auth` is refused as malformed,
+                    // and the refusal names nothing.
+                    tracing::error!(
+                        "cannot authenticate: the lobby server sent no session id"
+                    );
+                    break 'connection;
+                }
+                // Neither the token nor the proof itself, which are
+                // credentials: their shape is what a rejected sign-in needs.
+                tracing::debug!(
+                    session = %session_id,
+                    proof_length = unique_id.len(),
+                    "authenticating with the lobby server"
+                );
                 let auth = json!({
                     "command": "auth",
                     "token": access_token,
@@ -583,15 +599,26 @@ async fn run_session(
                         }
                     }
                     "invalid" => {
+                        // FAF sends a bare `{"command": "invalid"}`, so the text
+                        // below is usually the fallback and names nothing. What
+                        // narrows it down is *when* it arrives: before `welcome`
+                        // the only frame the client has sent is its own sign-in,
+                        // and saying so is the difference between a report that
+                        // can be acted on and one that cannot.
                         let reason = server_text(
                             &value,
-                            "The lobby server rejected an invalid client command.",
+                            if authenticated {
+                                "The lobby server rejected an invalid client command."
+                            } else {
+                                "The lobby server rejected this client's sign-in."
+                            },
                         );
-                        // FAF sends a bare `{"command": "invalid"}`, so `reason`
-                        // is usually the fallback above and names nothing. Log the
-                        // frame too: without it a field report cannot tell a
-                        // malformed command from an abort we were too slow to stop.
-                        tracing::error!(%reason, frame = %value, "lobby protocol command rejected");
+                        tracing::error!(
+                            %reason,
+                            authenticated,
+                            frame = %value,
+                            "lobby protocol command rejected"
+                        );
                         let _ = tx.send(LobbyUpdate::ConnectionRejected { reason }).await;
                         break 'connection;
                     }
@@ -904,7 +931,8 @@ fn session_to_string(value: &Value) -> String {
 }
 
 /// Run `faf-uid <session>` and return its stdout: the `unique_id` blob. Errors
-/// if the binary is missing, exits non-zero, or produces nothing.
+/// if the binary is missing, exits non-zero, or hands back something that is
+/// not a proof.
 async fn generate_unique_id(uid_path: &str, session: &str) -> Result<String, String> {
     let mut command = tokio::process::Command::new(uid_path);
     command.arg(session);
@@ -916,18 +944,59 @@ async fn generate_unique_id(uid_path: &str, session: &str) -> Result<String, Str
         .await
         .map_err(|e| format!("could not start machine proof helper: {e}"))?;
 
+    // The helper's own message, which used to be discarded. When it fails it is
+    // the only thing that says why.
+    let complaint = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if !output.status.success() {
-        return Err(format!(
-            "machine proof helper exited with {}",
-            output.status
-        ));
+        return Err(match complaint.is_empty() {
+            true => format!("machine proof helper exited with {}", output.status),
+            false => format!(
+                "machine proof helper exited with {}: {complaint}",
+                output.status
+            ),
+        });
     }
 
     let uid = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if uid.is_empty() {
-        return Err("machine proof helper produced no output".into());
+        return Err(match complaint.is_empty() {
+            true => "machine proof helper produced no output".into(),
+            false => format!("machine proof helper produced no output: {complaint}"),
+        });
+    }
+    if !looks_like_machine_proof(&uid) {
+        // Sending it anyway is how this surfaced in the field: the lobby server
+        // cannot decode it, answers a bare `{"command": "invalid"}` and drops
+        // the connection, which names neither the helper nor the reason.
+        return Err(format!(
+            "machine proof helper produced something that is not a proof: {}",
+            preview(&uid)
+        ));
     }
     Ok(uid)
+}
+
+/// Whether the helper's output can be the proof rather than a message about
+/// failing to produce one.
+///
+/// The blob is a single encoded token: long, and with nothing in it that a
+/// sentence has. Anything else would be sent to the lobby server as a
+/// credential, so it is refused here where the reason is still known.
+fn looks_like_machine_proof(uid: &str) -> bool {
+    const SHORTEST_PLAUSIBLE_PROOF: usize = 32;
+    uid.len() >= SHORTEST_PLAUSIBLE_PROOF && !uid.chars().any(char::is_whitespace)
+}
+
+/// A short, quoted head of a value for a log line, so an unexpected proof can
+/// be recognised without the whole of it (which may be a real credential)
+/// reaching the log.
+fn preview(value: &str) -> String {
+    let head: String = value.chars().take(60).collect();
+    if head.chars().count() < value.chars().count() {
+        format!("{head:?}...")
+    } else {
+        format!("{head:?}")
+    }
 }
 
 /// One game as it arrives in a `game_info` message. Only the fields we surface.
@@ -2234,6 +2303,47 @@ mod tests {
             Some("wss://x/?verify=y".to_string())
         );
         assert_eq!(extract_access_url(&json!({ "nope": 1 })), None);
+    }
+
+    /// A proof is one long encoded token. Anything with a space in it is a
+    /// sentence about failing to produce one, and sending that to the lobby
+    /// server buys a bare `{"command": "invalid"}` and a closed connection.
+    #[test]
+    fn a_machine_proof_is_one_long_token() {
+        assert!(looks_like_machine_proof(&"a".repeat(64)));
+        assert!(looks_like_machine_proof(
+            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.abcdefghijklmnop"
+        ));
+    }
+
+    #[test]
+    fn a_message_is_not_a_machine_proof() {
+        for output in [
+            "",
+            "error: could not read the machine id",
+            "Zugriff verweigert",
+            // Long enough, but a proof is a single token.
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbb",
+            // A plausible looking but far too short answer.
+            "no",
+        ] {
+            assert!(
+                !looks_like_machine_proof(output),
+                "{output:?} must not be sent as a credential"
+            );
+        }
+    }
+
+    #[test]
+    fn a_preview_keeps_the_head_and_marks_the_rest() {
+        assert_eq!(preview("short"), "\"short\"");
+        let long = "x".repeat(80);
+        let shown = preview(&long);
+        assert!(shown.ends_with("\"..."), "{shown}");
+        assert!(
+            shown.len() < long.len(),
+            "the whole value must not be logged"
+        );
     }
 
     #[test]

@@ -204,6 +204,8 @@ fn parse_mission(resource: &JsonApiResource) -> Option<CoopMission> {
             }
         },
         scenario_id: None, // filled in by the caller from the scenario links
+        // The campaign position, which is what the mission list is sorted by.
+        order: value_i32(attributes, "order").unwrap_or(0),
     })
 }
 
@@ -339,6 +341,7 @@ impl CoopPort for FakeCoop {
             thumbnail_url_large: String::new(),
             map_folder_name: format!("scmp_coop_{id}"),
             scenario_id: Some(scenario_id),
+            order: id,
         };
         Ok((
             vec![

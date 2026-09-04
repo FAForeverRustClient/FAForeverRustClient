@@ -3311,6 +3311,7 @@ fn cases() -> Vec<Case> {
                         thumbnail_url_large: String::new(),
                         map_folder_name: "scmp_coop_7".into(),
                         scenario_id: Some(1),
+                        order: 1,
                     }],
                 }
                 .into(),
