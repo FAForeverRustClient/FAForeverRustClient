@@ -259,6 +259,8 @@ const SECTIONS = {
     labels: [
       "settings.game.autoGenerateMaps",
       "settings.game.autoGenerateMapsHint",
+      "settings.game.pipeLiveReplay",
+      "settings.game.pipeLiveReplayHint",
       "settings.game.argumentsLabel",
       "settings.game.argumentsHint",
     ],

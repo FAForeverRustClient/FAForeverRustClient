@@ -2624,4 +2624,19 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.selectMission": "Wähle eine Mission.",
   "lobby.coop.noReplay": "Kein Replay",
   "lobby.coop.watchRunTitle": "Replay dieses Laufs ansehen",
+
+  "settings.game.pipeLiveReplay": "Live-Replay-Workaround",
+  "settings.game.pipeLiveReplayHint": "Überträgt Live-Replays über eine benannte Pipe statt über eine lokale Netzwerkverbindung. Vermeidet die Engine-Fehler \"unable to load replay from gpgnet\" und \"Premature EOF\", dafür friert das Fenster beim Aufholen ein und das Replay endet abrupt, ohne Armeeauswahl und ohne Endstatistik. Nur unter Windows.",
+
+  "lobby.modConflict.title": "Installierte Mods ersetzen?",
+  "lobby.modConflict.body": { one: "Dieses Spiel nutzt eine andere Version einer Mod, die du bereits installiert hast. Bisher wurde nichts geändert.", other: "Dieses Spiel nutzt andere Versionen von {count} Mods, die du bereits installiert hast. Bisher wurde nichts geändert." },
+  "lobby.modConflict.replaces": "ersetzt {installed} v{version} in {folder}",
+  "lobby.modConflict.note": "Beim Ersetzen wird deine installierte Version gelöscht. Du kannst sie danach wieder aus dem Vault installieren.",
+  "lobby.modConflict.cancel": "Nicht beitreten",
+  "lobby.modConflict.confirm": "Ersetzen und beitreten",
+
+  "mods.installed.openDetails": "Details anzeigen",
+  "mods.installed.folder": "Ordner",
+  "mods.installed.uid": "UID",
+  "mods.installed.viewInVault": "Im Vault anzeigen",
 };

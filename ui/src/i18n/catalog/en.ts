@@ -2728,6 +2728,22 @@ export const en = {
   "tournaments.admin.divisions": "Divisions",
   "tournaments.admin.oneField": "One field",
   "tournaments.news.remove": "Delete",
+
+  // Live replay transport, the Python client's "Live Replays Workaround".
+  "settings.game.pipeLiveReplay": "Live replays workaround",
+  "settings.game.pipeLiveReplayHint": "Stream live replays through a named pipe instead of a local network connection. Avoids the engine errors \"unable to load replay from gpgnet\" and \"Premature EOF\", but the window freezes while catching up and the replay ends abruptly, with no army selection or end-game statistics. Windows only.",
+
+  "lobby.modConflict.title": "Replace installed mods?",
+  "lobby.modConflict.body": { one: "This game uses a different version of a mod you already have installed. Nothing has been changed yet.", other: "This game uses different versions of {count} mods you already have installed. Nothing has been changed yet." },
+  "lobby.modConflict.replaces": "replaces {installed} v{version} in {folder}",
+  "lobby.modConflict.note": "Replacing deletes your installed version. You can install it again from the vault afterwards.",
+  "lobby.modConflict.cancel": "Do not join",
+  "lobby.modConflict.confirm": "Replace and join",
+
+  "mods.installed.openDetails": "Show details",
+  "mods.installed.folder": "Folder",
+  "mods.installed.uid": "UID",
+  "mods.installed.viewInVault": "Show in vault",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

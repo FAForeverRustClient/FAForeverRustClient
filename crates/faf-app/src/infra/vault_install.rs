@@ -99,6 +99,21 @@ pub async fn bounded_body(
     Ok(body)
 }
 
+/// The single top-level folder a vault archive installs into, without
+/// extracting anything.
+///
+/// Simulation-mod preparation needs this before it touches the disk: the folder
+/// is the only thing that tells it whether a *different version* of the same
+/// mod is already installed, and it must be able to stop and ask rather than
+/// find out halfway through an extraction.
+pub fn archive_root_name(bytes: &[u8]) -> Result<String, String> {
+    let root = inspect_archive(bytes, None)?;
+    // A name we cannot represent is a name we cannot safely compare against
+    // what is on disk either, so it is rejected rather than lossily converted.
+    root.into_string()
+        .map_err(|_| "vault archive's install folder is not valid UTF-8".to_string())
+}
+
 /// Validate and extract one top-level folder into a private staging directory,
 /// validate its contents, then rename it into place. The destination is never
 /// left half-installed and an existing folder is never overwritten.
@@ -344,6 +359,24 @@ mod tests {
             writer.finish().unwrap();
         }
         bytes.into_inner()
+    }
+
+    #[test]
+    fn the_install_folder_is_read_without_extracting_anything() {
+        // What simulation-mod preparation compares against the mods directory
+        // before it decides whether it is about to overwrite somebody's mod.
+        let archive = zip(&[
+            ("Total Mayhem/mod_info.lua", b"uid = \"old\""),
+            ("Total Mayhem/hook/init.lua", b"-- hook"),
+        ]);
+        assert_eq!(archive_root_name(&archive).unwrap(), "Total Mayhem");
+
+        // The same shapes `install_archive` refuses, refused here too, so a
+        // conflict check can never be the thing that accepts a bad archive.
+        let loose = zip(&[("mod_info.lua", b"uid = \"old\"")]);
+        assert!(archive_root_name(&loose).is_err());
+        let two_roots = zip(&[("A/mod_info.lua", b"a"), ("B/mod_info.lua", b"b")]);
+        assert!(archive_root_name(&two_roots).is_err());
     }
 
     #[test]

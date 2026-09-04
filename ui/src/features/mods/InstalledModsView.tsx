@@ -14,7 +14,8 @@ import { ipc } from "../../ipc/client";
 import { includesNormalized, isWithinNumberRange } from "../../shared/filterRanges";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
-import { ModPreview, UninstallDialog } from "./ModVaultComponents";
+import { Modal } from "../../design-system/Modal";
+import { ModPreview, UninstallDialog, cleanDescription } from "./ModVaultComponents";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type ModTypeFilter = "all" | "ui" | "sim";
@@ -41,6 +42,7 @@ interface InstalledModCardProps {
   busy: boolean;
   installing: boolean;
   toggling: boolean;
+  onOpen: () => void;
   onToggle: () => void;
   onUninstall: () => void;
 }
@@ -51,27 +53,38 @@ function InstalledModCard({
   busy,
   installing,
   toggling,
+  onOpen,
   onToggle,
   onUninstall,
 }: InstalledModCardProps) {
   const { t } = useTranslation();
   return (
     <article className={mod.enabled ? "installed-mod-card surface-panel is-enabled" : "installed-mod-card surface-panel"}>
-      {metadata ? (
-        <ModPreview mod={metadata} />
-      ) : (
-        <span className="mod-vault-thumb mod-vault-preview-empty" aria-hidden="true">
-          <Icon name="mods" size={25} />
+      {/* The description lives in the vault, and looking it up there was the
+          only way to read it from this list. The card body is the link: the
+          buttons stay outside it so enabling a mod is still one click. */}
+      <button
+        type="button"
+        className="installed-mod-open"
+        onClick={onOpen}
+        title={t("mods.installed.openDetails")}
+      >
+        {metadata ? (
+          <ModPreview mod={metadata} />
+        ) : (
+          <span className="mod-vault-thumb mod-vault-preview-empty" aria-hidden="true">
+            <Icon name="mods" size={25} />
+          </span>
+        )}
+        <span className="installed-mod-copy">
+          <strong>{mod.displayName}</strong>
+          <small>
+            {mod.modType === "ui" ? "UI mod" : "Simulation mod"} · v{mod.version}
+            {mod.author ? ` · ${mod.author}` : ""}
+          </small>
+          <small title={mod.uid}>{mod.uid}</small>
         </span>
-      )}
-      <span className="installed-mod-copy">
-        <strong>{mod.displayName}</strong>
-        <small>
-          {mod.modType === "ui" ? "UI mod" : "Simulation mod"} · v{mod.version}
-          {mod.author ? ` · ${mod.author}` : ""}
-        </small>
-        <small title={mod.uid}>{mod.uid}</small>
-      </span>
+      </button>
       <div className="installed-mod-actions">
         <Button disabled={busy} onClick={onToggle}>
           {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
@@ -84,7 +97,116 @@ function InstalledModCard({
   );
 }
 
-export function InstalledModsView({ busy }: { busy: boolean }) {
+/// What the vault detail panel shows, for a mod that is on disk.
+///
+/// Not the vault panel itself: that one is a column beside a result grid and
+/// its actions are install/update, which is not what someone browsing their
+/// own mods is doing. The content is the same, and the vault link is right
+/// here for anything this cannot show (reviews, screenshots, history).
+function InstalledModDetail({
+  mod,
+  metadata,
+  busy,
+  toggling,
+  onClose,
+  onToggle,
+  onUninstall,
+  onOpenInVault,
+}: {
+  mod: InstalledMod;
+  metadata: VaultMod | undefined;
+  busy: boolean;
+  toggling: boolean;
+  onClose: () => void;
+  onToggle: () => void;
+  onUninstall: () => void;
+  onOpenInVault: () => void;
+}) {
+  const { t } = useTranslation();
+  // The vault copy is the maintained one; `mod_info.lua` is what a mod that
+  // was never published, or was taken down, still has.
+  const description = cleanDescription(metadata?.description || mod.description);
+  const updateAvailable = Boolean(metadata && metadata.version !== mod.version);
+  return (
+    <Modal className="installed-mod-modal" onClose={onClose} ariaLabel={mod.displayName}>
+      <div className="installed-mod-detail">
+        <div className="installed-mod-detail-preview">
+          {metadata ? (
+            <ModPreview mod={metadata} large />
+          ) : (
+            <span className="mod-vault-thumb mod-vault-preview-empty" aria-hidden="true">
+              <Icon name="mods" size={40} />
+            </span>
+          )}
+        </div>
+        <div className="installed-mod-detail-body">
+          <div className="vault-detail-kicker mod-vault-detail-kicker">
+            <span className={`vault-badge mod-badge mod-badge-${mod.modType}`}>
+              {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}
+            </span>
+            <span className={`vault-badge is-${mod.enabled ? "ok" : "warn"}`}>
+              {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
+            </span>
+            {updateAvailable && (
+              <span className="vault-badge is-accent">{t("mods.view.updatesAvailable")}</span>
+            )}
+          </div>
+          <h2 className="vault-detail-title">{mod.displayName}</h2>
+          <p className="vault-detail-byline mod-vault-byline">
+            {mod.author ? t("mods.vault.authoredBy", { author: mod.author }) : t("mods.vault.unknownAuthor")}
+          </p>
+
+          <div className="vault-detail-props">
+            <div className="vault-prop-row">
+              <span className="vault-prop-label">{t("mods.vault.version")}</span>
+              <span className="vault-prop-value">
+                {mod.version ? `v${mod.version}` : "N/A"}
+                {updateAvailable && metadata ? ` → v${metadata.version}` : ""}
+              </span>
+            </div>
+            <div className="vault-prop-row">
+              <span className="vault-prop-label">{t("mods.installed.folder")}</span>
+              <span className="vault-prop-value">{mod.folderName}</span>
+            </div>
+            <div className="vault-prop-row">
+              <span className="vault-prop-label">{t("mods.installed.uid")}</span>
+              <span className="vault-prop-value installed-mod-uid">{mod.uid}</span>
+            </div>
+          </div>
+
+          <section className="vault-detail-description mod-vault-description">
+            <h3>{t("mods.vault.description")}</h3>
+            <p>{description || t("mods.vault.noDescription")}</p>
+          </section>
+
+          <div className="vault-detail-actions mod-vault-detail-actions">
+            <div className="vault-detail-actions-left">
+              <Button disabled={busy} onClick={onToggle}>
+                {t(toggling ? "mods.vault.toggling" : mod.enabled ? "mods.vault.disable" : "mods.vault.enable")}
+              </Button>
+              {metadata && (
+                <Button onClick={onOpenInVault}>{t("mods.installed.viewInVault")}</Button>
+              )}
+            </div>
+            <div className="vault-detail-actions-right">
+              <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
+                {t("mods.vault.uninstall")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export function InstalledModsView({
+  busy,
+  onOpenInVault,
+}: {
+  busy: boolean;
+  onOpenInVault: (modName: string) => void;
+}) {
   const { t } = useTranslation();
   const installed = useAppStore((state) => state.state.mods.installed);
   const installedStatus = useAppStore((state) => state.state.mods.installedStatus);
@@ -104,6 +226,7 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const note = loadStatusNote(installedStatus, t("mods.installed.scanning"), t("mods.installed.scanFailed"));
   const vaultByUid = useMemo(() => new Map(vault.map((mod) => [mod.uid, mod])), [vault]);
@@ -232,6 +355,11 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
     installed, search, creator, preset, sort, modType, enabled, ranked,
     minimumRating, maximumRating, vaultByUid,
   ]);
+
+  // Looked up by folder rather than held as a copy: the list is replaced
+  // wholesale after every toggle, and a copy would keep showing the old
+  // enabled state behind the button that had just changed it.
+  const opened = openFolder ? installed.find((mod) => mod.folderName === openFolder) : undefined;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -391,6 +519,7 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
                 busy={busy}
                 installing={installStatus.type === "installing" && installStatus.payload.uid === mod.uid}
                 toggling={toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid}
+                onOpen={() => setOpenFolder(mod.folderName)}
                 onToggle={() => toggleMod(mod.uid, !mod.enabled)}
                 onUninstall={() => setPendingUninstall(mod)}
               />
@@ -407,6 +536,25 @@ export function InstalledModsView({ busy }: { busy: boolean }) {
           )}
         </section>
       ) : null}
+
+      {opened && (
+        <InstalledModDetail
+          mod={opened}
+          metadata={vaultByUid.get(opened.uid)}
+          busy={busy}
+          toggling={toggleStatus.type === "toggling" && toggleStatus.payload.uid === opened.uid}
+          onClose={() => setOpenFolder(null)}
+          onToggle={() => toggleMod(opened.uid, !opened.enabled)}
+          onUninstall={() => {
+            setOpenFolder(null);
+            setPendingUninstall(opened);
+          }}
+          onOpenInVault={() => {
+            setOpenFolder(null);
+            onOpenInVault(vaultByUid.get(opened.uid)?.displayName ?? opened.displayName);
+          }}
+        />
+      )}
 
       {pendingUninstall && (
         <UninstallDialog

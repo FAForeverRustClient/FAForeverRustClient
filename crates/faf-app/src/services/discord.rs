@@ -145,6 +145,7 @@ async fn serve_requests(ctx: Arc<ServiceCtx>, sink: EventSink) {
                     LobbyCommand::Join {
                         id: game_id,
                         password: None,
+                        replace_mods: false,
                     },
                     &ctx,
                     &sink,

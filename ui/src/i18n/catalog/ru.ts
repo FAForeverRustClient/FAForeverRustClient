@@ -1870,4 +1870,19 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.passwordAscii": "Пароль может содержать только стандартные символы ASCII.",
   "lobby.host.error.ratingOrder": "Минимальный рейтинг не может быть больше максимального.",
   "lobby.host.error.selectMap": "Выберите карту.",
+
+  "settings.game.pipeLiveReplay": "Обходной путь для live-реплеев",
+  "settings.game.pipeLiveReplayHint": "Передаёт live-реплеи через именованный канал вместо локального сетевого соединения. Обходит ошибки движка \"unable to load replay from gpgnet\" и \"Premature EOF\", но окно зависает во время догоняющей перемотки, а реплей завершается резко, без выбора армий и без итоговой статистики. Только в Windows.",
+
+  "lobby.modConflict.title": "Заменить установленные моды?",
+  "lobby.modConflict.body": { one: "Эта игра использует другую версию мода, который у вас уже установлен. Пока ничего не изменено.", few: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено.", many: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено.", other: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено." },
+  "lobby.modConflict.replaces": "заменяет {installed} v{version} в {folder}",
+  "lobby.modConflict.note": "Замена удаляет вашу установленную версию. Позже её можно снова установить из вольта.",
+  "lobby.modConflict.cancel": "Не входить",
+  "lobby.modConflict.confirm": "Заменить и войти",
+
+  "mods.installed.openDetails": "Показать подробности",
+  "mods.installed.folder": "Папка",
+  "mods.installed.uid": "UID",
+  "mods.installed.viewInVault": "Показать в вольте",
 };

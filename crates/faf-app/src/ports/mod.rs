@@ -43,7 +43,7 @@ pub use leaderboard::LeaderboardPort;
 pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
 pub use maps::{MapSearchPage, MapsPort};
-pub use mods::{ModSearchPage, ModsPort};
+pub use mods::{ModPrepFailure, ModSearchPage, ModsPort};
 pub use paths::PathsPort;
 pub use player_card::PlayerCardPort;
 pub use process::{

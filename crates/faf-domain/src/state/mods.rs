@@ -89,6 +89,29 @@ pub struct InstalledMod {
     pub enabled: bool,
 }
 
+/// A mod folder that already holds a different version than a game needs.
+///
+/// FAF simulation-mod uids are per *version*, so a host on an older release of
+/// a mod asks for a uid nobody who has the newer one is holding. The folder is
+/// the same either way, and the client cannot install both: it has to replace
+/// one with the other, which destroys whatever the user had. That is a
+/// decision for the user, so the join stops here and asks, exactly as the
+/// Python client's `downloadMod` does.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ModVersionConflict {
+    /// The uid the host's game requires.
+    pub required_uid: String,
+    /// What the vault calls that mod, for the prompt.
+    pub required_name: String,
+    /// The folder both versions want, relative to the mods directory.
+    pub folder_name: String,
+    /// The version standing in the way.
+    pub installed_uid: String,
+    pub installed_name: String,
+    pub installed_version: String,
+}
+
 /// A named set of mods the user can put back in one click.
 ///
 /// Keyed by `uid` rather than folder name, because `uid` is what `game.prefs`'s

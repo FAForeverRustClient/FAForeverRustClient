@@ -7,9 +7,11 @@
 //! and toggles by reading/rewriting FA's own `game.prefs` file's
 //! `active_mods` table. See `infra/mods.rs` for the real implementation.
 
+use std::collections::BTreeMap;
+
 use async_trait::async_trait;
 use faf_domain::protocol::vault_query::ModVaultQuery;
-use faf_domain::state::{InstalledMod, VaultMod};
+use faf_domain::state::{InstalledMod, ModVersionConflict, VaultMod};
 
 /// One page of a mod vault search. Mirrors `MapSearchPage`.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -56,5 +58,46 @@ pub trait ModsPort: Send + Sync {
     /// Install missing simulation mods required by a game and enable them.
     /// Already-installed versions are retained: this is compatibility
     /// preparation, not the intentionally excluded automatic mod updater.
-    async fn ensure_game_mods(&self, uids: &[String]) -> Result<(), String>;
+    ///
+    /// `mods` is the game's `sim_mods` table, uid to the name the host's client
+    /// published, which is the only name available for the conflict prompt.
+    ///
+    /// Stops with [`ModPrepFailure::Conflicts`], having changed nothing, when a
+    /// required version wants a folder a different version already occupies.
+    /// `replace_conflicts` is the user's answer to that prompt and is the only
+    /// way this ever deletes an installed mod.
+    async fn ensure_game_mods(
+        &self,
+        mods: &BTreeMap<String, String>,
+        replace_conflicts: bool,
+    ) -> Result<(), ModPrepFailure>;
+}
+
+/// Why simulation-mod preparation stopped.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModPrepFailure {
+    /// Nothing was installed or deleted. The join can be retried with
+    /// `replace_conflicts` once the user has approved these.
+    Conflicts(Vec<ModVersionConflict>),
+    /// Anything else: the vault lookup, the download, the extraction.
+    Failed(String),
+}
+
+impl std::fmt::Display for ModPrepFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Failed(reason) => f.write_str(reason),
+            Self::Conflicts(conflicts) => {
+                let names: Vec<&str> = conflicts
+                    .iter()
+                    .map(|conflict| conflict.required_name.as_str())
+                    .collect();
+                write!(
+                    f,
+                    "another version of {} is already installed",
+                    names.join(", ")
+                )
+            }
+        }
+    }
 }

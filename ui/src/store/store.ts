@@ -404,6 +404,7 @@ const INITIAL: AppState = {
       cacheLifetimeDays: 30,
       cacheSizeAlertGb: 10,
       cacheRollingBranches: false,
+      pipeLiveReplay: false,
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "java", selectionVersion: 1 },
