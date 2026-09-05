@@ -4,8 +4,12 @@ import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import type { MapListStatus, MatchmakerMapPool, PlayerVeto, VaultMap } from "../../ipc/bindings";
 import { GameMapImage } from "./GameMapImage";
+import { Icon } from "../../design-system/Icon";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { coversMap } from "../../shared/trainingRules";
+import { EMPTY_TRAINING_QUERY } from "../../shared/trainingQuery";
+import { useAppStore } from "../../store/store";
 
 function formatMapSize(width: number, height: number) {
   const normalize = (value: number) => value > 64 ? value / 51.2 : value;
@@ -33,6 +37,25 @@ export function findMatchingBracket(
   );
 }
 
+/**
+ * Open the training library, filtered to one map.
+ *
+ * Two commands rather than a link, because the destination is a tab and the
+ * tab bar reads its state from the backend: setting the filter first means the
+ * library is already the right list when it appears, instead of showing the
+ * whole catalogue for a frame and then narrowing.
+ */
+function showGuidesFor(mapName: string) {
+  ipc.send({
+    kind: "Training",
+    command: {
+      type: "setQuery",
+      payload: { query: { ...EMPTY_TRAINING_QUERY, map: mapName } },
+    },
+  });
+  ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "training" } } });
+}
+
 interface Props {
   queueTitle: string;
   pools: MatchmakerMapPool[];
@@ -52,6 +75,10 @@ export function MatchmakerMapPoolModal({
   playerRating,
   onClose,
 }: Props) {
+  // The training catalogue, so a map can say whether anything is written about
+  // it. Read rather than requested: the training tab loads it, and a map pool
+  // is not a reason to fetch a document nobody has asked to see.
+  const trainingResources = useAppStore((store) => store.state.training.resources);
   const { t } = useTranslation();
   const sortedPools = useMemo(
     () =>
@@ -204,10 +231,17 @@ export function MatchmakerMapPoolModal({
               ? t("lobby.mapPool.vetoLimitReached", { limit: tokenLimit })
               : t("lobby.mapPool.vetoMapHint");
 
+            // Only offered when the catalogue actually has something for this
+            // map. A button that leads to an empty list teaches a player that
+            // the feature does not work, which is worse than not offering it.
+            const guides = trainingResources.filter((resource) =>
+              coversMap(resource, map.folderName) || coversMap(resource, map.displayName),
+            ).length;
+
             return (
+              <div className="map-pool-cell" key={map.assignmentId}>
               <button
                 type="button"
-                key={map.assignmentId}
                 aria-pressed={isVetoed}
                 disabled={!canVeto}
                 className={`map-pool-card surface${canVeto ? " surface-interactive" : " is-disabled"}${isVetoed ? " vetoed" : ""}`}
@@ -231,6 +265,20 @@ export function MatchmakerMapPoolModal({
                   <small>{formatMapSize(map.width, map.height)} · {map.maxPlayers} players</small>
                 </span>
               </button>
+              {guides > 0 && (
+                // Its own button beside the card rather than inside it: the
+                // card is already a button, for vetoing, and nesting two is
+                // both invalid markup and ambiguous to click.
+                <button
+                  type="button"
+                  className="map-pool-card-guides"
+                  onClick={() => showGuidesFor(map.displayName)}
+                  title={t("lobby.mapPool.guidesHint", { map: map.displayName })}
+                >
+                  <Icon name="book" size={13} /> {t("lobby.mapPool.guides", { count: guides })}
+                </button>
+              )}
+              </div>
             );
           })
         )}

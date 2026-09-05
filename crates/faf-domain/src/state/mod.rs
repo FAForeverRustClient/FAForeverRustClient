@@ -11,6 +11,7 @@ pub mod client_update;
 pub mod coop;
 pub mod failure;
 pub mod galactic_war;
+pub mod guides;
 pub mod install;
 pub mod leaderboard;
 pub mod lobby;
@@ -27,6 +28,7 @@ pub mod session;
 pub mod settings;
 pub mod social;
 pub mod tourney;
+pub mod training;
 pub mod tutorials;
 pub mod uploads;
 
@@ -53,6 +55,13 @@ pub use galactic_war::{
     ClientVersions, GalacticWarAlltime, GalacticWarCommand, GalacticWarEvent, GalacticWarFaction,
     GalacticWarSeason, GalacticWarState, GalacticWarStatistics, GalacticWarStatus,
     StatisticsStatus,
+};
+pub use guides::{
+    accept_commit_message, catalogue_with, compose_submission, entry_from_body, entry_from_draft,
+    guide_file_path, guide_from_body, guide_raw_url, new_issue_url, prose_from_body,
+    rejection_comment, slug, submission_body, submission_title, DeviceLogin, GuideSubmission,
+    GuidesAuthStatus, GuidesCommand, GuidesEvent, GuidesIdentity, GuidesState, GuidesStatus,
+    GuidesWrite, RejectReason, SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
 };
 pub use install::{InstallEvent, InstallState, ResolvedPaths};
 pub use leaderboard::{
@@ -138,6 +147,17 @@ pub use tourney::{
     Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode, VetoTurn,
 };
+pub use training::{
+    compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
+    derive_topics, filter_resources, game_mode_of, kind_label, lesson_resources, level_label,
+    merge_catalogue, normalise_map, percent_encode, profile_from_state, recommend,
+    related_resources, review_problem, score, topic_counts, topic_label, video_still, within_band,
+    ContributionDraft, ContributionProblem, ForumPost, ReviewProblem, ReviewRequestDraft, Trainer,
+    TrainingCatalogue, TrainingCommand, TrainingEvent, TrainingKind, TrainingLevel, TrainingLinks,
+    TrainingProfile, TrainingQuery, TrainingResource, TrainingSource, TrainingState,
+    TrainingStatus, TrainingTopic, FORUM_BASE, LESSON_ID_PREFIX, PROFILE_REPLAY_WINDOW,
+    RECOMMENDED_LIMIT,
+};
 pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,
     TutorialsEvent, TutorialsState, TutorialsStatus, TUTORIALS_FEATURED_MOD,
@@ -173,9 +193,11 @@ pub struct AppState {
     pub reviews: ReviewsState,
     pub social: SocialState,
     pub tourney: TourneyState,
+    pub training: TrainingState,
     pub tutorials: TutorialsState,
     pub uploads: UploadsState,
     pub galactic_war: GalacticWarState,
+    pub guides: GuidesState,
     pub client_update: ClientUpdateState,
     pub settings: SettingsState,
     pub changelog: ChangelogState,

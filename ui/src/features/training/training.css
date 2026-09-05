@@ -1,0 +1,1437 @@
+/* Training hub. Surfaces come from `design-system/patterns.css`; everything
+   here is layout and the card/chip vocabulary the tab reuses across its three
+   sections. Colours are tokens only, per the theming contract. */
+
+.training-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.training-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.training-header h2 {
+  margin: var(--space-1) 0 0;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.training-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.training-eyebrow {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-source,
+.training-count {
+  font-size: 12px;
+}
+
+.training-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.training-hub {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 32px);
+}
+
+/* ── hero ──────────────────────────────────────────────────────────── */
+
+.training-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: clamp(20px, 4vw, 44px);
+  padding: clamp(20px, 3vw, 36px);
+}
+
+.training-hero-copy h2 {
+  margin: var(--space-2) 0 var(--space-3);
+  font-size: clamp(22px, 2.4vw, 30px);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.training-hero-lead {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.training-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.training-hero-nudge {
+  margin-top: var(--space-3);
+  padding: 0;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.training-hero-nudge:hover {
+  color: var(--color-text);
+}
+
+.training-hero-profile {
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.training-hero-profile h3 {
+  margin: 0 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-profile-block + .training-profile-block {
+  margin-top: var(--space-3);
+}
+
+.training-profile-block h4 {
+  margin: 0 0 6px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Five numbers a reader compares against each other. A row of them ran off the
+   panel and the ellipsis hid the queue ratings, which are the interesting half:
+   global says what somebody is called, the queue ratings say what they are. */
+.training-rating-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-rating-grid li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.training-rating-grid span {
+  color: var(--color-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.training-rating-grid strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.training-profile-empty {
+  margin: 0;
+  font-size: 13px;
+}
+
+.training-hero-basis {
+  margin: var(--space-4) 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ── sections ──────────────────────────────────────────────────────── */
+
+.training-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.training-section-head h3 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.training-section-head p {
+  margin: 3px 0 0;
+  font-size: 12px;
+}
+
+/* The rail scrolls sideways rather than wrapping: it is a short, ranked list,
+   and wrapping it into rows loses the ordering the ranking exists for. */
+.training-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--space-3);
+}
+
+.training-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ── cards ─────────────────────────────────────────────────────────── */
+
+/* ── filters: chips, so the options are readable before they are used ── */
+
+.training-filter-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.training-filter-line .training-search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.training-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  width: 100%;
+}
+
+.training-chip-row-label {
+  min-width: 68px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.training-chip-options {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.training-filter-chip {
+  padding: 4px 10px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.training-filter-chip:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.training-filter-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.training-filter-chip.is-on {
+  color: var(--color-text);
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
+}
+
+/* ── chips and tags ────────────────────────────────────────────────── */
+
+/* Restored after a card rewrite deleted them along with the card block they
+   happened to sit next to: without them the tags on a trainer tile rendered as
+   bare inline spans and ran together into one word. */
+.training-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* The louder one: a claim about who this is for. */
+.training-chip {
+  padding: 2px 8px;
+  color: var(--color-text);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+}
+
+/* The quieter one: a fact about the entry. */
+.training-tag {
+  /* A map folder name can be longer than the panel it sits in. It stays on one
+     line, but the line is the tag's own: clipped at the tag's edge rather than
+     pushing out of whatever contains it. */
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 8px;
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.training-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+/* ── cards: a picture with a caption ───────────────────────────────── */
+
+/* The shape from the guides grid on `feat/tutorials-guides`. A reader scanning
+   twenty of these recognises art far faster than they read a title, so the art
+   is the card and everything else is one line under it. Level, rating band,
+   topics and the open button all live in the detail pane now, which is where
+   the reader has decided and there is room to say more. */
+.training-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.training-card:hover {
+  background: var(--color-surface-hover);
+}
+
+.training-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.training-card-art {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+/* `contain` rather than `cover`: a square map preview and a 16:9 video still
+   share this grid, and cropping either one loses what identifies it. */
+.training-card-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.training-card-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-muted);
+}
+
+/* What a click costs, before the click. */
+.training-card-kind {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.training-card-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.training-card-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+}
+
+.training-card-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The rail's one line of "why this is here" reads as a claim about the reader,
+   so it is not styled like the summary it replaces. */
+.training-card-copy small.training-card-reason {
+  color: var(--color-accent);
+}
+
+/* ── basics ────────────────────────────────────────────────────────── */
+
+.training-basics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.training-basic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--space-4);
+  color: var(--color-text);
+  font: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.training-basic-card:hover {
+  background: var(--color-surface-hover);
+}
+
+.training-basic-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.training-basic-card strong {
+  font-size: 14px;
+}
+
+.training-basic-card span {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.training-basic-count {
+  margin-top: var(--space-2);
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+/* ── trainers ──────────────────────────────────────────────────────── */
+
+.training-trainer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.training-trainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* Still listed, visibly quieter: a trainer who is not taking students now is
+   more useful to see than a name that vanished. */
+.training-trainer.is-paused {
+  opacity: 0.72;
+}
+
+.training-trainer header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* A FAF avatar is 40x20, not a portrait. A circle with `cover` cropped away
+   most of one and squashed the rest, which is a poor way to treat the one
+   picture a player chose for themselves. Native size, natural shape, `contain`
+   so nothing is cut: the wide frame is the correct one here. */
+.training-trainer header img,
+.training-trainer-avatar {
+  width: 40px;
+  height: 20px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+/* The placeholder keeps the same footprint, so a tile with no avatar lines up
+   with the ones that have one. */
+.training-trainer-avatar.is-empty {
+  border: 1px dashed var(--color-border);
+}
+
+.training-trainer header div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.training-trainer header strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-trainer header small {
+  font-size: 11px;
+}
+
+/* The area of responsibility: the line that answers "what is this person
+   for". The note under it is the longer version. */
+.training-trainer-focus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.training-trainer header {
+  justify-content: space-between;
+}
+
+.training-trainer-note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.training-trainer-paused {
+  margin: 0;
+  font-size: 11px;
+}
+
+.training-trainer-handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The title. Quieter than the bands beside it: it names what somebody is, and
+   the chips after it are what they do. */
+.training-chip.is-role {
+  color: var(--color-muted);
+  background: transparent;
+  border-color: var(--color-border);
+}
+
+/* The one chip that is about the reader rather than about the entry. */
+.training-chip.is-match {
+  color: var(--color-text);
+  background: var(--color-accent-glow);
+}
+
+.training-contribute {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) clamp(16px, 2.5vw, 28px);
+}
+
+.training-contribute h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.training-contribute p {
+  margin: 4px 0 0;
+  max-width: 60ch;
+  font-size: 12px;
+}
+
+/* ── library filters ───────────────────────────────────────────────── */
+
+.training-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.training-search {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 180px;
+  padding: 0 var(--space-3);
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.training-map-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.training-map-filter span {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.training-map-filter input {
+  width: 150px;
+  padding: 7px var(--space-3);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ── detail ────────────────────────────────────────────────────────── */
+
+.training-detail-modal {
+  width: min(680px, 92vw);
+}
+
+.training-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.training-detail h3 {
+  margin: var(--space-2) 0 0;
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.training-detail-summary {
+  margin: var(--space-3) 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.training-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.training-detail-meta dt {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.training-detail-meta dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.training-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.training-related h4 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-related ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-related button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 7px var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.training-related button:hover {
+  background: var(--color-surface-hover);
+}
+
+/* Three heading levels that actually look like three. */
+.training-markdown h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.training-markdown h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.training-markdown h5 {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.training-markdown > :first-child {
+  margin-top: 0;
+}
+
+/* ── contribute: editor beside its preview ─────────────────────────── */
+
+.training-contribute-page {
+  display: grid;
+  /* Half each, and `minmax(0, …)` is what keeps it half: without it a long
+     unbroken string in either column widens its track and the split drifts. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.training-contribute-form,
+.training-contribute-preview {
+  min-width: 0;
+}
+
+/* `.training-form` caps its height and scrolls, which is right inside a modal
+   and wrong here: it turned the editor column into a scroll box floating in a
+   page that had room to spare. On a page the page scrolls.
+   Written as two classes on purpose: `.training-form` is declared further down
+   this file, so a single-class override would lose on source order. */
+.training-form.training-contribute-form {
+  max-height: none;
+  overflow: visible;
+}
+
+.training-contribute-form {
+  padding: var(--space-4) clamp(16px, 2.5vw, 28px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* The editor is the tallest thing in the column, so it gets the room rather
+   than every field growing a little. */
+.training-editor textarea {
+  min-height: 340px;
+  resize: vertical;
+}
+
+.training-contribute-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* Follows the editor down the page: the point of a side-by-side preview is
+     that it is on screen while the author is typing. */
+  position: sticky;
+  top: 0;
+  /* Only the preview is height-capped, and only so it stays on screen while
+     the editor beside it is scrolled. It scrolls within itself; the page
+     scrolls around it. */
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  padding: var(--space-4) clamp(16px, 2.5vw, 28px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.training-contribute-preview h4 {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-preview-card strong {
+  font-size: 15px;
+}
+
+.training-preview-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.training-preview-body {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+}
+
+.training-preview-empty {
+  margin: 0;
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  /* Below this the two columns are each too narrow to write or read in, so
+     the preview goes under the editor rather than beside it. */
+  .training-contribute-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .training-contribute-preview {
+    position: static;
+    max-height: none;
+  }
+}
+
+/* ── the queue's closed door ───────────────────────────────────────── */
+
+/* A tab that is honestly empty. Same shape as the closed queue: a mark, a
+   heading, a sentence, one way onward. */
+.training-soon,
+.training-no-access {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: clamp(32px, 6vw, 64px) var(--space-4);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.training-soon h3,
+.training-no-access h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 17px;
+}
+
+.training-soon p,
+.training-no-access p {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── submission queue ──────────────────────────────────────────────── */
+
+.training-queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) clamp(16px, 2.5vw, 28px);
+}
+
+.training-queue-empty,
+.training-queue-note {
+  margin: 0;
+  font-size: 12px;
+}
+
+.training-queue-account {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.training-queue-me {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.training-queue-me img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.training-queue-me div {
+  display: flex;
+  flex-direction: column;
+}
+
+.training-queue-me strong {
+  font-size: 13px;
+}
+
+.training-queue-me small {
+  font-size: 11px;
+}
+
+/* The code is typed by hand on GitHub, so it is set large, spaced and
+   selectable rather than tucked into a sentence. */
+.training-device-login {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 320px;
+}
+
+.training-device-login p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.training-device-code {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.training-device-code code {
+  padding: 6px var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  letter-spacing: 0.16em;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  user-select: all;
+}
+
+.training-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-queue-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.training-queue-title {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.training-queue-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.training-queue-by {
+  font-size: 11px;
+}
+
+.training-queue-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-left: 22px;
+}
+
+.training-queue-summary {
+  font-size: 12px;
+}
+
+.training-queue-guide summary {
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.training-queue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.training-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.training-reasons legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.training-reasons legend em {
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.training-reason {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ── forms ─────────────────────────────────────────────────────────── */
+
+.training-dialog {
+  width: min(720px, 94vw);
+}
+
+.training-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: min(78vh, 900px);
+  overflow-y: auto;
+}
+
+.training-form h4 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.training-form > p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.training-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-3);
+}
+
+.training-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.training-field.is-wide {
+  grid-column: 1 / -1;
+}
+
+.training-field > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.training-field > span em {
+  color: var(--color-muted);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.training-field input,
+.training-field textarea {
+  padding: 8px var(--space-3);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.training-field input:focus-visible,
+.training-field textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.training-form-hint {
+  margin: 0;
+  font-size: 11px;
+}
+
+.training-form-problem {
+  margin: 0;
+  color: var(--color-warn);
+  font-size: 12px;
+}
+
+.training-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.training-tag-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+  gap: var(--space-3);
+}
+
+/* ── markdown editor and preview ───────────────────────────────────── */
+
+.training-markdown-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.training-markdown-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.training-markdown-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.training-markdown-tools button:not(.btn-ghost):not(.btn-primary) {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.training-markdown-tools button:not(.btn-ghost):not(.btn-primary):hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.training-markdown-field textarea {
+  padding: var(--space-3);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.training-markdown-hint,
+.training-markdown-empty {
+  margin: 0;
+  font-size: 11px;
+}
+
+.training-markdown {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.training-markdown-preview {
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-markdown h4 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 15px;
+}
+
+.training-markdown h5 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 13px;
+}
+
+.training-markdown p {
+  margin: 0 0 var(--space-2);
+}
+
+.training-markdown ul,
+.training-markdown ol {
+  margin: 0 0 var(--space-2);
+  padding-left: 20px;
+}
+
+.training-markdown blockquote {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-3);
+  color: var(--color-muted);
+  border-left: 2px solid var(--color-border-strong);
+}
+
+.training-markdown pre {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-3);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.training-markdown code {
+  padding: 1px 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.training-markdown a {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── composed post ─────────────────────────────────────────────────── */
+
+.training-post {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.training-post h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.training-post header p {
+  margin: 3px 0 0;
+  font-size: 11px;
+}
+
+.training-post-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 280px;
+  padding: var(--space-3);
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-post-subject {
+  font-size: 13px;
+}
+
+.training-post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.training-post-note {
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .training-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .training-hero-profile {
+    order: -1;
+  }
+}

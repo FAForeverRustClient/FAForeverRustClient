@@ -8,6 +8,7 @@
 //! Run `cargo run -p faf-ipc --bin export-bindings` to (re)generate
 //! `ui/src/ipc/bindings.ts`. A CI check should fail if the output is stale.
 
+use faf_domain::state::{ContributionProblem, ReviewProblem};
 use faf_domain::{AppCommand, AppEvent, AppState};
 use specta::Types;
 use specta_typescript::Typescript;
@@ -21,11 +22,20 @@ pub const HEADER: &str = "\
 ///
 /// Registering the three root types pulls in every referenced slice type
 /// (SessionState, SessionEvent, …) transitively.
+///
+/// A handful of types have to be named explicitly because they are reachable
+/// from neither: they are the *return* types of pure domain rules the frontend
+/// owns a twin of, pinned by the conformance fixture (see
+/// `ui/src/shared/trainingRules.ts`). Registering them here is what keeps those
+/// twins from having to hand-write the union, which is the one thing this crate
+/// exists to prevent.
 pub fn typescript_bindings() -> Result<String, specta_typescript::Error> {
     let types = Types::default()
         .register::<AppState>()
         .register::<AppCommand>()
-        .register::<AppEvent>();
+        .register::<AppEvent>()
+        .register::<ReviewProblem>()
+        .register::<ContributionProblem>();
 
     let body = Typescript::default().export(&types, specta_serde::Format)?;
     // Specta currently emits a space after several multiline union separators.

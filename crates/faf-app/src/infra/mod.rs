@@ -35,6 +35,7 @@ pub mod galactic_war;
 pub mod game;
 pub mod game_logs;
 pub mod game_updater;
+pub mod guides;
 pub(crate) mod http;
 pub mod ice_java;
 pub mod ice_pioneer;
@@ -63,6 +64,7 @@ pub mod settings_fake;
 pub mod settings_file;
 pub mod tourney;
 pub mod tourney_fake;
+pub mod training;
 pub mod tutorials;
 pub mod updater;
 pub mod uploads;
@@ -76,6 +78,7 @@ pub use coop::{CoopClient, CoopConfig, FakeCoop};
 pub use discord::{DiscordClient, DiscordConfig, FakeDiscord};
 pub use galactic_war::{FakeGalacticWar, GalacticWarConfig, GalacticWarGateway};
 pub use game::{FakeGame, GameConfig, GameProcess};
+pub use guides::{FakeGuides, GuidesClient, GuidesConfig};
 pub use ice_java::{JavaAdapter, JavaConfig};
 pub use ice_pioneer::{FakeIce, IceConfig, PioneerAdapter};
 pub use ice_select::SelectableIce;
@@ -98,6 +101,7 @@ pub use settings_fake::FakeSettings;
 pub use settings_file::FileSettings;
 pub use tourney::{TourneyClient, TourneyConfig};
 pub use tourney_fake::FakeTourney;
+pub use training::{FakeTraining, TrainingCatalogueClient, TrainingConfig};
 pub use tutorials::{FakeTutorials, TutorialsClient, TutorialsConfig};
 pub use updater::{FakeGameUpdater, GameUpdaterClient, UpdaterConfig};
 pub use uploads::{FakeUploads, UploadsClient, UploadsConfig};
@@ -428,6 +432,8 @@ pub fn fake_ports() -> Ports {
         reporting: Arc::new(FakeReporting),
         reviews: Arc::new(FakeReviews::default()),
         tourney: Arc::new(FakeTourney::default()),
+        training: Arc::new(FakeTraining),
+        guides: Arc::new(FakeGuides),
         tutorials: Arc::new(FakeTutorials),
         changelog: Arc::new(FakeChangelog),
         uploads: Arc::new(FakeUploads),
@@ -526,6 +532,14 @@ pub fn real_ports() -> Ports {
     let coop: Arc<dyn crate::ports::CoopPort> = Arc::new(CoopClient::faf(tokens.clone()));
     let tutorials: Arc<dyn crate::ports::TutorialsPort> =
         Arc::new(TutorialsClient::faf(tokens.clone()));
+    // A plain document, and not FAF's: the training catalogue is a manifest the
+    // training team publishes, so no token and no gating. Falls back to the
+    // catalogue shipped with the client when none is configured.
+    let training: Arc<dyn crate::ports::TrainingPort> = Arc::new(TrainingCatalogueClient::faf());
+    // The write side of the same catalogue. Its own identity (GitHub's) and its
+    // own keyring entry; unconfigured until an OAuth client id is supplied, in
+    // which case it still reads the public submission queue.
+    let guides: Arc<dyn crate::ports::GuidesPort> = Arc::new(GuidesClient::faf());
     // Public static documents, so no token and no gating: like the update check
     // below, this works before login.
     let changelog: Arc<dyn crate::ports::ChangelogPort> = Arc::new(ChangelogClient::faf());
@@ -573,6 +587,8 @@ pub fn real_ports() -> Ports {
         reporting,
         reviews,
         tourney,
+        training,
+        guides,
         tutorials,
         changelog,
         uploads,

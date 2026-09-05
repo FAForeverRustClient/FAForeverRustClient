@@ -731,6 +731,36 @@ export function ReplayDetailPanel({
                 <span>{t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}</span>
               </Button>
             )}
+            {/* The shortest path from "that game went badly" to a request
+                someone can answer. The client already knows the replay, the
+                map, the mode and this account's rating in it, so the training
+                tab's form opens with only the question left to write.
+
+                Naming the replay rather than passing the details is
+                deliberate: the training service reads them back out of state,
+                so this button cannot prefill the form with anything the
+                client does not actually know. */}
+            <Button
+              className="replay-secondary-btn"
+              title={t("replays.detail.requestReview")}
+              onClick={() => {
+                ipc.send({
+                  kind: "Training",
+                  command: {
+                    type: "openReview",
+                    payload: {
+                      replayUid: replay.uid > 0 ? replay.uid : null,
+                      localPath: localPath ?? null,
+                    },
+                  },
+                });
+                ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "training" } } });
+                onClose();
+              }}
+            >
+              <Icon name="book" size={13} />
+              <span>{t("replays.detail.requestReviewShort")}</span>
+            </Button>
           </div>
         </div>
       </header>

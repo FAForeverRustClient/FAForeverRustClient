@@ -390,6 +390,74 @@ Each feature = *new slice + new service + new port impl*. None can introduce spa
   `protocol::markup` before they reach `AppState`. The Java client renders such content in a
   `WebView` it already treats as untrusted; here it would land in the client's own document.
 
+- **Training hub. Done.** The tutorials tab became **Training**: a discovery and routing
+  layer over FAF's training material rather than one more list of it. Documented in
+  `docs/training-features.md`, including what was deliberately left out.
+
+  Three conventions come out of it that are worth stating here:
+
+  1. **A rule that runs on every keystroke may have a frontend twin, and the twin is
+     pinned in the same change.** The library filter and the two form validators run per
+     character typed, which a command round trip would make feel like the network. They
+     live in `ui/src/shared/trainingRules.ts` and are pinned by the `trainingFilters` and
+     `trainingFormProblems` cases in the conformance fixture, recorded from the Rust
+     functions rather than from anyone's reading of them. Everything not per-keystroke
+     (which resources are recommended, in what order, and the composed text of a post)
+     stays in Rust and reaches the view through the slice.
+  2. **Personalisation reads state other tabs already loaded.** `profile_from_state` folds
+     a rating, the recent maps, modes and factions out of `auth`, the matchmaker profile
+     and the local replay archive. Nothing is fetched for the sake of a recommendation,
+     which is what stops the hub being blank for the first seconds of every visit. It is
+     also why the guard against reading a *stranger's* open player card exists: that slot
+     is filled by clicking a name in chat.
+  3. **The client composes; the player posts.** A replay review request and a content
+     submission are both written here as a forum post, shown in full, and sent by the
+     player. Neither crosses a port, because FAF has no endpoint for either, and posting
+     in someone's name is not a thing this client does. What it removes is the part that
+     actually stops people: find the channel, find the template, dig the replay id out of
+     a file name.
+
+  A fourth is a boundary correction rather than a new rule. Leniency belongs to the wire
+  DTO, not to the state: the catalogue manifest is hand-edited, so every field of it
+  defaults, but that is expressed by `ManifestDoc` in `infra/training.rs` rather than by
+  `#[serde(default)]` on `TrainingResource`, which would have made every field optional in
+  the generated TypeScript and pushed a hand-edited file's tolerance into every component
+  that reads a resource.
+
+  One thing `specta_serde` refuses outright, discovered here and worth knowing before
+  reaching for it: `#[serde(alias = "…")]` on a type that crosses the boundary fails the
+  bindings export, because an alias widens the deserialize-only input shape. A value
+  renamed on the wire is migrated at the persistence boundary instead (see
+  `infra/settings_file.rs`, where `Tab::Tutorials` becoming `Tab::Training` is translated
+  on the way in: a settings document that fails to parse yields defaults for *everything*,
+  so an unrecognised value would have cost the player every other setting in the file).
+
+- **Catalogue maintenance, and a second identity. Done.** The training catalogue lives in
+  its own Git repository, so the `guides` slice maintains it from inside the client:
+  submissions are GitHub issues, verdicts are commits. Two things about it are new to this
+  codebase and generalise.
+
+  1. **A port may authenticate as somebody other than the FAF account.** `GuidesPort` writes
+     as a GitHub identity, obtained through the device flow and kept in the OS keyring beside
+     the FAF refresh token. That is why it is a separate port from `TrainingPort`, which only
+     reads the published document and needs no credentials: the two halves of one feature
+     have different auth, and folding them together would have given the read path a reason
+     to hold a token it never needs.
+  2. **Authorisation stays entirely server-side, and here the server is GitHub.** The accept
+     and decline controls appear for anyone signed in; a commit from a non-collaborator is
+     refused by GitHub and that sentence is shown verbatim. So the maintainer list is the
+     repository's collaborator list, the audit trail is the commit log, and the client holds
+     no notion of who a trainer is. This is the same rule as `Player::roles`, taken to its
+     conclusion: the client never even computes an opinion to be wrong about.
+
+  A third point is about shape rather than policy. A submission's issue body is written by
+  the client and read back by it: prose for the reviewer, a delimited region for a guide
+  written in the client, and a fenced JSON block holding the catalogue entry. Because the
+  client authored it, accepting is a *copy* rather than a rewrite, which is what makes a
+  one-press accept honest rather than a form that reopens everything the author already
+  answered. An issue opened by hand has no block, is still listed and still readable, and
+  says so instead of offering a button that would do nothing.
+
 Remaining order: chat → vault → launcher/ICE → replay → social → updater.
 
 ---

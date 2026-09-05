@@ -22,7 +22,7 @@ pub enum Tab {
     Mods,
     Leaderboard,
     Tournaments,
-    Tutorials,
+    Training,
     Units,
     Changelog,
     Contribution,

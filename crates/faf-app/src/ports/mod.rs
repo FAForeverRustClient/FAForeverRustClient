@@ -12,6 +12,7 @@ pub mod coop;
 pub mod discord;
 pub mod error;
 pub mod galactic_war;
+pub mod guides;
 pub mod ice;
 pub mod leaderboard;
 pub mod lobby;
@@ -26,6 +27,7 @@ pub mod reporting;
 pub mod reviews;
 pub mod settings;
 pub mod tourney;
+pub mod training;
 pub mod tutorials;
 pub mod updater;
 pub mod uploads;
@@ -38,6 +40,7 @@ pub use coop::CoopPort;
 pub use discord::{DiscordPort, DiscordRequest};
 pub use error::RequestError;
 pub use galactic_war::{GalacticWarPort, InstallProgress};
+pub use guides::{DeviceCode, GuidesPort};
 pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
 pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
@@ -54,6 +57,7 @@ pub use reporting::{GameParticipation, ReportPlayerRequest, ReportingPort};
 pub use reviews::{ReviewPage, ReviewsPort};
 pub use settings::SettingsPort;
 pub use tourney::TourneyPort;
+pub use training::TrainingPort;
 pub use tutorials::TutorialsPort;
 pub use updater::{GamePreparation, GameUpdaterPort, PreparationStep, UpdateProgress};
 pub use uploads::UploadsPort;
@@ -92,6 +96,14 @@ pub struct Ports {
     pub reporting: Arc<dyn ReportingPort>,
     pub reviews: Arc<dyn ReviewsPort>,
     pub tourney: Arc<dyn TourneyPort>,
+    /// The training hub's catalogue of community material. A read of one
+    /// document; the hub's two write-shaped paths compose a forum post the
+    /// player sends themselves rather than crossing a port.
+    pub training: Arc<dyn TrainingPort>,
+    /// The catalogue's Git repository, which is the one port that writes with
+    /// an identity that is not the FAF account: committing to it is a GitHub
+    /// operation, authorised by GitHub.
+    pub guides: Arc<dyn GuidesPort>,
     pub tutorials: Arc<dyn TutorialsPort>,
     /// FAForever/fa's published patch notes. Public documents, never gated on
     /// login: the changelog is worth reading before signing in.

@@ -1,4 +1,22 @@
-// Tutorials: FAF's guided single-player lessons.
+// Lessons: the entries the client can actually start.
+//
+// Narrowed on purpose. FAF's tutorial API returns two different things under
+// one name: a handful of playable scenarios, and whole categories ("Video
+// tutorials", "Written guides") that are links to YouTube and the wiki. Both
+// used to be listed here, which meant most of the tab was rows that opened a
+// browser under a heading promising a lesson.
+//
+// Nothing mounts this today. FAF's tutorial API is no longer read by the
+// training tab at all: it flags entries playable whose maps no longer start
+// anything, and its "Video tutorials" and "Written guides" categories are links
+// rather than lessons, none of which could be corrected without a client
+// release. The lessons section shows an empty state instead, and everything a
+// player reads comes from the catalogue repository.
+//
+// The file stays because the launch path is finished and correct: it patches
+// the featured mod, fetches the map and opens an offline game. The day somebody
+// authors a real scenario, this is the pane that shows it, and the work of
+// getting there is content rather than code.
 //
 // Mirrors the Java client's `TutorialController`/`tutorial_detail.fxml`:
 // categories down the left, and a detail pane where the briefing reads as prose
@@ -12,10 +30,8 @@ import { Icon } from "../../design-system/Icon";
 import type { Tutorial } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { loadStatusNote } from "../../shared/loadStatusNote";
-import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import "./tutorials.css";
-import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const load = () => ipc.send({ kind: "Tutorials", command: { type: "load" } });
@@ -32,20 +48,24 @@ export function TutorialsView() {
     if (useAppStore.getState().state.tutorials.status.type === "idle") void load();
   }, []);
 
-  const selected = state.tutorials.find((t) => t.id === state.selectedId) ?? null;
+  // Everything below reads from this rather than from the slice, so the count,
+  // the grouping, the empty state and the detail pane cannot disagree about
+  // what the tab contains.
+  const playable = useMemo(() => state.tutorials.filter(isPlayable), [state.tutorials]);
+  const selected = playable.find((t) => t.id === state.selectedId) ?? null;
   const note = loadStatusNote(state.status, t("tutorials.loading"), t("tutorials.loadFailed"));
 
   // Group by category, keeping each author's teaching order (`ordinal`).
   const groups = useMemo(() => {
     const byCategory = state.categories.map((category) => ({
       category,
-      tutorials: state.tutorials
+      tutorials: playable
         .filter((tutorial) => tutorial.categoryId === category.id)
         .sort((a, b) => a.ordinal - b.ordinal || a.title.localeCompare(b.title)),
     }));
 
     // A lesson the API left uncategorised still has to be reachable.
-    const ungrouped = state.tutorials
+    const ungrouped = playable
       .filter((tutorial) => tutorial.categoryId === null)
       .sort((a, b) => a.ordinal - b.ordinal || a.title.localeCompare(b.title));
 
@@ -53,7 +73,7 @@ export function TutorialsView() {
       ...byCategory.filter((group) => group.tutorials.length > 0),
       ...(ungrouped.length > 0 ? [{ category: null, tutorials: ungrouped }] : []),
     ];
-  }, [state.categories, state.tutorials]);
+  }, [state.categories, playable]);
 
   const total = groups.reduce((sum, group) => sum + group.tutorials.length, 0);
   const selectedCategory = selected
@@ -118,11 +138,10 @@ export function TutorialsView() {
                     {tutorial.imageUrl ? (
                       <img className="tutorial-row-thumb" src={tutorial.imageUrl} alt="" loading="lazy" />
                     ) : (
-                      <TutorialRowMark tutorial={tutorial} />
+                      <TutorialRowMark />
                     )}
                     <span className="tutorial-row-copy">
                       <strong>{tutorial.title || t("tutorials.untitled")}</strong>
-                      <small>{tutorialKind(tutorial)}</small>
                     </span>
                   </button>
                 ))}
@@ -151,46 +170,19 @@ function isPlayable(tutorial: Tutorial): boolean {
   return tutorial.launchable && tutorial.mapFolderName !== "" && tutorial.technicalName !== "";
 }
 
-/** Twin of `Tutorial::is_link`: an entry pointing at a video or a wiki page. */
-function isLink(tutorial: Tutorial): boolean {
-  return !isPlayable(tutorial) && tutorial.linkUrl !== "";
-}
-
-function tutorialKind(tutorial: Tutorial): string {
-  if (isPlayable(tutorial)) return t("tutorials.kind.playable");
-  if (isLink(tutorial)) return t("tutorials.kind.link");
-  return t("tutorials.kind.comingSoon");
-}
-
-/**
- * What kind of entry a row is, as an icon rather than the old "unavailable"
- * label: which was attached to most of the list and described what the client
- * could not do rather than what the entry is.
- */
-function TutorialRowMark({ tutorial }: { tutorial: Tutorial }) {
+/** A lesson, as a mark, for a row whose map has no preview image. */
+function TutorialRowMark() {
   const { t } = useTranslation();
-  if (isPlayable(tutorial)) {
-    return (
-      <span className="tutorial-row-mark is-playable" title={t("tutorials.playableLesson")}>
-        <Icon name="play" size={13} />
-      </span>
-    );
-  }
-  if (isLink(tutorial)) {
-    return (
-      <span className="tutorial-row-mark" title={t("tutorials.opensBrowser")}>
-        <Icon name="external" size={13} />
-      </span>
-    );
-  }
-  return <span className="tutorial-row-mark is-empty" title={t("tutorials.notAvailableYet")} aria-hidden />;
+  return (
+    <span className="tutorial-row-mark is-playable" title={t("tutorials.playableLesson")}>
+      <Icon name="play" size={13} />
+    </span>
+  );
 }
 
 function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; categoryName: string }) {
   const { t } = useTranslation();
   const launchState = useAppStore((store) => store.state.tutorials.launch);
-  const playable = isPlayable(tutorial);
-  const link = isLink(tutorial);
 
   // Only narrate progress for *this* lesson: the status is global, and
   // another lesson's "Updating tutorials…" under this title would be wrong.
@@ -207,20 +199,16 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
         <div className="tutorial-detail-copy">
           <div className="tutorial-detail-kicker">
             <span>{categoryName}</span>
-            <span aria-hidden>·</span>
-            <span>{tutorialKind(tutorial)}</span>
           </div>
           <h3>{tutorial.title || t("tutorials.untitled")}</h3>
           {tutorial.description
             ? <p className="tutorial-brief">{tutorial.description}</p>
             : <p className="muted tutorial-brief">{t("tutorials.noBriefing")}</p>}
 
-          {playable && (
-            <dl className="tutorial-meta">
+          <dl className="tutorial-meta">
               <div><dt>{t("tutorials.map")}</dt><dd>{tutorial.mapFolderName}</dd></div>
               <div><dt>{t("tutorials.mode")}</dt><dd>{t("tutorials.offline")}</dd></div>
-            </dl>
-          )}
+          </dl>
 
           {/* Patching the tutorials mod and fetching the map is slow the first
               time; a silent client looks broken. */}
@@ -230,36 +218,22 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
             <p className="tutorial-progress is-error">{launchState.payload.reason}</p>
           )}
 
-          {!playable && !link && (
-            <p className="muted tutorial-brief">
-              {t("tutorials.notPlayable")}
-            </p>
-          )}
-
           <div className="tutorial-actions">
-            {link ? (
-              <Button
-                variant="primary"
-                title={tutorial.linkUrl}
-                onClick={() => ipc.run(openHttpsUrl(tutorial.linkUrl))}
-              >
-                <Icon name="external" size={16} /> {t("tutorials.openGuide")}
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                disabled={!playable || preparing !== null}
-                title={playable ? t("tutorials.play", { title: tutorial.title }) : t("tutorials.noMapYet")}
-                onClick={() => void launch(tutorial.id)}
-              >
-                {preparing !== null ? t("tutorials.preparing") : <><Icon name="play" size={16} /> {t("tutorials.start")}</>}
-              </Button>
-            )}
-            {playable && (
-              <span className="muted tutorial-launch-note">
-                {t("tutorials.autoPrepared")}
-              </span>
-            )}
+            <Button
+              variant="primary"
+              disabled={preparing !== null}
+              title={t("tutorials.play", { title: tutorial.title })}
+              onClick={() => void launch(tutorial.id)}
+            >
+              {preparing !== null ? (
+                t("tutorials.preparing")
+              ) : (
+                <>
+                  <Icon name="play" size={16} /> {t("tutorials.start")}
+                </>
+              )}
+            </Button>
+            <span className="muted tutorial-launch-note">{t("tutorials.autoPrepared")}</span>
           </div>
         </div>
 
@@ -268,7 +242,7 @@ function TutorialDetail({ tutorial, categoryName }: { tutorial: Tutorial; catego
             <img className="tutorial-art" src={tutorial.imageUrl} alt="" loading="lazy" />
           ) : (
             <div className="tutorial-art tutorial-art-empty" aria-hidden>
-              <Icon name={link ? "external" : "maps"} size={28} />
+              <Icon name="maps" size={28} />
             </div>
           )}
 
