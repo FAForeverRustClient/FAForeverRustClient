@@ -853,11 +853,17 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
             }
         }
         ChatEvent::ChannelSelected { channel } => {
-            if let Some(c) = state.channel_mut(channel) {
-                c.unread = 0;
-                c.unread_mentions = 0;
-                state.active_channel = channel.clone();
-            }
+            // Created if this is the first we have heard of it, like
+            // `TopicChanged` below. Opening a private conversation sends
+            // `JoinChannel` and `SelectChannel` back to back, but only the
+            // first goes through the chat port, so its `ChannelJoined` arrives
+            // *after* this event: dropping the selection because the channel
+            // did not exist yet left the user looking at whatever they had
+            // open before, having to click the conversation themselves.
+            let c = state.ensure_channel(channel);
+            c.unread = 0;
+            c.unread_mentions = 0;
+            state.active_channel = channel.clone();
         }
         ChatEvent::TopicChanged { channel, topic } => {
             state.ensure_channel(channel).topic = topic.clone();
@@ -1288,6 +1294,37 @@ mod tests {
         assert_eq!(s.active_channel, "#newbie");
         assert_eq!(c.unread, 0);
         assert_eq!(c.unread_mentions, 0);
+    }
+
+    /// Opening a private conversation from a right-click sends `JoinChannel`
+    /// and `SelectChannel` back to back. Only the first goes through the chat
+    /// port, so its `ChannelJoined` lands *after* the selection: the selection
+    /// has to be able to open the conversation on its own, or the user is left
+    /// looking at whatever they had open before.
+    #[test]
+    fn selecting_a_conversation_opens_it_before_the_join_confirms() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelSelected {
+                channel: "Stormlord".into(),
+            },
+        );
+        assert_eq!(s.active_channel, "Stormlord");
+        assert!(s.channel("Stormlord").is_some_and(ChatChannel::is_private));
+
+        // The join arriving afterwards must not duplicate the conversation.
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelJoined {
+                channel: "Stormlord".into(),
+            },
+        );
+        assert_eq!(
+            s.channels.iter().filter(|c| c.name == "Stormlord").count(),
+            1
+        );
+        assert_eq!(s.active_channel, "Stormlord");
     }
 
     #[test]

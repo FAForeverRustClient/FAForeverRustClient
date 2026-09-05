@@ -28,12 +28,12 @@ import { onlineReplayLink } from "../../shared/replayLinks";
 import { useAppStore } from "../../store/store";
 import {
   isObserverTeam,
-  outcomeLabel,
   playerCount,
   ReplayCardRoster,
   ReplayDetailRoster,
   mergeReplayTeamsWithLocal,
 } from "./ReplayRoster";
+import { isRated, notRatedReason } from "./replayValidity";
 import {
   formatReplayListTime,
   ReplayList,
@@ -456,6 +456,8 @@ export function ReplayDetailPanel({
   const detailTeams = mergeReplayTeamsWithLocal(replay.teams, localMatch?.teams);
   const localPath = initialLocalPath || localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
+  // Absent on a legacy `.scfareplay`, which has no header to read them from.
+  const simMods = details?.simMods ?? [];
   const isLoadingDetails = detailsLoading === replay.uid;
   const [optionFilter, setOptionFilter] = useState("");
 
@@ -554,9 +556,16 @@ export function ReplayDetailPanel({
   }, [isGenerated, seed, replay.replayAvailable, replay.uid, localMatch, downloadState]);
 
   const totalPlayers = playerCount(detailTeams);
-  const hasResults = detailTeams.some((team) =>
-    team.players.some((player) => Boolean(outcomeLabel(player.outcome))),
-  );
+  // Java gates the whole result display on the game having been rated: its
+  // "show rating change" button needs `validity == VALID` *and* a rating
+  // journal with an "after", and the not-rated reason takes the button's place
+  // otherwise. Showing outcomes regardless is what put "Defeat" on both sides
+  // of a game nobody won and said nothing about why.
+  // Optional on the wire: a listing from before this field existed carries
+  // none, which reads as "no verdict yet" rather than as a refusal.
+  const validity = replay.validity ?? "";
+  const rated = isRated(validity, detailTeams);
+  const notRated = rated ? null : notRatedReason(validity);
   const copyLink = () =>
     ipc.run(
       navigator.clipboard
@@ -782,7 +791,7 @@ export function ReplayDetailPanel({
           <div>
             <h3>{lineupSummary}</h3>
           </div>
-          {hasResults && (
+          {rated && (
             <Button
               className="replay-detail-reveal-btn"
               aria-pressed={showResults}
@@ -793,7 +802,12 @@ export function ReplayDetailPanel({
           )}
         </div>
         {detailTeams.length > 0 ? (
-          <ReplayDetailRoster teams={detailTeams} showResults={showResults} avatarByLogin={avatarByLogin} />
+          <ReplayDetailRoster
+            teams={detailTeams}
+            showResults={showResults}
+            notRated={notRated}
+            avatarByLogin={avatarByLogin}
+          />
         ) : (
           <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
         )}
@@ -818,6 +832,23 @@ export function ReplayDetailPanel({
 
       {details && (
         <>
+          {/* Which simulation mods the game ran with. Read from the replay's
+              own header rather than the vault listing, which does not carry
+              them, so it needs the details load either way. Hidden entirely
+              for an unmodded game rather than showing an empty row. */}
+          {simMods.length > 0 && (
+            <section className="replay-detail-sim-mods">
+              <h3 className="replay-more-info-title">
+                {t("replays.detail.simMods")}
+                <span className="muted replay-more-info-count">({simMods.length})</span>
+              </h3>
+              <ul className="replay-sim-mod-list">
+                {simMods.map((mod) => (
+                  <li key={mod} className="surface-chip">{mod}</li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="replay-detail-more-info">
             <div className="replay-more-info-grid">
               <div className="replay-more-info-col">

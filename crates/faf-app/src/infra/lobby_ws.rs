@@ -201,23 +201,7 @@ impl LobbyPort for LobbyClient {
     }
 
     fn host(&self, config: HostGameConfig) {
-        let mut frame = json!({
-            "command": "game_host",
-            "title": config.title,
-            "mod": config.mod_name,
-            "visibility": config.visibility,
-            "mapname": config.map,
-            "password": config.password.unwrap_or_default(),
-        });
-        if config.enforce_rating_range {
-            if let Some(min) = config.rating_min {
-                frame["rating_min"] = json!(min);
-            }
-            if let Some(max) = config.rating_max {
-                frame["rating_max"] = json!(max);
-            }
-        }
-        if !self.send_frame(frame) {
+        if !self.send_frame(host_frame(config)) {
             tracing::warn!("host request ignored because the lobby is disconnected");
         }
     }
@@ -1712,9 +1696,66 @@ impl GameSet {
     }
 }
 
+/// The `game_host` frame, built apart from sending it so the password rule is
+/// testable without a live socket.
+///
+/// The password is null, not an empty string, when the host did not set one.
+/// The server stores whatever arrives and then advertises the game as
+/// `password_protected: self.password is not None`, so `""` produced a locked
+/// game nobody could join: a joiner sends no password at all, and the server
+/// compares `None` against `""` and refuses. The Python client sends `None`
+/// here for exactly this reason.
+fn host_frame(config: HostGameConfig) -> Value {
+    let mut frame = json!({
+        "command": "game_host",
+        "title": config.title,
+        "mod": config.mod_name,
+        "visibility": config.visibility,
+        "mapname": config.map,
+        "password": match config.password {
+            Some(password) => Value::String(password),
+            None => Value::Null,
+        },
+    });
+    if config.enforce_rating_range {
+        if let Some(min) = config.rating_min {
+            frame["rating_min"] = json!(min);
+        }
+        if let Some(max) = config.rating_max {
+            frame["rating_max"] = json!(max);
+        }
+    }
+    frame
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hosting_without_a_password_sends_null_rather_than_an_empty_string() {
+        let mut config = HostGameConfig {
+            title: "Aeolus".into(),
+            mod_name: "faf".into(),
+            visibility: "public".into(),
+            map: "scmp_007".into(),
+            password: None,
+            enforce_rating_range: false,
+            rating_min: None,
+            rating_max: None,
+        };
+
+        // The server stores whatever arrives and advertises the game as
+        // protected when it is not null, so an empty string locks a game that
+        // nobody, including the host, has a password for.
+        let open = host_frame(config.clone());
+        assert_eq!(open["password"], Value::Null);
+        assert!(open["rating_min"].is_null());
+
+        config.password = Some("hunter2".into());
+        let locked = host_frame(config);
+        assert_eq!(locked["password"], Value::String("hunter2".into()));
+    }
     use crate::infra::extract_access_url;
 
     #[test]

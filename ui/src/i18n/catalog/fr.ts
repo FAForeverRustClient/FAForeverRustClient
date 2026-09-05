@@ -688,7 +688,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "maps.generate.symmetry": "Symétrie",
   "maps.generate.any": "Indifférent",
   "maps.generate.mapStyle": "Style de carte",
-  "maps.generate.mapStyleHint": "Un style de carte remplace les styles individuels de terrain, texture, ressources et objets.",
+  "maps.generate.mapStyleHint": "Un style de carte est un préréglage complet : il décide ensemble du terrain, de la texture, des ressources et des objets, donc les quatre listes ci-dessous sont ignorées tant que l'un est sélectionné.",
   "maps.generate.terrain": "Terrain",
   "maps.generate.texture": "Texture",
   "maps.generate.resources": "Ressources",
@@ -1829,4 +1829,10 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "mods.installed.folder": "Dossier",
   "mods.installed.uid": "UID",
   "mods.installed.viewInVault": "Afficher dans le vault",
+
+  "maps.generate.styleSuperseded": "Ignoré tant qu'un style de carte est sélectionné.",
+  "maps.generate.enlargePreview": "Agrandir l'aperçu",
+  "maps.generate.closePreview": "Cliquez n'importe où pour fermer",
+  "replays.detail.simMods": "Mods de simulation",
+  "replays.roster.ratingChange": "Variation de classement due à cette partie",
 };

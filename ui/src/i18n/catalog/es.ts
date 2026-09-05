@@ -687,7 +687,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "maps.generate.symmetry": "Simetría",
   "maps.generate.any": "Cualquiera",
   "maps.generate.mapStyle": "Estilo del mapa",
-  "maps.generate.mapStyleHint": "Un estilo de mapa sustituye los estilos individuales de terreno, textura, recursos y objetos.",
+  "maps.generate.mapStyleHint": "Un estilo de mapa es un ajuste completo: decide a la vez el terreno, la textura, los recursos y los objetos, así que las cuatro listas de abajo se ignoran mientras haya uno seleccionado.",
   "maps.generate.terrain": "Terreno",
   "maps.generate.texture": "Textura",
   "maps.generate.resources": "Recursos",
@@ -1827,4 +1827,10 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "mods.installed.folder": "Carpeta",
   "mods.installed.uid": "UID",
   "mods.installed.viewInVault": "Ver en el vault",
+
+  "maps.generate.styleSuperseded": "Se ignora mientras haya un estilo de mapa seleccionado.",
+  "maps.generate.enlargePreview": "Ampliar la vista previa",
+  "maps.generate.closePreview": "Haz clic en cualquier sitio para cerrar",
+  "replays.detail.simMods": "Mods de simulación",
+  "replays.roster.ratingChange": "Cambio de puntuación por esta partida",
 };

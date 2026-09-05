@@ -1544,14 +1544,19 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
 async fn read_detailed_info(path: &Path) -> Result<ReplayDetails, String> {
     let path = path.to_owned();
     tokio::task::spawn_blocking(move || {
-        let body_bytes = read_replay_body(&path)?;
-        Ok(parse_detailed_info_from_body(&body_bytes))
+        let (header, body_bytes) = read_replay_header_and_body(&path)?;
+        let mut details = parse_detailed_info_from_body(&body_bytes);
+        details.sim_mods = header.as_ref().map(local_sim_mods).unwrap_or_default();
+        Ok(details)
     })
     .await
     .map_err(|error| format!("could not parse replay details: {error}"))?
 }
 
-fn read_replay_body(path: &Path) -> Result<Vec<u8>, String> {
+/// The decompressed command stream, plus the `.fafreplay` JSON header it came
+/// wrapped in. The header is `None` for a legacy `.scfareplay`, which is the
+/// bare stream with nothing in front of it.
+fn read_replay_header_and_body(path: &Path) -> Result<(Option<Value>, Vec<u8>), String> {
     let file_size = std::fs::metadata(path)
         .map_err(|error| format!("could not inspect replay file {}: {error}", path.display()))?
         .len();
@@ -1569,18 +1574,16 @@ fn read_replay_body(path: &Path) -> Result<Vec<u8>, String> {
         .and_then(|e| e.to_str())
         .is_some_and(|e| e.eq_ignore_ascii_case("fafreplay"));
 
-    let body_bytes = if is_fafreplay {
-        let (meta, body) = split_fafreplay_bytes(&bytes)?;
-        let compression = meta
-            .get("compression")
-            .and_then(Value::as_str)
-            .unwrap_or("qtcompress");
-        decompress_replay_body(body, compression)?
-    } else {
-        bytes
-    };
-
-    Ok(body_bytes)
+    if !is_fafreplay {
+        return Ok((None, bytes));
+    }
+    let (meta, body) = split_fafreplay_bytes(&bytes)?;
+    let compression = meta
+        .get("compression")
+        .and_then(Value::as_str)
+        .unwrap_or("qtcompress");
+    let body_bytes = decompress_replay_body(body, compression)?;
+    Ok((Some(meta), body_bytes))
 }
 
 fn split_fafreplay_bytes(bytes: &[u8]) -> Result<(Value, &[u8]), String> {
@@ -1648,6 +1651,7 @@ pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
         return ReplayDetails {
             game_options: extract_game_options(game_options_lua.as_ref(), game_version),
             chat_messages: Vec::new(),
+            sim_mods: Vec::new(),
             game_version,
         };
     };
@@ -1696,6 +1700,9 @@ pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
     ReplayDetails {
         game_options,
         chat_messages,
+        // Filled in by the caller, which is the only place that has seen the
+        // `.fafreplay` header this body was unwrapped from.
+        sim_mods: Vec::new(),
         game_version,
     }
 }
@@ -1704,6 +1711,7 @@ fn replay_details_with_version(game_version: Option<i32>) -> ReplayDetails {
     ReplayDetails {
         game_options: extract_game_options(None, game_version),
         chat_messages: Vec::new(),
+        sim_mods: Vec::new(),
         game_version,
     }
 }
@@ -1981,7 +1989,10 @@ fn replay_i32_value(value: &Value) -> Option<i32> {
 fn replay_displayed_rating(data: &serde_json::Map<String, Value>) -> Option<i32> {
     let mean = data.get("MEAN").and_then(Value::as_f64)?;
     let deviation = data.get("DEV").and_then(Value::as_f64)?;
-    let rating = (mean - 3.0 * deviation).round();
+    // Truncated for the same reason as `displayed_rating_with_fields`: this is
+    // the same number read from a local replay's header instead of the vault,
+    // and the two must not disagree about the same player.
+    let rating = mean - 3.0 * deviation;
     (rating.is_finite() && rating >= f64::from(i32::MIN) && rating <= f64::from(i32::MAX))
         .then_some(rating as i32)
 }
@@ -2407,18 +2418,28 @@ fn resolve_teams(
             .to_string();
         let avatar_url = resolve_player_avatar(player, index);
         let faction = stat.attributes.get("faction").and_then(faction_value);
-        let rating = rel_targets(&stat.relationships, "ratingChanges")
+        let journals: Vec<&JsonApiResource> = rel_targets(&stat.relationships, "ratingChanges")
             .into_iter()
-            .filter_map(|key| index.get(&key))
+            .filter_map(|key| index.get(&key).copied())
+            .collect();
+        let rating = journals
+            .iter()
             .find_map(|journal| displayed_rating_before(&journal.attributes))
             // Older game resources expose the same values directly on the
             // player stat instead of including a rating journal relationship.
             .or_else(|| displayed_rating_from_stat(&stat.attributes));
+        // The *first* journal, as Java takes it: a game touches one leaderboard
+        // for the player, and the ordering the API returns is the one both
+        // clients rely on.
+        let rating_change = journals
+            .first()
+            .and_then(|journal| rating_change_of(&journal.attributes));
         by_team.entry(team).or_default().push(ReplayPlayer {
             name,
             avatar_url,
             faction,
             rating,
+            rating_change,
             outcome: stat
                 .attributes
                 .get("result")
@@ -2540,6 +2561,20 @@ fn displayed_rating_before(attributes: &Value) -> Option<i32> {
     displayed_rating_with_fields(attributes, "meanBefore", "deviationBefore")
 }
 
+/// What one rating journal says this game did to the player's displayed rating.
+///
+/// Both ends go through the same `mean - 3*deviation` rounding before they are
+/// subtracted, so the number matches what the two ratings would have read as,
+/// rather than a rounded difference of unrounded means. `None` unless the
+/// journal carries an "after" side: an unrated or unresolved game has none, and
+/// reporting a change for it is exactly the bug this replaced. Mirrors Java's
+/// `PlayerCardController::getRatingChange`.
+fn rating_change_of(attributes: &Value) -> Option<i32> {
+    let after = displayed_rating_with_fields(attributes, "meanAfter", "deviationAfter")?;
+    let before = displayed_rating_before(attributes)?;
+    Some(after - before)
+}
+
 fn displayed_rating_from_stat(attributes: &Value) -> Option<i32> {
     displayed_rating_with_fields(attributes, "beforeMean", "beforeDeviation")
 }
@@ -2559,8 +2594,14 @@ fn displayed_rating_with_fields(
     let mean = numeric(mean_field)?;
     let deviation = numeric(deviation_field)?;
     let rating = mean - 3.0 * deviation;
+    // Truncated, not rounded. Both reference clients cast rather than round:
+    // Java's `RatingUtil.getRating` is `(int) (mean - 3f * deviation)` and the
+    // Python client's `rating_estimate` is `int(rating.displayed())`. Rounding
+    // put us a point above them for every rating whose fraction was over .5,
+    // and made a rating *change*, which subtracts two of these, disagree by one
+    // in either direction.
     (rating.is_finite() && rating >= f64::from(i32::MIN) && rating <= f64::from(i32::MAX))
-        .then_some(rating.round() as i32)
+        .then_some(rating as i32)
 }
 
 /// `game.relationships.reviewsSummary -> reviewsSummary.attributes`.
@@ -2685,6 +2726,12 @@ fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                 reviews_average,
                 reviews_count,
                 game_version,
+                validity: game
+                    .attributes
+                    .get("validity")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
             })
         })
         .collect()
@@ -3192,6 +3239,7 @@ impl ReplayPort for FakeReplay {
                     message: "gg".to_string(),
                 },
             ],
+            sim_mods: vec!["No Rush Timer".to_string()],
             game_version: Some(3837),
         })
     }
@@ -3660,7 +3708,10 @@ mod tests {
                 {
                     "type": "leaderboardRatingJournal",
                     "id": "700",
-                    "attributes": { "meanBefore": 1600.0, "deviationBefore": 100.0 }
+                    "attributes": {
+                        "meanBefore": 1600.0, "deviationBefore": 100.0,
+                        "meanAfter": 1615.0, "deviationAfter": 98.0
+                    }
                 },
                 {
                     "type": "gameReviewsSummary",
@@ -3698,6 +3749,8 @@ mod tests {
         );
         assert_eq!(replay.teams[0].players[0].faction, Some(1));
         assert_eq!(replay.teams[0].players[0].rating, Some(1300));
+        // 1615 - 3*98 = 1321, against 1600 - 3*100 = 1300.
+        assert_eq!(replay.teams[0].players[0].rating_change, Some(21));
         assert_eq!(replay.teams[0].players[0].outcome, "VICTORY");
         assert_eq!(replay.teams[0].players[0].score, Some(3210));
         assert_eq!(replay.average_rating, Some(1300));
@@ -3705,8 +3758,29 @@ mod tests {
         assert_eq!(replay.teams[1].players[0].name, "Nomander");
         assert_eq!(replay.teams[1].players[0].faction, Some(5));
         assert_eq!(replay.teams[1].players[0].rating, Some(1300));
+        // No journal at all, so nothing to report: the old stat-level fields
+        // carry a rating but never a change.
+        assert_eq!(replay.teams[1].players[0].rating_change, None);
         assert_eq!(replay.teams[2].team, -1);
         assert_eq!(replay.teams[2].players[0].name, "Watcher");
+    }
+
+    #[test]
+    fn a_rating_change_needs_both_ends_of_the_journal() {
+        // Both ends are rounded the way a displayed rating is before they are
+        // subtracted, so the number matches the two ratings a player sees.
+        let rated = json!({
+            "meanBefore": 1500.0, "deviationBefore": 90.0,
+            "meanAfter": 1520.0, "deviationAfter": 88.0
+        });
+        assert_eq!(rating_change_of(&rated), Some(26));
+
+        // An unrated or unresolved game has no "after" side. Reporting a
+        // change for one is the bug this replaced: the score was shown
+        // instead, which exists even for a game the server never resolved.
+        let unrated = json!({ "meanBefore": 1500.0, "deviationBefore": 90.0 });
+        assert_eq!(rating_change_of(&unrated), None);
+        assert_eq!(rating_change_of(&json!({})), None);
     }
 
     #[test]

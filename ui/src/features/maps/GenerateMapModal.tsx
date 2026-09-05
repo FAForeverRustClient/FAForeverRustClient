@@ -88,9 +88,20 @@ const loadHelp = (version?: string | null) =>
 const cancel = () => send({ type: "cancel" });
 
 /** One labelled option. The label column is fixed so every control lines up. */
-function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function Row({
+  label,
+  hint,
+  superseded = false,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  /** Dim the row: something else is deciding this value (see the style rows). */
+  superseded?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="generate-map-row">
+    <div className={superseded ? "generate-map-row is-superseded" : "generate-map-row"}>
       <span className="generate-map-row-label">{label}</span>
       <div className="generate-map-row-control">
         {children}
@@ -349,6 +360,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
   const [selectedMapIndex, setSelectedMapIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
 
   const copyCurrentName = (name: string) => {
     void navigator.clipboard.writeText(name);
@@ -362,7 +374,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const pickable = Boolean(onGenerated);
 
   return (
-    <Modal onClose={onClose} className="generate-map-modal">
+    // While the preview is zoomed, Escape and a backdrop click belong to the
+    // zoom. The dialog owns the only close handler the modal has, so it hands
+    // that handler over rather than racing a second Escape listener with it.
+    <Modal onClose={zoomed ? () => setZoomed(false) : onClose} className="generate-map-modal">
       <div className="generate-map-head">
         <h2 className="generate-map-title">{t("maps.generate.title")}</h2>
         <p className="generate-map-subtitle">{t("maps.generate.subtitle")}</p>
@@ -497,9 +512,15 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                     </Row>
 
+                    {/* The four rows below pick one generator each; a map
+                        style picks all four at once and the generator ignores
+                        the individual flags when it is set (see
+                        `protocol::map_generator`). The explanation is always
+                        on, because "how do these differ" is the question the
+                        two overlapping lists actually raise. */}
                     <Row
                       label={t("maps.generate.mapStyles")}
-                      hint={styleOverrides ? t("maps.generate.mapStyleHint") : undefined}
+                      hint={t("maps.generate.mapStyleHint")}
                     >
                       <MultiSelect
                         label={t("maps.generate.mapStyles")}
@@ -510,7 +531,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                     </Row>
 
-                    <Row label={t("maps.generate.terrainStyles")}>
+                    <Row
+                      label={t("maps.generate.terrainStyles")}
+                      superseded={styleOverrides}
+                      hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
+                    >
                       <MultiSelect
                         label={t("maps.generate.terrainStyles")}
                         options={lists.terrainStyles.map((s) => ({ value: s, label: s }))}
@@ -520,7 +545,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                     </Row>
 
-                    <Row label={t("maps.generate.textureStyles")}>
+                    <Row
+                      label={t("maps.generate.textureStyles")}
+                      superseded={styleOverrides}
+                      hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
+                    >
                       <MultiSelect
                         label={t("maps.generate.textureStyles")}
                         options={lists.textureStyles.map((s) => ({ value: s, label: s }))}
@@ -530,7 +559,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                     </Row>
 
-                    <Row label={t("maps.generate.resourceStyles")}>
+                    <Row
+                      label={t("maps.generate.resourceStyles")}
+                      superseded={styleOverrides}
+                      hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
+                    >
                       <MultiSelect
                         label={t("maps.generate.resourceStyles")}
                         options={lists.resourceStyles.map((s) => ({ value: s, label: s }))}
@@ -540,7 +573,11 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                     </Row>
 
-                    <Row label={t("maps.generate.propStyles")}>
+                    <Row
+                      label={t("maps.generate.propStyles")}
+                      superseded={styleOverrides}
+                      hint={styleOverrides ? t("maps.generate.styleSuperseded") : undefined}
+                    >
                       <MultiSelect
                         label={t("maps.generate.propStyles")}
                         options={lists.propStyles.map((s) => ({ value: s, label: s }))}
@@ -808,7 +845,18 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
               )}
 
-              <div className="generate-map-preview-img-wrap">
+              {/* The preview is small enough that spawn positions and
+                  plateaus are guesswork, so it opens full size. Only when
+                  there is a real preview: the placeholder has nothing to
+                  enlarge. */}
+              <button
+                type="button"
+                className="generate-map-preview-img-wrap generate-map-preview-zoom"
+                onClick={() => currentPreviewUrl && setZoomed(true)}
+                disabled={!currentPreviewUrl}
+                title={t("maps.generate.enlargePreview")}
+                aria-label={t("maps.generate.enlargePreview")}
+              >
                 <GeneratePreviewImg
                   url={currentPreviewUrl}
                   alt={currentMap}
@@ -816,7 +864,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   placeholderClassName="generate-map-preview-placeholder"
                   iconSize={48}
                 />
-              </div>
+              </button>
 
               <div className="generate-map-name-row">
                 <div className="generate-map-name-wrap">
@@ -941,6 +989,23 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           )}
         </div>
       </div>
+
+      {zoomed && currentPreviewUrl && (
+        <div
+          className="generate-map-zoom-overlay"
+          role="dialog"
+          aria-label={t("maps.generate.enlargePreview")}
+          onClick={() => setZoomed(false)}
+        >
+          <img
+            className="generate-map-zoom-img"
+            src={currentPreviewUrl}
+            alt={currentMap ?? ""}
+            decoding="async"
+          />
+          <span className="generate-map-zoom-hint muted">{t("maps.generate.closePreview")}</span>
+        </div>
+      )}
     </Modal>
   );
 }
