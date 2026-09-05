@@ -78,6 +78,67 @@ struct HelperFixture {
     tourney_chat_rooms: Vec<TourneyChatRoomCase>,
     tourney_bracket_configs: Vec<TourneyBracketConfigCase>,
     tourney_match_plans: Vec<TourneyMatchPlanCase>,
+    training_filters: TrainingFilterFixture,
+    training_form_problems: TrainingFormProblemFixture,
+}
+
+/// What the two training forms refuse, and why.
+///
+/// These gate a submit button on every keystroke, so the frontend owns twins of
+/// them. Recorded from the Rust functions for the same reason the filter cases
+/// are: a hand-written expectation here would only pin someone's reading.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrainingFormProblemFixture {
+    reviews: Vec<TrainingReviewProblemCase>,
+    contributions: Vec<TrainingContributionProblemCase>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrainingReviewProblemCase {
+    name: String,
+    draft: Box<ReviewRequestDraft>,
+    problem: Option<ReviewProblem>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrainingContributionProblemCase {
+    name: String,
+    draft: Box<ContributionDraft>,
+    problem: Option<ContributionProblem>,
+}
+
+/// The catalogue the filter cases run against, recorded alongside them so the
+/// frontend twin filters the same entries rather than a hand-copied echo of
+/// them.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrainingFilterFixture {
+    catalogue: Vec<TrainingResource>,
+    cases: Vec<TrainingFilterCase>,
+}
+
+/// One library query and what `filter_resources` selects from a fixed
+/// catalogue, plus the rating band each entry resolves to.
+///
+/// The library filter is one of the few rules that has to run on every
+/// keystroke, so the frontend owns a twin of it rather than a round trip. This
+/// is what stops the twin drifting: the ids are recorded from the Rust
+/// function, not from anyone's reading of it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrainingFilterCase {
+    name: String,
+    query: Box<TrainingQuery>,
+    my_rating: Option<i32>,
+    /// The reader's rating per game mode. Separate from `my_rating`, which is
+    /// the overall one, because which number applies depends on the entry:
+    /// a 1v1 guide is judged by a 1v1 rating.
+    ratings: std::collections::BTreeMap<String, i32>,
+    /// Ids selected, in the order the filter returns them.
+    expected_ids: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -2661,6 +2722,8 @@ fn helper_fixture() -> HelperFixture {
         tourney_rounds: tourney_round_cases(),
         tourney_chat_rooms: tourney_chat_room_cases(),
         tourney_bracket_configs: tourney_bracket_config_cases(),
+        training_filters: training_filter_fixture(),
+        training_form_problems: training_form_problem_fixture(),
         tourney_match_plans: [BracketKind::Single, BracketKind::Double, BracketKind::Swiss]
             .into_iter()
             .map(|kind| TourneyMatchPlanCase {
@@ -2885,7 +2948,7 @@ fn cases() -> Vec<Case> {
             vec![
                 NavEvent::TabSelected { tab: Tab::Play }.into(),
                 NavEvent::TabSelected {
-                    tab: Tab::Tutorials,
+                    tab: Tab::Training,
                 }
                 .into(),
             ],
@@ -3793,6 +3856,226 @@ fn cases() -> Vec<Case> {
                 TutorialsEvent::Launched { tutorial_id: 8 }.into(),
             ],
         ),
+        case(
+            "the training library loads, is filtered, and recommends",
+            vec![
+                TrainingEvent::Loading.into(),
+                TrainingEvent::Loaded {
+                    resources: vec![training_resource("eco"), training_resource("setons")],
+                    trainers: vec![Trainer {
+                        id: "a-trainer".into(),
+                        name: "A trainer".into(),
+                        faf_id: Some(101),
+                        role: "Personal trainer".into(),
+                        focus: "1v1 up to 1800".into(),
+                        topics: vec![TrainingTopic::Economy],
+                        game_modes: vec!["1v1".into()],
+                        rating_min: Some(1000),
+                        rating_max: Some(1800),
+                        languages: vec!["English".into()],
+                        discord: "a-trainer".into(),
+                        note: String::new(),
+                        avatar_url: String::new(),
+                        accepting: true,
+                    }],
+                    links: TrainingLinks {
+                        replay_review_url: "https://forum.faforever.com/category/4/i-need-help"
+                            .into(),
+                        replay_review_category: Some(4),
+                        ..TrainingLinks::default()
+                    },
+                    source: TrainingSource::Bundled,
+                }
+                .into(),
+                TrainingEvent::QueryChanged {
+                    query: Box::new(TrainingQuery {
+                        text: "eco".into(),
+                        level: Some(TrainingLevel::Beginner),
+                        my_rating_only: true,
+                        ..TrainingQuery::default()
+                    }),
+                }
+                .into(),
+                TrainingEvent::Selected {
+                    resource_id: Some("setons".into()),
+                }
+                .into(),
+                TrainingEvent::Recommended {
+                    resource_ids: vec!["setons".into(), "eco".into()],
+                    profile: Box::new(TrainingProfile {
+                        player: "Ada".into(),
+                        rating: Some(1150),
+                        // Global and 4v4 differ, which is the ordinary case and
+                        // the reason the profile carries both.
+                        ratings: std::collections::BTreeMap::from([
+                            ("global".to_string(), 1150),
+                            ("4v4".to_string(), 1320),
+                        ]),
+                        game_modes: vec!["4v4".into()],
+                        maps: vec!["Setons Clutch".into()],
+                        factions: vec!["uef".into()],
+                        games_seen: 12,
+                    }),
+                }
+                .into(),
+                // A reload that drops the open entry must close the detail
+                // pane rather than keep showing something absent.
+                TrainingEvent::Loaded {
+                    resources: vec![training_resource("eco")],
+                    trainers: Vec::new(),
+                    links: TrainingLinks::default(),
+                    source: TrainingSource::Remote,
+                }
+                .into(),
+                TrainingEvent::LoadFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a replay review is prefilled, composed, and invalidated by an edit",
+            vec![
+                TrainingEvent::ReviewOpened {
+                    draft: Box::new(review_draft()),
+                }
+                .into(),
+                TrainingEvent::ReviewComposed {
+                    post: Box::new(compose_review_request(
+                        &review_draft(),
+                        &TrainingLinks {
+                            replay_review_category: Some(4),
+                            ..TrainingLinks::default()
+                        },
+                    )),
+                }
+                .into(),
+                // Editing after composing drops the post: otherwise the player
+                // sends the version they just changed away from.
+                TrainingEvent::ReviewChanged {
+                    draft: Box::new(ReviewRequestDraft {
+                        goal: "Why did my push stall?".into(),
+                        ..review_draft()
+                    }),
+                }
+                .into(),
+                TrainingEvent::ReviewClosed.into(),
+            ],
+        ),
+        case(
+            "the catalogue queue signs in, accepts one and declines another",
+            vec![
+                GuidesEvent::Configured {
+                    repo: GUIDES_REPO.into(),
+                    configured: true,
+                }
+                .into(),
+                GuidesEvent::SignInStarted {
+                    login: Box::new(DeviceLogin {
+                        user_code: "WDJB-MJHT".into(),
+                        verification_uri: "https://github.com/login/device".into(),
+                        expires_at: 1_800_000_900,
+                    }),
+                }
+                .into(),
+                GuidesEvent::SignedIn {
+                    identity: Box::new(GuidesIdentity {
+                        login: "a-trainer".into(),
+                        avatar_url: String::new(),
+                        can_commit: true,
+                    }),
+                }
+                .into(),
+                GuidesEvent::QueueLoading.into(),
+                GuidesEvent::QueueLoaded {
+                    submissions: vec![submission(11), submission(12)],
+                }
+                .into(),
+                GuidesEvent::Accepting { number: 11 }.into(),
+                // A settled verdict drops its row: the queue is what is still
+                // open, and a decided submission left in it invites a second
+                // verdict.
+                GuidesEvent::Accepted { number: 11 }.into(),
+                GuidesEvent::Rejecting { number: 12 }.into(),
+                // A failed write keeps the row, so it can be tried again.
+                GuidesEvent::WriteFailed {
+                    number: 12,
+                    reason: "Resource not accessible by personal access token".into(),
+                }
+                .into(),
+                // The retry lands. Like an accept, it drops the row and is
+                // remembered, so the reload that follows cannot resurrect it.
+                GuidesEvent::Rejecting { number: 12 }.into(),
+                GuidesEvent::Rejected { number: 12 }.into(),
+                GuidesEvent::QueueLoading.into(),
+                GuidesEvent::QueueLoaded {
+                    submissions: vec![submission(11), submission(12)],
+                }
+                .into(),
+                // A read that fails keeps whatever was already listed.
+                GuidesEvent::QueueLoadFailed {
+                    reason: "API rate limit exceeded".into(),
+                }
+                .into(),
+                GuidesEvent::SignedOut.into(),
+                // Signing in again, abandoned and then refused.
+                GuidesEvent::SignInStarted {
+                    login: Box::new(DeviceLogin {
+                        user_code: "14E4-218A".into(),
+                        verification_uri: "https://github.com/login/device".into(),
+                        expires_at: 1_800_001_800,
+                    }),
+                }
+                .into(),
+                GuidesEvent::SignInCancelled.into(),
+                GuidesEvent::SignInFailed {
+                    reason: "the sign-in code expired before it was used".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a submission of our own reports where it landed",
+            vec![
+                GuidesEvent::Submitting.into(),
+                GuidesEvent::Submitted {
+                    url: "https://github.com/FAForeverRustClient/guides/issues/13".into(),
+                }
+                .into(),
+                // Writing a second guide in one session: without this the
+                // preview kept offering the first one's link and hid the send
+                // button, because the state still said the work was done.
+                GuidesEvent::SubmitReset.into(),
+                GuidesEvent::SubmitFailed {
+                    reason: "GitHub refused to open the submission: Not Found".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a contribution is drafted, composed, and closed",
+            vec![
+                TrainingEvent::ContributionOpened {
+                    draft: Box::new(ContributionDraft::default()),
+                }
+                .into(),
+                TrainingEvent::ContributionChanged {
+                    draft: Box::new(contribution_draft()),
+                }
+                .into(),
+                TrainingEvent::ContributionComposed {
+                    post: Box::new(compose_contribution(
+                        &contribution_draft(),
+                        &TrainingLinks {
+                            contribute_category: Some(4),
+                            ..TrainingLinks::default()
+                        },
+                    )),
+                }
+                .into(),
+                TrainingEvent::ContributionClosed.into(),
+            ],
+        ),
         // ── notifications / reporting / social ───────────────────────────
         case(
             "notifications are added and dismissed",
@@ -4544,6 +4827,396 @@ fn player_summary(id: i32, login: &str, rating: Option<i32>) -> PlayerSummary {
     }
 }
 
+/// The catalogue every filter case runs against.
+///
+/// Kept small and deliberately awkward: an entry with no tags at all, one with
+/// only a level, one with numbers that contradict its level, and one about a
+/// specific map. Those are the four shapes the filter's edge cases live in.
+fn training_catalogue() -> Vec<TrainingResource> {
+    let base = TrainingResource {
+        image_url: String::new(),
+        id: String::new(),
+        title: String::new(),
+        summary: String::new(),
+        kind: TrainingKind::Guide,
+        level: None,
+        url: String::new(),
+        tutorial_id: None,
+        author: String::new(),
+        rating_min: None,
+        rating_max: None,
+        game_modes: vec![],
+        topics: vec![],
+        maps: vec![],
+        factions: vec![],
+        duration_minutes: None,
+        related: vec![],
+        approved_by: String::new(),
+        updated_at: String::new(),
+    };
+    vec![
+        TrainingResource {
+            image_url: String::new(),
+            id: "untagged".into(),
+            title: "How the game works".into(),
+            ..base.clone()
+        },
+        TrainingResource {
+            id: "eco-beginner".into(),
+            title: "Economy fundamentals".into(),
+            summary: "Mass and energy for a first game.".into(),
+            kind: TrainingKind::Video,
+            level: Some(TrainingLevel::Beginner),
+            topics: vec![TrainingTopic::Economy],
+            game_modes: vec!["1v1".into()],
+            ..base.clone()
+        },
+        TrainingResource {
+            id: "setons-4v4".into(),
+            title: "Seton's Clutch opening".into(),
+            kind: TrainingKind::BuildOrder,
+            level: Some(TrainingLevel::Beginner),
+            rating_min: Some(1400),
+            topics: vec![TrainingTopic::BuildOrder, TrainingTopic::Economy],
+            game_modes: vec!["4v4".into()],
+            maps: vec!["Setons Clutch".into()],
+            ..base.clone()
+        },
+        TrainingResource {
+            id: "advanced-micro".into(),
+            title: "Micro at the top".into(),
+            author: "A trainer".into(),
+            level: Some(TrainingLevel::Advanced),
+            topics: vec![TrainingTopic::Micro],
+            ..base
+        },
+    ]
+}
+
+fn training_form_problem_fixture() -> TrainingFormProblemFixture {
+    let review = |name: &str, draft: ReviewRequestDraft| TrainingReviewProblemCase {
+        name: name.to_string(),
+        problem: review_problem(&draft),
+        draft: Box::new(draft),
+    };
+    let contribution = |name: &str, draft: ContributionDraft| TrainingContributionProblemCase {
+        name: name.to_string(),
+        problem: contribution_problem(&draft),
+        draft: Box::new(draft),
+    };
+    let asked = ReviewRequestDraft {
+        goal: "Where did I lose the eco lead?".into(),
+        ..ReviewRequestDraft::default()
+    };
+    let titled = ContributionDraft {
+        title: "T1 tank micro".into(),
+        ..ContributionDraft::default()
+    };
+
+    TrainingFormProblemFixture {
+        reviews: vec![
+            review(
+                "an empty request has no replay",
+                ReviewRequestDraft::default(),
+            ),
+            review(
+                "a replay with no question",
+                ReviewRequestDraft {
+                    replay_id: Some(27_456_965),
+                    ..ReviewRequestDraft::default()
+                },
+            ),
+            review(
+                "an id and a question is enough",
+                ReviewRequestDraft {
+                    replay_id: Some(27_456_965),
+                    ..asked.clone()
+                },
+            ),
+            review(
+                "a pasted link is enough",
+                ReviewRequestDraft {
+                    replay_link: "https://replay.faforever.com/27456965".into(),
+                    ..asked.clone()
+                },
+            ),
+            review(
+                "a local file that was never uploaded is enough",
+                ReviewRequestDraft {
+                    replay_file: "2026-09-04 setons.fafreplay".into(),
+                    ..asked.clone()
+                },
+            ),
+            review(
+                "a question of only whitespace is no question",
+                ReviewRequestDraft {
+                    replay_id: Some(1),
+                    goal: "   ".into(),
+                    ..ReviewRequestDraft::default()
+                },
+            ),
+        ],
+        contributions: vec![
+            contribution("nothing at all", ContributionDraft::default()),
+            contribution("a title and nothing else", titled.clone()),
+            contribution(
+                "a title and a link",
+                ContributionDraft {
+                    url: "https://www.youtube.com/watch?v=abc".into(),
+                    ..titled.clone()
+                },
+            ),
+            contribution(
+                "a title and a body",
+                ContributionDraft {
+                    body: "Split before they are shot.".into(),
+                    ..titled.clone()
+                },
+            ),
+            contribution(
+                "a link that is not a link",
+                ContributionDraft {
+                    url: "youtube.com/watch".into(),
+                    ..titled.clone()
+                },
+            ),
+            contribution(
+                "a link that is not HTTPS",
+                ContributionDraft {
+                    url: "http://example.invalid/guide".into(),
+                    ..titled.clone()
+                },
+            ),
+            contribution(
+                "a scheme and nothing after it",
+                ContributionDraft {
+                    url: "https://".into(),
+                    ..titled.clone()
+                },
+            ),
+            contribution(
+                "a host with a space in it",
+                ContributionDraft {
+                    url: "https://a b.com".into(),
+                    ..titled
+                },
+            ),
+        ],
+    }
+}
+
+fn training_filter_fixture() -> TrainingFilterFixture {
+    TrainingFilterFixture {
+        catalogue: training_catalogue(),
+        cases: training_filter_cases(),
+    }
+}
+
+fn training_filter_cases() -> Vec<TrainingFilterCase> {
+    let catalogue = training_catalogue();
+    let case = |name: &str,
+                query: TrainingQuery,
+                my_rating: Option<i32>,
+                ratings: std::collections::BTreeMap<String, i32>| {
+        let profile = TrainingProfile {
+            rating: my_rating,
+            ratings: ratings.clone(),
+            ..TrainingProfile::default()
+        };
+        TrainingFilterCase {
+            name: name.to_string(),
+            expected_ids: filter_resources(&catalogue, &query, &profile)
+                .into_iter()
+                .map(|resource| resource.id.clone())
+                .collect(),
+            query: Box::new(query),
+            my_rating,
+            ratings,
+        }
+    };
+
+    vec![
+        case(
+            "no filter lists everything",
+            TrainingQuery::default(),
+            Some(1000),
+            Default::default(),
+        ),
+        case(
+            "free text searches prose and tags alike",
+            TrainingQuery {
+                text: "setons".into(),
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "free text matches the author",
+            TrainingQuery {
+                text: "trainer".into(),
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "a level filter is exact and excludes the untagged",
+            TrainingQuery {
+                level: Some(TrainingLevel::Beginner),
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "a topic filter",
+            TrainingQuery {
+                topic: Some(TrainingTopic::Economy),
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "a kind filter",
+            TrainingQuery {
+                kind: Some(TrainingKind::Video),
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "a mode filter keeps entries that claim no mode",
+            TrainingQuery {
+                game_mode: "4v4".into(),
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "a map filter keeps entries that claim no map",
+            TrainingQuery {
+                map: "setons".into(),
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "my rating hides a band that excludes me, level bands included",
+            TrainingQuery {
+                my_rating_only: true,
+                ..TrainingQuery::default()
+            },
+            Some(800),
+            Default::default(),
+        ),
+        case(
+            "my rating with no rating known hides nothing",
+            TrainingQuery {
+                my_rating_only: true,
+                ..TrainingQuery::default()
+            },
+            None,
+            Default::default(),
+        ),
+        case(
+            "filters combine",
+            TrainingQuery {
+                topic: Some(TrainingTopic::Economy),
+                level: Some(TrainingLevel::Beginner),
+                my_rating_only: true,
+                ..TrainingQuery::default()
+            },
+            Some(900),
+            Default::default(),
+        ),
+        case(
+            "a ladder guide is judged by the ladder rating, not the global one",
+            TrainingQuery {
+                my_rating_only: true,
+                ..TrainingQuery::default()
+            },
+            Some(1800),
+            std::collections::BTreeMap::from([("1v1".to_string(), 1200)]),
+        ),
+    ]
+}
+
+fn submission(number: i32) -> GuideSubmission {
+    GuideSubmission {
+        number,
+        title: format!("Training submission: Guide {number}"),
+        summary: "A short pitch for it.".into(),
+        entry: Some(training_resource(&format!("guide-{number}"))),
+        author: "someone".into(),
+        author_avatar_url: String::new(),
+        created_at: "2026-09-04T18:00:00Z".into(),
+        url: format!("https://github.com/FAForeverRustClient/guides/issues/{number}"),
+        guide: None,
+    }
+}
+
+fn training_resource(id: &str) -> TrainingResource {
+    TrainingResource {
+        id: id.into(),
+        image_url: String::new(),
+        title: format!("Resource {id}"),
+        summary: "A short description.".into(),
+        kind: TrainingKind::Guide,
+        level: Some(TrainingLevel::Beginner),
+        url: "https://wiki.faforever.com".into(),
+        tutorial_id: None,
+        author: "A trainer".into(),
+        rating_min: Some(800),
+        rating_max: Some(1200),
+        game_modes: vec!["4v4".into()],
+        topics: vec![TrainingTopic::Economy],
+        maps: vec!["Setons Clutch".into()],
+        factions: vec![],
+        duration_minutes: Some(12),
+        related: vec![],
+        approved_by: String::new(),
+        updated_at: String::new(),
+    }
+}
+
+fn review_draft() -> ReviewRequestDraft {
+    ReviewRequestDraft {
+        replay_id: Some(27_456_965),
+        replay_link: "https://replay.faforever.com/27456965".into(),
+        replay_file: "27456965.fafreplay".into(),
+        player: "Ada".into(),
+        rating: "1150".into(),
+        game_mode: "4v4".into(),
+        map: "Setons Clutch".into(),
+        faction: "UEF".into(),
+        played_at: "2026-09-04T18:00:00Z".into(),
+        goal: "Where did I lose the eco lead?".into(),
+        struggle: String::new(),
+    }
+}
+
+fn contribution_draft() -> ContributionDraft {
+    ContributionDraft {
+        title: "T1 tank micro".into(),
+        summary: "Split before they are shot.".into(),
+        kind: TrainingKind::Guide,
+        level: Some(TrainingLevel::Beginner),
+        url: String::new(),
+        body: "Split before they are shot.".into(),
+        topics: vec![TrainingTopic::Micro],
+        game_modes: vec!["1v1".into()],
+        maps: vec![],
+        factions: vec![],
+        rating_min: "800".into(),
+        rating_max: "1200".into(),
+    }
+}
+
 fn tutorial(id: i32) -> Tutorial {
     Tutorial {
         id,
@@ -4734,6 +5407,11 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
     ),
     ("Coop", "CoopEvent", include_str!("../src/state/coop.rs")),
     (
+        "Guides",
+        "GuidesEvent",
+        include_str!("../src/state/guides.rs"),
+    ),
+    (
         "Install",
         "InstallEvent",
         include_str!("../src/state/install.rs"),
@@ -4796,6 +5474,11 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         "Tourney",
         "TourneyEvent",
         include_str!("../src/state/tourney.rs"),
+    ),
+    (
+        "Training",
+        "TrainingEvent",
+        include_str!("../src/state/training.rs"),
     ),
     (
         "Tutorials",

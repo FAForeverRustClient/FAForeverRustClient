@@ -9,6 +9,7 @@ import { reduceClientUpdate } from "./reducers/clientUpdate";
 import { reduceCoop } from "./reducers/coop";
 import { reduceAuth, reduceInstall, reduceNav, reduceSession, reduceSettings } from "./reducers/core";
 import { reduceGalacticWar } from "./reducers/galacticWar";
+import { reduceGuides } from "./reducers/guides";
 import { reduceLeaderboard } from "./reducers/leaderboard";
 import { reduceLobby } from "./reducers/lobby";
 import { reduceMapGenerator } from "./reducers/mapGenerator";
@@ -20,6 +21,7 @@ import { reduceReplays } from "./reducers/replays";
 import { reduceReporting } from "./reducers/reporting";
 import { reduceReviews } from "./reducers/reviews";
 import { reduceSocial } from "./reducers/social";
+import { reduceTraining } from "./reducers/training";
 import { reduceTutorials } from "./reducers/tutorials";
 import { reduceUploads } from "./reducers/uploads";
 import { reduceTourney } from "./reducers/tourney";
@@ -67,6 +69,10 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, reviews: reduceReviews(state.reviews, event.event) };
     case "Tourney":
       return { ...state, tourney: reduceTourney(state.tourney, event.event) };
+    case "Guides":
+      return { ...state, guides: reduceGuides(state.guides, event.event) };
+    case "Training":
+      return { ...state, training: reduceTraining(state.training, event.event) };
     case "Tutorials":
       return { ...state, tutorials: reduceTutorials(state.tutorials, event.event) };
     case "Uploads":

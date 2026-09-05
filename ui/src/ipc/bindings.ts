@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -37,9 +37,11 @@ export type AppState = {
 	reviews: ReviewsState,
 	social: SocialState,
 	tourney: TourneyState,
+	training: TrainingState,
 	tutorials: TutorialsState,
 	uploads: UploadsState,
 	galacticWar: GalacticWarState,
+	guides: GuidesState,
 	clientUpdate: ClientUpdateState,
 	settings: SettingsState,
 	changelog: ChangelogState,
@@ -1011,6 +1013,35 @@ export type ConnectivityPreferences = {
 	selectionVersion: number,
 };
 
+/**  A content submission, as the player edits it. */
+export type ContributionDraft = {
+	title: string,
+	/**
+	 *  One line, which is what a card in the library shows under the title.
+	 *  Asked for because without it an accepted entry has nothing to say for
+	 *  itself, and a curator would have to write one on the author's behalf.
+	 */
+	summary: string,
+	kind: TrainingKind,
+	level: TrainingLevel | null,
+	/**  For a video or an existing page: the destination. */
+	url: string,
+	/**  For something written here: the body, as Markdown. */
+	body: string,
+	topics: TrainingTopic[],
+	gameModes: string[],
+	maps: string[],
+	factions: string[],
+	ratingMin: string,
+	ratingMax: string,
+};
+
+export type ContributionProblem = "noTitle" |
+/**  Neither a link nor any text: there is no submission. */
+"noContent" |
+/**  A link that is not an ordinary `https://` URL. */
+"badUrl";
+
 /**  Which game a scenario's missions came from. Java's `CoopType`. */
 export type CoopCategory =
 /**  Vanilla Supreme Commander. */
@@ -1222,6 +1253,22 @@ export type DecodedStyle =
 /**  The four component styles plus both densities. */
 { kind: "custom"; terrainStyle: string | null; textureStyle: string | null; resourceStyle: string | null; propStyle: string | null; reclaimDensity: number | null; resourceDensity: number | null };
 
+/**
+ *  A device-flow login in progress.
+ *
+ *  The user code and the URL are both shown: the code has to be readable and
+ *  typed by hand, because the whole point of the flow is that the client never
+ *  sees the credentials.
+ */
+export type DeviceLogin = {
+	/**  The short code the user types into GitHub, e.g. `WDJB-MJHT`. */
+	userCode: string,
+	/**  Where they type it, `https://github.com/login/device`. */
+	verificationUri: string,
+	/**  Unix seconds after which the code stops working. */
+	expiresAt: number,
+};
+
 /**  Discord Rich Presence: what the client tells Discord you are doing. */
 export type DiscordPreferences = {
 	/**
@@ -1355,6 +1402,29 @@ export type Formation =
 "open" |
 /**  Captains pick in turn. */
 "draft";
+
+/**
+ *  A post the client has written for the player to send.
+ *
+ *  Named for where it started. It now also carries a GitHub issue: both are
+ *  "a title, a body, and a prefilled address", and both are sent by the player
+ *  rather than by this client.
+ *
+ *  The client composes and the player posts, deliberately. Posting on someone's
+ *  behalf would need their forum session, and a request written by a bot in a
+ *  human's name is exactly the kind of thing a training community does not
+ *  want. What the client removes is the part that actually stops people: find
+ *  the channel, find the template, dig the replay id out of a file name.
+ */
+export type ForumPost = {
+	title: string,
+	body: string,
+	/**
+	 *  The composer, prefilled. Empty when no category id is configured, in
+	 *  which case the body still stands on its own and can be copied.
+	 */
+	url: string,
+};
 
 /**  Counts that outlive the current season. */
 export type GalacticWarAlltime = {
@@ -1831,6 +1901,198 @@ export type GeneratorStatus = { type: "idle" } |
  *  ignore error messages.
  */
 { type: "cancelled" };
+
+/**  One pending submission, as the queue lists it. */
+export type GuideSubmission = {
+	/**  The issue number, which is what accept and reject address. */
+	number: number,
+	title: string,
+	/**  The prose half, with the JSON block removed: what a reviewer reads. */
+	summary: string,
+	/**
+	 *  The catalogue entry, when the body carried a parseable one.
+	 *
+	 *  `None` for an issue somebody opened by hand. Such a submission is still
+	 *  listed and still readable, but it cannot be accepted in one step,
+	 *  because there is nothing to copy into the catalogue.
+	 */
+	entry: TrainingResource | null,
+	author: string,
+	authorAvatarUrl: string,
+	/**  ISO 8601, straight from the API. */
+	createdAt: string,
+	/**  The issue on github.com, for a reviewer who wants the full thread. */
+	url: string,
+	/**
+	 *  The guide itself, when the author wrote one here instead of linking to
+	 *  one somewhere else. Accepting commits it as a file and points the
+	 *  catalogue entry at it.
+	 */
+	guide: string | null,
+};
+
+export type GuidesAuthStatus = { type: "signedOut" } |
+/**  The code has been issued and the client is waiting for GitHub. */
+{ type: "waiting"; payload: {
+	login: DeviceLogin,
+} } | { type: "signedIn"; payload: {
+	identity: GuidesIdentity,
+} } | { type: "failed"; payload: {
+	reason: string,
+} } |
+/**
+ *  No OAuth client id is configured, so signing in is not offered at all.
+ *
+ *  Its own state rather than a silent absence: a maintainer looking for the
+ *  accept button needs to know the client was not told which app to use,
+ *  which is a deployment fact and not something they did wrong.
+ */
+{ type: "unconfigured" };
+
+export type GuidesCommand =
+/**  Restore a stored token, if there is one. Runs when the tab first opens. */
+{ type: "restore" } |
+/**  Ask GitHub for a device code and start waiting for the authorisation. */
+{ type: "signIn" } |
+/**
+ *  Give up on a login in progress. The code is left to expire on its own;
+ *  there is nothing to revoke because nothing was granted.
+ */
+{ type: "cancelSignIn" } | { type: "signOut" } |
+/**  Read the open submissions. Needs no token. */
+{ type: "loadQueue" } |
+/**  Publish a submission's entry into the catalogue and close its issue. */
+{ type: "accept"; payload: {
+	number: number,
+} } | { type: "reject"; payload: {
+	number: number,
+	reason: RejectReason,
+	note: string,
+} } |
+/**
+ *  Open a submission of our own, from the contribution form's draft.
+ *
+ *  The draft travels rather than a finished entry: deriving one from the
+ *  other (the id from the title, the numbers out of text fields) is a rule,
+ *  and a rule the frontend also knew would be a rule written twice.
+ */
+{ type: "submit"; payload: {
+	draft: ContributionDraft,
+} };
+
+export type GuidesEvent =
+/**  The repository and whether signing in is possible at all. */
+{ type: "configured"; payload: {
+	repo: string,
+	configured: boolean,
+} } | { type: "signInStarted"; payload: {
+	login: DeviceLogin,
+} } | { type: "signedIn"; payload: {
+	identity: GuidesIdentity,
+} } | { type: "signInFailed"; payload: {
+	reason: string,
+} } | { type: "signInCancelled" } | { type: "signedOut" } | { type: "queueLoading" } | { type: "queueLoaded"; payload: {
+	submissions: GuideSubmission[],
+} } | { type: "queueLoadFailed"; payload: {
+	reason: string,
+} } | { type: "accepting"; payload: {
+	number: number,
+} } | { type: "accepted"; payload: {
+	number: number,
+} } | { type: "rejecting"; payload: {
+	number: number,
+} } | { type: "rejected"; payload: {
+	number: number,
+} } | { type: "writeFailed"; payload: {
+	number: number,
+	reason: string,
+} } |
+/**
+ *  A fresh submission is being written, so whatever the last one did is no
+ *  longer the answer to anything on screen.
+ *
+ *  Its own event rather than a flag the UI keeps, because the stale value
+ *  is in the backend's state: without this, composing a second guide in one
+ *  session shows the *first* one's "submitted, open it" link and hides the
+ *  send button, which reads as the client refusing to send the second one.
+ */
+{ type: "submitReset" } | { type: "submitting" } | { type: "submitted"; payload: {
+	url: string,
+} } | { type: "submitFailed"; payload: {
+	reason: string,
+} };
+
+/**  Who the client is signed in to GitHub as. */
+export type GuidesIdentity = {
+	login: string,
+	avatarUrl: string,
+	/**
+	 *  Whether this account may commit to the catalogue, as GitHub reports it.
+	 *
+	 *  Read for the sake of *wording*: it decides whether the buttons say
+	 *  "accept" or explain that a submission will be proposed rather than
+	 *  committed. It is never the authorisation, which is the answer GitHub
+	 *  gives to the write itself.
+	 */
+	canCommit: boolean,
+};
+
+export type GuidesState = {
+	auth: GuidesAuthStatus,
+	submissions: GuideSubmission[],
+	status: GuidesStatus,
+	write: GuidesWrite,
+	submit: SubmitStatus,
+	/**
+	 *  The repository being maintained, so the UI can name and link it without
+	 *  hardcoding what the infrastructure was configured with.
+	 */
+	repo: string,
+	/**
+	 *  Submissions this session has already decided.
+	 *
+	 *  Every verdict re-reads the queue, and GitHub's issue list does not
+	 *  always show a state change that happened a moment ago: the row a
+	 *  maintainer just declined would come back, look untouched, and invite a
+	 *  second verdict on it. Remembering the numbers is cheaper and more
+	 *  certain than guessing at a delay.
+	 *
+	 *  Session-scoped, so an issue somebody genuinely reopens is listed again
+	 *  on the next start. That is the right trade: a reopened submission is
+	 *  rare, and one that reappears seconds after being closed is confusing
+	 *  every single time.
+	 */
+	settled: number[],
+};
+
+export type GuidesStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+/**
+ *  What a write is doing right now.
+ *
+ *  Carries the issue number so a row narrates its own progress: the queue is a
+ *  list, and a global spinner would say "something is happening" next to five
+ *  rows that are not.
+ */
+export type GuidesWrite = { type: "idle" } | { type: "accepting"; payload: {
+	number: number,
+} } | { type: "rejecting"; payload: {
+	number: number,
+} } |
+/**
+ *  A submission was published. Held so the queue can say what happened
+ *  after the row it describes has gone.
+ */
+{ type: "accepted"; payload: {
+	number: number,
+} } | { type: "rejected"; payload: {
+	number: number,
+} } | { type: "failed"; payload: {
+	number: number,
+	reason: string,
+} };
 
 /**
  *  Configuration sent with `game_host`. This mirrors the reference client's host
@@ -4036,6 +4298,15 @@ export type Reaction = {
 };
 
 /**
+ *  Why a submission was turned down.
+ *
+ *  A closed set, because the reason is written into the repository where the
+ *  author reads it, and "no" without a category is the feedback that makes
+ *  people stop submitting.
+ */
+export type RejectReason = "duplicate" | "incorrectInformation" | "poorQuality" | "outdated" | "wrongCategorisation";
+
+/**
  *  Which relation list an action operates on. Friends and foes are mutually
  *  exclusive on the server, and the reducer keeps them that way locally too.
  */
@@ -4495,6 +4766,42 @@ export type Review = {
  */
 export type ReviewKind = "map" | "mod";
 
+/**  Why a review request is not ready to post. */
+export type ReviewProblem =
+/**  Neither a link, an id nor a file: a reviewer would have nothing to watch. */
+"noReplay" |
+/**
+ *  Nothing said about what help is wanted. The single most common reason a
+ *  review request sits unanswered, so it is required rather than optional.
+ */
+"noGoal";
+
+/**
+ *  A replay review request, as the player edits it.
+ *
+ *  `rating` is a string, not an `i32`: a number field the user is typing into
+ *  is empty for a keystroke, and modelling that as a number forces either a
+ *  zero or a field that fights back.
+ */
+export type ReviewRequestDraft = {
+	replayId: number | null,
+	/**  The shareable replay link, when the game has one. */
+	replayLink: string,
+	/**  The local file, for a replay that was never uploaded. */
+	replayFile: string,
+	player: string,
+	rating: string,
+	gameMode: string,
+	map: string,
+	faction: string,
+	/**  ISO or already-formatted; passed through to the post as written. */
+	playedAt: string,
+	/**  "What would you like help with?" */
+	goal: string,
+	/**  "What did you struggle with?" */
+	struggle: string,
+};
+
 /**
  *  Whether a write is in flight. Separate from the read status so a failed
  *  submission does not blank the list the user is looking at.
@@ -4926,11 +5233,20 @@ export type StyleConstraints = {
 	maxNumTeams: number,
 };
 
+/**  Where a submission of our own ended up. */
+export type SubmitStatus = { type: "idle" } | { type: "sending" } |
+/**  Opened, with the issue's address so the author can follow it. */
+{ type: "sent"; payload: {
+	url: string,
+} } | { type: "failed"; payload: {
+	reason: string,
+} };
+
 /**
  *  A top-level destination. Most are placeholders today; each gets its feature
  *  slice as it lands. The frontend tab registry maps these 1:1 to views.
  */
-export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "tutorials" | "units" | "changelog" | "contribution" | "settings";
+export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "training" | "units" | "changelog" | "contribution" | "settings";
 
 /**
  *  How far a team got: the side and round its last match was in.
@@ -6287,6 +6603,371 @@ export type TourneyViewer = {
 	 */
 	newsReadAt: number | null,
 };
+
+/**
+ *  One member of FAF's training team.
+ *
+ *  A list rather than a matching service, deliberately. Who is willing to
+ *  coach, what they are good at and roughly which players they coach are facts
+ *  that fit on a card, and the actual arrangement happens between two people
+ *  on Discord. Anything more (availability, scheduling, a request queue) needs
+ *  the trainer to keep a profile up to date, which is exactly the maintenance
+ *  burden the rest of this tab is built to avoid.
+ */
+export type Trainer = {
+	id: string,
+	/**  What to call them. Usually their FAF login, but not necessarily. */
+	name: string,
+	/**
+	 *  The FAF account, when the trainer has said which one it is.
+	 *
+	 *  With it a tile stops being a string: the player card opens, their real
+	 *  rating and avatar resolve, and a private message can be sent from the
+	 *  client. This is the same reason a tournament entrant carries `fafId`.
+	 */
+	fafId: number | null,
+	/**
+	 *  Free text: "Trainer", "Veteran Trainer", "Team Lead". The training team
+	 *  names its own roles and does not need this client's permission to invent
+	 *  another. Shown as the tile's one tag.
+	 */
+	role: string,
+	/**
+	 *  What this person coaches, in a few words: "Team games", "Seton's
+	 *  Clutch", "1v1 up to 1800".
+	 *
+	 *  The tile's heading, with [`Self::note`] underneath as the longer
+	 *  version. Written rather than assembled from the tags below, because the
+	 *  useful summary of somebody's area is a phrase and not a list: "1v1 up to
+	 *  1800" reads as an answer where "1v1 · 0-1800" reads as a database row.
+	 */
+	focus: string,
+	topics: TrainingTopic[],
+	gameModes: string[],
+	/**  The rating range they coach, if they say. Read with [`within_band`]. */
+	ratingMin: number | null,
+	ratingMax: number | null,
+	/**  Languages they can teach in, as written by them ("English", "Deutsch"). */
+	languages: string[],
+	/**
+	 *  Discord handle, not an invite: the tile says who to look for in the
+	 *  training server the hero already links to.
+	 */
+	discord: string,
+	note: string,
+	avatarUrl: string,
+	/**
+	 *  Whether they are currently taking students. A tile stays listed when
+	 *  they are not, marked as such: "this person coaches, just not right now"
+	 *  is more useful than a name that vanishes.
+	 */
+	accepting: boolean,
+};
+
+export type TrainingCommand =
+/**  Fetch the catalogue and recompute the recommendations. */
+{ type: "load" } | { type: "setQuery"; payload: {
+	query: TrainingQuery,
+} } | { type: "select"; payload: {
+	resourceId: string | null,
+} } |
+/**
+ *  Open the review request form.
+ *
+ *  The prefill is asked for by *reference*, not passed in: which replay,
+ *  and the service reads the rest out of the state that already lists it.
+ *  A caller in the replays tab therefore cannot fill the form in with
+ *  something the client does not actually know.
+ */
+{ type: "openReview"; payload: {
+	replayUid: number | null,
+	localPath: string | null,
+} } |
+/**
+ *  Write the post, from the draft the form settled on.
+ *
+ *  The draft travels with the command rather than being pushed field by
+ *  field as it is typed. A command per keystroke would put an IPC round
+ *  trip between a key and the character appearing, which for a controlled
+ *  text field is how typed characters get dropped. So the form owns the
+ *  draft while it is being edited, and the state learns it at the one
+ *  moment it matters.
+ *
+ *  Composing is a separate step from opening the post so the player reads
+ *  what they are about to post before a forum sees it.
+ */
+{ type: "composeReview"; payload: {
+	draft: ReviewRequestDraft,
+} } | { type: "closeReview" } | { type: "openContribution" } | { type: "composeContribution"; payload: {
+	draft: ContributionDraft,
+} } | { type: "closeContribution" };
+
+export type TrainingEvent = { type: "loading" } | { type: "loaded"; payload: {
+	resources: TrainingResource[],
+	trainers: Trainer[],
+	links: TrainingLinks,
+	source: TrainingSource,
+} } | { type: "loadFailed"; payload: {
+	reason: string,
+} } | { type: "queryChanged"; payload: {
+	query: TrainingQuery,
+} } | { type: "selected"; payload: {
+	resourceId: string | null,
+} } | { type: "recommended"; payload: {
+	resourceIds: string[],
+	profile: TrainingProfile,
+} } | { type: "reviewOpened"; payload: {
+	draft: ReviewRequestDraft,
+} } | { type: "reviewChanged"; payload: {
+	draft: ReviewRequestDraft,
+} } | { type: "reviewComposed"; payload: {
+	post: ForumPost,
+} } | { type: "reviewClosed" } | { type: "contributionOpened"; payload: {
+	draft: ContributionDraft,
+} } | { type: "contributionChanged"; payload: {
+	draft: ContributionDraft,
+} } | { type: "contributionComposed"; payload: {
+	post: ForumPost,
+} } | { type: "contributionClosed" };
+
+/**
+ *  What kind of thing a resource is, as the reader experiences it.
+ *
+ *  Distinct from [`TrainingTopic`] (what it is about) and [`TrainingLevel`]
+ *  (who it is for), because a player filters on all three independently: "a
+ *  video about economy for beginners" is three separate choices.
+ */
+export type TrainingKind = "video" |
+/**
+ *  The default, and what an untagged manifest entry becomes: most of what
+ *  the community writes down is a guide of some sort, and calling an
+ *  untyped entry a video or a lesson would be a claim the manifest did not
+ *  make.
+ */
+"guide" | "buildOrder" | "replayAnalysis" |
+/**  A playable FAF lesson: the tutorials API's own entries. */
+"lesson" |
+/**  A place rather than a document: a Discord server, a forum category. */
+"community";
+
+export type TrainingLevel = "beginner" | "intermediate" | "advanced";
+
+/**
+ *  The community destinations the hub routes to.
+ *
+ *  Carried by the catalogue rather than compiled in, because the one value that
+ *  matters most here (the training Discord invite) is not something a client
+ *  release should be needed to change.
+ */
+export type TrainingLinks = {
+	/**
+	 *  The training community's Discord invite. Empty hides the button rather
+	 *  than sending anyone to a guess.
+	 */
+	discordUrl: string,
+	/**
+	 *  The exact Discord channel a replay review is asked in, as a
+	 *  `https://discord.com/channels/<guild>/<channel>` address.
+	 *
+	 *  Worth its own field rather than reusing the invite: Discord's desktop
+	 *  application follows one of these straight to the channel, so the player
+	 *  lands where the request goes with it already on their clipboard,
+	 *  instead of in a server they then have to navigate. Empty falls back to
+	 *  the invite.
+	 */
+	replayReviewChannel: string,
+	/**
+	 *  The forum category where past replay reviews can be read. Not where a
+	 *  request goes: that is Discord.
+	 */
+	replayReviewUrl: string,
+	/**
+	 *  The same category as a NodeBB id, which is what composing a prefilled
+	 *  post needs. Without it the client can still open the category.
+	 */
+	replayReviewCategory: number | null,
+	/**  Where a content submission goes. */
+	contributeUrl: string,
+	contributeCategory: number | null,
+	wikiUrl: string,
+};
+
+/**
+ *  What the client knows about the player, reduced to what a recommendation
+ *  needs.
+ *
+ *  Derived from state that is already loaded, never fetched for this purpose:
+ *  see [`profile_from_state`].
+ */
+export type TrainingProfile = {
+	player: string,
+	/**
+	 *  The overall rating, used when nothing more specific applies.
+	 *
+	 *  Kept beside [`Self::ratings`] rather than replaced by it: a resource
+	 *  that names no mode is about the game, and the number to judge it
+	 *  against is the one FAF calls global.
+	 */
+	rating: number | null,
+	/**
+	 *  Every rating this account holds, keyed by game mode ("1v1", "2v2",
+	 *  "3v3", "4v4", "global").
+	 *
+	 *  FAF keeps five, and collapsing them to one gets the answer wrong in
+	 *  the ordinary case rather than a rare one: a 1v1 guide written for
+	 *  1000 to 1400 is exactly right for somebody who is 1800 global and 1200
+	 *  in the ladder, and judging it by their global rating hides it from the
+	 *  person it was written for.
+	 */
+	ratings: { [key in string]: number },
+	/**  Modes recently played, most played first. */
+	gameModes: string[],
+	/**  Maps recently played, most played first. */
+	maps: string[],
+	/**  Factions recently played, most played first. */
+	factions: string[],
+	/**
+	 *  How many of this player's own games the above was read from. Shown so
+	 *  "recommended for you" can say what it is based on, and so a profile
+	 *  derived from nothing can say that instead of pretending.
+	 */
+	gamesSeen: number,
+};
+
+/**  What the library is filtered to. */
+export type TrainingQuery = {
+	text: string,
+	level: TrainingLevel | null,
+	kind: TrainingKind | null,
+	topic: TrainingTopic | null,
+	gameMode: string,
+	map: string,
+	/**  Hide anything whose band excludes this account's rating. */
+	myRatingOnly: boolean,
+};
+
+/**
+ *  One piece of training material.
+ *
+ *  Complete by the time it reaches here: a manifest states only what it knows,
+ *  and filling in the rest is the job of the wire DTO at the boundary
+ *  (`faf_app::infra::training`) rather than of every reader of this type.
+ */
+export type TrainingResource = {
+	/**
+	 *  Stable across catalogue reloads: it is what `related` points at, what
+	 *  the recommendation list carries, and what the UI keys rows by.
+	 */
+	id: string,
+	title: string,
+	summary: string,
+	kind: TrainingKind,
+	level: TrainingLevel | null,
+	/**
+	 *  Where it lives. Empty for a playable lesson, which is launched rather
+	 *  than opened.
+	 */
+	url: string,
+	/**
+	 *  Set when this entry *is* a FAF tutorial, which is what makes a manifest
+	 *  able to add tags to a lesson the API describes without tags.
+	 *  A picture for the card, when there is one to be had.
+	 *
+	 *  The grid is pictures with captions, because a player recognises a map or
+	 *  a creator's thumbnail long before they read a title. Three sources, in
+	 *  order: what the manifest states, what FAF's tutorial API already gives a
+	 *  lesson, and [`video_still`] for a video whose host publishes one. An
+	 *  entry with none of those falls back to a mark saying what it is, which
+	 *  is honest and still scannable.
+	 */
+	imageUrl: string,
+	tutorialId: number | null,
+	author: string,
+	ratingMin: number | null,
+	ratingMax: number | null,
+	/**
+	 *  Free text on purpose (`1v1`, `2v2`, `4v4`, `coop`): the matchmaker's
+	 *  queue names change with the season and a closed enum here would have to
+	 *  be edited to describe an event that already exists.
+	 */
+	gameModes: string[],
+	topics: TrainingTopic[],
+	/**
+	 *  Map names as a player reads them, matched case-insensitively and by
+	 *  substring, because the same map is `Setons Clutch`, `SCMP_009` and
+	 *  "Seton's" depending on who wrote it down.
+	 */
+	maps: string[],
+	factions: string[],
+	durationMinutes: number | null,
+	/**
+	 *  Other resource ids worth reading next. The reason the library is a graph
+	 *  rather than a list: a guide about a mistake can point at the lesson that
+	 *  fixes it.
+	 */
+	related: string[],
+	/**
+	 *  Who vouched for it, when anyone has. Deliberately not "official": a
+	 *  trainer clicking accept has not checked every sentence, and a label that
+	 *  implies they did is worse than no label.
+	 */
+	approvedBy: string,
+	updatedAt: string,
+};
+
+/**
+ *  Where the shown catalogue came from.
+ *
+ *  Surfaced rather than hidden: a client running on the bundled seed is showing
+ *  a fraction of what a published manifest would carry, and telling the player
+ *  that is better than looking empty for no stated reason.
+ */
+export type TrainingSource =
+/**  Shipped with the client. */
+"bundled" |
+/**  Fetched from the configured manifest. */
+"remote";
+
+export type TrainingState = {
+	resources: TrainingResource[],
+	trainers: Trainer[],
+	status: TrainingStatus,
+	source: TrainingSource,
+	links: TrainingLinks,
+	query: TrainingQuery,
+	/**
+	 *  Resource ids, best first. Recomputed in the service after a load, never
+	 *  in the view: a recommendation is a rule, and a rule written twice drifts.
+	 */
+	recommended: string[],
+	/**
+	 *  What the profile behind `recommended` was, so the hub can say what it
+	 *  based them on.
+	 */
+	profile: TrainingProfile,
+	selectedId: string | null,
+	/**  `Some` while the review request form is open. */
+	review: ReviewRequestDraft | null,
+	/**  The composed post, once the player has asked for it. */
+	reviewPost: ForumPost | null,
+	contribution: ContributionDraft | null,
+	contributionPost: ForumPost | null,
+};
+
+export type TrainingStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+/**
+ *  What a resource teaches.
+ *
+ *  A closed set rather than free tags: the point of the hub is that a player
+ *  can scan the whole of it, and free tags produce forty near-synonyms nobody
+ *  can filter by. A resource that fits none of these is simply untagged.
+ */
+export type TrainingTopic = "economy" | "buildOrder" | "micro" | "strategy" | "armyComposition" | "mapControl" | "scouting" | "factions" | "teamplay" |
+/**  The client and the game's own interface: hotkeys, templates, options. */
+"interface";
 
 /**  One lesson. */
 export type Tutorial = {

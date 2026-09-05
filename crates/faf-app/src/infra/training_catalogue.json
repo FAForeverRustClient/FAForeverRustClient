@@ -1,0 +1,42 @@
+{
+  "//": "Seed training catalogue. Deliberately tiny: it is the fallback, not the library.",
+  "//sources": [
+    "FAF's tutorial API fills most of the library at runtime (see services/training.rs).",
+    "A published manifest fills the rest; point FAF_TRAINING_CATALOGUE_URL at it.",
+    "Only destinations this repository already relies on are listed here, because a",
+    "guessed URL in a shipped client is worse than a short catalogue."
+  ],
+  "links": {
+    "discordUrl": "https://discord.gg/By9tNUAq8B",
+    "//replayReviewChannel": [
+      "The channel a replay review request is pasted into, as a",
+      "https://discord.com/channels/<guild>/<channel> address. Discord's app",
+      "follows one of these straight to the channel, so the player lands where",
+      "the request goes with it already on their clipboard. Get it by turning on",
+      "Developer Mode in Discord and using Copy Link on the channel. Empty falls",
+      "back to the invite above."
+    ],
+    "replayReviewChannel": "",
+    "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
+    "replayReviewCategory": 4,
+    "contributeUrl": "https://forum.faforever.com/category/4/i-need-help",
+    "contributeCategory": 4,
+    "wikiUrl": "https://wiki.faforever.com"
+  },
+  "//trainers": [
+    "The training team, as tiles. Empty here on purpose: who coaches, and",
+    "whether they are still coaching, is theirs to state rather than this",
+    "client's to guess. A published manifest fills it; the shape is",
+    "{ name, fafId, role, topics, gameModes, ratingMin, ratingMax, languages,",
+    "discord, note, avatarUrl, accepting }, and only `name` is required."
+  ],
+  "trainers": [],
+  "//resources": [
+    "Empty on purpose. Everything a player reads comes from the catalogue",
+    "repository, so that adding, retagging or withdrawing a guide is a commit",
+    "there rather than a client release. What ships here is the set of",
+    "destinations the client falls back to when it cannot reach the manifest:",
+    "the Discord invite, the forum categories, the wiki."
+  ],
+  "resources": []
+}

@@ -89,6 +89,17 @@ pub struct ServiceCtx {
     /// leave the first one's text on screen because it answered second, and a
     /// cached selection must not be overwritten by a slower earlier fetch.
     pub changelog_entry_generation: LatestRequest,
+    /// A GitHub device-flow login polls for minutes. Pressing the button twice
+    /// must not leave two loops polling, because the second code would silently
+    /// invalidate the one on screen.
+    pub guides_login_active: SingleFlight,
+    /// Accepting and rejecting go one at a time. Two accepts would each read
+    /// the catalogue, each patch their own copy, and one would be refused by
+    /// the content hash; serialising means it never gets that far.
+    pub guides_verdict: SerialMutation,
+    /// Only the newest queue answer may land: every verdict reloads the queue,
+    /// so an older response arriving late would restore rows already decided.
+    pub guides_queue_generation: LatestRequest,
     pub maps_mutation: SerialMutation,
     pub mods_mutation: SerialMutation,
     pub auth_mutation: SerialMutation,
@@ -273,6 +284,9 @@ impl App {
             tutorial_launch_active: SingleFlight::default(),
             changelog_active: SingleFlight::default(),
             changelog_entry_generation: LatestRequest::default(),
+            guides_login_active: SingleFlight::default(),
+            guides_verdict: SerialMutation::default(),
+            guides_queue_generation: LatestRequest::default(),
             maps_mutation: SerialMutation::default(),
             mods_mutation: SerialMutation::default(),
             auth_mutation: SerialMutation::default(),
@@ -439,6 +453,8 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Reporting(c) => services::reporting::handle(c, ctx, sink).await,
         AppCommand::Reviews(c) => services::reviews::handle(c, ctx, sink).await,
         AppCommand::Tourney(c) => services::tourney::handle(c, ctx, sink).await,
+        AppCommand::Guides(c) => services::guides::handle(c, ctx, sink).await,
+        AppCommand::Training(c) => services::training::handle(c, ctx, sink).await,
         AppCommand::Tutorials(c) => services::tutorials::handle(c, ctx, sink).await,
         AppCommand::Changelog(c) => services::changelog::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,

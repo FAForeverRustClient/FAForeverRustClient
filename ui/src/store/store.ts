@@ -5,6 +5,7 @@
 import { create } from "zustand";
 import type { AppEvent, AppState } from "../ipc/bindings";
 import { EMPTY_REPLAY_QUERY } from "../shared/replayQuery";
+import { EMPTY_TRAINING_QUERY } from "../shared/trainingQuery";
 import { EMPTY_MAP_QUERY, EMPTY_MOD_QUERY } from "../shared/vaultQuery";
 import { applyEvent } from "./reducer";
 
@@ -270,6 +271,46 @@ const INITIAL: AppState = {
     series: [],
     seriesStatus: { type: "idle" },
     openSeries: null,
+  },
+  guides: {
+    auth: { type: "signedOut" },
+    submissions: [],
+    status: { type: "idle" },
+    write: { type: "idle" },
+    submit: { type: "idle" },
+    repo: "",
+    settled: [],
+  },
+  training: {
+    resources: [],
+    trainers: [],
+    status: { type: "idle" },
+    source: "bundled",
+    links: {
+      discordUrl: "",
+      replayReviewChannel: "",
+      replayReviewUrl: "",
+      replayReviewCategory: null,
+      contributeUrl: "",
+      contributeCategory: null,
+      wikiUrl: "",
+    },
+    query: EMPTY_TRAINING_QUERY,
+    recommended: [],
+    profile: {
+      player: "",
+      rating: null,
+      ratings: {},
+      gameModes: [],
+      maps: [],
+      factions: [],
+      gamesSeen: 0,
+    },
+    selectedId: null,
+    review: null,
+    reviewPost: null,
+    contribution: null,
+    contributionPost: null,
   },
   tutorials: {
     categories: [],

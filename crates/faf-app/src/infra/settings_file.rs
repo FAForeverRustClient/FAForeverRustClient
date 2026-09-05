@@ -53,18 +53,41 @@ pub fn resolve_path() -> PathBuf {
 /// posture as the async version.
 pub fn load_sync(path: &std::path::Path) -> SettingsState {
     match std::fs::read(path) {
-        Ok(bytes) => serde_json::from_slice::<SettingsState>(&bytes)
-            .unwrap_or_default()
-            .normalized(),
+        Ok(bytes) => parse(&bytes).unwrap_or_default().normalized(),
         Err(_) => SettingsState::default(),
     }
+}
+
+/// Read a settings document, migrating renamed values on the way in.
+///
+/// The migration step is not a nicety. A settings file that fails to parse
+/// yields *defaults for everything*: theme, game path, chat preferences, the
+/// lot. So a value this client stopped recognising does not cost the player
+/// that one setting, it costs them all of them, silently. Anything renamed on
+/// the wire has to be translated here rather than left to fail.
+fn parse(bytes: &[u8]) -> Result<SettingsState, serde_json::Error> {
+    let document: serde_json::Value = serde_json::from_slice(bytes)?;
+    serde_json::from_value(migrated(document))
+}
+
+/// Rewrite values whose spelling changed between client versions.
+fn migrated(mut document: serde_json::Value) -> serde_json::Value {
+    // `Tab::Tutorials` became `Tab::Training` when the tutorials tab grew into
+    // the training hub. `general.startPage` is the one place a `Tab` is
+    // persisted, so this is the whole of that rename's migration.
+    if let Some(start_page) = document.pointer_mut("/general/startPage") {
+        if start_page.as_str() == Some("tutorials") {
+            *start_page = serde_json::Value::String("training".into());
+        }
+    }
+    document
 }
 
 #[async_trait]
 impl SettingsPort for FileSettings {
     async fn load(&self) -> SettingsState {
         match tokio::fs::read(&self.path).await {
-            Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_else(|e| {
+            Ok(bytes) => parse(&bytes).unwrap_or_else(|e| {
                 tracing::warn!(error = %e, "ignoring unreadable settings file");
                 SettingsState::default()
             }),
@@ -150,6 +173,45 @@ mod tests {
         let loaded = store.load().await;
         assert_eq!(loaded.theme, Theme::PythonClient);
         assert_eq!(loaded.game_path, "C:/FA/bin/ForgedAlliance.exe");
+    }
+
+    #[tokio::test]
+    async fn a_start_page_saved_under_its_old_name_still_loads() {
+        // The tutorials tab became the training hub. Without the migration the
+        // whole document fails to parse and the player silently loses every
+        // other setting in it, not just this one.
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            br#"{"theme":"pythonClient","general":{"startPage":"tutorials","autoLogin":false}}"#,
+        )
+        .expect("seed an older settings file");
+
+        let loaded = FileSettings::at(&path).load().await;
+        assert_eq!(loaded.general.start_page, faf_domain::state::Tab::Training);
+        assert_eq!(
+            loaded.theme,
+            Theme::PythonClient,
+            "and nothing else was lost"
+        );
+        assert!(!loaded.general.auto_login);
+
+        assert_eq!(
+            load_sync(&path).general.start_page,
+            faf_domain::state::Tab::Training,
+            "the startup path reads the same file"
+        );
+    }
+
+    #[test]
+    fn a_start_page_this_client_does_not_know_is_still_a_parse_failure() {
+        // The migration translates what was renamed; it does not paper over
+        // anything else, because a value nobody has ever written is a corrupt
+        // file rather than an old one.
+        let document =
+            migrated(serde_json::from_str(r#"{"general":{"startPage":"somethingElse"}}"#).unwrap());
+        assert!(serde_json::from_value::<SettingsState>(document).is_err());
     }
 
     #[test]

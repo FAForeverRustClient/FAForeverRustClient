@@ -43,8 +43,8 @@ const SettingsView = lazy(() =>
 const TournamentsView = lazy(() =>
   import("../tournaments/TournamentsView").then((module) => ({ default: module.TournamentsView })),
 );
-const TutorialsView = lazy(() =>
-  import("../tutorials/TutorialsView").then((module) => ({ default: module.TutorialsView })),
+const TrainingView = lazy(() =>
+  import("../training/TrainingView").then((module) => ({ default: module.TrainingView })),
 );
 const UnitsView = lazy(() =>
   import("../units/UnitsView").then((module) => ({ default: module.UnitsView })),
@@ -67,7 +67,7 @@ export const TAB_ORDER: Tab[] = [
   "mods",
   "leaderboard",
   "tournaments",
-  "tutorials",
+  "training",
   "changelog",
   "units",
   "contribution",
@@ -84,7 +84,7 @@ export const TABS: Record<Tab, TabDef> = {
   mods: { label: "nav.tab.mods.label", description: "nav.tab.mods.description", icon: "mods", Component: ModsView },
   leaderboard: { label: "nav.tab.leaderboard.label", description: "nav.tab.leaderboard.description", icon: "leaderboard", Component: LeaderboardView },
   tournaments: { label: "nav.tab.tournaments.label", description: "nav.tab.tournaments.description", icon: "trophy", Component: TournamentsView },
-  tutorials: { label: "nav.tab.tutorials.label", description: "nav.tab.tutorials.description", icon: "book", Component: TutorialsView },
+  training: { label: "nav.tab.training.label", description: "nav.tab.training.description", icon: "book", Component: TrainingView },
   units: { label: "nav.tab.units.label", description: "nav.tab.units.description", icon: "units", Component: UnitsView },
   changelog: { label: "nav.tab.changelog.label", description: "nav.tab.changelog.description", icon: "changelog", Component: ChangelogView },
   settings: { label: "nav.tab.settings.label", description: "nav.tab.settings.description", icon: "settings", Component: SettingsView },

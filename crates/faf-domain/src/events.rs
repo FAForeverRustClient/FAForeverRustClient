@@ -9,9 +9,10 @@ use specta::Type;
 
 use crate::state::{
     AuthEvent, ChangelogEvent, ChatEvent, ClientUpdateEvent, CoopEvent, GalacticWarEvent,
-    InstallEvent, LeaderboardEvent, LobbyEvent, MapGeneratorEvent, MapsEvent, ModsEvent, NavEvent,
-    NotificationEvent, PlayerCardEvent, ReplayEvent, ReportingEvent, ReviewsEvent, SessionEvent,
-    SettingsEvent, SocialEvent, TourneyEvent, TutorialsEvent, UploadsEvent,
+    GuidesEvent, InstallEvent, LeaderboardEvent, LobbyEvent, MapGeneratorEvent, MapsEvent,
+    ModsEvent, NavEvent, NotificationEvent, PlayerCardEvent, ReplayEvent, ReportingEvent,
+    ReviewsEvent, SessionEvent, SettingsEvent, SocialEvent, TourneyEvent, TrainingEvent,
+    TutorialsEvent, UploadsEvent,
 };
 
 // No `Eq`: `ReplayEvent` carries an `f32` (vault replay review score).
@@ -36,10 +37,12 @@ pub enum AppEvent {
     Reviews(ReviewsEvent),
     Social(SocialEvent),
     Tourney(TourneyEvent),
+    Training(TrainingEvent),
     Tutorials(TutorialsEvent),
     Changelog(ChangelogEvent),
     Uploads(UploadsEvent),
     GalacticWar(GalacticWarEvent),
+    Guides(GuidesEvent),
     ClientUpdate(ClientUpdateEvent),
     Install(InstallEvent),
     Settings(SettingsEvent),
@@ -150,6 +153,18 @@ impl From<MapGeneratorEvent> for AppEvent {
 impl From<CoopEvent> for AppEvent {
     fn from(e: CoopEvent) -> Self {
         AppEvent::Coop(e)
+    }
+}
+
+impl From<GuidesEvent> for AppEvent {
+    fn from(e: GuidesEvent) -> Self {
+        AppEvent::Guides(e)
+    }
+}
+
+impl From<TrainingEvent> for AppEvent {
+    fn from(e: TrainingEvent) -> Self {
+        AppEvent::Training(e)
     }
 }
 

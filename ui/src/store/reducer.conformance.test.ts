@@ -21,6 +21,7 @@ import type {
   AppState,
   BracketConfig,
   ChatRoom,
+  ContributionDraft,
   FfaReport,
   GalacticWarState,
   PlayerSummary,
@@ -37,6 +38,11 @@ import type {
   TourneyPhase,
   TourneyPlayer,
   TourneyStatus,
+  ContributionProblem,
+  ReviewProblem,
+  ReviewRequestDraft,
+  TrainingQuery,
+  TrainingResource,
   UploadsState,
   VaultMap,
 } from "../ipc/bindings";
@@ -44,6 +50,7 @@ import type { BracketKind, MatchPlan } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/galacticWarActions";
 import { noteForPlayer } from "../shared/playerNotes";
+import { contributionProblem, filterResources, reviewProblem } from "../shared/trainingRules";
 import {
   bracketConfigOf,
   defaultPlanFor,
@@ -236,6 +243,24 @@ interface HelperFixture {
     kind: BracketKind;
     expected: MatchPlan;
   }>;
+  trainingFilters: {
+    catalogue: TrainingResource[];
+    cases: Array<{
+      name: string;
+      query: TrainingQuery;
+      myRating: number | null;
+      ratings: Record<string, number>;
+      expectedIds: string[];
+    }>;
+  };
+  trainingFormProblems: {
+    reviews: Array<{ name: string; draft: ReviewRequestDraft; problem: ReviewProblem | null }>;
+    contributions: Array<{
+      name: string;
+      draft: ContributionDraft;
+      problem: ContributionProblem | null;
+    }>;
+  };
   tourneyBracketConfigs: Array<{
     name: string;
     event: Tourney;
@@ -308,6 +333,51 @@ describe("the store's initial state", () => {
     // nobody touches may be never.
     expect(useAppStore.getState().state).toEqual(initial);
   });
+});
+
+// The library filter runs on every keystroke, so the frontend owns a twin of
+// it rather than a round trip. These cases are what stops the twin drifting:
+// the ids come from `filter_resources` itself, and the catalogue behind them
+// includes the awkward shapes (untagged entries, a level contradicted by
+// stated numbers) whose handling is the whole reason the rule is not obvious.
+describe("training library filter twins match Rust", () => {
+  it.each(helpers.trainingFilters.cases)(
+    "filters: $name",
+    ({ query, myRating, ratings, expectedIds }) => {
+      const catalogue = helpers.trainingFilters.catalogue;
+      // Only the two fields the filter reads. Building the rest would be
+      // inventing a reader the fixture never described.
+      const profile = {
+        player: "",
+        rating: myRating,
+        ratings,
+        gameModes: [],
+        maps: [],
+        factions: [],
+        gamesSeen: 0,
+      };
+      expect(filterResources(catalogue, query, profile).map((resource) => resource.id)).toEqual(
+        expectedIds,
+      );
+    },
+  );
+
+  // Both forms disable their submit button on these, so a twin that was more
+  // permissive than Rust would offer to post something the domain refuses to
+  // compose, and one that was stricter would refuse a request that is fine.
+  it.each(helpers.trainingFormProblems.reviews)(
+    "refuses a review request: $name",
+    ({ draft, problem }) => {
+      expect(reviewProblem(draft)).toEqual(problem);
+    },
+  );
+
+  it.each(helpers.trainingFormProblems.contributions)(
+    "refuses a submission: $name",
+    ({ draft, problem }) => {
+      expect(contributionProblem(draft)).toEqual(problem);
+    },
+  );
 });
 
 describe("derived helper twins match Rust", () => {

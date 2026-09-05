@@ -17,7 +17,7 @@ const START_PAGES: Tab[] = [
   "mods",
   "leaderboard",
   "tournaments",
-  "tutorials",
+  "training",
 ];
 
 const save = (preferences: GeneralPreferences) =>

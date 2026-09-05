@@ -506,6 +506,47 @@
       "discord": "",
       "assetBase": ""
     },
+    "training": {
+      "resources": [],
+      "trainers": [],
+      "status": {
+        "type": "idle"
+      },
+      "source": "bundled",
+      "links": {
+        "discordUrl": "",
+        "replayReviewChannel": "",
+        "replayReviewUrl": "",
+        "replayReviewCategory": null,
+        "contributeUrl": "",
+        "contributeCategory": null,
+        "wikiUrl": ""
+      },
+      "query": {
+        "text": "",
+        "level": null,
+        "kind": null,
+        "topic": null,
+        "gameMode": "",
+        "map": "",
+        "myRatingOnly": false
+      },
+      "recommended": [],
+      "profile": {
+        "player": "",
+        "rating": null,
+        "ratings": {},
+        "gameModes": [],
+        "maps": [],
+        "factions": [],
+        "gamesSeen": 0
+      },
+      "selectedId": null,
+      "review": null,
+      "reviewPost": null,
+      "contribution": null,
+      "contributionPost": null
+    },
     "tutorials": {
       "categories": [],
       "tutorials": [],
@@ -534,6 +575,23 @@
       "statisticsStatus": {
         "type": "idle"
       }
+    },
+    "guides": {
+      "auth": {
+        "type": "signedOut"
+      },
+      "submissions": [],
+      "status": {
+        "type": "idle"
+      },
+      "write": {
+        "type": "idle"
+      },
+      "submit": {
+        "type": "idle"
+      },
+      "repo": "",
+      "settled": []
     },
     "clientUpdate": {
       "status": {
@@ -1324,12 +1382,12 @@
             "event": {
               "type": "tabSelected",
               "payload": {
-                "tab": "tutorials"
+                "tab": "training"
               }
             }
           },
           "expected": {
-            "activeTab": "tutorials"
+            "activeTab": "training"
           }
         }
       ]
@@ -14441,6 +14499,2777 @@
                 "title": "Lesson 8"
               }
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "the training library loads, is filtered, and recommends",
+      "steps": [
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "loading"
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "loading"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "resources": [
+                  {
+                    "id": "eco",
+                    "title": "Resource eco",
+                    "summary": "A short description.",
+                    "kind": "guide",
+                    "level": "beginner",
+                    "url": "https://wiki.faforever.com",
+                    "imageUrl": "",
+                    "tutorialId": null,
+                    "author": "A trainer",
+                    "ratingMin": 800,
+                    "ratingMax": 1200,
+                    "gameModes": [
+                      "4v4"
+                    ],
+                    "topics": [
+                      "economy"
+                    ],
+                    "maps": [
+                      "Setons Clutch"
+                    ],
+                    "factions": [],
+                    "durationMinutes": 12,
+                    "related": [],
+                    "approvedBy": "",
+                    "updatedAt": ""
+                  },
+                  {
+                    "id": "setons",
+                    "title": "Resource setons",
+                    "summary": "A short description.",
+                    "kind": "guide",
+                    "level": "beginner",
+                    "url": "https://wiki.faforever.com",
+                    "imageUrl": "",
+                    "tutorialId": null,
+                    "author": "A trainer",
+                    "ratingMin": 800,
+                    "ratingMax": 1200,
+                    "gameModes": [
+                      "4v4"
+                    ],
+                    "topics": [
+                      "economy"
+                    ],
+                    "maps": [
+                      "Setons Clutch"
+                    ],
+                    "factions": [],
+                    "durationMinutes": 12,
+                    "related": [],
+                    "approvedBy": "",
+                    "updatedAt": ""
+                  }
+                ],
+                "trainers": [
+                  {
+                    "id": "a-trainer",
+                    "name": "A trainer",
+                    "fafId": 101,
+                    "role": "Personal trainer",
+                    "focus": "1v1 up to 1800",
+                    "topics": [
+                      "economy"
+                    ],
+                    "gameModes": [
+                      "1v1"
+                    ],
+                    "ratingMin": 1000,
+                    "ratingMax": 1800,
+                    "languages": [
+                      "English"
+                    ],
+                    "discord": "a-trainer",
+                    "note": "",
+                    "avatarUrl": "",
+                    "accepting": true
+                  }
+                ],
+                "links": {
+                  "discordUrl": "",
+                  "replayReviewChannel": "",
+                  "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
+                  "replayReviewCategory": 4,
+                  "contributeUrl": "",
+                  "contributeCategory": null,
+                  "wikiUrl": ""
+                },
+                "source": "bundled"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": 4,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": [
+              {
+                "accepting": true,
+                "avatarUrl": "",
+                "discord": "a-trainer",
+                "fafId": 101,
+                "focus": "1v1 up to 1800",
+                "gameModes": [
+                  "1v1"
+                ],
+                "id": "a-trainer",
+                "languages": [
+                  "English"
+                ],
+                "name": "A trainer",
+                "note": "",
+                "ratingMax": 1800,
+                "ratingMin": 1000,
+                "role": "Personal trainer",
+                "topics": [
+                  "economy"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "queryChanged",
+              "payload": {
+                "query": {
+                  "text": "eco",
+                  "level": "beginner",
+                  "kind": null,
+                  "topic": null,
+                  "gameMode": "",
+                  "map": "",
+                  "myRatingOnly": true
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": 4,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": "beginner",
+              "map": "",
+              "myRatingOnly": true,
+              "text": "eco",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": [
+              {
+                "accepting": true,
+                "avatarUrl": "",
+                "discord": "a-trainer",
+                "fafId": 101,
+                "focus": "1v1 up to 1800",
+                "gameModes": [
+                  "1v1"
+                ],
+                "id": "a-trainer",
+                "languages": [
+                  "English"
+                ],
+                "name": "A trainer",
+                "note": "",
+                "ratingMax": 1800,
+                "ratingMin": 1000,
+                "role": "Personal trainer",
+                "topics": [
+                  "economy"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "resourceId": "setons"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": 4,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": "beginner",
+              "map": "",
+              "myRatingOnly": true,
+              "text": "eco",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "setons",
+            "source": "bundled",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": [
+              {
+                "accepting": true,
+                "avatarUrl": "",
+                "discord": "a-trainer",
+                "fafId": 101,
+                "focus": "1v1 up to 1800",
+                "gameModes": [
+                  "1v1"
+                ],
+                "id": "a-trainer",
+                "languages": [
+                  "English"
+                ],
+                "name": "A trainer",
+                "note": "",
+                "ratingMax": 1800,
+                "ratingMin": 1000,
+                "role": "Personal trainer",
+                "topics": [
+                  "economy"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "recommended",
+              "payload": {
+                "resourceIds": [
+                  "setons",
+                  "eco"
+                ],
+                "profile": {
+                  "player": "Ada",
+                  "rating": 1150,
+                  "ratings": {
+                    "4v4": 1320,
+                    "global": 1150
+                  },
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "factions": [
+                    "uef"
+                  ],
+                  "gamesSeen": 12
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": 4,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [
+                "uef"
+              ],
+              "gameModes": [
+                "4v4"
+              ],
+              "gamesSeen": 12,
+              "maps": [
+                "Setons Clutch"
+              ],
+              "player": "Ada",
+              "rating": 1150,
+              "ratings": {
+                "4v4": 1320,
+                "global": 1150
+              }
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": "beginner",
+              "map": "",
+              "myRatingOnly": true,
+              "text": "eco",
+              "topic": null
+            },
+            "recommended": [
+              "setons",
+              "eco"
+            ],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "setons",
+            "source": "bundled",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": [
+              {
+                "accepting": true,
+                "avatarUrl": "",
+                "discord": "a-trainer",
+                "fafId": 101,
+                "focus": "1v1 up to 1800",
+                "gameModes": [
+                  "1v1"
+                ],
+                "id": "a-trainer",
+                "languages": [
+                  "English"
+                ],
+                "name": "A trainer",
+                "note": "",
+                "ratingMax": 1800,
+                "ratingMin": 1000,
+                "role": "Personal trainer",
+                "topics": [
+                  "economy"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "resources": [
+                  {
+                    "id": "eco",
+                    "title": "Resource eco",
+                    "summary": "A short description.",
+                    "kind": "guide",
+                    "level": "beginner",
+                    "url": "https://wiki.faforever.com",
+                    "imageUrl": "",
+                    "tutorialId": null,
+                    "author": "A trainer",
+                    "ratingMin": 800,
+                    "ratingMax": 1200,
+                    "gameModes": [
+                      "4v4"
+                    ],
+                    "topics": [
+                      "economy"
+                    ],
+                    "maps": [
+                      "Setons Clutch"
+                    ],
+                    "factions": [],
+                    "durationMinutes": 12,
+                    "related": [],
+                    "approvedBy": "",
+                    "updatedAt": ""
+                  }
+                ],
+                "trainers": [],
+                "links": {
+                  "discordUrl": "",
+                  "replayReviewChannel": "",
+                  "replayReviewUrl": "",
+                  "replayReviewCategory": null,
+                  "contributeUrl": "",
+                  "contributeCategory": null,
+                  "wikiUrl": ""
+                },
+                "source": "remote"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [
+                "uef"
+              ],
+              "gameModes": [
+                "4v4"
+              ],
+              "gamesSeen": 12,
+              "maps": [
+                "Setons Clutch"
+              ],
+              "player": "Ada",
+              "rating": 1150,
+              "ratings": {
+                "4v4": 1320,
+                "global": 1150
+              }
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": "beginner",
+              "map": "",
+              "myRatingOnly": true,
+              "text": "eco",
+              "topic": null
+            },
+            "recommended": [
+              "setons",
+              "eco"
+            ],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "loadFailed",
+              "payload": {
+                "reason": "offline"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [
+                "uef"
+              ],
+              "gameModes": [
+                "4v4"
+              ],
+              "gamesSeen": 12,
+              "maps": [
+                "Setons Clutch"
+              ],
+              "player": "Ada",
+              "rating": 1150,
+              "ratings": {
+                "4v4": 1320,
+                "global": 1150
+              }
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": "beginner",
+              "map": "",
+              "myRatingOnly": true,
+              "text": "eco",
+              "topic": null
+            },
+            "recommended": [
+              "setons",
+              "eco"
+            ],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "remote",
+            "status": {
+              "payload": {
+                "reason": "offline"
+              },
+              "type": "failed"
+            },
+            "trainers": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a replay review is prefilled, composed, and invalidated by an edit",
+      "steps": [
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "reviewOpened",
+              "payload": {
+                "draft": {
+                  "replayId": 27456965,
+                  "replayLink": "https://replay.faforever.com/27456965",
+                  "replayFile": "27456965.fafreplay",
+                  "player": "Ada",
+                  "rating": "1150",
+                  "gameMode": "4v4",
+                  "map": "Setons Clutch",
+                  "faction": "UEF",
+                  "playedAt": "2026-09-04T18:00:00Z",
+                  "goal": "Where did I lose the eco lead?",
+                  "struggle": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": {
+              "faction": "UEF",
+              "gameMode": "4v4",
+              "goal": "Where did I lose the eco lead?",
+              "map": "Setons Clutch",
+              "playedAt": "2026-09-04T18:00:00Z",
+              "player": "Ada",
+              "rating": "1150",
+              "replayFile": "27456965.fafreplay",
+              "replayId": 27456965,
+              "replayLink": "https://replay.faforever.com/27456965",
+              "struggle": ""
+            },
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "reviewComposed",
+              "payload": {
+                "post": {
+                  "title": "Replay review request: Ada on Setons Clutch (4v4)",
+                  "body": "**Replay:** https://replay.faforever.com/27456965\n**Player:** Ada\n**Rating:** 1150\n**Game mode:** 4v4\n**Map:** Setons Clutch\n**Faction:** UEF\n**Played:** 2026-09-04T18:00:00Z\n\n**What I would like help with**\nWhere did I lose the eco lead?\n\n*Requested from the FAF client's Training tab.*\n",
+                  "url": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": {
+              "faction": "UEF",
+              "gameMode": "4v4",
+              "goal": "Where did I lose the eco lead?",
+              "map": "Setons Clutch",
+              "playedAt": "2026-09-04T18:00:00Z",
+              "player": "Ada",
+              "rating": "1150",
+              "replayFile": "27456965.fafreplay",
+              "replayId": 27456965,
+              "replayLink": "https://replay.faforever.com/27456965",
+              "struggle": ""
+            },
+            "reviewPost": {
+              "body": "**Replay:** https://replay.faforever.com/27456965\n**Player:** Ada\n**Rating:** 1150\n**Game mode:** 4v4\n**Map:** Setons Clutch\n**Faction:** UEF\n**Played:** 2026-09-04T18:00:00Z\n\n**What I would like help with**\nWhere did I lose the eco lead?\n\n*Requested from the FAF client's Training tab.*\n",
+              "title": "Replay review request: Ada on Setons Clutch (4v4)",
+              "url": ""
+            },
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "reviewChanged",
+              "payload": {
+                "draft": {
+                  "replayId": 27456965,
+                  "replayLink": "https://replay.faforever.com/27456965",
+                  "replayFile": "27456965.fafreplay",
+                  "player": "Ada",
+                  "rating": "1150",
+                  "gameMode": "4v4",
+                  "map": "Setons Clutch",
+                  "faction": "UEF",
+                  "playedAt": "2026-09-04T18:00:00Z",
+                  "goal": "Why did my push stall?",
+                  "struggle": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": {
+              "faction": "UEF",
+              "gameMode": "4v4",
+              "goal": "Why did my push stall?",
+              "map": "Setons Clutch",
+              "playedAt": "2026-09-04T18:00:00Z",
+              "player": "Ada",
+              "rating": "1150",
+              "replayFile": "27456965.fafreplay",
+              "replayId": 27456965,
+              "replayLink": "https://replay.faforever.com/27456965",
+              "struggle": ""
+            },
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "reviewClosed"
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "the catalogue queue signs in, accepts one and declines another",
+      "steps": [
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "configured",
+              "payload": {
+                "repo": "FAForeverRustClient/guides",
+                "configured": true
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "type": "signedOut"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [],
+            "status": {
+              "type": "idle"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "signInStarted",
+              "payload": {
+                "login": {
+                  "userCode": "WDJB-MJHT",
+                  "verificationUri": "https://github.com/login/device",
+                  "expiresAt": 1800000900
+                }
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "login": {
+                  "expiresAt": 1800000900,
+                  "userCode": "WDJB-MJHT",
+                  "verificationUri": "https://github.com/login/device"
+                }
+              },
+              "type": "waiting"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [],
+            "status": {
+              "type": "idle"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "signedIn",
+              "payload": {
+                "identity": {
+                  "login": "a-trainer",
+                  "avatarUrl": "",
+                  "canCommit": true
+                }
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [],
+            "status": {
+              "type": "idle"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "queueLoading"
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [],
+            "status": {
+              "type": "loading"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "queueLoaded",
+              "payload": {
+                "submissions": [
+                  {
+                    "number": 11,
+                    "title": "Training submission: Guide 11",
+                    "summary": "A short pitch for it.",
+                    "entry": {
+                      "id": "guide-11",
+                      "title": "Resource guide-11",
+                      "summary": "A short description.",
+                      "kind": "guide",
+                      "level": "beginner",
+                      "url": "https://wiki.faforever.com",
+                      "imageUrl": "",
+                      "tutorialId": null,
+                      "author": "A trainer",
+                      "ratingMin": 800,
+                      "ratingMax": 1200,
+                      "gameModes": [
+                        "4v4"
+                      ],
+                      "topics": [
+                        "economy"
+                      ],
+                      "maps": [
+                        "Setons Clutch"
+                      ],
+                      "factions": [],
+                      "durationMinutes": 12,
+                      "related": [],
+                      "approvedBy": "",
+                      "updatedAt": ""
+                    },
+                    "author": "someone",
+                    "authorAvatarUrl": "",
+                    "createdAt": "2026-09-04T18:00:00Z",
+                    "url": "https://github.com/FAForeverRustClient/guides/issues/11",
+                    "guide": null
+                  },
+                  {
+                    "number": 12,
+                    "title": "Training submission: Guide 12",
+                    "summary": "A short pitch for it.",
+                    "entry": {
+                      "id": "guide-12",
+                      "title": "Resource guide-12",
+                      "summary": "A short description.",
+                      "kind": "guide",
+                      "level": "beginner",
+                      "url": "https://wiki.faforever.com",
+                      "imageUrl": "",
+                      "tutorialId": null,
+                      "author": "A trainer",
+                      "ratingMin": 800,
+                      "ratingMax": 1200,
+                      "gameModes": [
+                        "4v4"
+                      ],
+                      "topics": [
+                        "economy"
+                      ],
+                      "maps": [
+                        "Setons Clutch"
+                      ],
+                      "factions": [],
+                      "durationMinutes": 12,
+                      "related": [],
+                      "approvedBy": "",
+                      "updatedAt": ""
+                    },
+                    "author": "someone",
+                    "authorAvatarUrl": "",
+                    "createdAt": "2026-09-04T18:00:00Z",
+                    "url": "https://github.com/FAForeverRustClient/guides/issues/12",
+                    "guide": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-11",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-11",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 11,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 11",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/11"
+              },
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-12",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-12",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 12,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 12",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/12"
+              }
+            ],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "accepting",
+              "payload": {
+                "number": 11
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-11",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-11",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 11,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 11",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/11"
+              },
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-12",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-12",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 12,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 12",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/12"
+              }
+            ],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 11
+              },
+              "type": "accepting"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "accepted",
+              "payload": {
+                "number": 11
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-12",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-12",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 12,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 12",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/12"
+              }
+            ],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 11
+              },
+              "type": "accepted"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "rejecting",
+              "payload": {
+                "number": 12
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-12",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-12",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 12,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 12",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/12"
+              }
+            ],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejecting"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "writeFailed",
+              "payload": {
+                "number": 12,
+                "reason": "Resource not accessible by personal access token"
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-12",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-12",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 12,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 12",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/12"
+              }
+            ],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12,
+                "reason": "Resource not accessible by personal access token"
+              },
+              "type": "failed"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "rejecting",
+              "payload": {
+                "number": 12
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [
+              {
+                "author": "someone",
+                "authorAvatarUrl": "",
+                "createdAt": "2026-09-04T18:00:00Z",
+                "entry": {
+                  "approvedBy": "",
+                  "author": "A trainer",
+                  "durationMinutes": 12,
+                  "factions": [],
+                  "gameModes": [
+                    "4v4"
+                  ],
+                  "id": "guide-12",
+                  "imageUrl": "",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "maps": [
+                    "Setons Clutch"
+                  ],
+                  "ratingMax": 1200,
+                  "ratingMin": 800,
+                  "related": [],
+                  "summary": "A short description.",
+                  "title": "Resource guide-12",
+                  "topics": [
+                    "economy"
+                  ],
+                  "tutorialId": null,
+                  "updatedAt": "",
+                  "url": "https://wiki.faforever.com"
+                },
+                "guide": null,
+                "number": 12,
+                "summary": "A short pitch for it.",
+                "title": "Training submission: Guide 12",
+                "url": "https://github.com/FAForeverRustClient/guides/issues/12"
+              }
+            ],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejecting"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "rejected",
+              "payload": {
+                "number": 12
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "queueLoading"
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "type": "loading"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "queueLoaded",
+              "payload": {
+                "submissions": [
+                  {
+                    "number": 11,
+                    "title": "Training submission: Guide 11",
+                    "summary": "A short pitch for it.",
+                    "entry": {
+                      "id": "guide-11",
+                      "title": "Resource guide-11",
+                      "summary": "A short description.",
+                      "kind": "guide",
+                      "level": "beginner",
+                      "url": "https://wiki.faforever.com",
+                      "imageUrl": "",
+                      "tutorialId": null,
+                      "author": "A trainer",
+                      "ratingMin": 800,
+                      "ratingMax": 1200,
+                      "gameModes": [
+                        "4v4"
+                      ],
+                      "topics": [
+                        "economy"
+                      ],
+                      "maps": [
+                        "Setons Clutch"
+                      ],
+                      "factions": [],
+                      "durationMinutes": 12,
+                      "related": [],
+                      "approvedBy": "",
+                      "updatedAt": ""
+                    },
+                    "author": "someone",
+                    "authorAvatarUrl": "",
+                    "createdAt": "2026-09-04T18:00:00Z",
+                    "url": "https://github.com/FAForeverRustClient/guides/issues/11",
+                    "guide": null
+                  },
+                  {
+                    "number": 12,
+                    "title": "Training submission: Guide 12",
+                    "summary": "A short pitch for it.",
+                    "entry": {
+                      "id": "guide-12",
+                      "title": "Resource guide-12",
+                      "summary": "A short description.",
+                      "kind": "guide",
+                      "level": "beginner",
+                      "url": "https://wiki.faforever.com",
+                      "imageUrl": "",
+                      "tutorialId": null,
+                      "author": "A trainer",
+                      "ratingMin": 800,
+                      "ratingMax": 1200,
+                      "gameModes": [
+                        "4v4"
+                      ],
+                      "topics": [
+                        "economy"
+                      ],
+                      "maps": [
+                        "Setons Clutch"
+                      ],
+                      "factions": [],
+                      "durationMinutes": 12,
+                      "related": [],
+                      "approvedBy": "",
+                      "updatedAt": ""
+                    },
+                    "author": "someone",
+                    "authorAvatarUrl": "",
+                    "createdAt": "2026-09-04T18:00:00Z",
+                    "url": "https://github.com/FAForeverRustClient/guides/issues/12",
+                    "guide": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "type": "ready"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "queueLoadFailed",
+              "payload": {
+                "reason": "API rate limit exceeded"
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "identity": {
+                  "avatarUrl": "",
+                  "canCommit": true,
+                  "login": "a-trainer"
+                }
+              },
+              "type": "signedIn"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "payload": {
+                "reason": "API rate limit exceeded"
+              },
+              "type": "failed"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "signedOut"
+            }
+          },
+          "expected": {
+            "auth": {
+              "type": "signedOut"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "payload": {
+                "reason": "API rate limit exceeded"
+              },
+              "type": "failed"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "signInStarted",
+              "payload": {
+                "login": {
+                  "userCode": "14E4-218A",
+                  "verificationUri": "https://github.com/login/device",
+                  "expiresAt": 1800001800
+                }
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "login": {
+                  "expiresAt": 1800001800,
+                  "userCode": "14E4-218A",
+                  "verificationUri": "https://github.com/login/device"
+                }
+              },
+              "type": "waiting"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "payload": {
+                "reason": "API rate limit exceeded"
+              },
+              "type": "failed"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "signInCancelled"
+            }
+          },
+          "expected": {
+            "auth": {
+              "type": "signedOut"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "payload": {
+                "reason": "API rate limit exceeded"
+              },
+              "type": "failed"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "signInFailed",
+              "payload": {
+                "reason": "the sign-in code expired before it was used"
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "payload": {
+                "reason": "the sign-in code expired before it was used"
+              },
+              "type": "failed"
+            },
+            "repo": "FAForeverRustClient/guides",
+            "settled": [
+              11,
+              12
+            ],
+            "status": {
+              "payload": {
+                "reason": "API rate limit exceeded"
+              },
+              "type": "failed"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "payload": {
+                "number": 12
+              },
+              "type": "rejected"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a submission of our own reports where it landed",
+      "steps": [
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "submitting"
+            }
+          },
+          "expected": {
+            "auth": {
+              "type": "signedOut"
+            },
+            "repo": "",
+            "settled": [],
+            "status": {
+              "type": "idle"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "sending"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "submitted",
+              "payload": {
+                "url": "https://github.com/FAForeverRustClient/guides/issues/13"
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "type": "signedOut"
+            },
+            "repo": "",
+            "settled": [],
+            "status": {
+              "type": "idle"
+            },
+            "submissions": [],
+            "submit": {
+              "payload": {
+                "url": "https://github.com/FAForeverRustClient/guides/issues/13"
+              },
+              "type": "sent"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "submitReset"
+            }
+          },
+          "expected": {
+            "auth": {
+              "type": "signedOut"
+            },
+            "repo": "",
+            "settled": [],
+            "status": {
+              "type": "idle"
+            },
+            "submissions": [],
+            "submit": {
+              "type": "idle"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Guides",
+            "event": {
+              "type": "submitFailed",
+              "payload": {
+                "reason": "GitHub refused to open the submission: Not Found"
+              }
+            }
+          },
+          "expected": {
+            "auth": {
+              "type": "signedOut"
+            },
+            "repo": "",
+            "settled": [],
+            "status": {
+              "type": "idle"
+            },
+            "submissions": [],
+            "submit": {
+              "payload": {
+                "reason": "GitHub refused to open the submission: Not Found"
+              },
+              "type": "failed"
+            },
+            "write": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a contribution is drafted, composed, and closed",
+      "steps": [
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "contributionOpened",
+              "payload": {
+                "draft": {
+                  "title": "",
+                  "summary": "",
+                  "kind": "guide",
+                  "level": null,
+                  "url": "",
+                  "body": "",
+                  "topics": [],
+                  "gameModes": [],
+                  "maps": [],
+                  "factions": [],
+                  "ratingMin": "",
+                  "ratingMax": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": {
+              "body": "",
+              "factions": [],
+              "gameModes": [],
+              "kind": "guide",
+              "level": null,
+              "maps": [],
+              "ratingMax": "",
+              "ratingMin": "",
+              "summary": "",
+              "title": "",
+              "topics": [],
+              "url": ""
+            },
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "contributionChanged",
+              "payload": {
+                "draft": {
+                  "title": "T1 tank micro",
+                  "summary": "Split before they are shot.",
+                  "kind": "guide",
+                  "level": "beginner",
+                  "url": "",
+                  "body": "Split before they are shot.",
+                  "topics": [
+                    "micro"
+                  ],
+                  "gameModes": [
+                    "1v1"
+                  ],
+                  "maps": [],
+                  "factions": [],
+                  "ratingMin": "800",
+                  "ratingMax": "1200"
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": {
+              "body": "Split before they are shot.",
+              "factions": [],
+              "gameModes": [
+                "1v1"
+              ],
+              "kind": "guide",
+              "level": "beginner",
+              "maps": [],
+              "ratingMax": "1200",
+              "ratingMin": "800",
+              "summary": "Split before they are shot.",
+              "title": "T1 tank micro",
+              "topics": [
+                "micro"
+              ],
+              "url": ""
+            },
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "contributionComposed",
+              "payload": {
+                "post": {
+                  "title": "Training submission: T1 tank micro",
+                  "body": "Split before they are shot.\n\n**Type:** Guide\n**Level:** Beginner\n**Rating:** 800 to 1200\n**Game modes:** 1v1\n**Topics:** Micro\n\nSplit before they are shot.\n\n*Submitted from the FAF client's Training tab.*\n",
+                  "url": "https://forum.faforever.com/compose?cid=4&title=Training%20submission%3A%20T1%20tank%20micro&body=Split%20before%20they%20are%20shot.%0A%0A%2A%2AType%3A%2A%2A%20Guide%0A%2A%2ALevel%3A%2A%2A%20Beginner%0A%2A%2ARating%3A%2A%2A%20800%20to%201200%0A%2A%2AGame%20modes%3A%2A%2A%201v1%0A%2A%2ATopics%3A%2A%2A%20Micro%0A%0ASplit%20before%20they%20are%20shot.%0A%0A%2ASubmitted%20from%20the%20FAF%20client%27s%20Training%20tab.%2A%0A"
+                }
+              }
+            }
+          },
+          "expected": {
+            "contribution": {
+              "body": "Split before they are shot.",
+              "factions": [],
+              "gameModes": [
+                "1v1"
+              ],
+              "kind": "guide",
+              "level": "beginner",
+              "maps": [],
+              "ratingMax": "1200",
+              "ratingMin": "800",
+              "summary": "Split before they are shot.",
+              "title": "T1 tank micro",
+              "topics": [
+                "micro"
+              ],
+              "url": ""
+            },
+            "contributionPost": {
+              "body": "Split before they are shot.\n\n**Type:** Guide\n**Level:** Beginner\n**Rating:** 800 to 1200\n**Game modes:** 1v1\n**Topics:** Micro\n\nSplit before they are shot.\n\n*Submitted from the FAF client's Training tab.*\n",
+              "title": "Training submission: T1 tank micro",
+              "url": "https://forum.faforever.com/compose?cid=4&title=Training%20submission%3A%20T1%20tank%20micro&body=Split%20before%20they%20are%20shot.%0A%0A%2A%2AType%3A%2A%2A%20Guide%0A%2A%2ALevel%3A%2A%2A%20Beginner%0A%2A%2ARating%3A%2A%2A%20800%20to%201200%0A%2A%2AGame%20modes%3A%2A%2A%201v1%0A%2A%2ATopics%3A%2A%2A%20Micro%0A%0ASplit%20before%20they%20are%20shot.%0A%0A%2ASubmitted%20from%20the%20FAF%20client%27s%20Training%20tab.%2A%0A"
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "contributionClosed"
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "bundled",
+            "status": {
+              "type": "idle"
+            },
+            "trainers": []
           }
         }
       ]
@@ -39562,6 +42391,583 @@
           }
         }
       }
-    ]
+    ],
+    "trainingFilters": {
+      "catalogue": [
+        {
+          "id": "untagged",
+          "title": "How the game works",
+          "summary": "",
+          "kind": "guide",
+          "level": null,
+          "url": "",
+          "imageUrl": "",
+          "tutorialId": null,
+          "author": "",
+          "ratingMin": null,
+          "ratingMax": null,
+          "gameModes": [],
+          "topics": [],
+          "maps": [],
+          "factions": [],
+          "durationMinutes": null,
+          "related": [],
+          "approvedBy": "",
+          "updatedAt": ""
+        },
+        {
+          "id": "eco-beginner",
+          "title": "Economy fundamentals",
+          "summary": "Mass and energy for a first game.",
+          "kind": "video",
+          "level": "beginner",
+          "url": "",
+          "imageUrl": "",
+          "tutorialId": null,
+          "author": "",
+          "ratingMin": null,
+          "ratingMax": null,
+          "gameModes": [
+            "1v1"
+          ],
+          "topics": [
+            "economy"
+          ],
+          "maps": [],
+          "factions": [],
+          "durationMinutes": null,
+          "related": [],
+          "approvedBy": "",
+          "updatedAt": ""
+        },
+        {
+          "id": "setons-4v4",
+          "title": "Seton's Clutch opening",
+          "summary": "",
+          "kind": "buildOrder",
+          "level": "beginner",
+          "url": "",
+          "imageUrl": "",
+          "tutorialId": null,
+          "author": "",
+          "ratingMin": 1400,
+          "ratingMax": null,
+          "gameModes": [
+            "4v4"
+          ],
+          "topics": [
+            "buildOrder",
+            "economy"
+          ],
+          "maps": [
+            "Setons Clutch"
+          ],
+          "factions": [],
+          "durationMinutes": null,
+          "related": [],
+          "approvedBy": "",
+          "updatedAt": ""
+        },
+        {
+          "id": "advanced-micro",
+          "title": "Micro at the top",
+          "summary": "",
+          "kind": "guide",
+          "level": "advanced",
+          "url": "",
+          "imageUrl": "",
+          "tutorialId": null,
+          "author": "A trainer",
+          "ratingMin": null,
+          "ratingMax": null,
+          "gameModes": [],
+          "topics": [
+            "micro"
+          ],
+          "maps": [],
+          "factions": [],
+          "durationMinutes": null,
+          "related": [],
+          "approvedBy": "",
+          "updatedAt": ""
+        }
+      ],
+      "cases": [
+        {
+          "name": "no filter lists everything",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": false
+          },
+          "myRating": 1000,
+          "ratings": {},
+          "expectedIds": [
+            "untagged",
+            "eco-beginner",
+            "setons-4v4",
+            "advanced-micro"
+          ]
+        },
+        {
+          "name": "free text searches prose and tags alike",
+          "query": {
+            "text": "setons",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": false
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "setons-4v4"
+          ]
+        },
+        {
+          "name": "free text matches the author",
+          "query": {
+            "text": "trainer",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": false
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "advanced-micro"
+          ]
+        },
+        {
+          "name": "a level filter is exact and excludes the untagged",
+          "query": {
+            "text": "",
+            "level": "beginner",
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": false
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "eco-beginner",
+            "setons-4v4"
+          ]
+        },
+        {
+          "name": "a topic filter",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": null,
+            "topic": "economy",
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": false
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "eco-beginner",
+            "setons-4v4"
+          ]
+        },
+        {
+          "name": "a kind filter",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": "video",
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": false
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "eco-beginner"
+          ]
+        },
+        {
+          "name": "a mode filter keeps entries that claim no mode",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "4v4",
+            "map": "",
+            "myRatingOnly": false
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "untagged",
+            "setons-4v4",
+            "advanced-micro"
+          ]
+        },
+        {
+          "name": "a map filter keeps entries that claim no map",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "setons",
+            "myRatingOnly": false
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "untagged",
+            "eco-beginner",
+            "setons-4v4",
+            "advanced-micro"
+          ]
+        },
+        {
+          "name": "my rating hides a band that excludes me, level bands included",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": true
+          },
+          "myRating": 800,
+          "ratings": {},
+          "expectedIds": [
+            "untagged",
+            "eco-beginner"
+          ]
+        },
+        {
+          "name": "my rating with no rating known hides nothing",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": true
+          },
+          "myRating": null,
+          "ratings": {},
+          "expectedIds": [
+            "untagged",
+            "eco-beginner",
+            "setons-4v4",
+            "advanced-micro"
+          ]
+        },
+        {
+          "name": "filters combine",
+          "query": {
+            "text": "",
+            "level": "beginner",
+            "kind": null,
+            "topic": "economy",
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": true
+          },
+          "myRating": 900,
+          "ratings": {},
+          "expectedIds": [
+            "eco-beginner"
+          ]
+        },
+        {
+          "name": "a ladder guide is judged by the ladder rating, not the global one",
+          "query": {
+            "text": "",
+            "level": null,
+            "kind": null,
+            "topic": null,
+            "gameMode": "",
+            "map": "",
+            "myRatingOnly": true
+          },
+          "myRating": 1800,
+          "ratings": {
+            "1v1": 1200
+          },
+          "expectedIds": [
+            "untagged",
+            "setons-4v4",
+            "advanced-micro"
+          ]
+        }
+      ]
+    },
+    "trainingFormProblems": {
+      "reviews": [
+        {
+          "name": "an empty request has no replay",
+          "draft": {
+            "replayId": null,
+            "replayLink": "",
+            "replayFile": "",
+            "player": "",
+            "rating": "",
+            "gameMode": "",
+            "map": "",
+            "faction": "",
+            "playedAt": "",
+            "goal": "",
+            "struggle": ""
+          },
+          "problem": "noReplay"
+        },
+        {
+          "name": "a replay with no question",
+          "draft": {
+            "replayId": 27456965,
+            "replayLink": "",
+            "replayFile": "",
+            "player": "",
+            "rating": "",
+            "gameMode": "",
+            "map": "",
+            "faction": "",
+            "playedAt": "",
+            "goal": "",
+            "struggle": ""
+          },
+          "problem": "noGoal"
+        },
+        {
+          "name": "an id and a question is enough",
+          "draft": {
+            "replayId": 27456965,
+            "replayLink": "",
+            "replayFile": "",
+            "player": "",
+            "rating": "",
+            "gameMode": "",
+            "map": "",
+            "faction": "",
+            "playedAt": "",
+            "goal": "Where did I lose the eco lead?",
+            "struggle": ""
+          },
+          "problem": null
+        },
+        {
+          "name": "a pasted link is enough",
+          "draft": {
+            "replayId": null,
+            "replayLink": "https://replay.faforever.com/27456965",
+            "replayFile": "",
+            "player": "",
+            "rating": "",
+            "gameMode": "",
+            "map": "",
+            "faction": "",
+            "playedAt": "",
+            "goal": "Where did I lose the eco lead?",
+            "struggle": ""
+          },
+          "problem": null
+        },
+        {
+          "name": "a local file that was never uploaded is enough",
+          "draft": {
+            "replayId": null,
+            "replayLink": "",
+            "replayFile": "2026-09-04 setons.fafreplay",
+            "player": "",
+            "rating": "",
+            "gameMode": "",
+            "map": "",
+            "faction": "",
+            "playedAt": "",
+            "goal": "Where did I lose the eco lead?",
+            "struggle": ""
+          },
+          "problem": null
+        },
+        {
+          "name": "a question of only whitespace is no question",
+          "draft": {
+            "replayId": 1,
+            "replayLink": "",
+            "replayFile": "",
+            "player": "",
+            "rating": "",
+            "gameMode": "",
+            "map": "",
+            "faction": "",
+            "playedAt": "",
+            "goal": "   ",
+            "struggle": ""
+          },
+          "problem": "noGoal"
+        }
+      ],
+      "contributions": [
+        {
+          "name": "nothing at all",
+          "draft": {
+            "title": "",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "",
+            "body": "",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": "noTitle"
+        },
+        {
+          "name": "a title and nothing else",
+          "draft": {
+            "title": "T1 tank micro",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "",
+            "body": "",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": "noContent"
+        },
+        {
+          "name": "a title and a link",
+          "draft": {
+            "title": "T1 tank micro",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "https://www.youtube.com/watch?v=abc",
+            "body": "",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": null
+        },
+        {
+          "name": "a title and a body",
+          "draft": {
+            "title": "T1 tank micro",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "",
+            "body": "Split before they are shot.",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": null
+        },
+        {
+          "name": "a link that is not a link",
+          "draft": {
+            "title": "T1 tank micro",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "youtube.com/watch",
+            "body": "",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": "badUrl"
+        },
+        {
+          "name": "a link that is not HTTPS",
+          "draft": {
+            "title": "T1 tank micro",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "http://example.invalid/guide",
+            "body": "",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": "badUrl"
+        },
+        {
+          "name": "a scheme and nothing after it",
+          "draft": {
+            "title": "T1 tank micro",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "https://",
+            "body": "",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": "badUrl"
+        },
+        {
+          "name": "a host with a space in it",
+          "draft": {
+            "title": "T1 tank micro",
+            "summary": "",
+            "kind": "guide",
+            "level": null,
+            "url": "https://a b.com",
+            "body": "",
+            "topics": [],
+            "gameModes": [],
+            "maps": [],
+            "factions": [],
+            "ratingMin": "",
+            "ratingMax": ""
+          },
+          "problem": "badUrl"
+        }
+      ]
+    }
   }
 }
