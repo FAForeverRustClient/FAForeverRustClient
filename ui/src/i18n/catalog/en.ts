@@ -1875,7 +1875,7 @@ export const en = {
   "maps.generate.symmetry": "Symmetry",
   "maps.generate.any": "Any",
   "maps.generate.mapStyle": "Map style",
-  "maps.generate.mapStyleHint": "A map style replaces the individual terrain, texture, resource and prop styles.",
+  "maps.generate.mapStyleHint": "A map style is a complete preset: it decides terrain, texture, resources and props together, so the four lists below are ignored while one is selected.",
   "maps.generate.terrain": "Terrain",
   "maps.generate.texture": "Texture",
   "maps.generate.resources": "Resources",
@@ -2744,6 +2744,12 @@ export const en = {
   "mods.installed.folder": "Folder",
   "mods.installed.uid": "UID",
   "mods.installed.viewInVault": "Show in vault",
+
+  "maps.generate.styleSuperseded": "Ignored while a map style is selected.",
+  "maps.generate.enlargePreview": "Enlarge the preview",
+  "maps.generate.closePreview": "Click anywhere to close",
+  "replays.detail.simMods": "Simulation mods",
+  "replays.roster.ratingChange": "Rating change from this game",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

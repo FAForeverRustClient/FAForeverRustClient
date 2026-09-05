@@ -704,7 +704,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.generate.symmetry": "Symetria",
   "maps.generate.any": "Dowolna",
   "maps.generate.mapStyle": "Styl mapy",
-  "maps.generate.mapStyleHint": "Styl mapy zastępuje pojedyncze style terenu, tekstur, surowców i obiektów.",
+  "maps.generate.mapStyleHint": "Styl mapy to kompletne ustawienie: decyduje jednocześnie o terenie, teksturze, zasobach i obiektach, więc cztery listy poniżej są ignorowane, dopóki jeden jest wybrany.",
   "maps.generate.terrain": "Teren",
   "maps.generate.texture": "Tekstury",
   "maps.generate.resources": "Surowce",
@@ -1854,4 +1854,10 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "mods.installed.folder": "Folder",
   "mods.installed.uid": "UID",
   "mods.installed.viewInVault": "Pokaż w vaulcie",
+
+  "maps.generate.styleSuperseded": "Ignorowane, dopóki wybrany jest styl mapy.",
+  "maps.generate.enlargePreview": "Powiększ podgląd",
+  "maps.generate.closePreview": "Kliknij gdziekolwiek, aby zamknąć",
+  "replays.detail.simMods": "Mody symulacji",
+  "replays.roster.ratingChange": "Zmiana rankingu po tej grze",
 };

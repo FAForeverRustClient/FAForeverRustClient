@@ -1583,6 +1583,144 @@
       ]
     },
     {
+      "name": "selecting an unjoined conversation opens it before the join lands",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "connected",
+              "payload": {
+                "username": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#aeolus"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelSelected",
+              "payload": {
+                "channel": "Stormlord"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "Stormlord",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [],
+                "name": "Stormlord",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "Stormlord"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "Stormlord",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [],
+                "name": "Stormlord",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        }
+      ]
+    },
+    {
       "name": "chat restores message history when a new message recreates a conversation",
       "steps": [
         {

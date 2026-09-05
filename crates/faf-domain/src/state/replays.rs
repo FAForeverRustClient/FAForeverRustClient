@@ -140,6 +140,12 @@ pub struct ReplayChatMessage {
 pub struct ReplayDetails {
     pub game_options: Vec<ReplayGameOption>,
     pub chat_messages: Vec<ReplayChatMessage>,
+    /// Display names of the simulation mods the game ran with, read from the
+    /// `.fafreplay` header rather than the command stream: the stream's own mod
+    /// table is the engine's, keyed by install paths. Empty for a legacy
+    /// `.scfareplay`, which has no header to read.
+    #[serde(default)]
+    pub sim_mods: Vec<String>,
     /// SupCom patch number parsed from the replay body header. The API game
     /// resource does not expose this value reliably, so detailed parsing is
     /// the source of truth when the listing has no version yet.
@@ -167,6 +173,16 @@ pub struct ReplayPlayer {
     /// `round(mean - 3*deviation)` at game time, the same "displayed rating"
     /// formula the Python and Java clients use.
     pub rating: Option<i32>,
+    /// What this game did to that rating: displayed rating after minus
+    /// displayed rating before, from the player's first rating journal.
+    ///
+    /// `None` when the game was not rated, which the journal signals by having
+    /// no `meanAfter`. That is the case the score used to paper over: a score
+    /// exists for games whose result the server never resolved, so a number
+    /// appeared next to "unknown result" and read as a rating change that had
+    /// not happened. Java's `PlayerCardController::getRatingChange`.
+    #[serde(default)]
+    pub rating_change: Option<i32>,
     /// Server-recorded game result (`VICTORY`, `DEFEAT`, `DRAW`, ...).
     /// Empty when older games did not record an outcome.
     pub outcome: String,

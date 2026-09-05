@@ -252,16 +252,19 @@ export function ReplayDetailRoster({
                       </span>
                     </button>
                     <span className="replay-player-stats">
-                      {showResults && player.score !== null && (
+                      {/* What the game did to this player's rating, not the
+                          game score that used to sit here: the score is the
+                          same number for everyone on a team and exists even
+                          for games the server never rated, so it read as a
+                          rating change that had not happened. */}
+                      {showResults && player.ratingChange !== null && player.ratingChange !== undefined && (
                         <span
-                          className={`replay-player-score ${
-                            player.score > 0 ? "positive" : player.score < 0 ? "negative" : "zero"
+                          className={`replay-player-rating-change ${
+                            player.ratingChange > 0 ? "positive" : player.ratingChange < 0 ? "negative" : "zero"
                           }`}
-                          title={`${t("replays.roster.score") || "Score"}: ${player.score}`}
+                          title={t("replays.roster.ratingChange")}
                         >
-                          {player.score > 0
-                            ? `+${new Intl.NumberFormat("en-US").format(player.score)}`
-                            : new Intl.NumberFormat("en-US").format(player.score)}
+                          {formatSigned(player.ratingChange)}
                         </span>
                       )}
                     </span>
@@ -274,6 +277,14 @@ export function ReplayDetailRoster({
       })}
     </div>
   );
+}
+
+/** `+12` / `-9` / `0`, the way both reference clients sign a rating change. */
+function formatSigned(value: number): string {
+  const formatted = new Intl.NumberFormat("en-US").format(Math.abs(value));
+  if (value > 0) return `+${formatted}`;
+  if (value < 0) return `-${formatted}`;
+  return "0";
 }
 
 export function playerCount(teams: ReplayTeam[]): number {

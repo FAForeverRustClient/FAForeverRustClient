@@ -2935,6 +2935,29 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "selecting an unjoined conversation opens it before the join lands",
+            vec![
+                ChatEvent::Connected {
+                    username: "Ada".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#aeolus".into(),
+                }
+                .into(),
+                // The order a right-click produces: only `JoinChannel` goes
+                // through the chat port, so its confirmation arrives second.
+                ChatEvent::ChannelSelected {
+                    channel: "Stormlord".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "Stormlord".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
             "chat restores message history when a new message recreates a conversation",
             vec![
                 ChatEvent::ChannelJoined {

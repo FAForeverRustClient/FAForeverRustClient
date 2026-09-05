@@ -1764,7 +1764,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.generate.symmetry": "Symmetrie",
   "maps.generate.any": "Beliebig",
   "maps.generate.mapStyle": "Kartenstil",
-  "maps.generate.mapStyleHint": "Ein Kartenstil ersetzt die einzelnen Stile für Gelände, Textur, Rohstoffe und Objekte.",
+  "maps.generate.mapStyleHint": "Ein Kartenstil ist eine vollständige Vorgabe: Er legt Gelände, Textur, Ressourcen und Objekte gemeinsam fest, deshalb werden die vier Listen darunter ignoriert, solange einer ausgewählt ist.",
   "maps.generate.terrain": "Gelände",
   "maps.generate.texture": "Textur",
   "maps.generate.resources": "Rohstoffe",
@@ -2639,4 +2639,10 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "mods.installed.folder": "Ordner",
   "mods.installed.uid": "UID",
   "mods.installed.viewInVault": "Im Vault anzeigen",
+
+  "maps.generate.styleSuperseded": "Wird ignoriert, solange ein Kartenstil ausgewählt ist.",
+  "maps.generate.enlargePreview": "Vorschau vergrößern",
+  "maps.generate.closePreview": "Zum Schließen irgendwohin klicken",
+  "replays.detail.simMods": "Simulations-Mods",
+  "replays.roster.ratingChange": "Rating-Änderung durch dieses Spiel",
 };

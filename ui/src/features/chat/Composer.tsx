@@ -5,8 +5,9 @@
 //
 //  * Tab completes the partial nickname before the caret, and pressing Tab
 //    again cycles through the other matches (Java's `AutoCompletionHelper`,
-//    Python's `ChatLineEdit.try_completion`). A completion at the start of the
-//    line gets a `: ` suffix, which is how people address each other in #aeolus.
+//    Python's `ChatLineEdit.try_completion`). The nickname replaces the partial
+//    word and nothing else: neither reference client appends a separator, and
+//    the `: ` this used to add at the start of a line was ours alone.
 //  * Up/Down walk the history of sent lines (Python's `prev_history`/
 //    `next_history`), so correcting a typo doesn't mean retyping.
 //
@@ -96,7 +97,7 @@ export function Composer({
       // Subsequent Tab: cycle to the next candidate for the same partial word.
       const index = (active.index + 1) % active.matches.length;
       completion.current = { ...active, index };
-      setDraft(active.prefix + suffixed(active.matches[index], active.prefix));
+      setDraft(active.prefix + active.matches[index]);
       return;
     }
 
@@ -110,7 +111,7 @@ export function Composer({
 
     const prefix = draft.slice(0, separator + 1);
     completion.current = { prefix, matches, index: 0 };
-    setDraft(prefix + suffixed(matches[0], prefix));
+    setDraft(prefix + matches[0]);
   };
 
   /**
@@ -229,6 +230,3 @@ export function Composer({
   );
 }
 
-/** A nickname completed at the start of a line addresses that person. */
-const suffixed = (nickname: string, prefix: string) =>
-  prefix === "" ? `${nickname}: ` : nickname;

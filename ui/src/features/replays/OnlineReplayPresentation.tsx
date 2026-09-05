@@ -456,6 +456,8 @@ export function ReplayDetailPanel({
   const detailTeams = mergeReplayTeamsWithLocal(replay.teams, localMatch?.teams);
   const localPath = initialLocalPath || localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
+  // Absent on a legacy `.scfareplay`, which has no header to read them from.
+  const simMods = details?.simMods ?? [];
   const isLoadingDetails = detailsLoading === replay.uid;
   const [optionFilter, setOptionFilter] = useState("");
 
@@ -818,6 +820,23 @@ export function ReplayDetailPanel({
 
       {details && (
         <>
+          {/* Which simulation mods the game ran with. Read from the replay's
+              own header rather than the vault listing, which does not carry
+              them, so it needs the details load either way. Hidden entirely
+              for an unmodded game rather than showing an empty row. */}
+          {simMods.length > 0 && (
+            <section className="replay-detail-sim-mods">
+              <h3 className="replay-more-info-title">
+                {t("replays.detail.simMods")}
+                <span className="muted replay-more-info-count">({simMods.length})</span>
+              </h3>
+              <ul className="replay-sim-mod-list">
+                {simMods.map((mod) => (
+                  <li key={mod} className="surface-chip">{mod}</li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="replay-detail-more-info">
             <div className="replay-more-info-grid">
               <div className="replay-more-info-col">
