@@ -345,19 +345,71 @@ fn discover_from_reference_configs(
     }
 }
 
+/// The retail Supreme Commander: Forged Alliance root, as the reference
+/// clients have it configured. Distinct from the FAF data roots above: this
+/// is the untouched Steam/THQ install holding `gamedata/*.scd`, `movies`,
+/// `sounds` and `fonts`, which the game updater has to name as `fa_path` in
+/// `fa_path.lua`.
+///
+/// Both reference clients persist it, under keys unrelated to the data roots:
+/// the Java client as `forgedAlliance.installationPath` in `client.prefs`,
+/// the Python client as `app\path` in `FA Lobby.ini`'s `[ForgedAlliance]`
+/// section. Java first, matching the order [`discover_from_reference_configs`]
+/// uses. Nothing here is validated: the caller decides what counts as a usable
+/// install, and importing the path is safe precisely because it is only ever
+/// read from, never an update target.
+pub fn reference_retail_install_paths() -> Vec<PathBuf> {
+    let Some(app_data) = std::env::var_os("APPDATA").map(PathBuf::from) else {
+        return Vec::new();
+    };
+    reference_retail_install_paths_from(
+        &app_data
+            .join("Forged Alliance Forever")
+            .join("client.prefs"),
+        &app_data.join("ForgedAllianceForever").join("FA Lobby.ini"),
+    )
+}
+
+fn reference_retail_install_paths_from(java_prefs: &Path, python_ini: &Path) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = [
+        java_prefs_path(java_prefs, "/forgedAlliance/installationPath"),
+        python_ini_path(python_ini, "ForgedAlliance", r"app\path"),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+
+    let mut seen = HashSet::new();
+    roots.retain(|path| seen.insert(path.clone()));
+    roots
+}
+
 fn java_data_root(path: &Path) -> Option<PathBuf> {
+    java_prefs_path(path, "/data/baseDataDirectory")
+}
+
+fn java_prefs_path(path: &Path, pointer: &str) -> Option<PathBuf> {
     let text = read_small_text_file(path)?;
     let document: serde_json::Value = serde_json::from_str(&text).ok()?;
     document
-        .pointer("/data/baseDataDirectory")
+        .pointer(pointer)
         .and_then(serde_json::Value::as_str)
         .filter(|value| !value.trim().is_empty())
         .map(PathBuf::from)
 }
 
 fn python_data_root(path: &Path) -> Option<PathBuf> {
+    python_ini_path(path, "client", "data_path")
+}
+
+/// Read one QSettings-style ini value. Qt writes nested keys as
+/// `app\path=…` inside a `[Section]`, but also accepts the flattened
+/// `Section\app\path=…` form, so both are matched, with `/` and `\` treated
+/// as the same separator.
+fn python_ini_path(path: &Path, section: &str, key: &str) -> Option<PathBuf> {
     let text = read_small_text_file(path)?;
-    let mut section = "";
+    let flattened = format!("{section}/{key}");
+    let mut current = "";
 
     for raw_line in text.lines() {
         let line = raw_line.trim();
@@ -368,18 +420,16 @@ fn python_data_root(path: &Path) -> Option<PathBuf> {
             .strip_prefix('[')
             .and_then(|value| value.strip_suffix(']'))
         {
-            section = name.trim();
+            current = name.trim();
             continue;
         }
-        let Some((key, value)) = line.split_once('=') else {
+        let Some((raw_key, value)) = line.split_once('=') else {
             continue;
         };
-        let key = key.trim();
-        let is_data_path = (section.eq_ignore_ascii_case("client")
-            && key.eq_ignore_ascii_case("data_path"))
-            || key.eq_ignore_ascii_case("client/data_path")
-            || key.eq_ignore_ascii_case(r"client\data_path");
-        if !is_data_path {
+        let raw_key = raw_key.trim();
+        let matches = (current.eq_ignore_ascii_case(section) && ini_key_eq(raw_key, key))
+            || ini_key_eq(raw_key, &flattened);
+        if !matches {
             continue;
         }
 
@@ -389,6 +439,11 @@ fn python_data_root(path: &Path) -> Option<PathBuf> {
         }
     }
     None
+}
+
+fn ini_key_eq(left: &str, right: &str) -> bool {
+    left.replace('\\', "/")
+        .eq_ignore_ascii_case(&right.replace('\\', "/"))
 }
 
 fn read_small_text_file(path: &Path) -> Option<String> {
@@ -777,5 +832,59 @@ mod tests {
         let found = discover_from_reference_configs(None, Some(&ini), None);
         assert_eq!(found.game.as_deref(), live.to_str());
         assert_eq!(found.replay, None);
+    }
+
+    #[test]
+    fn reads_the_retail_install_root_both_reference_clients_configured() {
+        // The keys and escaping are copied from real config files. A retail
+        // root outside `%ProgramFiles%` is unguessable, so reading it here is
+        // the only thing that keeps `fa_path` off the FAF patch dir.
+        let temp = tempfile::tempdir().unwrap();
+
+        let prefs = temp.path().join("client.prefs");
+        std::fs::write(
+            &prefs,
+            serde_json::json!({
+                "data": { "baseDataDirectory": "C:/ProgramData/FAForever" },
+                "forgedAlliance": { "installationPath": "C:/Games/THQ/FA" },
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let ini = temp.path().join("FA Lobby.ini");
+        std::fs::write(
+            &ini,
+            "[client]\ndata_path=C:\\\\ProgramData\\\\FAForever\n\
+             [ForgedAlliance]\napp\\path=D:\\\\Steam\\\\common\\\\SCFA\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            reference_retail_install_paths_from(&prefs, &ini),
+            vec![
+                PathBuf::from("C:/Games/THQ/FA"),
+                PathBuf::from(r"D:\Steam\common\SCFA"),
+            ],
+            "the Java client's path comes first, and neither data root leaks in"
+        );
+    }
+
+    #[test]
+    fn a_missing_or_unconfigured_reference_config_yields_no_retail_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let prefs = temp.path().join("client.prefs");
+        // Configured, but only with the data root: the shape a user who never
+        // pointed the Java client at their install has.
+        std::fs::write(
+            &prefs,
+            serde_json::json!({ "data": { "baseDataDirectory": "C:/ProgramData/FAForever" } })
+                .to_string(),
+        )
+        .unwrap();
+
+        assert!(
+            reference_retail_install_paths_from(&prefs, &temp.path().join("absent.ini")).is_empty()
+        );
     }
 }
