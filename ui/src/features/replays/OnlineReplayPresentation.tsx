@@ -28,12 +28,12 @@ import { onlineReplayLink } from "../../shared/replayLinks";
 import { useAppStore } from "../../store/store";
 import {
   isObserverTeam,
-  outcomeLabel,
   playerCount,
   ReplayCardRoster,
   ReplayDetailRoster,
   mergeReplayTeamsWithLocal,
 } from "./ReplayRoster";
+import { isRated, notRatedReason } from "./replayValidity";
 import {
   formatReplayListTime,
   ReplayList,
@@ -556,9 +556,16 @@ export function ReplayDetailPanel({
   }, [isGenerated, seed, replay.replayAvailable, replay.uid, localMatch, downloadState]);
 
   const totalPlayers = playerCount(detailTeams);
-  const hasResults = detailTeams.some((team) =>
-    team.players.some((player) => Boolean(outcomeLabel(player.outcome))),
-  );
+  // Java gates the whole result display on the game having been rated: its
+  // "show rating change" button needs `validity == VALID` *and* a rating
+  // journal with an "after", and the not-rated reason takes the button's place
+  // otherwise. Showing outcomes regardless is what put "Defeat" on both sides
+  // of a game nobody won and said nothing about why.
+  // Optional on the wire: a listing from before this field existed carries
+  // none, which reads as "no verdict yet" rather than as a refusal.
+  const validity = replay.validity ?? "";
+  const rated = isRated(validity, detailTeams);
+  const notRated = rated ? null : notRatedReason(validity);
   const copyLink = () =>
     ipc.run(
       navigator.clipboard
@@ -784,7 +791,7 @@ export function ReplayDetailPanel({
           <div>
             <h3>{lineupSummary}</h3>
           </div>
-          {hasResults && (
+          {rated && (
             <Button
               className="replay-detail-reveal-btn"
               aria-pressed={showResults}
@@ -795,7 +802,12 @@ export function ReplayDetailPanel({
           )}
         </div>
         {detailTeams.length > 0 ? (
-          <ReplayDetailRoster teams={detailTeams} showResults={showResults} avatarByLogin={avatarByLogin} />
+          <ReplayDetailRoster
+            teams={detailTeams}
+            showResults={showResults}
+            notRated={notRated}
+            avatarByLogin={avatarByLogin}
+          />
         ) : (
           <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
         )}

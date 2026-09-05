@@ -2726,6 +2726,12 @@ fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                 reviews_average,
                 reviews_count,
                 game_version,
+                validity: game
+                    .attributes
+                    .get("validity")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
             })
         })
         .collect()

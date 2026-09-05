@@ -1223,3 +1223,14 @@ button.vault-input {
   padding: 0;
   list-style: none;
 }
+
+/* Why a game produced no result, in place of the outcomes rather than beside
+   them: an unrated game has nothing to report and every reason to say so. */
+.replay-not-rated {
+  margin: 0 0 var(--space-3);
+  font-size: 12px;
+}
+
+.replay-team-outcome.unknown {
+  color: var(--color-muted);
+}

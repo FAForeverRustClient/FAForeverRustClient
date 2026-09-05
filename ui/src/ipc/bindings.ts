@@ -4223,8 +4223,9 @@ export type ReplayPlayer = {
 	 */
 	faction: number | null,
 	/**
-	 *  `round(mean - 3*deviation)` at game time, the same "displayed rating"
-	 *  formula the Python and Java clients use.
+	 *  `trunc(mean - 3*deviation)` at game time, the "displayed rating" both
+	 *  reference clients compute: Java casts (`RatingUtil.getRating`), Python
+	 *  casts (`rating_estimate`), and neither rounds.
 	 */
 	rating: number | null,
 	/**
@@ -6679,6 +6680,18 @@ export type VaultReplay = {
 	reviewsAverage: number | null,
 	reviewsCount: number | null,
 	gameVersion: number | null,
+	/**
+	 *  `game.attributes.validity`, the server's verdict on whether this game
+	 *  counted: `VALID`, or the reason it did not (`BAD_MOD`,
+	 *  `UNKNOWN_RESULT`, ...). Kept as the raw server value, because the set
+	 *  grows on the server and an unrecognised one still has to be reportable.
+	 *  Empty when the listing did not carry it.
+	 *
+	 *  The whole result display hangs off this: an unrated game has no
+	 *  outcome worth showing, and saying so is the point (see
+	 *  `ReplayDetailRoster`).
+	 */
+	validity?: string,
 };
 
 /**

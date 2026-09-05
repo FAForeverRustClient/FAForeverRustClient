@@ -117,6 +117,17 @@ pub struct VaultReplay {
     pub reviews_average: Option<f32>,
     pub reviews_count: Option<i32>,
     pub game_version: Option<i32>,
+    /// `game.attributes.validity`, the server's verdict on whether this game
+    /// counted: `VALID`, or the reason it did not (`BAD_MOD`,
+    /// `UNKNOWN_RESULT`, ...). Kept as the raw server value, because the set
+    /// grows on the server and an unrecognised one still has to be reportable.
+    /// Empty when the listing did not carry it.
+    ///
+    /// The whole result display hangs off this: an unrated game has no
+    /// outcome worth showing, and saying so is the point (see
+    /// `ReplayDetailRoster`).
+    #[serde(default)]
+    pub validity: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -783,6 +794,7 @@ mod tests {
             reviews_average: None,
             reviews_count: None,
             game_version: None,
+            validity: "VALID".into(),
         }
     }
 

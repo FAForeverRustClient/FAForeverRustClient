@@ -59,6 +59,23 @@ export function outcomeLabel(outcome: string): string {
 }
 
 /**
+ * One team's result, by the priority Java's `calculateTeamOutcome` uses:
+ * a victory anywhere in the team wins, then a draw, then a defeat, and only a
+ * team where nobody has a recorded outcome is unknown.
+ *
+ * Taking the first player who happens to have one, as this did, is not the
+ * same thing: the roster is in server order, so a team-mate who resigned early
+ * could put "Defeat" on the team that won.
+ */
+export function teamOutcome(players: ReplayPlayer[]): OutcomeKind | "unknown" {
+  const kinds = players.map((player) => parseOutcome(player.outcome)).filter(Boolean);
+  if (kinds.includes("victory")) return "victory";
+  if (kinds.includes("draw")) return "draw";
+  if (kinds.includes("defeat")) return "defeat";
+  return "unknown";
+}
+
+/**
  * Local replay headers can contain the exact rating even when the vault
  * response has no rating journal included. Keep the richer vault player data
  * and fill only values that are missing from it.
@@ -171,10 +188,20 @@ function ReplayPlayerAvatar({
 export function ReplayDetailRoster({
   teams,
   showResults = false,
+  notRated,
   avatarByLogin,
 }: {
   teams: ReplayTeam[];
   showResults?: boolean;
+  /**
+   * Why this game produced no result, shown in place of the outcomes.
+   *
+   * Java hides its result labels entirely for a game that was not rated and
+   * puts this line where the "show rating change" button would be. Showing
+   * outcomes anyway is what put "Defeat" on both sides of a game nobody won,
+   * and left the other side blank when only one team had a recorded result.
+   */
+  notRated?: string | null;
   avatarByLogin?: ReadonlyMap<string, string>;
 }) {
   useLocale();
@@ -187,6 +214,8 @@ export function ReplayDetailRoster({
   // as a bracket rather than a lineup.
   const versus = teams.length === 2 && teams.every((team) => !isObserverTeam(team.team));
   return (
+    <>
+    {notRated && <p className="replay-not-rated muted">{notRated}</p>}
     <div
       className="replay-detail-teams"
       data-layout={versus ? "versus" : undefined}
@@ -200,13 +229,18 @@ export function ReplayDetailRoster({
         const teamRating = ratings.length === 0
           ? null
           : ratings.reduce((sum, rating) => sum + rating, 0);
-        const outcomeKind = observer
-          ? ""
-          : team.players.map((player) => parseOutcome(player.outcome)).find(Boolean) ?? "";
-        const outcomeText = outcomeKind ? outcomeLabel(outcomeKind) : "";
+        const resolved = observer ? "unknown" : teamOutcome(team.players);
+        const outcomeKind = resolved === "unknown" ? "" : resolved;
+        // An unknown result is stated, not left blank: a team with no outcome
+        // beside one that has an outcome read as a rendering slip.
+        const outcomeText = outcomeKind
+          ? outcomeLabel(outcomeKind)
+          : observer
+            ? ""
+            : t("replays.roster.unknownResult");
         const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > 4;
         const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
-        const showHeader = !isSingleTeamGame || (showResults && Boolean(outcomeKind));
+        const showHeader = !isSingleTeamGame || (showResults && Boolean(outcomeText));
         return (
           <Fragment key={team.team}>
             {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
@@ -218,8 +252,10 @@ export function ReplayDetailRoster({
                     {!isSingleTeamGame && teamRating !== null && (
                       <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
                     )}
-                    {showResults && outcomeKind && (
-                      <span className={`replay-team-outcome ${outcomeKind}`}>{outcomeText}</span>
+                    {showResults && outcomeText && (
+                      <span className={`replay-team-outcome ${outcomeKind || "unknown"}`}>
+                        {outcomeText}
+                      </span>
                     )}
                   </span>
                 </header>
@@ -276,6 +312,7 @@ export function ReplayDetailRoster({
         );
       })}
     </div>
+    </>
   );
 }
 
