@@ -2881,6 +2881,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.run.loading": "Die Aufzeichnung wird geladen ...",
   "training.run.failed": "Die Aufzeichnung konnte nicht geladen werden: {reason}.",
   "training.run.unreadable": "Die Aufzeichnung kam an, ist aber keine Build Order, die dieser Client lesen kann.",
+  "training.detail.back": "Zurück",
   "training.detail.related": "Weiterlesen",
   "training.detail.askForReview": "Zu einem eigenen Spiel fragen",
 

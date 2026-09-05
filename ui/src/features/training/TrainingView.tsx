@@ -59,13 +59,21 @@ const send = (command: TrainingCommand) =>
 const openBlankReview = () =>
   send({ type: "openReview", payload: { replayUid: null, localPath: null } });
 
-type Section = "hub" | "library" | "lessons" | "trainers" | "contribute" | "pending";
+// `detail` is not a place a reader navigates to from nothing: it appears when
+// an entry is open and is the tab they land on, which is why it is a section
+// rather than an overlay. A build order is worked through, sometimes with the
+// game beside it, and a dialog says the opposite of that.
+type Section = "hub" | "library" | "lessons" | "trainers" | "contribute" | "pending" | "detail";
 
 export function TrainingView() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.training);
   const guides = useAppStore((store) => store.state.guides);
   const [section, setSection] = useState<Section>("hub");
+  // Where the reader was before they opened an entry, so back returns there
+  // rather than to a fixed tab. A guide reached from the hub's recommendation
+  // rail and one reached from a library filter are different journeys.
+  const cameFrom = useRef<Section>("hub");
   const railRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -171,6 +179,31 @@ export function TrainingView() {
     },
   ];
 
+  // Only while something is open, and named after it: a tab called "Detail"
+  // would tell a reader nothing about which of sixty entries they left open.
+  if (selected) {
+    sections.push({ id: "detail", label: selected.title });
+  }
+
+  /** Open an entry in its own tab, remembering where the reader came from. */
+  const select = (resource: TrainingResource) => {
+    if (section !== "detail") cameFrom.current = section;
+    send({ type: "select", payload: { resourceId: resource.id } });
+    setSection("detail");
+  };
+
+  // A reload can drop the entry that is open, and the reducer clears the
+  // selection when it does. Without this the tab would sit on a section with
+  // nothing in it and no way back except another tab.
+  useEffect(() => {
+    if (section === "detail" && !selected) setSection(cameFrom.current);
+  }, [section, selected]);
+
+  const closeDetail = () => {
+    send({ type: "select", payload: { resourceId: null } });
+    setSection(cameFrom.current);
+  };
+
   const failed = state.status.type === "failed" ? state.status.payload.reason : null;
 
   return (
@@ -255,9 +288,7 @@ export function TrainingView() {
                     resource={resource}
                     reason={reasonFor(resource, state.profile.maps, state.profile.gameModes)}
                     onOpen={open}
-                    onSelect={(picked) =>
-                      send({ type: "select", payload: { resourceId: picked.id } })
-                    }
+                    onSelect={select}
                   />
                 ))}
               </div>
@@ -307,7 +338,7 @@ export function TrainingView() {
           myRating={myRating}
           onQuery={(query) => send({ type: "setQuery", payload: { query } })}
           onOpen={open}
-          onSelect={(resource) => send({ type: "select", payload: { resourceId: resource.id } })}
+          onSelect={select}
         />
       )}
 
@@ -360,19 +391,19 @@ export function TrainingView() {
         <GuidesQueue state={guides} discordUrl={state.links.discordUrl} />
       )}
 
-      {selected && (
+      {section === "detail" && selected && (
         <ResourceDetail
           resource={selected}
           resources={state.resources}
           guide={state.document}
           onOpen={open}
           onRead={(resource) => send({ type: "readGuide", payload: { resourceId: resource.id } })}
-          onSelect={(resource) => send({ type: "select", payload: { resourceId: resource.id } })}
+          onSelect={select}
           onRequestReview={() => {
-            send({ type: "select", payload: { resourceId: null } });
+            closeDetail();
             openBlankReview();
           }}
-          onClose={() => send({ type: "select", payload: { resourceId: null } })}
+          onClose={closeDetail}
         />
       )}
 

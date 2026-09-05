@@ -695,15 +695,55 @@
 
 /* ── detail ────────────────────────────────────────────────────────── */
 
-.training-detail-modal {
-  width: min(680px, 92vw);
+/* An entry is a page in the tab, not a dialog over it. The prose keeps a
+   reading measure of its own further down; what the page gives back is the
+   width the three-pane run layout needs, which a dialog never had. */
+.training-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-/* A recorded run needs the room: three panes at 680px is three columns of
-   nothing. Only widened when there is one, so an ordinary entry keeps the
-   reading width it was designed at. */
-.training-detail-wide {
-  width: min(1180px, 96vw);
+.training-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.training-detail-back:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Without a dialog around it the prose would run the full width of the tab,
+   which is unreadable at this size. The panes that want the width (the flow
+   and the map) set their own. */
+.training-detail-page > .training-detail > header,
+.training-detail-page > .training-detail > .training-detail-guide,
+.training-detail-page > .training-detail > .training-detail-guide-problem {
+  max-width: 70ch;
+}
+
+.training-detail-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .training-detail {

@@ -2989,6 +2989,7 @@ export const en = {
   "training.run.loading": "Fetching the recorded run...",
   "training.run.failed": "The recorded run could not be fetched: {reason}.",
   "training.run.unreadable": "The recorded run arrived but is not a build order this client can read.",
+  "training.detail.back": "Back",
   "training.detail.related": "Read next",
   "training.detail.askForReview": "Ask about one of my games",
 

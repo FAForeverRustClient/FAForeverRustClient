@@ -9,7 +9,6 @@ import { useEffect, useMemo } from "react";
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { Modal } from "../../design-system/Modal";
 import type { TrainingDocument, TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { relatedResources } from "../../shared/trainingRules";
@@ -38,6 +37,7 @@ interface Props {
   onSelect: (resource: TrainingResource) => void;
   onRead: (resource: TrainingResource) => void;
   onRequestReview: () => void;
+  /** Back to whichever section the reader came from. */
   onClose: () => void;
 }
 
@@ -76,14 +76,24 @@ export function ResourceDetail({
   }, [resource, guide.resourceId, onRead]);
 
   return (
-    <Modal
-      onClose={onClose}
-      ariaLabel={resource.title}
-      className={run ? "training-detail-modal training-detail-wide" : "training-detail-modal"}
-    >
+    // A page rather than an overlay. A build order is something a reader
+    // works *through*, sometimes with the game open beside it, and a modal
+    // says the opposite: that this is a detour to be dismissed before
+    // anything else can happen. It also capped the three-pane run layout at
+    // a dialog's width, which is the one place that layout needed room.
+    <section className="training-detail-page" aria-label={resource.title}>
+      <button type="button" className="training-detail-back" onClick={onClose}>
+        <Icon name="arrowLeft" size={15} />
+        <span>{t("training.detail.back")}</span>
+      </button>
+
       <div className="training-detail">
         <header>
-          <span className="training-card-kind">
+          {/* Its own chip rather than the card's badge. That badge is
+              absolutely positioned into a card's art corner as a 20px square,
+              which pinned it to the page corner here and clipped the label off
+              the moment this stopped being a dialog. */}
+          <span className="training-detail-kind">
             <Icon name={kindIcon(resource.kind)} size={14} />
             <span>{t(kindLabel(resource.kind))}</span>
           </span>
@@ -212,7 +222,7 @@ export function ResourceDetail({
           </section>
         )}
       </div>
-    </Modal>
+    </section>
   );
 }
 
