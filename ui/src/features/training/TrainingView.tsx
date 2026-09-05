@@ -49,7 +49,7 @@ import { TrainingHero } from "./TrainingHero";
 import { TrainingLibrary } from "./TrainingLibrary";
 import { TrainerTiles } from "./TrainerTiles";
 import { GuidesQueue } from "./GuidesQueue";
-import { BASIC_TOPICS, topicHint, topicLabel } from "./trainingPresentation";
+import { BASIC_TOPICS, renderedPage, topicHint, topicLabel } from "./trainingPresentation";
 import "./training.css";
 
 const send = (command: TrainingCommand) =>
@@ -142,7 +142,12 @@ export function TrainingView() {
 
   /** Open a resource. Everything in the catalogue is a destination today. */
   const open = (resource: TrainingResource) => {
-    if (resource.url) void openHttpsUrl(resource.url);
+    if (!resource.url) return;
+    // The catalogue stores the raw address, because that is the one the client
+    // reads itself. Handing that to a browser would show a build order as a
+    // wall of monospace: `raw.githubusercontent.com` serves text/plain, and
+    // only the `blob` address is rendered.
+    void openHttpsUrl(renderedPage(resource.url));
   };
 
   const sections: SectionTab<Section>[] = [
@@ -359,7 +364,9 @@ export function TrainingView() {
         <ResourceDetail
           resource={selected}
           resources={state.resources}
+          guide={state.document}
           onOpen={open}
+          onRead={(resource) => send({ type: "readGuide", payload: { resourceId: resource.id } })}
           onSelect={(resource) => send({ type: "select", payload: { resourceId: resource.id } })}
           onRequestReview={() => {
             send({ type: "select", payload: { resourceId: null } });

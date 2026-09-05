@@ -3934,6 +3934,61 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a hosted guide is read, and a reply for a closed entry is dropped",
+            vec![
+                TrainingEvent::Loaded {
+                    resources: vec![training_resource("eco"), training_resource("setons")],
+                    trainers: Vec::new(),
+                    links: TrainingLinks::default(),
+                    source: TrainingSource::Remote,
+                }
+                .into(),
+                TrainingEvent::Selected {
+                    resource_id: Some("setons".into()),
+                }
+                .into(),
+                TrainingEvent::GuideReading {
+                    resource_id: "setons".into(),
+                }
+                .into(),
+                TrainingEvent::GuideRead {
+                    resource_id: "setons".into(),
+                    markdown: "# Seton's\n\n- **ACU:** Landfac\n".into(),
+                }
+                .into(),
+                // Moving to another entry drops the text with it: the title
+                // above the pane now belongs to something else.
+                TrainingEvent::Selected {
+                    resource_id: Some("eco".into()),
+                }
+                .into(),
+                // The slow reply for the entry just left. Dropped, rather than
+                // rendered under the wrong heading.
+                TrainingEvent::GuideRead {
+                    resource_id: "setons".into(),
+                    markdown: "too late".into(),
+                }
+                .into(),
+                TrainingEvent::GuideReading {
+                    resource_id: "eco".into(),
+                }
+                .into(),
+                TrainingEvent::GuideFailed {
+                    resource_id: "eco".into(),
+                    reason: "could not reach the guide".into(),
+                }
+                .into(),
+                // And a failure for an entry already left is dropped too, so a
+                // reader is not shown an error about something they closed.
+                TrainingEvent::Selected { resource_id: None }.into(),
+                TrainingEvent::GuideFailed {
+                    resource_id: "eco".into(),
+                    reason: "still too late".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a replay review is prefilled, composed, and invalidated by an edit",
             vec![
                 TrainingEvent::ReviewOpened {
@@ -4834,6 +4889,7 @@ fn player_summary(id: i32, login: &str, rating: Option<i32>) -> PlayerSummary {
 /// specific map. Those are the four shapes the filter's edge cases live in.
 fn training_catalogue() -> Vec<TrainingResource> {
     let base = TrainingResource {
+        readable: false,
         image_url: String::new(),
         id: String::new(),
         title: String::new(),
@@ -5162,6 +5218,7 @@ fn submission(number: i32) -> GuideSubmission {
 
 fn training_resource(id: &str) -> TrainingResource {
     TrainingResource {
+        readable: false,
         id: id.into(),
         image_url: String::new(),
         title: format!("Resource {id}"),

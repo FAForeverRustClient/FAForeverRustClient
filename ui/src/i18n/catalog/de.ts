@@ -2870,6 +2870,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.detail.duration": "Länge",
   "training.detail.minutes": { one: "{count} Minute", other: "{count} Minuten" },
   "training.detail.author": "Von",
+  "training.detail.guideLoading": "Der Guide wird geladen ...",
+  "training.detail.guideFailed": "Dieser Guide konnte nicht geladen werden: {reason}. Der Knopf oben öffnet ihn trotzdem.",
   "training.detail.related": "Weiterlesen",
   "training.detail.askForReview": "Zu einem eigenen Spiel fragen",
 

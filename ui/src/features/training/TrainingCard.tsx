@@ -19,6 +19,8 @@
 import { Icon } from "../../design-system/Icon";
 import type { TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
+import { useAppStore } from "../../store/store";
+import { mapPreviewUrl } from "./trainingPresentation";
 import { kindIcon, kindLabel } from "./trainingPresentation";
 
 interface Props {
@@ -56,19 +58,27 @@ export function TrainingCard({ resource, reason, onSelect }: Props) {
 }
 
 /**
- * Two ordered sources, and a mark when there is neither.
+ * Three ordered sources, and a mark when there is none.
  *
- * The catalogue may carry a picture (a video still, a map preview); when it
- * does not, the kind mark at least says what the entry is. `contain` rather
- * than `cover` because a square map preview and a 16:9 video still share this
- * grid, and cropping either loses the thing that identifies it.
+ * A build order shows its map, always, and in preference to anything the entry
+ * carries: it is about one piece of ground, and the reader recognises that
+ * ground long before they read the title. A video still of somebody's face cam
+ * identifies the author, which is the one thing the caption already says.
+ *
+ * Otherwise the catalogue's own picture (a video still, a lesson's art), and
+ * failing that the kind mark, which at least says what the entry is. `contain`
+ * rather than `cover` because a square map preview and a 16:9 video still share
+ * this grid, and cropping either loses the thing that identifies it.
  */
 function Art({ resource }: { resource: TrainingResource }) {
-  if (resource.imageUrl) {
+  const vault = useAppStore((store) => store.state.maps.vault);
+  const preview = resource.kind === "buildOrder" ? mapPreviewUrl(vault, resource.maps) : "";
+  const source = preview || resource.imageUrl;
+  if (source) {
     return (
       <img
         className="training-card-image"
-        src={resource.imageUrl}
+        src={source}
         alt=""
         loading="lazy"
         decoding="async"

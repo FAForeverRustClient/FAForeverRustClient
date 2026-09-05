@@ -719,6 +719,41 @@
   line-height: 1.6;
 }
 
+.training-detail-video {
+  /* 16:9, so the frame keeps its shape as the modal is resized rather than
+     leaving the player letterboxed inside a box of its own. */
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  margin-top: var(--space-4);
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.training-detail-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.training-detail-guide {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.training-detail-guide-problem {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
 .training-detail-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

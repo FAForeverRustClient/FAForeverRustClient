@@ -6672,6 +6672,16 @@ export type TrainingCommand =
 	resourceId: string | null,
 } } |
 /**
+ *  Read a guide this project hosts, for rendering in the tab.
+ *
+ *  By resource id rather than by url: the url is remote content, and a
+ *  command carrying one would let a catalogue entry choose where the client
+ *  sends a request. The service looks the entry up and decides for itself.
+ */
+{ type: "readGuide"; payload: {
+	resourceId: string,
+} } |
+/**
  *  Open the review request form.
  *
  *  The prefill is asked for by *reference*, not passed in: which replay,
@@ -6702,6 +6712,18 @@ export type TrainingCommand =
 	draft: ContributionDraft,
 } } | { type: "closeContribution" };
 
+/**
+ *  One guide's text, as the reader has it open.
+ *
+ *  Keyed by the resource it belongs to so that a reply arriving after the
+ *  reader has moved on is dropped rather than rendered under the wrong title.
+ */
+export type TrainingDocument = {
+	resourceId: string,
+	markdown: string,
+	status: TrainingStatus,
+};
+
 export type TrainingEvent = { type: "loading" } | { type: "loaded"; payload: {
 	resources: TrainingResource[],
 	trainers: Trainer[],
@@ -6716,6 +6738,14 @@ export type TrainingEvent = { type: "loading" } | { type: "loaded"; payload: {
 } } | { type: "recommended"; payload: {
 	resourceIds: string[],
 	profile: TrainingProfile,
+} } | { type: "guideReading"; payload: {
+	resourceId: string,
+} } | { type: "guideRead"; payload: {
+	resourceId: string,
+	markdown: string,
+} } | { type: "guideFailed"; payload: {
+	resourceId: string,
+	reason: string,
 } } | { type: "reviewOpened"; payload: {
 	draft: ReviewRequestDraft,
 } } | { type: "reviewChanged"; payload: {
@@ -6913,6 +6943,16 @@ export type TrainingResource = {
 	 */
 	approvedBy: string,
 	updatedAt: string,
+	/**
+	 *  Whether this entry's text can be read in the tab rather than opened in a
+	 *  browser.
+	 *
+	 *  Set where the catalogue is parsed, because only there is it known which
+	 *  repository this build trusts; see [`hosted_guide`]. Derived rather than
+	 *  stated, for the same reason `image_url` is: a manifest claiming a
+	 *  document is readable would not make it so.
+	 */
+	readable: boolean,
 };
 
 /**
@@ -6952,6 +6992,8 @@ export type TrainingState = {
 	reviewPost: ForumPost | null,
 	contribution: ContributionDraft | null,
 	contributionPost: ForumPost | null,
+	/**  The guide being read in the tab, when one is. */
+	document: TrainingDocument,
 };
 
 export type TrainingStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {

@@ -82,10 +82,20 @@ export function coversMap(resource: TrainingResource, map: string): boolean {
   });
 }
 
+/**
+ * Twin of `leaderboard_word`: what the leaderboard calls a mode the catalogue
+ * speaks in. A game outside the matchmaker is rated on `global`, which is not
+ * the word anyone uses in a lobby, so the catalogue says `custom`.
+ */
+export function leaderboardWord(mode: string): string {
+  return mode.toLowerCase() === "custom" ? "global" : mode;
+}
+
 /** Twin of `TrainingResource::covers_mode`. */
 export function coversMode(resource: TrainingResource, mode: string): boolean {
   if (mode === "" || resource.gameModes.length === 0) return true;
-  return resource.gameModes.some((mine) => mine.toLowerCase() === mode.toLowerCase());
+  const wanted = leaderboardWord(mode).toLowerCase();
+  return resource.gameModes.some((mine) => leaderboardWord(mine).toLowerCase() === wanted);
 }
 
 /** Twin of `TrainingResource::matches_text`, with `needle` already lowercased. */
@@ -116,7 +126,7 @@ export function ratingFor(
   resource: TrainingResource,
 ): number | null {
   for (const mode of resource.gameModes) {
-    const rating = profile.ratings[mode];
+    const rating = profile.ratings[leaderboardWord(mode)];
     if (rating !== undefined) return rating;
   }
   return profile.rating;

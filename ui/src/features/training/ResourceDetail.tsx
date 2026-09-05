@@ -5,12 +5,15 @@
 // graph: "here is the mistake" can point at "here is the lesson that fixes it",
 // which is the one thing a client can offer that a wiki page cannot.
 
+import { useEffect } from "react";
+
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
-import type { TrainingResource } from "../../ipc/bindings";
+import type { TrainingDocument, TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { relatedResources } from "../../shared/trainingRules";
+import { Markdown } from "./markdown";
 import {
   actionLabel,
   bandKey,
@@ -19,13 +22,17 @@ import {
   kindLabel,
   levelLabel,
   topicLabel,
+  videoEmbedUrl,
 } from "./trainingPresentation";
 
 interface Props {
   resource: TrainingResource;
   resources: TrainingResource[];
+  /** The guide's text, once it has been read. */
+  guide: TrainingDocument;
   onOpen: (resource: TrainingResource) => void;
   onSelect: (resource: TrainingResource) => void;
+  onRead: (resource: TrainingResource) => void;
   onRequestReview: () => void;
   onClose: () => void;
 }
@@ -33,14 +40,27 @@ interface Props {
 export function ResourceDetail({
   resource,
   resources,
+  guide,
   onOpen,
   onSelect,
+  onRead,
   onRequestReview,
   onClose,
 }: Props) {
   const { t } = useTranslation();
   const band = bandKey(resource);
   const related = relatedResources(resources, resource);
+  const embed = resource.kind === "video" ? videoEmbedUrl(resource.url) : "";
+
+  // Asked for as soon as the pane opens, not behind a second click. A guide
+  // this project hosts is the one thing here that is not somebody else's page,
+  // and making the reader ask twice for text the client already has an address
+  // for is ceremony.
+  useEffect(() => {
+    if (resource.readable && guide.resourceId !== resource.id) {
+      onRead(resource);
+    }
+  }, [resource, guide.resourceId, onRead]);
 
   return (
     <Modal onClose={onClose} ariaLabel={resource.title} className="training-detail-modal">
@@ -53,6 +73,25 @@ export function ResourceDetail({
           <h3>{resource.title}</h3>
           {resource.summary && <p className="training-detail-summary">{resource.summary}</p>}
         </header>
+
+        {embed && (
+          // Played here rather than in a browser, because a player checking a
+          // build order mid-game should not be alt-tabbing into a browser and
+          // back. The host is the privacy-enhanced one, which is also the only
+          // one the client's frame policy allows; an uploader who has disabled
+          // embedding gets a frame that says so and offers YouTube, which is
+          // the honest outcome and still one click from watching.
+          <div className="training-detail-video">
+            <iframe
+              src={embed}
+              title={resource.title}
+              loading="lazy"
+              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+        )}
 
         <dl className="training-detail-meta">
           {resource.level && (
@@ -122,6 +161,8 @@ export function ResourceDetail({
           </Button>
         </div>
 
+        {resource.readable && <GuideBody guide={guide} />}
+
         {related.length > 0 && (
           <section className="training-related">
             <h4>{t("training.detail.related")}</h4>
@@ -140,4 +181,32 @@ export function ResourceDetail({
       </div>
     </Modal>
   );
+}
+
+/**
+ * The guide, read in the tab.
+ *
+ * Only ever drawn for an entry the catalogue parser marked readable, which
+ * means Markdown in the repository this build trusts. Everything else in the
+ * library is somebody else's page behind their own styling and their own
+ * login, and the honest thing to do with those is the button above.
+ *
+ * A failure is stated rather than hidden: the reader still has that button,
+ * and "this could not be fetched" is a different situation from "this entry is
+ * a link", which they should be able to tell apart.
+ */
+function GuideBody({ guide }: { guide: TrainingDocument }) {
+  const { t } = useTranslation();
+
+  if (guide.status.type === "failed") {
+    return (
+      <p className="muted training-detail-guide-problem">
+        {t("training.detail.guideFailed", { reason: guide.status.payload.reason })}
+      </p>
+    );
+  }
+  if (guide.status.type !== "ready" || !guide.markdown) {
+    return <p className="muted training-detail-guide-problem">{t("training.detail.guideLoading")}</p>;
+  }
+  return <Markdown source={guide.markdown} className="training-detail-guide" />;
 }

@@ -286,6 +286,7 @@ const INITIAL: AppState = {
     trainers: [],
     status: { type: "idle" },
     source: "bundled",
+    document: { resourceId: "", markdown: "", status: { type: "idle" } },
     links: {
       discordUrl: "",
       replayReviewChannel: "",

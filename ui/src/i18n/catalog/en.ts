@@ -2978,6 +2978,8 @@ export const en = {
   "training.detail.duration": "Length",
   "training.detail.minutes": { one: "{count} minute", other: "{count} minutes" },
   "training.detail.author": "By",
+  "training.detail.guideLoading": "Fetching the guide...",
+  "training.detail.guideFailed": "This guide could not be fetched: {reason}. The button above still opens it.",
   "training.detail.related": "Read next",
   "training.detail.askForReview": "Ask about one of my games",
 
