@@ -505,21 +505,55 @@ async fn install_featured_mod(
 /// with no loading-screen movie, no audio, and broken menu fonts.
 /// Confirmed live as the cause of exactly that symptom.
 ///
-/// Resolution order: explicit `FAF_GAME_INSTALL_DIR` override → auto-detect
-/// among the usual retail/Steam locations (validated by `gamedata/lua.scd`,
-/// same probe file Python's `validate_game_path` uses) → `target_dir` as a
-/// last resort (preserves the old behaviour rather than writing a knowingly
-/// bogus path when nothing is found).
+/// Resolution order: explicit `FAF_GAME_INSTALL_DIR` override → the path the
+/// Java or Python client already has configured
+/// ([`crate::infra::game::reference_retail_install_paths`]) → auto-detect
+/// among the usual retail/Steam locations → `target_dir` as a last resort
+/// (preserves the old behaviour rather than writing a knowingly bogus path
+/// when nothing is found). Every candidate but the explicit override is
+/// validated by `gamedata/lua.scd`, the same probe file Python's
+/// `validate_game_path` uses.
+///
+/// The reference-client configs come before the guessed locations because
+/// guessing only ever covers installs under `%ProgramFiles%`: a retail install
+/// at, say, `C:\Games\THQ\Gas Powered Games\Supreme Commander - Forged
+/// Alliance` fell through to the fallback and produced exactly the broken
+/// game described above, silently. Hence the log lines: this decision is
+/// otherwise invisible until someone reads a game log.
 fn retail_install_dir(target_dir: &Path) -> PathBuf {
     if let Ok(dir) = std::env::var("FAF_GAME_INSTALL_DIR") {
         if !dir.is_empty() {
             return PathBuf::from(dir);
         }
     }
-    typical_retail_install_paths()
+    let candidates = crate::infra::game::reference_retail_install_paths()
         .into_iter()
-        .find(|p| p.join("gamedata").join("lua.scd").is_file())
-        .unwrap_or_else(|| target_dir.to_path_buf())
+        .chain(typical_retail_install_paths());
+    resolve_retail_install_dir(candidates, target_dir)
+}
+
+fn resolve_retail_install_dir(
+    candidates: impl IntoIterator<Item = PathBuf>,
+    target_dir: &Path,
+) -> PathBuf {
+    if let Some(dir) = candidates.into_iter().find(|p| is_retail_install(p)) {
+        tracing::info!(path = %dir.display(), "resolved retail FA install for fa_path");
+        return dir;
+    }
+    tracing::warn!(
+        fallback = %target_dir.display(),
+        "no retail FA install found: fa_path falls back to the FAF patch dir, so the game \
+         will start without base textures, sounds, movies or unit animations. Set \
+         FAF_GAME_INSTALL_DIR to the install root holding gamedata/lua.scd."
+    );
+    target_dir.to_path_buf()
+}
+
+/// The probe the reference clients use to tell a real FA root from any other
+/// directory: `gamedata/lua.scd` ships only with the base game, never with
+/// FAF's `.nx2` overlay.
+fn is_retail_install(dir: &Path) -> bool {
+    dir.join("gamedata").join("lua.scd").is_file()
 }
 
 /// Candidate retail install locations, mirroring the Python client's
@@ -1931,6 +1965,46 @@ mod tests {
         );
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_retail_root_outside_the_guessed_locations_still_wins_over_the_fallback() {
+        // The shape of the install this fixes: the right THQ layout, but
+        // under `C:\Games`, so `typical_retail_install_paths` never sees it.
+        // Before the reference configs were consulted this fell straight
+        // through to `target_dir` and the game launched with no base content.
+        let temp = tempfile::tempdir().unwrap();
+        let retail = temp
+            .path()
+            .join("Games/THQ/Supreme Commander - Forged Alliance");
+        std::fs::create_dir_all(retail.join("gamedata")).unwrap();
+        std::fs::write(retail.join("gamedata").join("lua.scd"), b"base game").unwrap();
+
+        let patch_dir = temp.path().join("FAForever/replaydata");
+        let guessed_but_absent = temp.path().join("Program Files/THQ/SCFA");
+
+        assert_eq!(
+            resolve_retail_install_dir([guessed_but_absent, retail.clone()], &patch_dir),
+            retail,
+            "the first candidate that actually holds gamedata/lua.scd must win"
+        );
+    }
+
+    #[test]
+    fn the_faf_patch_dir_is_only_a_last_resort() {
+        // It has `gamedata/*.nx2` but no `.scd`, so it must never satisfy the
+        // probe: reaching it means we knowingly write a degraded `fa_path`,
+        // which is what the warning in `resolve_retail_install_dir` is for.
+        let temp = tempfile::tempdir().unwrap();
+        let patch_dir = temp.path().join("replaydata");
+        std::fs::create_dir_all(patch_dir.join("gamedata")).unwrap();
+        std::fs::write(patch_dir.join("gamedata").join("units.nx2"), b"overlay").unwrap();
+
+        assert!(!is_retail_install(&patch_dir));
+        assert_eq!(
+            resolve_retail_install_dir([patch_dir.clone()], &patch_dir),
+            patch_dir
+        );
     }
 
     #[test]
