@@ -491,7 +491,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.public": "Öffentlich",
   "lobby.browser.close": "Schließen",
   "lobby.browser.downloadMap": "Karte herunterladen",
-  "lobby.browser.generateMap": "Karte generieren",
+  "lobby.browser.generateMap": "Generieren",
   "lobby.browser.generatingMap": "Generiere Karte…",
   "lobby.browser.joinGame": "Partie beitreten",
   "lobby.browser.previewMap": "Karte ansehen",
