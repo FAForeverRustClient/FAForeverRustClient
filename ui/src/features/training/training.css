@@ -699,6 +699,13 @@
   width: min(680px, 92vw);
 }
 
+/* A recorded run needs the room: three panes at 680px is three columns of
+   nothing. Only widened when there is one, so an ordinary entry keeps the
+   reading width it was designed at. */
+.training-detail-wide {
+  width: min(1180px, 96vw);
+}
+
 .training-detail {
   display: flex;
   flex-direction: column;
@@ -752,6 +759,151 @@
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
   font-size: 13px;
+}
+
+/* The recorded run: written order top left, flow under it, map down the right.
+   Two columns rather than three, because the two drawn panes share a hover and
+   reading one while pointing at the other is the whole point of the layout. The
+   map keeps a column of its own at full width and drops under the rest when
+   there is no room for two, which is the order somebody reads them in anyway. */
+.training-run {
+  display: grid;
+  grid-template-areas:
+    "prose map"
+    "flow map";
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.8fr);
+  grid-template-rows: auto 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.training-run-no-prose {
+  grid-template-areas: "flow map";
+  grid-template-rows: auto;
+}
+
+.training-run-prose {
+  grid-area: prose;
+  min-width: 0;
+  /* Capped rather than free: a long build order would otherwise push the flow
+     chart off the bottom of the pane, and the point of this layout is seeing
+     the three together. It scrolls on its own instead. */
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.training-run-flow {
+  grid-area: flow;
+  min-width: 0;
+}
+
+.training-run-side {
+  grid-area: map;
+  min-width: 0;
+}
+
+.training-run h4 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-run h4 .muted {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Scrolls sideways rather than squeezing: the chart is scaled by how long the
+   run took, so a ten-minute game is simply wider than a two-minute one. */
+.training-flow {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.training-flow svg {
+  display: block;
+  /* The 9px this chart was ported at is below the repository's floor, and the
+     floor is right: a lane label naming a unit is something you read, not
+     decoration. The lane geometry was widened to match. */
+  font-size: 11px;
+}
+
+.training-flow-grid {
+  stroke: var(--color-border);
+  opacity: 0.5;
+}
+
+.training-flow-rail {
+  stroke: var(--color-border);
+}
+
+.training-flow-tick,
+.training-flow-label {
+  fill: var(--color-muted);
+}
+
+.training-run-canvas {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.training-run-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 11px;
+}
+
+.training-run-legend label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.training-run-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.training-run-caption {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  min-height: 16px;
+}
+
+.training-run-problem {
+  margin-top: var(--space-4);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .training-run,
+  .training-run-no-prose {
+    grid-template-areas:
+      "prose"
+      "map"
+      "flow";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
 }
 
 .training-detail-meta {

@@ -3989,6 +3989,66 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a recorded run arrives beside the prose, and separately from it",
+            vec![
+                TrainingEvent::Loaded {
+                    resources: vec![training_resource("eco"), training_resource("setons")],
+                    trainers: Vec::new(),
+                    links: TrainingLinks::default(),
+                    source: TrainingSource::Remote,
+                }
+                .into(),
+                TrainingEvent::Selected {
+                    resource_id: Some("setons".into()),
+                }
+                .into(),
+                TrainingEvent::GuideReading {
+                    resource_id: "setons".into(),
+                }
+                .into(),
+                TrainingEvent::RecordingReading {
+                    resource_id: "setons".into(),
+                }
+                .into(),
+                // The prose can fail while the run succeeds. They are tracked
+                // apart precisely so one missing does not read as the other
+                // missing, and this is the case that pins it.
+                TrainingEvent::GuideFailed {
+                    resource_id: "setons".into(),
+                    reason: "could not reach the guide".into(),
+                }
+                .into(),
+                TrainingEvent::RecordingRead {
+                    resource_id: "setons".into(),
+                    envelope: "{\"schema\":\"faf-bo/1\"}".into(),
+                }
+                .into(),
+                // A run for an entry that carries no prose claims the document
+                // on its own rather than waiting for a guide that never comes.
+                TrainingEvent::Selected {
+                    resource_id: Some("eco".into()),
+                }
+                .into(),
+                TrainingEvent::RecordingReading {
+                    resource_id: "eco".into(),
+                }
+                .into(),
+                TrainingEvent::RecordingFailed {
+                    resource_id: "eco".into(),
+                    reason: "that recording was unexpectedly large".into(),
+                }
+                .into(),
+                // And a reply for an entry already left is dropped, the same
+                // way a guide's is.
+                TrainingEvent::Selected { resource_id: None }.into(),
+                TrainingEvent::RecordingRead {
+                    resource_id: "eco".into(),
+                    envelope: "too late".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a replay review is prefilled, composed, and invalidated by an edit",
             vec![
                 TrainingEvent::ReviewOpened {
@@ -4890,6 +4950,7 @@ fn player_summary(id: i32, login: &str, rating: Option<i32>) -> PlayerSummary {
 fn training_catalogue() -> Vec<TrainingResource> {
     let base = TrainingResource {
         readable: false,
+        recording_url: String::new(),
         image_url: String::new(),
         id: String::new(),
         title: String::new(),
@@ -5219,6 +5280,7 @@ fn submission(number: i32) -> GuideSubmission {
 fn training_resource(id: &str) -> TrainingResource {
     TrainingResource {
         readable: false,
+        recording_url: String::new(),
         id: id.into(),
         image_url: String::new(),
         title: format!("Resource {id}"),

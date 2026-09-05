@@ -71,6 +71,10 @@ impl TrainingPort for StubCatalogue {
     async fn read_guide(&self, url: String) -> Result<String, String> {
         Ok(format!("# Stub\n\nThe guide at {url}.\n"))
     }
+
+    async fn read_recording(&self, _url: String) -> Result<String, String> {
+        Err("this stub holds no recordings".into())
+    }
 }
 
 struct StubTutorials;

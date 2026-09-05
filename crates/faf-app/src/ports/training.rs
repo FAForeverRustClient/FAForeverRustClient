@@ -31,4 +31,12 @@ pub trait TrainingPort: Send + Sync {
     /// content: without that check an entry could name any address it liked and
     /// have the client fetch it.
     async fn read_guide(&self, url: String) -> Result<String, String>;
+
+    /// The `faf-bo/1` envelope of a recorded run, by its catalogue url.
+    ///
+    /// Guarded exactly as [`Self::read_guide`] is, and separate from it so the
+    /// two cannot be served in each other's place: one is rendered as prose and
+    /// the other as a chart. A run is also allowed to be much larger, because a
+    /// recording of a long game is a position sample per second per unit.
+    async fn read_recording(&self, url: String) -> Result<String, String>;
 }

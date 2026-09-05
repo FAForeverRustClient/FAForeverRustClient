@@ -551,6 +551,7 @@ pub fn entry_from_body(issue_title: &str, body: &str) -> Option<TrainingResource
         // Decided where the catalogue is parsed, against the repository this
         // build trusts. A submission cannot claim it.
         readable: false,
+        recording_url: String::new(),
         kind: section_of(body, field::KIND)
             .and_then(|value| kind_from_label(&value))
             .unwrap_or(TrainingKind::Guide),
@@ -759,6 +760,7 @@ pub fn entry_from_draft(draft: &ContributionDraft, author: &str) -> TrainingReso
         level: draft.level,
         image_url: video_still(draft.url.trim()),
         readable: false,
+        recording_url: String::new(),
         url: draft.url.trim().to_string(),
         tutorial_id: None,
         author: author.trim().to_string(),
@@ -993,6 +995,7 @@ mod tests {
             title: "Seton's Clutch T1 build order".into(),
             image_url: String::new(),
             readable: false,
+            recording_url: String::new(),
             summary: "Four mexes, then land.".into(),
             kind: TrainingKind::BuildOrder,
             level: Some(TrainingLevel::Beginner),

@@ -5,7 +5,7 @@
 // graph: "here is the mistake" can point at "here is the lesson that fixes it",
 // which is the one thing a client can offer that a wiki page cannot.
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -14,6 +14,10 @@ import type { TrainingDocument, TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { relatedResources } from "../../shared/trainingRules";
 import { Markdown } from "./markdown";
+import { RunAnalysis } from "./RunAnalysis";
+import { parseEnvelope } from "./recording";
+import { useAppStore } from "../../store/store";
+import { mapPreviewUrl } from "./trainingPresentation";
 import {
   actionLabel,
   bandKey,
@@ -51,19 +55,32 @@ export function ResourceDetail({
   const band = bandKey(resource);
   const related = relatedResources(resources, resource);
   const embed = resource.kind === "video" ? videoEmbedUrl(resource.url) : "";
+  const vault = useAppStore((store) => store.state.maps.vault);
+  const previewUrl = mapPreviewUrl(vault, resource.maps);
+  // Parsed once per document rather than per render: the envelope is a few
+  // hundred kilobytes of JSON and this component re-renders on every hover
+  // that crosses the panes below it.
+  const run = useMemo(
+    () => (guide.resourceId === resource.id ? parseEnvelope(guide.recording) : null),
+    [guide.resourceId, guide.recording, resource.id],
+  );
 
   // Asked for as soon as the pane opens, not behind a second click. A guide
   // this project hosts is the one thing here that is not somebody else's page,
   // and making the reader ask twice for text the client already has an address
   // for is ceremony.
   useEffect(() => {
-    if (resource.readable && guide.resourceId !== resource.id) {
+    if ((resource.readable || resource.recordingUrl) && guide.resourceId !== resource.id) {
       onRead(resource);
     }
   }, [resource, guide.resourceId, onRead]);
 
   return (
-    <Modal onClose={onClose} ariaLabel={resource.title} className="training-detail-modal">
+    <Modal
+      onClose={onClose}
+      ariaLabel={resource.title}
+      className={run ? "training-detail-modal training-detail-wide" : "training-detail-modal"}
+    >
       <div className="training-detail">
         <header>
           <span className="training-card-kind">
@@ -161,7 +178,23 @@ export function ResourceDetail({
           </Button>
         </div>
 
-        {resource.readable && <GuideBody guide={guide} />}
+        {run ? (
+          // The written order, the flow and the map, in one layout. The prose
+          // is handed in rather than fetched again: it is the same document
+          // the pane would otherwise show on its own.
+          <RunAnalysis
+            env={run}
+            previewUrl={previewUrl}
+            prose={resource.readable ? <GuideBody guide={guide} /> : null}
+          />
+        ) : (
+          (resource.readable || resource.recordingUrl) && (
+            <>
+              <GuideBody guide={guide} />
+              {resource.recordingUrl && <RunProblem guide={guide} />}
+            </>
+          )
+        )}
 
         {related.length > 0 && (
           <section className="training-related">
@@ -195,6 +228,29 @@ export function ResourceDetail({
  * and "this could not be fetched" is a different situation from "this entry is
  * a link", which they should be able to tell apart.
  */
+/**
+ * Why the recorded run is not on screen, when an entry says it has one.
+ *
+ * Only ever drawn while the run is missing: a run that parsed is drawn by
+ * `RunAnalysis`, and there is nothing to explain. A document that arrived but
+ * did not parse is reported as such rather than silently absent, because "this
+ * entry claims a recording and shows none" is otherwise a bug with no symptom.
+ */
+function RunProblem({ guide }: { guide: TrainingDocument }) {
+  const { t } = useTranslation();
+  if (guide.recordingStatus.type === "failed") {
+    return (
+      <p className="muted training-run-problem">
+        {t("training.run.failed", { reason: guide.recordingStatus.payload.reason })}
+      </p>
+    );
+  }
+  if (guide.recordingStatus.type === "ready") {
+    return <p className="muted training-run-problem">{t("training.run.unreadable")}</p>;
+  }
+  return <p className="muted training-run-problem">{t("training.run.loading")}</p>;
+}
+
 function GuideBody({ guide }: { guide: TrainingDocument }) {
   const { t } = useTranslation();
 
