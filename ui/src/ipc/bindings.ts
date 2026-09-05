@@ -6724,7 +6724,7 @@ export type TrainingDocument = {
 	status: TrainingStatus,
 	/**
 	 *  The `faf-bo/1` envelope, verbatim, when the entry carries one.
-	 * 
+	 *
 	 *  Carried as text rather than parsed here on purpose. Nothing in this
 	 *  crate reasons about a recorded run: no filter reads it, no
 	 *  recommendation scores it, and it is a drawing for one pane. Modelling
@@ -6969,12 +6969,12 @@ export type TrainingResource = {
 	updatedAt: string,
 	/**
 	 *  A recorded run of this build order, as a `faf-bo/1` envelope.
-	 * 
+	 *
 	 *  Stated by the catalogue, unlike [`Self::readable`], but kept only when
 	 *  it points into the repository this build trusts: an address that does
 	 *  not is dropped where the manifest is parsed, so what survives here is
 	 *  either a document this client will fetch or nothing at all.
-	 * 
+	 *
 	 *  A build order with one is drawn as what happened rather than as what
 	 *  was written down: the order over time, and the ground it happened on.
 	 */
