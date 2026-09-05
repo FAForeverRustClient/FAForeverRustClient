@@ -13,6 +13,15 @@ pub async fn handle(cmd: ChangelogCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
+    // Held across the whole load, including the status read below: that read is
+    // a check-then-act, and commands are dispatched concurrently, so without
+    // this two visits in quick succession both see "not ready" and both fetch
+    // the index. A dropped `Load` loses nothing, because the run already in
+    // flight ends by selecting the newest patch itself.
+    let Some(_guard) = ctx.changelog_active.try_acquire() else {
+        return;
+    };
+
     // The tab re-mounts on every visit, and the index does not change within a
     // session. Reloading it on each visit would be a request per tab switch,
     // but the selection should still reset to the newest dated patch.
@@ -49,6 +58,12 @@ fn newest_patch_id(releases: &[ChangelogRelease]) -> Option<String> {
 }
 
 async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {
+    // Claimed before the cache is read, not just around the fetch. A cached
+    // release answers with no round trip at all, and it must still invalidate
+    // an older note that is still in flight: otherwise the slow one lands last
+    // and silently replaces the selection the user just made.
+    let generation = ctx.changelog_entry_generation.begin();
+
     let (cached, source_url) = out.with_state(|state| {
         (
             state.changelog.entries.get(&id).cloned(),
@@ -73,7 +88,13 @@ async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {
     };
 
     out.emit(ChangelogEvent::EntryLoading { id: id.clone() });
-    match ctx.ports.changelog.load_entry(id, source_url).await {
+    let loaded = ctx.ports.changelog.load_entry(id, source_url).await;
+    if !ctx.changelog_entry_generation.is_current(generation) {
+        // A newer selection is already in flight or has already landed;
+        // emitting now would move the reader back to the release they left.
+        return;
+    }
+    match loaded {
         Ok(entry) => out.emit(ChangelogEvent::EntryLoaded { entry }),
         Err(reason) => out.emit(ChangelogEvent::EntryLoadFailed { reason }),
     }

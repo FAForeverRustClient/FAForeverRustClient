@@ -14,21 +14,21 @@
  * faf-domain. No component is touched.
  */
 
-/* ── forgeDark (default): quiet neutral workspace ───────────────────── */
+/* ── forgeDark (default): precision carbon-zinc workspace ───────────── */
 :root {
   color-scheme: dark;
-  --color-bg: #181818;
-  --color-sidebar: #111111;
-  --color-surface: #202020;
-  --color-surface-raised: #292929;
-  --color-surface-hover: #2f2f2f;
+  --color-bg: #171718;
+  --color-sidebar: #121214;
+  --color-surface: #1f1f20;
+  --color-surface-raised: #28282a;
+  --color-surface-hover: #313133;
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
-  --color-text: #f3f3f3;
-  --color-muted: #9b9b9b;
-  --color-subtle: #6f6f6f;
-  --color-accent: #f3f3f3;
-  --color-accent-contrast: #171717;
+  --color-text: #ffffff;
+  --color-muted: #a1a1aa;
+  --color-subtle: #71717a;
+  --color-accent: #ffffff;
+  --color-accent-contrast: #121214;
   --color-accent-glow: rgba(255, 255, 255, 0.12);
 
   /* Ink for the FAF wordmark, which ships as a single-colour mask rather than

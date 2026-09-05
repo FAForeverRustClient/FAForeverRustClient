@@ -542,7 +542,7 @@ export const en = {
   "lobby.browser.public": "Public",
   "lobby.browser.close": "Close",
   "lobby.browser.downloadMap": "Download map",
-  "lobby.browser.generateMap": "Generate map",
+  "lobby.browser.generateMap": "Generate",
   "lobby.browser.generatingMap": "Generating map…",
   "lobby.browser.joinGame": "Join game",
   "lobby.browser.previewMap": "Preview map",

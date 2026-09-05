@@ -43,6 +43,7 @@
 .tab-active {
   color: var(--color-text);
   background: var(--color-surface-raised);
+  font-weight: 600;
 }
 
 .tab svg {
