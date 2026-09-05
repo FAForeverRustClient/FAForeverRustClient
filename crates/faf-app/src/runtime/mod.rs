@@ -80,6 +80,15 @@ pub struct ServiceCtx {
     pub replay_local_generation: LatestRequest,
     pub map_generator_active: SingleFlight,
     pub tutorial_launch_active: SingleFlight,
+    /// The changelog tab re-mounts on every visit and asks for the index each
+    /// time. Without this, two quick visits both read a not-ready status and
+    /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
+    /// check-then-act, and commands run concurrently.
+    pub changelog_active: SingleFlight,
+    /// Only the newest note may land. Clicking two releases in a row must not
+    /// leave the first one's text on screen because it answered second, and a
+    /// cached selection must not be overwritten by a slower earlier fetch.
+    pub changelog_entry_generation: LatestRequest,
     /// A GitHub device-flow login polls for minutes. Pressing the button twice
     /// must not leave two loops polling, because the second code would silently
     /// invalidate the one on screen.
@@ -273,6 +282,8 @@ impl App {
             replay_local_generation: LatestRequest::default(),
             map_generator_active: SingleFlight::default(),
             tutorial_launch_active: SingleFlight::default(),
+            changelog_active: SingleFlight::default(),
+            changelog_entry_generation: LatestRequest::default(),
             guides_login_active: SingleFlight::default(),
             guides_verdict: SerialMutation::default(),
             guides_queue_generation: LatestRequest::default(),

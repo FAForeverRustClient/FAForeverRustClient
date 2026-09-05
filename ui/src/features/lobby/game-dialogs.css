@@ -1394,3 +1394,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* The simulation-mod replacement prompt (`ModReplacementDialog`): a join stops
+   here when a game needs a mod version that would overwrite an installed one. */
+.modal-panel.mod-replace-modal {
+  width: min(520px, calc(100vw - 32px));
+  max-width: 520px;
+}
+
+.mod-replace-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.mod-replace-row {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}

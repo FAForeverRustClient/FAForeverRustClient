@@ -2998,6 +2998,29 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "selecting an unjoined conversation opens it before the join lands",
+            vec![
+                ChatEvent::Connected {
+                    username: "Ada".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#aeolus".into(),
+                }
+                .into(),
+                // The order a right-click produces: only `JoinChannel` goes
+                // through the chat port, so its confirmation arrives second.
+                ChatEvent::ChannelSelected {
+                    channel: "Stormlord".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "Stormlord".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
             "chat restores message history when a new message recreates a conversation",
             vec![
                 ChatEvent::ChannelJoined {
@@ -3250,6 +3273,31 @@ fn cases() -> Vec<Case> {
                 LobbyEvent::InGame.into(),
                 LobbyEvent::GameTerminated.into(),
                 LobbyEvent::Disconnected.into(),
+            ],
+        ),
+        case(
+            "a mod version conflict parks the join until it is answered",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::Joining {
+                    id: 42,
+                    prepared: false,
+                }
+                .into(),
+                LobbyEvent::JoinNeedsModReplacement {
+                    id: 42,
+                    conflicts: vec![ModVersionConflict {
+                        required_uid: "old-uid".into(),
+                        required_name: "Total Mayhem".into(),
+                        folder_name: "Total Mayhem".into(),
+                        installed_uid: "new-uid".into(),
+                        installed_name: "Total Mayhem".into(),
+                        installed_version: "12".into(),
+                    }],
+                }
+                .into(),
+                // Declining goes back to idle, the same way cancelling a join does.
+                LobbyEvent::JoinCancelled.into(),
             ],
         ),
         case(

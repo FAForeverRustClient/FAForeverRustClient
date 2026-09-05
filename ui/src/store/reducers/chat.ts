@@ -219,11 +219,17 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     }
     case "channelSelected": {
       const { channel } = event.payload;
-      if (!state.channels.some((candidate) => candidate.name === channel)) return state;
+      // Created if this is the first we have heard of it, like `topicChanged`
+      // below. Opening a private conversation sends `joinChannel` and
+      // `selectChannel` back to back, but only the first goes through the chat
+      // port, so its `channelJoined` arrives *after* this event: dropping the
+      // selection because the channel did not exist yet left the user looking
+      // at whatever they had open before.
+      const ensured = withChannel(state, channel);
       return {
-        ...state,
+        ...ensured,
         activeChannel: channel,
-        channels: state.channels.map((candidate) =>
+        channels: ensured.channels.map((candidate) =>
           candidate.name === channel ? { ...candidate, unread: 0, unreadMentions: 0 } : candidate,
         ),
       };

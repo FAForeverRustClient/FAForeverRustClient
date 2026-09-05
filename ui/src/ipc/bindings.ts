@@ -1673,6 +1673,20 @@ export type GamePreferences = {
 	 *  Defaults to `false` so the client always checks for fresh commits from the server.
 	 */
 	cacheRollingBranches?: boolean,
+	/**
+	 *  Stream live replays through a Windows named pipe instead of the local
+	 *  TCP proxy (the Python client's `game/pipe_live_replay`, labelled
+	 *  "Live Replays Workaround" there).
+	 *
+	 *  Off by default because the pipe has a real cost: FA reads it on its
+	 *  main thread, so catching up to a live game's current tick freezes the
+	 *  whole window rather than only stalling the simulation, and the replay
+	 *  ends abruptly with no army selection or post-game statistics. It exists
+	 *  because the TCP path hits an engine bug on oversized `ScenarioInfo`
+	 *  ("Premature EOF" / "unable to load replay from gpgnet"), and the pipe
+	 *  does not. See `infra::replay` for the full history.
+	 */
+	pipeLiveReplay?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -2248,6 +2262,16 @@ export type JoinState = { type: "idle" } | { type: "joining"; payload: {
 } } |
 /**  The ICE adapter and game process were started; relay traffic is flowing. */
 { type: "inGame" } |
+/**
+ *  Preparation stopped before the join request went out: the game needs
+ *  simulation-mod versions the user cannot have alongside what is already
+ *  installed. Nothing has been changed on disk; the user decides whether
+ *  to replace them, and the join is re-sent with that answer.
+ */
+{ type: "needsModReplacement"; payload: {
+	id: number,
+	conflicts: ModVersionConflict[],
+} } |
 /**  The server rejected the join (game not ready, host left, bad password). */
 { type: "failed"; payload: {
 	id: number,
@@ -2419,6 +2443,13 @@ export type LiveReplayTrackingAction = "notify" | "watch";
 export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 	id: number,
 	password: string | null,
+	/**
+	 *  The user approved replacing the mod versions a previous attempt
+	 *  reported through [`LobbyEvent::JoinNeedsModReplacement`]. Only ever
+	 *  set by re-sending the same join after that prompt; a first attempt
+	 *  never destroys an installed mod.
+	 */
+	replaceMods?: boolean,
 } } | { type: "host"; payload: {
 	config: HostGameConfig,
 } } |
@@ -2432,6 +2463,13 @@ export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 { type: "prepareHost"; payload: {
 	title: string,
 } } |
+/**
+ *  The user answered "no" to the simulation-mod replacement prompt. Only
+ *  meaningful while the join is waiting on that answer; deliberately not a
+ *  general "cancel the join", which would clear the state out from under a
+ *  download that is still running.
+ */
+{ type: "declineModReplacement" } |
 /**
  *  The host dialog was closed; forget the prepared title so it does not
  *  reopen on the next visit to the tab.
@@ -2510,6 +2548,14 @@ export type LobbyEvent = { type: "connecting" } | { type: "connected" } |
 } } | { type: "joinFailed"; payload: {
 	id: number,
 	reason: string,
+} } |
+/**
+ *  Join preparation found simulation mods that cannot be installed without
+ *  replacing versions already on disk. See [`JoinState::NeedsModReplacement`].
+ */
+{ type: "joinNeedsModReplacement"; payload: {
+	id: number,
+	conflicts: ModVersionConflict[],
 } } |
 /**
  *  The user cancelled a pending join before the socket supervisor had
@@ -3362,6 +3408,29 @@ export type ModVaultQuery = {
 	sortDescending: boolean,
 	page: number,
 	pageSize: number,
+};
+
+/**
+ *  A mod folder that already holds a different version than a game needs.
+ *
+ *  FAF simulation-mod uids are per *version*, so a host on an older release of
+ *  a mod asks for a uid nobody who has the newer one is holding. The folder is
+ *  the same either way, and the client cannot install both: it has to replace
+ *  one with the other, which destroys whatever the user had. That is a
+ *  decision for the user, so the join stops here and asks, exactly as the
+ *  Python client's `downloadMod` does.
+ */
+export type ModVersionConflict = {
+	/**  The uid the host's game requires. */
+	requiredUid: string,
+	/**  What the vault calls that mod, for the prompt. */
+	requiredName: string,
+	/**  The folder both versions want, relative to the mods directory. */
+	folderName: string,
+	/**  The version standing in the way. */
+	installedUid: string,
+	installedName: string,
+	installedVersion: string,
 };
 
 /**  One report previously filed by the authenticated player. */
@@ -4316,6 +4385,13 @@ export type ReplayDetails = {
 	gameOptions: ReplayGameOption[],
 	chatMessages: ReplayChatMessage[],
 	/**
+	 *  Display names of the simulation mods the game ran with, read from the
+	 *  `.fafreplay` header rather than the command stream: the stream's own mod
+	 *  table is the engine's, keyed by install paths. Empty for a legacy
+	 *  `.scfareplay`, which has no header to read.
+	 */
+	simMods?: string[],
+	/**
 	 *  SupCom patch number parsed from the replay body header. The API game
 	 *  resource does not expose this value reliably, so detailed parsing is
 	 *  the source of truth when the listing has no version yet.
@@ -4418,10 +4494,22 @@ export type ReplayPlayer = {
 	 */
 	faction: number | null,
 	/**
-	 *  `round(mean - 3*deviation)` at game time, the same "displayed rating"
-	 *  formula the Python and Java clients use.
+	 *  `trunc(mean - 3*deviation)` at game time, the "displayed rating" both
+	 *  reference clients compute: Java casts (`RatingUtil.getRating`), Python
+	 *  casts (`rating_estimate`), and neither rounds.
 	 */
 	rating: number | null,
+	/**
+	 *  What this game did to that rating: displayed rating after minus
+	 *  displayed rating before, from the player's first rating journal.
+	 *
+	 *  `None` when the game was not rated, which the journal signals by having
+	 *  no `meanAfter`. That is the case the score used to paper over: a score
+	 *  exists for games whose result the server never resolved, so a number
+	 *  appeared next to "unknown result" and read as a rating change that had
+	 *  not happened. Java's `PlayerCardController::getRatingChange`.
+	 */
+	ratingChange?: number | null,
 	/**
 	 *  Server-recorded game result (`VICTORY`, `DEFEAT`, `DRAW`, ...).
 	 *  Empty when older games did not record an outcome.
@@ -7273,6 +7361,18 @@ export type VaultReplay = {
 	reviewsAverage: number | null,
 	reviewsCount: number | null,
 	gameVersion: number | null,
+	/**
+	 *  `game.attributes.validity`, the server's verdict on whether this game
+	 *  counted: `VALID`, or the reason it did not (`BAD_MOD`,
+	 *  `UNKNOWN_RESULT`, ...). Kept as the raw server value, because the set
+	 *  grows on the server and an unrecognised one still has to be reportable.
+	 *  Empty when the listing did not carry it.
+	 *
+	 *  The whole result display hangs off this: an unrated game has no
+	 *  outcome worth showing, and saying so is the point (see
+	 *  `ReplayDetailRoster`).
+	 */
+	validity?: string,
 };
 
 /**

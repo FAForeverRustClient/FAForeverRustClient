@@ -9,6 +9,7 @@ import { visibleChatMessages } from "../chat/messageFilters";
 import { partyChatChannel } from "./partyChat";
 import "../chat/chat.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import { joinGame } from "./joinGame";
 
 /**
  * Memoised: this renders a full message list, and the queue countdown clock in
@@ -59,7 +60,7 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
     }
     setGameLinkNotice("");
     if (link.kind === "openGame") {
-      ipc.send({ kind: "Lobby", command: { type: "join", payload: { id: game.id, password: null } } });
+      void joinGame(game.id);
     } else {
       watchGame(game);
     }

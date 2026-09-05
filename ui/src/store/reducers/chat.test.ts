@@ -146,13 +146,21 @@ describe("channel bookkeeping", () => {
     expect(next.retainedHistories).toEqual([]);
   });
 
-  it("ignores a selection of a channel that is not joined", () => {
-    // Rust: `ChannelSelected` uses `channel_mut`, so an unknown name is a no-op
-    // rather than a way to point `active_channel` at nothing.
+  it("opens a conversation that has not been joined yet", () => {
+    // Rust: `ChannelSelected` uses `ensure_channel`. Opening a private
+    // conversation sends `joinChannel` and `selectChannel` back to back, but
+    // only the first goes through the chat port, so its `channelJoined` lands
+    // after this event: dropping the selection left the user on whatever they
+    // had open before.
     const before = state({ channels: [channel("#uef")], activeChannel: "#uef" });
-    expect(apply(before, { type: "channelSelected", payload: { channel: "#nope" } })).toEqual(
-      before,
-    );
+    const next = apply(before, { type: "channelSelected", payload: { channel: "Stormlord" } });
+    expect(next.activeChannel).toBe("Stormlord");
+    expect(next.channels.map((c) => c.name)).toContain("Stormlord");
+
+    // The join arriving afterwards must not duplicate the conversation.
+    const joined = apply(next, { type: "channelJoined", payload: { channel: "Stormlord" } });
+    expect(joined.channels.filter((c) => c.name === "Stormlord")).toHaveLength(1);
+    expect(joined.activeChannel).toBe("Stormlord");
   });
 
   it("clears both counters when a channel is selected", () => {

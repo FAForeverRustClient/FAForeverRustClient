@@ -31,6 +31,7 @@ import { usePlayerMenu } from "./usePlayerMenu";
 import "./chat.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { joinGame as joinLobbyGame } from "../lobby/joinGame";
 
 /** Mirrors `faf_domain::state::chat::DEFAULT_CHANNEL`. */
 const DEFAULT_CHANNEL = "#aeolus";
@@ -79,7 +80,7 @@ const leaveChannel = (channel: string) =>
 // Game links in a message. Friend/foe, party and profile actions belong to the
 // player menu, which owns its own commands (see `usePlayerMenu`).
 const joinGame = (game: Game) =>
-  ipc.send({ kind: "Lobby", command: { type: "join", payload: { id: game.id, password: null } } });
+  void joinLobbyGame(game.id);
 const watchGame = (game: Game) =>
   ipc.send({
     kind: "Replays",

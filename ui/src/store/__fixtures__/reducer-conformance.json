@@ -677,7 +677,8 @@
         "autoGenerateMaps": true,
         "cacheLifetimeDays": 30,
         "cacheSizeAlertGb": 10,
-        "cacheRollingBranches": false
+        "cacheRollingBranches": false,
+        "pipeLiveReplay": false
       },
       "discord": {
         "enabled": true,
@@ -1622,6 +1623,144 @@
                   }
                 ],
                 "name": "#uef",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "selecting an unjoined conversation opens it before the join lands",
+      "steps": [
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "connected",
+              "payload": {
+                "username": "Ada"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "#aeolus"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelSelected",
+              "payload": {
+                "channel": "Stormlord"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "Stormlord",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [],
+                "name": "Stormlord",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Ada"
+          }
+        },
+        {
+          "event": {
+            "kind": "Chat",
+            "event": {
+              "type": "channelJoined",
+              "payload": {
+                "channel": "Stormlord"
+              }
+            }
+          },
+          "expected": {
+            "activeChannel": "Stormlord",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [],
+                "name": "Stormlord",
                 "reactions": [],
                 "topic": "",
                 "typing": [],
@@ -3350,6 +3489,173 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a mod version conflict parks the join until it is answered",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joining",
+              "payload": {
+                "id": 42,
+                "prepared": false
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "id": 42,
+                "prepared": false
+              },
+              "type": "joining"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joinNeedsModReplacement",
+              "payload": {
+                "id": 42,
+                "conflicts": [
+                  {
+                    "requiredUid": "old-uid",
+                    "requiredName": "Total Mayhem",
+                    "folderName": "Total Mayhem",
+                    "installedUid": "new-uid",
+                    "installedName": "Total Mayhem",
+                    "installedVersion": "12"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "conflicts": [
+                  {
+                    "folderName": "Total Mayhem",
+                    "installedName": "Total Mayhem",
+                    "installedUid": "new-uid",
+                    "installedVersion": "12",
+                    "requiredName": "Total Mayhem",
+                    "requiredUid": "old-uid"
+                  }
+                ],
+                "id": 42
+              },
+              "type": "needsModReplacement"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joinCancelled"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
             "vetoes": []
           }
         }
@@ -23395,7 +23701,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "",
             "general": {
@@ -23607,7 +23914,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -23827,7 +24135,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -24043,7 +24352,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -24259,7 +24569,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -24497,7 +24808,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -24726,7 +25038,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -24957,7 +25270,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -25272,7 +25586,8 @@
               "autoGenerateMaps": true,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
-              "cacheSizeAlertGb": 10
+              "cacheSizeAlertGb": 10,
+              "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {

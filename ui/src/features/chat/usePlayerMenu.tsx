@@ -27,6 +27,7 @@ import { UserMenu, type UserMenuTarget } from "./UserMenu";
 // The menu's styling lives in the chat stylesheet, which a non-chat caller
 // would otherwise never load.
 import "./chat.css";
+import { joinGame as joinLobbyGame } from "../lobby/joinGame";
 
 /** Open the menu for `nickname`, anchored at the pointer. */
 export type PlayerMenuOpener = (nickname: string, event: MouseEvent) => void;
@@ -44,7 +45,7 @@ const inviteToParty = (playerId: number) =>
 const kickFromParty = (playerId: number) =>
   ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId } } });
 const joinGame = (game: Game) =>
-  ipc.send({ kind: "Lobby", command: { type: "join", payload: { id: game.id, password: null } } });
+  void joinLobbyGame(game.id);
 const watchGame = (game: Game) =>
   ipc.send({
     kind: "Replays",

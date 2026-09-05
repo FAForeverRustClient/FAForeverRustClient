@@ -329,7 +329,7 @@
 
 .sidebar-profile-button {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 9px;
   min-width: 0;
@@ -341,6 +341,20 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.sidebar-profile-button .profile-avatar.has-image {
+  width: 40px;
+  height: 20px;
+}
+
+.sidebar-profile-button .profile-avatar.has-image img {
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 .sidebar-profile-button:hover {

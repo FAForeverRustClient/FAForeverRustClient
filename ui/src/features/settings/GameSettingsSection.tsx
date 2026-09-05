@@ -30,6 +30,10 @@ export function GameSettingsSection() {
     void save({ ...preferences, autoGenerateMaps });
   };
 
+  const setPipeLiveReplay = (pipeLiveReplay: boolean) => {
+    void save({ ...preferences, pipeLiveReplay });
+  };
+
   return (
     <>
       <SettingRow
@@ -40,6 +44,17 @@ export function GameSettingsSection() {
           checked={preferences.autoGenerateMaps ?? true}
           onChange={setAutoGenerate}
           label={t("settings.game.autoGenerateMaps")}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.game.pipeLiveReplay")}
+        hint={t("settings.game.pipeLiveReplayHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.pipeLiveReplay ?? false}
+          onChange={setPipeLiveReplay}
+          label={t("settings.game.pipeLiveReplay")}
         />
       </SettingRow>
 

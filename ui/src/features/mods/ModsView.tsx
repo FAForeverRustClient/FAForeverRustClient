@@ -31,7 +31,7 @@ import { InstalledModsView } from "./InstalledModsView";
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModUploadModal } from "./ModUploadModal";
-import { takeModVaultFocus } from "./modVaultFocus";
+import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
@@ -530,12 +530,9 @@ function VaultView({ busy }: { busy: boolean }) {
   );
 }
 
-const SUB_VIEWS: Record<
-  SubView,
-  { label: MessageKey; Component: (props: { busy: boolean }) => JSX.Element }
-> = {
-  vault: { label: "mods.view.tab.vault", Component: VaultView },
-  installed: { label: "mods.view.tab.installed", Component: InstalledModsView },
+const SUB_VIEW_LABELS: Record<SubView, MessageKey> = {
+  vault: "mods.view.tab.vault",
+  installed: "mods.view.tab.installed",
 };
 
 export function ModsView() {
@@ -546,14 +543,21 @@ export function ModsView() {
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const busy = installStatus.type === "installing" || toggleStatus.type === "toggling";
-  const { Component } = SUB_VIEWS[subView];
+
+  // Switching sub-views remounts the one being shown, so the vault view picks
+  // the request up in the same mount effect it uses for a jump from another
+  // tab: one mechanism, not two.
+  const openInVault = (modName: string) => {
+    requestModVaultFocus(modName);
+    setSubView("vault");
+  };
   return (
     <div className="mods-workspace">
       <div className="vault-subnav">
         <SectionTabs
           active={subView}
           ariaLabel={t("mods.view.modLibraryViews")}
-          items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
+          items={(Object.keys(SUB_VIEW_LABELS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEW_LABELS[key]) }))}
           onChange={setSubView}
         />
         <div className="vault-subnav-actions">
@@ -562,7 +566,11 @@ export function ModsView() {
           </Button>
         </div>
       </div>
-      <Component busy={busy} />
+      {subView === "vault" ? (
+        <VaultView busy={busy} />
+      ) : (
+        <InstalledModsView busy={busy} onOpenInVault={openInVault} />
+      )}
       {uploadModalOpen && (
         <ModUploadModal
           installed={installed}

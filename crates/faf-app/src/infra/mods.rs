@@ -42,12 +42,12 @@
 //! directory and also scrubs the mod's uid from `game.prefs`'s active set
 //! if present (an uninstalled mod can't stay "enabled").
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Component, Path, PathBuf};
 
 use async_trait::async_trait;
 use faf_domain::protocol::vault_query::ModVaultQuery;
-use faf_domain::state::{InstalledMod, ModType, VaultMod};
+use faf_domain::state::{InstalledMod, ModType, ModVersionConflict, VaultMod};
 use serde_json::Value;
 
 use crate::infra::env_or;
@@ -56,9 +56,9 @@ use crate::infra::jsonapi::{
     total_pages, value_bool, value_f64, value_i32, JsonApiDoc, JsonApiResource,
 };
 use crate::infra::vault_install::{
-    bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
+    archive_root_name, bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
-use crate::ports::{ModSearchPage, ModsPort};
+use crate::ports::{ModPrepFailure, ModSearchPage, ModsPort};
 
 /// Mods per vault page fetched in [`ModsClient::list_vault`]: mirrors
 /// `infra::maps`'s identical pagination constants.
@@ -100,6 +100,53 @@ impl ModsClient {
 
     pub fn faf(tokens: crate::infra::session::TokenStore) -> Self {
         Self::new(ModsConfig::faf(), tokens)
+    }
+
+    /// Fetch a mod version's zip, with the vault's origin and size envelope.
+    async fn download_mod_archive(&self, uid: &str, download_url: &str) -> Result<Vec<u8>, String> {
+        validate_url(download_url, &self.config.content_base, "mods")?;
+        let resp = self
+            .http
+            .get(download_url)
+            .send()
+            .await
+            .map_err(|e| format!("could not download mod {uid}: {e}"))?;
+        validate_url(resp.url().as_str(), &self.config.content_base, "mods")?;
+        let status = resp.status();
+        if !status.is_success() {
+            return Err(format!("could not download mod {uid}: {status}"));
+        }
+        bounded_body(resp, &format!("mod {uid}"), MAX_DOWNLOAD_BYTES).await
+    }
+
+    /// Extract a fetched archive into the mods folder, refusing one whose
+    /// `mod_info.lua` does not carry the uid that was asked for.
+    async fn extract_mod_archive(&self, uid: &str, bytes: Vec<u8>) -> Result<(), String> {
+        let dest = mods_dir();
+        tokio::fs::create_dir_all(&dest)
+            .await
+            .map_err(|e| format!("could not create mods folder: {e}"))?;
+
+        let expected_uid = uid.to_owned();
+        tokio::task::spawn_blocking(move || {
+            install_archive(&bytes, &dest, None, |staged_root| {
+                let info_path = staged_root.join("mod_info.lua");
+                let contents = std::fs::read_to_string(&info_path)
+                    .map_err(|error| format!("could not read {}: {error}", info_path.display()))?;
+                let info = parse_mod_info(&contents)
+                    .ok_or_else(|| "downloaded mod has no valid mod_info.lua".to_string())?;
+                if info.uid != expected_uid {
+                    return Err(format!(
+                        "downloaded mod uid {:?} does not match expected uid {:?}",
+                        info.uid, expected_uid
+                    ));
+                }
+                Ok(())
+            })
+        })
+        .await
+        .map_err(|e| format!("extraction task panicked: {e}"))??;
+        Ok(())
     }
 
     async fn mod_download_url(&self, uid: &str) -> Result<String, String> {
@@ -211,47 +258,9 @@ impl ModsPort for ModsClient {
         uid: String,
         download_url: String,
     ) -> Result<Vec<InstalledMod>, String> {
-        validate_url(&download_url, &self.config.content_base, "mods")?;
-        let resp = self
-            .http
-            .get(&download_url)
-            .send()
-            .await
-            .map_err(|e| format!("could not download mod {uid}: {e}"))?;
-        validate_url(resp.url().as_str(), &self.config.content_base, "mods")?;
-        let status = resp.status();
-        if !status.is_success() {
-            return Err(format!("could not download mod {uid}: {status}"));
-        }
-        let bytes = bounded_body(resp, &format!("mod {uid}"), MAX_DOWNLOAD_BYTES).await?;
-
-        let dest = mods_dir();
-        tokio::fs::create_dir_all(&dest)
-            .await
-            .map_err(|e| format!("could not create mods folder: {e}"))?;
-
-        let dest_clone = dest.clone();
-        let expected_uid = uid.clone();
-        tokio::task::spawn_blocking(move || {
-            install_archive(&bytes, &dest_clone, None, |staged_root| {
-                let info_path = staged_root.join("mod_info.lua");
-                let contents = std::fs::read_to_string(&info_path)
-                    .map_err(|error| format!("could not read {}: {error}", info_path.display()))?;
-                let info = parse_mod_info(&contents)
-                    .ok_or_else(|| "downloaded mod has no valid mod_info.lua".to_string())?;
-                if info.uid != expected_uid {
-                    return Err(format!(
-                        "downloaded mod uid {:?} does not match expected uid {:?}",
-                        info.uid, expected_uid
-                    ));
-                }
-                Ok(())
-            })
-        })
-        .await
-        .map_err(|e| format!("extraction task panicked: {e}"))??;
-
-        list_installed_dir(&dest).await
+        let bytes = self.download_mod_archive(&uid, &download_url).await?;
+        self.extract_mod_archive(&uid, bytes).await?;
+        list_installed_dir(&mods_dir()).await
     }
 
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String> {
@@ -299,26 +308,98 @@ impl ModsPort for ModsClient {
         list_installed_dir(&mods_dir()).await
     }
 
-    async fn ensure_game_mods(&self, uids: &[String]) -> Result<(), String> {
-        if uids.is_empty() {
+    async fn ensure_game_mods(
+        &self,
+        mods: &BTreeMap<String, String>,
+        replace_conflicts: bool,
+    ) -> Result<(), ModPrepFailure> {
+        if mods.is_empty() {
             return Ok(());
         }
-        let mut installed = self.list_installed().await?;
-        for uid in uids {
+        let installed = self
+            .list_installed()
+            .await
+            .map_err(ModPrepFailure::Failed)?;
+        let dest = mods_dir();
+
+        // A mod uid names one *version*, so a folder already holding a
+        // different uid is a collision only the user can settle: the download
+        // is discarded and the conflict collected, rather than failing at
+        // extraction time with "<folder> is already installed", which is all
+        // this used to say. The archive's own top-level folder is what decides
+        // it, so the check is exact rather than a guess from the mod's name.
+        //
+        // One archive is held at a time: a game can want several large mods,
+        // and reading them all into memory to decide afterwards would be a
+        // gigabyte for no benefit. Installing the mods that *do not* collide
+        // before asking is harmless, since they are the versions this game
+        // needs and nothing of the user's is overwritten to get them; only the
+        // destructive step waits for an answer.
+        let mut conflicts: Vec<ModVersionConflict> = Vec::new();
+        for (uid, name) in mods {
             if installed.iter().any(|candidate| candidate.uid == *uid) {
                 continue;
             }
-            let download_url = self.mod_download_url(uid).await?;
-            installed = self.install_mod(uid.clone(), download_url).await?;
+            let download_url = self
+                .mod_download_url(uid)
+                .await
+                .map_err(ModPrepFailure::Failed)?;
+            let bytes = self
+                .download_mod_archive(uid, &download_url)
+                .await
+                .map_err(ModPrepFailure::Failed)?;
+            let root = archive_root_name(&bytes).map_err(ModPrepFailure::Failed)?;
+
+            let target = safe_mod_target(&dest, &root).map_err(ModPrepFailure::Failed)?;
+            if target.exists() {
+                // Matched case-insensitively against the scan: Windows will
+                // happily hand back a differently cased spelling of the same
+                // directory than the one the archive names.
+                let occupant = installed
+                    .iter()
+                    .find(|candidate| candidate.folder_name.eq_ignore_ascii_case(&root));
+                if !replace_conflicts {
+                    conflicts.push(ModVersionConflict {
+                        required_uid: uid.clone(),
+                        required_name: name.clone(),
+                        folder_name: root.clone(),
+                        installed_uid: occupant.map(|m| m.uid.clone()).unwrap_or_default(),
+                        // A folder with no readable `mod_info.lua` is not in
+                        // the scan at all, and the prompt still has to name
+                        // something the user can recognise.
+                        installed_name: occupant
+                            .map(|m| m.display_name.clone())
+                            .unwrap_or_else(|| root.clone()),
+                        installed_version: occupant.map(|m| m.version.clone()).unwrap_or_default(),
+                    });
+                    continue;
+                }
+                // Approved. Goes through `uninstall_mod` rather than a bare
+                // delete so the replaced version's uid also leaves
+                // `game.prefs`: an active mod whose folder is gone is exactly
+                // the state that produces an unexplained launch failure later.
+                self.uninstall_mod(root)
+                    .await
+                    .map_err(ModPrepFailure::Failed)?;
+            }
+            self.extract_mod_archive(uid, bytes)
+                .await
+                .map_err(ModPrepFailure::Failed)?;
+        }
+
+        if !conflicts.is_empty() {
+            return Err(ModPrepFailure::Conflicts(conflicts));
         }
 
         let mut active = read_active_mod_uids().await;
-        for uid in uids {
+        for uid in mods.keys() {
             if !active.contains(uid) {
                 active.push(uid.clone());
             }
         }
-        write_active_mod_uids_to_disk(&active).await
+        write_active_mod_uids_to_disk(&active)
+            .await
+            .map_err(ModPrepFailure::Failed)
     }
 }
 
@@ -859,7 +940,11 @@ impl ModsPort for FakeMods {
         Err("mod toggling is unavailable in offline mode".to_string())
     }
 
-    async fn ensure_game_mods(&self, _uids: &[String]) -> Result<(), String> {
+    async fn ensure_game_mods(
+        &self,
+        _mods: &BTreeMap<String, String>,
+        _replace_conflicts: bool,
+    ) -> Result<(), ModPrepFailure> {
         Ok(())
     }
 }

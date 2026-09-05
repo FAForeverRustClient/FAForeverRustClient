@@ -906,7 +906,7 @@ button.vault-input {
   line-height: 1;
 }
 
-.replay-player-score {
+.replay-player-rating-change {
   display: inline-block;
   font-size: 12px;
   font-weight: 650;
@@ -916,15 +916,15 @@ button.vault-input {
   line-height: 1;
 }
 
-.replay-player-score.positive {
+.replay-player-rating-change.positive {
   color: var(--color-ok);
 }
 
-.replay-player-score.negative {
+.replay-player-rating-change.negative {
   color: var(--color-error);
 }
 
-.replay-player-score.zero {
+.replay-player-rating-change.zero {
   color: var(--color-muted);
 }
 
@@ -1203,4 +1203,34 @@ button.vault-input {
 .replay-chat-message {
   color: var(--color-text);
   overflow-wrap: anywhere;
+}
+
+/* The simulation mods a replay was played with, above the options and chat
+   tables. A game without any hides the whole strip. */
+.replay-detail-sim-mods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.replay-sim-mod-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Why a game produced no result, in place of the outcomes rather than beside
+   them: an unrated game has nothing to report and every reason to say so. */
+.replay-not-rated {
+  margin: 0 0 var(--space-3);
+  font-size: 12px;
+}
+
+.replay-team-outcome.unknown {
+  color: var(--color-muted);
 }

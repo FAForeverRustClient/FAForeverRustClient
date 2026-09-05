@@ -704,7 +704,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.generate.symmetry": "Symetria",
   "maps.generate.any": "Dowolna",
   "maps.generate.mapStyle": "Styl mapy",
-  "maps.generate.mapStyleHint": "Styl mapy zastępuje pojedyncze style terenu, tekstur, surowców i obiektów.",
+  "maps.generate.mapStyleHint": "Styl mapy to kompletne ustawienie: decyduje jednocześnie o terenie, teksturze, zasobach i obiektach, więc cztery listy poniżej są ignorowane, dopóki jeden jest wybrany.",
   "maps.generate.terrain": "Teren",
   "maps.generate.texture": "Tekstury",
   "maps.generate.resources": "Surowce",
@@ -1839,4 +1839,25 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.mode.galacticWar": "Galactic War",
   "lobby.browser.tileHint": "Kliknij grafikę mapy, aby zobaczyć podgląd; kliknij dwukrotnie szczegóły, aby dołączyć",
   "lobby.browser.listHint": "Kliknij grę dwukrotnie, aby dołączyć",
+
+  "settings.game.pipeLiveReplay": "Obejście dla replayów na żywo",
+  "settings.game.pipeLiveReplayHint": "Przesyła replaye na żywo przez nazwany potok zamiast lokalnego połączenia sieciowego. Omija błędy silnika \"unable to load replay from gpgnet\" i \"Premature EOF\", ale okno zawiesza się podczas nadrabiania i replay kończy się gwałtownie, bez wyboru armii i bez statystyk końcowych. Tylko w systemie Windows.",
+
+  "lobby.modConflict.title": "Zastąpić zainstalowane mody?",
+  "lobby.modConflict.body": { one: "Ta gra używa innej wersji moda, który już masz zainstalowany. Nic jeszcze nie zostało zmienione.", few: "Ta gra używa innych wersji {count} modów, które już masz zainstalowane. Nic jeszcze nie zostało zmienione.", many: "Ta gra używa innych wersji {count} modów, które już masz zainstalowane. Nic jeszcze nie zostało zmienione.", other: "Ta gra używa innych wersji {count} modów, które już masz zainstalowane. Nic jeszcze nie zostało zmienione." },
+  "lobby.modConflict.replaces": "zastępuje {installed} v{version} w {folder}",
+  "lobby.modConflict.note": "Zastąpienie usuwa Twoją zainstalowaną wersję. Możesz ją potem zainstalować ponownie z vaultu.",
+  "lobby.modConflict.cancel": "Nie dołączaj",
+  "lobby.modConflict.confirm": "Zastąp i dołącz",
+
+  "mods.installed.openDetails": "Pokaż szczegóły",
+  "mods.installed.folder": "Folder",
+  "mods.installed.uid": "UID",
+  "mods.installed.viewInVault": "Pokaż w vaulcie",
+
+  "maps.generate.styleSuperseded": "Ignorowane, dopóki wybrany jest styl mapy.",
+  "maps.generate.enlargePreview": "Powiększ podgląd",
+  "maps.generate.closePreview": "Kliknij gdziekolwiek, aby zamknąć",
+  "replays.detail.simMods": "Mody symulacji",
+  "replays.roster.ratingChange": "Zmiana rankingu po tej grze",
 };
