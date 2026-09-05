@@ -170,8 +170,9 @@ pub struct ReplayPlayer {
     /// 1=UEF, 2=Aeon, 3=Cybran, 4=Seraphim, 5=Random: the lobby selection
     /// recorded by `playerStats.faction`, not the faction Random resolved to.
     pub faction: Option<i32>,
-    /// `round(mean - 3*deviation)` at game time, the same "displayed rating"
-    /// formula the Python and Java clients use.
+    /// `trunc(mean - 3*deviation)` at game time, the "displayed rating" both
+    /// reference clients compute: Java casts (`RatingUtil.getRating`), Python
+    /// casts (`rating_estimate`), and neither rounds.
     pub rating: Option<i32>,
     /// What this game did to that rating: displayed rating after minus
     /// displayed rating before, from the player's first rating journal.

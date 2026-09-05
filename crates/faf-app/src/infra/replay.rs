@@ -1989,7 +1989,10 @@ fn replay_i32_value(value: &Value) -> Option<i32> {
 fn replay_displayed_rating(data: &serde_json::Map<String, Value>) -> Option<i32> {
     let mean = data.get("MEAN").and_then(Value::as_f64)?;
     let deviation = data.get("DEV").and_then(Value::as_f64)?;
-    let rating = (mean - 3.0 * deviation).round();
+    // Truncated for the same reason as `displayed_rating_with_fields`: this is
+    // the same number read from a local replay's header instead of the vault,
+    // and the two must not disagree about the same player.
+    let rating = mean - 3.0 * deviation;
     (rating.is_finite() && rating >= f64::from(i32::MIN) && rating <= f64::from(i32::MAX))
         .then_some(rating as i32)
 }
@@ -2591,8 +2594,14 @@ fn displayed_rating_with_fields(
     let mean = numeric(mean_field)?;
     let deviation = numeric(deviation_field)?;
     let rating = mean - 3.0 * deviation;
+    // Truncated, not rounded. Both reference clients cast rather than round:
+    // Java's `RatingUtil.getRating` is `(int) (mean - 3f * deviation)` and the
+    // Python client's `rating_estimate` is `int(rating.displayed())`. Rounding
+    // put us a point above them for every rating whose fraction was over .5,
+    // and made a rating *change*, which subtracts two of these, disagree by one
+    // in either direction.
     (rating.is_finite() && rating >= f64::from(i32::MIN) && rating <= f64::from(i32::MAX))
-        .then_some(rating.round() as i32)
+        .then_some(rating as i32)
 }
 
 /// `game.relationships.reviewsSummary -> reviewsSummary.attributes`.
