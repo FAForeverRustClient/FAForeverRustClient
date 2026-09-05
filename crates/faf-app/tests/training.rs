@@ -67,6 +67,10 @@ impl TrainingPort for StubCatalogue {
             ..TrainingCatalogue::default()
         })
     }
+
+    async fn read_guide(&self, url: String) -> Result<String, String> {
+        Ok(format!("# Stub\n\nThe guide at {url}.\n"))
+    }
 }
 
 struct StubTutorials;

@@ -44,6 +44,7 @@ pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
         TrainingCommand::Select { resource_id } => {
             out.emit(TrainingEvent::Selected { resource_id });
         }
+        TrainingCommand::ReadGuide { resource_id } => read_guide(resource_id, ctx, out).await,
         TrainingCommand::OpenReview {
             replay_uid,
             local_path,
@@ -136,6 +137,22 @@ pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// request. A failure is silent: recommendations without a rating are still
 /// recommendations, and a rating is not worth an error banner on a tab that
 /// works without one.
+/// Make sure the vault index is loaded, so a build order can show its map.
+///
+/// A card for a build order is a picture of the map, which is what a player
+/// recognises before they read a word of the title. The picture comes out of
+/// the same vault index nine other features resolve a map through, and that
+/// index is loaded by whoever needs it first. Until now nobody in this tab did,
+/// so a player who opened training before ever opening the maps tab got a grid
+/// of marks. Same shape as [`ask_for_ratings`], and the same reason.
+async fn ask_for_map_previews(ctx: &ServiceCtx, out: &EventSink) {
+    let needed = out.with_state(|state| state.maps.vault.is_empty());
+    if !needed {
+        return;
+    }
+    super::maps::handle(faf_domain::state::MapsCommand::LoadVault, ctx, out).await;
+}
+
 async fn ask_for_ratings(ctx: &ServiceCtx, out: &EventSink) {
     let wanted = out.with_state(|state| {
         let me = state.auth.player.as_ref()?;
@@ -190,6 +207,44 @@ async fn with_avatars(mut trainers: Vec<Trainer>, ctx: &ServiceCtx) -> Vec<Train
     trainers
 }
 
+/// Read one guide's text, so the tab can render it instead of opening a browser.
+///
+/// The command names an entry and the url is read out of the state here, which
+/// is the same rule the review form follows: a command carrying a url would let
+/// a catalogue entry choose where this client sends a request, and a catalogue
+/// is remote content. An entry the parser did not mark readable never reaches
+/// the port at all.
+async fn read_guide(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
+    let url = out.with_state(|state| {
+        state
+            .training
+            .resource(&resource_id)
+            .filter(|resource| resource.readable)
+            .map(|resource| resource.url.clone())
+    });
+    let Some(url) = url else {
+        out.emit(TrainingEvent::GuideFailed {
+            resource_id,
+            reason: "that entry is a link rather than a guide this client holds".into(),
+        });
+        return;
+    };
+
+    out.emit(TrainingEvent::GuideReading {
+        resource_id: resource_id.clone(),
+    });
+    match ctx.ports.training.read_guide(url).await {
+        Ok(markdown) => out.emit(TrainingEvent::GuideRead {
+            resource_id,
+            markdown,
+        }),
+        Err(reason) => out.emit(TrainingEvent::GuideFailed {
+            resource_id,
+            reason,
+        }),
+    }
+}
+
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(TrainingEvent::Loading);
 
@@ -200,6 +255,7 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
     // number standing in for five, which is exactly the thing per-mode ratings
     // exist to stop.
     ask_for_ratings(ctx, out).await;
+    ask_for_map_previews(ctx, out).await;
 
     let catalogue = match ctx.ports.training.list_catalogue().await {
         Ok(catalogue) => catalogue,

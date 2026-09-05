@@ -207,6 +207,14 @@ pub struct TrainingResource {
     /// implies they did is worse than no label.
     pub approved_by: String,
     pub updated_at: String,
+    /// Whether this entry's text can be read in the tab rather than opened in a
+    /// browser.
+    ///
+    /// Set where the catalogue is parsed, because only there is it known which
+    /// repository this build trusts; see [`hosted_guide`]. Derived rather than
+    /// stated, for the same reason `image_url` is: a manifest claiming a
+    /// document is readable would not make it so.
+    pub readable: bool,
 }
 
 /// Whether `rating` falls inside `[min, max]`.
@@ -291,9 +299,96 @@ impl TrainingResource {
         if mode.is_empty() || self.game_modes.is_empty() {
             return true;
         }
+        let wanted = leaderboard_word(mode);
         self.game_modes
             .iter()
-            .any(|mine| mine.eq_ignore_ascii_case(mode))
+            .any(|mine| leaderboard_word(mine).eq_ignore_ascii_case(wanted))
+    }
+}
+
+/// A Markdown document in a GitHub repository, as a raw address names it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HostedGuide<'a> {
+    pub owner: &'a str,
+    pub repo: &'a str,
+    pub reference: &'a str,
+    pub path: &'a str,
+}
+
+impl HostedGuide<'_> {
+    /// `owner/repo`, for comparing against the repository a build trusts.
+    pub fn repository(&self) -> String {
+        format!("{}/{}", self.owner, self.repo)
+    }
+
+    /// The address GitHub renders, for a reader who wants a browser anyway.
+    ///
+    /// The catalogue stores the raw address, because that is the one the client
+    /// reads itself. Handing that same address to a browser would show a build
+    /// order as a wall of monospace: `raw.githubusercontent.com` serves
+    /// `text/plain`, and only the `blob` address is rendered.
+    pub fn rendered_page(&self) -> String {
+        format!(
+            "https://github.com/{}/{}/blob/{}/{}",
+            self.owner, self.repo, self.reference, self.path
+        )
+    }
+}
+
+/// The document a raw GitHub address points at, when it is Markdown.
+///
+/// A guide this project hosts is read and rendered inside the tab rather than
+/// handed to the reader's browser, because a build order is the one thing in
+/// the library somebody wants open *while* they are playing. Everything else
+/// the catalogue links is somebody else's page, behind their own styling,
+/// their own login and their own frame policy; the honest thing to do with
+/// those is still to open a browser.
+///
+/// The owner and repository come back rather than a bare yes, so that the
+/// caller can insist the document is one this build was configured to trust. A
+/// catalogue is remote content, and a url out of it must not become a request
+/// to wherever it likes.
+pub fn hosted_guide(url: &str) -> Option<HostedGuide<'_>> {
+    let rest = url.strip_prefix("https://raw.githubusercontent.com/")?;
+    if !rest.ends_with(".md") {
+        return None;
+    }
+    let mut parts = rest.splitn(4, '/');
+    let guide = HostedGuide {
+        owner: parts.next()?,
+        repo: parts.next()?,
+        reference: parts.next()?,
+        path: parts.next()?,
+    };
+    let empty = guide.owner.is_empty()
+        || guide.repo.is_empty()
+        || guide.reference.is_empty()
+        || guide.path.is_empty();
+    // `..` in the path would still resolve on GitHub's side, and a catalogue
+    // entry has no business walking out of the directory it names.
+    if empty || guide.path.contains("..") {
+        return None;
+    }
+    Some(guide)
+}
+
+/// The leaderboard's word for a mode the catalogue speaks in.
+///
+/// A game played outside the matchmaker is rated on the leaderboard FAF calls
+/// `global`, which is not the word anyone uses in a lobby. The catalogue says
+/// `custom`, and this is the single place the two vocabularies meet, exactly as
+/// [`mode_of_leaderboard`] is for the queue names. Every other mode is already
+/// the same word on both sides and passes through untouched.
+///
+/// This matters more than a synonym usually would: most of what the community
+/// teaches is for games that never go through the matchmaker, so without it a
+/// Seton's build order is judged against a 4v4 ladder rating its reader may not
+/// have, or against no rating at all.
+pub fn leaderboard_word(mode: &str) -> &str {
+    if mode.eq_ignore_ascii_case("custom") {
+        "global"
+    } else {
+        mode
     }
 }
 
@@ -517,7 +612,7 @@ impl TrainingProfile {
         resource
             .game_modes
             .iter()
-            .find_map(|mode| self.ratings.get(mode.as_str()).copied())
+            .find_map(|mode| self.ratings.get(leaderboard_word(mode)).copied())
             .or(self.rating)
     }
 }
@@ -647,6 +742,20 @@ pub struct TrainingState {
     pub review_post: Option<ForumPost>,
     pub contribution: Option<ContributionDraft>,
     pub contribution_post: Option<ForumPost>,
+    /// The guide being read in the tab, when one is.
+    pub document: TrainingDocument,
+}
+
+/// One guide's text, as the reader has it open.
+///
+/// Keyed by the resource it belongs to so that a reply arriving after the
+/// reader has moved on is dropped rather than rendered under the wrong title.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TrainingDocument {
+    pub resource_id: String,
+    pub markdown: String,
+    pub status: TrainingStatus,
 }
 
 impl TrainingState {
@@ -1591,6 +1700,15 @@ pub enum TrainingCommand {
     Select {
         resource_id: Option<String>,
     },
+    /// Read a guide this project hosts, for rendering in the tab.
+    ///
+    /// By resource id rather than by url: the url is remote content, and a
+    /// command carrying one would let a catalogue entry choose where the client
+    /// sends a request. The service looks the entry up and decides for itself.
+    #[serde(rename_all = "camelCase")]
+    ReadGuide {
+        resource_id: String,
+    },
     /// Open the review request form.
     ///
     /// The prefill is asked for by *reference*, not passed in: which replay,
@@ -1649,6 +1767,20 @@ pub enum TrainingEvent {
         resource_ids: Vec<String>,
         profile: Box<TrainingProfile>,
     },
+    #[serde(rename_all = "camelCase")]
+    GuideReading {
+        resource_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    GuideRead {
+        resource_id: String,
+        markdown: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    GuideFailed {
+        resource_id: String,
+        reason: String,
+    },
     ReviewOpened {
         draft: Box<ReviewRequestDraft>,
     },
@@ -1701,7 +1833,44 @@ pub fn reduce(state: &mut TrainingState, event: &TrainingEvent) {
             }
         }
         TrainingEvent::QueryChanged { query } => state.query = (**query).clone(),
-        TrainingEvent::Selected { resource_id } => state.selected_id = resource_id.clone(),
+        TrainingEvent::Selected { resource_id } => {
+            state.selected_id = resource_id.clone();
+            // A document belongs to the entry it was opened from. Leaving the
+            // last one in place would render one guide's text under the next
+            // one's title for as long as the read takes.
+            if state.document.resource_id.as_str() != resource_id.as_deref().unwrap_or_default() {
+                state.document = TrainingDocument::default();
+            }
+        }
+        TrainingEvent::GuideReading { resource_id } => {
+            state.document = TrainingDocument {
+                resource_id: resource_id.clone(),
+                markdown: String::new(),
+                status: TrainingStatus::Loading,
+            };
+        }
+        TrainingEvent::GuideRead {
+            resource_id,
+            markdown,
+        } => {
+            // A reply for an entry the reader has already left is dropped
+            // rather than shown: by the time it arrives the title above it
+            // belongs to something else.
+            if state.document.resource_id == *resource_id {
+                state.document.markdown = markdown.clone();
+                state.document.status = TrainingStatus::Ready;
+            }
+        }
+        TrainingEvent::GuideFailed {
+            resource_id,
+            reason,
+        } => {
+            if state.document.resource_id == *resource_id {
+                state.document.status = TrainingStatus::Failed {
+                    reason: reason.clone(),
+                };
+            }
+        }
         TrainingEvent::Recommended {
             resource_ids,
             profile,
@@ -2358,6 +2527,35 @@ mod tests {
         // Nothing recognisable, so nothing claimed.
         assert_eq!(mode_of_leaderboard("tmm_5v5"), None);
         assert_eq!(mode_of_leaderboard("some_new_board"), None);
+    }
+
+    #[test]
+    fn a_custom_game_is_judged_by_the_global_rating() {
+        let mut profile = profile(1200, &["Setons Clutch"], &["4v4"]);
+        profile.ratings = BTreeMap::from([("global".into(), 1500), ("4v4".into(), 900)]);
+
+        // Seton's is played in a lobby, not in the matchmaker, so a build order
+        // for it is written for a global rating. Reading it off the 4v4 board
+        // would judge it by a queue its reader may never have entered.
+        let setons = TrainingResource {
+            game_modes: vec!["custom".into(), "4v4".into()],
+            ..resource("setons")
+        };
+        assert_eq!(profile.rating_for(&setons), Some(1500));
+
+        // The order in the entry decides, and a matchmaker entry is unaffected.
+        let ladder = TrainingResource {
+            game_modes: vec!["4v4".into()],
+            ..resource("ladder")
+        };
+        assert_eq!(profile.rating_for(&ladder), Some(900));
+
+        // And the filter treats the two words as one, in both directions, so
+        // choosing either does not split the library in half.
+        assert!(setons.covers_mode("custom"));
+        assert!(setons.covers_mode("global"));
+        assert!(setons.covers_mode("4v4"));
+        assert!(!ladder.covers_mode("custom"));
     }
 
     fn links() -> TrainingLinks {

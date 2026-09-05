@@ -21,8 +21,8 @@
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    video_still, Trainer, TrainingCatalogue, TrainingKind, TrainingLevel, TrainingLinks,
-    TrainingResource, TrainingSource, TrainingTopic,
+    hosted_guide, video_still, Trainer, TrainingCatalogue, TrainingKind, TrainingLevel,
+    TrainingLinks, TrainingResource, TrainingSource, TrainingTopic, GUIDES_REPO,
 };
 use serde::Deserialize;
 
@@ -39,6 +39,9 @@ const SEED: &str = include_str!("training_catalogue.json");
 /// A manifest is a hand-edited document, not a data feed. Anything past this
 /// is a wrong URL rather than a large catalogue.
 const MAX_MANIFEST_BYTES: usize = 2 * 1024 * 1024;
+
+/// A guide is prose somebody wrote. Anything past this is not one.
+const MAX_GUIDE_BYTES: usize = 512 * 1024;
 
 /// The published catalogue.
 ///
@@ -62,12 +65,22 @@ pub struct TrainingConfig {
     /// Where the manifest lives. Empty means "use only what shipped", which is
     /// what a test or an offline session wants.
     pub manifest_url: String,
+    /// The repository whose guides this build will read and render itself,
+    /// as `owner/name`.
+    ///
+    /// The same repository the submission queue commits to, and for the same
+    /// reason it is named rather than inferred: a manifest is remote content,
+    /// so the addresses in it decide what is *offered*, never what the client
+    /// is willing to fetch. Empty turns the reader off, and every entry then
+    /// opens in a browser.
+    pub guides_repo: String,
 }
 
 impl TrainingConfig {
     pub fn faf() -> Self {
         Self {
             manifest_url: env_or("FAF_TRAINING_CATALOGUE_URL", DEFAULT_MANIFEST),
+            guides_repo: env_or("FAF_GUIDES_REPO", GUIDES_REPO),
         }
     }
 }
@@ -129,7 +142,7 @@ impl TrainingCatalogueClient {
         if bytes.len() > MAX_MANIFEST_BYTES {
             return Err("the training catalogue document was unexpectedly large".into());
         }
-        let mut catalogue = parse_manifest(&bytes)?;
+        let mut catalogue = parse_manifest(&bytes, &self.config.guides_repo)?;
         catalogue.source = TrainingSource::Remote;
         // A manifest that omits a destination inherits the shipped one rather
         // than blanking it: the forum categories are the same either way, and
@@ -156,13 +169,51 @@ impl TrainingPort for TrainingCatalogueClient {
             }
         }
     }
+
+    async fn read_guide(&self, url: String) -> Result<String, String> {
+        let repo = self.config.guides_repo.trim();
+        if repo.is_empty() {
+            return Err("this build reads no guides of its own".into());
+        }
+        // The address came out of a manifest, so it is checked before it is
+        // used and not after. Anything that is not Markdown in the trusted
+        // repository is a link to be opened, never a request to be made.
+        let Some(guide) = hosted_guide(&url) else {
+            return Err("that guide is not a document this client can read".into());
+        };
+        if !guide.repository().eq_ignore_ascii_case(repo) {
+            return Err(format!(
+                "that guide lives in {}, and this client only reads {repo}",
+                guide.repository()
+            ));
+        }
+
+        let response = self
+            .http
+            .get(uncached(&url))
+            .send()
+            .await
+            .map_err(|error| format!("could not reach the guide: {error}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!("the guide responded with {status}"));
+        }
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|error| format!("could not read the guide: {error}"))?;
+        if bytes.len() > MAX_GUIDE_BYTES {
+            return Err("that guide was unexpectedly large".into());
+        }
+        String::from_utf8(bytes.to_vec()).map_err(|_| "that guide is not text".into())
+    }
 }
 
 /// The seed, parsed. A broken seed is a packaging bug, so it fails loudly in
 /// tests and degrades to an empty catalogue at runtime rather than panicking in
 /// a user's client.
 pub fn seed_catalogue() -> TrainingCatalogue {
-    match parse_manifest(SEED.as_bytes()) {
+    match parse_manifest(SEED.as_bytes(), GUIDES_REPO) {
         Ok(mut catalogue) => {
             catalogue.source = TrainingSource::Bundled;
             catalogue
@@ -174,10 +225,10 @@ pub fn seed_catalogue() -> TrainingCatalogue {
     }
 }
 
-fn parse_manifest(bytes: &[u8]) -> Result<TrainingCatalogue, String> {
+fn parse_manifest(bytes: &[u8], guides_repo: &str) -> Result<TrainingCatalogue, String> {
     let document: ManifestDoc = serde_json::from_slice(bytes)
         .map_err(|error| format!("the training catalogue is not valid JSON: {error}"))?;
-    Ok(document.into_catalogue())
+    Ok(document.into_catalogue(guides_repo))
 }
 
 // -- the manifest document -------------------------------------------------
@@ -198,12 +249,12 @@ struct ManifestDoc {
 }
 
 impl ManifestDoc {
-    fn into_catalogue(self) -> TrainingCatalogue {
+    fn into_catalogue(self, guides_repo: &str) -> TrainingCatalogue {
         TrainingCatalogue {
             resources: self
                 .resources
                 .into_iter()
-                .filter_map(ResourceDoc::into_resource)
+                .filter_map(|resource| resource.into_resource(guides_repo))
                 .collect(),
             trainers: self
                 .trainers
@@ -329,10 +380,16 @@ impl ResourceDoc {
     /// An entry with no id or no title is dropped: the id is what `related`
     /// and the recommendation list address it by, and a nameless row is not
     /// something a reader can act on.
-    fn into_resource(self) -> Option<TrainingResource> {
+    fn into_resource(self, guides_repo: &str) -> Option<TrainingResource> {
         if self.id.trim().is_empty() || self.title.trim().is_empty() {
             return None;
         }
+        // Readable here only if the document is Markdown in the repository this
+        // build trusts. The manifest does not get a say: it names addresses,
+        // and what the client is willing to fetch is the client's decision.
+        let readable = !guides_repo.trim().is_empty()
+            && hosted_guide(&self.url)
+                .is_some_and(|guide| guide.repository().eq_ignore_ascii_case(guides_repo.trim()));
         // A stated picture wins; otherwise a video link implies its own still,
         // which is what turns a catalogue of YouTube guides into a grid worth
         // scanning rather than ten identical marks.
@@ -361,6 +418,7 @@ impl ResourceDoc {
             related: self.related,
             approved_by: self.approved_by,
             updated_at: self.updated_at,
+            readable,
         })
     }
 }
@@ -398,6 +456,10 @@ pub struct FakeTraining;
 impl TrainingPort for FakeTraining {
     async fn list_catalogue(&self) -> Result<TrainingCatalogue, String> {
         Ok(seed_catalogue())
+    }
+
+    async fn read_guide(&self, _url: String) -> Result<String, String> {
+        Err("this build fetches nothing".into())
     }
 }
 
@@ -440,6 +502,7 @@ mod tests {
                 {"name":"Stepped back","accepting":false},
                 {"role":"has no name"}
             ]}"#,
+            GUIDES_REPO,
         )
         .expect("the document loads");
 
@@ -462,6 +525,7 @@ mod tests {
         // reject the first thing anyone wrote.
         let catalogue = parse_manifest(
             br#"{"resources":[{"id":"a","title":"T","url":"https://example.invalid/a"}]}"#,
+            GUIDES_REPO,
         )
         .expect("a partial manifest loads");
         assert_eq!(catalogue.resources.len(), 1);
@@ -474,6 +538,7 @@ mod tests {
     fn a_field_this_client_does_not_know_about_does_not_reject_the_document() {
         let catalogue = parse_manifest(
             br#"{"resources":[{"id":"a","title":"T","futureField":42}],"somethingElse":true}"#,
+            GUIDES_REPO,
         )
         .expect("an unknown field is ignored");
         assert_eq!(catalogue.resources.len(), 1);
@@ -481,7 +546,7 @@ mod tests {
 
     #[test]
     fn broken_json_is_reported_rather_than_silently_emptying_the_catalogue() {
-        assert!(parse_manifest(b"{not json").is_err());
+        assert!(parse_manifest(b"{not json", GUIDES_REPO).is_err());
     }
 
     #[test]
@@ -494,6 +559,7 @@ mod tests {
                 {"id":"no-title"},
                 {"id":"fine","title":"Fine"}
             ]}"#,
+            GUIDES_REPO,
         )
         .expect("the document loads");
         assert_eq!(
@@ -567,6 +633,7 @@ mod tests {
     async fn without_a_configured_manifest_the_port_answers_from_the_seed() {
         let client = TrainingCatalogueClient::new(TrainingConfig {
             manifest_url: String::new(),
+            guides_repo: GUIDES_REPO.into(),
         });
         let catalogue = client.list_catalogue().await.unwrap();
         assert_eq!(catalogue.source, TrainingSource::Bundled);
@@ -576,6 +643,7 @@ mod tests {
     async fn an_unreachable_manifest_degrades_to_the_seed_rather_than_failing() {
         let client = TrainingCatalogueClient::new(TrainingConfig {
             manifest_url: "https://catalogue.invalid/training.json".into(),
+            guides_repo: GUIDES_REPO.into(),
         });
         let catalogue = client.list_catalogue().await.unwrap();
         assert_eq!(catalogue.source, TrainingSource::Bundled);

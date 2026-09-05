@@ -27,8 +27,50 @@ export function reduceTraining(state: TrainingState, event: TrainingEvent): Trai
       return { ...state, status: { type: "failed", payload: { reason: event.payload.reason } } };
     case "queryChanged":
       return { ...state, query: event.payload.query };
-    case "selected":
-      return { ...state, selectedId: event.payload.resourceId };
+    case "selected": {
+      // A document belongs to the entry it was opened from. Leaving the last
+      // one in place would render one guide's text under the next one's title
+      // for as long as the read takes.
+      const resourceId = event.payload.resourceId;
+      const document =
+        state.document.resourceId === (resourceId ?? "")
+          ? state.document
+          : { resourceId: "", markdown: "", status: { type: "idle" as const } };
+      return { ...state, selectedId: resourceId, document };
+    }
+    case "guideReading":
+      return {
+        ...state,
+        document: {
+          resourceId: event.payload.resourceId,
+          markdown: "",
+          status: { type: "loading" },
+        },
+      };
+    // A reply for an entry the reader has already left is dropped rather than
+    // shown: by the time it arrives the title above it belongs to something
+    // else.
+    case "guideRead":
+      return state.document.resourceId === event.payload.resourceId
+        ? {
+            ...state,
+            document: {
+              ...state.document,
+              markdown: event.payload.markdown,
+              status: { type: "ready" },
+            },
+          }
+        : state;
+    case "guideFailed":
+      return state.document.resourceId === event.payload.resourceId
+        ? {
+            ...state,
+            document: {
+              ...state.document,
+              status: { type: "failed", payload: { reason: event.payload.reason } },
+            },
+          }
+        : state;
     case "recommended":
       return {
         ...state,

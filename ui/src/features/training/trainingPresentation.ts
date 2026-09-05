@@ -16,6 +16,11 @@ import type {
   TrainingTopic,
 } from "../../ipc/bindings";
 import { resourceBand } from "../../shared/trainingRules";
+import {
+  isGeneratedMapPlaceholderUrl,
+  mapPresentation,
+} from "../../shared/mapPresentation";
+import type { VaultMap } from "../../ipc/bindings";
 
 /** Every kind, in the order the filter offers them. Twin of `TrainingKind::ALL`. */
 export const KINDS: TrainingKind[] = [
@@ -55,7 +60,74 @@ export const BASIC_TOPICS: TrainingTopic[] = ["economy", "buildOrder", "micro", 
  * also accepts whatever the catalogue itself carries, which is where anything
  * not listed here comes from.
  */
-export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4", "coop"];
+export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4", "custom", "coop"];
+
+/**
+ * The embedded player for a video, when the address is one that can be.
+ *
+ * Presentation twin of `youtube_id`, kept here rather than asked of the
+ * domain because the only thing it decides is what this pane draws. The
+ * privacy-enhanced host is deliberate: it is the one the client's frame
+ * policy allows, and it sets nothing until the reader presses play.
+ *
+ * `rel=0` keeps the end card to the same channel rather than offering
+ * whatever YouTube would rather show next, which in a training tab is the
+ * difference between finishing a build order and being handed an advert.
+ */
+/**
+ * The address GitHub renders, for a raw one. Twin of
+ * `HostedGuide::rendered_page`.
+ *
+ * The catalogue stores the raw address of a guide, because that is the one the
+ * client fetches and renders itself. A reader who presses the button to open it
+ * in a browser anyway must not be handed the same address: raw serves
+ * `text/plain`, which is a build order as a wall of monospace. Anything that is
+ * not a raw GitHub address is returned untouched, which is every other entry in
+ * the library.
+ */
+export function renderedPage(url: string): string {
+  const match =
+    /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/.exec(url.trim());
+  if (!match) return url;
+  const [, owner, repo, reference, path] = match;
+  return `https://github.com/${owner}/${repo}/blob/${reference}/${path}`;
+}
+
+export function videoEmbedUrl(url: string): string {
+  const id = youtubeId(url);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : "";
+}
+
+/** The eleven-character id in a YouTube address, in the shapes people paste. */
+function youtubeId(url: string): string {
+  const match =
+    /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/)|youtu\.be\/)([^&?#/]+)/.exec(
+      url.trim(),
+    );
+  const id = match?.[1] ?? "";
+  // A fixed length and a fixed alphabet. Anything else is an address that
+  // merely looked like one, and a guessed embed is a blank box on the page.
+  return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+}
+
+/**
+ * The real preview art for the first map an entry names, if it can be found.
+ *
+ * Resolved through the same vault index the lobby rows and the replay list
+ * use, so a build order's card shows the map a player has actually seen, not
+ * a picture somebody remembered to attach. The catalogue names maps the way a
+ * player reads them, and that lookup already falls back to the base game's own
+ * table, which is where Seton's Clutch and Syrtis Major come from.
+ *
+ * The generator placeholder is not a preview: an entry that resolved to it
+ * found nothing, and saying so lets the caller fall back.
+ */
+export function mapPreviewUrl(vault: VaultMap[], maps: string[]): string {
+  const name = maps.find((map) => map.trim() !== "");
+  if (!name) return "";
+  const { thumbnailUrl } = mapPresentation(vault, name);
+  return isGeneratedMapPlaceholderUrl(thumbnailUrl) ? "" : thumbnailUrl;
+}
 
 export function kindLabel(kind: TrainingKind): MessageKey {
   return `training.kind.${kind}`;

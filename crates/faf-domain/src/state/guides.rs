@@ -548,6 +548,9 @@ pub fn entry_from_body(issue_title: &str, body: &str) -> Option<TrainingResource
         // an accepted entry looks like the rest of the grid from the first
         // moment rather than after somebody adds a picture by hand.
         image_url: video_still(&url),
+        // Decided where the catalogue is parsed, against the repository this
+        // build trusts. A submission cannot claim it.
+        readable: false,
         kind: section_of(body, field::KIND)
             .and_then(|value| kind_from_label(&value))
             .unwrap_or(TrainingKind::Guide),
@@ -649,8 +652,15 @@ pub fn rejection_comment(reason: RejectReason, note: &str) -> String {
 pub fn catalogue_with(current: &str, entry: &TrainingResource) -> Result<String, String> {
     let mut document: serde_json::Value = serde_json::from_str(current)
         .map_err(|error| format!("the catalogue is not valid JSON: {error}"))?;
-    let value = serde_json::to_value(entry)
+    let mut value = serde_json::to_value(entry)
         .map_err(|error| format!("the entry cannot be serialised: {error}"))?;
+    // `readable` is this client's conclusion about an address, not something a
+    // catalogue states: the parser recomputes it on every load and ignores
+    // whatever the file says. Writing it would put a field the next human
+    // editor cannot act on in front of them, in a file edited by hand.
+    if let Some(object) = value.as_object_mut() {
+        object.remove("readable");
+    }
 
     let object = document
         .as_object_mut()
@@ -748,6 +758,7 @@ pub fn entry_from_draft(draft: &ContributionDraft, author: &str) -> TrainingReso
         kind: draft.kind,
         level: draft.level,
         image_url: video_still(draft.url.trim()),
+        readable: false,
         url: draft.url.trim().to_string(),
         tutorial_id: None,
         author: author.trim().to_string(),
@@ -981,6 +992,7 @@ mod tests {
             id: "setons-t1-build-order".into(),
             title: "Seton's Clutch T1 build order".into(),
             image_url: String::new(),
+            readable: false,
             summary: "Four mexes, then land.".into(),
             kind: TrainingKind::BuildOrder,
             level: Some(TrainingLevel::Beginner),

@@ -545,7 +545,14 @@
       "review": null,
       "reviewPost": null,
       "contribution": null,
-      "contributionPost": null
+      "contributionPost": null,
+      "document": {
+        "resourceId": "",
+        "markdown": "",
+        "status": {
+          "type": "idle"
+        }
+      }
     },
     "tutorials": {
       "categories": [],
@@ -14516,6 +14523,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -14587,7 +14601,8 @@
                     "durationMinutes": 12,
                     "related": [],
                     "approvedBy": "",
-                    "updatedAt": ""
+                    "updatedAt": "",
+                    "readable": false
                   },
                   {
                     "id": "setons",
@@ -14614,7 +14629,8 @@
                     "durationMinutes": 12,
                     "related": [],
                     "approvedBy": "",
-                    "updatedAt": ""
+                    "updatedAt": "",
+                    "readable": false
                   }
                 ],
                 "trainers": [
@@ -14657,6 +14673,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -14703,6 +14726,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource eco",
@@ -14730,6 +14754,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource setons",
@@ -14795,6 +14820,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -14841,6 +14873,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource eco",
@@ -14868,6 +14901,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource setons",
@@ -14925,6 +14959,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -14971,6 +15012,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource eco",
@@ -14998,6 +15040,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource setons",
@@ -15076,6 +15119,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -15134,6 +15184,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource eco",
@@ -15161,6 +15212,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource setons",
@@ -15237,7 +15289,8 @@
                     "durationMinutes": 12,
                     "related": [],
                     "approvedBy": "",
-                    "updatedAt": ""
+                    "updatedAt": "",
+                    "readable": false
                   }
                 ],
                 "trainers": [],
@@ -15257,6 +15310,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -15315,6 +15375,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource eco",
@@ -15349,6 +15410,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -15407,6 +15475,7 @@
                 ],
                 "ratingMax": 1200,
                 "ratingMin": 800,
+                "readable": false,
                 "related": [],
                 "summary": "A short description.",
                 "title": "Resource eco",
@@ -15427,6 +15496,1246 @@
                 "reason": "offline"
               },
               "type": "failed"
+            },
+            "trainers": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a hosted guide is read, and a reply for a closed entry is dropped",
+      "steps": [
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "resources": [
+                  {
+                    "id": "eco",
+                    "title": "Resource eco",
+                    "summary": "A short description.",
+                    "kind": "guide",
+                    "level": "beginner",
+                    "url": "https://wiki.faforever.com",
+                    "imageUrl": "",
+                    "tutorialId": null,
+                    "author": "A trainer",
+                    "ratingMin": 800,
+                    "ratingMax": 1200,
+                    "gameModes": [
+                      "4v4"
+                    ],
+                    "topics": [
+                      "economy"
+                    ],
+                    "maps": [
+                      "Setons Clutch"
+                    ],
+                    "factions": [],
+                    "durationMinutes": 12,
+                    "related": [],
+                    "approvedBy": "",
+                    "updatedAt": "",
+                    "readable": false
+                  },
+                  {
+                    "id": "setons",
+                    "title": "Resource setons",
+                    "summary": "A short description.",
+                    "kind": "guide",
+                    "level": "beginner",
+                    "url": "https://wiki.faforever.com",
+                    "imageUrl": "",
+                    "tutorialId": null,
+                    "author": "A trainer",
+                    "ratingMin": 800,
+                    "ratingMax": 1200,
+                    "gameModes": [
+                      "4v4"
+                    ],
+                    "topics": [
+                      "economy"
+                    ],
+                    "maps": [
+                      "Setons Clutch"
+                    ],
+                    "factions": [],
+                    "durationMinutes": 12,
+                    "related": [],
+                    "approvedBy": "",
+                    "updatedAt": "",
+                    "readable": false
+                  }
+                ],
+                "trainers": [],
+                "links": {
+                  "discordUrl": "",
+                  "replayReviewChannel": "",
+                  "replayReviewUrl": "",
+                  "replayReviewCategory": null,
+                  "contributeUrl": "",
+                  "contributeCategory": null,
+                  "wikiUrl": ""
+                },
+                "source": "remote"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "resourceId": "setons"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "setons",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "guideReading",
+              "payload": {
+                "resourceId": "setons"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "setons",
+              "status": {
+                "type": "loading"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "setons",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "guideRead",
+              "payload": {
+                "resourceId": "setons",
+                "markdown": "# Seton's\n\n- **ACU:** Landfac\n"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "# Seton's\n\n- **ACU:** Landfac\n",
+              "resourceId": "setons",
+              "status": {
+                "type": "ready"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "setons",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "resourceId": "eco"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "eco",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "guideRead",
+              "payload": {
+                "resourceId": "setons",
+                "markdown": "too late"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "eco",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "guideReading",
+              "payload": {
+                "resourceId": "eco"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "eco",
+              "status": {
+                "type": "loading"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "eco",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "guideFailed",
+              "payload": {
+                "resourceId": "eco",
+                "reason": "could not reach the guide"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "eco",
+              "status": {
+                "payload": {
+                  "reason": "could not reach the guide"
+                },
+                "type": "failed"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": "eco",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "resourceId": null
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "trainers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Training",
+            "event": {
+              "type": "guideFailed",
+              "payload": {
+                "resourceId": "eco",
+                "reason": "still too late"
+              }
+            }
+          },
+          "expected": {
+            "contribution": null,
+            "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "links": {
+              "contributeCategory": null,
+              "contributeUrl": "",
+              "discordUrl": "",
+              "replayReviewCategory": null,
+              "replayReviewChannel": "",
+              "replayReviewUrl": "",
+              "wikiUrl": ""
+            },
+            "profile": {
+              "factions": [],
+              "gameModes": [],
+              "gamesSeen": 0,
+              "maps": [],
+              "player": "",
+              "rating": null,
+              "ratings": {}
+            },
+            "query": {
+              "gameMode": "",
+              "kind": null,
+              "level": null,
+              "map": "",
+              "myRatingOnly": false,
+              "text": "",
+              "topic": null
+            },
+            "recommended": [],
+            "resources": [
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "eco",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource eco",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              },
+              {
+                "approvedBy": "",
+                "author": "A trainer",
+                "durationMinutes": 12,
+                "factions": [],
+                "gameModes": [
+                  "4v4"
+                ],
+                "id": "setons",
+                "imageUrl": "",
+                "kind": "guide",
+                "level": "beginner",
+                "maps": [
+                  "Setons Clutch"
+                ],
+                "ratingMax": 1200,
+                "ratingMin": 800,
+                "readable": false,
+                "related": [],
+                "summary": "A short description.",
+                "title": "Resource setons",
+                "topics": [
+                  "economy"
+                ],
+                "tutorialId": null,
+                "updatedAt": "",
+                "url": "https://wiki.faforever.com"
+              }
+            ],
+            "review": null,
+            "reviewPost": null,
+            "selectedId": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
             },
             "trainers": []
           }
@@ -15461,6 +16770,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -15529,6 +16845,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -15609,6 +16932,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -15670,6 +17000,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -15889,7 +17226,8 @@
                       "durationMinutes": 12,
                       "related": [],
                       "approvedBy": "",
-                      "updatedAt": ""
+                      "updatedAt": "",
+                      "readable": false
                     },
                     "author": "someone",
                     "authorAvatarUrl": "",
@@ -15926,7 +17264,8 @@
                       "durationMinutes": 12,
                       "related": [],
                       "approvedBy": "",
-                      "updatedAt": ""
+                      "updatedAt": "",
+                      "readable": false
                     },
                     "author": "someone",
                     "authorAvatarUrl": "",
@@ -15976,6 +17315,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-11",
@@ -16013,6 +17353,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-12",
@@ -16086,6 +17427,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-11",
@@ -16123,6 +17465,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-12",
@@ -16201,6 +17544,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-12",
@@ -16279,6 +17623,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-12",
@@ -16358,6 +17703,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-12",
@@ -16437,6 +17783,7 @@
                   ],
                   "ratingMax": 1200,
                   "ratingMin": 800,
+                  "readable": false,
                   "related": [],
                   "summary": "A short description.",
                   "title": "Resource guide-12",
@@ -16580,7 +17927,8 @@
                       "durationMinutes": 12,
                       "related": [],
                       "approvedBy": "",
-                      "updatedAt": ""
+                      "updatedAt": "",
+                      "readable": false
                     },
                     "author": "someone",
                     "authorAvatarUrl": "",
@@ -16617,7 +17965,8 @@
                       "durationMinutes": 12,
                       "related": [],
                       "approvedBy": "",
-                      "updatedAt": ""
+                      "updatedAt": "",
+                      "readable": false
                     },
                     "author": "someone",
                     "authorAvatarUrl": "",
@@ -17021,6 +18370,13 @@
               "url": ""
             },
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -17107,6 +18463,13 @@
               "url": ""
             },
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -17184,6 +18547,13 @@
               "title": "Training submission: T1 tank micro",
               "url": "https://forum.faforever.com/compose?cid=4&title=Training%20submission%3A%20T1%20tank%20micro&body=Split%20before%20they%20are%20shot.%0A%0A%2A%2AType%3A%2A%2A%20Guide%0A%2A%2ALevel%3A%2A%2A%20Beginner%0A%2A%2ARating%3A%2A%2A%20800%20to%201200%0A%2A%2AGame%20modes%3A%2A%2A%201v1%0A%2A%2ATopics%3A%2A%2A%20Micro%0A%0ASplit%20before%20they%20are%20shot.%0A%0A%2ASubmitted%20from%20the%20FAF%20client%27s%20Training%20tab.%2A%0A"
             },
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -17233,6 +18603,13 @@
           "expected": {
             "contribution": null,
             "contributionPost": null,
+            "document": {
+              "markdown": "",
+              "resourceId": "",
+              "status": {
+                "type": "idle"
+              }
+            },
             "links": {
               "contributeCategory": null,
               "contributeUrl": "",
@@ -42413,7 +43790,8 @@
           "durationMinutes": null,
           "related": [],
           "approvedBy": "",
-          "updatedAt": ""
+          "updatedAt": "",
+          "readable": false
         },
         {
           "id": "eco-beginner",
@@ -42438,7 +43816,8 @@
           "durationMinutes": null,
           "related": [],
           "approvedBy": "",
-          "updatedAt": ""
+          "updatedAt": "",
+          "readable": false
         },
         {
           "id": "setons-4v4",
@@ -42466,7 +43845,8 @@
           "durationMinutes": null,
           "related": [],
           "approvedBy": "",
-          "updatedAt": ""
+          "updatedAt": "",
+          "readable": false
         },
         {
           "id": "advanced-micro",
@@ -42489,7 +43869,8 @@
           "durationMinutes": null,
           "related": [],
           "approvedBy": "",
-          "updatedAt": ""
+          "updatedAt": "",
+          "readable": false
         }
       ],
       "cases": [

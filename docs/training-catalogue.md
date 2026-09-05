@@ -175,11 +175,65 @@ row is not something a reader can act on.
 | `kind` | `video`, `guide`, `buildOrder`, `replayAnalysis`, `lesson`, `community`. Defaults to `guide`. |
 | `level` | `beginner`, `intermediate`, `advanced`, or absent. |
 | `topics` | `economy`, `buildOrder`, `micro`, `strategy`, `armyComposition`, `mapControl`, `scouting`, `factions`, `teamplay`, `interface`. A closed set on purpose: free tags produce forty near-synonyms nobody can filter by. |
-| `gameModes` | Free text (`1v1`, `4v4`, `coop`, a mod's own queue). The filter offers whatever the catalogue contains. |
+| `gameModes` | Free text (`1v1`, `4v4`, `custom`, `coop`, a mod's own queue). The filter offers whatever the catalogue contains. `custom` means a game outside the matchmaker and is the one word with a rule behind it: see below. |
 | `maps` | Map names as a player reads them. Matched case-insensitively and by substring, so `Setons Clutch`, `SCMP_009` and "Seton's" find each other. |
 | `ratingMin` / `ratingMax` | Either may be absent, and an absent bound is open. Stated numbers win over the band a `level` implies. |
 | `related` | Other resource ids. This is what makes the library a graph rather than a list: a guide about a mistake can point at the lesson that fixes it. Ids that no longer resolve are dropped rather than drawn as dead rows. |
 | `approvedBy` | Who vouched for it. Rendered as "Reviewed by", never "official": accepting a guide is not the same as having checked every sentence, and a label implying otherwise is worse than none. |
+
+### `custom`, and why most team material needs it
+
+FAF keeps five ratings, and the client judges an entry by the one its modes
+name. `4v4` is the *matchmaker* 4v4 leaderboard. Most of what the community
+teaches is not matchmaker material at all: Seton's, Dual Gap and the rest are
+lobby games, rated on the leaderboard FAF calls `global`. An entry tagged only
+`4v4` is therefore measured against a queue its reader may never have entered,
+and often against no rating at all.
+
+So the catalogue says `custom`, which is the word used in a lobby, and the
+client resolves it to the `global` leaderboard. The two are interchangeable
+everywhere: choosing either in the filter finds both.
+
+**Pair it with a team size, `custom` first:**
+
+```json
+{ "gameModes": ["custom", "4v4"] }
+```
+
+The order decides the rating, because the first mode that resolves wins, and
+`custom` resolving first is the point. The size is still worth stating second:
+the profile is read from local replay headers, and a replay header records how
+many players were in the game and not whether the matchmaker put them there. So
+`4v4` is what actually matches a Seton's player's recent games, while `custom`
+is what picks the right rating for them.
+
+### Reading a guide inside the client
+
+A guide this repository hosts is fetched and rendered in the tab. Nothing else
+is: every other entry is somebody else's page, behind their own styling, their
+own login and their own frame policy, and those open in a browser.
+
+Link a hosted guide by its **raw** address:
+
+```json
+{ "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/x.md" }
+```
+
+Raw is what the client reads. A reader who presses the button to open it in a
+browser anyway is sent to the `github.com/.../blob/...` address instead, which
+is the rendered one; raw serves `text/plain`, which is a build order as a wall
+of monospace.
+
+The client decides for itself whether an entry is readable, by checking that
+the address is Markdown in the repository that build is configured to trust. A
+manifest cannot claim it: a catalogue is remote content, and the addresses in it
+decide what is offered, never what the client is willing to fetch. That
+conclusion travels to the UI as a `readable` field on the resource, and is
+deliberately **not** written back into this file when a submission is accepted.
+
+A video entry is played in the tab as well, through
+`www.youtube-nocookie.com`, which is the only video host the client's frame
+policy allows. An uploader who has disabled embedding gets a frame saying so.
 
 ### Tagging a FAF lesson
 
