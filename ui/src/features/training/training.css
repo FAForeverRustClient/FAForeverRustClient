@@ -780,6 +780,64 @@
   line-height: 1.6;
 }
 
+/* Player and queue, the way a series is watched: what is playing on the left,
+   what is next beside it. The queue is the catalogue's own, so it carries the
+   titles and the order this library gives them rather than YouTube's. */
+.training-watch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.training-series {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Sized like a queue rather than a table: it holds titles, and letting it
+     take whatever is left over made seven short lines look like a spreadsheet.
+     The height matches the player, so a long series scrolls beside it. */
+  flex: 0 1 320px;
+  max-height: 315px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-series button {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.training-series button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.training-series button.is-current {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.training-series-number {
+  min-width: 1.4em;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .training-detail-video {
   /* 16:9, so the frame keeps its shape as the page is resized rather than
      leaving the player letterboxed inside a box of its own.
@@ -791,7 +849,7 @@
   aspect-ratio: 16 / 9;
   width: 100%;
   max-width: 560px;
-  margin-top: var(--space-4);
+  flex: 1 1 380px;
   overflow: hidden;
   border-radius: var(--radius-md);
   background: var(--color-surface);

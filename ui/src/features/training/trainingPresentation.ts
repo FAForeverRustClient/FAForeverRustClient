@@ -95,7 +95,26 @@ export function renderedPage(url: string): string {
 
 export function videoEmbedUrl(url: string): string {
   const id = youtubeId(url);
-  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : "";
+  if (!id) return "";
+  // The playlist travels with the video. A build order series is watched in
+  // order, and without this the player treats each entry as a lone video: no
+  // next, no queue, and the reader is back to the browser to find part two.
+  const list = playlistId(url);
+  const series = list ? `&list=${encodeURIComponent(list)}` : "";
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0${series}`;
+}
+
+/**
+ * The playlist an address belongs to, if it names one.
+ *
+ * What makes a series visible in the tab: two catalogue entries carrying the
+ * same one are two parts of the same thing, and that is the whole of the
+ * relationship. No key, no API call, and it stays true as entries are added,
+ * which a hand-maintained list of siblings would not.
+ */
+export function playlistId(url: string): string {
+  const match = /[?&]list=([A-Za-z0-9_-]+)/.exec(url.trim());
+  return match ? match[1] : "";
 }
 
 /** The eleven-character id in a YouTube address, in the shapes people paste. */

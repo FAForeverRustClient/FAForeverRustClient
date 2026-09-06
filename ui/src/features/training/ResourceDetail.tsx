@@ -24,6 +24,7 @@ import {
   kindIcon,
   kindLabel,
   levelLabel,
+  playlistId,
   topicLabel,
   videoEmbedUrl,
 } from "./trainingPresentation";
@@ -59,6 +60,15 @@ export function ResourceDetail({
   // player on `kind === "video"` meant the one entry filed as a video played
   // here while fourteen build orders on the same channel did not.
   const embed = videoEmbedUrl(resource.url);
+  // The rest of the series, from the catalogue rather than from YouTube: two
+  // entries carrying the same playlist are two parts of the same thing, which
+  // needs no key and no request and stays true as entries are added. What it
+  // cannot show is a video of the series nobody has catalogued yet.
+  const series = useMemo(() => {
+    const list = playlistId(resource.url);
+    if (!list) return [];
+    return resources.filter((other) => playlistId(other.url) === list);
+  }, [resources, resource.url]);
   const vault = useAppStore((store) => store.state.maps.vault);
   const previewUrl = mapPreviewUrl(vault, resource.maps);
   // Parsed once per document rather than per render: the envelope is a few
@@ -112,15 +122,35 @@ export function ResourceDetail({
           // one the client's frame policy allows; an uploader who has disabled
           // embedding gets a frame that says so and offers YouTube, which is
           // the honest outcome and still one click from watching.
-          <div className="training-detail-video">
-            <iframe
-              src={embed}
-              title={resource.title}
-              loading="lazy"
-              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+          <div className="training-watch">
+            <div className="training-detail-video">
+              <iframe
+                src={embed}
+                title={resource.title}
+                loading="lazy"
+                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+
+            {series.length > 1 && (
+              <ol className="training-series">
+                {series.map((other, index) => (
+                  <li key={other.id}>
+                    <button
+                      type="button"
+                      className={other.id === resource.id ? "is-current" : undefined}
+                      aria-current={other.id === resource.id ? "true" : undefined}
+                      onClick={() => onSelect(other)}
+                    >
+                      <span className="training-series-number">{index + 1}</span>
+                      <span>{other.title}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         )}
 
