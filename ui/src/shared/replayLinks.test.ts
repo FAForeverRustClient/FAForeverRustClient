@@ -1,45 +1,31 @@
 import { describe, expect, it } from "vitest";
-import type { Game } from "../ipc/bindings";
-import { liveReplayLink, onlineReplayLink } from "./replayLinks";
 
-function game(overrides: Partial<Game> = {}): Game {
-  return {
-    id: 42,
-    title: "Test",
-    host: "Host",
-    players: 2,
-    maxPlayers: 4,
-    map: "Seton's Clutch",
-    modName: "faf",
-    averageRating: 1500,
-    passwordProtected: false,
-    visibility: "public",
-    gameType: "custom",
-    launchedAt: null,
-    hostedAt: null,
-    ratingMin: null,
-    ratingMax: null,
-    teams: {},
-    simMods: {},
-    ...overrides,
-  };
-}
+import { onlineReplayLink, replayUidFromLink } from "./replayLinks";
 
-describe("replay share links", () => {
-  it("uses the public replay-vault URL for completed games", () => {
-    expect(onlineReplayLink(123)).toBe("https://replay.faforever.com/123");
+describe("replayUidFromLink", () => {
+  it("reads back what onlineReplayLink writes", () => {
+    expect(replayUidFromLink(onlineReplayLink(19639494))).toBe(19639494);
+    expect(replayUidFromLink("http://replay.faforever.com/18337693")).toBe(18337693);
+    // A trailing slash is how a link ends up written by hand.
+    expect(replayUidFromLink("https://replay.faforever.com/123/")).toBe(123);
+    expect(replayUidFromLink("  https://replay.faforever.com/123  ")).toBe(123);
   });
 
-  it("emits the Python live-link grammar accepted by chat", () => {
-    const url = new URL(liveReplayLink(game(), "Player One"));
-    expect(url.protocol).toBe("faflive:");
-    expect(url.hostname).toBe("127.0.0.1");
-    expect(url.pathname).toBe("/42/Player%20One.SCFAreplay");
-    expect(url.searchParams.get("map")).toBe("Seton's Clutch");
-    expect(url.searchParams.get("mod")).toBe("faf");
-  });
-
-  it("always emits a non-empty replay stream identity", () => {
-    expect(new URL(liveReplayLink(game(), "  ")).pathname).toBe("/42/spectator.SCFAreplay");
+  it("refuses anything that is not one, so it stays a link", () => {
+    // This decides which addresses the client acts on itself rather than
+    // opening, and the addresses come out of a document fetched from a
+    // repository. A host that merely starts or ends with the right letters is
+    // somebody else's host.
+    expect(replayUidFromLink("https://replay.faforever.com.example.invalid/1")).toBeNull();
+    expect(replayUidFromLink("https://evil.invalid/replay.faforever.com/1")).toBeNull();
+    expect(replayUidFromLink("https://notreplay.faforever.com/1")).toBeNull();
+    expect(replayUidFromLink("https://replay.faforever.com/1/extra")).toBeNull();
+    expect(replayUidFromLink("https://replay.faforever.com/")).toBeNull();
+    expect(replayUidFromLink("https://replay.faforever.com/abc")).toBeNull();
+    // Not a game id: zero and negatives address nothing, and a number past
+    // the safe integer range would have been rounded on the way in.
+    expect(replayUidFromLink("https://replay.faforever.com/0")).toBeNull();
+    expect(replayUidFromLink("https://forum.faforever.com/topic/1")).toBeNull();
+    expect(replayUidFromLink("")).toBeNull();
   });
 });

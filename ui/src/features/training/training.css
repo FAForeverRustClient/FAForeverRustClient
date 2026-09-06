@@ -733,6 +733,20 @@
   max-width: 70ch;
 }
 
+/* A replay link plays the game here rather than opening a browser, so it is
+   marked as the action it is instead of reading like every other link. */
+.training-markdown-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.training-markdown-replay::before {
+  content: "B6";
+  font-size: 11px;
+  opacity: 0.7;
+}
+
 .training-detail-kind {
   display: inline-flex;
   align-items: center;

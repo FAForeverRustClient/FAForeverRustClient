@@ -54,7 +54,11 @@ export function ResourceDetail({
   const { t } = useTranslation();
   const band = bandKey(resource);
   const related = relatedResources(resources, resource);
-  const embed = resource.kind === "video" ? videoEmbedUrl(resource.url) : "";
+  // Whether the address is a video decides this, not what the entry calls
+  // itself. Most of the catalogue's videos are build orders, and gating the
+  // player on `kind === "video"` meant the one entry filed as a video played
+  // here while fourteen build orders on the same channel did not.
+  const embed = videoEmbedUrl(resource.url);
   const vault = useAppStore((store) => store.state.maps.vault);
   const previewUrl = mapPreviewUrl(vault, resource.maps);
   // Parsed once per document rather than per render: the envelope is a few
@@ -176,10 +180,17 @@ export function ResourceDetail({
         )}
 
         <div className="training-detail-actions">
-          <Button variant="primary" onClick={() => onOpen(resource)}>
-            <Icon name={isPlayableLesson(resource) ? "play" : "external"} size={16} />{" "}
-            {t(actionLabel(resource))}
-          </Button>
+          {/* Only when there is somewhere left to go. A video plays on this
+              page and a hosted guide is rendered on it, so an "open" button
+              beside either was offering to send the reader away from the thing
+              they came for. A lesson still has a button, because launching one
+              is the whole point of it. */}
+          {(isPlayableLesson(resource) || (resource.url && !embed && !resource.readable)) && (
+            <Button variant="primary" onClick={() => onOpen(resource)}>
+              <Icon name={isPlayableLesson(resource) ? "play" : "external"} size={16} />{" "}
+              {t(actionLabel(resource))}
+            </Button>
+          )}
           {/* The other half of the graph: understanding a mistake is one thing,
               having someone look at your own game is another, and this is the
               point in the tab where a player is most likely to want it. */}

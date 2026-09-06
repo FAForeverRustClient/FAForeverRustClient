@@ -59,21 +59,13 @@ const send = (command: TrainingCommand) =>
 const openBlankReview = () =>
   send({ type: "openReview", payload: { replayUid: null, localPath: null } });
 
-// `detail` is not a place a reader navigates to from nothing: it appears when
-// an entry is open and is the tab they land on, which is why it is a section
-// rather than an overlay. A build order is worked through, sometimes with the
-// game beside it, and a dialog says the opposite of that.
-type Section = "hub" | "library" | "lessons" | "trainers" | "contribute" | "pending" | "detail";
+type Section = "hub" | "library" | "lessons" | "trainers" | "contribute" | "pending";
 
 export function TrainingView() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.training);
   const guides = useAppStore((store) => store.state.guides);
   const [section, setSection] = useState<Section>("hub");
-  // Where the reader was before they opened an entry, so back returns there
-  // rather than to a fixed tab. A guide reached from the hub's recommendation
-  // rail and one reached from a library filter are different journeys.
-  const cameFrom = useRef<Section>("hub");
   const railRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -179,30 +171,24 @@ export function TrainingView() {
     },
   ];
 
-  // Only while something is open, and named after it: a tab called "Detail"
-  // would tell a reader nothing about which of sixty entries they left open.
-  if (selected) {
-    sections.push({ id: "detail", label: selected.title });
-  }
-
-  /** Open an entry in its own tab, remembering where the reader came from. */
-  const select = (resource: TrainingResource) => {
-    if (section !== "detail") cameFrom.current = section;
+  /**
+   * Open an entry, one level down rather than one tab across.
+   *
+   * The section a reader is in does not change: they are still in the library,
+   * or still on the hub, looking at one of its entries. So the entry replaces
+   * the section's content and back returns to it, with no seventh tab
+   * appearing and disappearing in the bar as they browse.
+   *
+   * Which entry is open lives in the backend's state, so this is only a
+   * command. An earlier version also flipped a local section to a `detail`
+   * value, which raced that round trip: the entry had not arrived by the time
+   * the render ran, the guard sent the reader back, and opening a guide took
+   * two clicks.
+   */
+  const select = (resource: TrainingResource) =>
     send({ type: "select", payload: { resourceId: resource.id } });
-    setSection("detail");
-  };
 
-  // A reload can drop the entry that is open, and the reducer clears the
-  // selection when it does. Without this the tab would sit on a section with
-  // nothing in it and no way back except another tab.
-  useEffect(() => {
-    if (section === "detail" && !selected) setSection(cameFrom.current);
-  }, [section, selected]);
-
-  const closeDetail = () => {
-    send({ type: "select", payload: { resourceId: null } });
-    setSection(cameFrom.current);
-  };
+  const closeDetail = () => send({ type: "select", payload: { resourceId: null } });
 
   const failed = state.status.type === "failed" ? state.status.payload.reason : null;
 
@@ -235,7 +221,13 @@ export function TrainingView() {
         active={section}
         ariaLabel={t("training.title")}
         items={sections}
-        onChange={setSection}
+        onChange={(next) => {
+          // An open entry belongs to the section it was opened from. Carrying
+          // it across to another tab would show a build order under
+          // "Trainers".
+          closeDetail();
+          setSection(next);
+        }}
       />
 
       {failed && (
@@ -247,151 +239,10 @@ export function TrainingView() {
         </p>
       )}
 
-      {section === "hub" && (
-        <div className="training-hub">
-          <TrainingHero
-            links={state.links}
-            profile={state.profile}
-            hasRecommendations={recommended.length > 0}
-            onRequestReview={openBlankReview}
-            onShowRecommended={() =>
-              railRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            onFindTrainer={
-              state.trainers.length === 0 ? null : () => setSection("trainers")
-            }
-          />
-
-          <section className="training-rail-section" ref={railRef}>
-            <header className="training-section-head">
-              <div>
-                <h3>{t("training.recommended.title")}</h3>
-                <p className="muted">{t("training.recommended.lead")}</p>
-              </div>
-            </header>
-            {recommended.length === 0 ? (
-              <p className="surface training-state muted">
-                <span>
-                  {state.status.type === "loading"
-                    ? t("training.loading")
-                    : t("training.recommended.empty")}
-                </span>
-                <Button onClick={() => setSection("library")}>
-                  {t("training.recommended.browse")}
-                </Button>
-              </p>
-            ) : (
-              <div className="training-rail">
-                {recommended.map((resource) => (
-                  <TrainingCard
-                    key={resource.id}
-                    resource={resource}
-                    reason={reasonFor(resource, state.profile.maps, state.profile.gameModes)}
-                    onOpen={open}
-                    onSelect={select}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="training-basics">
-            <header className="training-section-head">
-              <div>
-                <h3>{t("training.basics.title")}</h3>
-                <p className="muted">{t("training.basics.lead")}</p>
-              </div>
-            </header>
-            <div className="training-basics-grid">
-              {BASIC_TOPICS.map((topic) => {
-                const count = state.resources.filter((resource) =>
-                  resource.topics.includes(topic),
-                ).length;
-                return (
-                  <button
-                    type="button"
-                    key={topic}
-                    className="training-basic-card"
-                    onClick={() => {
-                      send({ type: "setQuery", payload: { query: { ...state.query, topic } } });
-                      setSection("library");
-                    }}
-                  >
-                    <strong>{t(topicLabel(topic))}</strong>
-                    <span className="muted">{t(topicHint(topic))}</span>
-                    <span className="training-basic-count">
-                      {t("training.basics.count", { count })}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      )}
-
-      {section === "library" && (
-        <TrainingLibrary
-          resources={state.resources}
-          query={state.query}
-          profile={state.profile}
-          myRating={myRating}
-          onQuery={(query) => send({ type: "setQuery", payload: { query } })}
-          onOpen={open}
-          onSelect={select}
-        />
-      )}
-
-      {/* Empty, and honestly so. FAF's tutorial API is no longer read here: it
-          flags entries playable whose maps no longer start anything, and its
-          link categories are not lessons at all. A lesson is something the
-          client can launch, nobody has authored one yet, and when somebody
-          does it arrives through the catalogue like everything else. The
-          launch path itself is finished and waiting. */}
-      {section === "lessons" && (
-        <section className="surface-panel training-soon">
-          <Icon name="play" size={26} />
-          <h3>{t("training.lessons.soon")}</h3>
-          <p className="muted">{t("training.lessons.soonLead")}</p>
-          <div className="training-queue-actions">
-            <Button variant="primary" onClick={() => setSection("library")}>
-              {t("training.lessons.soonLibrary")}
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {section === "trainers" && (
-        <TrainerTiles trainers={state.trainers} discordUrl={state.links.discordUrl} />
-      )}
-
-      {section === "contribute" && state.contribution && (
-        <ContributePanel
-          prefilled={state.contribution}
-          post={state.contributionPost}
-          guides={guides}
-          onCompose={(draft) => send({ type: "composeContribution", payload: { draft } })}
-          onSubmit={
-            // Only offered when the client can actually open the issue.
-            // Everybody else gets the same submission prefilled in a browser,
-            // which produces a byte-identical issue.
-            guides.auth.type === "signedIn"
-              ? (draft) =>
-                  ipc.send({ kind: "Guides", command: { type: "submit", payload: { draft } } })
-              : null
-          }
-          onReset={() => {
-            send({ type: "closeContribution" });
-            send({ type: "openContribution" });
-          }}
-        />
-      )}
-
-      {section === "pending" && (
-        <GuidesQueue state={guides} discordUrl={state.links.discordUrl} />
-      )}
-
-      {section === "detail" && selected && (
+      {/* One level down, not one tab across: an open entry replaces the
+          section it was opened from rather than adding a tab of its own,
+          and back returns to exactly what the reader was looking at. */}
+      {selected ? (
         <ResourceDetail
           resource={selected}
           resources={state.resources}
@@ -405,6 +256,152 @@ export function TrainingView() {
           }}
           onClose={closeDetail}
         />
+      ) : (
+        <>
+        {section === "hub" && (
+          <div className="training-hub">
+            <TrainingHero
+              links={state.links}
+              profile={state.profile}
+              hasRecommendations={recommended.length > 0}
+              onRequestReview={openBlankReview}
+              onShowRecommended={() =>
+                railRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              onFindTrainer={
+                state.trainers.length === 0 ? null : () => setSection("trainers")
+              }
+            />
+
+            <section className="training-rail-section" ref={railRef}>
+              <header className="training-section-head">
+                <div>
+                  <h3>{t("training.recommended.title")}</h3>
+                  <p className="muted">{t("training.recommended.lead")}</p>
+                </div>
+              </header>
+              {recommended.length === 0 ? (
+                <p className="surface training-state muted">
+                  <span>
+                    {state.status.type === "loading"
+                      ? t("training.loading")
+                      : t("training.recommended.empty")}
+                  </span>
+                  <Button onClick={() => setSection("library")}>
+                    {t("training.recommended.browse")}
+                  </Button>
+                </p>
+              ) : (
+                <div className="training-rail">
+                  {recommended.map((resource) => (
+                    <TrainingCard
+                      key={resource.id}
+                      resource={resource}
+                      reason={reasonFor(resource, state.profile.maps, state.profile.gameModes)}
+                      onOpen={open}
+                      onSelect={select}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="training-basics">
+              <header className="training-section-head">
+                <div>
+                  <h3>{t("training.basics.title")}</h3>
+                  <p className="muted">{t("training.basics.lead")}</p>
+                </div>
+              </header>
+              <div className="training-basics-grid">
+                {BASIC_TOPICS.map((topic) => {
+                  const count = state.resources.filter((resource) =>
+                    resource.topics.includes(topic),
+                  ).length;
+                  return (
+                    <button
+                      type="button"
+                      key={topic}
+                      className="training-basic-card"
+                      onClick={() => {
+                        send({ type: "setQuery", payload: { query: { ...state.query, topic } } });
+                        setSection("library");
+                      }}
+                    >
+                      <strong>{t(topicLabel(topic))}</strong>
+                      <span className="muted">{t(topicHint(topic))}</span>
+                      <span className="training-basic-count">
+                        {t("training.basics.count", { count })}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {section === "library" && (
+          <TrainingLibrary
+            resources={state.resources}
+            query={state.query}
+            profile={state.profile}
+            myRating={myRating}
+            onQuery={(query) => send({ type: "setQuery", payload: { query } })}
+            onOpen={open}
+            onSelect={select}
+          />
+        )}
+
+        {/* Empty, and honestly so. FAF's tutorial API is no longer read here: it
+            flags entries playable whose maps no longer start anything, and its
+            link categories are not lessons at all. A lesson is something the
+            client can launch, nobody has authored one yet, and when somebody
+            does it arrives through the catalogue like everything else. The
+            launch path itself is finished and waiting. */}
+        {section === "lessons" && (
+          <section className="surface-panel training-soon">
+            <Icon name="play" size={26} />
+            <h3>{t("training.lessons.soon")}</h3>
+            <p className="muted">{t("training.lessons.soonLead")}</p>
+            <div className="training-queue-actions">
+              <Button variant="primary" onClick={() => setSection("library")}>
+                {t("training.lessons.soonLibrary")}
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {section === "trainers" && (
+          <TrainerTiles trainers={state.trainers} discordUrl={state.links.discordUrl} />
+        )}
+
+        {section === "contribute" && state.contribution && (
+          <ContributePanel
+            prefilled={state.contribution}
+            post={state.contributionPost}
+            guides={guides}
+            onCompose={(draft) => send({ type: "composeContribution", payload: { draft } })}
+            onSubmit={
+              // Only offered when the client can actually open the issue.
+              // Everybody else gets the same submission prefilled in a browser,
+              // which produces a byte-identical issue.
+              guides.auth.type === "signedIn"
+                ? (draft) =>
+                    ipc.send({ kind: "Guides", command: { type: "submit", payload: { draft } } })
+                : null
+            }
+            onReset={() => {
+              send({ type: "closeContribution" });
+              send({ type: "openContribution" });
+            }}
+          />
+        )}
+
+        {section === "pending" && (
+          <GuidesQueue state={guides} discordUrl={state.links.discordUrl} />
+        )}
+      </>
       )}
 
       {state.review && (

@@ -20,7 +20,10 @@
 // preview that lies in the other direction.
 
 import type { ReactNode } from "react";
+import type { AppCommand } from "../../ipc/bindings";
+import { ipc } from "../../ipc/client";
 import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
+import { replayUidFromLink } from "../../shared/replayLinks";
 
 type Block =
   | { kind: "heading"; level: 1 | 2 | 3; text: string }
@@ -181,19 +184,33 @@ function renderSpans(text: string): ReactNode[] {
         return <em key={index}>{span.text}</em>;
       case "code":
         return <code key={index}>{span.text}</code>;
-      case "link":
+      case "link": {
+        // A build order cites its replays by their vault address, and this is
+        // a client: it can play one. Sending somebody to a browser to press
+        // download, then back here to open the file, is three steps to do what
+        // the client does in one. Every other link still opens outside.
+        const uid = replayUidFromLink(span.href);
         return (
           <a
             key={index}
             href={span.href}
+            className={uid === null ? undefined : "training-markdown-replay"}
             onClick={(event) => {
               event.preventDefault();
-              void openHttpsUrl(span.href);
+              if (uid === null) {
+                void openHttpsUrl(span.href);
+                return;
+              }
+              ipc.send({
+                kind: "Replays",
+                command: { type: "watchVault", payload: { uid } },
+              } satisfies AppCommand);
             }}
           >
             {span.text}
           </a>
         );
+      }
       case "text":
         return <span key={index}>{span.text}</span>;
     }
