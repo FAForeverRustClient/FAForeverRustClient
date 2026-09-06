@@ -781,11 +781,16 @@
 }
 
 .training-detail-video {
-  /* 16:9, so the frame keeps its shape as the modal is resized rather than
-     leaving the player letterboxed inside a box of its own. */
+  /* 16:9, so the frame keeps its shape as the page is resized rather than
+     leaving the player letterboxed inside a box of its own.
+     Capped, because this stopped being a dialog: at the full width of the tab
+     a 16:9 player is most of a screen, and it opens before anyone has asked to
+     watch anything. A build order's video is something you glance at beside
+     the text, not a cinema. */
   position: relative;
   aspect-ratio: 16 / 9;
   width: 100%;
+  max-width: 560px;
   margin-top: var(--space-4);
   overflow: hidden;
   border-radius: var(--radius-md);
