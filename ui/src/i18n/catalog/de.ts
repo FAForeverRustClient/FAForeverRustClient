@@ -2940,9 +2940,10 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.post.lead": "Der Client schreibt ihn, du sendest ihn. Nichts wird gepostet, bis du im Forum auf Absenden drückst.",
   "training.post.open": "GitHub öffnen, vorausgefüllt",
   "training.post.openDiscord": "Trainings-Discord öffnen",
-  "training.post.copyForDiscord": "Kopieren, dann auf Discord einfügen",
-  "training.post.leadDiscord": "Kopiere das und füge es im Replay-Review-Kanal des Trainings-Discord ein. Discord kann keine vorausgefüllte Nachricht entgegennehmen, also schreibt der Client die Anfrage und du schickst sie ab.",
+  "training.post.copyForDiscord": "Beitrag kopieren",
+  "training.post.leadDiscord": "Der Review-Kanal ist ein Forum: dort auf Neuer Beitrag, die Zeile unten ins Titelfeld, und das hier als Beitrag einfügen. Discord kann keine vorausgefüllte Nachricht entgegennehmen, also schreibt der Client die Anfrage und du schickst sie ab.",
   "training.post.copy": "Text kopieren",
+  "training.post.copyTitle": "Titel kopieren",
   "training.post.copied": "Kopiert",
   "training.post.noDestination": "Diesem Client wurde nicht gesagt, wohin damit, also kopiere den Text und poste ihn dort, wo er hingehört.",
 };

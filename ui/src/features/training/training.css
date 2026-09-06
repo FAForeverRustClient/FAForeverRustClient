@@ -1715,6 +1715,36 @@
   border-radius: var(--radius-md);
 }
 
+/* The title is a field of its own in a forum post, so it gets its own copy
+   rather than being the first line of a blob that lands in the body. */
+.training-post-subject-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.training-post-subject-copy:hover {
+  border-style: solid;
+  background: var(--color-surface-hover);
+}
+
+.training-post-subject-copy .muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .training-post-subject {
   font-size: 13px;
 }

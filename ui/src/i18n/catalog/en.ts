@@ -3048,9 +3048,10 @@ export const en = {
   "training.post.lead": "The client writes it, you send it. Nothing is posted until you press submit on the forum.",
   "training.post.open": "Open GitHub, prefilled",
   "training.post.openDiscord": "Open the training Discord",
-  "training.post.copyForDiscord": "Copy, then paste it on Discord",
-  "training.post.leadDiscord": "Copy this, then paste it in the training Discord's replay review channel. Discord cannot be handed a prefilled message, so the client writes the request and you send it.",
+  "training.post.copyForDiscord": "Copy the post",
+  "training.post.leadDiscord": "The review channel is a forum: press New Post there, put the line below in the title field, and paste this as the post. Discord cannot be handed a prefilled message, so the client writes the request and you send it.",
   "training.post.copy": "Copy the text",
+  "training.post.copyTitle": "Copy the title",
   "training.post.copied": "Copied",
   "training.post.noDestination": "This client was not told where to send it, so copy the text and post it where it belongs.",
 } as const satisfies Record<string, Message>;
