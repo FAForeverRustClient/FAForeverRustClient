@@ -71,6 +71,20 @@ pub trait ReplayPort: Send + Sync {
         local_path: Option<PathBuf>,
     ) -> Result<faf_domain::state::ReplayDetails, String>;
 
+    /// The map one game was played on, read out of the replay file itself.
+    ///
+    /// For the games the vault listing has no map for, which is every co-op
+    /// game ever played: FAF records a game's map as a `map_version` row and
+    /// a campaign mission is not one. The replay knows regardless, because
+    /// the engine wrote the scenario it loaded into the head of the command
+    /// stream, and the head is all this reads.
+    ///
+    /// `Ok(None)` means the file was read and named no map. The default is a
+    /// no-op so a fake port does not have to care.
+    async fn replay_map_name(&self, _uid: i32) -> Result<Option<String>, String> {
+        Ok(None)
+    }
+
     /// List `.fafreplay` files in the shared FAF replay folder (mirrors the
     /// Java client's `LocalReplayVaultController`).
     /// `limit` bounds how many of the newest files have their headers read.

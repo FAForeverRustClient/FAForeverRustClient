@@ -16,12 +16,24 @@
 // player who learns to read it once has learned the whole tab. What changes
 // between the two places is the surrounding grid, not the card.
 
+import { useState } from "react";
 import { Icon } from "../../design-system/Icon";
-import type { TrainingResource } from "../../ipc/bindings";
+import type { TrainingKind, TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAppStore } from "../../store/store";
-import { mapPreviewUrl } from "./trainingPresentation";
-import { kindIcon, kindLabel } from "./trainingPresentation";
+import { kindIcon, kindLabel, mapPreviewUrl, videoThumbnailUrl } from "./trainingPresentation";
+
+/**
+ * The kinds whose picture is a video frame, and whose tile is therefore wide.
+ *
+ * The tile's shape follows what goes in it rather than one shape for the whole
+ * grid, because the two pictures this library has are different shapes and
+ * neither survives the other's box: a square map preview letterboxed into 16:9
+ * carries a bar down each side, and a 16:9 still cropped to a square loses a
+ * fifth off each end. A shelf of one kind is uniform, which is every shelf
+ * under a kind tab; only "everything" mixes the two.
+ */
+const WIDE_KINDS = new Set<TrainingKind>(["video", "replayAnalysis"]);
 
 interface Props {
   resource: TrainingResource;
@@ -36,6 +48,16 @@ export function TrainingCard({ resource, reason, onSelect }: Props) {
   // Whichever line adds something. A guide with no summary is usually one
   // somebody published under their own name, and that name is the caption.
   const caption = reason || resource.summary || resource.author;
+  const art = useCardArt(resource);
+  const wide = WIDE_KINDS.has(resource.kind);
+  // Which address failed, rather than a flag saying one did. Most of this
+  // library is a link to somebody else's video, and a video that has been
+  // taken down answers its still with a 404: without this the tile is the
+  // browser's broken-picture glyph, which is the worst thing on the shelf.
+  // Remembering the address rather than the fact means a card whose art
+  // changes underneath it tries the new one.
+  const [broken, setBroken] = useState("");
+  const picture = art && art !== broken ? art : "";
 
   return (
     // The whole card opens the detail pane rather than the destination: the
@@ -43,11 +65,31 @@ export function TrainingCard({ resource, reason, onSelect }: Props) {
     // the library is a graph and not a list. Opening the video or the page is
     // the primary action *there*, where the reader has decided.
     <button type="button" className="training-card" onClick={() => onSelect(resource)}>
-      <span className="training-card-art">
-        <Art resource={resource} />
-        <span className="training-card-kind" title={t(kindLabel(resource.kind))}>
-          <Icon name={kindIcon(resource.kind)} size={12} />
-        </span>
+      <span className={wide ? "training-card-art is-wide" : "training-card-art"}>
+        {picture ? (
+          <img
+            className="training-card-image"
+            src={picture}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={() => setBroken(picture)}
+          />
+        ) : (
+          <span className="training-card-empty" aria-hidden>
+            {/* Large and quiet rather than small on a slab: at this tile size
+                the glyph is the tile, and half the catalogue is a link with no
+                picture behind it. */}
+            <Icon name={kindIcon(resource.kind)} size={40} />
+          </span>
+        )}
+        {/* Only over a picture. On an empty tile the glyph underneath is
+            already the same answer, twice the size. */}
+        {picture && (
+          <span className="training-card-kind" title={t(kindLabel(resource.kind))}>
+            <Icon name={kindIcon(resource.kind)} size={12} />
+          </span>
+        )}
       </span>
       <span className="training-card-copy">
         <strong>{resource.title}</strong>
@@ -58,36 +100,27 @@ export function TrainingCard({ resource, reason, onSelect }: Props) {
 }
 
 /**
- * Three ordered sources, and a mark when there is none.
+ * The picture a card leads with, or the empty string when there is none.
+ *
+ * A hook rather than a helper because the map vault it resolves against is
+ * store state, and the card is the only thing that wants it.
  *
  * A build order shows its map, always, and in preference to anything the entry
  * carries: it is about one piece of ground, and the reader recognises that
- * ground long before they read the title. A video still of somebody's face cam
- * identifies the author, which is the one thing the caption already says.
+ * ground long before they read the title. That is also why it never falls back
+ * to a video frame even when its address is one, which seven of them are: a
+ * still of somebody's face cam identifies the author, which is the one thing
+ * the caption already says, and it would put a wide tile on a shelf of square
+ * ones for nothing.
  *
- * Otherwise the catalogue's own picture (a video still, a lesson's art), and
- * failing that the kind mark, which at least says what the entry is. `contain`
- * rather than `cover` because a square map preview and a 16:9 video still share
- * this grid, and cropping either loses the thing that identifies it.
+ * Otherwise the catalogue's own picture, and failing that the frame YouTube
+ * publishes for the video. Not one of the ninety entries carries an `imageUrl`
+ * today, so without that last step two thirds of the library is empty tiles.
  */
-function Art({ resource }: { resource: TrainingResource }) {
+function useCardArt(resource: TrainingResource): string {
   const vault = useAppStore((store) => store.state.maps.vault);
-  const preview = resource.kind === "buildOrder" ? mapPreviewUrl(vault, resource.maps) : "";
-  const source = preview || resource.imageUrl;
-  if (source) {
-    return (
-      <img
-        className="training-card-image"
-        src={source}
-        alt=""
-        loading="lazy"
-        decoding="async"
-      />
-    );
+  if (resource.kind === "buildOrder") {
+    return mapPreviewUrl(vault, resource.maps) || resource.imageUrl;
   }
-  return (
-    <span className="training-card-empty" aria-hidden>
-      <Icon name={kindIcon(resource.kind)} size={20} />
-    </span>
-  );
+  return resource.imageUrl || videoThumbnailUrl(resource.url);
 }

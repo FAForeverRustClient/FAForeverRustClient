@@ -184,7 +184,8 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
   margin-bottom: var(--space-3);
 }
 
@@ -199,17 +200,110 @@
   font-size: 12px;
 }
 
-/* The rail scrolls sideways rather than wrapping: it is a short, ranked list,
-   and wrapping it into rows loses the ordering the ranking exists for. */
+/* The rail and the library shelves share a track size on purpose: the same
+   card, the same size, so a reader who has learned to read one has learned
+   the tab. */
 .training-rail {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--space-3);
+}
+
+/* A heading per collection, and air between them: the point of the grouping
+   is that the eye can tell where one body of work stops. */
+.training-collections {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-4) + var(--space-2));
+}
+
+/* The heading stops leaving.
+
+   The tab is the scroller, and a reader three screens into Sladow-Noob's
+   twenty-one build orders has otherwise lost which shelf they are standing at.
+   Nothing moves and nothing is added: the heading is where it always was, it
+   simply stays. The background is the page's own, so the grid passes behind it
+   rather than showing through. */
+.training-collection-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) 0;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.training-collection-name {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.training-collection-name h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* Whose work it is and what kind, beside the name rather than under it: the
+   heading is one line of the page's structure, and a second line would make
+   eleven of them into eleven blocks. */
+.training-collection-byline {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.training-collection-count {
+  flex: none;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The count, when there is more behind it. Same size and same place as the
+   number it replaces, so a shelf that can open and one that cannot do not
+   shift the line they sit on. */
+.training-shelf-more {
+  padding: 0;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 11px;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.training-shelf-more:hover {
+  color: var(--color-text);
+}
+
+.training-shelf-more:focus-visible {
+  color: var(--color-text);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .training-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  /* A square tile and a wide one can share a row on the "everything" tab, and
+     a stretched card would put its caption below a gap rather than below its
+     picture. */
+  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--space-3);
 }
 
@@ -274,6 +368,15 @@
 .training-filter-chip:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
+}
+
+/* Would find nothing beside the filters already on. Still pressable: the row
+   says what the catalogue holds, and a chip that vanished would make that a
+   moving target. */
+.training-filter-chip.is-empty {
+  color: var(--color-subtle);
+  background: none;
+  border-style: dashed;
 }
 
 .training-filter-chip.is-on {
@@ -364,38 +467,60 @@
   outline-offset: -2px;
 }
 
+/* The tile's shape follows what goes in it.
+
+   Square by default, because FAF map previews are square and they are what a
+   build order is recognised by. A video frame is 16:9 and gets a tile that is.
+   One shape for both meant one of them was always framed in grey: the 4:3 box
+   this started as drew a bar down each side of every map preview in the grid,
+   which is a border made of nothing on the majority of the cards. */
 .training-card-art {
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: var(--color-surface-raised);
   border-radius: var(--radius-sm);
 }
 
-/* `contain` rather than `cover`: a square map preview and a 16:9 video still
-   share this grid, and cropping either one loses what identifies it. */
+.training-card-art.is-wide {
+  aspect-ratio: 16 / 9;
+}
+
+/* `cover` rather than `contain`. A map preview meets this box exactly and is
+   not touched; a 16:9 video still gives up its far edges, which carry the
+   channel's furniture rather than the subject. Either way the card is a
+   picture rather than a picture inside a frame of grey. */
 .training-card-image {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 
+/* Nothing to show. Half the catalogue is a link with no picture behind it, and
+   at this tile size a filled grey slab under a small glyph turns the shelf
+   into a wall of grey rectangles. An outline on the page's own ground still
+   says where the card is without painting an absence as a panel. */
 .training-card-empty {
   display: grid;
   place-items: center;
   width: 100%;
   height: 100%;
-  color: var(--color-muted);
+  color: var(--color-border-strong);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
-/* What a click costs, before the click. */
+/* What a click costs, before the click.
+
+   Bottom right rather than top right: a YouTube still carries its title across
+   the top, and a chip sitting there covered the last word of every one. */
 .training-card-kind {
   position: absolute;
-  top: 5px;
   right: 5px;
+  bottom: 5px;
   display: grid;
   place-items: center;
   width: 20px;
@@ -415,7 +540,7 @@
 
 .training-card-copy strong {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -425,8 +550,8 @@
   display: -webkit-box;
   overflow: hidden;
   color: var(--color-muted);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -637,12 +762,167 @@
   font-size: 12px;
 }
 
+/* ── library: navigation, then refinement ──────────────────────────── */
+
+/* Search, order and the way in to the narrow filters, riding the title line.
+
+   They are the same three controls every time: which words, which order, what
+   else. Putting them where the heading already was costs no height and gives
+   the tab strip the full width of the page, which is what makes its rule read
+   as the page's own division rather than as an underline on six words. */
+.training-toolbar-tools {
+  display: flex;
+  align-items: center;
+  /* A stated width rather than "as much as the content wants": the search box
+     is the one control here whose useful size is larger than its natural one,
+     and content sizing gave it a placeholder it could not finish. */
+  flex: 0 1 560px;
+  /* One line, and the search box gives up the width: wrapping put the way in
+     to the filters on a row of its own under two controls that had room. */
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.training-toolbar-tools .training-search {
+  flex: 0 1 280px;
+  min-width: 132px;
+}
+
+/* Overrides the design-system default of a select filling its column: here it
+   is one control on a line of controls, not a form field. */
+.training-sort {
+  flex: none;
+  width: auto;
+  min-width: 152px;
+}
+
+/* One rule across the page, with the tabs riding it and the tally at its far
+   end. The strip's own border is dropped so there is a single line rather
+   than one that stops where the last tab does. */
+.training-library-tabs {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.training-kind-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.training-library-tabs .training-count {
+  flex: none;
+  padding-bottom: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a window too narrow for both, the tabs win. Everything the tally says is
+   already on them: the total is the "everything" tab's own count, and what
+   survives the filter is the count on whichever tab is open. */
+@media (max-width: 900px) {
+  .training-library-tabs .training-count {
+    display: none;
+  }
+}
+
+/* How many narrow filters are on, on the control that opens them. The same
+   treatment a tab's count gets, because it answers the same question. */
+.training-filter-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  color: var(--color-accent-contrast);
+  font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-accent);
+  border-radius: 999px;
+}
+
+.btn-ghost.is-on {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+/* The two axes with breadth, always readable: ten topics and five modes are
+   worth seeing before they are used, which is the argument for chips. */
+.training-facets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+/* What is narrowing the shelf, said back, whether or not the panel that set it
+   is open. A filter that can hide is a filter that reduces the library by two
+   thirds with nothing on screen to explain it. */
+.training-active-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.training-active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  background: var(--color-accent-glow);
+  border: 1px solid var(--color-accent);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.training-active-chip:hover {
+  background: var(--color-surface-hover);
+}
+
+.training-active-chip:focus-visible,
+.training-clear-all:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.training-active-chip svg {
+  opacity: 0.7;
+}
+
+.training-clear-all {
+  padding: 4px 2px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.training-clear-all:hover {
+  color: var(--color-text);
+}
+
 /* ── library filters ───────────────────────────────────────────────── */
 
 .training-filters {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  margin-bottom: var(--space-3);
   padding: var(--space-3) var(--space-4);
 }
 
@@ -707,8 +987,69 @@
 
 /* ── detail ────────────────────────────────────────────────────────── */
 
-.training-detail-modal {
-  width: min(680px, 92vw);
+/* An entry is a page in the tab, not a dialog over it. The prose keeps a
+   reading measure of its own further down; what the page gives back is the
+   width the three-pane run layout needs, which a dialog never had. */
+.training-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.training-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.training-detail-back:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Without a dialog around it the prose would run the full width of the tab,
+   which is unreadable at this size. The panes that want the width (the flow
+   and the map) set their own. */
+.training-detail-page > .training-detail > header,
+.training-detail-page > .training-detail > .training-detail-guide,
+.training-detail-page > .training-detail > .training-detail-guide-problem {
+  max-width: 70ch;
+}
+
+/* A replay link plays the game here rather than opening a browser, so it is
+   marked as the action it is instead of reading like every other link. */
+.training-markdown-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.training-markdown-replay::before {
+  content: "B6";
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.training-detail-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .training-detail {
@@ -731,13 +1072,76 @@
   line-height: 1.6;
 }
 
+/* Player and queue, the way a series is watched: what is playing on the left,
+   what is next beside it. The queue is the catalogue's own, so it carries the
+   titles and the order this library gives them rather than YouTube's. */
+.training-watch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.training-series {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Sized like a queue rather than a table: it holds titles, and letting it
+     take whatever is left over made seven short lines look like a spreadsheet.
+     The height matches the player, so a long series scrolls beside it. */
+  flex: 0 1 320px;
+  max-height: 315px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-series button {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.training-series button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.training-series button.is-current {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.training-series-number {
+  min-width: 1.4em;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .training-detail-video {
-  /* 16:9, so the frame keeps its shape as the modal is resized rather than
-     leaving the player letterboxed inside a box of its own. */
+  /* 16:9, so the frame keeps its shape as the page is resized rather than
+     leaving the player letterboxed inside a box of its own.
+     Capped, because this stopped being a dialog: at the full width of the tab
+     a 16:9 player is most of a screen, and it opens before anyone has asked to
+     watch anything. A build order's video is something you glance at beside
+     the text, not a cinema. */
   position: relative;
   aspect-ratio: 16 / 9;
   width: 100%;
-  margin-top: var(--space-4);
+  max-width: 560px;
+  flex: 1 1 380px;
   overflow: hidden;
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -764,6 +1168,151 @@
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
   font-size: 13px;
+}
+
+/* The recorded run: written order top left, flow under it, map down the right.
+   Two columns rather than three, because the two drawn panes share a hover and
+   reading one while pointing at the other is the whole point of the layout. The
+   map keeps a column of its own at full width and drops under the rest when
+   there is no room for two, which is the order somebody reads them in anyway. */
+.training-run {
+  display: grid;
+  grid-template-areas:
+    "prose map"
+    "flow map";
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.8fr);
+  grid-template-rows: auto 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.training-run-no-prose {
+  grid-template-areas: "flow map";
+  grid-template-rows: auto;
+}
+
+.training-run-prose {
+  grid-area: prose;
+  min-width: 0;
+  /* Capped rather than free: a long build order would otherwise push the flow
+     chart off the bottom of the pane, and the point of this layout is seeing
+     the three together. It scrolls on its own instead. */
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.training-run-flow {
+  grid-area: flow;
+  min-width: 0;
+}
+
+.training-run-side {
+  grid-area: map;
+  min-width: 0;
+}
+
+.training-run h4 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-run h4 .muted {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Scrolls sideways rather than squeezing: the chart is scaled by how long the
+   run took, so a ten-minute game is simply wider than a two-minute one. */
+.training-flow {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.training-flow svg {
+  display: block;
+  /* The 9px this chart was ported at is below the repository's floor, and the
+     floor is right: a lane label naming a unit is something you read, not
+     decoration. The lane geometry was widened to match. */
+  font-size: 11px;
+}
+
+.training-flow-grid {
+  stroke: var(--color-border);
+  opacity: 0.5;
+}
+
+.training-flow-rail {
+  stroke: var(--color-border);
+}
+
+.training-flow-tick,
+.training-flow-label {
+  fill: var(--color-muted);
+}
+
+.training-run-canvas {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.training-run-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 11px;
+}
+
+.training-run-legend label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.training-run-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.training-run-caption {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  min-height: 16px;
+}
+
+.training-run-problem {
+  margin-top: var(--space-4);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .training-run,
+  .training-run-no-prose {
+    grid-template-areas:
+      "prose"
+      "map"
+      "flow";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
 }
 
 .training-detail-meta {
@@ -1456,6 +2005,36 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+}
+
+/* The title is a field of its own in a forum post, so it gets its own copy
+   rather than being the first line of a blob that lands in the body. */
+.training-post-subject-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.training-post-subject-copy:hover {
+  border-style: solid;
+  background: var(--color-surface-hover);
+}
+
+.training-post-subject-copy .muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .training-post-subject {

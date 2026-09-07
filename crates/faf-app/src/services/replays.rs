@@ -8,11 +8,17 @@
 use faf_domain::state::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
     NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayQuery,
+    ResolvedReplayMap,
 };
 use std::{path::PathBuf, time::Duration};
 
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::notifications;
+
+/// How many replay heads are fetched at the same time.
+const RESOLVE_MAPS_AT_ONCE: usize = 6;
+/// How many games one resolve command will look up at all.
+const MAX_MAPS_PER_RESOLVE: usize = 120;
 
 /// A remaining wait, phrased for someone staring at a button.
 fn describe(seconds: u32) -> String {
@@ -229,6 +235,39 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             match ctx.ports.replay.load_details(uid, path_buf).await {
                 Ok(details) => out.emit(ReplayEvent::DetailsLoaded { uid, details }),
                 Err(reason) => out.emit(ReplayEvent::DetailsFailed { uid, reason }),
+            }
+        }
+        ReplayCommand::ResolveMaps { uids } => {
+            // One small ranged download per game, run a few at a time. In
+            // sequence a page of them would still be arriving after the reader
+            // had moved on; all at once would be a burst at somebody else's
+            // vault for a cosmetic detail. The cap is on the command as well,
+            // so a page that grows never turns into a flood.
+            let mut maps = Vec::with_capacity(uids.len().min(MAX_MAPS_PER_RESOLVE));
+            for chunk in uids
+                .iter()
+                .take(MAX_MAPS_PER_RESOLVE)
+                .collect::<Vec<_>>()
+                .chunks(RESOLVE_MAPS_AT_ONCE)
+            {
+                let lookups = chunk.iter().map(|uid| async {
+                    // A failure is recorded as "no map", not retried: the view
+                    // asks once per game, and a row that keeps asking on every
+                    // render is worse than a row that says it does not know.
+                    let map = ctx
+                        .ports
+                        .replay
+                        .replay_map_name(**uid)
+                        .await
+                        .ok()
+                        .flatten()
+                        .unwrap_or_default();
+                    ResolvedReplayMap { uid: **uid, map }
+                });
+                maps.extend(futures_util::future::join_all(lookups).await);
+            }
+            if !maps.is_empty() {
+                out.emit(ReplayEvent::MapsResolved { maps });
             }
         }
         ReplayCommand::LookUpOnline { uid } => {

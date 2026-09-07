@@ -45,6 +45,22 @@
   line-height: 1.45;
 }
 
+/* Two more ways in, neither of them a second primary action: one row so the
+   card keeps its single column, and a quieter fill than the login so neither
+   competes with it. */
+.login-offline-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.login-offline-button {
+  width: 100%;
+  min-height: 38px;
+  font-size: 13px;
+}
+
 .login-remember {
   display: inline-flex;
   align-items: center;

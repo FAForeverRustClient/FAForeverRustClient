@@ -7,7 +7,7 @@
 // when the user switches language. Callers resolve them with `t()` at render.
 
 import { lazy, type ComponentType } from "react";
-import type { Tab } from "../../ipc/bindings";
+import type { AuthMode, Tab } from "../../ipc/bindings";
 import type { IconName } from "../../design-system/Icon";
 import type { MessageKey } from "../../i18n";
 const ChangelogView = lazy(() =>
@@ -73,6 +73,35 @@ export const TAB_ORDER: Tab[] = [
   "contribution",
   "settings",
 ];
+
+/**
+ * The tabs an offline session opens with.
+ *
+ * Everything else in this registry asks the server something the moment it
+ * mounts: a vault crawl, a lobby socket, a leaderboard page, an embedded web
+ * view. These two do not. The replay archive is a folder on this disk and the
+ * settings are a file next to it, which is the whole of what the client can
+ * honestly offer with nobody signed in. See `AuthMode::Offline`.
+ */
+export const OFFLINE_TABS: Tab[] = ["replays", "settings"];
+
+/** Which tabs this session may open: everything, unless it has no account. */
+export function tabsForMode(mode: AuthMode): Tab[] {
+  return mode === "offline" ? TAB_ORDER.filter((tab) => OFFLINE_TABS.includes(tab)) : TAB_ORDER;
+}
+
+/**
+ * The tab actually on screen.
+ *
+ * The selected tab is application state and outlives a session, so an offline
+ * session that follows a signed-in one starts on a tab it cannot open. This
+ * projects that away without writing to the state: the account's tab is still
+ * the selected one when it signs back in.
+ */
+export function openTabForMode(mode: AuthMode, activeTab: Tab): Tab {
+  const openable = tabsForMode(mode);
+  return openable.includes(activeTab) ? activeTab : openable[0];
+}
 
 export const TABS: Record<Tab, TabDef> = {
   news: { label: "nav.tab.news.label", description: "nav.tab.news.description", icon: "news", Component: NewsView },

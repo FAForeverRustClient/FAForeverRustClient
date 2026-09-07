@@ -207,6 +207,16 @@ pub struct TrainingResource {
     /// implies they did is worse than no label.
     pub approved_by: String,
     pub updated_at: String,
+    /// A recorded run of this build order, as a `faf-bo/1` envelope.
+    ///
+    /// Stated by the catalogue, unlike [`Self::readable`], but kept only when
+    /// it points into the repository this build trusts: an address that does
+    /// not is dropped where the manifest is parsed, so what survives here is
+    /// either a document this client will fetch or nothing at all.
+    ///
+    /// A build order with one is drawn as what happened rather than as what
+    /// was written down: the order over time, and the ground it happened on.
+    pub recording_url: String,
     /// Whether this entry's text can be read in the tab rather than opened in a
     /// browser.
     ///
@@ -349,8 +359,22 @@ impl HostedGuide<'_> {
 /// catalogue is remote content, and a url out of it must not become a request
 /// to wherever it likes.
 pub fn hosted_guide(url: &str) -> Option<HostedGuide<'_>> {
+    hosted_document(url, ".md")
+}
+
+/// A recorded build order in the repository this build trusts.
+///
+/// The same rule as [`hosted_guide`], for the `faf-bo/1` envelope a run of the
+/// BO recorder produces. Separate from the guide so that neither can be served
+/// where the other is expected: the tab renders one as prose and the other as a
+/// chart, and a document arriving in the wrong shape is a blank pane.
+pub fn hosted_recording(url: &str) -> Option<HostedGuide<'_>> {
+    hosted_document(url, ".json")
+}
+
+fn hosted_document<'a>(url: &'a str, suffix: &str) -> Option<HostedGuide<'a>> {
     let rest = url.strip_prefix("https://raw.githubusercontent.com/")?;
-    if !rest.ends_with(".md") {
+    if !rest.ends_with(suffix) {
         return None;
     }
     let mut parts = rest.splitn(4, '/');
@@ -756,6 +780,18 @@ pub struct TrainingDocument {
     pub resource_id: String,
     pub markdown: String,
     pub status: TrainingStatus,
+    /// The `faf-bo/1` envelope, verbatim, when the entry carries one.
+    ///
+    /// Carried as text rather than parsed here on purpose. Nothing in this
+    /// crate reasons about a recorded run: no filter reads it, no
+    /// recommendation scores it, and it is a drawing for one pane. Modelling
+    /// its dozen nested shapes would put them in every generated binding and
+    /// in every conformance fixture, to buy a type check the view can do for
+    /// itself.
+    pub recording: String,
+    /// Tracked apart from `status`, because a missing recording must not read
+    /// as a missing guide. The prose is the entry; the run is the bonus.
+    pub recording_status: TrainingStatus,
 }
 
 impl TrainingState {
@@ -1781,6 +1817,20 @@ pub enum TrainingEvent {
         resource_id: String,
         reason: String,
     },
+    #[serde(rename_all = "camelCase")]
+    RecordingReading {
+        resource_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    RecordingRead {
+        resource_id: String,
+        envelope: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    RecordingFailed {
+        resource_id: String,
+        reason: String,
+    },
     ReviewOpened {
         draft: Box<ReviewRequestDraft>,
     },
@@ -1845,8 +1895,8 @@ pub fn reduce(state: &mut TrainingState, event: &TrainingEvent) {
         TrainingEvent::GuideReading { resource_id } => {
             state.document = TrainingDocument {
                 resource_id: resource_id.clone(),
-                markdown: String::new(),
                 status: TrainingStatus::Loading,
+                ..TrainingDocument::default()
             };
         }
         TrainingEvent::GuideRead {
@@ -1867,6 +1917,37 @@ pub fn reduce(state: &mut TrainingState, event: &TrainingEvent) {
         } => {
             if state.document.resource_id == *resource_id {
                 state.document.status = TrainingStatus::Failed {
+                    reason: reason.clone(),
+                };
+            }
+        }
+        TrainingEvent::RecordingReading { resource_id } => {
+            // Claims the document, because a recording can arrive for an entry
+            // that carries no prose at all.
+            if state.document.resource_id != *resource_id {
+                state.document = TrainingDocument {
+                    resource_id: resource_id.clone(),
+                    ..TrainingDocument::default()
+                };
+            }
+            state.document.recording = String::new();
+            state.document.recording_status = TrainingStatus::Loading;
+        }
+        TrainingEvent::RecordingRead {
+            resource_id,
+            envelope,
+        } => {
+            if state.document.resource_id == *resource_id {
+                state.document.recording = envelope.clone();
+                state.document.recording_status = TrainingStatus::Ready;
+            }
+        }
+        TrainingEvent::RecordingFailed {
+            resource_id,
+            reason,
+        } => {
+            if state.document.resource_id == *resource_id {
+                state.document.recording_status = TrainingStatus::Failed {
                     reason: reason.clone(),
                 };
             }

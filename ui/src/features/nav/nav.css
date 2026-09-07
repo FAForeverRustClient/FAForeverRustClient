@@ -46,6 +46,17 @@
   font-weight: 600;
 }
 
+/* An action among tabs, so it reads as one: the accent says this leaves the
+   session rather than selecting a place inside it. */
+.tab-sign-in {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.tab-sign-in:hover {
+  color: var(--color-accent);
+}
+
 .tab svg {
   flex: 0 0 auto;
 }

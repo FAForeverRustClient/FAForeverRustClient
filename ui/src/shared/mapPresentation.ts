@@ -213,14 +213,33 @@ export function extractGeneratedMapSeed(mapName: string): string | undefined {
 }
 
 /**
+ * What the backend writes into a vault listing when the API named no map at
+ * all. Kept as a value rather than an empty string so a listing that never had
+ * a map stays distinguishable from a field that was dropped on the way here.
+ */
+export const UNKNOWN_VAULT_MAP = "unknown map";
+
+/** Did this listing arrive without a map? */
+export function isUnknownVaultMap(mapName: string): boolean {
+  const trimmed = mapName.trim();
+  return trimmed === "" || trimmed.toLocaleLowerCase() === UNKNOWN_VAULT_MAP;
+}
+
+/**
  * Prefer the technical map name from a matching local replay when a vault
  * replay only contains the generic Neroxis display name. The technical name
  * is the key used by the locally generated preview cache.
+ *
+ * The same file answers a second question the vault cannot: a co-op game has
+ * no map version in the API, so the listing carries no map, while the replay
+ * header names the mission's own folder.
  */
 export function effectiveReplayMapName(replayMap: string, localMap?: string | null): string {
-  return localMap && isGeneratedMap(localMap) && Boolean(extractGeneratedMapSeed(localMap))
-    ? localMap
-    : replayMap;
+  if (localMap && isGeneratedMap(localMap) && Boolean(extractGeneratedMapSeed(localMap))) {
+    return localMap;
+  }
+  if (localMap && localMap.trim() && isUnknownVaultMap(replayMap)) return localMap;
+  return replayMap;
 }
 
 function fallbackDisplayName(mapName: string): string {

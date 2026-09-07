@@ -84,14 +84,25 @@ pub enum AuthStatus {
     Failed,
 }
 
-/// Identifies whether the active shell session came from FAF OAuth or the
-/// local, credential-free UI test path.
+/// Where the active shell session came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum AuthMode {
+    /// FAF OAuth: a real account, and the only mode that reaches the server.
     #[default]
     Account,
+    /// The local, credential-free UI test path of a development build.
     Test,
+    /// No account at all: the client opened on what it has on this disk.
+    ///
+    /// Deliberately not a fabricated player. Nothing signed in, so nothing is
+    /// claimed about who is at the keyboard, and the shell offers only the
+    /// parts of itself that never ask the server a question. What that leaves
+    /// is the local replay archive, which is the reason the mode exists: a
+    /// player who cannot sign in, whether their account is gone, banned or
+    /// simply not reachable right now, can still watch the games on their own
+    /// machine.
+    Offline,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -108,9 +119,17 @@ pub struct AuthState {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum AuthEvent {
     LoginStarted,
-    LoggedIn { player: Player },
-    TestLoggedIn { player: Player },
-    LoginFailed { message: String },
+    LoggedIn {
+        player: Player,
+    },
+    TestLoggedIn {
+        player: Player,
+    },
+    /// The shell opened without an account. See [`AuthMode::Offline`].
+    WentOffline,
+    LoginFailed {
+        message: String,
+    },
     LoggedOut,
 }
 
@@ -127,6 +146,8 @@ pub enum AuthCommand {
     CancelLogin,
     /// Try a previously remembered refresh token. No-op when none is stored.
     Restore,
+    /// Open the client without signing in, on local files only.
+    PlayOffline,
     LoginTest,
     Logout,
     LogoutTest,
@@ -150,6 +171,16 @@ pub fn reduce(state: &mut AuthState, event: &AuthEvent) {
             state.player = Some(player.clone());
             state.error = None;
             state.mode = AuthMode::Test;
+        }
+        AuthEvent::WentOffline => {
+            // No player, and none invented: an offline session is nobody. The
+            // status is what the shell routes on, so it is the same
+            // `LoggedIn` every other session uses; `mode` is what says which
+            // of the client is actually available.
+            state.status = AuthStatus::LoggedIn;
+            state.player = None;
+            state.error = None;
+            state.mode = AuthMode::Offline;
         }
         AuthEvent::LoginFailed { message } => {
             state.status = AuthStatus::Failed;
@@ -264,6 +295,29 @@ mod tests {
             error: None,
             ..Default::default()
         };
+        reduce(&mut s, &AuthEvent::LoggedOut);
+        assert_eq!(s, AuthState::default());
+    }
+
+    #[test]
+    fn going_offline_opens_the_shell_with_nobody_signed_in() {
+        let mut s = AuthState {
+            status: AuthStatus::Failed,
+            player: None,
+            error: Some("the server did not answer".into()),
+            ..Default::default()
+        };
+        reduce(&mut s, &AuthEvent::WentOffline);
+        assert_eq!(s.status, AuthStatus::LoggedIn);
+        assert_eq!(s.mode, AuthMode::Offline);
+        assert_eq!(s.player, None);
+        assert_eq!(s.error, None);
+    }
+
+    #[test]
+    fn leaving_an_offline_session_resets_the_mode() {
+        let mut s = AuthState::default();
+        reduce(&mut s, &AuthEvent::WentOffline);
         reduce(&mut s, &AuthEvent::LoggedOut);
         assert_eq!(s, AuthState::default());
     }

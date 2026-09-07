@@ -4,6 +4,7 @@ import type { ReplayQuery } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { loadStatusNote } from "../../shared/loadStatusNote";
+import { isUnknownVaultMap } from "../../shared/mapPresentation";
 import { isoDaysAgo, personalReplayQuery } from "../../shared/replayQuery";
 import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { OnlineReplayList, ReplayCard, ReplayDetailPanel } from "./OnlineReplayPresentation";
@@ -11,6 +12,13 @@ import { ReplayViewSwitch, type ReplayViewMode } from "./ReplayViewSwitch";
 import { VaultSearch } from "./VaultSearch";
 import "./online-replays.css";
 import { useTranslation } from "../../i18n/useTranslation";
+
+/**
+ * The selector's answer when nothing has been resolved yet. A literal `{}` in
+ * the selector would be a new object on every render, which is a new value to
+ * the store's identity check and a render loop.
+ */
+const NO_RESOLVED_MAPS: Record<number, string> = {};
 
 const WATCHED_STORAGE_KEY = "faf-watched-replay-uids";
 
@@ -29,6 +37,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const vault = useAppStore((s) => s.state.replays.vault);
   const vaultStatus = useAppStore((s) => s.state.replays.vaultStatus);
+  const resolvedMaps = useAppStore((s) => s.state.replays.resolvedMaps ?? NO_RESOLVED_MAPS);
   const downloadStatus = useAppStore((s) => s.state.replays.downloadStatus);
   const query = useAppStore((s) => s.state.replays.vaultQuery);
   const hasMore = useAppStore((s) => s.state.replays.vaultHasMore);
@@ -66,6 +75,19 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     if (state.replays.featuredMods.length === 0) loadFeaturedMods();
     if (state.leaderboard.catalogStatus.type === "idle") loadLeaderboards();
   }, [self, browsing.replayVaultPlayer]);
+
+  // The listing has no map for a co-op game, so the replay files are asked
+  // instead: the first 64 KiB of each, which is the envelope and enough of the
+  // stream to read the scenario the engine loaded. Once per game, because an
+  // answer is remembered whether or not it found anything, and only for the
+  // rows this page actually turned up.
+  useEffect(() => {
+    const unread = vault
+      .filter((replay) => isUnknownVaultMap(replay.map) && !(replay.uid in resolvedMaps))
+      .map((replay) => replay.uid);
+    if (unread.length === 0) return;
+    ipc.send({ kind: "Replays", command: { type: "resolveMaps", payload: { uids: unread } } });
+  }, [resolvedMaps, vault]);
 
   const handleSearch = (newQuery: ReplayQuery) => {
     if (newQuery.player !== browsing.replayVaultPlayer) {

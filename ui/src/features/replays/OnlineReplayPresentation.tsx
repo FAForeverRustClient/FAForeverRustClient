@@ -3,6 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import type {
+  CoopMission,
   LocalReplay,
   LocalReplayPlayer,
   LocalReplayTeam,
@@ -25,6 +26,7 @@ import {
   normalizeMapName,
 } from "../../shared/mapPresentation";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
 import {
   isObserverTeam,
@@ -56,7 +58,17 @@ function replayAge(startTime: string): string {
   return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
 }
 
+/**
+ * The selector's answer when nothing has been resolved yet.
+ *
+ * A literal `{}` inside the selector would be a new object on every render,
+ * which is a new value to the store's identity check and a render loop.
+ */
+const NO_RESOLVED_MAPS: Record<number, string> = {};
+
 export interface ReplayCardData {
+  /** The game id, which is what a map read out of the replay file is keyed by. */
+  uid: number;
   idLabel: string;
   title: string;
   map: string;
@@ -160,9 +172,13 @@ function ReplayMapThumb({
         state.state.mapGenerator.previews?.[mapName.toLowerCase()]
       : undefined,
   );
+  // Subscribed rather than read through the shared fallback: the mission
+  // catalogue loads after this renders, and a mission's artwork is the only
+  // preview a campaign map has.
+  const missions = useAppStore((state) => state.state.coop.missions);
   const candidates = useMemo(
-    () => mapThumbnailCandidates(vault, mapName, large, undefined, generatedPreview, url || undefined),
-    [generatedPreview, large, mapName, url, vault],
+    () => mapThumbnailCandidates(vault, mapName, large, missions, generatedPreview, url || undefined),
+    [generatedPreview, large, mapName, missions, url, vault],
   );
   const [candidateIndex, setCandidateIndex] = useState(0);
 
@@ -205,7 +221,13 @@ export function ReplayLibraryCard({
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
-  const presentation = mapPresentation(vault, replay.map);
+  const missions = useAppStore((state) => state.state.coop.missions);
+  // What the replay file said, when it has been read. Empty until it has, and
+  // empty for good if the file could not be read, which is why the fallbacks
+  // inside these two stay.
+  const resolved = useAppStore((state) => state.state.replays.resolvedMaps?.[replay.uid]);
+  const presentation = replayMapPresentation(vault, missions, replay, resolved);
+  const mapKey = replayMapKey(missions, replay, resolved);
   const cardTitle = replayCardTitle(replay.title, presentation.displayName || replay.map);
   const stateClasses = [watched && "replay-card-watched", selected && "replay-card-selected"]
     .filter(Boolean)
@@ -220,7 +242,7 @@ export function ReplayLibraryCard({
       <div className="replay-card-left">
         <ReplayMapThumb
           url={replay.mapThumbnailUrl}
-          mapName={replay.map}
+          mapName={mapKey}
           className="replay-card-thumb"
           emptyClassName="replay-card-thumb-empty"
           iconSize={32}
@@ -261,6 +283,7 @@ export function ReplayCard({
   return (
     <ReplayLibraryCard
       replay={{
+        uid: replay.uid,
         idLabel: `#${replay.uid}`,
         title: replay.title,
         map,
@@ -301,6 +324,8 @@ export function OnlineReplayList({
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
+  const missions = useAppStore((state) => state.state.coop.missions);
+  const resolvedMaps = useAppStore((state) => state.state.replays.resolvedMaps ?? NO_RESOLVED_MAPS);
   const localReplays = useAppStore((state) => state.state.replays.local);
   const groups = groupByDate
     ? groupReplaysByDate(replays)
@@ -310,10 +335,11 @@ export function OnlineReplayList({
     label: group.label,
     rows: group.replays.map((replay) => {
       const map = effectiveReplayMapName(replay.map, localReplays.find((local) => local.uid === replay.uid)?.map);
-      const presentation = mapPresentation(vault, map);
+      const resolved = resolvedMaps[replay.uid];
+      const presentation = replayMapPresentation(vault, missions, { ...replay, map }, resolved);
       return {
         key: String(replay.uid),
-        mapName: map,
+        mapName: replayMapKey(missions, { ...replay, map }, resolved),
         mapThumbnailUrl: replay.mapThumbnailUrl,
         game: {
           primary: replay.title || presentation.displayName || map,
@@ -384,8 +410,12 @@ function formatChatTime(seconds: number): string {
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function localReplayToVaultReplay(local: LocalReplay, mapVault: VaultMap[]): VaultReplay {
-  const presentation = local.map ? mapPresentation(mapVault, local.map) : null;
+export function localReplayToVaultReplay(
+  local: LocalReplay,
+  mapVault: VaultMap[],
+  missions: CoopMission[] = [],
+): VaultReplay {
+  const presentation = local.map ? mapPresentation(mapVault, local.map, missions) : null;
   const timestamp = localReplayTimestamp(local);
   return {
     uid: local.uid ?? 0,
@@ -445,6 +475,7 @@ export function ReplayDetailPanel({
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
+  const missions = useAppStore((state) => state.state.coop.missions);
   const socialPlayers = useAppStore((state) => state.state.social.players);
   const localReplays = useAppStore((state) => state.state.replays.local);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
@@ -452,6 +483,9 @@ export function ReplayDetailPanel({
   const detailsLoading = useAppStore((state) => state.state.replays.detailsLoading);
   const detailsError = useAppStore((state) => state.state.replays.detailsError);
   const onlineLookups = useAppStore((state) => state.state.replays.onlineLookups);
+  // Subscribed, not read once: the answer arrives from the vault after the
+  // panel is already open, and the map is what the header of it says.
+  const resolvedMap = useAppStore((state) => state.state.replays.resolvedMaps?.[replay.uid]);
   const avatarByLogin = useMemo(() => {
     const avatars = new Map<string, string>();
     for (const player of socialPlayers) {
@@ -562,7 +596,12 @@ export function ReplayDetailPanel({
     }
   })();
   const vaultMap = findVaultMap(maps.vault, effectiveMap);
-  const presentation = mapPresentation(maps.vault, effectiveMap);
+  const presentation = replayMapPresentation(
+    maps.vault,
+    missions,
+    { map: effectiveMap, title: replay.title, modName: replay.modName },
+    resolvedMap,
+  );
 
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);

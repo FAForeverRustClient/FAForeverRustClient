@@ -118,6 +118,14 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         detailsLoading: state.detailsLoading === event.payload.uid ? null : state.detailsLoading,
         detailsError: event.payload.reason,
       };
+    case "mapsResolved": {
+      // Mirrors the `resolved_maps` inserts in the Rust reducer: an empty map
+      // is an answer, so it is written like any other and the view stops
+      // asking about that game.
+      const resolvedMaps = { ...state.resolvedMaps };
+      for (const resolved of event.payload.maps) resolvedMaps[resolved.uid] = resolved.map;
+      return { ...state, resolvedMaps };
+    }
     case "onlineLookupStarted":
       return withLookup(state, event.payload.uid, { type: "loading" });
     case "onlineLookupFinished":

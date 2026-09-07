@@ -16,6 +16,8 @@ use crate::infra::jsonapi::{
 use crate::ports::LeaderboardPort;
 
 const MAX_SEASON_ENTRIES: usize = 10_000;
+/// How many rows of a name search are worth one count query each.
+const MAX_RANK_LOOKUPS: usize = 25;
 const ID_CHUNK_SIZE: usize = 200;
 
 #[derive(Debug, Clone)]
@@ -150,6 +152,108 @@ impl LeaderboardClient {
         let doc = self.get_json(url, token).await?;
         Ok(parse_raw_season_entries(&doc))
     }
+
+    /// How many players stand above this rating on the board being queried.
+    ///
+    /// The same query with the name dropped, counted rather than listed: the
+    /// set a rank is measured in is the board the search was made on, never
+    /// the row or two the search returned.
+    async fn players_rated_above(
+        &self,
+        query: &RatingQuery,
+        rating: f64,
+        token: &str,
+    ) -> Result<i32, String> {
+        let mut filters = rating_filters(query, PlayerFilter::Dropped);
+        filters.push(format!("rating=gt={rating}"));
+        let mut url = self.collection_url("leaderboardRating")?;
+        url.query_pairs_mut()
+            .append_pair("filter", &format!("({})", filters.join(";")))
+            .append_pair("page[size]", "1")
+            .append_pair("page[totals]", "yes");
+        let doc = self.get_json(url, token).await?;
+        total_records(&doc).ok_or_else(|| "no totals in the response".to_string())
+    }
+
+    /// Give the rows of a name search their real place on the board.
+    ///
+    /// A page of the board is a listing: the third row of the first page is
+    /// the third best player, so counting positions is both right and free. A
+    /// search for a name is not a listing, it is a lookup: it returns the one
+    /// row that matched, and counting positions there tells every player they
+    /// are first. So for a search, and only for a search, ask the board how
+    /// many players stand above each row that came back.
+    ///
+    /// A count that fails leaves the position in place. The rank is then as
+    /// wrong as it was before, which is still better than a tab that refuses
+    /// to show the player who was searched for.
+    async fn rank_searched_players(
+        &self,
+        page: &mut RatingPage,
+        doc: &JsonApiDoc,
+        query: &RatingQuery,
+        token: &str,
+    ) {
+        if query.player.trim().is_empty() || page.entries.len() > MAX_RANK_LOOKUPS {
+            return;
+        }
+        for (entry, resource) in page.entries.iter_mut().zip(doc.data.iter()) {
+            let Some(rating) = f64_attr(resource, "rating") else {
+                continue;
+            };
+            if let Ok(above) = self.players_rated_above(query, rating, token).await {
+                entry.rank = above.saturating_add(1);
+            }
+        }
+    }
+}
+
+/// Whether a query's player name narrows the rows, or is being counted past.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlayerFilter {
+    Applied,
+    Dropped,
+}
+
+/// The API filters a rating board's rows on: one board, a window of activity,
+/// and optionally one player.
+fn rating_filters(query: &RatingQuery, player: PlayerFilter) -> Vec<String> {
+    let mut filters = vec![format!(
+        "leaderboard.technicalName==\"{}\"",
+        escape_filter_value(&query.leaderboard)
+    )];
+    if query.active_only {
+        let cutoff = (chrono::Utc::now() - chrono::Duration::days(30))
+            .format("%Y-%m-%dT%H:%M:%SZ")
+            .to_string();
+        filters.push(format!("updateTime=ge=\"{cutoff}\""));
+    } else {
+        if let Some(after) = query
+            .updated_after
+            .as_deref()
+            .filter(|value| !value.is_empty())
+        {
+            filters.push(format!("updateTime=ge=\"{}\"", escape_filter_value(after)));
+        }
+        if let Some(before) = query
+            .updated_before
+            .as_deref()
+            .filter(|value| !value.is_empty())
+        {
+            filters.push(format!("updateTime=le=\"{}\"", escape_filter_value(before)));
+        }
+    }
+    if player == PlayerFilter::Applied && !query.player.trim().is_empty() {
+        filters.push(format!(
+            "player.login==\"{}\"",
+            escape_filter_value(query.player.trim())
+        ));
+    }
+    filters
+}
+
+fn rating_filter(query: &RatingQuery, player: PlayerFilter) -> String {
+    format!("({})", rating_filters(query, player).join(";"))
 }
 
 #[async_trait]
@@ -177,41 +281,9 @@ impl LeaderboardPort for LeaderboardClient {
 
     async fn list_ratings(&self, query: &RatingQuery) -> Result<RatingPage, String> {
         let token = self.token()?;
-        let mut filters = vec![format!(
-            "leaderboard.technicalName==\"{}\"",
-            escape_filter_value(&query.leaderboard)
-        )];
-        if query.active_only {
-            let cutoff = (chrono::Utc::now() - chrono::Duration::days(30))
-                .format("%Y-%m-%dT%H:%M:%SZ")
-                .to_string();
-            filters.push(format!("updateTime=ge=\"{cutoff}\""));
-        } else {
-            if let Some(after) = query
-                .updated_after
-                .as_deref()
-                .filter(|value| !value.is_empty())
-            {
-                filters.push(format!("updateTime=ge=\"{}\"", escape_filter_value(after)));
-            }
-            if let Some(before) = query
-                .updated_before
-                .as_deref()
-                .filter(|value| !value.is_empty())
-            {
-                filters.push(format!("updateTime=le=\"{}\"", escape_filter_value(before)));
-            }
-        }
-        if !query.player.trim().is_empty() {
-            filters.push(format!(
-                "player.login==\"{}\"",
-                escape_filter_value(query.player.trim())
-            ));
-        }
-
         let mut url = self.collection_url("leaderboardRating")?;
         url.query_pairs_mut()
-            .append_pair("filter", &format!("({})", filters.join(";")))
+            .append_pair("filter", &rating_filter(query, PlayerFilter::Applied))
             .append_pair("sort", "-rating")
             .append_pair(
                 "include",
@@ -221,7 +293,10 @@ impl LeaderboardPort for LeaderboardClient {
             .append_pair("page[size]", &query.page_size.clamp(25, 1_000).to_string())
             .append_pair("page[totals]", "yes");
         let doc = self.get_json(url, &token).await?;
-        Ok(parse_rating_page(&doc, query))
+        let mut page = parse_rating_page(&doc, query);
+        self.rank_searched_players(&mut page, &doc, query, &token)
+            .await;
+        Ok(page)
     }
 
     async fn list_seasons(&self, league_id: i32) -> Result<Vec<LeagueSeason>, String> {
@@ -493,9 +568,7 @@ fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
         });
     }
     let total_pages = meta_i32(&doc.meta, "totalPages").unwrap_or(1).max(1);
-    let total_results = ["totalRecords", "totalResults", "totalElements"]
-        .into_iter()
-        .find_map(|key| meta_i32(&doc.meta, key));
+    let total_results = total_records(doc);
     RatingPage {
         entries,
         page,
@@ -503,6 +576,13 @@ fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
         total_pages,
         total_results,
     }
+}
+
+/// How many rows the whole query matched, whichever name the API gave it.
+fn total_records(doc: &JsonApiDoc) -> Option<i32> {
+    ["totalRecords", "totalResults", "totalElements"]
+        .into_iter()
+        .find_map(|key| meta_i32(&doc.meta, key))
 }
 
 fn meta_i32(meta: &Value, key: &str) -> Option<i32> {
@@ -1046,5 +1126,56 @@ mod tests {
     #[test]
     fn filter_values_are_escaped() {
         assert_eq!(escape_filter_value("a\\\"b"), "a\\\\\\\"b");
+    }
+
+    #[test]
+    fn a_searched_player_is_ranked_against_the_board_and_not_the_result() {
+        let query = RatingQuery {
+            leaderboard: "ladder_1v1".into(),
+            player: "TheWarRaven".into(),
+            active_only: false,
+            ..RatingQuery::default()
+        };
+
+        let listed = rating_filter(&query, PlayerFilter::Applied);
+        assert!(listed.contains("leaderboard.technicalName==\"ladder_1v1\""));
+        assert!(listed.contains("player.login==\"TheWarRaven\""));
+
+        // The count behind the rank keeps the board and drops the name. One
+        // row came back, and numbering it by position said "1" about a player
+        // who is nowhere near the top.
+        let counted = rating_filter(&query, PlayerFilter::Dropped);
+        assert!(counted.contains("leaderboard.technicalName==\"ladder_1v1\""));
+        assert!(!counted.contains("player.login"));
+    }
+
+    #[test]
+    fn the_chosen_window_of_activity_survives_into_that_count() {
+        let query = RatingQuery {
+            player: "Nomander".into(),
+            active_only: true,
+            ..RatingQuery::default()
+        };
+        let counted = rating_filter(&query, PlayerFilter::Dropped);
+        assert!(counted.contains("updateTime=ge="));
+        assert!(!counted.contains("player.login"));
+
+        let all_time = RatingQuery {
+            active_only: false,
+            updated_after: Some("2026-01-01T00:00:00Z".into()),
+            ..query
+        };
+        let counted = rating_filter(&all_time, PlayerFilter::Dropped);
+        assert!(counted.contains("updateTime=ge=\"2026-01-01T00:00:00Z\""));
+    }
+
+    #[test]
+    fn totals_are_read_under_whichever_name_the_api_used() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [],
+            "meta": { "page": { "totalElements": 12 } }
+        }))
+        .unwrap();
+        assert_eq!(total_records(&doc), Some(12));
     }
 }

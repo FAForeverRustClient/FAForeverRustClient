@@ -17,6 +17,7 @@ import {
   GamePreviewDialog,
   displayTeamName,
   displayedRating,
+  isCoopGame,
   isCustomGameRanked,
   type GameViewMode,
 } from "./CustomGamesBrowser";
@@ -465,10 +466,6 @@ export function LobbyView() {
     game.gameType.toLocaleLowerCase() === "matchmaker" ||
     game.visibility.toLocaleLowerCase() === "matchmaker";
 
-  const isCoopGame = (game: Game) =>
-    game.modName.toLocaleLowerCase() === "coop" ||
-    game.gameType.toLocaleLowerCase() === "coop";
-
   const customGames = useMemo(
     () => lobby.games.filter((game) => !isCoopGame(game) && !isMatchmakerGame(game)),
     [lobby.games],
@@ -517,10 +514,11 @@ export function LobbyView() {
       )
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
-      .filter((game) => !hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
       .sort((left, right) => compareGames(sort, left, right));
-  }, [applyFilters, coopGames, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort]);
+    // No ranked filter here, and no checkbox for one in the co-op toolbar: a
+    // mission is never rated, so hiding the unranked games hid all of them.
+  }, [applyFilters, coopGames, hideModded, hidePrivate, maps.vault, rules, search, sort]);
 
   const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
   const inGame = (list: Game[], nickname: string) =>
@@ -633,7 +631,6 @@ export function LobbyView() {
               viewMode={gameView}
               hidePrivate={hidePrivate}
               hideModded={hideModded}
-              hideUnranked={hideUnranked}
               applyFilters={applyFilters}
               filterCount={rules.length}
               connected={connected}
@@ -642,7 +639,6 @@ export function LobbyView() {
               onViewMode={selectGameView}
               onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
               onHideModded={(value) => updateGameBrowser({ hideModded: value })}
-              onHideUnranked={(value) => updateGameBrowser({ hideUnranked: value })}
               onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
               onOpenFilters={() => setFiltersOpen(true)}
               onHost={() => handleHostCoop()}

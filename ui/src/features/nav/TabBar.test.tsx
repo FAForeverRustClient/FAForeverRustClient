@@ -35,6 +35,13 @@ describe("TabBar localisation", () => {
     expect(markup).not.toContain("Leaderboard");
   });
 
+  // What an offline session renders instead is covered in `tabs.test.ts`:
+  // this file renders on the server, where zustand answers every selector from
+  // `getInitialState()`, so a session set up with `setState` is invisible here.
+  it("keeps the sign-in entry out of a session that has an account", () => {
+    expect(renderToStaticMarkup(<TabBar />)).not.toContain("Sign in");
+  });
+
   it("never leaks a message key into the markup", () => {
     for (const locale of ["en", "de"] as const) {
       setLocale(locale);

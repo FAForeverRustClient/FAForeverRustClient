@@ -67,6 +67,18 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
                 }
             }
         }
+        AuthCommand::PlayOffline => {
+            // Whatever the login was doing, it is not what the user asked for
+            // any more: the same cancellation the test path performs, and then
+            // a session that talks to nothing.
+            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+                if let Some(token) = slot.take() {
+                    token.cancel();
+                }
+            }
+            next_generation(ctx);
+            out.emit(AuthEvent::WentOffline);
+        }
         AuthCommand::LoginTest => {
             if let Ok(mut slot) = ctx.auth_cancellation.lock() {
                 if let Some(token) = slot.take() {

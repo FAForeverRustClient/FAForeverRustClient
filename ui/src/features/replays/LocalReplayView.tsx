@@ -3,7 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { Pagination } from "../../design-system/Pagination";
-import type { LocalReplay, ReplayTeam, VaultMap } from "../../ipc/bindings";
+import type { CoopMission, LocalReplay, ReplayTeam, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
@@ -106,10 +106,15 @@ function localReplayTeams(replay: LocalReplay): ReplayTeam[] {
   }));
 }
 
-function localReplayCard(replay: LocalReplay, vault: VaultMap[]): ReplayCardData {
-  const presentation = replay.map ? mapPresentation(vault, replay.map) : null;
+function localReplayCard(
+  replay: LocalReplay,
+  vault: VaultMap[],
+  missions: CoopMission[],
+): ReplayCardData {
+  const presentation = replay.map ? mapPresentation(vault, replay.map, missions) : null;
   const timestamp = localReplayTimestamp(replay);
   return {
+    uid: replay.uid ?? 0,
     idLabel: replay.uid === null ? t("replays.local.noReplayId") : `#${replay.uid}`,
     title: replay.title || replay.fileName,
     map: presentation?.displayName || replay.map || t("replays.local.mapUnavailable"),
@@ -131,7 +136,11 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   const local = useAppStore((s) => s.state.replays.local);
   const localStatus = useAppStore((s) => s.state.replays.localStatus);
   const mapVault = useAppStore((s) => s.state.maps.vault);
+  // A campaign mission is not a vault map: its name and artwork only exist in
+  // the co-op catalogue, which the Replays tab loads for exactly this reason.
+  const missions = useAppStore((s) => s.state.coop.missions);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
+  const offline = useAppStore((s) => s.state.auth.mode === "offline");
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
   const setViewMode = (mode: ReplayViewMode) => {
@@ -156,10 +165,13 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     if (useAppStore.getState().state.replays.localStatus.type === "idle") {
       loadLocal();
     }
+    // The archive itself is a folder on this disk, but the vault is what turns
+    // a folder name into a map's title, and asking for it needs an account.
+    if (offline) return;
     if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
       ipc.send({ kind: "Maps", command: { type: "loadVault" } });
     }
-  }, []);
+  }, [offline]);
 
   useEffect(() => {
     setPage(1);
@@ -174,9 +186,9 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     () => filterLocalReplays(
       local,
       query,
-      (replay) => replay.map ? mapPresentation(mapVault, replay.map).displayName : "",
+      (replay) => replay.map ? mapPresentation(mapVault, replay.map, missions).displayName : "",
     ),
-    [local, mapVault, query],
+    [local, mapVault, missions, query],
   );
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -218,6 +230,12 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     return groups;
   }, [pageReplays, query.sortBy, t]);
 
+  // The way back out of an offline session, offered where the session actually
+  // is. Settings has the same control, which is two clicks away and named after
+  // leaving rather than after arriving: somebody watching their own replays and
+  // deciding to sign in should not have to go looking for that.
+  const signIn = () => ipc.send({ kind: "Auth", command: { type: "logoutTest" } });
+
   const markWatchedAndOpen = (replay: LocalReplay) => {
     const key = localReplayKey(replay);
     if (!watched.has(key)) {
@@ -249,6 +267,11 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
           })}</span>
           {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
+        {offline && (
+          <Button className="local-replay-sign-in" onClick={signIn}>
+            <Icon name="users" size={14} /> {t("auth.signIn")}
+          </Button>
+        )}
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
       {localStatus.type === "ready" && filtered.length === 0 ? (
@@ -263,7 +286,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
             {pageReplays.map((replay) => (
               <ReplayLibraryCard
                 key={replay.path}
-                replay={localReplayCard(replay, mapVault)}
+                replay={localReplayCard(replay, mapVault, missions)}
                 watched={watched.has(localReplayKey(replay))}
                 selected={openReplay?.path === replay.path}
                 onOpen={() => setOpenReplay(replay)}
@@ -288,7 +311,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
             groups={grouped.map<ReplayListGroup>((group) => ({
               label: group.label,
               rows: group.replays.map((replay) => {
-                const presentation = replay.map ? mapPresentation(mapVault, replay.map) : null;
+                const presentation = replay.map ? mapPresentation(mapVault, replay.map, missions) : null;
                 const replayTimestamp = localReplayTimestamp(replay);
                 const mapName = presentation?.displayName || replay.map || replay.fileName;
                 const replayDetails = [
@@ -355,7 +378,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
       )}
       {openReplay && (
         <ReplayDetailPanel
-          replay={localReplayToVaultReplay(openReplay, mapVault)}
+          replay={localReplayToVaultReplay(openReplay, mapVault, missions)}
           busy={busy}
           source="local"
           localPath={openReplay.path}

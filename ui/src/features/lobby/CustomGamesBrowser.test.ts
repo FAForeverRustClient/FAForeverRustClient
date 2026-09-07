@@ -1,5 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { hideGlobalLineup, setGlobalLineup, getActiveLineupSnapshot } from "./CustomGamesBrowser";
+import type { Game, VaultMap, VaultMod } from "../../ipc/bindings";
+import {
+  hideGlobalLineup,
+  isCoopGame,
+  setGlobalLineup,
+  getActiveLineupSnapshot,
+  showsUnrankedTag,
+} from "./CustomGamesBrowser";
+
+function game(overrides: Partial<Game> = {}): Game {
+  return {
+    id: 1,
+    title: "Fear No Evil",
+    host: "Commander",
+    players: 2,
+    maxPlayers: 4,
+    map: "scca_coop_r03.v0021",
+    modName: "faf",
+    averageRating: 1200,
+    passwordProtected: false,
+    visibility: "public",
+    gameType: "custom",
+    launchedAt: null,
+    hostedAt: null,
+    ratingMin: null,
+    ratingMax: null,
+    teams: {},
+    simMods: {},
+    ...overrides,
+  };
+}
+
+const rankedMap = { folderName: "scmp_009", displayName: "Seton's Clutch", ranked: true } as VaultMap;
+const unrankedMap = { folderName: "scmp_009", displayName: "Seton's Clutch", ranked: false } as VaultMap;
+const noMods: VaultMod[] = [];
 
 describe("CustomGamesBrowser global lineup tooltip state", () => {
   it("sets active lineup position for a specific game", () => {
@@ -24,5 +58,22 @@ describe("CustomGamesBrowser global lineup tooltip state", () => {
 
     hideGlobalLineup();
     expect(getActiveLineupSnapshot()).toBeNull();
+  });
+});
+
+describe("the unranked tag", () => {
+  it("is not drawn on a co-op mission, however the lobby spelled it", () => {
+    // Both spellings, because older servers fill only one of the two.
+    for (const coop of [game({ modName: "coop" }), game({ gameType: "coop" })]) {
+      expect(isCoopGame(coop)).toBe(true);
+      expect(showsUnrankedTag(coop, [unrankedMap], noMods)).toBe(false);
+    }
+  });
+
+  it("still marks a custom game on an unranked map", () => {
+    const custom = game({ map: "scmp_009" });
+    expect(isCoopGame(custom)).toBe(false);
+    expect(showsUnrankedTag(custom, [unrankedMap], noMods)).toBe(true);
+    expect(showsUnrankedTag(custom, [rankedMap], noMods)).toBe(false);
   });
 });

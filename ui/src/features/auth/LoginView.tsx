@@ -52,6 +52,15 @@ export function LoginView() {
     ipc.send({ kind: "Auth", command: { type: "login", payload: { remember } } });
   };
   const cancelLogin = () => ipc.send({ kind: "Auth", command: { type: "cancelLogin" } });
+  const playOffline = () => ipc.send({ kind: "Auth", command: { type: "playOffline" } });
+  // The archive is the reason the offline session exists, so it gets its own
+  // way in rather than being a tab you find once you are inside. The tab is
+  // chosen before the session opens, so the shell lands on the replays
+  // whatever the last signed-in session happened to leave selected.
+  const openLocalReplays = () => {
+    ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
+    playOffline();
+  };
   const loginTest = () => ipc.send({ kind: "Auth", command: { type: "loginTest" } });
 
   return (
@@ -78,6 +87,23 @@ export function LoginView() {
           </Button>
         )}
         <p className="login-hint">{t("auth.hint")}</p>
+
+        {/* Everything the client can do without FAF: the replays already on
+            this disk, and the settings. Offered next to the login rather than
+            behind a failed one, because the people who need it most are the
+            ones whose login is never going to succeed. The second way in is
+            the same session, opened on the archive: watching a game that is
+            already on this disk is the whole of what most people want here,
+            and naming it is what makes that visible from the login screen. */}
+        <div className="login-offline-row">
+          <Button className="login-offline-button" onClick={playOffline} disabled={busy}>
+            <Icon name="play" size={15} /> {t("auth.playOffline")}
+          </Button>
+          <Button className="login-offline-button" onClick={openLocalReplays} disabled={busy}>
+            <Icon name="replays" size={15} /> {t("auth.localReplays")}
+          </Button>
+        </div>
+        <p className="login-hint">{t("auth.playOfflineHint")}</p>
 
         <label className="login-remember">
           <input

@@ -11,7 +11,11 @@ interface Props {
   viewMode: GameViewMode;
   hidePrivate: boolean;
   hideModded: boolean;
-  hideUnranked: boolean;
+  /**
+   * Omitted by the co-op browser, together with its handler: every mission is
+   * unranked, so the checkbox there was a way to empty the list.
+   */
+  hideUnranked?: boolean;
   applyFilters: boolean;
   filterCount: number;
   connected: boolean;
@@ -20,7 +24,7 @@ interface Props {
   onViewMode: (value: GameViewMode) => void;
   onHidePrivate: (value: boolean) => void;
   onHideModded: (value: boolean) => void;
-  onHideUnranked: (value: boolean) => void;
+  onHideUnranked?: (value: boolean) => void;
   onApplyFilters: (value: boolean) => void;
   onOpenFilters: () => void;
   onHost: () => void;
@@ -59,14 +63,16 @@ export function CustomGamesToolbar(props: Props) {
         />
         {t("lobby.toolbar.hideModded")}
       </label>
-      <label className="toolbar-check">
-        <input
-          type="checkbox"
-          checked={props.hideUnranked}
-          onChange={(event) => props.onHideUnranked(event.target.checked)}
-        />
-        {t("lobby.toolbar.hideUnranked")}
-      </label>
+      {props.onHideUnranked && (
+        <label className="toolbar-check">
+          <input
+            type="checkbox"
+            checked={props.hideUnranked ?? false}
+            onChange={(event) => props.onHideUnranked?.(event.target.checked)}
+          />
+          {t("lobby.toolbar.hideUnranked")}
+        </label>
+      )}
       <label className="toolbar-check">
         <input
           type="checkbox"
