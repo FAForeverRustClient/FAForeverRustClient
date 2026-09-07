@@ -1485,7 +1485,10 @@ fn extract_map_folder(path: &str) -> String {
 /// JSON envelope has player names, but faction and displayed rating are stored
 /// in the binary Lua army table that follows it, and the scenario file path is
 /// in the game options table.
-fn local_body_player_stats(body: &[u8], compression: &str) -> LocalBodyInfo {
+///
+/// `None` means the body yielded nothing at all: an empty body, or one whose
+/// compression no longer decodes. See [`playable_body`].
+fn local_body_player_stats(body: &[u8], compression: &str) -> Option<LocalBodyInfo> {
     let prefix = if compression.eq_ignore_ascii_case("zstd") {
         zstd::stream::read::Decoder::new(body)
             .map(read_replay_body_prefix)
@@ -1495,14 +1498,34 @@ fn local_body_player_stats(body: &[u8], compression: &str) -> LocalBodyInfo {
             base64::read::DecoderReader::new(body, &base64::engine::general_purpose::STANDARD);
         let mut uncompressed_size = [0; 4];
         if decoded.read_exact(&mut uncompressed_size).is_err() {
-            return LocalBodyInfo::default();
+            return None;
         }
         read_replay_body_prefix(flate2::read::ZlibDecoder::new(decoded))
     };
     if prefix.is_empty() {
-        return LocalBodyInfo::default();
+        return None;
     }
-    parse_local_body_info(&prefix)
+    Some(parse_local_body_info(&prefix))
+}
+
+/// Is there still a game inside this file?
+///
+/// The JSON envelope is written before the match and says nothing about what
+/// followed it, so a file can carry a full description of a game whose command
+/// stream is empty, truncated mid-frame, or no longer decompresses: a crash
+/// during the write, a half-finished download, a copy that lost its tail. Such
+/// a file used to list as an ordinary replay and hand Forged Alliance a stream
+/// it cannot open, which is a failure the user meets several seconds into a
+/// game launch instead of on the row itself.
+///
+/// A single recognised field is enough. This decides whether the archive
+/// disowns a file, so it takes the lenient side of anything it cannot parse:
+/// the replay body format is the engine's, not ours, and a version of it this
+/// parser reads less of is still a replay.
+fn playable_body(info: Option<&LocalBodyInfo>) -> bool {
+    info.is_some_and(|info| {
+        info.map_name.is_some() || info.game_version.is_some() || !info.player_stats.is_empty()
+    })
 }
 
 fn read_replay_body_prefix(mut reader: impl Read) -> Vec<u8> {
@@ -2172,6 +2195,8 @@ async fn read_local_metadata(
         .and_then(Value::as_str)
         .unwrap_or("");
     let body_info = local_body_player_stats(&body, compression);
+    let playable = playable_body(body_info.as_ref());
+    let body_info = body_info.unwrap_or_default();
     let mut teams = local_teams(&header);
     for team in &mut teams {
         for player in &mut team.players {
@@ -2261,7 +2286,13 @@ async fn read_local_metadata(
         teams,
         average_rating,
         sim_mods: local_sim_mods(&header),
-        status: if header
+        // `complete` is the envelope's own claim about how the recording
+        // ended, and it is only worth reading once the recording is known to
+        // be there: a broken file is not an unfinished game, it is a game that
+        // can no longer be watched at all.
+        status: if !playable {
+            LocalReplayStatus::Broken
+        } else if header
             .get("complete")
             .and_then(Value::as_bool)
             .unwrap_or(false)
@@ -2270,7 +2301,7 @@ async fn read_local_metadata(
         } else {
             LocalReplayStatus::Incomplete
         },
-        watchable: true,
+        watchable: playable,
         game_version,
     }
 }
@@ -3646,8 +3677,9 @@ mod tests {
         body
     }
 
-    #[test]
-    fn local_body_parser_extracts_faction_and_displayed_rating() {
+    /// [`local_body_with_army`], framed the way a `.fafreplay` carries it:
+    /// zlib behind its uncompressed size, base64 over the pair.
+    fn qcompressed_body() -> String {
         use base64::Engine as _;
         use std::io::Write as _;
 
@@ -3657,8 +3689,13 @@ mod tests {
         encoder.write_all(&body).unwrap();
         let mut qcompressed = (body.len() as u32).to_be_bytes().to_vec();
         qcompressed.extend(encoder.finish().unwrap());
-        let encoded = base64::engine::general_purpose::STANDARD.encode(qcompressed);
-        let stats = local_body_player_stats(encoded.as_bytes(), "");
+        base64::engine::general_purpose::STANDARD.encode(qcompressed)
+    }
+
+    #[test]
+    fn local_body_parser_extracts_faction_and_displayed_rating() {
+        let encoded = qcompressed_body();
+        let stats = local_body_player_stats(encoded.as_bytes(), "").expect("a decodable body");
         assert_eq!(
             stats.player_stats.get("TestPlayer"),
             Some(&(Some(1), Some(1200)))
@@ -3699,9 +3736,10 @@ mod tests {
                 r#"{{"uid":{uid},"complete":{complete},"mapname":"scmp_009","featured_mod":"faf","title":"t{uid}","recorder":"host","launched_at":1700000000,"num_players":2,"teams":{{"1":["host"],"2":["guest"]}},"sim_mods":{{"mod-1":"UI Party"}}}}"#
             )
         };
+        let body = qcompressed_body();
         tokio::fs::write(
             dir.join("older.fafreplay"),
-            format!("{}\nbody", header(1, true)),
+            format!("{}\n{body}", header(1, true)),
         )
         .await
         .unwrap();
@@ -3709,13 +3747,27 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         tokio::fs::write(
             dir.join("newer.fafreplay"),
-            format!("{}\nbody", header(2, false)),
+            format!("{}\n{body}", header(2, false)),
         )
         .await
         .unwrap();
         tokio::fs::write(dir.join("corrupt.fafreplay"), b"not even json\nbody")
             .await
             .unwrap();
+        // A full description of a game whose recording is gone: what a crash
+        // during the write, or a copy that lost its tail, leaves behind.
+        tokio::fs::write(
+            dir.join("gutted.fafreplay"),
+            format!("{}\n", header(3, true)),
+        )
+        .await
+        .unwrap();
+        tokio::fs::write(
+            dir.join("garbled.fafreplay"),
+            format!("{}\nnot a compressed replay body", header(4, false)),
+        )
+        .await
+        .unwrap();
         tokio::fs::write(dir.join("legacy.faf.scfareplay"), b"legacy replay body")
             .await
             .unwrap();
@@ -3723,10 +3775,13 @@ mod tests {
         let replays = list_local_dir(&dir, LOCAL_REPLAY_PAGE_LIMIT)
             .await
             .expect("should list");
-        assert_eq!(replays.len(), 4, "every replay-shaped file stays visible");
+        assert_eq!(replays.len(), 6, "every replay-shaped file stays visible");
         let complete = replays.iter().find(|replay| replay.uid == Some(1)).unwrap();
         assert_eq!(complete.status, LocalReplayStatus::Complete);
-        assert_eq!(complete.map, "scmp_009");
+        assert!(complete.watchable);
+        // The body's own scenario, which is more specific than the envelope's
+        // `mapname` and is what the archive shows when both are there.
+        assert_eq!(complete.map, "SCMP_009");
         assert_eq!(complete.recorder, "host");
         assert_eq!(complete.num_players, 2);
         assert_eq!(complete.teams.len(), 2);
@@ -3743,6 +3798,17 @@ mod tests {
             .unwrap();
         assert_eq!(broken.status, LocalReplayStatus::Broken);
         assert!(!broken.watchable);
+
+        // The envelope of each of these parses and describes a played game.
+        // Only the body says whether it can still be watched.
+        for name in ["gutted.fafreplay", "garbled.fafreplay"] {
+            let gutted = replays
+                .iter()
+                .find(|replay| replay.file_name == name)
+                .unwrap_or_else(|| panic!("{name} should be listed"));
+            assert_eq!(gutted.status, LocalReplayStatus::Broken, "{name}");
+            assert!(!gutted.watchable, "{name}");
+        }
 
         let legacy = replays
             .iter()
@@ -3830,9 +3896,17 @@ mod tests {
             signature: None,
             version_name: None,
         };
-        let file =
-            crate::infra::replay_recorder::build_fafreplay(&metadata, b"body".to_vec(), true)
-                .unwrap();
+        // The stream, not a stand-in for one: the listing now asks whether a
+        // file still holds a game, and a body that names none is disowned as
+        // damaged. Three strings is what every real one opens with.
+        let mut body = Vec::new();
+        body.extend_from_slice(b"Supreme Commander v1.5.3599 ");
+        body.extend_from_slice(
+            b"Replay v1.9
+ ",
+        );
+        body.extend_from_slice(b"/maps/scmp_009/scmp_009_scenario.lua ");
+        let file = crate::infra::replay_recorder::build_fafreplay(&metadata, body, true).unwrap();
         let path = dir.join("27619486-Nory.fafreplay");
         tokio::fs::write(&path, &file).await.unwrap();
 
