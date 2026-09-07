@@ -29,6 +29,9 @@ pub enum NotificationKind {
     MapGenerated,
     /// Game file cache exceeded user-configured threshold size.
     GameCacheAlert,
+    /// A newer client release exists. The banner says so too, but the banner
+    /// lives at the top of one workspace and this survives a tab change.
+    ClientUpdate,
     Error,
 }
 

@@ -135,6 +135,15 @@ pub struct ClientUpdateState {
     /// not also hide `0.4.0`: the reason a "don't show again" checkbox is the
     /// wrong shape for this.
     pub dismissed_version: String,
+    /// When the last check finished, RFC 3339. Empty until one has.
+    ///
+    /// Recorded because the status alone cannot answer "did my click do
+    /// anything". Checking twice in a row leaves the same terminal status both
+    /// times, so a second "Check now" produced no visible change at all and the
+    /// button read as broken. The status says what is true; this says when we
+    /// last found out.
+    #[serde(default)]
+    pub last_checked: String,
 }
 
 impl ClientUpdateState {
@@ -178,6 +187,12 @@ pub enum ClientUpdateEvent {
     UpToDate,
     Available {
         release: ClientRelease,
+    },
+    /// A check settled, whichever way it went. Separate from the outcome
+    /// because the outcome is often identical to the previous one, and "we
+    /// asked, just now" is the part the user pressed the button for.
+    CheckCompleted {
+        at: String,
     },
     DownloadProgressed {
         received_bytes: u32,
@@ -250,6 +265,7 @@ pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
             }
         }
         ClientUpdateEvent::Dismissed { version } => state.dismissed_version = version.clone(),
+        ClientUpdateEvent::CheckCompleted { at } => state.last_checked = at.clone(),
     }
 }
 

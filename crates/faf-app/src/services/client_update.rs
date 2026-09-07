@@ -5,11 +5,13 @@
 //! is only the sequencing and the single-flight guards.
 
 use faf_domain::state::{
-    should_update, ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus,
+    should_update, ClientRelease, ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus,
+    NotificationAction, NotificationKind,
 };
 
 use crate::ports::DownloadProgress;
 use crate::runtime::{EventSink, ServiceCtx};
+use crate::services;
 
 pub async fn handle(cmd: ClientUpdateCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -59,12 +61,50 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
         Ok(None) => out.emit(ClientUpdateEvent::UpToDate),
         Ok(Some(release)) => {
             if should_update(&current, &release.version) {
+                announce(&release, &current, out);
                 out.emit(ClientUpdateEvent::Available { release })
             } else {
                 out.emit(ClientUpdateEvent::UpToDate)
             }
         }
     }
+
+    // After the outcome, and unconditionally. Two checks in a row usually
+    // settle on the same status, so without this a second "Check now" changed
+    // nothing on screen and read as a button that does nothing.
+    out.emit(ClientUpdateEvent::CheckCompleted {
+        at: chrono::Utc::now().to_rfc3339(),
+    });
+}
+
+/// Put a new version in the notification centre as well as on the banner.
+///
+/// The banner is at the top of the workspace and a settings line is three
+/// clicks away; neither reaches somebody who is in a game lobby when the
+/// startup check lands. This is the one thing the client has that persists
+/// across tabs and carries an unread mark.
+///
+/// Not `add_required`: an update is important, not urgent, and someone who has
+/// turned notifications off has said what they want. It is skipped for a
+/// version already waved away, because dismissing the banner is the user
+/// saying they know.
+fn announce(release: &ClientRelease, current: &str, out: &EventSink) {
+    if out.with_state(|state| state.client_update.dismissed_version == release.version) {
+        return;
+    }
+    services::notifications::add(
+        out,
+        NotificationKind::ClientUpdate,
+        format!("Version {} is available", release.version),
+        if current.is_empty() {
+            "Open Settings to download it.".to_string()
+        } else {
+            format!("You are running {current}. Open Settings to download it.")
+        },
+        Some(NotificationAction::OpenSettings {
+            section: Some("updates".to_string()),
+        }),
+    );
 }
 
 async fn download(ctx: &ServiceCtx, out: &EventSink) {

@@ -932,6 +932,14 @@ export type ClientUpdateEvent =
 	currentVersion: string,
 } } | { type: "upToDate" } | { type: "available"; payload: {
 	release: ClientRelease,
+} } |
+/**
+ *  A check settled, whichever way it went. Separate from the outcome
+ *  because the outcome is often identical to the previous one, and "we
+ *  asked, just now" is the part the user pressed the button for.
+ */
+{ type: "checkCompleted"; payload: {
+	at: string,
 } } | { type: "downloadProgressed"; payload: {
 	receivedBytes: number,
 	totalBytes: number,
@@ -956,6 +964,16 @@ export type ClientUpdateState = {
 	 *  wrong shape for this.
 	 */
 	dismissedVersion: string,
+	/**
+	 *  When the last check finished, RFC 3339. Empty until one has.
+	 *
+	 *  Recorded because the status alone cannot answer "did my click do
+	 *  anything". Checking twice in a row leaves the same terminal status both
+	 *  times, so a second "Check now" produced no visible change at all and the
+	 *  button read as broken. The status says what is true; this says when we
+	 *  last found out.
+	 */
+	lastChecked?: string,
 };
 
 /**  Where the update flow currently is. */
@@ -3623,7 +3641,12 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  */
 "mapGenerated" |
 /**  Game file cache exceeded user-configured threshold size. */
-"gameCacheAlert" | "error";
+"gameCacheAlert" |
+/**
+ *  A newer client release exists. The banner says so too, but the banner
+ *  lives at the top of one workspace and this survives a tab change.
+ */
+"clientUpdate" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,

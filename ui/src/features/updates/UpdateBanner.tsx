@@ -125,7 +125,9 @@ function describe(
       return status.payload.reason;
     default:
       return release.downloadUrl
-        ? `${running} The installer is ${size || "ready to download"}.`.trim()
-        : `${running} Release ${release.version} has no installer for your platform.`.trim();
+        ? `${running} ${size
+          ? t("updates.installerSize", { size })
+          : t("updates.installerReady")}`.trim()
+        : `${running} ${t("updates.noInstallerFor", { version: release.version })}`.trim();
   }
 }

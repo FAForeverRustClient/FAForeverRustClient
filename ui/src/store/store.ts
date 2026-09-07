@@ -333,6 +333,7 @@ const INITIAL: AppState = {
     currentVersion: "",
     release: null,
     dismissedVersion: "",
+    lastChecked: "",
   },
   changelog: {
     releases: [],

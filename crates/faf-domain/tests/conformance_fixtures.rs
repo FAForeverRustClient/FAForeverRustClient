@@ -3548,6 +3548,13 @@ fn cases() -> Vec<Case> {
                     current_version: "0.2.0".into(),
                 }
                 .into(),
+                // Every check records when it settled, whichever way it went:
+                // two checks in a row leave the same status, and without this
+                // "Check now" changes nothing the user can see.
+                ClientUpdateEvent::CheckCompleted {
+                    at: "2026-02-01T09:00:00Z".into(),
+                }
+                .into(),
                 ClientUpdateEvent::Available {
                     release: ClientRelease {
                         version: "0.3.0".into(),
@@ -3577,6 +3584,10 @@ fn cases() -> Vec<Case> {
                 // A later check finding nothing must clear the offer, not keep
                 // a dismissed release lying around under an up-to-date status.
                 ClientUpdateEvent::UpToDate.into(),
+                ClientUpdateEvent::CheckCompleted {
+                    at: "2026-02-01T09:05:00Z".into(),
+                }
+                .into(),
             ],
         ),
         // ── tournaments / tutorials ──────────────────────────────────────

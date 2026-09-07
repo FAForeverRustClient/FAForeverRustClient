@@ -58,9 +58,13 @@ async function runAction(item: ClientNotification) {
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
         if (action.payload.section) {
+          // The payload carries a section *key* (`gameCache`, `updates`); the
+          // element it names is `settings-<key>`. Looking up the bare key found
+          // nothing and scrolled nowhere, silently, which is why the game-cache
+          // alert has always landed at the top of Settings.
           const sectionId = action.payload.section;
           setTimeout(() => {
-            const el = document.getElementById(sectionId);
+            const el = document.getElementById(`settings-${sectionId}`) ?? document.getElementById(sectionId);
             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 100);
         }

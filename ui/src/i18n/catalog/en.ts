@@ -266,6 +266,9 @@ export const en = {
   "updates.progress.percent": "Downloading the installer: {percent}%",
   "updates.ready": "The installer is ready. Close the client once it starts.",
   "updates.started": "The installer has started. Close the client to let it finish.",
+  "updates.installerSize": "The installer is {size}.",
+  "updates.installerReady": "The installer is ready to download.",
+  "updates.noInstallerFor": "Release {version} has no installer for your platform.",
 
   // Vault upload dialog.
   "uploads.title.map": "Publish map",
@@ -1176,6 +1179,11 @@ export const en = {
   "settings.updates.checkNow": "Check now",
   "settings.updates.running": "Running {version}",
   "settings.updates.versionUnknown": "Version unknown",
+  "settings.updates.notCheckedYet": "not checked yet",
+  "settings.updates.upToDate": "up to date",
+  "settings.updates.newerAvailable": "{version} is available",
+  "settings.updates.aNewerVersion": "a newer version",
+  "settings.updates.lastChecked": "checked {time}",
   "settings.connectivity.java": "Java (faf-ice-adapter, recommended)",
   "settings.connectivity.go": "Go (faf-pioneer, experimental)",
   "settings.theme.forgeDark": "FAF Dark",

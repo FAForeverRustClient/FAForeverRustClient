@@ -59,25 +59,57 @@ export function UpdatesSettingsSection() {
   );
 }
 
+/**
+ * The status line, and when we last found it out.
+ *
+ * The second half is the whole point. Two checks in a row settle on the same
+ * status, so the line said exactly the same thing after the second click as
+ * after the first, and "Check now" read as a button that does nothing. The
+ * timestamp changes every time, which is the visible answer to "did that do
+ * anything".
+ */
 function describe(update: ClientUpdateState): string {
+  const status = describeStatus(update);
+  const checked = formatChecked(update.lastChecked);
+  return checked ? `${status} · ${t("settings.updates.lastChecked", { time: checked })}` : status;
+}
+
+function describeStatus(update: ClientUpdateState): string {
   const running = update.currentVersion
     ? t("settings.updates.running", { version: update.currentVersion })
     : t("settings.updates.versionUnknown");
   switch (update.status.type) {
     case "idle":
-      return `${running}: not checked yet`;
+      return `${running}: ${t("settings.updates.notCheckedYet")}`;
     case "checking":
       return running;
     case "upToDate":
-      return `${running}: up to date`;
+      return `${running}: ${t("settings.updates.upToDate")}`;
     case "available":
     case "downloading":
     case "ready":
     case "installing":
-      return `${running}: ${update.release?.version ?? "a newer version"} is available`;
+      return `${running}: ${t("settings.updates.newerAvailable", {
+        version: update.release?.version ?? t("settings.updates.aNewerVersion"),
+      })}`;
     case "failed":
       // Shown here even when the banner stays hidden: a background check that
       // keeps failing should be discoverable somewhere rather than nowhere.
       return `${running}: ${update.status.payload.reason}`;
   }
+}
+
+/** Empty when nothing has been checked, or when the stamp is unreadable. */
+function formatChecked(timestamp: string | undefined): string {
+  if (!timestamp) return "";
+  const at = new Date(timestamp);
+  if (Number.isNaN(at.getTime())) return "";
+  // Explicitly English, matching the notification centre's clock: the
+  // repository's rule is that no view inherits the operating system's locale
+  // while the catalogue is the only place language is chosen.
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(at);
 }

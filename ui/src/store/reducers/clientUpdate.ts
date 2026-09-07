@@ -68,5 +68,7 @@ export function reduceClientUpdate(
       return { ...state, status: { type: "failed", payload: { reason: event.payload.reason } } };
     case "dismissed":
       return { ...state, dismissedVersion: event.payload.version };
+    case "checkCompleted":
+      return { ...state, lastChecked: event.payload.at };
   }
 }
