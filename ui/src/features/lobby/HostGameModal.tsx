@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -9,6 +9,7 @@ import { focusListboxOption, nextListboxIndex } from "../../shared/listboxNaviga
 import { OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
 import { GameMapImage } from "./GameMapImage";
 import { GenerateMapModal } from "../maps/GenerateMapModal";
+import { generatedMapDescriptionRows } from "../maps/generatedMapDescription";
 import { HostModsColumn } from "./host/HostModsColumn";
 import { FeaturedModIcon } from "./FeaturedModIcon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -272,6 +273,14 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   const chosen = availableMaps.find((map) => map.folderName.toLowerCase() === selectedMap?.toLowerCase())
     ?? availableMaps.find((map) => map.folderName === selectedMap)
     ?? availableMaps[0];
+
+  // Empty for every map whose description is prose, which is every map that
+  // was not generated. Memoised on the description alone: reparsing it on each
+  // keystroke in the map filter would be work for nothing.
+  const generatorFacts = useMemo(
+    () => generatedMapDescriptionRows(chosen?.description, t),
+    [chosen?.description, t],
+  );
 
   // Shown on the filter button so a narrowed list is never a mystery.
   const activeFilterCount = [widthKm, heightKm, playerCount].filter(isBounded).length;
@@ -694,8 +703,28 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
                     <dd>{chosen.version || t("lobby.host.mapAuthorUnknown")}</dd>
                   </dl>
                 )}
-                {chosen.description && (
-                  <p className="host-map-description">{chosen.description}</p>
+                {/* A generated map's description is not prose: it is the
+                    generator's parameter dump, one line, with its escapes
+                    unexpanded and `null` wherever it had nothing to say.
+                    Rendering it verbatim is what put one unbroken line of
+                    visible escapes, a repeated seed and two styles under the
+                    preview. Parsed, it is the most complete answer anywhere
+                    in the client to "what settings made this map": the folder
+                    name encodes the style that was asked for, this records
+                    what it resolved to. A real description stays prose. */}
+                {generatorFacts.length > 0 ? (
+                  <dl className="host-map-facts host-map-generator-facts">
+                    {generatorFacts.map((row) => (
+                      <Fragment key={row.key}>
+                        <dt>{row.label}</dt>
+                        <dd title={row.value}>{row.value}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                ) : (
+                  chosen.description && (
+                    <p className="host-map-description">{chosen.description}</p>
+                  )
                 )}
               </div>
             )}

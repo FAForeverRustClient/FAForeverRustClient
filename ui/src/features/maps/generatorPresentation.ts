@@ -202,7 +202,11 @@ export function generatorParameters(
     },
   ];
   if (decoded.symmetry) {
-    rows.push({ key: "symmetry", label: t("maps.generate.symmetry"), value: titleCase(decoded.symmetry) });
+    rows.push({
+      key: "symmetry",
+      label: t("maps.generate.symmetry"),
+      value: formatSymmetry(decoded.symmetry),
+    });
   }
 
   if (decoded.visibility) {
@@ -244,6 +248,10 @@ export function generatorParameters(
     }
   }
 
+  // Last, because it identifies the map rather than describing it: the seed
+  // is what somebody regenerating this exact map needs, and nothing anybody
+  // reads a parameter list to find out.
+  rows.push({ key: "seed", label: t("maps.generate.seed"), value: decoded.seed });
   rows.push({
     key: "version",
     label: t("maps.generate.generatorVersion"),
@@ -256,6 +264,19 @@ export function generatorParameters(
 export function titleCase(value: string): string {
   const spaced = value.replace(/_/g, " ").toLowerCase();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/**
+ * A symmetry as the generator means it.
+ *
+ * Most generator enums are words and read better title-cased, which is what
+ * `titleCase` is for. The axis symmetries are not words: `ZX` names the two
+ * axes the map is mirrored across, and `Zx` is simply the wrong spelling of
+ * it. Everything longer - `QUAD`, `DIAG`, `POINT12`, `NONE` - is a word and
+ * takes the usual treatment.
+ */
+export function formatSymmetry(value: string): string {
+  return /^[XYZ]{1,2}$/.test(value) ? value : titleCase(value);
 }
 
 /** A density bin as the percentage the user is really choosing. */

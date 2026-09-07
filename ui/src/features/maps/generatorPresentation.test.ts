@@ -279,7 +279,7 @@ describe("decoded map names, as labelled parameters", () => {
       t,
     );
     expect(valueOf(rows, "reclaimDensity")).toBeUndefined();
-    expect(rows.map((row) => row.key)).toEqual(["size", "spawns", "teams", "version"]);
+    expect(rows.map((row) => row.key)).toEqual(["size", "spawns", "teams", "seed", "version"]);
   });
 
   it("shows a tournament map's visibility and no style at all", () => {

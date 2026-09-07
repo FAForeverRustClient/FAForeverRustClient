@@ -14,6 +14,10 @@ import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
 import { generatorParameters } from "../maps/generatorPresentation";
+import {
+  generatedMapDescriptionRows,
+  mergeGeneratorRows,
+} from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -673,11 +677,12 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
   const player = useAppStore((state) => state.state.auth.player);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const isGenerated = isGeneratedMap(game.map);
-  const installed = maps.installed.some(
+  const installedMap = maps.installed.find(
     (map) =>
       map.folderName.toLowerCase() === game.map.toLowerCase() ||
       map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`),
   );
+  const installed = installedMap !== undefined;
   const isGeneratingThisMap =
     mapGenStatus.type === "generating" ||
     mapGenStatus.type === "downloading" ||
@@ -704,7 +709,17 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
       command: { type: "decodeNames", payload: { mapNames: [game.map] } },
     });
   }, [isGenerated, decoded, game.map]);
-  const generatorRows = decoded ? generatorParameters(decoded, t) : [];
+  // Two sources, and the better one is only sometimes there. The name is
+  // always available and says what the generator was *asked* for. The map's
+  // own description says what it *did* - biome, terrain, resources, props and
+  // the three symmetries, none of which a predefined style encodes into a
+  // name - but only somebody who has the map on disk has it. So the
+  // description leads where there is one, and the name fills in the rest:
+  // the generator version, and the densities a description never mentions.
+  const generatorRows = mergeGeneratorRows(
+    generatedMapDescriptionRows(isGenerated ? installedMap?.description : null, t),
+    decoded ? generatorParameters(decoded, t) : [],
+  );
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
