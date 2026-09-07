@@ -435,8 +435,7 @@
   align-items: center;
 }
 
-.game-detail-section .tag,
-.game-preview-dialog-section .tag {
+.game-detail-section .tag {
   display: inline-flex;
   align-items: center;
   margin: 0;
@@ -450,8 +449,7 @@
 
 /* A tag that goes somewhere. Same shape as the static ones beside it, so the
    row does not jump, with the affordance a button needs. */
-.game-detail-section .tag-action,
-.game-preview-dialog-section .tag-action {
+.game-detail-section .tag-action {
   color: inherit;
   font: inherit;
   font-size: 11px;
@@ -459,15 +457,13 @@
   transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
 }
 
-.game-detail-section .tag-action:hover,
-.game-preview-dialog-section .tag-action:hover {
+.game-detail-section .tag-action:hover {
   color: var(--color-text);
   background: var(--color-surface-hover);
   border-color: var(--color-border-strong);
 }
 
-.game-detail-section .tag-action:focus-visible,
-.game-preview-dialog-section .tag-action:focus-visible {
+.game-detail-section .tag-action:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -1px;
 }
@@ -1044,10 +1040,30 @@
   text-align: center;
 }
 
+/* Clicking a map asks for the map, bigger. So the map is the only thing this
+   dialog sizes for, and one number decides both axes because a SupCom map is
+   square.
+
+   That number is led by the height. A window is always shorter than it is
+   wide, so height is what actually runs out, and a width-led rule is what
+   produced a dialog that was fine at 1080p, fine at 4K, and wrong in between:
+   `820px` is a different fraction of the window at every resolution and a
+   different physical size at every DPI setting. `84vh` is the same fraction of
+   every window. `SIZE_ALLOWANCE` is the header, the fact row, the actions and
+   the gaps between them: the height the map does not get. The absolute cap
+   stops a 4K window from rendering a map preview larger than anyone wants to
+   look at.
+
+   The result at the three widths the report mentions: ~460px on the default
+   1100x720 window, ~730px at 1080p, ~860px on the reported ~2000px screen.
+   The details rail's thumbnail is 250px, so the dialog is the 2-3x the report
+   asked for wherever there is room for it. */
 .game-preview-dialog {
+  --preview-size-allowance: 190px;
   display: grid;
-  width: min(820px, calc(100vw - 48px));
-  gap: var(--space-4);
+  width: min(calc(84vh - var(--preview-size-allowance)), 84vw, 1040px);
+  max-width: 100%;
+  gap: var(--space-3);
 }
 
 .game-preview-dialog-header {
@@ -1084,26 +1100,39 @@
   font-size: 12px;
 }
 
-.game-preview-dialog-body {
-  display: grid;
-  grid-template-columns: minmax(280px, 1.25fr) minmax(220px, .75fr);
-  align-items: stretch;
-  gap: var(--space-4);
-}
-
 .game-preview-dialog-map {
   position: relative;
   display: grid;
-  width: min(100%, 500px);
+  width: 100%;
   aspect-ratio: 1;
-  max-height: 58vh;
-  min-height: 280px;
   place-items: center;
-  justify-self: center;
   overflow: hidden;
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
+}
+
+/* Demoted, not deleted: map size is about the map, so it stays, as a caption
+   under the picture rather than as a column beside it. */
+.game-preview-dialog-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.game-preview-dialog-facts > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.game-preview-dialog-facts dt { color: var(--color-muted); }
+
+.game-preview-dialog-facts dd {
+  margin: 0;
+  color: var(--color-text);
 }
 
 .game-preview-dialog-private {
@@ -1131,97 +1160,6 @@
   color: var(--color-subtle);
   object-fit: contain;
   background: var(--color-bg);
-}
-
-.game-preview-dialog-info {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  max-height: 58vh;
-  overflow-y: auto;
-}
-
-.game-preview-dialog-host {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.game-preview-dialog-host span,
-.game-preview-dialog-section > span {
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.game-preview-dialog-host strong {
-  overflow: hidden;
-  font-size: 15px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.game-preview-dialog-summary {
-  margin: 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.game-preview-dialog-summary > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: 8px 0;
-  font-size: 12px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.game-preview-dialog-summary dt { color: var(--color-muted); }
-.game-preview-dialog-summary dd {
-  margin: 0;
-  color: var(--color-text);
-  text-align: right;
-}
-
-.game-preview-dialog-section {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.game-preview-dialog-teams {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.game-preview-dialog-teams .game-team {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 0 0 8px 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.game-preview-dialog-teams .game-team:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.game-preview-dialog-teams .game-team-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text);
 }
 
 .game-team-player-list {
@@ -1258,19 +1196,13 @@
   gap: var(--space-2);
 }
 
-@media (max-width: 700px) {
-  .game-preview-dialog {
-    width: min(520px, calc(100vw - 32px));
-  }
-
-  .game-preview-dialog-body {
-    grid-template-columns: 1fr;
-  }
-
-  .game-preview-dialog-map {
-    width: min(100%, 420px);
-    min-height: 220px;
-  }
+/* The panel gives way to the dialog. The shared 900px cap is a sensible
+   ceiling for a form, and a ceiling is the wrong idea for a picture whose
+   whole purpose is to be as large as the window allows. */
+.modal-panel.game-preview-modal {
+  width: auto;
+  max-width: min(92vw, 1120px);
+  max-height: 94vh;
 }
 
 .game-context-menu {
