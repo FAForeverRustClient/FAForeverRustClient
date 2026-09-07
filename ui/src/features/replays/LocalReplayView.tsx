@@ -229,6 +229,12 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     return groups;
   }, [pageReplays, query.sortBy, t]);
 
+  // The way back out of an offline session, offered where the session actually
+  // is. Settings has the same control, which is two clicks away and named after
+  // leaving rather than after arriving: somebody watching their own replays and
+  // deciding to sign in should not have to go looking for that.
+  const signIn = () => ipc.send({ kind: "Auth", command: { type: "logoutTest" } });
+
   const markWatchedAndOpen = (replay: LocalReplay) => {
     const key = localReplayKey(replay);
     if (!watched.has(key)) {
@@ -260,6 +266,11 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
           })}</span>
           {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
+        {offline && (
+          <Button className="local-replay-sign-in" onClick={signIn}>
+            <Icon name="users" size={14} /> {t("replays.local.signIn")}
+          </Button>
+        )}
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
       {localStatus.type === "ready" && filtered.length === 0 ? (
