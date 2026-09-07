@@ -118,25 +118,6 @@ pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
-/// Fill in each trainer's avatar from their FAF account.
-///
-/// The catalogue could carry an image URL per trainer, and it can, but nobody
-/// should have to maintain one: the account already has an avatar, it changes
-/// when they change it, and a copy in a JSON file would be stale the day after
-/// it was written. One batched lookup for the whole team.
-///
-/// Best effort throughout. The lookup needs a session, so an offline or
-/// signed-out client simply keeps whatever the manifest stated (usually
-/// nothing) and the tiles draw their empty mark. A trainer list is worth
-/// showing without pictures; it is not worth failing the whole catalogue load
-/// over.
-/// Load this account's ratings, if nobody has.
-///
-/// Skipped when the card already holds them, because the player card is shared
-/// with the play tab and a second fetch of the same thing would only cost a
-/// request. A failure is silent: recommendations without a rating are still
-/// recommendations, and a rating is not worth an error banner on a tab that
-/// works without one.
 /// Make sure the vault index is loaded, so a build order can show its map.
 ///
 /// A card for a build order is a picture of the map, which is what a player
@@ -153,6 +134,13 @@ async fn ask_for_map_previews(ctx: &ServiceCtx, out: &EventSink) {
     super::maps::handle(faf_domain::state::MapsCommand::LoadVault, ctx, out).await;
 }
 
+/// Load this account's ratings, if nobody has.
+///
+/// Skipped when the card already holds them, because the player card is shared
+/// with the play tab and a second fetch of the same thing would only cost a
+/// request. A failure is silent: recommendations without a rating are still
+/// recommendations, and a rating is not worth an error banner on a tab that
+/// works without one.
 async fn ask_for_ratings(ctx: &ServiceCtx, out: &EventSink) {
     let wanted = out.with_state(|state| {
         let me = state.auth.player.as_ref()?;
@@ -175,6 +163,18 @@ async fn ask_for_ratings(ctx: &ServiceCtx, out: &EventSink) {
     .await;
 }
 
+/// Fill in each trainer's avatar from their FAF account.
+///
+/// The catalogue could carry an image URL per trainer, and it can, but nobody
+/// should have to maintain one: the account already has an avatar, it changes
+/// when they change it, and a copy in a JSON file would be stale the day after
+/// it was written. One batched lookup for the whole team.
+///
+/// Best effort throughout. The lookup needs a session, so an offline or
+/// signed-out client simply keeps whatever the manifest stated (usually
+/// nothing) and the tiles draw their empty mark. A trainer list is worth
+/// showing without pictures; it is not worth failing the whole catalogue load
+/// over.
 async fn with_avatars(mut trainers: Vec<Trainer>, ctx: &ServiceCtx) -> Vec<Trainer> {
     let ids: Vec<i32> = trainers
         .iter()
@@ -215,30 +215,60 @@ async fn with_avatars(mut trainers: Vec<Trainer>, ctx: &ServiceCtx) -> Vec<Train
 /// is remote content. An entry the parser did not mark readable never reaches
 /// the port at all.
 async fn read_guide(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
-    let url = out.with_state(|state| {
-        state
-            .training
-            .resource(&resource_id)
-            .filter(|resource| resource.readable)
-            .map(|resource| resource.url.clone())
+    let attachments = out.with_state(|state| {
+        state.training.resource(&resource_id).map(|resource| {
+            (
+                resource.readable.then(|| resource.url.clone()),
+                (!resource.recording_url.is_empty()).then(|| resource.recording_url.clone()),
+            )
+        })
     });
-    let Some(url) = url else {
+    let Some((prose, recording)) = attachments else {
+        out.emit(TrainingEvent::GuideFailed {
+            resource_id,
+            reason: "that entry is no longer in the catalogue".into(),
+        });
+        return;
+    };
+    if prose.is_none() && recording.is_none() {
         out.emit(TrainingEvent::GuideFailed {
             resource_id,
             reason: "that entry is a link rather than a guide this client holds".into(),
         });
         return;
-    };
+    }
 
-    out.emit(TrainingEvent::GuideReading {
+    // The prose first, because it is the entry and the run is the bonus. Both
+    // are announced before either is fetched, so the pane can lay out its panes
+    // rather than growing one at a time as replies land.
+    if let Some(url) = prose {
+        out.emit(TrainingEvent::GuideReading {
+            resource_id: resource_id.clone(),
+        });
+        match ctx.ports.training.read_guide(url).await {
+            Ok(markdown) => out.emit(TrainingEvent::GuideRead {
+                resource_id: resource_id.clone(),
+                markdown,
+            }),
+            Err(reason) => out.emit(TrainingEvent::GuideFailed {
+                resource_id: resource_id.clone(),
+                reason,
+            }),
+        }
+    }
+
+    let Some(url) = recording else {
+        return;
+    };
+    out.emit(TrainingEvent::RecordingReading {
         resource_id: resource_id.clone(),
     });
-    match ctx.ports.training.read_guide(url).await {
-        Ok(markdown) => out.emit(TrainingEvent::GuideRead {
+    match ctx.ports.training.read_recording(url).await {
+        Ok(envelope) => out.emit(TrainingEvent::RecordingRead {
             resource_id,
-            markdown,
+            envelope,
         }),
-        Err(reason) => out.emit(TrainingEvent::GuideFailed {
+        Err(reason) => out.emit(TrainingEvent::RecordingFailed {
             resource_id,
             reason,
         }),

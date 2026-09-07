@@ -2936,12 +2936,23 @@ export const en = {
   "training.basics.count": { one: "{count} entry", other: "{count} entries" },
 
   "training.library.title": "Training library",
-  "training.library.lead": "Everything in the catalogue, filtered how you like.",
+  "training.library.lead": "Everything in the catalogue, by what it is and what it is for.",
   "training.library.count": "{count} of {total}",
+  "training.library.allKinds": "Everything",
+  "training.library.showAll": "Show all {count}",
+  "training.library.showFewer": "Show fewer",
+  "training.library.noMode": "Not tied to a mode",
   "training.library.noMatches": "Nothing matches these filters.",
   "training.library.emptyCatalogue": "The catalogue is empty. Sign in so FAF's own lessons can load, or try again.",
 
+  "training.library.sort": "Order",
+  "training.library.sort.forYou": "For you",
+  "training.library.sort.recent": "Newest first",
+  "training.library.sort.alpha": "A to Z",
+
   "training.filter.search": "Search the library",
+  "training.filter.more": "Filters",
+  "training.filter.narrowedBy": "Narrowed by",
   "training.filter.searchPlaceholder": "Search titles, authors, maps",
   "training.filter.level": "Level",
   "training.filter.kind": "Type",
@@ -2963,6 +2974,16 @@ export const en = {
   "training.kind.replayAnalysis": "Replay analysis",
   "training.kind.lesson": "Lesson",
   "training.kind.community": "Community",
+
+  // The plural, for a tab that counts them and a heading that collects them.
+  // "Build order 35" beside a count reads as an identifier rather than a
+  // quantity, which is the whole reason a second set of labels exists.
+  "training.kindPlural.video": "Videos",
+  "training.kindPlural.guide": "Guides",
+  "training.kindPlural.buildOrder": "Build orders",
+  "training.kindPlural.replayAnalysis": "Replay analyses",
+  "training.kindPlural.lesson": "Lessons",
+  "training.kindPlural.community": "Community",
 
   "training.level.beginner": "Beginner",
   "training.level.intermediate": "Intermediate",
@@ -3009,6 +3030,16 @@ export const en = {
   "training.detail.author": "By",
   "training.detail.guideLoading": "Fetching the guide...",
   "training.detail.guideFailed": "This guide could not be fetched: {reason}. The button above still opens it.",
+  "training.run.flow": "What happened, and when",
+  "training.run.map": "Where it happened",
+  "training.run.duration": "{time} recorded",
+  "training.run.mapSummary": "{map} · {size} · {mass} mass, {hydro} hydro",
+  "training.run.pathSummary": "{name} #{ordinal}, from {from}",
+  "training.run.noMapSize": "This run was recorded before map dimensions were stored, so its positions cannot be placed on a map.",
+  "training.run.loading": "Fetching the recorded run...",
+  "training.run.failed": "The recorded run could not be fetched: {reason}.",
+  "training.run.unreadable": "The recorded run arrived but is not a build order this client can read.",
+  "training.detail.back": "Back",
   "training.detail.related": "Read next",
   "training.detail.askForReview": "Ask about one of my games",
 
@@ -3067,9 +3098,10 @@ export const en = {
   "training.post.lead": "The client writes it, you send it. Nothing is posted until you press submit on the forum.",
   "training.post.open": "Open GitHub, prefilled",
   "training.post.openDiscord": "Open the training Discord",
-  "training.post.copyForDiscord": "Copy, then paste it on Discord",
-  "training.post.leadDiscord": "Copy this, then paste it in the training Discord's replay review channel. Discord cannot be handed a prefilled message, so the client writes the request and you send it.",
+  "training.post.copyForDiscord": "Copy the post",
+  "training.post.leadDiscord": "The review channel is a forum: press New Post there, put the line below in the title field, and paste this as the post. Discord cannot be handed a prefilled message, so the client writes the request and you send it.",
   "training.post.copy": "Copy the text",
+  "training.post.copyTitle": "Copy the title",
   "training.post.copied": "Copied",
   "training.post.noDestination": "This client was not told where to send it, so copy the text and post it where it belongs.",
 } as const satisfies Record<string, Message>;

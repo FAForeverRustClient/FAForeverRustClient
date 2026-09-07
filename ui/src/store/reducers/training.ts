@@ -2,7 +2,16 @@
 // fixture (`reducer.conformance.test.ts`), so a transition that drifts from the
 // Rust one fails a test rather than shipping.
 
-import type { TrainingEvent, TrainingState } from "../../ipc/bindings";
+import type { TrainingDocument, TrainingEvent, TrainingState } from "../../ipc/bindings";
+
+/** Twin of `TrainingDocument::default`: nothing read, for nobody. */
+const NO_DOCUMENT: TrainingDocument = {
+  resourceId: "",
+  markdown: "",
+  status: { type: "idle" },
+  recording: "",
+  recordingStatus: { type: "idle" },
+};
 
 export function reduceTraining(state: TrainingState, event: TrainingEvent): TrainingState {
   switch (event.type) {
@@ -33,17 +42,15 @@ export function reduceTraining(state: TrainingState, event: TrainingEvent): Trai
       // for as long as the read takes.
       const resourceId = event.payload.resourceId;
       const document =
-        state.document.resourceId === (resourceId ?? "")
-          ? state.document
-          : { resourceId: "", markdown: "", status: { type: "idle" as const } };
+        state.document.resourceId === (resourceId ?? "") ? state.document : NO_DOCUMENT;
       return { ...state, selectedId: resourceId, document };
     }
     case "guideReading":
       return {
         ...state,
         document: {
+          ...NO_DOCUMENT,
           resourceId: event.payload.resourceId,
-          markdown: "",
           status: { type: "loading" },
         },
       };
@@ -68,6 +75,41 @@ export function reduceTraining(state: TrainingState, event: TrainingEvent): Trai
             document: {
               ...state.document,
               status: { type: "failed", payload: { reason: event.payload.reason } },
+            },
+          }
+        : state;
+    // A recording can arrive for an entry that carries no prose at all, so this
+    // claims the document rather than assuming a guide already did.
+    case "recordingReading":
+      return {
+        ...state,
+        document:
+          state.document.resourceId === event.payload.resourceId
+            ? { ...state.document, recording: "", recordingStatus: { type: "loading" } }
+            : {
+                ...NO_DOCUMENT,
+                resourceId: event.payload.resourceId,
+                recordingStatus: { type: "loading" },
+              },
+      };
+    case "recordingRead":
+      return state.document.resourceId === event.payload.resourceId
+        ? {
+            ...state,
+            document: {
+              ...state.document,
+              recording: event.payload.envelope,
+              recordingStatus: { type: "ready" },
+            },
+          }
+        : state;
+    case "recordingFailed":
+      return state.document.resourceId === event.payload.resourceId
+        ? {
+            ...state,
+            document: {
+              ...state.document,
+              recordingStatus: { type: "failed", payload: { reason: event.payload.reason } },
             },
           }
         : state;

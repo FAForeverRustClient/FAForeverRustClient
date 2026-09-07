@@ -5,15 +5,18 @@
 // graph: "here is the mistake" can point at "here is the lesson that fixes it",
 // which is the one thing a client can offer that a wiki page cannot.
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { Modal } from "../../design-system/Modal";
 import type { TrainingDocument, TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { relatedResources } from "../../shared/trainingRules";
 import { Markdown } from "./markdown";
+import { RunAnalysis } from "./RunAnalysis";
+import { parseEnvelope } from "./recording";
+import { useAppStore } from "../../store/store";
+import { mapPreviewUrl } from "./trainingPresentation";
 import {
   actionLabel,
   bandKey,
@@ -21,6 +24,7 @@ import {
   kindIcon,
   kindLabel,
   levelLabel,
+  playlistId,
   topicLabel,
   videoEmbedUrl,
 } from "./trainingPresentation";
@@ -34,6 +38,7 @@ interface Props {
   onSelect: (resource: TrainingResource) => void;
   onRead: (resource: TrainingResource) => void;
   onRequestReview: () => void;
+  /** Back to whichever section the reader came from. */
   onClose: () => void;
 }
 
@@ -50,23 +55,59 @@ export function ResourceDetail({
   const { t } = useTranslation();
   const band = bandKey(resource);
   const related = relatedResources(resources, resource);
-  const embed = resource.kind === "video" ? videoEmbedUrl(resource.url) : "";
+  // Whether the address is a video decides this, not what the entry calls
+  // itself. Most of the catalogue's videos are build orders, and gating the
+  // player on `kind === "video"` meant the one entry filed as a video played
+  // here while fourteen build orders on the same channel did not.
+  const embed = videoEmbedUrl(resource.url);
+  // The rest of the series, from the catalogue rather than from YouTube: two
+  // entries carrying the same playlist are two parts of the same thing, which
+  // needs no key and no request and stays true as entries are added. What it
+  // cannot show is a video of the series nobody has catalogued yet.
+  const series = useMemo(() => {
+    const list = playlistId(resource.url);
+    if (!list) return [];
+    return resources.filter((other) => playlistId(other.url) === list);
+  }, [resources, resource.url]);
+  const vault = useAppStore((store) => store.state.maps.vault);
+  const previewUrl = mapPreviewUrl(vault, resource.maps);
+  // Parsed once per document rather than per render: the envelope is a few
+  // hundred kilobytes of JSON and this component re-renders on every hover
+  // that crosses the panes below it.
+  const run = useMemo(
+    () => (guide.resourceId === resource.id ? parseEnvelope(guide.recording) : null),
+    [guide.resourceId, guide.recording, resource.id],
+  );
 
   // Asked for as soon as the pane opens, not behind a second click. A guide
   // this project hosts is the one thing here that is not somebody else's page,
   // and making the reader ask twice for text the client already has an address
   // for is ceremony.
   useEffect(() => {
-    if (resource.readable && guide.resourceId !== resource.id) {
+    if ((resource.readable || resource.recordingUrl) && guide.resourceId !== resource.id) {
       onRead(resource);
     }
   }, [resource, guide.resourceId, onRead]);
 
   return (
-    <Modal onClose={onClose} ariaLabel={resource.title} className="training-detail-modal">
+    // A page rather than an overlay. A build order is something a reader
+    // works *through*, sometimes with the game open beside it, and a modal
+    // says the opposite: that this is a detour to be dismissed before
+    // anything else can happen. It also capped the three-pane run layout at
+    // a dialog's width, which is the one place that layout needed room.
+    <section className="training-detail-page" aria-label={resource.title}>
+      <button type="button" className="training-detail-back" onClick={onClose}>
+        <Icon name="arrowLeft" size={15} />
+        <span>{t("training.detail.back")}</span>
+      </button>
+
       <div className="training-detail">
         <header>
-          <span className="training-card-kind">
+          {/* Its own chip rather than the card's badge. That badge is
+              absolutely positioned into a card's art corner as a 20px square,
+              which pinned it to the page corner here and clipped the label off
+              the moment this stopped being a dialog. */}
+          <span className="training-detail-kind">
             <Icon name={kindIcon(resource.kind)} size={14} />
             <span>{t(kindLabel(resource.kind))}</span>
           </span>
@@ -81,15 +122,35 @@ export function ResourceDetail({
           // one the client's frame policy allows; an uploader who has disabled
           // embedding gets a frame that says so and offers YouTube, which is
           // the honest outcome and still one click from watching.
-          <div className="training-detail-video">
-            <iframe
-              src={embed}
-              title={resource.title}
-              loading="lazy"
-              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+          <div className="training-watch">
+            <div className="training-detail-video">
+              <iframe
+                src={embed}
+                title={resource.title}
+                loading="lazy"
+                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+
+            {series.length > 1 && (
+              <ol className="training-series">
+                {series.map((other, index) => (
+                  <li key={other.id}>
+                    <button
+                      type="button"
+                      className={other.id === resource.id ? "is-current" : undefined}
+                      aria-current={other.id === resource.id ? "true" : undefined}
+                      onClick={() => onSelect(other)}
+                    >
+                      <span className="training-series-number">{index + 1}</span>
+                      <span>{other.title}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         )}
 
@@ -149,10 +210,17 @@ export function ResourceDetail({
         )}
 
         <div className="training-detail-actions">
-          <Button variant="primary" onClick={() => onOpen(resource)}>
-            <Icon name={isPlayableLesson(resource) ? "play" : "external"} size={16} />{" "}
-            {t(actionLabel(resource))}
-          </Button>
+          {/* Only when there is somewhere left to go. A video plays on this
+              page and a hosted guide is rendered on it, so an "open" button
+              beside either was offering to send the reader away from the thing
+              they came for. A lesson still has a button, because launching one
+              is the whole point of it. */}
+          {(isPlayableLesson(resource) || (resource.url && !embed && !resource.readable)) && (
+            <Button variant="primary" onClick={() => onOpen(resource)}>
+              <Icon name={isPlayableLesson(resource) ? "play" : "external"} size={16} />{" "}
+              {t(actionLabel(resource))}
+            </Button>
+          )}
           {/* The other half of the graph: understanding a mistake is one thing,
               having someone look at your own game is another, and this is the
               point in the tab where a player is most likely to want it. */}
@@ -161,7 +229,23 @@ export function ResourceDetail({
           </Button>
         </div>
 
-        {resource.readable && <GuideBody guide={guide} />}
+        {run ? (
+          // The written order, the flow and the map, in one layout. The prose
+          // is handed in rather than fetched again: it is the same document
+          // the pane would otherwise show on its own.
+          <RunAnalysis
+            env={run}
+            previewUrl={previewUrl}
+            prose={resource.readable ? <GuideBody guide={guide} /> : null}
+          />
+        ) : (
+          (resource.readable || resource.recordingUrl) && (
+            <>
+              <GuideBody guide={guide} />
+              {resource.recordingUrl && <RunProblem guide={guide} />}
+            </>
+          )
+        )}
 
         {related.length > 0 && (
           <section className="training-related">
@@ -179,7 +263,7 @@ export function ResourceDetail({
           </section>
         )}
       </div>
-    </Modal>
+    </section>
   );
 }
 
@@ -195,6 +279,29 @@ export function ResourceDetail({
  * and "this could not be fetched" is a different situation from "this entry is
  * a link", which they should be able to tell apart.
  */
+/**
+ * Why the recorded run is not on screen, when an entry says it has one.
+ *
+ * Only ever drawn while the run is missing: a run that parsed is drawn by
+ * `RunAnalysis`, and there is nothing to explain. A document that arrived but
+ * did not parse is reported as such rather than silently absent, because "this
+ * entry claims a recording and shows none" is otherwise a bug with no symptom.
+ */
+function RunProblem({ guide }: { guide: TrainingDocument }) {
+  const { t } = useTranslation();
+  if (guide.recordingStatus.type === "failed") {
+    return (
+      <p className="muted training-run-problem">
+        {t("training.run.failed", { reason: guide.recordingStatus.payload.reason })}
+      </p>
+    );
+  }
+  if (guide.recordingStatus.type === "ready") {
+    return <p className="muted training-run-problem">{t("training.run.unreadable")}</p>;
+  }
+  return <p className="muted training-run-problem">{t("training.run.loading")}</p>;
+}
+
 function GuideBody({ guide }: { guide: TrainingDocument }) {
   const { t } = useTranslation();
 

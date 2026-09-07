@@ -21,8 +21,8 @@
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    hosted_guide, video_still, Trainer, TrainingCatalogue, TrainingKind, TrainingLevel,
-    TrainingLinks, TrainingResource, TrainingSource, TrainingTopic, GUIDES_REPO,
+    hosted_guide, hosted_recording, video_still, Trainer, TrainingCatalogue, TrainingKind,
+    TrainingLevel, TrainingLinks, TrainingResource, TrainingSource, TrainingTopic, GUIDES_REPO,
 };
 use serde::Deserialize;
 
@@ -42,6 +42,10 @@ const MAX_MANIFEST_BYTES: usize = 2 * 1024 * 1024;
 
 /// A guide is prose somebody wrote. Anything past this is not one.
 const MAX_GUIDE_BYTES: usize = 512 * 1024;
+
+/// A recorded run is a position sample per second per unit, so it is an order
+/// of magnitude larger than prose and still small enough to be a document.
+const MAX_RECORDING_BYTES: usize = 8 * 1024 * 1024;
 
 /// The published catalogue.
 ///
@@ -171,41 +175,69 @@ impl TrainingPort for TrainingCatalogueClient {
     }
 
     async fn read_guide(&self, url: String) -> Result<String, String> {
+        self.fetch_document(&url, hosted_guide(&url), MAX_GUIDE_BYTES, "guide")
+            .await
+    }
+
+    async fn read_recording(&self, url: String) -> Result<String, String> {
+        self.fetch_document(
+            &url,
+            hosted_recording(&url),
+            MAX_RECORDING_BYTES,
+            "recording",
+        )
+        .await
+    }
+}
+
+impl TrainingCatalogueClient {
+    /// Fetch one document out of the repository this build trusts.
+    ///
+    /// The address came out of a manifest, so it is checked before it is used
+    /// and not after: `found` is the caller's already-applied shape test, and
+    /// this insists the repository is the configured one. Anything else is a
+    /// link to be opened, never a request to be made.
+    async fn fetch_document(
+        &self,
+        url: &str,
+        found: Option<faf_domain::state::HostedGuide<'_>>,
+        max_bytes: usize,
+        what: &str,
+    ) -> Result<String, String> {
         let repo = self.config.guides_repo.trim();
         if repo.is_empty() {
-            return Err("this build reads no guides of its own".into());
+            return Err(format!("this build reads no {what}s of its own"));
         }
-        // The address came out of a manifest, so it is checked before it is
-        // used and not after. Anything that is not Markdown in the trusted
-        // repository is a link to be opened, never a request to be made.
-        let Some(guide) = hosted_guide(&url) else {
-            return Err("that guide is not a document this client can read".into());
-        };
-        if !guide.repository().eq_ignore_ascii_case(repo) {
+        let Some(document) = found else {
             return Err(format!(
-                "that guide lives in {}, and this client only reads {repo}",
-                guide.repository()
+                "that {what} is not a document this client can read"
+            ));
+        };
+        if !document.repository().eq_ignore_ascii_case(repo) {
+            return Err(format!(
+                "that {what} lives in {}, and this client only reads {repo}",
+                document.repository()
             ));
         }
 
         let response = self
             .http
-            .get(uncached(&url))
+            .get(uncached(url))
             .send()
             .await
-            .map_err(|error| format!("could not reach the guide: {error}"))?;
+            .map_err(|error| format!("could not reach the {what}: {error}"))?;
         let status = response.status();
         if !status.is_success() {
-            return Err(format!("the guide responded with {status}"));
+            return Err(format!("the {what} responded with {status}"));
         }
         let bytes = response
             .bytes()
             .await
-            .map_err(|error| format!("could not read the guide: {error}"))?;
-        if bytes.len() > MAX_GUIDE_BYTES {
-            return Err("that guide was unexpectedly large".into());
+            .map_err(|error| format!("could not read the {what}: {error}"))?;
+        if bytes.len() > max_bytes {
+            return Err(format!("that {what} was unexpectedly large"));
         }
-        String::from_utf8(bytes.to_vec()).map_err(|_| "that guide is not text".into())
+        String::from_utf8(bytes.to_vec()).map_err(|_| format!("that {what} is not text"))
     }
 }
 
@@ -362,6 +394,7 @@ struct ResourceDoc {
     kind: Option<TrainingKind>,
     level: Option<TrainingLevel>,
     url: String,
+    recording_url: String,
     tutorial_id: Option<i32>,
     author: String,
     rating_min: Option<i32>,
@@ -387,9 +420,20 @@ impl ResourceDoc {
         // Readable here only if the document is Markdown in the repository this
         // build trusts. The manifest does not get a say: it names addresses,
         // and what the client is willing to fetch is the client's decision.
-        let readable = !guides_repo.trim().is_empty()
-            && hosted_guide(&self.url)
-                .is_some_and(|guide| guide.repository().eq_ignore_ascii_case(guides_repo.trim()));
+        let trusted = |found: Option<faf_domain::state::HostedGuide<'_>>| {
+            !guides_repo.trim().is_empty()
+                && found
+                    .is_some_and(|doc| doc.repository().eq_ignore_ascii_case(guides_repo.trim()))
+        };
+        let readable = trusted(hosted_guide(&self.url));
+        // Kept only if this build would actually fetch it, so what reaches the
+        // UI is either an address the client will read or nothing. A view that
+        // has to ask "and is this one allowed" is a view that will forget to.
+        let recording_url = if trusted(hosted_recording(&self.recording_url)) {
+            self.recording_url
+        } else {
+            String::new()
+        };
         // A stated picture wins; otherwise a video link implies its own still,
         // which is what turns a catalogue of YouTube guides into a grid worth
         // scanning rather than ten identical marks.
@@ -418,6 +462,7 @@ impl ResourceDoc {
             related: self.related,
             approved_by: self.approved_by,
             updated_at: self.updated_at,
+            recording_url,
             readable,
         })
     }
@@ -459,6 +504,10 @@ impl TrainingPort for FakeTraining {
     }
 
     async fn read_guide(&self, _url: String) -> Result<String, String> {
+        Err("this build fetches nothing".into())
+    }
+
+    async fn read_recording(&self, _url: String) -> Result<String, String> {
         Err("this build fetches nothing".into())
     }
 }

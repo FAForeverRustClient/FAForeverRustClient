@@ -95,7 +95,47 @@ export function renderedPage(url: string): string {
 
 export function videoEmbedUrl(url: string): string {
   const id = youtubeId(url);
-  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : "";
+  if (!id) return "";
+  // The playlist travels with the video. A build order series is watched in
+  // order, and without this the player treats each entry as a lone video: no
+  // next, no queue, and the reader is back to the browser to find part two.
+  const list = playlistId(url);
+  const series = list ? `&list=${encodeURIComponent(list)}` : "";
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0${series}`;
+}
+
+/**
+ * The playlist an address belongs to, if it names one.
+ *
+ * What makes a series visible in the tab: two catalogue entries carrying the
+ * same one are two parts of the same thing, and that is the whole of the
+ * relationship. No key, no API call, and it stays true as entries are added,
+ * which a hand-maintained list of siblings would not.
+ */
+export function playlistId(url: string): string {
+  const match = /[?&]list=([A-Za-z0-9_-]+)/.exec(url.trim());
+  return match ? match[1] : "";
+}
+
+/**
+ * The still YouTube publishes for a video, derived from its id.
+ *
+ * Two thirds of the catalogue is a YouTube address and not one entry in it
+ * carries a picture, so without this the library is a wall of empty tiles.
+ * Nothing is fetched until a tile is near the viewport (`loading="lazy"` on
+ * the card), but this is still the one place the tab reaches Google's servers
+ * before the reader has pressed play, which the embedded player deliberately
+ * does not.
+ *
+ * `mqdefault` and not `hqdefault`, which is the obvious choice and the wrong
+ * one: it is a 4:3 image with the 16:9 frame letterboxed inside it, so every
+ * card would carry a black bar top and bottom baked into the picture. This one
+ * is 320x180, is the widest size YouTube guarantees exists for every video,
+ * and is exactly the shape the tile is.
+ */
+export function videoThumbnailUrl(url: string): string {
+  const id = youtubeId(url);
+  return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : "";
 }
 
 /** The eleven-character id in a YouTube address, in the shapes people paste. */
@@ -131,6 +171,18 @@ export function mapPreviewUrl(vault: VaultMap[], maps: string[]): string {
 
 export function kindLabel(kind: TrainingKind): MessageKey {
   return `training.kind.${kind}`;
+}
+
+/**
+ * The same word, in the plural.
+ *
+ * For the library's kind tabs and its collection headings, which name a shelf
+ * rather than one entry: "Build order 35" beside a count reads as an
+ * identifier, and "Sladow-Noob · Build order" describes twenty-one things as
+ * one. Singular stays the default because that is what a card carries.
+ */
+export function kindPluralLabel(kind: TrainingKind): MessageKey {
+  return `training.kindPlural.${kind}`;
 }
 
 export function levelLabel(level: TrainingLevel): MessageKey {

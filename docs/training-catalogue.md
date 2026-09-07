@@ -181,6 +181,66 @@ row is not something a reader can act on.
 | `related` | Other resource ids. This is what makes the library a graph rather than a list: a guide about a mistake can point at the lesson that fixes it. Ids that no longer resolve are dropped rather than drawn as dead rows. |
 | `approvedBy` | Who vouched for it. Rendered as "Reviewed by", never "official": accepting a guide is not the same as having checked every sentence, and a label implying otherwise is worse than none. |
 
+### A video, a series, or a channel?
+
+The library can hold a creator three ways, and which one is right follows from
+the one thing this tab does that a browser cannot: recommend.
+
+An entry with `maps: ["Twin Rivers"]` can be put in front of a player the day
+after they played Twin Rivers. A channel entry never can: it has no map, no
+rating band and no mode, so it can only ever be browsed to.
+
+So:
+
+- **Its own entry** when the video answers a specific, searchable question:
+  this map, this position, this rating. Build orders and position guides are
+  the clear case.
+- **The channel** when it is ongoing production: casts, VODs, the game of the
+  week. Each of those as an entry would be out of date by Friday, hundreds of
+  them would drown the library, and not one of them could be recommended for
+  anything in particular.
+
+**A series is the middle case, and it is worth the entries.** Give each part
+its own entry and leave the `list=` parameter on each url. Two entries carrying
+the same playlist are two parts of one thing, and the tab draws the rest of the
+series beside the player from that alone: no API key, no request, and the
+titles are the ones this catalogue gives them. A playlist catalogued as a single
+entry still plays through, but there is nothing to list beside it.
+
+### Attaching a recorded run
+
+A build order can carry a recording of somebody actually playing it, as the
+`faf-bo/1` envelope the BO recorder's `bo2json` produces:
+
+```json
+{
+  "id": "sladow-1v1-twin-rivers",
+  "recordingUrl": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/runs/sladow-1v1-twin-rivers.json"
+}
+```
+
+The client then draws the entry as three panes rather than one: the written
+order, what happened and when, and the ground it happened on. Pointing at a
+unit in one pane highlights it in the other.
+
+The same trust rule as a guide applies, and for the same reason: an address
+outside the repository this build is configured to trust is dropped where the
+manifest is parsed, so it never becomes a request. Raw address again, because
+the client reads the document itself.
+
+**Nothing states this field yet.** The renderer ships ahead of the data: a run
+has to be played with the recorder to exist at all, and no catalogued build
+order has been. An entry without the field is unaffected and draws exactly as
+it did before.
+
+Two things the envelope decides, worth knowing before recording:
+
+- The map pane needs `meta.map.sizeX` and `sizeZ`. A run recorded before those
+  were written says so instead of drawing an empty square.
+- Positions are already on the heightmap scale, so the client places them over
+  the map's real vault preview with no transform. A recording of a map that is
+  not in the vault still draws its routes, just without the terrain under them.
+
 ### `custom`, and why most team material needs it
 
 FAF keeps five ratings, and the client judges an entry by the one its modes

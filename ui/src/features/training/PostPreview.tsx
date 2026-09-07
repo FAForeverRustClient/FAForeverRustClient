@@ -38,17 +38,25 @@ interface Props {
 export function PostPreview({ post, destination, submit, onSubmit }: Props) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [copiedTitle, setCopiedTitle] = useState(false);
   const sending = submit?.type === "sending";
   const sent = submit?.type === "sent" ? submit.payload.url : null;
   const failed = submit?.type === "failed" ? submit.payload.reason : null;
   const toDiscord = destination === "discord";
 
-  const copy = () => {
+  // Title and body reach the clipboard apart, because the channel they are
+  // headed for is a Discord *forum* channel: the player presses New Post and
+  // fills a title field and a body field. One blob with the title on its first
+  // line lands entirely in the body and leaves the title field empty, so the
+  // player ends up retyping the title the client just wrote for them.
+  const copyText = (text: string, mark: (value: boolean) => void) => {
     void navigator.clipboard
-      ?.writeText(`${post.title}\n\n${post.body}`)
-      .then(() => setCopied(true))
-      .catch(() => setCopied(false));
+      ?.writeText(text)
+      .then(() => mark(true))
+      .catch(() => mark(false));
   };
+  const copy = () => copyText(toDiscord ? post.body : `${post.title}\n\n${post.body}`, setCopied);
+  const copyTitle = () => copyText(post.title, setCopiedTitle);
 
   return (
     <section className="training-post">
@@ -60,7 +68,17 @@ export function PostPreview({ post, destination, submit, onSubmit }: Props) {
       </header>
 
       <div className="training-post-body">
-        <strong className="training-post-subject">{post.title}</strong>
+        {toDiscord ? (
+          <button type="button" className="training-post-subject-copy" onClick={copyTitle}>
+            <strong className="training-post-subject">{post.title}</strong>
+            <span className="muted">
+              <Icon name={copiedTitle ? "check" : "copy"} size={13} />{" "}
+              {t(copiedTitle ? "training.post.copied" : "training.post.copyTitle")}
+            </span>
+          </button>
+        ) : (
+          <strong className="training-post-subject">{post.title}</strong>
+        )}
         <Markdown source={post.body} />
       </div>
 
