@@ -1081,8 +1081,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.copy": "Копировать",
   "settings.diagnostics.close": "Закрыть",
 
-  "settings.updates.checkUpdatesAt": "Проверять обновления при запуске",
-  "settings.updates.checkUpdatesAtHint": "Запрашивает страницу выпусков проекта, есть ли более новый клиент. Это единственный исходящий запрос до вашего входа.",
   "settings.updates.includePreReleases": "Включать предварительные версии",
   "settings.updates.includePreReleasesHint": "Предлагает также кандидаты в выпуск и бета-сборки. Они первыми получают исправления и первыми ломаются.",
   "settings.updates.updateStatus": "Состояние обновлений",

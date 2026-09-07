@@ -1034,8 +1034,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.gameLogsHint": "Każda gra, samouczek, powtórka i transmisja ma własny dziennik diagnostyczny; zachowywanych jest 50 najnowszych.",
   "settings.diagnostics.clientLogs": "Dzienniki klienta",
   "settings.diagnostics.clientLogsHint": "Bieżąca diagnostyka klienta jest przechowywana osobno od dzienników Forged Alliance.",
-  "settings.updates.checkUpdatesAt": "Sprawdzaj aktualizacje przy starcie",
-  "settings.updates.checkUpdatesAtHint": "Pyta stronę wydań projektu, czy istnieje nowszy klient. To jedyne zapytanie wychodzące, jakie klient wykonuje przed zalogowaniem.",
   "settings.updates.includePreReleases": "Uwzględniaj wersje wstępne",
   "settings.updates.includePreReleasesHint": "Proponuje także kandydatów do wydania i kompilacje beta. Dostają poprawki jako pierwsze i psują się jako pierwsze.",
   "settings.updates.updateStatus": "Stan aktualizacji",

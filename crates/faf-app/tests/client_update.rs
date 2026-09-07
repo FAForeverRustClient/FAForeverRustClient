@@ -401,13 +401,27 @@ async fn the_startup_check_runs_when_settings_load() {
     );
 }
 
-#[tokio::test]
-async fn a_persisted_opt_out_keeps_startup_off_the_network() {
-    // The preference has to be *stored*, not merely set: `Load` replaces the
-    // whole settings slice from the port, so the startup check must read the
-    // post-load value. Setting it in-session and then loading would silently
-    // put the default back: which is what an earlier version of this test
-    // did, and it caught it.
+/// Whether the notification centre carries an update announcement.
+///
+/// By kind rather than by count: anything else adding a notification would
+/// otherwise satisfy one of these tests and break the other.
+fn announced(app: &App) -> bool {
+    app.snapshot()
+        .notifications
+        .items
+        .iter()
+        .any(|item| item.kind == faf_domain::state::NotificationKind::ClientUpdate)
+}
+
+/// An app whose stored settings turn optional announcements off, and whose
+/// update port answers with `latest`.
+///
+/// The preference has to be *stored*, not merely set: `Load` replaces the
+/// whole settings slice from the port, so anything reading it after startup
+/// must read the post-load value. Setting it in-session and then loading would
+/// silently put the default back, which is what an earlier version of this
+/// test did, and it caught it.
+async fn announcements_off(latest: Result<Option<ClientRelease>, String>) -> Harness {
     let stored = faf_domain::state::SettingsState {
         updates: UpdatePreferences {
             automatic: false,
@@ -415,15 +429,19 @@ async fn a_persisted_opt_out_keeps_startup_off_the_network() {
         },
         ..Default::default()
     };
+    let calls = Arc::new(Mutex::new(Calls::default()));
     let ports = Ports {
-        client_update: Arc::new(ForbiddenUpdates),
+        client_update: Arc::new(StubUpdates {
+            calls: calls.clone(),
+            latest,
+            download: Ok("installer".into()),
+        }),
         settings: Arc::new(faf_app::infra::FakeSettings { initial: stored }),
         ..fake_ports()
     };
     let (app, app_loop) = App::new("0.2.0", ports);
     tokio::spawn(app_loop.run());
 
-    // `ForbiddenUpdates` panics if the check runs at all.
     app.dispatch(SettingsCommand::Load.into()).await.unwrap();
     for _ in 0..300 {
         if !app.snapshot().settings.updates.automatic {
@@ -432,11 +450,69 @@ async fn a_persisted_opt_out_keeps_startup_off_the_network() {
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     assert!(!app.snapshot().settings.updates.automatic, "load applied");
-    tokio::time::sleep(Duration::from_millis(60)).await;
+    Harness { app, calls }
+}
+
+#[tokio::test]
+async fn the_startup_check_runs_whatever_the_announcement_preference_says() {
+    // This used to be the opposite test: the preference turned the startup
+    // check off entirely, and `ForbiddenUpdates` panicked if it ran. That was
+    // defensible while an update was only ever an offer. It stopped being
+    // defensible once a release the client can install itself became a gate,
+    // because a security update a checkbox switches off is not one.
+    let h = announcements_off(Ok(Some(release("0.3.0")))).await;
+    settle(
+        &h.app,
+        |state| state.status == ClientUpdateStatus::Available,
+        "the startup check",
+    )
+    .await;
     assert_eq!(
-        app.snapshot().client_update.status,
-        ClientUpdateStatus::Idle
+        h.calls.lock().unwrap().channels,
+        vec![ReleaseChannel::Stable]
     );
+}
+
+#[tokio::test]
+async fn an_optional_update_is_not_announced_when_announcements_are_off() {
+    // No installer for this platform, so the client cannot insist on it: this
+    // is exactly the update somebody turning announcements off meant.
+    let mut optional = release("0.3.0");
+    optional.download_url = String::new();
+    let h = announcements_off(Ok(Some(optional))).await;
+
+    settle(
+        &h.app,
+        |state| state.status == ClientUpdateStatus::Available,
+        "the startup check",
+    )
+    .await;
+    tokio::time::sleep(Duration::from_millis(60)).await;
+    assert!(
+        !announced(&h.app),
+        "an optional update reached the notification centre anyway",
+    );
+}
+
+#[tokio::test]
+async fn a_required_update_is_announced_even_when_announcements_are_off() {
+    // They are about to meet a dialog they cannot dismiss. Meeting it with no
+    // idea why would be worse than one notification they did not ask for.
+    let h = announcements_off(Ok(Some(release("0.3.0")))).await;
+
+    settle(
+        &h.app,
+        |state| state.status == ClientUpdateStatus::Available,
+        "the startup check",
+    )
+    .await;
+    for _ in 0..300 {
+        if announced(&h.app) {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    panic!("a required update was never announced");
 }
 
 #[tokio::test]

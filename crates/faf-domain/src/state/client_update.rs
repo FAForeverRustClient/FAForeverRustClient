@@ -65,6 +65,16 @@ impl ClientRelease {
     pub fn is_installable(&self) -> bool {
         !self.download_url.is_empty()
     }
+
+    /// Whether a release of this shape is one the client insists on.
+    ///
+    /// The release half of [`ClientUpdateState::required_release`], split out
+    /// because the answer is wanted before the release reaches state: the
+    /// notification raised for a new version has to know whether it is
+    /// announcing news or a requirement.
+    pub fn is_required(&self) -> bool {
+        !self.pre_release && self.is_installable()
+    }
 }
 
 /// Where the update flow currently is.
@@ -194,7 +204,7 @@ impl ClientUpdateState {
     /// point of a gate is that it is not the user's to dismiss.
     pub fn required_release(&self) -> Option<&ClientRelease> {
         let release = self.release.as_ref()?;
-        if release.pre_release || !release.is_installable() {
+        if !release.is_required() {
             return None;
         }
         match &self.status {
@@ -720,10 +730,7 @@ mod tests {
         let mut found = release(version);
         adjust(&mut found);
         let mut state = ClientUpdateState::default();
-        reduce(
-            &mut state,
-            &ClientUpdateEvent::Available { release: found },
-        );
+        reduce(&mut state, &ClientUpdateEvent::Available { release: found });
         state
     }
 

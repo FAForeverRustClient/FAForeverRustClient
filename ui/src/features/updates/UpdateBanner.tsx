@@ -18,7 +18,11 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
-import { updateBannerRelease, updatePercent } from "../../store/reducers/clientUpdate";
+import {
+  updateBannerRelease,
+  updatePercent,
+  updateRequiredRelease,
+} from "../../store/reducers/clientUpdate";
 import "./updates.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -36,8 +40,18 @@ export function formatSize(bytes: number): string {
 export function UpdateBanner() {
   useLocale();
   const update = useAppStore((s) => s.state.clientUpdate);
+  const announceOptional = useAppStore((s) => s.state.settings.updates.automatic);
   const release = updateBannerRelease(update);
   if (release === null) return null;
+
+  // The preference this consults used to decide whether the startup check
+  // ran at all, which made the update the client insists on into something a
+  // checkbox could switch off. The check is unconditional now, and this is
+  // what the preference means instead: whether an update the user is free to
+  // postpone gets a banner. A required one always does, because the gate is
+  // about to appear over it. Settings still reports every check either way,
+  // since that is an answer to a button the user just pressed.
+  if (!announceOptional && updateRequiredRelease(update) === null) return null;
 
   const status = update.status;
   const percent = updatePercent(status);

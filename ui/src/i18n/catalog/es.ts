@@ -1064,8 +1064,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.copy": "Copiar",
   "settings.diagnostics.close": "Cerrar",
 
-  "settings.updates.checkUpdatesAt": "Buscar actualizaciones al arrancar",
-  "settings.updates.checkUpdatesAtHint": "Consulta la página de versiones del proyecto para saber si existe un cliente más reciente. Es la única petición saliente antes de que inicies sesión.",
   "settings.updates.includePreReleases": "Incluir versiones preliminares",
   "settings.updates.includePreReleasesHint": "Ofrece también candidatas a versión y compilaciones beta. Reciben las correcciones antes y se rompen antes.",
   "settings.updates.updateStatus": "Estado de las actualizaciones",
