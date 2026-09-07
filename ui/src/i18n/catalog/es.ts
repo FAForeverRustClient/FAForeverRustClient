@@ -1064,8 +1064,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.copy": "Copiar",
   "settings.diagnostics.close": "Cerrar",
 
-  "settings.updates.checkUpdatesAt": "Buscar actualizaciones al arrancar",
-  "settings.updates.checkUpdatesAtHint": "Consulta la página de versiones del proyecto para saber si existe un cliente más reciente. Es la única petición saliente antes de que inicies sesión.",
   "settings.updates.includePreReleases": "Incluir versiones preliminares",
   "settings.updates.includePreReleasesHint": "Ofrece también candidatas a versión y compilaciones beta. Reciben las correcciones antes y se rompen antes.",
   "settings.updates.updateStatus": "Estado de las actualizaciones",
@@ -1122,8 +1120,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.paths.custom": "Personalizada",
   "settings.paths.automatic": "Automática",
   "settings.paths.overrideNote": "Cada fila muestra a dónde apunta ahora. Las filas sin definir se resuelven automáticamente, y una variable de entorno FAF_* sigue teniendo prioridad. El cambio surte efecto de inmediato; el contenido existente no se mueve.",
-  "maps.generate.keepMaps": "Conservar estos mapas",
-  "maps.generate.keepMapsHint": "Protege los mapas de esta ejecución al borrar mapas generados en la pestaña Mapas.",
   "settings.paths.gameInstall": "Instalación del juego",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe que se usa para unirse a partidas y jugarlas.",
   "settings.paths.replayInstall": "Instalación para repeticiones",

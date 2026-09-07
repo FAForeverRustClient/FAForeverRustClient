@@ -13,7 +13,12 @@
 
 import { describe, expect, it } from "vitest";
 import type { ClientRelease, ClientUpdateState } from "../../ipc/bindings";
-import { isUpdateBusy, updateBannerRelease, updatePercent } from "./clientUpdate";
+import {
+  isUpdateBusy,
+  updateBannerRelease,
+  updatePercent,
+  updateRequiredRelease,
+} from "./clientUpdate";
 
 function release(version: string, overrides: Partial<ClientRelease> = {}): ClientRelease {
   return {
@@ -118,6 +123,70 @@ describe("isUpdateBusy: twin of ClientUpdateStatus::is_busy", () => {
       { type: "failed", payload: { reason: "x" } } as const,
     ]) {
       expect(isUpdateBusy(status), status.type).toBe(false);
+    }
+  });
+});
+
+describe("updateRequiredRelease: twin of ClientUpdateState::required_release", () => {
+  it("gates on a stable release this platform can install", () => {
+    const current = state({ status: { type: "available" }, release: release("0.4.0") });
+    expect(updateRequiredRelease(current)?.version).toBe("0.4.0");
+  });
+
+  it("is not the user's to dismiss, unlike the banner", () => {
+    const dismissed = state({
+      status: { type: "available" },
+      release: release("0.4.0"),
+      dismissedVersion: "0.4.0",
+    });
+    expect(updateBannerRelease(dismissed)).toBeNull();
+    expect(updateRequiredRelease(dismissed)?.version).toBe("0.4.0");
+  });
+
+  it("never gates on a prerelease", () => {
+    // Opting into prereleases is opting into testing, not into being locked
+    // out by every nightly.
+    const current = state({
+      status: { type: "available" },
+      release: release("0.4.0-rc1", { preRelease: true }),
+    });
+    expect(updateBannerRelease(current)).not.toBeNull();
+    expect(updateRequiredRelease(current)).toBeNull();
+  });
+
+  it("never gates on a release with no installer for this platform", () => {
+    const current = state({
+      status: { type: "available" },
+      release: release("0.4.0", { downloadUrl: "" }),
+    });
+    expect(updateBannerRelease(current)).not.toBeNull();
+    expect(updateRequiredRelease(current)).toBeNull();
+  });
+
+  it("gates on nothing until a check has found something", () => {
+    for (const status of [
+      { type: "idle" } as const,
+      { type: "checking" } as const,
+      { type: "upToDate" } as const,
+    ]) {
+      expect(updateRequiredRelease(state({ status, release: release("0.4.0") })), status.type)
+        .toBeNull();
+    }
+    // And an update server having a bad day leaves no release at all.
+    const unreachable = state({ status: { type: "failed", payload: { reason: "down" } } });
+    expect(updateRequiredRelease(unreachable)).toBeNull();
+  });
+
+  it("stays up through the download, the install and a failure", () => {
+    for (const status of [
+      { type: "downloading", payload: { receivedBytes: 1, totalBytes: 2 } } as const,
+      { type: "ready", payload: { path: "/tmp/x" } } as const,
+      { type: "installing" } as const,
+      // Failing the download is not a way past the update.
+      { type: "failed", payload: { reason: "connection reset" } } as const,
+    ]) {
+      const current = state({ status, release: release("0.4.0") });
+      expect(updateRequiredRelease(current)?.version, status.type).toBe("0.4.0");
     }
   });
 });

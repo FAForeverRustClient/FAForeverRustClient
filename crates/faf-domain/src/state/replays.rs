@@ -314,6 +314,27 @@ pub enum ReplayDownloadStatus {
     },
 }
 
+/// What the vault knows about one game id, looked up for a replay the client
+/// only has as a file on disk.
+///
+/// A `.fafreplay` header carries who played and at what rating, and nothing
+/// about what the game did to those ratings: rating journals live on the
+/// server. So the detail panel for a local replay asks the vault for the one
+/// game, and this is the answer. All four states are distinct to the reader:
+/// [`Self::Missing`] is "the vault has no such game" (a skirmish against AI, a
+/// replay from another install), which is a different sentence from
+/// [`Self::Failed`] ("we could not ask"), and both are different from having
+/// no entry at all, which means nobody has asked yet.
+// No `Eq`: `VaultReplay` carries an `f32`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum OnlineLookup {
+    Loading,
+    Found(Box<VaultReplay>),
+    Missing,
+    Failed { reason: String },
+}
+
 // No `Eq` (unlike most state structs): `VaultReplay` carries an `f32`.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -356,6 +377,11 @@ pub struct ReplayState {
     pub details_loading: Option<i32>,
     #[serde(default)]
     pub details_error: Option<String>,
+    /// Vault answers for single game ids, keyed by that id. Filled by
+    /// [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
+    /// [`OnlineLookup`].
+    #[serde(default)]
+    pub online_lookups: std::collections::HashMap<i32, OnlineLookup>,
 }
 
 // No `Eq`: `VaultLoaded` carries `VaultReplay`, which has an `f32` field.
@@ -440,6 +466,20 @@ pub enum ReplayEvent {
         uid: i32,
         reason: String,
     },
+    /// The vault is being asked about one game id (see [`OnlineLookup`]).
+    OnlineLookupStarted {
+        uid: i32,
+    },
+    /// The answer. `replay` is `None` when the vault has no such game, which
+    /// is a result, not a failure.
+    OnlineLookupFinished {
+        uid: i32,
+        replay: Option<Box<VaultReplay>>,
+    },
+    OnlineLookupFailed {
+        uid: i32,
+        reason: String,
+    },
 }
 
 // No `Eq`: `ReplayQuery` carries an `f32` (minimum review score).
@@ -497,6 +537,15 @@ pub enum ReplayCommand {
     /// validates that the resolved file is directly inside that folder.
     DeleteLocal {
         path: String,
+    },
+    /// Ask the vault what it knows about one game id, without disturbing the
+    /// browse/search results in [`ReplayState::vault`].
+    ///
+    /// This exists for local replays: the file on disk has no rating data in
+    /// it, so the only honest way to show a rating change for one is to ask
+    /// the server about the game it came from.
+    LookUpOnline {
+        uid: i32,
     },
 }
 
@@ -604,6 +653,24 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
                 state.details_loading = None;
             }
             state.details_error = Some(reason.clone());
+        }
+        ReplayEvent::OnlineLookupStarted { uid } => {
+            state.online_lookups.insert(*uid, OnlineLookup::Loading);
+        }
+        ReplayEvent::OnlineLookupFinished { uid, replay } => {
+            let outcome = match replay {
+                Some(replay) => OnlineLookup::Found(replay.clone()),
+                None => OnlineLookup::Missing,
+            };
+            state.online_lookups.insert(*uid, outcome);
+        }
+        ReplayEvent::OnlineLookupFailed { uid, reason } => {
+            state.online_lookups.insert(
+                *uid,
+                OnlineLookup::Failed {
+                    reason: reason.clone(),
+                },
+            );
         }
     }
 }
@@ -994,6 +1061,56 @@ mod tests {
             VaultStatus::Failed {
                 reason: "folder missing".into()
             }
+        );
+    }
+
+    #[test]
+    fn an_online_lookup_walks_from_loading_to_an_answer() {
+        let mut s = ReplayState::default();
+        assert!(s.online_lookups.is_empty(), "nobody has asked yet");
+
+        reduce(&mut s, &ReplayEvent::OnlineLookupStarted { uid: 21 });
+        assert_eq!(s.online_lookups.get(&21), Some(&OnlineLookup::Loading));
+
+        let replay = vault_replay(21);
+        reduce(
+            &mut s,
+            &ReplayEvent::OnlineLookupFinished {
+                uid: 21,
+                replay: Some(Box::new(replay.clone())),
+            },
+        );
+        assert_eq!(
+            s.online_lookups.get(&21),
+            Some(&OnlineLookup::Found(Box::new(replay)))
+        );
+    }
+
+    #[test]
+    fn a_game_the_vault_does_not_have_is_a_result_not_a_failure() {
+        let mut s = ReplayState::default();
+        reduce(
+            &mut s,
+            &ReplayEvent::OnlineLookupFinished {
+                uid: 21,
+                replay: None,
+            },
+        );
+        assert_eq!(s.online_lookups.get(&21), Some(&OnlineLookup::Missing));
+
+        reduce(
+            &mut s,
+            &ReplayEvent::OnlineLookupFailed {
+                uid: 22,
+                reason: "offline".into(),
+            },
+        );
+        assert_eq!(
+            s.online_lookups.get(&22),
+            Some(&OnlineLookup::Failed {
+                reason: "offline".into()
+            }),
+            "a lookup that never reached the server must not read as 'no such game'"
         );
     }
 }

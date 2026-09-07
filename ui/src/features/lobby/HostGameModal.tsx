@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -6,9 +6,10 @@ import { RangeSlider } from "../../design-system/RangeSlider";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../shared/listboxNavigation";
-import { OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
+import { isGeneratedMap, OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
 import { GameMapImage } from "./GameMapImage";
 import { GenerateMapModal } from "../maps/GenerateMapModal";
+import { generatedMapDescriptionRows } from "../maps/generatedMapDescription";
 import { HostModsColumn } from "./host/HostModsColumn";
 import { FeaturedModIcon } from "./FeaturedModIcon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -272,6 +273,23 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   const chosen = availableMaps.find((map) => map.folderName.toLowerCase() === selectedMap?.toLowerCase())
     ?? availableMaps.find((map) => map.folderName === selectedMap)
     ?? availableMaps[0];
+
+  // Reset by itself, so the tick is feedback rather than a state the button
+  // gets stuck in.
+  const [copiedName, setCopiedName] = useState(false);
+  useEffect(() => {
+    if (!copiedName) return;
+    const timer = window.setTimeout(() => setCopiedName(false), 2_000);
+    return () => window.clearTimeout(timer);
+  }, [copiedName]);
+
+  // Empty for every map whose description is prose, which is every map that
+  // was not generated. Memoised on the description alone: reparsing it on each
+  // keystroke in the map filter would be work for nothing.
+  const generatorFacts = useMemo(
+    () => generatedMapDescriptionRows(chosen?.description, t),
+    [chosen?.description, t],
+  );
 
   // Shown on the filter button so a narrowed list is never a mystery.
   const activeFilterCount = [widthKm, heightKm, playerCount].filter(isBounded).length;
@@ -672,6 +690,40 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
 
             {chosen && (
               <div className="host-map-info-section">
+                {/* The full folder name. The overlay on the picture shows the
+                    display name and truncates it, and for a generated map the
+                    name is not a label but the whole recipe: it is what the
+                    Generate map dialog takes to rebuild this exact map, and
+                    what somebody asking "which map is that" needs to be given.
+                    Same row and the same strings as the lobby's preview dialog,
+                    because it is the same fact about the same thing. */}
+                <div className="host-map-fullname">
+                  <span>{t("lobby.browser.mapFullName")}</span>
+                  <code>{chosen.folderName}</code>
+                  <button
+                    type="button"
+                    className="host-map-fullname-copy"
+                    aria-label={t(
+                      copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName",
+                    )}
+                    title={t(
+                      copiedName
+                        ? "lobby.browser.mapNameCopied"
+                        : isGeneratedMap(chosen.folderName)
+                          ? "lobby.browser.copyMapNameGenerated"
+                          : "lobby.browser.copyMapName",
+                    )}
+                    onClick={() =>
+                      ipc.run(
+                        navigator.clipboard
+                          .writeText(chosen.folderName)
+                          .then(() => setCopiedName(true)),
+                      )
+                    }
+                  >
+                    <Icon name={copiedName ? "check" : "copy"} size={13} />
+                  </button>
+                </div>
                 <div className="host-map-info-row">
                   <div className="host-map-info-item" title={t("lobby.host.mapPlayerCapacity")}>
                     <Icon name="users" size={13} />
@@ -694,8 +746,28 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
                     <dd>{chosen.version || t("lobby.host.mapAuthorUnknown")}</dd>
                   </dl>
                 )}
-                {chosen.description && (
-                  <p className="host-map-description">{chosen.description}</p>
+                {/* A generated map's description is not prose: it is the
+                    generator's parameter dump, one line, with its escapes
+                    unexpanded and `null` wherever it had nothing to say.
+                    Rendering it verbatim is what put one unbroken line of
+                    visible escapes, a repeated seed and two styles under the
+                    preview. Parsed, it is the most complete answer anywhere
+                    in the client to "what settings made this map": the folder
+                    name encodes the style that was asked for, this records
+                    what it resolved to. A real description stays prose. */}
+                {generatorFacts.length > 0 ? (
+                  <dl className="host-map-facts host-map-generator-facts">
+                    {generatorFacts.map((row) => (
+                      <Fragment key={row.key}>
+                        <dt>{row.label}</dt>
+                        <dd title={row.value}>{row.value}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                ) : (
+                  chosen.description && (
+                    <p className="host-map-description">{chosen.description}</p>
+                  )
                 )}
               </div>
             )}

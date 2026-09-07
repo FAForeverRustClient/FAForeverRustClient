@@ -53,9 +53,12 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                 return;
             }
             let updates = ctx.ports.map_generator.generate_named(map_name).await;
-            // Not a keep: this is a map a launch needs, reproduced because it
-            // was missing, not one the user sat down and asked for.
-            drain(updates, false, ctx, out).await;
+            // Kept or not on the same standing preference as a deliberate run.
+            // This used to be exempt, on the grounds that a map reproduced for
+            // a lobby join is not one the user sat down and asked for; with the
+            // decision made once in Settings rather than per run, "keep
+            // generated maps" means the ones on disk, however they got there.
+            drain(updates, ctx, out).await;
         }
         MapGeneratorCommand::Generate { options } => {
             let Some(_guard) = ctx.map_generator_active.try_acquire() else {
@@ -93,9 +96,8 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     }
                 }
             }
-            let keep = options.keep_maps;
             let updates = ctx.ports.map_generator.generate(options).await;
-            drain(updates, keep, ctx, out).await;
+            drain(updates, ctx, out).await;
         }
         MapGeneratorCommand::SetOptions { options } => {
             out.emit(MapGeneratorEvent::ValidationChanged {
@@ -261,13 +263,16 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
 
 /// Forward every status, and re-scan installed maps once a run succeeds.
 ///
-/// `keep` is this run's [`GeneratorOptions::keep_maps`]: the names it produced
-/// are recorded so the Maps tab's sweep spares them. Recorded here rather than
-/// held as a standing preference because the decision belongs to the run - the
-/// next one may well be a throwaway.
+/// A successful run's map names are recorded so the Maps tab's sweep spares
+/// them, when `settings.game.keep_generated_maps` says to. That switch used to
+/// be a checkbox in the dialog, decided per run; it is one standing preference
+/// now, because whether a map is worth keeping is known after looking at it and
+/// the dialog is closed by then.
+///
+/// Names rather than the switch alone: turning the switch off later must not
+/// retroactively condemn maps that were kept while it was on.
 async fn drain(
     mut updates: tokio::sync::mpsc::Receiver<GeneratorUpdate>,
-    keep: bool,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
@@ -301,7 +306,7 @@ async fn drain(
         out.emit(MapGeneratorEvent::StatusChanged { status });
     }
     if !succeeded_maps.is_empty() {
-        if keep {
+        if out.with_state(|state| state.settings.game.keep_generated_maps) {
             out.emit(SettingsEvent::KeptGeneratedMaps {
                 map_names: succeeded_maps.clone(),
             });

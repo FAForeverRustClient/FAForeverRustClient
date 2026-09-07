@@ -32,6 +32,32 @@ export function updateBannerRelease(state: ClientUpdateState): ClientRelease | n
   return showing && state.release.version !== state.dismissedVersion ? state.release : null;
 }
 
+/**
+ * Twin of `ClientUpdateState::required_release`, which decides whether the
+ * client may still be used.
+ *
+ * The three carve-outs are all refusals to trap somebody, and the reasoning
+ * lives on the Rust side: a prerelease never forces, a release with no
+ * installer for this platform never forces, and nothing forces until a check
+ * has actually found something. Note what is *not* consulted: the dismissed
+ * version, because the point of a gate is that it is not the user's to
+ * dismiss.
+ */
+export function updateRequiredRelease(state: ClientUpdateState): ClientRelease | null {
+  const release = state.release;
+  if (release === null || release.preRelease || release.downloadUrl === "") return null;
+  const gated =
+    state.status.type === "available" ||
+    state.status.type === "downloading" ||
+    state.status.type === "ready" ||
+    state.status.type === "installing" ||
+    // A download that failed keeps the gate up: the reason is shown and the
+    // button retries. A failed *check* leaves `release` null and never gets
+    // here, so an update server having a bad day locks nobody out.
+    state.status.type === "failed";
+  return gated ? release : null;
+}
+
 export function reduceClientUpdate(
   state: ClientUpdateState,
   event: ClientUpdateEvent,
@@ -68,5 +94,7 @@ export function reduceClientUpdate(
       return { ...state, status: { type: "failed", payload: { reason: event.payload.reason } } };
     case "dismissed":
       return { ...state, dismissedVersion: event.payload.version };
+    case "checkCompleted":
+      return { ...state, lastChecked: event.payload.at };
   }
 }

@@ -1065,8 +1065,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.copy": "Copier",
   "settings.diagnostics.close": "Fermer",
 
-  "settings.updates.checkUpdatesAt": "Vérifier les mises à jour au démarrage",
-  "settings.updates.checkUpdatesAtHint": "Interroge la page de versions du projet pour savoir s'il existe un client plus récent. C'est la seule requête sortante avant votre connexion.",
   "settings.updates.includePreReleases": "Inclure les préversions",
   "settings.updates.includePreReleasesHint": "Propose aussi les versions candidates et bêta. Elles reçoivent les correctifs en premier et cassent en premier.",
   "settings.updates.updateStatus": "État des mises à jour",
@@ -1123,8 +1121,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.paths.custom": "Personnalisé",
   "settings.paths.automatic": "Automatique",
   "settings.paths.overrideNote": "Chaque ligne indique où elle pointe actuellement. Les lignes non définies sont résolues automatiquement, et une variable d'environnement FAF_* reste prioritaire. Un changement prend effet immédiatement ; le contenu existant n'est pas déplacé.",
-  "maps.generate.keepMaps": "Conserver ces cartes",
-  "maps.generate.keepMapsHint": "Épargne les cartes de cette génération lors du nettoyage dans l'onglet Cartes.",
   "settings.paths.gameInstall": "Installation du jeu",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe utilisé pour rejoindre et jouer des parties en direct.",
   "settings.paths.replayInstall": "Installation pour les replays",

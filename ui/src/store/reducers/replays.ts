@@ -1,4 +1,4 @@
-import type { ReplayDownloadStatus, ReplayEvent, ReplayState } from "../../ipc/bindings";
+import type { OnlineLookup, ReplayDownloadStatus, ReplayEvent, ReplayState } from "../../ipc/bindings";
 
 /** Mirrors the same guard in `faf_domain::state::replays::reduce`. */
 function clearTransientDownload(status: ReplayDownloadStatus): ReplayDownloadStatus {
@@ -118,5 +118,25 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         detailsLoading: state.detailsLoading === event.payload.uid ? null : state.detailsLoading,
         detailsError: event.payload.reason,
       };
+    case "onlineLookupStarted":
+      return withLookup(state, event.payload.uid, { type: "loading" });
+    case "onlineLookupFinished":
+      return withLookup(
+        state,
+        event.payload.uid,
+        event.payload.replay
+          ? { type: "found", payload: event.payload.replay }
+          : { type: "missing" },
+      );
+    case "onlineLookupFailed":
+      return withLookup(state, event.payload.uid, {
+        type: "failed",
+        payload: { reason: event.payload.reason },
+      });
   }
+}
+
+/** Mirrors the `online_lookups` inserts in `faf_domain::state::replays::reduce`. */
+function withLookup(state: ReplayState, uid: number, lookup: OnlineLookup): ReplayState {
+  return { ...state, onlineLookups: { ...state.onlineLookups, [uid]: lookup } };
 }

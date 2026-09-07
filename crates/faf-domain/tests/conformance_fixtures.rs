@@ -2832,6 +2832,28 @@ fn local_replay(uid: i32) -> LocalReplay {
     }
 }
 
+/// A vault listing for one game, as the single-id lookup returns it.
+fn vault_replay(uid: i32) -> VaultReplay {
+    VaultReplay {
+        uid,
+        title: "Looked-up game".into(),
+        map: "scmp_009".into(),
+        map_thumbnail_url: String::new(),
+        mod_name: "faf".into(),
+        start_time: "2026-01-01T00:00:00Z".into(),
+        replay_available: true,
+        duration_seconds: None,
+        game_duration_seconds: None,
+        teams: Vec::new(),
+        average_rating: None,
+        quality: None,
+        reviews_average: None,
+        reviews_count: None,
+        game_version: None,
+        validity: "VALID".into(),
+    }
+}
+
 fn cases() -> Vec<Case> {
     vec![
         // ── player card: per-map record ──────────────────────────────────
@@ -3526,6 +3548,13 @@ fn cases() -> Vec<Case> {
                     current_version: "0.2.0".into(),
                 }
                 .into(),
+                // Every check records when it settled, whichever way it went:
+                // two checks in a row leave the same status, and without this
+                // "Check now" changes nothing the user can see.
+                ClientUpdateEvent::CheckCompleted {
+                    at: "2026-02-01T09:00:00Z".into(),
+                }
+                .into(),
                 ClientUpdateEvent::Available {
                     release: ClientRelease {
                         version: "0.3.0".into(),
@@ -3555,6 +3584,10 @@ fn cases() -> Vec<Case> {
                 // A later check finding nothing must clear the offer, not keep
                 // a dismissed release lying around under an up-to-date status.
                 ClientUpdateEvent::UpToDate.into(),
+                ClientUpdateEvent::CheckCompleted {
+                    at: "2026-02-01T09:05:00Z".into(),
+                }
+                .into(),
             ],
         ),
         // ── tournaments / tutorials ──────────────────────────────────────
@@ -4568,6 +4601,33 @@ fn cases() -> Vec<Case> {
                 ReplayEvent::VaultDownloadStarted { uid: 45 }.into(),
                 ReplayEvent::Failed {
                     reason: "could not update game to version 3701".into(),
+                }
+                .into(),
+            ],
+        ),
+        // The three answers a local replay's rating lookup can get. All three
+        // land in the same map and none of them touches `vault`: a local
+        // replay opened while the Online tab holds results must not replace
+        // them.
+        case(
+            "the vault is asked about three local replays' game ids",
+            vec![
+                ReplayEvent::OnlineLookupStarted { uid: 51 }.into(),
+                ReplayEvent::OnlineLookupFinished {
+                    uid: 51,
+                    replay: Some(Box::new(vault_replay(51))),
+                }
+                .into(),
+                ReplayEvent::OnlineLookupStarted { uid: 52 }.into(),
+                ReplayEvent::OnlineLookupFinished {
+                    uid: 52,
+                    replay: None,
+                }
+                .into(),
+                ReplayEvent::OnlineLookupStarted { uid: 53 }.into(),
+                ReplayEvent::OnlineLookupFailed {
+                    uid: 53,
+                    reason: "offline".into(),
                 }
                 .into(),
             ],

@@ -57,6 +57,7 @@ const INITIAL: AppState = {
     replayDetails: {},
     detailsLoading: null,
     detailsError: null,
+    onlineLookups: {},
   },
   maps: {
     vault: [],
@@ -139,7 +140,6 @@ const INITIAL: AppState = {
       previewPath: "",
       outputPath: "",
       commandLineArgs: "",
-      keepMaps: false,
     },
     previews: {},
     validation: [],
@@ -334,6 +334,7 @@ const INITIAL: AppState = {
     currentVersion: "",
     release: null,
     dismissedVersion: "",
+    lastChecked: "",
   },
   changelog: {
     releases: [],
@@ -375,7 +376,6 @@ const INITIAL: AppState = {
       previewPath: "",
       outputPath: "",
       commandLineArgs: "",
-      keepMaps: false,
     },
     theme: "forgeDark",
     gamePath: "",
@@ -398,6 +398,7 @@ const INITIAL: AppState = {
     notifications: {
       enabled: true,
       desktop: true,
+      desktopAllKinds: false,
       sound: true,
       notifyWhenFocused: false,
       matchFound: true,
@@ -447,6 +448,7 @@ const INITIAL: AppState = {
       cacheSizeAlertGb: 10,
       cacheRollingBranches: false,
       pipeLiveReplay: false,
+      keepGeneratedMaps: false,
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "java", selectionVersion: 1 },

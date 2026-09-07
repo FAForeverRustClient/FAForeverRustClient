@@ -14,6 +14,7 @@ import {
   densityPercent,
   describeIssue,
   formatMapSize,
+  generatorParameters,
   isFatal,
   nearestLegalSpawnCount,
   outcomeOfRun,
@@ -224,6 +225,80 @@ describe("decoded map names", () => {
     // would be worse than saying nothing.
     const parts = summariseDecodedName(decoded({ style: { kind: "predefined", style: null } }));
     expect(parts).toEqual(["10 km (512×512)", "6 spawns", "2 teams"]);
+  });
+});
+
+describe("decoded map names, as labelled parameters", () => {
+  const valueOf = (rows: ReturnType<typeof generatorParameters>, key: string) =>
+    rows.find((row) => row.key === key)?.value;
+
+  it("names the size and the style a predefined map was built from", () => {
+    // The two the report asks for by name: "settings such as high reclaim".
+    const rows = generatorParameters(
+      decoded({ style: { kind: "predefined", style: "HIGH_RECLAIM" } }),
+      t,
+    );
+    expect(valueOf(rows, "size")).toBe("10 km (512×512)");
+    expect(valueOf(rows, "style")).toBe("High reclaim");
+    expect(rows.map((row) => row.label)).toContain("Map size");
+  });
+
+  it("gives a custom-style map its reclaim and resource densities as percentages", () => {
+    const rows = generatorParameters(
+      decoded({
+        style: {
+          kind: "custom",
+          terrainStyle: "FLOODED",
+          textureStyle: "SYRTIS",
+          resourceStyle: "LOW_MEX",
+          propStyle: "ROCK_FIELD",
+          reclaimDensity: 127,
+          resourceDensity: 0,
+        },
+      }),
+      t,
+    );
+    expect(valueOf(rows, "reclaimDensity")).toBe("100%");
+    expect(valueOf(rows, "resourceDensity")).toBe("0%");
+    expect(valueOf(rows, "terrain")).toBe("Flooded");
+  });
+
+  it("drops a density the wire could not carry rather than printing NaN", () => {
+    const rows = generatorParameters(
+      decoded({
+        style: {
+          kind: "custom",
+          terrainStyle: null,
+          textureStyle: null,
+          resourceStyle: null,
+          propStyle: null,
+          reclaimDensity: null,
+          resourceDensity: null,
+        },
+      }),
+      t,
+    );
+    expect(valueOf(rows, "reclaimDensity")).toBeUndefined();
+    expect(rows.map((row) => row.key)).toEqual(["size", "spawns", "teams", "seed", "version"]);
+  });
+
+  it("shows a tournament map's visibility and no style at all", () => {
+    const rows = generatorParameters(decoded({ visibility: "TOURNAMENT" }), t);
+    expect(valueOf(rows, "visibility")).toBe("Tournament");
+    expect(valueOf(rows, "style")).toBeUndefined();
+  });
+
+  it("drops a style ordinal it cannot name, keeping every row it can", () => {
+    const rows = generatorParameters(decoded({ style: { kind: "predefined", style: null } }), t);
+    expect(valueOf(rows, "style")).toBeUndefined();
+    expect(valueOf(rows, "spawns")).toBe("6");
+    expect(valueOf(rows, "version")).toBe("1.22.1");
+  });
+
+  it("calls a zero-team map asymmetric rather than '0'", () => {
+    expect(valueOf(generatorParameters(decoded({ numTeams: 0 }), t), "teams")).toBe(
+      "Asymmetric (no teams)",
+    );
   });
 });
 

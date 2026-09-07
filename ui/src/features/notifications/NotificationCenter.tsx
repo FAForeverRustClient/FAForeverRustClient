@@ -6,6 +6,7 @@ import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/chatFormat";
 import { playNotificationAlert } from "./notificationSound";
+import { raisesOsNotification } from "./osNotifications";
 import "./notifications.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -58,9 +59,13 @@ async function runAction(item: ClientNotification) {
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
         if (action.payload.section) {
+          // The payload carries a section *key* (`gameCache`, `updates`); the
+          // element it names is `settings-<key>`. Looking up the bare key found
+          // nothing and scrolled nowhere, silently, which is why the game-cache
+          // alert has always landed at the top of Settings.
           const sectionId = action.payload.section;
           setTimeout(() => {
-            const el = document.getElementById(sectionId);
+            const el = document.getElementById(`settings-${sectionId}`) ?? document.getElementById(sectionId);
             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 100);
         }
@@ -162,13 +167,22 @@ export function NotificationCenter() {
       }
     });
     if (preferences.desktop) {
+      // Not the whole batch. The client used to hand every notification it
+      // raised to the operating system as well, so a friend coming online
+      // interrupted whatever the user was doing; `raisesOsNotification` is the
+      // short list of kinds somebody is waiting on. The switch below restores
+      // the old behaviour for anyone who wants it.
+      const leaving = preferences.desktopAllKinds
+        ? fresh
+        : fresh.filter((item) => raisesOsNotification(item.kind));
+      if (leaving.length === 0) return;
       // Check focus and request permission once per batch. Parallel permission
       // prompts from several notifications are rejected on some platforms.
       void (async () => {
         const focused = await native.isWindowFocused().catch(() => true);
         if (focused && !preferences.notifyWhenFocused) return;
         if (!await native.ensureNotificationPermission()) return;
-        fresh.forEach((item) => native.sendNotification(item.title, stripHtmlTags(item.body)));
+        leaving.forEach((item) => native.sendNotification(item.title, stripHtmlTags(item.body)));
       })().catch(() => undefined);
     }
   }, [items, preferences]);

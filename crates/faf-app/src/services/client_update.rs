@@ -5,11 +5,13 @@
 //! is only the sequencing and the single-flight guards.
 
 use faf_domain::state::{
-    should_update, ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus,
+    should_update, ClientRelease, ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus,
+    NotificationAction, NotificationKind,
 };
 
 use crate::ports::DownloadProgress;
 use crate::runtime::{EventSink, ServiceCtx};
+use crate::services;
 
 pub async fn handle(cmd: ClientUpdateCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -23,10 +25,15 @@ pub async fn handle(cmd: ClientUpdateCommand, ctx: &ServiceCtx, out: &EventSink)
 /// The startup check, run from the settings service once preferences are
 /// loaded: the channel is a preference, so checking any earlier would always
 /// use the stable default regardless of what the user chose.
+///
+/// Unconditional. It used to return early when `settings.updates.automatic`
+/// was off, which was defensible while an update was only ever an offer: the
+/// check is an outbound request, and not making it was a choice worth having.
+/// It stopped being defensible once a release the client can install itself
+/// became a gate, because a security update that a checkbox switches off is
+/// not one. The preference now governs what is *said* about an optional
+/// update rather than whether we find out about one at all.
 pub async fn check_on_startup(ctx: &ServiceCtx, out: &EventSink) {
-    if !out.with_state(|state| state.settings.updates.automatic) {
-        return;
-    }
     check(ctx, out).await;
 }
 
@@ -59,12 +66,66 @@ async fn check(ctx: &ServiceCtx, out: &EventSink) {
         Ok(None) => out.emit(ClientUpdateEvent::UpToDate),
         Ok(Some(release)) => {
             if should_update(&current, &release.version) {
+                announce(&release, &current, out);
                 out.emit(ClientUpdateEvent::Available { release })
             } else {
                 out.emit(ClientUpdateEvent::UpToDate)
             }
         }
     }
+
+    // After the outcome, and unconditionally. Two checks in a row usually
+    // settle on the same status, so without this a second "Check now" changed
+    // nothing on screen and read as a button that does nothing.
+    out.emit(ClientUpdateEvent::CheckCompleted {
+        at: chrono::Utc::now().to_rfc3339(),
+    });
+}
+
+/// Put a new version in the notification centre as well as on the banner.
+///
+/// The banner is at the top of the workspace and a settings line is three
+/// clicks away; neither reaches somebody who is in a game lobby when the
+/// startup check lands. This is the one thing the client has that persists
+/// across tabs and carries an unread mark.
+///
+/// Not `add_required`: an update is important, not urgent, and someone who has
+/// turned notifications off has said what they want.
+///
+/// Skipped entirely for an optional update when the user has turned optional
+/// update announcements off. A required release is announced regardless: they
+/// are about to meet the gate, and meeting it with no idea why would be worse.
+///
+/// Announced once per release rather than once per check. Two reasons to skip:
+/// the version was dismissed, which is the user saying they know, or it is
+/// already the release on offer, which means this check told us nothing new and
+/// a second click on "Check now" should not add a second identical entry.
+fn announce(release: &ClientRelease, current: &str, out: &EventSink) {
+    let skip = out.with_state(|state| {
+        (!state.settings.updates.automatic && !release.is_required())
+            || state.client_update.dismissed_version == release.version
+            || state
+                .client_update
+                .release
+                .as_ref()
+                .is_some_and(|known| known.version == release.version)
+    });
+    if skip {
+        return;
+    }
+    services::notifications::add(
+        out,
+        NotificationKind::ClientUpdate,
+        format!("Version {} is available", release.version),
+        if current.is_empty() {
+            "Open Settings to download it.".to_string()
+        } else {
+            format!("You are running {current}. Open Settings to download it.")
+        },
+        Some(NotificationAction::OpenSettings {
+            section: Some("updates".to_string()),
+        }),
+    );
 }
 
 async fn download(ctx: &ServiceCtx, out: &EventSink) {

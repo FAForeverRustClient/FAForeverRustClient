@@ -34,6 +34,10 @@ export function GameSettingsSection() {
     void save({ ...preferences, pipeLiveReplay });
   };
 
+  const setKeepGeneratedMaps = (keepGeneratedMaps: boolean) => {
+    void save({ ...preferences, keepGeneratedMaps });
+  };
+
   return (
     <>
       <SettingRow
@@ -44,6 +48,21 @@ export function GameSettingsSection() {
           checked={preferences.autoGenerateMaps ?? true}
           onChange={setAutoGenerate}
           label={t("settings.game.autoGenerateMaps")}
+        />
+      </SettingRow>
+
+      {/* Beside the switch that decides when maps are generated, because this
+          one decides what happens to them afterwards. It used to be a checkbox
+          inside the Generate map dialog, answered once per run at the moment
+          nobody has seen the maps yet. */}
+      <SettingRow
+        label={t("settings.game.keepGeneratedMaps")}
+        hint={t("settings.game.keepGeneratedMapsHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.keepGeneratedMaps ?? false}
+          onChange={setKeepGeneratedMaps}
+          label={t("settings.game.keepGeneratedMaps")}
         />
       </SettingRow>
 

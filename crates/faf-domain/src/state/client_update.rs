@@ -65,6 +65,16 @@ impl ClientRelease {
     pub fn is_installable(&self) -> bool {
         !self.download_url.is_empty()
     }
+
+    /// Whether a release of this shape is one the client insists on.
+    ///
+    /// The release half of [`ClientUpdateState::required_release`], split out
+    /// because the answer is wanted before the release reaches state: the
+    /// notification raised for a new version has to know whether it is
+    /// announcing news or a requirement.
+    pub fn is_required(&self) -> bool {
+        !self.pre_release && self.is_installable()
+    }
 }
 
 /// Where the update flow currently is.
@@ -135,6 +145,15 @@ pub struct ClientUpdateState {
     /// not also hide `0.4.0`: the reason a "don't show again" checkbox is the
     /// wrong shape for this.
     pub dismissed_version: String,
+    /// When the last check finished, RFC 3339. Empty until one has.
+    ///
+    /// Recorded because the status alone cannot answer "did my click do
+    /// anything". Checking twice in a row leaves the same terminal status both
+    /// times, so a second "Check now" produced no visible change at all and the
+    /// button read as broken. The status says what is true; this says when we
+    /// last found out.
+    #[serde(default)]
+    pub last_checked: String,
 }
 
 impl ClientUpdateState {
@@ -160,6 +179,48 @@ impl ClientUpdateState {
         };
         (showing && release.version != self.dismissed_version).then_some(release)
     }
+
+    /// The release the client must be updated to before it can be used again.
+    ///
+    /// A banner can be waved away, and an out-of-date client is not only a
+    /// client missing features: it is a client still running whatever was
+    /// wrong with the last build. So a stable release that this client can
+    /// install itself stops being an offer and becomes a gate.
+    ///
+    /// Three conditions, and each one is a refusal to trap somebody:
+    ///
+    /// - **A prerelease never forces.** Opting into prereleases is opting into
+    ///   testing, not into being locked out by every nightly.
+    /// - **A release with no installer for this platform never forces.** That
+    ///   is a normal outcome, not an error - a release may ship a Windows
+    ///   installer and nothing else - and gating on an update the client has
+    ///   no way to apply would leave that user with a client they cannot use
+    ///   and cannot fix.
+    /// - **Nothing forces until a check has actually found something.** A
+    ///   failed or unreachable check leaves `release` as `None`, so an update
+    ///   server having a bad day cannot lock every client out.
+    ///
+    /// Deliberately independent of [`Self::banner_release`]'s dismissal: the
+    /// point of a gate is that it is not the user's to dismiss.
+    pub fn required_release(&self) -> Option<&ClientRelease> {
+        let release = self.release.as_ref()?;
+        if !release.is_required() {
+            return None;
+        }
+        match &self.status {
+            // A download that failed keeps the gate up rather than opening it:
+            // the reason is shown and the button retries. Failing the download
+            // is not a way past the update.
+            ClientUpdateStatus::Available
+            | ClientUpdateStatus::Downloading { .. }
+            | ClientUpdateStatus::Ready { .. }
+            | ClientUpdateStatus::Installing
+            | ClientUpdateStatus::Failed { .. } => Some(release),
+            ClientUpdateStatus::Idle
+            | ClientUpdateStatus::Checking
+            | ClientUpdateStatus::UpToDate => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -178,6 +239,12 @@ pub enum ClientUpdateEvent {
     UpToDate,
     Available {
         release: ClientRelease,
+    },
+    /// A check settled, whichever way it went. Separate from the outcome
+    /// because the outcome is often identical to the previous one, and "we
+    /// asked, just now" is the part the user pressed the button for.
+    CheckCompleted {
+        at: String,
     },
     DownloadProgressed {
         received_bytes: u32,
@@ -250,6 +317,7 @@ pub fn reduce(state: &mut ClientUpdateState, event: &ClientUpdateEvent) {
             }
         }
         ClientUpdateEvent::Dismissed { version } => state.dismissed_version = version.clone(),
+        ClientUpdateEvent::CheckCompleted { at } => state.last_checked = at.clone(),
     }
 }
 
@@ -654,5 +722,123 @@ mod tests {
             },
         );
         assert!(state.banner_release().is_some());
+    }
+
+    /// The state after a check that found `version`, with `adjust` applied to
+    /// the release first.
+    fn offered(version: &str, adjust: impl FnOnce(&mut ClientRelease)) -> ClientUpdateState {
+        let mut found = release(version);
+        adjust(&mut found);
+        let mut state = ClientUpdateState::default();
+        reduce(&mut state, &ClientUpdateEvent::Available { release: found });
+        state
+    }
+
+    #[test]
+    fn a_stable_installable_release_is_required() {
+        let state = offered("0.4.0", |_| {});
+        assert_eq!(
+            state.required_release().map(|r| r.version.as_str()),
+            Some("0.4.0"),
+        );
+    }
+
+    #[test]
+    fn dismissing_hides_the_banner_and_not_the_gate() {
+        // The whole difference between the two: a dismissal is the user saying
+        // "I know", which is an answer to an offer and not to a requirement.
+        let mut state = offered("0.4.0", |_| {});
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Dismissed {
+                version: "0.4.0".into(),
+            },
+        );
+        assert_eq!(state.banner_release(), None);
+        assert!(state.required_release().is_some());
+    }
+
+    #[test]
+    fn a_prerelease_is_offered_and_never_required() {
+        let state = offered("0.4.0-rc1", |release| release.pre_release = true);
+        assert!(state.banner_release().is_some());
+        assert_eq!(state.required_release(), None);
+    }
+
+    #[test]
+    fn a_release_this_platform_cannot_install_is_never_required() {
+        // Otherwise a Linux user, for whom a release may legitimately ship no
+        // installer, is locked out of a client with no way to satisfy the
+        // demand it is making.
+        let state = offered("0.4.0", |release| release.download_url.clear());
+        assert!(state.banner_release().is_some());
+        assert_eq!(state.required_release(), None);
+    }
+
+    #[test]
+    fn nothing_is_required_until_a_check_has_found_something() {
+        let mut state = ClientUpdateState::default();
+        assert_eq!(state.required_release(), None);
+
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::CheckStarted {
+                current_version: "0.3.0".into(),
+            },
+        );
+        assert_eq!(state.required_release(), None);
+
+        reduce(&mut state, &ClientUpdateEvent::UpToDate);
+        assert_eq!(state.required_release(), None);
+    }
+
+    #[test]
+    fn an_update_server_having_a_bad_day_locks_nobody_out() {
+        let mut state = ClientUpdateState::default();
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::CheckStarted {
+                current_version: "0.3.0".into(),
+            },
+        );
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Failed {
+                reason: "github unreachable".into(),
+            },
+        );
+        assert_eq!(state.required_release(), None);
+    }
+
+    #[test]
+    fn a_failed_download_keeps_the_gate_up() {
+        // Failing the download is not a way past the update; the gate shows
+        // the reason and the button retries.
+        let mut state = offered("0.4.0", |_| {});
+        reduce(
+            &mut state,
+            &ClientUpdateEvent::Failed {
+                reason: "connection reset".into(),
+            },
+        );
+        assert!(state.required_release().is_some());
+    }
+
+    #[test]
+    fn the_gate_stays_up_through_the_whole_install() {
+        let mut state = offered("0.4.0", |_| {});
+        for event in [
+            ClientUpdateEvent::DownloadProgressed {
+                received_bytes: 512,
+                total_bytes: 1024,
+            },
+            ClientUpdateEvent::Downloaded {
+                path: "installer.exe".into(),
+            },
+            ClientUpdateEvent::Installing,
+        ] {
+            reduce(&mut state, &event);
+            assert!(state.required_release().is_some(), "{event:?}");
+        }
     }
 }

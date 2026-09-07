@@ -14,6 +14,7 @@ import { ClientStatusBar } from "../status/ClientStatusBar";
 import { InstallBanner } from "./InstallBanner";
 import { WebviewEngineBanner } from "./WebviewEngineBanner";
 import { UpdateBanner } from "../updates/UpdateBanner";
+import { UpdateGate } from "../updates/UpdateGate";
 import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
@@ -195,6 +196,9 @@ export function AppShell() {
 
       </main>
 
+      {/* Last, and outside the banner row: this one is a dialog over the
+          whole client rather than a strip inside it. */}
+      <UpdateGate />
       <ClientStatusBar />
       <ModReplacementDialog />
       <PlayerCardModal />

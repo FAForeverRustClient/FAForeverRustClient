@@ -1081,8 +1081,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.copy": "Копировать",
   "settings.diagnostics.close": "Закрыть",
 
-  "settings.updates.checkUpdatesAt": "Проверять обновления при запуске",
-  "settings.updates.checkUpdatesAtHint": "Запрашивает страницу выпусков проекта, есть ли более новый клиент. Это единственный исходящий запрос до вашего входа.",
   "settings.updates.includePreReleases": "Включать предварительные версии",
   "settings.updates.includePreReleasesHint": "Предлагает также кандидаты в выпуск и бета-сборки. Они первыми получают исправления и первыми ломаются.",
   "settings.updates.updateStatus": "Состояние обновлений",
@@ -1139,8 +1137,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.paths.custom": "Своё",
   "settings.paths.automatic": "Автоматически",
   "settings.paths.overrideNote": "В каждой строке показано текущее расположение. Незаданные строки определяются автоматически, переменная окружения FAF_* по-прежнему имеет приоритет. Изменение действует сразу; существующее содержимое не переносится.",
-  "maps.generate.keepMaps": "Сохранить эти карты",
-  "maps.generate.keepMapsHint": "Защищает карты этого запуска при очистке во вкладке «Карты».",
   "settings.paths.gameInstall": "Установка игры",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe для входа в игры и участия в них.",
   "settings.paths.replayInstall": "Установка для реплеев",

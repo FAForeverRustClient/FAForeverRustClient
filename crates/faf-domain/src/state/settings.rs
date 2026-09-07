@@ -239,6 +239,14 @@ impl AppearancePreferences {
 pub struct NotificationPreferences {
     pub enabled: bool,
     pub desktop: bool,
+    /// Whether [`Self::desktop`] covers every notification kind, or only the
+    /// few that cannot wait.
+    ///
+    /// Off, which is the default and the fix for the client having mirrored its
+    /// whole notification stream to the operating system: see
+    /// [`super::NotificationKind::raises_os_notification`] for the list and the
+    /// reasoning. On restores the old behaviour for anyone who wants it.
+    pub desktop_all_kinds: bool,
     pub sound: bool,
     pub notify_when_focused: bool,
     pub match_found: bool,
@@ -262,6 +270,7 @@ impl Default for NotificationPreferences {
         Self {
             enabled: true,
             desktop: true,
+            desktop_all_kinds: false,
             sound: true,
             notify_when_focused: false,
             match_found: true,
@@ -294,6 +303,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
         struct Wire {
             enabled: bool,
             desktop: bool,
+            desktop_all_kinds: bool,
             sound: bool,
             notify_when_focused: bool,
             match_found: bool,
@@ -317,6 +327,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                 Self {
                     enabled: defaults.enabled,
                     desktop: defaults.desktop,
+                    desktop_all_kinds: defaults.desktop_all_kinds,
                     sound: defaults.sound,
                     notify_when_focused: defaults.notify_when_focused,
                     match_found: defaults.match_found,
@@ -340,6 +351,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
         Ok(Self {
             enabled: wire.enabled,
             desktop: wire.desktop,
+            desktop_all_kinds: wire.desktop_all_kinds,
             sound: wire.sound,
             notify_when_focused: wire.notify_when_focused,
             match_found: wire.match_found,
@@ -833,6 +845,23 @@ pub struct GamePreferences {
     /// does not. See `infra::replay` for the full history.
     #[serde(default)]
     pub pipe_live_replay: bool,
+    /// Keep every map the generator produces, so clearing generated maps
+    /// spares them.
+    ///
+    /// This used to be a checkbox inside the Generate map dialog, decided per
+    /// run on the theory that "generate one to keep, then three throwaways" is
+    /// how people work. It is not: a run is started to look at maps, and
+    /// whether they are worth keeping is known afterwards, by which point the
+    /// dialog is closed. One switch that holds for every run is the decision
+    /// people were actually making.
+    ///
+    /// Off by default, which is what the per-run checkbox defaulted to: a
+    /// generated map is disposable until somebody says otherwise. Names are
+    /// still recorded run by run into [`SettingsState::kept_generated_maps`],
+    /// so turning the switch off later does not retroactively condemn what was
+    /// kept while it was on.
+    #[serde(default)]
+    pub keep_generated_maps: bool,
 }
 
 fn default_true() -> bool {
@@ -856,6 +885,7 @@ impl Default for GamePreferences {
             cache_size_alert_gb: default_cache_size_alert_gb(),
             cache_rolling_branches: false,
             pipe_live_replay: false,
+            keep_generated_maps: false,
         }
     }
 }
@@ -937,11 +967,20 @@ impl<'de> Deserialize<'de> for DiscordPreferences {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePreferences {
-    /// Check for a newer release at startup.
+    /// Announce an optional update: the banner, and the notification.
     ///
-    /// Defaulted on, matching the Java client, which checks unconditionally.
-    /// The switch exists because the check is an outbound request to GitHub
-    /// that some users would rather not make on every launch.
+    /// This used to decide whether the startup check ran at all, which made
+    /// the update the client insists on into something a checkbox could
+    /// switch off. The check is therefore unconditional now and this governs
+    /// only what is *said* about an update the user is free to postpone. An
+    /// update the client requires ignores it, and so does the Settings status
+    /// line, which is an answer to a button the user just pressed.
+    ///
+    /// The cost is the privacy affordance this switch used to carry: the
+    /// startup check is an outbound request to GitHub, and it is no longer
+    /// avoidable. Nothing else about it changed - it still goes to the release
+    /// page alone, still sends nothing about the user, and is still the only
+    /// request made before login.
     pub automatic: bool,
     /// Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
     /// between two entirely separate check tasks.

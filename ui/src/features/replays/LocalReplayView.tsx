@@ -357,6 +357,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
         <ReplayDetailPanel
           replay={localReplayToVaultReplay(openReplay, mapVault)}
           busy={busy}
+          source="local"
           localPath={openReplay.path}
           downloadState="downloaded"
           onClose={() => setOpenReplay(null)}

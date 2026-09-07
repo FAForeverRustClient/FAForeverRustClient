@@ -8,12 +8,16 @@ import type { Game, PlayerProfile, VaultMap, VaultMod } from "../../ipc/bindings
 import { ipc } from "../../ipc/client";
 import { GameMapImage } from "./GameMapImage";
 import { findVaultMap, findVaultMapByFolder, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
-import { requestModVaultFocus } from "../mods/modVaultFocus";
 import { formatRelativeDuration } from "../../shared/durations";
 import { flagSrc } from "../../shared/countryFlags";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
+import { generatorParameters } from "../maps/generatorPresentation";
+import {
+  generatedMapDescriptionRows,
+  mergeGeneratorRows,
+} from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -669,38 +673,53 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
   const presentation = mapPresentation(vault, game.map);
   const vaultMap = findVaultMap(vault, game.map);
   const maps = useAppStore((state) => state.state.maps);
-  const mods = useAppStore((state) => state.state.mods);
   const lobby = useAppStore((state) => state.state.lobby);
-  const social = useAppStore((state) => state.state.social);
   const player = useAppStore((state) => state.state.auth.player);
-  const isRanked = isCustomGameRanked(game, vault, mods.vault);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const isGenerated = isGeneratedMap(game.map);
-  const installed = maps.installed.some(
+  const installedMap = maps.installed.find(
     (map) =>
       map.folderName.toLowerCase() === game.map.toLowerCase() ||
       map.folderName.toLowerCase().startsWith(`${game.map.toLowerCase()}.`),
   );
+  const installed = installedMap !== undefined;
   const isGeneratingThisMap =
     mapGenStatus.type === "generating" ||
     mapGenStatus.type === "downloading" ||
     mapGenStatus.type === "resolvingVersion";
-  const players = playingCount(game);
-  const simMods = Object.entries(game.simMods);
-  const teams = Object.entries(game.teams).filter(([, p]) => p.length > 0);
-  const ratingRange = game.ratingMin !== null || game.ratingMax !== null
-    ? t("lobby.browser.ratingBetween", { min: game.ratingMin ?? t("lobby.browser.any"), max: game.ratingMax ?? t("lobby.browser.any") })
-    : t("lobby.browser.openRange");
+  const [copiedName, setCopiedName] = useState(false);
+  useEffect(() => {
+    if (!copiedName) return;
+    const timer = window.setTimeout(() => setCopiedName(false), 2_000);
+    return () => window.clearTimeout(timer);
+  }, [copiedName]);
 
-  const [expandedMods, setExpandedMods] = useState(false);
-
-  // Hand the mod to the vault tab and go there. Closing first, because the
-  // dialog belongs to a tab that is about to be unmounted underneath it.
-  const openModInVault = (mod: string) => {
-    requestModVaultFocus(mod);
-    onClose();
-    ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "mods" } } });
-  };
+  // A generator name is the whole recipe, not a label, so the settings that
+  // produced this map are already in the client's hands: decoding is pure
+  // arithmetic, no download and no server round trip. Asking once per open
+  // dialog is enough, and a name that does not decode simply yields nothing:
+  // the row above still shows it verbatim, which is the honest fallback for a
+  // generator newer than this client's tables.
+  const decodedNames = useAppStore((state) => state.state.mapGenerator.decoded);
+  const decoded = isGenerated ? decodedNames?.[game.map] : undefined;
+  useEffect(() => {
+    if (!isGenerated || decoded) return;
+    ipc.send({
+      kind: "MapGenerator",
+      command: { type: "decodeNames", payload: { mapNames: [game.map] } },
+    });
+  }, [isGenerated, decoded, game.map]);
+  // Two sources, and the better one is only sometimes there. The name is
+  // always available and says what the generator was *asked* for. The map's
+  // own description says what it *did* - biome, terrain, resources, props and
+  // the three symmetries, none of which a predefined style encodes into a
+  // name - but only somebody who has the map on disk has it. So the
+  // description leads where there is one, and the name fills in the rest:
+  // the generator version, and the densities a description never mentions.
+  const generatorRows = mergeGeneratorRows(
+    generatedMapDescriptionRows(isGenerated ? installedMap?.description : null, t),
+    decoded ? generatorParameters(decoded, t) : [],
+  );
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
@@ -746,145 +765,98 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           <p>{game.title}</p>
         </div>
       </header>
-      <div className="game-preview-dialog-body">
-        <div className="game-preview-dialog-map">
-          <GameMapImage
-            mapName={game.map}
-            vault={vault}
-            className="game-preview-dialog-image"
-            placeholderClassName="game-preview-dialog-placeholder"
-            large
-          />
-          {game.passwordProtected && (
-            <span className="game-preview-dialog-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
-              <Icon name="lock" size={13} />
-              {t("lobby.browser.private")}
-            </span>
-          )}
-          {!installed && isGenerated && (
-            <Button
-              className="game-preview-dialog-map-action"
-              disabled={isGeneratingThisMap}
-              onClick={() =>
-                ipc.send({
-                  kind: "MapGenerator",
-                  command: {
-                    type: "generateNamed",
-                    payload: {
-                      mapName: game.map,
-                    },
+      <div className="game-preview-dialog-map">
+        <GameMapImage
+          mapName={game.map}
+          vault={vault}
+          className="game-preview-dialog-image"
+          placeholderClassName="game-preview-dialog-placeholder"
+          large
+        />
+        {game.passwordProtected && (
+          <span className="game-preview-dialog-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
+            <Icon name="lock" size={13} />
+            {t("lobby.browser.private")}
+          </span>
+        )}
+        {!installed && isGenerated && (
+          <Button
+            className="game-preview-dialog-map-action"
+            disabled={isGeneratingThisMap}
+            onClick={() =>
+              ipc.send({
+                kind: "MapGenerator",
+                command: {
+                  type: "generateNamed",
+                  payload: {
+                    mapName: game.map,
                   },
-                })
-              }
-            >
-              <Icon name="plus" size={13} />
-              {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
-            </Button>
-          )}
-        </div>
-        <section className="game-preview-dialog-info" aria-label={t("lobby.browser.gameDetails")}>
-          <div className="game-preview-dialog-host">
-            <span>{t("lobby.browser.hostedBy")}</span>
-            <button
-              type="button"
-              className="game-team-player"
-              onClick={() => openPlayerCard(findPlayer(social, game.host)?.id ?? null, game.host)}
-              title={`Open ${game.host}'s profile`}
-            >
-              <strong><PlayerName name={game.host} /></strong>
-            </button>
-          </div>
-          <dl className="game-preview-dialog-summary">
-            <div><dt>{t("lobby.host.featuredMod")}</dt><dd>{game.modName || "faf"}</dd></div>
-            <div><dt>{t("lobby.browser.players")}</dt><dd>{players} / {game.maxPlayers}</dd></div>
-            <div><dt>{t("lobby.browser.averageRating")}</dt><dd>{game.averageRating || t("lobby.browser.unrated")}</dd></div>
-            <div><dt>{t("lobby.browser.ratingRange")}</dt><dd>{ratingRange}</dd></div>
-            <div>
-              <dt>{t("lobby.browser.ranking")}</dt>
-              <dd>
-                <span className={isRanked ? "map-vault-type ranked" : "map-vault-type unranked"}>
-                  {t(isRanked ? "lobby.browser.ranked" : "lobby.browser.unranked")}
-                </span>
-              </dd>
-            </div>
-            {vaultMap && <div><dt>{t("lobby.browser.mapSize")}</dt><dd>{sizeLabel(vaultMap)}</dd></div>}
-          </dl>
-          {simMods.length > 0 && (
-            <div className="game-preview-dialog-section">
-              <span>{t("lobby.browser.simMods")}</span>
-              <div className="game-detail-tags">
-                {(expandedMods ? simMods : simMods.slice(0, 4)).map(([uid, mod]) => (
-                  <button
-                    type="button"
-                    className="tag tag-action"
-                    key={uid}
-                    title={t("lobby.details.openModInVault", { mod })}
-                    onClick={() => openModInVault(mod)}
-                  >
-                    {mod}
-                  </button>
-                ))}
-                {simMods.length > 4 && (
-                  <button
-                    type="button"
-                    className="game-detail-more-tags"
-                    onClick={() => setExpandedMods((prev) => !prev)}
-                  >
-                    {expandedMods
-                      ? t("lobby.details.showLessMods")
-                      : t("lobby.details.showMoreMods", { count: simMods.length - 4 })}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          {teams.length > 0 && (
-            <div className="game-preview-dialog-section">
-              <span>{t("lobby.details.teams")}</span>
-              <div className="game-preview-dialog-teams">
-                {teams.map(([team, teamPlayers]) => (
-                  <div className="game-team" key={team}>
-                    <div className="game-team-header">
-                      <span>{displayTeamName(team, teams.length === 1)}</span>
-                    </div>
-                    <ul className="game-team-player-list">
-                      {teamPlayers.map((login) => {
-                        const profile = findPlayer(social, login);
-                        const rating = displayedRating(profile);
-                        return (
-                          <li key={login} className="game-preview-player-row">
-                            {profile?.country ? (
-                              <img
-                                src={flagSrc(profile.country)}
-                                alt={profile.country.toUpperCase()}
-                                width={16}
-                                height={16}
-                                decoding="async"
-                                draggable={false}
-                              />
-                            ) : (
-                              <i className="game-lineup-flag-placeholder" />
-                            )}
-                            <button
-                              type="button"
-                              className="game-team-player"
-                              onClick={() => openPlayerCard(profile?.id ?? null, login)}
-                              title={`Open ${login}'s profile`}
-                            >
-                              <PlayerName name={login} />
-                            </button>
-                            {rating !== null && <span className="player-rating">{rating}</span>}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+                },
+              })
+            }
+          >
+            <Icon name="plus" size={13} />
+            {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
+          </Button>
+        )}
       </div>
+      {/* The full technical name. It is nowhere else in the client, and it is
+          the one thing map generator hosting needs: generate many, note the
+          names of the good ones, host them one after another. Untruncated,
+          because half a generator name identifies nothing, and copyable,
+          because nobody retypes forty characters of Base32.
+
+          What is copied is the value the Generate map dialog's map-name field
+          takes back, which is the only round trip that exists for a generated
+          map: it is not in the vault, so pasting its name into the map search
+          would find nothing. That is the trap the Python client's copy button
+          falls into. */}
+      <div className="game-preview-dialog-name">
+        <span>{t("lobby.browser.mapFullName")}</span>
+        <code>{game.map}</code>
+        <button
+          type="button"
+          className="game-preview-dialog-copy"
+          aria-label={t(copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+          title={t(
+            copiedName
+              ? "lobby.browser.mapNameCopied"
+              : isGenerated
+                ? "lobby.browser.copyMapNameGenerated"
+                : "lobby.browser.copyMapName",
+          )}
+          onClick={() =>
+            ipc.run(navigator.clipboard.writeText(game.map).then(() => setCopiedName(true)))
+          }
+        >
+          <Icon name={copiedName ? "check" : "copy"} size={13} />
+        </button>
+      </div>
+      {/* All that is left of the metadata column: the facts that are about the
+          map rather than about the game. Host, featured mod, players, ratings
+          and teams are the details rail's job, and repeating them here in a
+          narrower box is what left the map no room to be bigger than the
+          thumbnail the reader clicked.
+
+          For a generated map the facts are the generator settings, read out of
+          the name. Its own size row supersedes the catalogue's, because a
+          generated map has no catalogue entry to take one from. */}
+      {(generatorRows.length > 0 || vaultMap) && (
+        <dl className="game-preview-dialog-facts">
+          {generatorRows.length === 0 && vaultMap && (
+            <div>
+              <dt>{t("lobby.browser.mapSize")}</dt>
+              <dd>{sizeLabel(vaultMap)}</dd>
+            </div>
+          )}
+          {generatorRows.map((row) => (
+            <div key={row.key}>
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       <footer className="game-preview-dialog-actions play-dialog-actions">
         {!installed && !isGenerated && vaultMap && (
           <Button
@@ -1019,7 +991,7 @@ export function CustomGamesBrowser({
       </footer>
 
       {!onPreviewProp && internalPreviewGame && (
-        <Modal onClose={() => setInternalPreviewGame(null)}>
+        <Modal className="game-preview-modal" onClose={() => setInternalPreviewGame(null)}>
           <GamePreviewDialog
             game={internalPreviewGame}
             vault={vault}

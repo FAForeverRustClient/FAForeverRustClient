@@ -814,7 +814,7 @@ export function LobbyView() {
         />
       )}
       {previewGame && (
-        <Modal onClose={() => setPreviewGame(null)}>
+        <Modal className="game-preview-modal" onClose={() => setPreviewGame(null)}>
           <GamePreviewDialog
             game={previewGame}
             vault={maps.vault}

@@ -932,6 +932,14 @@ export type ClientUpdateEvent =
 	currentVersion: string,
 } } | { type: "upToDate" } | { type: "available"; payload: {
 	release: ClientRelease,
+} } |
+/**
+ *  A check settled, whichever way it went. Separate from the outcome
+ *  because the outcome is often identical to the previous one, and "we
+ *  asked, just now" is the part the user pressed the button for.
+ */
+{ type: "checkCompleted"; payload: {
+	at: string,
 } } | { type: "downloadProgressed"; payload: {
 	receivedBytes: number,
 	totalBytes: number,
@@ -956,6 +964,16 @@ export type ClientUpdateState = {
 	 *  wrong shape for this.
 	 */
 	dismissedVersion: string,
+	/**
+	 *  When the last check finished, RFC 3339. Empty until one has.
+	 *
+	 *  Recorded because the status alone cannot answer "did my click do
+	 *  anything". Checking twice in a row leaves the same terminal status both
+	 *  times, so a second "Check now" produced no visible change at all and the
+	 *  button read as broken. The status says what is true; this says when we
+	 *  last found out.
+	 */
+	lastChecked?: string,
 };
 
 /**  Where the update flow currently is. */
@@ -1687,6 +1705,24 @@ export type GamePreferences = {
 	 *  does not. See `infra::replay` for the full history.
 	 */
 	pipeLiveReplay?: boolean,
+	/**
+	 *  Keep every map the generator produces, so clearing generated maps
+	 *  spares them.
+	 *
+	 *  This used to be a checkbox inside the Generate map dialog, decided per
+	 *  run on the theory that "generate one to keep, then three throwaways" is
+	 *  how people work. It is not: a run is started to look at maps, and
+	 *  whether they are worth keeping is known afterwards, by which point the
+	 *  dialog is closed. One switch that holds for every run is the decision
+	 *  people were actually making.
+	 *
+	 *  Off by default, which is what the per-run checkbox defaulted to: a
+	 *  generated map is disposable until somebody says otherwise. Names are
+	 *  still recorded run by run into [`SettingsState::kept_generated_maps`],
+	 *  so turning the switch off later does not retroactively condemn what was
+	 *  kept while it was on.
+	 */
+	keepGeneratedMaps?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -1817,18 +1853,6 @@ export type GeneratorOptions = {
 	 *  hatch both clients keep for generator flags newer than the client.
 	 */
 	commandLineArgs: string,
-	/**
-	 *  Keep the maps this run produces, whatever the Maps tab is later asked
-	 *  to sweep away.
-	 *
-	 *  The one option here that never reaches the generator: it is a decision
-	 *  about the maps afterwards, not about how to build them. It lives with
-	 *  the run because that is when it is decided - generate a map to keep,
-	 *  then generate three throwaways, and only the first survives - so the
-	 *  names of a kept run are recorded as it finishes rather than the flag
-	 *  standing as a policy over every generated map at once.
-	 */
-	keepMaps?: boolean,
 };
 
 /**
@@ -3617,11 +3641,26 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  */
 "mapGenerated" |
 /**  Game file cache exceeded user-configured threshold size. */
-"gameCacheAlert" | "error";
+"gameCacheAlert" |
+/**
+ *  A newer client release exists. The banner says so too, but the banner
+ *  lives at the top of one workspace and this survives a tab change.
+ */
+"clientUpdate" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
 	desktop: boolean,
+	/**
+	 *  Whether [`Self::desktop`] covers every notification kind, or only the
+	 *  few that cannot wait.
+	 *
+	 *  Off, which is the default and the fix for the client having mirrored its
+	 *  whole notification stream to the operating system: see
+	 *  [`super::NotificationKind::raises_os_notification`] for the list and the
+	 *  reasoning. On restores the old behaviour for anyone who wants it.
+	 */
+	desktopAllKinds: boolean,
 	sound: boolean,
 	notifyWhenFocused: boolean,
 	matchFound: boolean,
@@ -3643,6 +3682,23 @@ export type NotificationPreferences = {
 export type NotificationState = {
 	items: ClientNotification[],
 };
+
+/**
+ *  What the vault knows about one game id, looked up for a replay the client
+ *  only has as a file on disk.
+ *
+ *  A `.fafreplay` header carries who played and at what rating, and nothing
+ *  about what the game did to those ratings: rating journals live on the
+ *  server. So the detail panel for a local replay asks the vault for the one
+ *  game, and this is the answer. All four states are distinct to the reader:
+ *  [`Self::Missing`] is "the vault has no such game" (a skirmish against AI, a
+ *  replay from another install), which is a different sentence from
+ *  [`Self::Failed`] ("we could not ask"), and both are different from having
+ *  no entry at all, which means nobody has asked yet.
+ */
+export type OnlineLookup = { type: "loading" } | { type: "found"; payload: VaultReplay } | { type: "missing" } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 /**
  *  One organiser of an event, as an organiser sees the list.
@@ -4379,6 +4435,17 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
  */
 { type: "deleteLocal"; payload: {
 	path: string,
+} } |
+/**
+ *  Ask the vault what it knows about one game id, without disturbing the
+ *  browse/search results in [`ReplayState::vault`].
+ *
+ *  This exists for local replays: the file on disk has no rating data in
+ *  it, so the only honest way to show a rating change for one is to ask
+ *  the server about the game it came from.
+ */
+{ type: "lookUpOnline"; payload: {
+	uid: number,
 } };
 
 export type ReplayDetails = {
@@ -4472,6 +4539,21 @@ export type ReplayEvent = { type: "connecting" } |
 	uid: number,
 	details: ReplayDetails,
 } } | { type: "detailsFailed"; payload: {
+	uid: number,
+	reason: string,
+} } |
+/**  The vault is being asked about one game id (see [`OnlineLookup`]). */
+{ type: "onlineLookupStarted"; payload: {
+	uid: number,
+} } |
+/**
+ *  The answer. `replay` is `None` when the vault has no such game, which
+ *  is a result, not a failure.
+ */
+{ type: "onlineLookupFinished"; payload: {
+	uid: number,
+	replay: VaultReplay | null,
+} } | { type: "onlineLookupFailed"; payload: {
 	uid: number,
 	reason: string,
 } };
@@ -4646,6 +4728,12 @@ export type ReplayState = {
 	replayDetails?: { [key in number]: ReplayDetails },
 	detailsLoading?: number | null,
 	detailsError?: string | null,
+	/**
+	 *  Vault answers for single game ids, keyed by that id. Filled by
+	 *  [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
+	 *  [`OnlineLookup`].
+	 */
+	onlineLookups?: { [key in number]: OnlineLookup },
 };
 
 export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
@@ -7110,11 +7198,20 @@ export type UiDensity = "compact" | "comfortable";
 /**  Client self-update: whether to look for a newer build, and which ones count. */
 export type UpdatePreferences = {
 	/**
-	 *  Check for a newer release at startup.
+	 *  Announce an optional update: the banner, and the notification.
 	 *
-	 *  Defaulted on, matching the Java client, which checks unconditionally.
-	 *  The switch exists because the check is an outbound request to GitHub
-	 *  that some users would rather not make on every launch.
+	 *  This used to decide whether the startup check ran at all, which made
+	 *  the update the client insists on into something a checkbox could
+	 *  switch off. The check is therefore unconditional now and this governs
+	 *  only what is *said* about an update the user is free to postpone. An
+	 *  update the client requires ignores it, and so does the Settings status
+	 *  line, which is an answer to a button the user just pressed.
+	 *
+	 *  The cost is the privacy affordance this switch used to carry: the
+	 *  startup check is an outbound request to GitHub, and it is no longer
+	 *  avoidable. Nothing else about it changed - it still goes to the release
+	 *  page alone, still sends nothing about the user, and is still the only
+	 *  request made before login.
 	 */
 	automatic: boolean,
 	/**
