@@ -57,7 +57,7 @@ export function isCustomGameRanked(
   vaultMaps: VaultMap[],
   vaultMods: VaultMod[],
 ): boolean {
-  if (game.modName.toLowerCase() === "coop" || game.gameType.toLowerCase() === "coop") {
+  if (isCoopGame(game)) {
     return false;
   }
 
@@ -81,6 +81,35 @@ export function isCustomGameRanked(
   }
 
   return true;
+}
+
+/**
+ * Is this a co-op mission rather than a custom game?
+ *
+ * The lobby says so twice, and older servers only fill one of the two: the
+ * featured mod is what the game was hosted with, the game type is what the
+ * server classified it as.
+ */
+export function isCoopGame(game: Game): boolean {
+  return (
+    game.modName.toLocaleLowerCase() === "coop" || game.gameType.toLocaleLowerCase() === "coop"
+  );
+}
+
+/**
+ * Whether a game's tag row should carry the "unranked" marker.
+ *
+ * Co-op is never rated: no mission has ever moved a rating, so the tag sat on
+ * every row of the co-op browser and distinguished none of them from another.
+ * A marker that is always present is not a warning, it is furniture, and it
+ * read as if something were wrong with each of those games.
+ */
+export function showsUnrankedTag(
+  game: Game,
+  vaultMaps: VaultMap[],
+  vaultMods: VaultMod[],
+): boolean {
+  return !isCoopGame(game) && !isCustomGameRanked(game, vaultMaps, vaultMods);
 }
 
 interface Props {
@@ -467,7 +496,7 @@ export const GameTile = memo(function GameTile({
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const simModCount = Object.keys(game.simMods).length;
-  const isRanked = isCustomGameRanked(game, vault, vaultMods);
+  const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
 
@@ -529,7 +558,7 @@ export const GameTile = memo(function GameTile({
               {simModCount} SIM
             </i>
           )}
-          {!isRanked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+          {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
             <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
               {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
@@ -565,7 +594,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 }) {
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
-  const isRanked = isCustomGameRanked(game, vault, vaultMods);
+  const unranked = showsUnrankedTag(game, vault, vaultMods);
   const simModCount = Object.keys(game.simMods).length;
   const players = playingCount(game);
   const currentNow = now ?? Date.now();
@@ -624,7 +653,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                     {simModCount} SIM
                   </i>
                 )}
-                {!isRanked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+                {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
                 {(game.ratingMin !== null || game.ratingMax !== null) && (
                   <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
                     {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
