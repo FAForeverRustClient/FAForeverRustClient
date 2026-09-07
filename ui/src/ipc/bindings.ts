@@ -123,22 +123,39 @@ export type AuthCommand =
 /**  Cancel an in-flight browser login attempt and return to logged-out state. */
 { type: "cancelLogin" } |
 /**  Try a previously remembered refresh token. No-op when none is stored. */
-{ type: "restore" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
+{ type: "restore" } |
+/**  Open the client without signing in, on local files only. */
+{ type: "playOffline" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
 export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: {
 	player: Player,
 } } | { type: "testLoggedIn"; payload: {
 	player: Player,
-} } | { type: "loginFailed"; payload: {
+} } |
+/**  The shell opened without an account. See [`AuthMode::Offline`]. */
+{ type: "wentOffline" } | { type: "loginFailed"; payload: {
 	message: string,
 } } | { type: "loggedOut" };
 
+/**  Where the active shell session came from. */
+export type AuthMode =
+/**  FAF OAuth: a real account, and the only mode that reaches the server. */
+"account" |
+/**  The local, credential-free UI test path of a development build. */
+"test" |
 /**
- *  Identifies whether the active shell session came from FAF OAuth or the
- *  local, credential-free UI test path.
+ *  No account at all: the client opened on what it has on this disk.
+ *
+ *  Deliberately not a fabricated player. Nothing signed in, so nothing is
+ *  claimed about who is at the keyboard, and the shell offers only the
+ *  parts of itself that never ask the server a question. What that leaves
+ *  is the local replay archive, which is the reason the mode exists: a
+ *  player who cannot sign in, whether their account is gone, banned or
+ *  simply not reachable right now, can still watch the games on their own
+ *  machine.
  */
-export type AuthMode = "account" | "test";
+"offline";
 
 export type AuthState = {
 	status: AuthStatus,
@@ -6810,6 +6827,22 @@ export type TrainingDocument = {
 	resourceId: string,
 	markdown: string,
 	status: TrainingStatus,
+	/**
+	 *  The `faf-bo/1` envelope, verbatim, when the entry carries one.
+	 *
+	 *  Carried as text rather than parsed here on purpose. Nothing in this
+	 *  crate reasons about a recorded run: no filter reads it, no
+	 *  recommendation scores it, and it is a drawing for one pane. Modelling
+	 *  its dozen nested shapes would put them in every generated binding and
+	 *  in every conformance fixture, to buy a type check the view can do for
+	 *  itself.
+	 */
+	recording: string,
+	/**
+	 *  Tracked apart from `status`, because a missing recording must not read
+	 *  as a missing guide. The prose is the entry; the run is the bonus.
+	 */
+	recordingStatus: TrainingStatus,
 };
 
 export type TrainingEvent = { type: "loading" } | { type: "loaded"; payload: {
@@ -6832,6 +6865,14 @@ export type TrainingEvent = { type: "loading" } | { type: "loaded"; payload: {
 	resourceId: string,
 	markdown: string,
 } } | { type: "guideFailed"; payload: {
+	resourceId: string,
+	reason: string,
+} } | { type: "recordingReading"; payload: {
+	resourceId: string,
+} } | { type: "recordingRead"; payload: {
+	resourceId: string,
+	envelope: string,
+} } | { type: "recordingFailed"; payload: {
 	resourceId: string,
 	reason: string,
 } } | { type: "reviewOpened"; payload: {
@@ -7031,6 +7072,18 @@ export type TrainingResource = {
 	 */
 	approvedBy: string,
 	updatedAt: string,
+	/**
+	 *  A recorded run of this build order, as a `faf-bo/1` envelope.
+	 *
+	 *  Stated by the catalogue, unlike [`Self::readable`], but kept only when
+	 *  it points into the repository this build trusts: an address that does
+	 *  not is dropped where the manifest is parsed, so what survives here is
+	 *  either a document this client will fetch or nothing at all.
+	 *
+	 *  A build order with one is drawn as what happened rather than as what
+	 *  was written down: the order over time, and the ground it happened on.
+	 */
+	recordingUrl: string,
 	/**
 	 *  Whether this entry's text can be read in the tab rather than opened in a
 	 *  browser.
