@@ -798,7 +798,7 @@ export const en = {
   "lobby.party.randomFaction": "Random faction",
   "lobby.party.noMessages": "No party messages yet.",
   "lobby.party.joiningChannel": "Joining the party channel…",
-  "lobby.party.chat.invite": "Invite someone to your party and this becomes a private room for agreeing factions and queues before you search.",
+  "lobby.party.chat.invite": "Invite someone to your party and this becomes a private room.",
   "lobby.party.chat.awaitingOwner": "Waiting for the party owner's name before the room can be opened.",
   "lobby.playerCard.loadingPlacement": "Loading placement",
   "lobby.playerCard.unlisted": "Unlisted",

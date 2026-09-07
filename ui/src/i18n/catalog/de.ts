@@ -721,7 +721,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.party.randomFaction": "Zufällige Fraktion",
   "lobby.party.noMessages": "Noch keine Gruppennachrichten.",
   "lobby.party.joiningChannel": "Gruppenkanal wird betreten…",
-  "lobby.party.chat.invite": "Lade jemanden in deine Gruppe ein, dann wird daraus ein privater Raum, um vor der Suche Fraktionen und Warteschlangen abzustimmen.",
+  "lobby.party.chat.invite": "Lade jemanden in deine Gruppe ein, dann wird daraus ein privater Raum.",
   "lobby.party.chat.awaitingOwner": "Der Raum wartet noch auf den Namen des Gruppenleiters.",
   "lobby.playerCard.loadingPlacement": "Platzierung wird geladen",
   "lobby.playerCard.unlisted": "Nicht gelistet",
