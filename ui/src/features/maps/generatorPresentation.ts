@@ -161,6 +161,97 @@ export function summariseDecodedName(decoded: DecodedMapName): string[] {
   return parts;
 }
 
+/** One decoded parameter, as a labelled row. */
+export interface GeneratorParameter {
+  /** Stable across locales, for React keys. */
+  key: string;
+  label: string;
+  value: string;
+}
+
+/**
+ * The same decoding as [`summariseDecodedName`], as labelled rows.
+ *
+ * The chip list above answers "what kind of map is this" at a glance in a
+ * lobby row. This answers "which settings produced it" for somebody looking at
+ * one map on purpose, which needs the labels: `10 km · 8 spawns · 4 teams` is
+ * readable as a strip and useless as an answer to "what was the reclaim set
+ * to".
+ *
+ * On reclaim in particular: a name carries a reclaim *density* only when the
+ * map was generated from component styles. A predefined style has no density
+ * in the name because the style is the setting: `HIGH_RECLAIM` is the answer,
+ * and inventing a percentage for it would be a guess. So the style row is
+ * always present and the density rows appear exactly when the name has them.
+ *
+ * Unknown ordinals (a generator newer than this client's tables) decode to
+ * `null` and drop their row rather than showing a wrong name. A name that does
+ * not decode at all produces no rows, and the dialog still shows the raw name.
+ */
+export function generatorParameters(
+  decoded: DecodedMapName,
+  t: Translation["t"],
+): GeneratorParameter[] {
+  const rows: GeneratorParameter[] = [
+    { key: "size", label: t("maps.generate.mapSize"), value: formatMapSize(decoded.mapSize) },
+    { key: "spawns", label: t("maps.generate.spawns"), value: String(decoded.spawnCount) },
+    {
+      key: "teams",
+      label: t("maps.generate.teams"),
+      value: decoded.numTeams === 0 ? t("maps.generate.asymmetric") : String(decoded.numTeams),
+    },
+  ];
+  if (decoded.symmetry) {
+    rows.push({ key: "symmetry", label: t("maps.generate.symmetry"), value: titleCase(decoded.symmetry) });
+  }
+
+  if (decoded.visibility) {
+    // A tournament/blind map carries a timestamp where the style would be:
+    // withholding the style is the entire point of it, so there is nothing
+    // further to show.
+    rows.push({
+      key: "visibility",
+      label: t("lobby.browser.visibility"),
+      value: titleCase(decoded.visibility),
+    });
+  } else if (decoded.style?.kind === "predefined") {
+    if (decoded.style.style) {
+      rows.push({
+        key: "style",
+        label: t("maps.generate.styleOfGame"),
+        value: titleCase(decoded.style.style),
+      });
+    }
+  } else if (decoded.style?.kind === "custom") {
+    const custom = decoded.style;
+    const components: Array<[string, string, string | null]> = [
+      ["terrain", t("maps.generate.terrain"), custom.terrainStyle],
+      ["texture", t("maps.generate.texture"), custom.textureStyle],
+      ["resourceStyle", t("maps.generate.resources"), custom.resourceStyle],
+      ["props", t("maps.generate.props"), custom.propStyle],
+    ];
+    for (const [key, label, value] of components) {
+      if (value) rows.push({ key, label, value: titleCase(value) });
+    }
+    // Nullable on the wire because a float crossing the JSON boundary can be
+    // NaN, not because a custom style can lack a density.
+    const densities: Array<[string, string, number | null]> = [
+      ["reclaimDensity", t("maps.generate.reclaimDensity"), custom.reclaimDensity],
+      ["resourceDensity", t("maps.generate.resourceDensity"), custom.resourceDensity],
+    ];
+    for (const [key, label, bin] of densities) {
+      if (bin !== null) rows.push({ key, label, value: `${densityPercent(bin)}%` });
+    }
+  }
+
+  rows.push({
+    key: "version",
+    label: t("maps.generate.generatorVersion"),
+    value: decoded.version,
+  });
+  return rows;
+}
+
 /** `MOUNTAIN_RANGE` reads better as `Mountain range` in a dense list. */
 export function titleCase(value: string): string {
   const spaced = value.replace(/_/g, " ").toLowerCase();

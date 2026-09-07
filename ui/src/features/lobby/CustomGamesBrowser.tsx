@@ -13,6 +13,7 @@ import { flagSrc } from "../../shared/countryFlags";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
+import { generatorParameters } from "../maps/generatorPresentation";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -687,6 +688,23 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     const timer = window.setTimeout(() => setCopiedName(false), 2_000);
     return () => window.clearTimeout(timer);
   }, [copiedName]);
+
+  // A generator name is the whole recipe, not a label, so the settings that
+  // produced this map are already in the client's hands: decoding is pure
+  // arithmetic, no download and no server round trip. Asking once per open
+  // dialog is enough, and a name that does not decode simply yields nothing:
+  // the row above still shows it verbatim, which is the honest fallback for a
+  // generator newer than this client's tables.
+  const decodedNames = useAppStore((state) => state.state.mapGenerator.decoded);
+  const decoded = isGenerated ? decodedNames?.[game.map] : undefined;
+  useEffect(() => {
+    if (!isGenerated || decoded) return;
+    ipc.send({
+      kind: "MapGenerator",
+      command: { type: "decodeNames", payload: { mapNames: [game.map] } },
+    });
+  }, [isGenerated, decoded, game.map]);
+  const generatorRows = decoded ? generatorParameters(decoded, t) : [];
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
@@ -799,17 +817,29 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           <Icon name={copiedName ? "check" : "copy"} size={13} />
         </button>
       </div>
-      {/* All that is left of the metadata column: the one fact that is about
-          the map rather than about the game. Host, featured mod, players,
-          ratings and teams are the details rail's job, and repeating them
-          here in a narrower box is what left the map no room to be bigger
-          than the thumbnail the reader clicked. */}
-      {vaultMap && (
+      {/* All that is left of the metadata column: the facts that are about the
+          map rather than about the game. Host, featured mod, players, ratings
+          and teams are the details rail's job, and repeating them here in a
+          narrower box is what left the map no room to be bigger than the
+          thumbnail the reader clicked.
+
+          For a generated map the facts are the generator settings, read out of
+          the name. Its own size row supersedes the catalogue's, because a
+          generated map has no catalogue entry to take one from. */}
+      {(generatorRows.length > 0 || vaultMap) && (
         <dl className="game-preview-dialog-facts">
-          <div>
-            <dt>{t("lobby.browser.mapSize")}</dt>
-            <dd>{sizeLabel(vaultMap)}</dd>
-          </div>
+          {generatorRows.length === 0 && vaultMap && (
+            <div>
+              <dt>{t("lobby.browser.mapSize")}</dt>
+              <dd>{sizeLabel(vaultMap)}</dd>
+            </div>
+          )}
+          {generatorRows.map((row) => (
+            <div key={row.key}>
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
         </dl>
       )}
       <footer className="game-preview-dialog-actions play-dialog-actions">
