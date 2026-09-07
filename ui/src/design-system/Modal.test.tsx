@@ -28,4 +28,26 @@ describe("Modal", () => {
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain('aria-label="Host game"');
   });
+
+  it("offers a way out by default", () => {
+    const markup = renderToStaticMarkup(
+      <Modal onClose={() => {}}>
+        <p>Body</p>
+      </Modal>,
+    );
+    expect(markup).toContain('class="modal-close"');
+  });
+
+  it("removes the close button entirely when it is not dismissible", () => {
+    // Rather than leaving it there to do nothing, which is how a dialog
+    // comes to look broken. Escape and the backdrop go the same way; both
+    // are event handlers, and this renderer runs none.
+    const markup = renderToStaticMarkup(
+      <Modal onClose={() => {}} dismissible={false}>
+        <p>Body</p>
+      </Modal>,
+    );
+    expect(markup).not.toContain('class="modal-close"');
+    expect(markup).toContain('role="dialog"');
+  });
 });

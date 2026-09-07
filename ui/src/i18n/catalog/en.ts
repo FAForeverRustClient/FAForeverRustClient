@@ -269,6 +269,13 @@ export const en = {
   "updates.installerSize": "The installer is {size}.",
   "updates.installerReady": "The installer is ready to download.",
   "updates.noInstallerFor": "Release {version} has no installer for your platform.",
+  "updates.required.title": "Update required",
+  "updates.required.heading": "Version {version} has to be installed",
+  "updates.required.why": "Client updates carry security and compatibility fixes, so this one is not optional. The client stays here until it is installed.",
+  "updates.required.from": "You are on {current}. The new version is {version}.",
+  "updates.required.install": "Download and install",
+  "updates.required.retry": "Try again",
+  "updates.required.closeToFinish": "The installer cannot replace a client that is running. Close the client now to let it finish.",
 
   // Vault upload dialog.
   "uploads.title.map": "Publish map",

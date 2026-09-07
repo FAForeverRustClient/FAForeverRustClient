@@ -12,6 +12,16 @@ interface ModalProps {
   children: ReactNode;
   className?: string;
   ariaLabel?: string;
+  /**
+   * Whether the user may close this dialog at all. Default `true`.
+   *
+   * `false` removes the three ways out - the close button, Escape and a
+   * backdrop click - rather than leaving them there to do nothing, which
+   * is how a dialog comes to look broken. It is for the rare dialog that
+   * is a gate rather than a question: something the client genuinely
+   * cannot carry on past. Everything else stays dismissible.
+   */
+  dismissible?: boolean;
 }
 
 const FOCUSABLE = [
@@ -42,7 +52,13 @@ export function isBackdropDismissal(pressStartedOnBackdrop: boolean, releasedOnB
   return pressStartedOnBackdrop && releasedOnBackdrop;
 }
 
-export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
+export function Modal({
+  onClose,
+  children,
+  className,
+  ariaLabel,
+  dismissible = true,
+}: ModalProps) {
   const { t } = useTranslation();
   // Most callers rely on this default for the dialog's accessible name.
   const label = ariaLabel ?? t("designSystem.modal.dialog");
@@ -50,6 +66,8 @@ export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
   const pressStartedOnBackdrop = useRef(false);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const dismissibleRef = useRef(dismissible);
+  dismissibleRef.current = dismissible;
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -69,7 +87,7 @@ export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        closeRef.current();
+        if (dismissibleRef.current) closeRef.current();
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -109,7 +127,9 @@ export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
       onClick={(event) => {
         const started = pressStartedOnBackdrop.current;
         pressStartedOnBackdrop.current = false;
-        if (isBackdropDismissal(started, event.target === event.currentTarget)) onClose();
+        if (dismissible && isBackdropDismissal(started, event.target === event.currentTarget)) {
+          onClose();
+        }
       }}
     >
       <div
@@ -121,9 +141,16 @@ export function Modal({ onClose, children, className, ariaLabel }: ModalProps) {
         tabIndex={-1}
         onKeyDown={trapFocus}
       >
-        <button type="button" className="modal-close" onClick={onClose} aria-label={t("common.close")}>
-          ×
-        </button>
+        {dismissible && (
+          <button
+            type="button"
+            className="modal-close"
+            onClick={onClose}
+            aria-label={t("common.close")}
+          >
+            ×
+          </button>
+        )}
         {children}
       </div>
     </div>

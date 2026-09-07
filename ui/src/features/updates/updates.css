@@ -135,3 +135,68 @@
   flex: 1 1 240px;
   overflow-wrap: anywhere;
 }
+
+/* The update that is not an offer. Deliberately plain: it is not a decision
+   the user is being asked to weigh, so there is nothing here to weigh it
+   against - a heading, the reason, and the button that ends it. */
+.update-gate {
+  max-width: 480px;
+  padding: 22px 24px 20px;
+}
+
+.update-gate-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.update-gate-why {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.update-gate-versions,
+.update-gate-status {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.update-gate-status {
+  color: var(--color-subtle);
+}
+
+/* A failure is not a status line like the others: it is the reason the
+   button beside it now says "try again". */
+.update-gate-status-failed {
+  color: var(--color-error);
+}
+
+/* The banner's bar, unpinned: nothing here is positioned over anything. */
+.update-gate-progress {
+  height: 3px;
+  margin-bottom: 14px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.update-gate-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 120ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-gate-progress > span {
+    transition: none;
+  }
+}
+
+.update-gate-actions {
+  display: flex;
+  gap: 8px;
+}

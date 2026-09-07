@@ -232,6 +232,13 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "updates.installerSize": "Der Installer ist {size} groß.",
   "updates.installerReady": "Der Installer steht zum Download bereit.",
   "updates.noInstallerFor": "Version {version} hat keinen Installer für deine Plattform.",
+  "updates.required.title": "Update erforderlich",
+  "updates.required.heading": "Version {version} muss installiert werden",
+  "updates.required.why": "Client-Updates enthalten Sicherheits- und Kompatibilitätskorrekturen, deshalb ist dieses hier nicht optional. Der Client bleibt hier stehen, bis es installiert ist.",
+  "updates.required.from": "Du bist auf {current}. Die neue Version ist {version}.",
+  "updates.required.install": "Herunterladen und installieren",
+  "updates.required.retry": "Erneut versuchen",
+  "updates.required.closeToFinish": "Der Installer kann keinen laufenden Client ersetzen. Schließe den Client jetzt, damit er fertig werden kann.",
 
   "uploads.title.map": "Karte veröffentlichen",
   "uploads.title.mod": "Mod veröffentlichen",
