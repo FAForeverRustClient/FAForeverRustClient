@@ -1049,17 +1049,17 @@
    produced a dialog that was fine at 1080p, fine at 4K, and wrong in between:
    `820px` is a different fraction of the window at every resolution and a
    different physical size at every DPI setting. `84vh` is the same fraction of
-   every window. `SIZE_ALLOWANCE` is the header, the fact row, the actions and
-   the gaps between them: the height the map does not get. The absolute cap
-   stops a 4K window from rendering a map preview larger than anyone wants to
-   look at.
+   every window. The allowance is everything that is not the map: the header,
+   the name row, the facts, the actions and the gaps between them. The absolute
+   cap stops a 4K window from rendering a map preview larger than anyone wants
+   to look at.
 
-   The result at the three widths the report mentions: ~460px on the default
-   1100x720 window, ~730px at 1080p, ~860px on the reported ~2000px screen.
+   The result at the three widths the report mentions: ~440px on the default
+   1100x720 window, ~710px at 1080p, ~840px on the reported ~2000px screen.
    The details rail's thumbnail is 250px, so the dialog is the 2-3x the report
    asked for wherever there is room for it. */
 .game-preview-dialog {
-  --preview-size-allowance: 190px;
+  --preview-size-allowance: 210px;
   display: grid;
   width: min(calc(84vh - var(--preview-size-allowance)), 84vw, 1040px);
   max-width: 100%;
