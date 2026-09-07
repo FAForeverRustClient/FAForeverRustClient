@@ -2956,6 +2956,18 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "an offline session signs nobody in, and leaving it clears the mode",
+            vec![
+                AuthEvent::LoginStarted.into(),
+                AuthEvent::LoginFailed {
+                    message: "the server did not answer".into(),
+                }
+                .into(),
+                AuthEvent::WentOffline.into(),
+                AuthEvent::LoggedOut.into(),
+            ],
+        ),
+        case(
             "auth failure keeps the error",
             vec![
                 AuthEvent::LoginStarted.into(),

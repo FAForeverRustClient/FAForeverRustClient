@@ -132,6 +132,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   const localStatus = useAppStore((s) => s.state.replays.localStatus);
   const mapVault = useAppStore((s) => s.state.maps.vault);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
+  const offline = useAppStore((s) => s.state.auth.mode === "offline");
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
   const setViewMode = (mode: ReplayViewMode) => {
@@ -156,10 +157,13 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     if (useAppStore.getState().state.replays.localStatus.type === "idle") {
       loadLocal();
     }
+    // The archive itself is a folder on this disk, but the vault is what turns
+    // a folder name into a map's title, and asking for it needs an account.
+    if (offline) return;
     if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
       ipc.send({ kind: "Maps", command: { type: "loadVault" } });
     }
-  }, []);
+  }, [offline]);
 
   useEffect(() => {
     setPage(1);

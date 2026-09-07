@@ -4,14 +4,18 @@
 
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { TAB_ORDER, TABS } from "./tabs";
+import { openTabForMode, TABS, tabsForMode } from "./tabs";
 import type { Tab } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./nav.css";
 
 export function TabBar() {
-  const active = useAppStore((s) => s.state.nav.activeTab);
+  const mode = useAppStore((s) => s.state.auth.mode);
+  // The tab on screen, which is not the selected one when the selected one is
+  // not open to this session. Same projection the shell renders from.
+  const active = useAppStore((s) => openTabForMode(mode, s.state.nav.activeTab));
+  const tabs = tabsForMode(mode);
   // Looked up per render rather than read from the `TABS` registry, whose
   // `label` is a fixed English string. Resolving through the hook is what makes
   // the bar follow a language change instead of being fixed at import time.
@@ -40,11 +44,11 @@ export function TabBar() {
   return (
     <nav className="tabbar" aria-label={t("nav.main")}>
       <div className="nav-group">
-        {TAB_ORDER.filter((id) => id !== "contribution" && id !== "settings").map(renderTab)}
+        {tabs.filter((id) => id !== "contribution" && id !== "settings").map(renderTab)}
       </div>
       <div className="nav-spacer" />
       <div className="nav-group">
-        {TAB_ORDER.filter((id) => id === "contribution" || id === "settings").map(renderTab)}
+        {tabs.filter((id) => id === "contribution" || id === "settings").map(renderTab)}
       </div>
     </nav>
   );

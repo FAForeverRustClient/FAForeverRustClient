@@ -37,11 +37,16 @@ const SUB_VIEWS: Record<
 export function ReplaysView() {
   const { t: translate } = useTranslation();
   const [subView, setSubView] = useState<SubView>("online");
+  // An offline session has the archive on this disk and nothing else: the
+  // vault and the live games are both server questions.
+  const offline = useAppStore((state) => state.state.auth.mode === "offline");
   const status = useAppStore((state) => state.state.replays.status);
   const lastWarning = useAppStore((state) => state.state.replays.lastWarning);
   const note = statusNote(status);
   const busy = status.type === "connecting";
-  const { Component } = SUB_VIEWS[subView];
+  const sources: SubView[] = offline ? ["local"] : (Object.keys(SUB_VIEWS) as SubView[]);
+  const activeSource = sources.includes(subView) ? subView : sources[0];
+  const { Component } = SUB_VIEWS[activeSource];
 
   return (
     <div className="replays-workspace">
@@ -52,10 +57,10 @@ export function ReplaysView() {
         </p>
       )}
       <SectionTabs
-        active={subView}
+        active={activeSource}
         ariaLabel={translate("replays.source.aria")}
         className="replay-source-tabs"
-        items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: translate(SUB_VIEWS[key].label) }))}
+        items={sources.map((key) => ({ id: key, label: translate(SUB_VIEWS[key].label) }))}
         onChange={setSubView}
       />
       <Component busy={busy} />

@@ -27,23 +27,30 @@ export function AccountSupportSettingsSection() {
   const { t } = useTranslation();
   const auth = useAppStore((s) => s.state.auth);
   const player = auth.player;
+  // Only an account session has anything to hand back: the other two never
+  // held a token, and `logoutTest` is the teardown that just ends the session.
   const logout = () =>
     ipc.send({
       kind: "Auth",
-      command: { type: auth.mode === "test" ? "logoutTest" : "logout" },
+      command: { type: auth.mode === "account" ? "logout" : "logoutTest" },
     });
 
   return (
     <>
       <SettingRow
         label={t("settings.account.session")}
-        hint={player ? t("settings.account.signedInAs", { name: player.name, id: player.id }) : t("settings.account.sessionHint")}
+        hint={
+          player
+            ? t("settings.account.signedInAs", { name: player.name, id: player.id })
+            : t(auth.mode === "offline" ? "settings.account.offlineHint" : "settings.account.sessionHint")
+        }
       >
         <Button
           onClick={logout}
-          aria-label={t("settings.account.logOut")}
+          aria-label={t(auth.mode === "offline" ? "settings.account.leaveOffline" : "settings.account.logOut")}
         >
-          <Icon name="logout" size={14} /> {t("settings.account.logOut")}
+          <Icon name="logout" size={14} />{" "}
+          {t(auth.mode === "offline" ? "settings.account.leaveOffline" : "settings.account.logOut")}
         </Button>
       </SettingRow>
       <SettingRow label={t("settings.account.fafAccount")} hint={t("settings.account.fafAccountHint")}>

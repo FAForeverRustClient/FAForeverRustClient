@@ -9,7 +9,7 @@ import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { ProfileAvatar } from "../../shared/ProfileAvatar";
 import { TabBar } from "../nav/TabBar";
-import { TABS } from "../nav/tabs";
+import { openTabForMode, TABS } from "../nav/tabs";
 import { ClientStatusBar } from "../status/ClientStatusBar";
 import { InstallBanner } from "./InstallBanner";
 import { WebviewEngineBanner } from "./WebviewEngineBanner";
@@ -54,7 +54,8 @@ export function AppShell() {
   const joinedPartyChannelRef = useRef<string | null>(null);
   const contentRef = useRef<HTMLElement>(null);
 
-  const ActiveView = TABS[activeTab].Component;
+  const openTab = openTabForMode(auth.mode, activeTab);
+  const ActiveView = TABS[openTab].Component;
 
   // The scroll container outlives the view inside it: only the class and the
   // children change on a tab switch, so the previous tab's scroll position was
@@ -63,7 +64,7 @@ export function AppShell() {
   // container unmounts with the view.
   useLayoutEffect(() => {
     contentRef.current?.scrollTo({ top: 0 });
-  }, [activeTab]);
+  }, [openTab]);
 
   useEffect(() => {
     if (!isResizingSidebar) return;
@@ -152,8 +153,14 @@ export function AppShell() {
               tooltip={ownProfile?.avatarTooltip}
             />
             <span className="profile-copy">
-              <span className="player-name">{player ? <PlayerName name={player.name} /> : t("shell.sidebar.player")}</span>
-              <span className="profile-status"><i /> {t("shell.sidebar.online")}</span>
+              <span className="player-name">
+                {player
+                  ? <PlayerName name={player.name} />
+                  : t(auth.mode === "offline" ? "shell.sidebar.noAccount" : "shell.sidebar.player")}
+              </span>
+              <span className="profile-status">
+                <i /> {t(auth.mode === "offline" ? "shell.sidebar.offline" : "shell.sidebar.online")}
+              </span>
             </span>
           </button>
           <NotificationCenter />
@@ -184,10 +191,10 @@ export function AppShell() {
         </div>
         <section
           ref={contentRef}
-          className={`content content-tab-${activeTab}`}
-          aria-label={t("nav.content.aria", { tab: t(TABS[activeTab].label) })}
+          className={`content content-tab-${openTab}`}
+          aria-label={t("nav.content.aria", { tab: t(TABS[openTab].label) })}
         >
-          <div className={`content-inner content-${activeTab}`}>
+          <div className={`content-inner content-${openTab}`}>
             <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
               <ActiveView />
             </Suspense>

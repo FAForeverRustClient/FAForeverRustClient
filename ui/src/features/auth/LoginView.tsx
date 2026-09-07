@@ -52,6 +52,7 @@ export function LoginView() {
     ipc.send({ kind: "Auth", command: { type: "login", payload: { remember } } });
   };
   const cancelLogin = () => ipc.send({ kind: "Auth", command: { type: "cancelLogin" } });
+  const playOffline = () => ipc.send({ kind: "Auth", command: { type: "playOffline" } });
   const loginTest = () => ipc.send({ kind: "Auth", command: { type: "loginTest" } });
 
   return (
@@ -78,6 +79,15 @@ export function LoginView() {
           </Button>
         )}
         <p className="login-hint">{t("auth.hint")}</p>
+
+        {/* Everything the client can do without FAF: the replays already on
+            this disk, and the settings. Offered next to the login rather than
+            behind a failed one, because the people who need it most are the
+            ones whose login is never going to succeed. */}
+        <Button className="login-offline-button" onClick={playOffline} disabled={busy}>
+          <Icon name="replays" size={15} /> {t("auth.playOffline")}
+        </Button>
+        <p className="login-hint">{t("auth.playOfflineHint")}</p>
 
         <label className="login-remember">
           <input

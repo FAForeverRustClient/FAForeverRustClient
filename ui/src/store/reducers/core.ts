@@ -99,6 +99,8 @@ export function reduceAuth(state: AuthState, event: AuthEvent): AuthState {
       return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "account" };
     case "testLoggedIn":
       return { ...state, status: "loggedIn", player: event.payload.player, error: null, mode: "test" };
+    case "wentOffline":
+      return { ...state, status: "loggedIn", player: null, error: null, mode: "offline" };
     case "loginFailed":
       return { ...state, status: "failed", player: null, error: event.payload.message };
     case "loggedOut":

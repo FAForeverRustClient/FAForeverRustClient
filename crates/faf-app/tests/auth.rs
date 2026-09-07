@@ -106,6 +106,28 @@ async fn test_login_never_calls_provider_and_marks_test_mode() {
 }
 
 #[tokio::test]
+async fn playing_offline_never_calls_the_provider_and_signs_nobody_in() {
+    let app = app_with(FakeAuth {
+        fail_with: Some("provider should not be called".into()),
+        ..FakeAuth::default()
+    });
+    let mut events = app.subscribe();
+
+    app.dispatch(AuthCommand::PlayOffline.into()).await.unwrap();
+
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        AppEvent::Auth(AuthEvent::WentOffline)
+    ));
+
+    let snap = app.snapshot();
+    assert_eq!(snap.auth.status, AuthStatus::LoggedIn);
+    assert_eq!(snap.auth.mode, AuthMode::Offline);
+    // The point of the mode: a session that claims to be nobody.
+    assert_eq!(snap.auth.player, None);
+}
+
+#[tokio::test]
 async fn a_superseded_login_cannot_log_the_user_back_in() {
     let app = app_with(FakeAuth {
         delay: Duration::from_millis(40),

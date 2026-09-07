@@ -45,6 +45,15 @@
   line-height: 1.45;
 }
 
+/* A second way in, not a second primary action: same width as the login so the
+   card keeps one column, quieter fill so it never competes with it. */
+.login-offline-button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
 .login-remember {
   display: inline-flex;
   align-items: center;
