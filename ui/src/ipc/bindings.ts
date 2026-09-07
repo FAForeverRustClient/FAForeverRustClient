@@ -7156,11 +7156,20 @@ export type UiDensity = "compact" | "comfortable";
 /**  Client self-update: whether to look for a newer build, and which ones count. */
 export type UpdatePreferences = {
 	/**
-	 *  Check for a newer release at startup.
+	 *  Announce an optional update: the banner, and the notification.
 	 *
-	 *  Defaulted on, matching the Java client, which checks unconditionally.
-	 *  The switch exists because the check is an outbound request to GitHub
-	 *  that some users would rather not make on every launch.
+	 *  This used to decide whether the startup check ran at all, which made
+	 *  the update the client insists on into something a checkbox could
+	 *  switch off. The check is therefore unconditional now and this governs
+	 *  only what is *said* about an update the user is free to postpone. An
+	 *  update the client requires ignores it, and so does the Settings status
+	 *  line, which is an answer to a button the user just pressed.
+	 *
+	 *  The cost is the privacy affordance this switch used to carry: the
+	 *  startup check is an outbound request to GitHub, and it is no longer
+	 *  avoidable. Nothing else about it changed - it still goes to the release
+	 *  page alone, still sends nothing about the user, and is still the only
+	 *  request made before login.
 	 */
 	automatic: boolean,
 	/**
