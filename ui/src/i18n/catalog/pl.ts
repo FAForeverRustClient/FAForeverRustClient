@@ -1073,8 +1073,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.paths.custom": "Własna",
   "settings.paths.automatic": "Automatyczna",
   "settings.paths.overrideNote": "Każdy wiersz pokazuje, dokąd teraz prowadzi. Nieustawione wiersze są ustalane automatycznie, a zmienna środowiskowa FAF_* nadal ma pierwszeństwo. Zmiana działa natychmiast; istniejąca zawartość nie jest przenoszona.",
-  "maps.generate.keepMaps": "Zachowaj te mapy",
-  "maps.generate.keepMapsHint": "Chroni mapy z tego uruchomienia przy czyszczeniu w zakładce Mapy.",
   "settings.paths.gameInstall": "Instalacja gry",
   "settings.paths.gameInstallHint": "Plik ForgedAlliance.exe używany do dołączania i grania.",
   "settings.paths.replayInstall": "Instalacja do powtórek",

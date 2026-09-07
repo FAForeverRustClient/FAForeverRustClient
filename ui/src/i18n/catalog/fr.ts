@@ -1123,8 +1123,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.paths.custom": "Personnalisé",
   "settings.paths.automatic": "Automatique",
   "settings.paths.overrideNote": "Chaque ligne indique où elle pointe actuellement. Les lignes non définies sont résolues automatiquement, et une variable d'environnement FAF_* reste prioritaire. Un changement prend effet immédiatement ; le contenu existant n'est pas déplacé.",
-  "maps.generate.keepMaps": "Conserver ces cartes",
-  "maps.generate.keepMapsHint": "Épargne les cartes de cette génération lors du nettoyage dans l'onglet Cartes.",
   "settings.paths.gameInstall": "Installation du jeu",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe utilisé pour rejoindre et jouer des parties en direct.",
   "settings.paths.replayInstall": "Installation pour les replays",

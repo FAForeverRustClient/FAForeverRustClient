@@ -1687,6 +1687,24 @@ export type GamePreferences = {
 	 *  does not. See `infra::replay` for the full history.
 	 */
 	pipeLiveReplay?: boolean,
+	/**
+	 *  Keep every map the generator produces, so clearing generated maps
+	 *  spares them.
+	 *
+	 *  This used to be a checkbox inside the Generate map dialog, decided per
+	 *  run on the theory that "generate one to keep, then three throwaways" is
+	 *  how people work. It is not: a run is started to look at maps, and
+	 *  whether they are worth keeping is known afterwards, by which point the
+	 *  dialog is closed. One switch that holds for every run is the decision
+	 *  people were actually making.
+	 *
+	 *  Off by default, which is what the per-run checkbox defaulted to: a
+	 *  generated map is disposable until somebody says otherwise. Names are
+	 *  still recorded run by run into [`SettingsState::kept_generated_maps`],
+	 *  so turning the switch off later does not retroactively condemn what was
+	 *  kept while it was on.
+	 */
+	keepGeneratedMaps?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -1817,18 +1835,6 @@ export type GeneratorOptions = {
 	 *  hatch both clients keep for generator flags newer than the client.
 	 */
 	commandLineArgs: string,
-	/**
-	 *  Keep the maps this run produces, whatever the Maps tab is later asked
-	 *  to sweep away.
-	 *
-	 *  The one option here that never reaches the generator: it is a decision
-	 *  about the maps afterwards, not about how to build them. It lives with
-	 *  the run because that is when it is decided - generate a map to keep,
-	 *  then generate three throwaways, and only the first survives - so the
-	 *  names of a kept run are recorded as it finishes rather than the flag
-	 *  standing as a policy over every generated map at once.
-	 */
-	keepMaps?: boolean,
 };
 
 /**

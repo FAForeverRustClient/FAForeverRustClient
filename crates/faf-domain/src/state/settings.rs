@@ -833,6 +833,23 @@ pub struct GamePreferences {
     /// does not. See `infra::replay` for the full history.
     #[serde(default)]
     pub pipe_live_replay: bool,
+    /// Keep every map the generator produces, so clearing generated maps
+    /// spares them.
+    ///
+    /// This used to be a checkbox inside the Generate map dialog, decided per
+    /// run on the theory that "generate one to keep, then three throwaways" is
+    /// how people work. It is not: a run is started to look at maps, and
+    /// whether they are worth keeping is known afterwards, by which point the
+    /// dialog is closed. One switch that holds for every run is the decision
+    /// people were actually making.
+    ///
+    /// Off by default, which is what the per-run checkbox defaulted to: a
+    /// generated map is disposable until somebody says otherwise. Names are
+    /// still recorded run by run into [`SettingsState::kept_generated_maps`],
+    /// so turning the switch off later does not retroactively condemn what was
+    /// kept while it was on.
+    #[serde(default)]
+    pub keep_generated_maps: bool,
 }
 
 fn default_true() -> bool {
@@ -856,6 +873,7 @@ impl Default for GamePreferences {
             cache_size_alert_gb: default_cache_size_alert_gb(),
             cache_rolling_branches: false,
             pipe_live_replay: false,
+            keep_generated_maps: false,
         }
     }
 }
