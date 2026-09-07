@@ -269,7 +269,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
         </div>
         {offline && (
           <Button className="local-replay-sign-in" onClick={signIn}>
-            <Icon name="users" size={14} /> {t("replays.local.signIn")}
+            <Icon name="users" size={14} /> {t("auth.signIn")}
           </Button>
         )}
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
