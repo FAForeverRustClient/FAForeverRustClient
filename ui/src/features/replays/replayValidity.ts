@@ -12,7 +12,7 @@
 
 import type { MessageKey } from "../../i18n";
 import { t } from "../../i18n";
-import type { ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
+import type { OnlineLookup, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 
 /** The server value that means the game counted. */
 export const VALID = "VALID";
@@ -72,4 +72,43 @@ export function notRatedReason(validity: string): string {
   if (!validity) return t("replays.notRated.pending");
   const key = REASON_KEYS[validity];
   return t("replays.notRated.reason", { reason: key ? t(key) : validity });
+}
+
+/**
+ * The same line for a replay the client has as a file on disk.
+ *
+ * A `.fafreplay` header records who played and at what rating, and nothing
+ * about what the game did to those ratings: rating journals live on the
+ * server. So "not yet available", which describes a game the server has still
+ * to rate, was never true here: it said "wait" about something that was never
+ * going to arrive on its own.
+ *
+ * What arrives instead is [`OnlineLookup`], the vault's answer about this
+ * file's game id. When it has the game, the roster shows the real rating
+ * change and this returns `null`, because there is nothing left to explain.
+ * Every other branch is a sentence about *this* replay: no game id in the
+ * file, a game the vault does not know, or a lookup that never got through.
+ */
+export function localRatingNote(
+  uid: number,
+  lookup: OnlineLookup | undefined,
+  teams: ReplayTeam[],
+): string | null {
+  if (uid <= 0) return t("replays.notRated.localNoGameId");
+  switch (lookup?.type) {
+    case undefined:
+    case "loading":
+      return t("replays.notRated.localPending");
+    case "found": {
+      // A game the vault does have is judged exactly as the Online tab judges
+      // it, verdict wording included: the file it was opened from changes
+      // nothing about whether the server rated it.
+      const validity = lookup.payload.validity ?? "";
+      return isRated(validity, teams) ? null : notRatedReason(validity);
+    }
+    case "missing":
+      return t("replays.notRated.localUnknownGame");
+    case "failed":
+      return t("replays.notRated.localLookupFailed");
+  }
 }

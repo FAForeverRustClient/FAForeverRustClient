@@ -33,7 +33,7 @@ import {
   ReplayDetailRoster,
   mergeReplayTeamsWithLocal,
 } from "./ReplayRoster";
-import { isRated, notRatedReason } from "./replayValidity";
+import { isRated, localRatingNote, notRatedReason } from "./replayValidity";
 import {
   formatReplayListTime,
   ReplayList,
@@ -424,6 +424,7 @@ export function ReplayDetailPanel({
   downloadState = "idle",
   downloadError = "",
   localPath: initialLocalPath,
+  source = "online",
 }: {
   replay: VaultReplay;
   busy: boolean;
@@ -433,6 +434,14 @@ export function ReplayDetailPanel({
   downloadState?: "idle" | "downloading" | "downloaded" | "failed";
   downloadError?: string;
   localPath?: string;
+  /**
+   * Which catalogue the panel was opened from. Not derivable from `replay`:
+   * `localReplayToVaultReplay` produces the same shape a vault listing has,
+   * with the fields only the server knows left empty. The result section reads
+   * those fields, so it has to know whether "empty" means "the server has not
+   * said yet" or "a file on disk never carried it".
+   */
+  source?: "online" | "local";
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
@@ -442,6 +451,7 @@ export function ReplayDetailPanel({
   const replayDetails = useAppStore((state) => state.state.replays.replayDetails);
   const detailsLoading = useAppStore((state) => state.state.replays.detailsLoading);
   const detailsError = useAppStore((state) => state.state.replays.detailsError);
+  const onlineLookups = useAppStore((state) => state.state.replays.onlineLookups);
   const avatarByLogin = useMemo(() => {
     const avatars = new Map<string, string>();
     for (const player of socialPlayers) {
@@ -453,7 +463,23 @@ export function ReplayDetailPanel({
   const localMatch = localReplays.find(
     (local) => (replay.uid > 0 && local.uid === replay.uid) || (initialLocalPath && local.path === initialLocalPath),
   );
-  const detailTeams = mergeReplayTeamsWithLocal(replay.teams, localMatch?.teams);
+  const isLocal = source === "local";
+  // The vault's own record of this game, asked for only when the panel was
+  // opened from the local library: it is the sole place a local replay's
+  // rating change can come from. `undefined` until the answer lands.
+  const onlineLookup = replay.uid > 0 ? onlineLookups?.[replay.uid] : undefined;
+  useEffect(() => {
+    if (!isLocal || replay.uid <= 0 || onlineLookup) return;
+    ipc.send({ kind: "Replays", command: { type: "lookUpOnline", payload: { uid: replay.uid } } });
+  }, [isLocal, replay.uid, onlineLookup]);
+  // A found lookup is the richer source: it carries outcomes and rating
+  // changes the file never had. The local header still fills in what the
+  // vault leaves out (faction and rating for a player it did not list).
+  const onlineTeams = onlineLookup?.type === "found" ? onlineLookup.payload.teams : null;
+  const detailTeams = mergeReplayTeamsWithLocal(
+    onlineTeams && onlineTeams.length > 0 ? onlineTeams : replay.teams,
+    localMatch?.teams,
+  );
   const localPath = initialLocalPath || localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
   // Absent on a legacy `.scfareplay`, which has no header to read them from.
@@ -563,9 +589,17 @@ export function ReplayDetailPanel({
   // of a game nobody won and said nothing about why.
   // Optional on the wire: a listing from before this field existed carries
   // none, which reads as "no verdict yet" rather than as a refusal.
-  const validity = replay.validity ?? "";
+  //
+  // A local replay takes the other branch: its `validity` is empty because the
+  // conversion had nothing to put there, not because the server is still
+  // deciding, so the online "not yet available" would be a straight untruth.
+  const validity = onlineLookup?.type === "found"
+    ? onlineLookup.payload.validity ?? ""
+    : replay.validity ?? "";
   const rated = isRated(validity, detailTeams);
-  const notRated = rated ? null : notRatedReason(validity);
+  const notRated = isLocal
+    ? localRatingNote(replay.uid, onlineLookup, detailTeams)
+    : rated ? null : notRatedReason(validity);
   const copyLink = () =>
     ipc.run(
       navigator.clipboard

@@ -57,6 +57,7 @@ const INITIAL: AppState = {
     replayDetails: {},
     detailsLoading: null,
     detailsError: null,
+    onlineLookups: {},
   },
   maps: {
     vault: [],

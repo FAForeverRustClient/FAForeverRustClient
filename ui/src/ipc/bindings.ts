@@ -3645,6 +3645,23 @@ export type NotificationState = {
 };
 
 /**
+ *  What the vault knows about one game id, looked up for a replay the client
+ *  only has as a file on disk.
+ *
+ *  A `.fafreplay` header carries who played and at what rating, and nothing
+ *  about what the game did to those ratings: rating journals live on the
+ *  server. So the detail panel for a local replay asks the vault for the one
+ *  game, and this is the answer. All four states are distinct to the reader:
+ *  [`Self::Missing`] is "the vault has no such game" (a skirmish against AI, a
+ *  replay from another install), which is a different sentence from
+ *  [`Self::Failed`] ("we could not ask"), and both are different from having
+ *  no entry at all, which means nobody has asked yet.
+ */
+export type OnlineLookup = { type: "loading" } | { type: "found"; payload: VaultReplay } | { type: "missing" } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+/**
  *  One organiser of an event, as an organiser sees the list.
  *
  *  Distinct from `organisers`, which is the public list and carries names only:
@@ -4379,6 +4396,17 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
  */
 { type: "deleteLocal"; payload: {
 	path: string,
+} } |
+/**
+ *  Ask the vault what it knows about one game id, without disturbing the
+ *  browse/search results in [`ReplayState::vault`].
+ *
+ *  This exists for local replays: the file on disk has no rating data in
+ *  it, so the only honest way to show a rating change for one is to ask
+ *  the server about the game it came from.
+ */
+{ type: "lookUpOnline"; payload: {
+	uid: number,
 } };
 
 export type ReplayDetails = {
@@ -4472,6 +4500,21 @@ export type ReplayEvent = { type: "connecting" } |
 	uid: number,
 	details: ReplayDetails,
 } } | { type: "detailsFailed"; payload: {
+	uid: number,
+	reason: string,
+} } |
+/**  The vault is being asked about one game id (see [`OnlineLookup`]). */
+{ type: "onlineLookupStarted"; payload: {
+	uid: number,
+} } |
+/**
+ *  The answer. `replay` is `None` when the vault has no such game, which
+ *  is a result, not a failure.
+ */
+{ type: "onlineLookupFinished"; payload: {
+	uid: number,
+	replay: VaultReplay | null,
+} } | { type: "onlineLookupFailed"; payload: {
 	uid: number,
 	reason: string,
 } };
@@ -4646,6 +4689,12 @@ export type ReplayState = {
 	replayDetails?: { [key in number]: ReplayDetails },
 	detailsLoading?: number | null,
 	detailsError?: string | null,
+	/**
+	 *  Vault answers for single game ids, keyed by that id. Filled by
+	 *  [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
+	 *  [`OnlineLookup`].
+	 */
+	onlineLookups?: { [key in number]: OnlineLookup },
 };
 
 export type ReplayStatus = { type: "idle" } | { type: "connecting" } |

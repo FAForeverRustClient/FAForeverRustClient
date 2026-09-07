@@ -7,7 +7,7 @@
 
 use faf_domain::state::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
-    NotificationAction, NotificationKind, ReplayCommand, ReplayEvent,
+    NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayQuery,
 };
 use std::{path::PathBuf, time::Duration};
 
@@ -229,6 +229,31 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             match ctx.ports.replay.load_details(uid, path_buf).await {
                 Ok(details) => out.emit(ReplayEvent::DetailsLoaded { uid, details }),
                 Err(reason) => out.emit(ReplayEvent::DetailsFailed { uid, reason }),
+            }
+        }
+        ReplayCommand::LookUpOnline { uid } => {
+            // A single-id search rather than a port method of its own: the
+            // vault query already has a `replay_id` field, and this way the
+            // lookup goes down exactly the code path the search tab uses.
+            // The result lands in `online_lookups`, never in `vault`, so
+            // opening a local replay does not replace what the Online tab is
+            // showing.
+            out.emit(ReplayEvent::OnlineLookupStarted { uid });
+            let query = ReplayQuery {
+                replay_id: uid.to_string(),
+                page_size: 1,
+                ..ReplayQuery::default()
+            };
+            match ctx.ports.replay.search_vault(query).await {
+                Ok(search) => out.emit(ReplayEvent::OnlineLookupFinished {
+                    uid,
+                    replay: search
+                        .replays
+                        .into_iter()
+                        .find(|replay| replay.uid == uid)
+                        .map(Box::new),
+                }),
+                Err(reason) => out.emit(ReplayEvent::OnlineLookupFailed { uid, reason }),
             }
         }
     }

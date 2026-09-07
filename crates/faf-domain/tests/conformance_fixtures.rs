@@ -2832,6 +2832,28 @@ fn local_replay(uid: i32) -> LocalReplay {
     }
 }
 
+/// A vault listing for one game, as the single-id lookup returns it.
+fn vault_replay(uid: i32) -> VaultReplay {
+    VaultReplay {
+        uid,
+        title: "Looked-up game".into(),
+        map: "scmp_009".into(),
+        map_thumbnail_url: String::new(),
+        mod_name: "faf".into(),
+        start_time: "2026-01-01T00:00:00Z".into(),
+        replay_available: true,
+        duration_seconds: None,
+        game_duration_seconds: None,
+        teams: Vec::new(),
+        average_rating: None,
+        quality: None,
+        reviews_average: None,
+        reviews_count: None,
+        game_version: None,
+        validity: "VALID".into(),
+    }
+}
+
 fn cases() -> Vec<Case> {
     vec![
         // ── player card: per-map record ──────────────────────────────────
@@ -4513,6 +4535,33 @@ fn cases() -> Vec<Case> {
                 ReplayEvent::VaultDownloadStarted { uid: 45 }.into(),
                 ReplayEvent::Failed {
                     reason: "could not update game to version 3701".into(),
+                }
+                .into(),
+            ],
+        ),
+        // The three answers a local replay's rating lookup can get. All three
+        // land in the same map and none of them touches `vault`: a local
+        // replay opened while the Online tab holds results must not replace
+        // them.
+        case(
+            "the vault is asked about three local replays' game ids",
+            vec![
+                ReplayEvent::OnlineLookupStarted { uid: 51 }.into(),
+                ReplayEvent::OnlineLookupFinished {
+                    uid: 51,
+                    replay: Some(Box::new(vault_replay(51))),
+                }
+                .into(),
+                ReplayEvent::OnlineLookupStarted { uid: 52 }.into(),
+                ReplayEvent::OnlineLookupFinished {
+                    uid: 52,
+                    replay: None,
+                }
+                .into(),
+                ReplayEvent::OnlineLookupStarted { uid: 53 }.into(),
+                ReplayEvent::OnlineLookupFailed {
+                    uid: 53,
+                    reason: "offline".into(),
                 }
                 .into(),
             ],
