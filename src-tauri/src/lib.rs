@@ -400,6 +400,30 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        // Where the window was, how big, on which monitor, and whether it was
+        // maximised. Restored on the next start, and it belongs here rather
+        // than in the settings store: it is a property of the shell, not of the
+        // account, and this file is the only place that knows about windows.
+        //
+        // Three flags, not `all()`. `VISIBLE` would faithfully restore a client
+        // that was hidden to the tray when it last exited, which is a client
+        // that starts invisible; `DECORATIONS` and `FULLSCREEN` are not states
+        // this client puts a window into.
+        //
+        // The plugin is also what makes the "if they're still valid" half of
+        // this work: it only restores a position that some currently attached
+        // monitor still covers, and otherwise leaves the placement to the OS.
+        // A monitor that was unplugged therefore costs the position and nothing
+        // else, rather than opening the window somewhere nobody can see.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        )
         .plugin(external_link_plugin())
         .on_window_event(|window, event| {
             #[cfg(windows)]
@@ -564,7 +588,15 @@ pub fn run() {
                 tauri::WebviewUrl::default(),
             )
             .title("FAForever Client")
+            // First run only: the window-state plugin replaces this with the
+            // remembered geometry when there is one.
             .inner_size(1100.0, 720.0)
+            // The stylesheet already declares `min-width: 560px` on `body`, and
+            // the shell hides overflow, so a window below that clips content
+            // with no way to scroll to it. Enforcing the same floor on the
+            // window keeps a remembered geometry from restoring into a size the
+            // interface cannot be used at.
+            .min_inner_size(560.0, 480.0)
             .resizable(true)
             .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
             .on_navigation(move |url| {

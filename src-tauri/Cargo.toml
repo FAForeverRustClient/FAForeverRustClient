@@ -27,6 +27,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 time = "0.3"
 faf-domain = { workspace = true }
 faf-app = { workspace = true }
+tauri-plugin-window-state = "2"
 
 [[bin]]
 name = "faforever-rust-client"
