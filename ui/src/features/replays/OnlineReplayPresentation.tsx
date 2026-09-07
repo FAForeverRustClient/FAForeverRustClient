@@ -3,6 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import type {
+  CoopMission,
   LocalReplay,
   LocalReplayPlayer,
   LocalReplayTeam,
@@ -25,6 +26,7 @@ import {
   normalizeMapName,
 } from "../../shared/mapPresentation";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
 import {
   isObserverTeam,
@@ -160,9 +162,13 @@ function ReplayMapThumb({
         state.state.mapGenerator.previews?.[mapName.toLowerCase()]
       : undefined,
   );
+  // Subscribed rather than read through the shared fallback: the mission
+  // catalogue loads after this renders, and a mission's artwork is the only
+  // preview a campaign map has.
+  const missions = useAppStore((state) => state.state.coop.missions);
   const candidates = useMemo(
-    () => mapThumbnailCandidates(vault, mapName, large, undefined, generatedPreview, url || undefined),
-    [generatedPreview, large, mapName, url, vault],
+    () => mapThumbnailCandidates(vault, mapName, large, missions, generatedPreview, url || undefined),
+    [generatedPreview, large, mapName, missions, url, vault],
   );
   const [candidateIndex, setCandidateIndex] = useState(0);
 
@@ -205,7 +211,9 @@ export function ReplayLibraryCard({
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
-  const presentation = mapPresentation(vault, replay.map);
+  const missions = useAppStore((state) => state.state.coop.missions);
+  const presentation = replayMapPresentation(vault, missions, replay);
+  const mapKey = replayMapKey(missions, replay);
   const cardTitle = replayCardTitle(replay.title, presentation.displayName || replay.map);
   const stateClasses = [watched && "replay-card-watched", selected && "replay-card-selected"]
     .filter(Boolean)
@@ -220,7 +228,7 @@ export function ReplayLibraryCard({
       <div className="replay-card-left">
         <ReplayMapThumb
           url={replay.mapThumbnailUrl}
-          mapName={replay.map}
+          mapName={mapKey}
           className="replay-card-thumb"
           emptyClassName="replay-card-thumb-empty"
           iconSize={32}
@@ -301,6 +309,7 @@ export function OnlineReplayList({
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
+  const missions = useAppStore((state) => state.state.coop.missions);
   const localReplays = useAppStore((state) => state.state.replays.local);
   const groups = groupByDate
     ? groupReplaysByDate(replays)
@@ -310,10 +319,10 @@ export function OnlineReplayList({
     label: group.label,
     rows: group.replays.map((replay) => {
       const map = effectiveReplayMapName(replay.map, localReplays.find((local) => local.uid === replay.uid)?.map);
-      const presentation = mapPresentation(vault, map);
+      const presentation = replayMapPresentation(vault, missions, { ...replay, map });
       return {
         key: String(replay.uid),
-        mapName: map,
+        mapName: replayMapKey(missions, { ...replay, map }),
         mapThumbnailUrl: replay.mapThumbnailUrl,
         game: {
           primary: replay.title || presentation.displayName || map,
@@ -384,8 +393,12 @@ function formatChatTime(seconds: number): string {
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function localReplayToVaultReplay(local: LocalReplay, mapVault: VaultMap[]): VaultReplay {
-  const presentation = local.map ? mapPresentation(mapVault, local.map) : null;
+export function localReplayToVaultReplay(
+  local: LocalReplay,
+  mapVault: VaultMap[],
+  missions: CoopMission[] = [],
+): VaultReplay {
+  const presentation = local.map ? mapPresentation(mapVault, local.map, missions) : null;
   const timestamp = localReplayTimestamp(local);
   return {
     uid: local.uid ?? 0,
@@ -445,6 +458,7 @@ export function ReplayDetailPanel({
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
+  const missions = useAppStore((state) => state.state.coop.missions);
   const socialPlayers = useAppStore((state) => state.state.social.players);
   const localReplays = useAppStore((state) => state.state.replays.local);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
@@ -562,7 +576,11 @@ export function ReplayDetailPanel({
     }
   })();
   const vaultMap = findVaultMap(maps.vault, effectiveMap);
-  const presentation = mapPresentation(maps.vault, effectiveMap);
+  const presentation = replayMapPresentation(maps.vault, missions, {
+    map: effectiveMap,
+    title: replay.title,
+    modName: replay.modName,
+  });
 
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);

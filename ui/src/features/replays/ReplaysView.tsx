@@ -1,7 +1,8 @@
 // Replays workspace: backend state selects data; each tab owns its presentation state.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SectionTabs } from "../../design-system/SectionTabs";
 import type { ReplayStatus } from "../../ipc/bindings";
+import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { LiveReplayView } from "./LiveReplayView";
 import { LocalReplayView } from "./LocalReplayView";
@@ -42,6 +43,17 @@ export function ReplaysView() {
   const offline = useAppStore((state) => state.state.auth.mode === "offline");
   const status = useAppStore((state) => state.state.replays.status);
   const lastWarning = useAppStore((state) => state.state.replays.lastWarning);
+  // A campaign mission has no vault map, so without the mission catalogue every
+  // co-op replay here reads as an unknown map. Only when nothing has loaded it
+  // yet: the Play tab asks for the same list, and the service refuses a second
+  // crawl anyway.
+  useEffect(() => {
+    if (offline) return;
+    if (useAppStore.getState().state.coop.catalogStatus.type === "idle") {
+      ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
+    }
+  }, [offline]);
+
   const note = statusNote(status);
   const busy = status.type === "connecting";
   const sources: SubView[] = offline ? ["local"] : (Object.keys(SUB_VIEWS) as SubView[]);

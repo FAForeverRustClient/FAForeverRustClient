@@ -1386,6 +1386,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.list.results": "Результаты",
   "replays.list.unknownDate": "Дата неизвестна",
   "replays.list.mapUnavailable": "Карта недоступна",
+  "replays.map.coopMission": "Кооперативная миссия",
   "replays.list.realTimeUnavailable": "Реальное время недоступно",
   "replays.list.realTimeSuffix": "{duration} реального времени",
   "replays.list.available": "Доступен",

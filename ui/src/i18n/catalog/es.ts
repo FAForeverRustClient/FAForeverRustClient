@@ -1369,6 +1369,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.list.results": "Resultados",
   "replays.list.unknownDate": "Fecha desconocida",
   "replays.list.mapUnavailable": "Mapa no disponible",
+  "replays.map.coopMission": "Misión cooperativa",
   "replays.list.realTimeUnavailable": "Tiempo real no disponible",
   "replays.list.realTimeSuffix": "{duration} de tiempo real",
   "replays.list.available": "Disponible",

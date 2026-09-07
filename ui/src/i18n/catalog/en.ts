@@ -1549,6 +1549,7 @@ export const en = {
   "replays.list.results": "Results",
   "replays.list.unknownDate": "Unknown date",
   "replays.list.mapUnavailable": "Map unavailable",
+  "replays.map.coopMission": "Co-op mission",
   "replays.list.realTimeUnavailable": "Real time N/A",
   "replays.list.realTimeSuffix": "{duration} real",
   "replays.list.available": "Available",

@@ -1437,6 +1437,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.list.results": "Ergebnisse",
   "replays.list.unknownDate": "Unbekanntes Datum",
   "replays.list.mapUnavailable": "Karte nicht verfügbar",
+  "replays.map.coopMission": "Koop-Mission",
   "replays.list.realTimeUnavailable": "Echtzeit N/A",
   "replays.list.realTimeSuffix": "{duration} echt",
   "replays.list.available": "Verfügbar",

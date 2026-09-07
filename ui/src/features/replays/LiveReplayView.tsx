@@ -26,6 +26,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const lobbyStatus = useAppStore((s) => s.state.lobby.status);
   const mapVault = useAppStore((s) => s.state.maps.vault);
+  // Live co-op games name a mission folder, which only the co-op catalogue can
+  // turn into the mission's name and artwork.
+  const missions = useAppStore((s) => s.state.coop.missions);
   const mapVaultStatus = useAppStore((s) => s.state.maps.vaultStatus);
   const friends = useAppStore((s) => s.state.social.friends);
   const browsing = useAppStore((s) => s.state.settings.browsing);
@@ -140,9 +143,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const visibleGames = useMemo(
     () => filteredGames.slice(0, visibleCount).map((game) => ({
       game,
-      presentation: mapPresentation(mapVault, game.map),
+      presentation: mapPresentation(mapVault, game.map, missions),
     })),
-    [filteredGames, mapVault, visibleCount],
+    [filteredGames, mapVault, missions, visibleCount],
   );
 
   const activeFilterCount = [
