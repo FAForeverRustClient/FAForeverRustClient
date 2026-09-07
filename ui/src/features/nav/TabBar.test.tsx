@@ -7,22 +7,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetLocaleForTests, setLocale } from "../../i18n/store";
-import { useAppStore } from "../../store/store";
 import { TabBar } from "./TabBar";
-
-const account = useAppStore.getState().state;
 
 afterEach(() => {
   resetLocaleForTests();
-  useAppStore.setState({ state: account });
 });
-
-/** A session with no account: see `AuthMode::Offline`. */
-function goOffline() {
-  useAppStore.setState({
-    state: { ...account, auth: { ...account.auth, status: "loggedIn", mode: "offline" } },
-  });
-}
 
 describe("TabBar localisation", () => {
   it("renders English by default, unchanged from before localisation existed", () => {
@@ -46,19 +35,9 @@ describe("TabBar localisation", () => {
     expect(markup).not.toContain("Leaderboard");
   });
 
-  it("offers an offline session only what it can open, and the way back out", () => {
-    goOffline();
-    const markup = renderToStaticMarkup(<TabBar />);
-
-    expect(markup).toContain("Replays");
-    expect(markup).toContain("Settings");
-    expect(markup).toContain("Sign in");
-    // Every one of these asks the server something the moment it mounts.
-    expect(markup).not.toContain("News");
-    expect(markup).not.toContain("Leaderboard");
-    expect(markup).not.toContain("Chat");
-  });
-
+  // What an offline session renders instead is covered in `tabs.test.ts`:
+  // this file renders on the server, where zustand answers every selector from
+  // `getInitialState()`, so a session set up with `setState` is invisible here.
   it("keeps the sign-in entry out of a session that has an account", () => {
     expect(renderToStaticMarkup(<TabBar />)).not.toContain("Sign in");
   });
