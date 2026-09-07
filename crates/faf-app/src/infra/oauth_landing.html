@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>FAF: Signed in</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      background: #111;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fafafa;
+    }
+
+    .canvas {
+      position: relative;
+      width: 100%;
+      min-height: 100%;
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          115deg,
+          rgba(255, 255, 255, 0) 42%,
+          rgba(255, 255, 255, 0.05) 50%,
+          rgba(255, 255, 255, 0) 58%
+        ),
+        radial-gradient(
+          ellipse 1800px 1400px at 74% 18%,
+          #1b1b1e 0%,
+          #060606 55%,
+          #000000 100%
+        );
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .logo {
+      filter: drop-shadow(0 20px 52px rgba(0, 0, 0, 0.55));
+    }
+
+    .logo svg {
+      display: block;
+      width: min(420px, 65vw);
+      height: auto;
+    }
+
+    .status {
+      margin-top: 55px;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .check {
+      width: 58px;
+      height: 58px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border: 2px solid #fafafa;
+      border-radius: 50%;
+
+      font-family: Arial, sans-serif;
+      font-size: 30px;
+      font-weight: 400;
+
+      line-height: 1;
+    }
+
+    h1 {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1.2;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    p {
+      margin-top: 4px;
+
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 17px;
+      color: #a5a5a8;
+      letter-spacing: 0.01em;
+    }
+
+    .close {
+      margin-top: 42px;
+
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      color: #66666a;
+    }
+
+    @media (max-width: 600px) {
+      .canvas {
+        padding: 32px;
+      }
+
+      .logo svg {
+        width: 280px;
+      }
+
+      .status {
+        margin-top: 42px;
+      }
+
+      .check {
+        width: 50px;
+        height: 50px;
+        font-size: 26px;
+      }
+
+      p {
+        font-size: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="canvas">
+    <main class="content">
+
+      <div class="logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 703 374">
+          <polygon fill="#fff"
+            points="561.3 187.18 653.75 347.29 594.8 347.29 473.49 136.23 659.6 136.23 689 187.16 561.32 187.16 561.3 187.18"/>
+
+          <polygon fill="#fff"
+            points="410.52 26.71 596.34 26.71 628.74 82.81 442.76 82.81 410.52 26.71"/>
+
+          <path fill="#fff"
+            d="M354.05,26.71h-1.49L167.47,347.29h56.78l44-76.23H435.89l44,76.23h58.43ZM305.57,207.25l46.52-80.56,46.51,80.56Z"/>
+
+          <polygon fill="#fff"
+            points="74.26 82.81 106.66 26.71 295.93 26.71 263.53 82.81 74.26 82.81"/>
+
+          <polygon fill="#fff"
+            points="110.82 347.29 49.23 347.29 141.68 187.18 14 187.18 43.4 136.25 232.67 136.25 110.82 347.29"/>
+        </svg>
+      </div>
+
+      <section class="status">
+        <div class="check">✓</div>
+
+        <h1>You're signed in</h1>
+
+        <p>
+          Authentication was successful.
+        </p>
+
+        <span class="close">
+          You can close this window now.
+        </span>
+      </section>
+
+    </main>
+  </div>
+</body>
+</html>

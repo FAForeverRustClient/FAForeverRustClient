@@ -617,23 +617,31 @@ fn parse_redirect_request(request_line: &str) -> AuthResult<Redirect> {
     Ok(redirect)
 }
 
+/// The page the browser is left on once the redirect comes back.
+///
+/// A file rather than a string literal: it is a real page, with a style sheet
+/// and the client's mark drawn as SVG, and every CSS brace in it would have to
+/// be doubled to survive a `format!`. Its own wording is the successful case,
+/// which is the one nearly everybody sees; the failure case swaps the four
+/// lines that say it went well.
+const LANDING_PAGE: &str = include_str!("oauth_landing.html");
+
 fn response_html(success: bool) -> String {
-    let (title, message) = if success {
-        (
-            "Signed in",
-            "You can close this tab and return to FAForever Client.",
-        )
-    } else {
-        (
-            "Sign-in failed",
+    if success {
+        return LANDING_PAGE.to_string();
+    }
+    LANDING_PAGE
+        .replace("FAF: Signed in", "FAF: Sign-in failed")
+        .replace(">✓<", ">✕<")
+        .replace("You're signed in", "Sign-in failed")
+        .replace(
+            "Authentication was successful.",
             "Something went wrong. Return to FAForever Client and try again.",
         )
-    };
-    format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>{title}</title></head>\
-         <body style=\"font-family:system-ui;text-align:center;padding-top:4rem\">\
-         <h2>{title}</h2><p>{message}</p></body></html>"
-    )
+        .replace(
+            "You can close this window now.",
+            "You can close this window and try again in the client.",
+        )
 }
 
 /// Hydra's token endpoint response (only the fields we use).
