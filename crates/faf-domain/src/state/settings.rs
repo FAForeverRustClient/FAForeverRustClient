@@ -239,6 +239,14 @@ impl AppearancePreferences {
 pub struct NotificationPreferences {
     pub enabled: bool,
     pub desktop: bool,
+    /// Whether [`Self::desktop`] covers every notification kind, or only the
+    /// few that cannot wait.
+    ///
+    /// Off, which is the default and the fix for the client having mirrored its
+    /// whole notification stream to the operating system: see
+    /// [`super::NotificationKind::raises_os_notification`] for the list and the
+    /// reasoning. On restores the old behaviour for anyone who wants it.
+    pub desktop_all_kinds: bool,
     pub sound: bool,
     pub notify_when_focused: bool,
     pub match_found: bool,
@@ -262,6 +270,7 @@ impl Default for NotificationPreferences {
         Self {
             enabled: true,
             desktop: true,
+            desktop_all_kinds: false,
             sound: true,
             notify_when_focused: false,
             match_found: true,
@@ -294,6 +303,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
         struct Wire {
             enabled: bool,
             desktop: bool,
+            desktop_all_kinds: bool,
             sound: bool,
             notify_when_focused: bool,
             match_found: bool,
@@ -317,6 +327,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                 Self {
                     enabled: defaults.enabled,
                     desktop: defaults.desktop,
+                    desktop_all_kinds: defaults.desktop_all_kinds,
                     sound: defaults.sound,
                     notify_when_focused: defaults.notify_when_focused,
                     match_found: defaults.match_found,
@@ -340,6 +351,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
         Ok(Self {
             enabled: wire.enabled,
             desktop: wire.desktop,
+            desktop_all_kinds: wire.desktop_all_kinds,
             sound: wire.sound,
             notify_when_focused: wire.notify_when_focused,
             match_found: wire.match_found,

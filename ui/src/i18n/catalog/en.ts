@@ -881,6 +881,8 @@ export const en = {
   "settings.notifications.enabledHint": "Show alerts for important activity while the client is open.",
   "settings.notifications.desktop": "Desktop notifications",
   "settings.notifications.desktopHint": "Use operating-system notifications when the client is in the background.",
+  "settings.notifications.desktopAllKinds": "Push every notification",
+  "settings.notifications.desktopAllKindsHint": "Off, only the ones somebody is waiting on leave the client: a match, a party invite, a launched game, a finished map. On, the whole notification list is mirrored to the operating system.",
   "settings.notifications.sound": "Notification sounds",
   "settings.notifications.soundHint": "Play a short sound for new alerts.",
   "settings.notifications.volume": "Sound volume",

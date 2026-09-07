@@ -397,6 +397,7 @@ const INITIAL: AppState = {
     notifications: {
       enabled: true,
       desktop: true,
+      desktopAllKinds: false,
       sound: true,
       notifyWhenFocused: false,
       matchFound: true,

@@ -33,6 +33,17 @@ export function NotificationsSettingsSection() {
           label={t("settings.notifications.desktop")}
         />
       </SettingRow>
+      {/* What the switch above covers. Off, only the handful of kinds somebody
+          is waiting on leave the client; on, the whole notification stream is
+          mirrored, which is what the client used to do unconditionally. */}
+      <SettingRow label={t("settings.notifications.desktopAllKinds")} hint={t("settings.notifications.desktopAllKindsHint")}>
+        <SettingsSwitch
+          checked={preferences.desktopAllKinds}
+          disabled={!preferences.enabled || !preferences.desktop}
+          onChange={(desktopAllKinds) => update({ desktopAllKinds })}
+          label={t("settings.notifications.desktopAllKinds")}
+        />
+      </SettingRow>
       <SettingRow label={t("settings.notifications.sound")} hint={t("settings.notifications.soundHint")}>
         <SettingsSwitch
           checked={preferences.sound}

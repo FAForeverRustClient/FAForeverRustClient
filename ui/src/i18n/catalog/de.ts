@@ -790,6 +790,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.enabledHint": "Hinweise zu wichtigen Ereignissen anzeigen, solange der Client offen ist.",
   "settings.notifications.desktop": "Desktop-Benachrichtigungen",
   "settings.notifications.desktopHint": "Betriebssystem-Benachrichtigungen nutzen, wenn der Client im Hintergrund ist.",
+  "settings.notifications.desktopAllKinds": "Alle Benachrichtigungen pushen",
+  "settings.notifications.desktopAllKindsHint": "Aus verlassen nur die den Client, auf die jemand wartet: ein Match, eine Gruppeneinladung, ein gestartetes Spiel, eine fertige Karte. An wird die gesamte Liste ans Betriebssystem gespiegelt.",
   "settings.notifications.sound": "Benachrichtigungstöne",
   "settings.notifications.soundHint": "Bei neuen Hinweisen einen kurzen Ton abspielen.",
   "settings.notifications.volume": "Lautstärke",

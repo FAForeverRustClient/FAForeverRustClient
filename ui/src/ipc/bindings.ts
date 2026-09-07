@@ -3651,6 +3651,16 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
 export type NotificationPreferences = {
 	enabled: boolean,
 	desktop: boolean,
+	/**
+	 *  Whether [`Self::desktop`] covers every notification kind, or only the
+	 *  few that cannot wait.
+	 *
+	 *  Off, which is the default and the fix for the client having mirrored its
+	 *  whole notification stream to the operating system: see
+	 *  [`super::NotificationKind::raises_os_notification`] for the list and the
+	 *  reasoning. On restores the old behaviour for anyone who wants it.
+	 */
+	desktopAllKinds: boolean,
 	sound: boolean,
 	notifyWhenFocused: boolean,
 	matchFound: boolean,
