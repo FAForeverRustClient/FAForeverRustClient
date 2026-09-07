@@ -487,7 +487,7 @@
 
 .training-trainer-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-3);
 }
 
@@ -508,10 +508,17 @@
   opacity: 0.72;
 }
 
+/* The role chip is allowed to drop onto its own line rather than squeeze the
+   name: with the avatar taking a fixed 40px, a chip that keeps its share of a
+   260px tile leaves the name about a hundred pixels, which is where the
+   truncation came from. Wrapping the header costs one line on a narrow tile
+   and never costs a name. */
 .training-trainer header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
   min-width: 0;
 }
 
@@ -537,15 +544,18 @@
 
 .training-trainer header div {
   display: flex;
+  flex: 1 1 auto;
   min-width: 0;
   flex-direction: column;
 }
 
+/* A trainer whose name you cannot read is a trainer you cannot look up, so the
+   name wraps rather than ending in an ellipsis. `anywhere` because FAF names
+   are single tokens: a 20-character nickname has no space to break at. */
 .training-trainer header strong {
-  overflow: hidden;
   font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .training-trainer header small {
@@ -563,10 +573,6 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
-}
-
-.training-trainer header {
-  justify-content: space-between;
 }
 
 .training-trainer-note {
@@ -597,6 +603,12 @@
   color: var(--color-muted);
   background: transparent;
   border-color: var(--color-border);
+}
+
+/* Keeps its own width: the header wraps it onto the next line when the tile is
+   narrow instead of shrinking it into the name. */
+.training-trainer header .training-chip.is-role {
+  flex: 0 0 auto;
 }
 
 /* The one chip that is about the reader rather than about the entry. */
