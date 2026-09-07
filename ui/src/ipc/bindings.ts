@@ -4454,6 +4454,19 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	path: string,
 } } |
 /**
+ *  Read the real map out of the replay files themselves, for games whose
+ *  listing has none.
+ *
+ *  The API records a game's map as a `map_version` row, and a campaign
+ *  mission is not one, so every co-op game arrives with no map at all.
+ *  The replay knows: its body opens with the scenario the engine loaded,
+ *  which is the mission's own folder. See
+ *  [`ReplayEvent::MapsResolved`].
+ */
+{ type: "resolveMaps"; payload: {
+	uids: number[],
+} } |
+/**
  *  Ask the vault what it knows about one game id, without disturbing the
  *  browse/search results in [`ReplayState::vault`].
  *
@@ -4566,8 +4579,13 @@ export type ReplayEvent = { type: "connecting" } |
 /**
  *  The answer. `replay` is `None` when the vault has no such game, which
  *  is a result, not a failure.
+ *  What [`ReplayCommand::ResolveMaps`] found, one entry per game it was
+ *  asked about. A game whose file could not be read carries an empty map,
+ *  which is how the view knows it has been asked already.
  */
-{ type: "onlineLookupFinished"; payload: {
+{ type: "mapsResolved"; payload: {
+	maps: ResolvedReplayMap[],
+} } | { type: "onlineLookupFinished"; payload: {
 	uid: number,
 	replay: VaultReplay | null,
 } } | { type: "onlineLookupFailed"; payload: {
@@ -4751,6 +4769,12 @@ export type ReplayState = {
 	 *  [`OnlineLookup`].
 	 */
 	onlineLookups?: { [key in number]: OnlineLookup },
+	/**
+	 *  Map folders read out of the replay files themselves, keyed by game id.
+	 *  An empty value means the file was read and named no map, so the view
+	 *  stops asking. See [`ReplayCommand::ResolveMaps`].
+	 */
+	resolvedMaps?: { [key in number]: string },
 };
 
 export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
@@ -4837,6 +4861,16 @@ export type ResolvedPaths = {
 	gamePrefsPath: string,
 	mapGeneratorDir: string,
 	javaPath: string,
+};
+
+/**  One game's map, as its replay file names it. */
+export type ResolvedReplayMap = {
+	uid: number,
+	/**
+	 *  The map folder the replay was played on, or empty when the file named
+	 *  none. Empty is an answer: it stops the view asking a second time.
+	 */
+	map: string,
 };
 
 /**

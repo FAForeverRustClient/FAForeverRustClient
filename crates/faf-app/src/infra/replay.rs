@@ -471,15 +471,32 @@ impl ReplayClient {
     }
 
     async fn fetch_vault_replay(&self, uid: i32) -> Result<Vec<u8>, String> {
+        self.fetch_vault_replay_bytes(uid, None).await
+    }
+
+    /// A vault replay, whole or only its first `head` bytes.
+    ///
+    /// The vault answers ranges with `206 Partial Content`, and a replay runs
+    /// to megabytes of which the head is a few kilobytes: the JSON envelope,
+    /// and enough of the compressed stream to decode the strings it opens
+    /// with. A server that ignores the range answers `200` with the whole
+    /// file, which the same cap bounds, so asking is free either way.
+    async fn fetch_vault_replay_bytes(
+        &self,
+        uid: i32,
+        head: Option<u64>,
+    ) -> Result<Vec<u8>, String> {
         let raw = format!("{}/{}", self.config.vault_host.trim_end_matches('/'), uid);
         let mut url = url::Url::parse(&raw)
             .map_err(|_| "configured FAF replay URL is invalid".to_string())?;
 
         for redirect_count in 0..=MAX_REPLAY_DOWNLOAD_REDIRECTS {
             validate_replay_download_url(&url, uid, &self.config)?;
-            let response = self
-                .download_http
-                .get(url.clone())
+            let mut request = self.download_http.get(url.clone());
+            if let Some(bytes) = head {
+                request = request.header(reqwest::header::RANGE, format!("bytes=0-{}", bytes - 1));
+            }
+            let response = request
                 .send()
                 .await
                 .map_err(|error| format!("could not download replay {uid}: {error}"))?;
@@ -508,7 +525,8 @@ impl ReplayClient {
             if !status.is_success() {
                 return Err(format!("could not download replay {uid}: {status}"));
             }
-            return bounded_body(response, &format!("replay {uid}"), MAX_DOWNLOAD_BYTES).await;
+            let cap = head.unwrap_or(MAX_DOWNLOAD_BYTES);
+            return bounded_body(response, &format!("replay {uid}"), cap).await;
         }
         unreachable!("the bounded redirect loop always returns")
     }
@@ -1260,6 +1278,13 @@ impl ReplayPort for ReplayClient {
         read_detailed_info(&path).await
     }
 
+    async fn replay_map_name(&self, uid: i32) -> Result<Option<String>, String> {
+        let head = self
+            .fetch_vault_replay_bytes(uid, Some(REPLAY_HEAD_BYTES))
+            .await?;
+        Ok(map_name_from_replay_head(&head))
+    }
+
     async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String> {
         list_local_dir(&local_replays_dir(), limit).await
     }
@@ -1442,6 +1467,10 @@ fn local_sim_mods(header: &Value) -> Vec<String> {
 }
 
 const LOCAL_REPLAY_BODY_PREFIX_BYTES: u64 = 512 * 1024;
+/// How much of a vault replay is fetched to read the map out of it. The
+/// envelope is a few hundred bytes and the first compressed block decodes well
+/// past the scenario path, which is the third string in the stream.
+const REPLAY_HEAD_BYTES: u64 = 64 * 1024;
 const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
 
 /// Read the compact FA replay header from a compressed local replay body. The
@@ -1506,6 +1535,40 @@ fn local_body_player_stats(body: &[u8], compression: &str) -> Option<LocalBodyIn
         return None;
     }
     Some(parse_local_body_info(&prefix))
+}
+
+/// The map folder a `.fafreplay` names, read from the front of the file.
+///
+/// Two places name it, and the file decides which one is filled. A replay this
+/// client recorded carries the map in its own JSON envelope; one served by the
+/// FAF replay server carries the literal string `None` there, because the
+/// server writes the envelope from a game record that has no map for a
+/// campaign mission either. Underneath both is the command stream, which
+/// always opens with the scenario the engine loaded
+/// (`/maps/SCCA_Coop_A03.v0023/SCCA_Coop_A03.scmap`), and that is the mission's
+/// own folder: the same thing `faf-scfa-replay-parser` reads, and the key the
+/// co-op catalogue, the vault lookup and the preview service all use.
+///
+/// `head` may be a truncated file: the stream decoder keeps whatever it
+/// decoded before the data ran out, which is far more than these strings.
+fn map_name_from_replay_head(head: &[u8]) -> Option<String> {
+    let split = head.iter().position(|byte| *byte == b'\n')?;
+    let header: Value = serde_json::from_slice(&head[..split]).ok()?;
+    let envelope = header
+        .get("mapname")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|map| !map.is_empty() && !map.eq_ignore_ascii_case("none"))
+        .map(extract_map_folder)
+        .filter(|map| !map.is_empty());
+    if envelope.is_some() {
+        return envelope;
+    }
+    let compression = header
+        .get("compression")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    local_body_player_stats(&head[split + 1..], compression)?.map_name
 }
 
 /// Is there still a game inside this file?
@@ -3861,6 +3924,60 @@ mod tests {
             .await
             .expect("missing dir is not an error");
         assert!(replays.is_empty());
+    }
+
+    /// A vault replay's head is all it takes to name the mission it was played
+    /// on, which is the whole of issue #89: the API has no map for a co-op
+    /// game, and the FAF replay server writes the literal string "None" into
+    /// the envelope because its own game record has none either.
+    #[test]
+    fn a_replay_head_names_the_mission_the_listing_could_not() {
+        let mut body = Vec::new();
+        body.extend_from_slice(b"Supreme Commander v1.50.3836\0");
+        body.extend_from_slice(b"\r\n\0");
+        body.extend_from_slice(b"Replay v1.9\r\n/maps/SCCA_Coop_A03.v0023/SCCA_Coop_A03.scmap\0");
+        // Enough incompressible filler that the compressed stream runs well
+        // past the range this fetches, so the truncated case below is the real
+        // one rather than an accident of a tiny fixture.
+        let mut seed = 1_u32;
+        for _ in 0..(400 * 1024) {
+            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            body.push((seed >> 24) as u8);
+        }
+        let compressed = zstd::stream::encode_all(&body[..], 0).unwrap();
+        assert!(compressed.len() > REPLAY_HEAD_BYTES as usize);
+
+        let head = |envelope: &str| {
+            let mut bytes = envelope.as_bytes().to_vec();
+            bytes.push(b'\n');
+            bytes.extend_from_slice(&compressed);
+            bytes
+        };
+
+        let served = head(r#"{"featured_mod":"coop","mapname":"None","compression":"zstd"}"#);
+        assert_eq!(
+            map_name_from_replay_head(&served).as_deref(),
+            Some("SCCA_Coop_A03.v0023"),
+            "the stream names the scenario the engine loaded"
+        );
+
+        // Only the head is fetched, so only the head may be needed.
+        let truncated = &served[..REPLAY_HEAD_BYTES as usize];
+        assert_eq!(
+            map_name_from_replay_head(truncated).as_deref(),
+            Some("SCCA_Coop_A03.v0023"),
+            "a truncated stream still decodes the strings it opens with"
+        );
+
+        // A recording this client made fills the envelope in itself, and that
+        // answer is taken without decompressing anything.
+        let own = head(r#"{"mapname":"scca_coop_a03.v0023","compression":"zstd"}"#);
+        assert_eq!(
+            map_name_from_replay_head(&own).as_deref(),
+            Some("scca_coop_a03.v0023")
+        );
+
+        assert_eq!(map_name_from_replay_head(b"not a replay at all"), None);
     }
 
     /// The contract between the two halves of "record a game locally": what

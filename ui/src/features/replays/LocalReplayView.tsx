@@ -114,6 +114,7 @@ function localReplayCard(
   const presentation = replay.map ? mapPresentation(vault, replay.map, missions) : null;
   const timestamp = localReplayTimestamp(replay);
   return {
+    uid: replay.uid ?? 0,
     idLabel: replay.uid === null ? t("replays.local.noReplayId") : `#${replay.uid}`,
     title: replay.title || replay.fileName,
     map: presentation?.displayName || replay.map || t("replays.local.mapUnavailable"),

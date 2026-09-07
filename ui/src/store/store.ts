@@ -58,6 +58,7 @@ const INITIAL: AppState = {
     detailsLoading: null,
     detailsError: null,
     onlineLookups: {},
+    resolvedMaps: {},
   },
   maps: {
     vault: [],

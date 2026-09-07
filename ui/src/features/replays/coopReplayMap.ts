@@ -8,17 +8,24 @@
 // backend marks that with `UNKNOWN_VAULT_MAP`, and the whole co-op half of
 // the Replays tab read "Unknown Map".
 //
-// Three things do know the mission, in descending order of certainty:
+// The replay file knows, and nothing else does. Its command stream opens with
+// the scenario the engine loaded (`/maps/SCCA_Coop_A03.v0023/...`), which is
+// the mission's own folder: the same field `faf-scfa-replay-parser` reads.
+// Three ways to that answer, in descending order of certainty:
 //
-// 1. The replay file, when the client has it: its header names the scenario
-//    (`/maps/scca_coop_r03.v0021/...`), which is the mission's own folder.
-//    `effectiveReplayMapName` picks that up from a matching local file.
-// 2. The mission catalogue, matched against the game's title. Hosting a
+// 1. The file on this disk, when the client has it: `effectiveReplayMapName`
+//    picks the map up from a matching local replay.
+// 2. The file in the vault, read by `ReplayCommand::ResolveMaps`: the first
+//    64 KiB of it, which is the envelope and enough of the stream to decode
+//    the scenario path. This is the answer for a game the client has never
+//    downloaded, and it overrides the guess below as soon as it arrives.
+// 3. The mission catalogue, matched against the game's title. Hosting a
 //    mission titles the game after it unless the host types over that, so
-//    this covers most of what is left, and it is checked against the real
-//    mission list rather than being believed on its own.
-// 3. Nothing: the game was renamed and never downloaded. It is still a
-//    mission rather than an unknown map, and saying so is the honest answer.
+//    this is a good guess, it costs nothing, and it fills the row while the
+//    real answer is still being fetched.
+//
+// Only a game that is none of those, renamed and unreadable, is left saying
+// merely that it was a mission.
 
 import type { CoopMission, VaultMap } from "../../ipc/bindings";
 import { t } from "../../i18n";
@@ -73,15 +80,21 @@ export function coopMissionByTitle(
 /**
  * The map key a replay's name and artwork should be looked up under.
  *
- * The listing's own map, unless there is none and the mission catalogue
- * recognises the title: then the mission's folder, which is the key the vault
- * lookup, the preview service and the mission artwork all use.
+ * The listing's own map when it has one. Otherwise what the replay file said,
+ * which is read for any game the listing left blank rather than only for a
+ * co-op one: a deleted vault map leaves the same hole. Failing that, and only
+ * for co-op, the mission the title names. All three resolve to a map folder,
+ * which is the key the vault lookup, the preview service and the mission
+ * artwork all use.
  */
 export function replayMapKey(
   missions: CoopMission[],
   replay: { map: string; title: string; modName: string },
+  resolved?: string,
 ): string {
-  if (!isUnknownVaultMap(replay.map) || !isCoopReplay(replay.modName)) return replay.map;
+  if (!isUnknownVaultMap(replay.map)) return replay.map;
+  if (resolved) return resolved;
+  if (!isCoopReplay(replay.modName)) return replay.map;
   return coopMissionByTitle(replay.title, missions)?.mapFolderName ?? replay.map;
 }
 
@@ -90,15 +103,16 @@ export function replayMapKey(
  *
  * Anything with a map key goes straight to the shared presentation, which
  * already resolves a mission folder to its name and artwork. Only a co-op game
- * that stayed unidentified reaches the last line, and it says what is actually
- * known about it: that it was a mission.
+ * that none of the three sources could name reaches the last line, and it says
+ * what is still known about it: that it was a mission.
  */
 export function replayMapPresentation(
   vault: VaultMap[],
   missions: CoopMission[],
   replay: { map: string; title: string; modName: string },
+  resolved?: string,
 ): MapPresentation {
-  const key = replayMapKey(missions, replay);
+  const key = replayMapKey(missions, replay, resolved);
   if (!isUnknownVaultMap(key)) return mapPresentation(vault, key, missions);
   if (!isCoopReplay(replay.modName)) return mapPresentation(vault, replay.map, missions);
   return {

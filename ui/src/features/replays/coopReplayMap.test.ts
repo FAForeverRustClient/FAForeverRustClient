@@ -61,6 +61,37 @@ describe("a co-op replay's mission", () => {
     expect(replayMapPresentation(vault, missions, noMap).isCoop).toBeUndefined();
   });
 
+  it("takes what the replay file said over what the title suggested", () => {
+    // The file is read from the vault, 64 KiB of it, and it names the scenario
+    // the engine actually loaded. A host who titled the game after a different
+    // mission does not get to overrule that.
+    const misnamed = { ...coop, title: "The Hunt" };
+    expect(replayMapKey(missions, misnamed)).toBe("SCCA_Coop_R04.v0010");
+    expect(replayMapKey(missions, misnamed, "SCCA_Coop_R03.v0021")).toBe("SCCA_Coop_R03.v0021");
+    expect(
+      replayMapPresentation(vault, missions, misnamed, "SCCA_Coop_R03.v0021").displayName,
+    ).toBe("Fear No Evil");
+  });
+
+  it("names a renamed mission the file could be read for, and only says 'mission' when it could not", () => {
+    const renamed = { ...coop, title: "coop pros only" };
+    expect(replayMapKey(missions, renamed, "X1CA_Coop_006.v0009")).toBe("X1CA_Coop_006.v0009");
+    expect(
+      replayMapPresentation(vault, missions, renamed, "X1CA_Coop_006.v0009").displayName,
+    ).toBe("Prime Target");
+    // An empty answer is the file having been read and named nothing, which is
+    // the only case left that falls back to the generic label.
+    expect(replayMapPresentation(vault, missions, renamed, "").isCoop).toBe(true);
+  });
+
+  it("fills in a custom game whose vault map is gone, which is the same hole", () => {
+    const lost = { map: "unknown map", title: "whatever", modName: "faf" };
+    expect(replayMapKey(missions, lost, "scmp_009")).toBe("scmp_009");
+    expect(replayMapPresentation(vault, missions, lost, "scmp_009").displayName).toBe(
+      "Seton's Clutch",
+    );
+  });
+
   it("does not let a short mission name match a fragment of an unrelated title", () => {
     const shortNamed = [mission({ id: 9, name: "Hunt", mapFolderName: "SCCA_Coop_X.v0001" })];
     expect(coopMissionByTitle("Bug hunting practice", shortNamed)).toBeUndefined();

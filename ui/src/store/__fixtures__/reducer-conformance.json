@@ -132,7 +132,8 @@
       "replayDetails": {},
       "detailsLoading": null,
       "detailsError": null,
-      "onlineLookups": {}
+      "onlineLookups": {},
+      "resolvedMaps": {}
     },
     "maps": {
       "vault": [],
@@ -24875,6 +24876,7 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "connecting"
             },
@@ -24943,6 +24945,7 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "payload": {
                 "reason": "delayed by five minutes"
@@ -25011,6 +25014,7 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -25097,6 +25101,7 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -25162,6 +25167,7 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -25227,6 +25233,7 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -25329,6 +25336,88 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": true,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 2,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "mapsResolved",
+              "payload": {
+                "maps": [
+                  {
+                    "uid": 42,
+                    "map": "SCCA_Coop_A03.v0023"
+                  },
+                  {
+                    "uid": 43,
+                    "map": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "type": "idle"
             },
@@ -25400,6 +25489,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "type": "idle"
             },
@@ -25511,6 +25604,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "type": "idle"
             },
@@ -25602,6 +25699,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "type": "idle"
             },
@@ -25695,6 +25796,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "type": "idle"
             },
@@ -25786,6 +25891,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "type": "idle"
             },
@@ -25875,6 +25984,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "payload": {
                 "uid": 44
@@ -25969,6 +26082,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "payload": {
                 "uid": 44
@@ -26060,6 +26177,10 @@
             },
             "onlineLookups": {},
             "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
             "status": {
               "payload": {
                 "reason": "could not update game to version 3701"
@@ -26140,6 +26261,7 @@
               }
             },
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -26248,6 +26370,7 @@
               }
             },
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -26341,6 +26464,7 @@
               }
             },
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -26435,6 +26559,7 @@
               }
             },
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -26531,6 +26656,7 @@
               }
             },
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },
@@ -26631,6 +26757,7 @@
               }
             },
             "replayDetails": {},
+            "resolvedMaps": {},
             "status": {
               "type": "idle"
             },

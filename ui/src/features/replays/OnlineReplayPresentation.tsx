@@ -58,7 +58,17 @@ function replayAge(startTime: string): string {
   return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
 }
 
+/**
+ * The selector's answer when nothing has been resolved yet.
+ *
+ * A literal `{}` inside the selector would be a new object on every render,
+ * which is a new value to the store's identity check and a render loop.
+ */
+const NO_RESOLVED_MAPS: Record<number, string> = {};
+
 export interface ReplayCardData {
+  /** The game id, which is what a map read out of the replay file is keyed by. */
+  uid: number;
   idLabel: string;
   title: string;
   map: string;
@@ -212,8 +222,12 @@ export function ReplayLibraryCard({
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const missions = useAppStore((state) => state.state.coop.missions);
-  const presentation = replayMapPresentation(vault, missions, replay);
-  const mapKey = replayMapKey(missions, replay);
+  // What the replay file said, when it has been read. Empty until it has, and
+  // empty for good if the file could not be read, which is why the fallbacks
+  // inside these two stay.
+  const resolved = useAppStore((state) => state.state.replays.resolvedMaps?.[replay.uid]);
+  const presentation = replayMapPresentation(vault, missions, replay, resolved);
+  const mapKey = replayMapKey(missions, replay, resolved);
   const cardTitle = replayCardTitle(replay.title, presentation.displayName || replay.map);
   const stateClasses = [watched && "replay-card-watched", selected && "replay-card-selected"]
     .filter(Boolean)
@@ -269,6 +283,7 @@ export function ReplayCard({
   return (
     <ReplayLibraryCard
       replay={{
+        uid: replay.uid,
         idLabel: `#${replay.uid}`,
         title: replay.title,
         map,
@@ -310,6 +325,7 @@ export function OnlineReplayList({
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const missions = useAppStore((state) => state.state.coop.missions);
+  const resolvedMaps = useAppStore((state) => state.state.replays.resolvedMaps ?? NO_RESOLVED_MAPS);
   const localReplays = useAppStore((state) => state.state.replays.local);
   const groups = groupByDate
     ? groupReplaysByDate(replays)
@@ -319,10 +335,11 @@ export function OnlineReplayList({
     label: group.label,
     rows: group.replays.map((replay) => {
       const map = effectiveReplayMapName(replay.map, localReplays.find((local) => local.uid === replay.uid)?.map);
-      const presentation = replayMapPresentation(vault, missions, { ...replay, map });
+      const resolved = resolvedMaps[replay.uid];
+      const presentation = replayMapPresentation(vault, missions, { ...replay, map }, resolved);
       return {
         key: String(replay.uid),
-        mapName: replayMapKey(missions, { ...replay, map }),
+        mapName: replayMapKey(missions, { ...replay, map }, resolved),
         mapThumbnailUrl: replay.mapThumbnailUrl,
         game: {
           primary: replay.title || presentation.displayName || map,
@@ -466,6 +483,9 @@ export function ReplayDetailPanel({
   const detailsLoading = useAppStore((state) => state.state.replays.detailsLoading);
   const detailsError = useAppStore((state) => state.state.replays.detailsError);
   const onlineLookups = useAppStore((state) => state.state.replays.onlineLookups);
+  // Subscribed, not read once: the answer arrives from the vault after the
+  // panel is already open, and the map is what the header of it says.
+  const resolvedMap = useAppStore((state) => state.state.replays.resolvedMaps?.[replay.uid]);
   const avatarByLogin = useMemo(() => {
     const avatars = new Map<string, string>();
     for (const player of socialPlayers) {
@@ -576,11 +596,12 @@ export function ReplayDetailPanel({
     }
   })();
   const vaultMap = findVaultMap(maps.vault, effectiveMap);
-  const presentation = replayMapPresentation(maps.vault, missions, {
-    map: effectiveMap,
-    title: replay.title,
-    modName: replay.modName,
-  });
+  const presentation = replayMapPresentation(
+    maps.vault,
+    missions,
+    { map: effectiveMap, title: replay.title, modName: replay.modName },
+    resolvedMap,
+  );
 
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);

@@ -163,6 +163,16 @@ pub struct ReplayDetails {
     pub game_version: Option<i32>,
 }
 
+/// One game's map, as its replay file names it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedReplayMap {
+    pub uid: i32,
+    /// The map folder the replay was played on, or empty when the file named
+    /// none. Empty is an answer: it stops the view asking a second time.
+    pub map: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplayTeam {
@@ -382,6 +392,11 @@ pub struct ReplayState {
     /// [`OnlineLookup`].
     #[serde(default)]
     pub online_lookups: std::collections::HashMap<i32, OnlineLookup>,
+    /// Map folders read out of the replay files themselves, keyed by game id.
+    /// An empty value means the file was read and named no map, so the view
+    /// stops asking. See [`ReplayCommand::ResolveMaps`].
+    #[serde(default)]
+    pub resolved_maps: std::collections::HashMap<i32, String>,
 }
 
 // No `Eq`: `VaultLoaded` carries `VaultReplay`, which has an `f32` field.
@@ -472,6 +487,12 @@ pub enum ReplayEvent {
     },
     /// The answer. `replay` is `None` when the vault has no such game, which
     /// is a result, not a failure.
+    /// What [`ReplayCommand::ResolveMaps`] found, one entry per game it was
+    /// asked about. A game whose file could not be read carries an empty map,
+    /// which is how the view knows it has been asked already.
+    MapsResolved {
+        maps: Vec<ResolvedReplayMap>,
+    },
     OnlineLookupFinished {
         uid: i32,
         replay: Option<Box<VaultReplay>>,
@@ -537,6 +558,17 @@ pub enum ReplayCommand {
     /// validates that the resolved file is directly inside that folder.
     DeleteLocal {
         path: String,
+    },
+    /// Read the real map out of the replay files themselves, for games whose
+    /// listing has none.
+    ///
+    /// The API records a game's map as a `map_version` row, and a campaign
+    /// mission is not one, so every co-op game arrives with no map at all.
+    /// The replay knows: its body opens with the scenario the engine loaded,
+    /// which is the mission's own folder. See
+    /// [`ReplayEvent::MapsResolved`].
+    ResolveMaps {
+        uids: Vec<i32>,
     },
     /// Ask the vault what it knows about one game id, without disturbing the
     /// browse/search results in [`ReplayState::vault`].
@@ -656,6 +688,13 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
         }
         ReplayEvent::OnlineLookupStarted { uid } => {
             state.online_lookups.insert(*uid, OnlineLookup::Loading);
+        }
+        ReplayEvent::MapsResolved { maps } => {
+            for resolved in maps {
+                state
+                    .resolved_maps
+                    .insert(resolved.uid, resolved.map.clone());
+            }
         }
         ReplayEvent::OnlineLookupFinished { uid, replay } => {
             let outcome = match replay {

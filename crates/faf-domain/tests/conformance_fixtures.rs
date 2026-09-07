@@ -4645,6 +4645,23 @@ fn cases() -> Vec<Case> {
                     total_records: Some(412),
                 }
                 .into(),
+                // The maps read out of the replay files themselves. An empty
+                // one is an answer as much as a folder name is: the view stops
+                // asking about that game either way, so both have to survive
+                // the trip through the reducer.
+                ReplayEvent::MapsResolved {
+                    maps: vec![
+                        ResolvedReplayMap {
+                            uid: 42,
+                            map: "SCCA_Coop_A03.v0023".into(),
+                        },
+                        ResolvedReplayMap {
+                            uid: 43,
+                            map: String::new(),
+                        },
+                    ],
+                }
+                .into(),
                 ReplayEvent::VaultDownloadStarted { uid: 42 }.into(),
                 ReplayEvent::VaultDownloaded {
                     uid: 42,
