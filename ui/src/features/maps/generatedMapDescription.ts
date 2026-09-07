@@ -5,7 +5,7 @@
 // is all a lobby row has, and `generatorPresentation.ts` decodes it. This file
 // is about the other copy, which only an *installed* map has and which says
 // strictly more: the name encodes a style, while the description also records
-// what that style resolved to — biome, terrain, resources, props, and the
+// what that style resolved to: biome, terrain, resources, props, and the
 // three symmetries that were actually used.
 //
 // Until now the client rendered that field verbatim, so the host dialog showed
@@ -79,8 +79,8 @@ const KNOWN_KEYS = new Set(KNOWN.map((entry) => entry.key));
  * How many recognised settings a description needs before we treat it as the
  * generator's.
  *
- * An ordinary map's description is prose — "A balanced battleground for 4
- * players." — and prose has no `key: value` lines at all, so one would do. Two
+ * An ordinary map's description is prose ("A balanced battleground for 4
+ * players."), and prose has no `key: value` lines at all, so one would do. Two
  * costs nothing and rules out a hand-written description that happens to open
  * with something like `Style: aggressive`.
  */
@@ -182,7 +182,7 @@ function parseSettings(description: string | null | undefined): Map<string, Sett
 /**
  * One line as the settings it carries.
  *
- * Usually one. A record value — `SymmetrySettings[terrainSymmetry=ZX, …]` — is
+ * Usually one. A record value, `SymmetrySettings[terrainSymmetry=ZX, ...]`, is
  * the generator printing a Java object, and the three symmetries inside it are
  * three settings a reader wants, not one string containing a class name. A
  * record whose insides do not parse falls back to the whole line, because a

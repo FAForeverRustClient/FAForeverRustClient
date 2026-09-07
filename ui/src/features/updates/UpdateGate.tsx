@@ -1,6 +1,6 @@
 // The update the client will not carry on without.
 //
-// The banner beside this file is an offer, and an offer can be waved away —
+// The banner beside this file is an offer, and an offer can be waved away,
 // per version, deliberately, because most updates are features and features
 // can wait for a better moment. Security fixes cannot: a client that stays on
 // the old build stays on whatever was wrong with it, and "dismiss" is exactly
