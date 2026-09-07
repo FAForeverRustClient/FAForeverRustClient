@@ -131,7 +131,8 @@
       },
       "replayDetails": {},
       "detailsLoading": null,
-      "detailsError": null
+      "detailsError": null,
+      "onlineLookups": {}
     },
     "maps": {
       "vault": [],
@@ -321,8 +322,7 @@
         "visualize": false,
         "previewPath": "",
         "outputPath": "",
-        "commandLineArgs": "",
-        "keepMaps": false
+        "commandLineArgs": ""
       },
       "previews": {},
       "validation": [],
@@ -599,7 +599,8 @@
       },
       "currentVersion": "",
       "release": null,
-      "dismissedVersion": ""
+      "dismissedVersion": "",
+      "lastChecked": ""
     },
     "settings": {
       "theme": "forgeDark",
@@ -630,6 +631,7 @@
       "notifications": {
         "enabled": true,
         "desktop": true,
+        "desktopAllKinds": false,
         "sound": true,
         "notifyWhenFocused": false,
         "matchFound": true,
@@ -678,7 +680,8 @@
         "cacheLifetimeDays": 30,
         "cacheSizeAlertGb": 10,
         "cacheRollingBranches": false,
-        "pipeLiveReplay": false
+        "pipeLiveReplay": false,
+        "keepGeneratedMaps": false
       },
       "discord": {
         "enabled": true,
@@ -794,8 +797,7 @@
         "visualize": false,
         "previewPath": "",
         "outputPath": "",
-        "commandLineArgs": "",
-        "keepMaps": false
+        "commandLineArgs": ""
       },
       "cacheInfo": {
         "totalSizeBytes": 0.0,
@@ -4889,6 +4891,27 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "lastChecked": "",
+            "release": null,
+            "status": {
+              "type": "checking"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "checkCompleted",
+              "payload": {
+                "at": "2026-02-01T09:00:00Z"
+              }
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "",
+            "lastChecked": "2026-02-01T09:00:00Z",
             "release": null,
             "status": {
               "type": "checking"
@@ -4916,6 +4939,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "lastChecked": "2026-02-01T09:00:00Z",
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -4944,6 +4968,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "lastChecked": "2026-02-01T09:00:00Z",
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -4975,6 +5000,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "lastChecked": "2026-02-01T09:00:00Z",
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -5002,6 +5028,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "",
+            "lastChecked": "2026-02-01T09:00:00Z",
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -5029,6 +5056,7 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "0.3.0",
+            "lastChecked": "2026-02-01T09:00:00Z",
             "release": {
               "assetName": "installer.exe",
               "downloadUrl": "https://example.invalid/installer.exe",
@@ -5053,6 +5081,27 @@
           "expected": {
             "currentVersion": "0.2.0",
             "dismissedVersion": "0.3.0",
+            "lastChecked": "2026-02-01T09:00:00Z",
+            "release": null,
+            "status": {
+              "type": "upToDate"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "ClientUpdate",
+            "event": {
+              "type": "checkCompleted",
+              "payload": {
+                "at": "2026-02-01T09:05:00Z"
+              }
+            }
+          },
+          "expected": {
+            "currentVersion": "0.2.0",
+            "dismissedVersion": "0.3.0",
+            "lastChecked": "2026-02-01T09:05:00Z",
             "release": null,
             "status": {
               "type": "upToDate"
@@ -19205,7 +19254,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -19351,7 +19399,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -19500,7 +19547,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -19679,7 +19725,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -19848,7 +19893,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20009,7 +20053,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20172,7 +20215,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20368,7 +20410,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20544,7 +20585,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20623,8 +20663,7 @@
                       "visualize": false,
                       "previewPath": "",
                       "outputPath": "",
-                      "commandLineArgs": "",
-                      "keepMaps": false
+                      "commandLineArgs": ""
                     }
                   },
                   {
@@ -20660,8 +20699,7 @@
                       "visualize": false,
                       "previewPath": "",
                       "outputPath": "",
-                      "commandLineArgs": "",
-                      "keepMaps": false
+                      "commandLineArgs": ""
                     }
                   }
                 ]
@@ -20795,7 +20833,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -20832,7 +20869,6 @@
                   "commandLineArgs": "",
                   "debug": false,
                   "generationType": "casual",
-                  "keepMaps": false,
                   "mapSize": 512,
                   "numTeams": 2,
                   "numToGenerate": null,
@@ -20869,7 +20905,6 @@
                   "commandLineArgs": "",
                   "debug": false,
                   "generationType": "casual",
-                  "keepMaps": false,
                   "mapSize": 512,
                   "numTeams": 2,
                   "numToGenerate": null,
@@ -20949,8 +20984,7 @@
                       "visualize": false,
                       "previewPath": "",
                       "outputPath": "",
-                      "commandLineArgs": "",
-                      "keepMaps": false
+                      "commandLineArgs": ""
                     }
                   }
                 ]
@@ -21084,7 +21118,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -21121,7 +21154,6 @@
                   "commandLineArgs": "",
                   "debug": false,
                   "generationType": "casual",
-                  "keepMaps": false,
                   "mapSize": 512,
                   "numTeams": 2,
                   "numToGenerate": null,
@@ -21819,6 +21851,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "connecting"
@@ -21886,6 +21919,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "payload": {
@@ -21953,6 +21987,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22038,6 +22073,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22102,6 +22138,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22166,6 +22203,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22267,6 +22305,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22337,6 +22376,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22447,6 +22487,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22537,6 +22578,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22629,6 +22671,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22719,6 +22762,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "type": "idle"
@@ -22807,6 +22851,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "payload": {
@@ -22900,6 +22945,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "payload": {
@@ -22990,6 +23036,7 @@
             "localStatus": {
               "type": "idle"
             },
+            "onlineLookups": {},
             "replayDetails": {},
             "status": {
               "payload": {
@@ -23035,6 +23082,574 @@
             },
             "vaultTotalPages": 9,
             "vaultTotalRecords": 412
+          }
+        }
+      ]
+    },
+    {
+      "name": "the vault is asked about three local replays' game ids",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "onlineLookupStarted",
+              "payload": {
+                "uid": 51
+              }
+            }
+          },
+          "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {
+              "51": {
+                "type": "loading"
+              }
+            },
+            "replayDetails": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "onlineLookupFinished",
+              "payload": {
+                "uid": 51,
+                "replay": {
+                  "uid": 51,
+                  "title": "Looked-up game",
+                  "map": "scmp_009",
+                  "mapThumbnailUrl": "",
+                  "modName": "faf",
+                  "startTime": "2026-01-01T00:00:00Z",
+                  "replayAvailable": true,
+                  "durationSeconds": null,
+                  "gameDurationSeconds": null,
+                  "teams": [],
+                  "averageRating": null,
+                  "quality": null,
+                  "reviewsAverage": null,
+                  "reviewsCount": null,
+                  "gameVersion": null,
+                  "validity": "VALID"
+                }
+              }
+            }
+          },
+          "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {
+              "51": {
+                "payload": {
+                  "averageRating": null,
+                  "durationSeconds": null,
+                  "gameDurationSeconds": null,
+                  "gameVersion": null,
+                  "map": "scmp_009",
+                  "mapThumbnailUrl": "",
+                  "modName": "faf",
+                  "quality": null,
+                  "replayAvailable": true,
+                  "reviewsAverage": null,
+                  "reviewsCount": null,
+                  "startTime": "2026-01-01T00:00:00Z",
+                  "teams": [],
+                  "title": "Looked-up game",
+                  "uid": 51,
+                  "validity": "VALID"
+                },
+                "type": "found"
+              }
+            },
+            "replayDetails": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "onlineLookupStarted",
+              "payload": {
+                "uid": 52
+              }
+            }
+          },
+          "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {
+              "51": {
+                "payload": {
+                  "averageRating": null,
+                  "durationSeconds": null,
+                  "gameDurationSeconds": null,
+                  "gameVersion": null,
+                  "map": "scmp_009",
+                  "mapThumbnailUrl": "",
+                  "modName": "faf",
+                  "quality": null,
+                  "replayAvailable": true,
+                  "reviewsAverage": null,
+                  "reviewsCount": null,
+                  "startTime": "2026-01-01T00:00:00Z",
+                  "teams": [],
+                  "title": "Looked-up game",
+                  "uid": 51,
+                  "validity": "VALID"
+                },
+                "type": "found"
+              },
+              "52": {
+                "type": "loading"
+              }
+            },
+            "replayDetails": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "onlineLookupFinished",
+              "payload": {
+                "uid": 52,
+                "replay": null
+              }
+            }
+          },
+          "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {
+              "51": {
+                "payload": {
+                  "averageRating": null,
+                  "durationSeconds": null,
+                  "gameDurationSeconds": null,
+                  "gameVersion": null,
+                  "map": "scmp_009",
+                  "mapThumbnailUrl": "",
+                  "modName": "faf",
+                  "quality": null,
+                  "replayAvailable": true,
+                  "reviewsAverage": null,
+                  "reviewsCount": null,
+                  "startTime": "2026-01-01T00:00:00Z",
+                  "teams": [],
+                  "title": "Looked-up game",
+                  "uid": 51,
+                  "validity": "VALID"
+                },
+                "type": "found"
+              },
+              "52": {
+                "type": "missing"
+              }
+            },
+            "replayDetails": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "onlineLookupStarted",
+              "payload": {
+                "uid": 53
+              }
+            }
+          },
+          "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {
+              "51": {
+                "payload": {
+                  "averageRating": null,
+                  "durationSeconds": null,
+                  "gameDurationSeconds": null,
+                  "gameVersion": null,
+                  "map": "scmp_009",
+                  "mapThumbnailUrl": "",
+                  "modName": "faf",
+                  "quality": null,
+                  "replayAvailable": true,
+                  "reviewsAverage": null,
+                  "reviewsCount": null,
+                  "startTime": "2026-01-01T00:00:00Z",
+                  "teams": [],
+                  "title": "Looked-up game",
+                  "uid": 51,
+                  "validity": "VALID"
+                },
+                "type": "found"
+              },
+              "52": {
+                "type": "missing"
+              },
+              "53": {
+                "type": "loading"
+              }
+            },
+            "replayDetails": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "onlineLookupFailed",
+              "payload": {
+                "uid": 53,
+                "reason": "offline"
+              }
+            }
+          },
+          "expected": {
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {
+              "51": {
+                "payload": {
+                  "averageRating": null,
+                  "durationSeconds": null,
+                  "gameDurationSeconds": null,
+                  "gameVersion": null,
+                  "map": "scmp_009",
+                  "mapThumbnailUrl": "",
+                  "modName": "faf",
+                  "quality": null,
+                  "replayAvailable": true,
+                  "reviewsAverage": null,
+                  "reviewsCount": null,
+                  "startTime": "2026-01-01T00:00:00Z",
+                  "teams": [],
+                  "title": "Looked-up game",
+                  "uid": 51,
+                  "validity": "VALID"
+                },
+                "type": "found"
+              },
+              "52": {
+                "type": "missing"
+              },
+              "53": {
+                "payload": {
+                  "reason": "offline"
+                },
+                "type": "failed"
+              }
+            },
+            "replayDetails": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
           }
         }
       ]
@@ -23702,6 +24317,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "",
@@ -23714,7 +24330,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -23745,6 +24360,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -23915,6 +24531,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -23927,7 +24544,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -23958,6 +24574,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -24136,6 +24753,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -24148,7 +24766,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -24179,6 +24796,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -24353,6 +24971,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -24367,7 +24986,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -24398,6 +25016,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -24570,6 +25189,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -24585,7 +25205,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -24616,6 +25235,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -24809,6 +25429,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -24824,7 +25445,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -24855,6 +25475,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -25039,6 +25660,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -25054,7 +25676,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -25085,6 +25706,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -25271,6 +25893,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -25286,7 +25909,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -25317,6 +25939,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
@@ -25587,6 +26210,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -25602,7 +26226,6 @@
               "commandLineArgs": "",
               "debug": false,
               "generationType": "casual",
-              "keepMaps": false,
               "mapSize": 512,
               "numTeams": 2,
               "numToGenerate": null,
@@ -25633,6 +26256,7 @@
             },
             "notifications": {
               "desktop": true,
+              "desktopAllKinds": false,
               "enabled": true,
               "friendOffline": true,
               "friendOnline": true,
