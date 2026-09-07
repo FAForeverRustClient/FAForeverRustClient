@@ -681,6 +681,12 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     mapGenStatus.type === "generating" ||
     mapGenStatus.type === "downloading" ||
     mapGenStatus.type === "resolvingVersion";
+  const [copiedName, setCopiedName] = useState(false);
+  useEffect(() => {
+    if (!copiedName) return;
+    const timer = window.setTimeout(() => setCopiedName(false), 2_000);
+    return () => window.clearTimeout(timer);
+  }, [copiedName]);
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
@@ -760,6 +766,38 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
             {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
           </Button>
         )}
+      </div>
+      {/* The full technical name. It is nowhere else in the client, and it is
+          the one thing map generator hosting needs: generate many, note the
+          names of the good ones, host them one after another. Untruncated,
+          because half a generator name identifies nothing, and copyable,
+          because nobody retypes forty characters of Base32.
+
+          What is copied is the value the Generate map dialog's map-name field
+          takes back, which is the only round trip that exists for a generated
+          map: it is not in the vault, so pasting its name into the map search
+          would find nothing. That is the trap the Python client's copy button
+          falls into. */}
+      <div className="game-preview-dialog-name">
+        <span>{t("lobby.browser.mapFullName")}</span>
+        <code>{game.map}</code>
+        <button
+          type="button"
+          className="game-preview-dialog-copy"
+          aria-label={t(copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+          title={t(
+            copiedName
+              ? "lobby.browser.mapNameCopied"
+              : isGenerated
+                ? "lobby.browser.copyMapNameGenerated"
+                : "lobby.browser.copyMapName",
+          )}
+          onClick={() =>
+            ipc.run(navigator.clipboard.writeText(game.map).then(() => setCopiedName(true)))
+          }
+        >
+          <Icon name={copiedName ? "check" : "copy"} size={13} />
+        </button>
       </div>
       {/* All that is left of the metadata column: the one fact that is about
           the map rather than about the game. Host, featured mod, players,

@@ -1112,6 +1112,53 @@
   border-radius: var(--radius-md);
 }
 
+/* The name row. It wraps rather than truncating: a generator name is 50-odd
+   characters and the half that gets cut off is the half that identifies the
+   map. */
+.game-preview-dialog-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.game-preview-dialog-name > span {
+  flex: 0 0 auto;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.game-preview-dialog-name > code {
+  min-width: 0;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.game-preview-dialog-copy {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: center;
+  align-items: center;
+  padding: 3px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.game-preview-dialog-copy:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
 /* Demoted, not deleted: map size is about the map, so it stays, as a caption
    under the picture rather than as a column beside it. */
 .game-preview-dialog-facts {
