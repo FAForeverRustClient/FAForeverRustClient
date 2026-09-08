@@ -188,11 +188,21 @@ series is wrong in a way they cannot. Split such an event on Discord instead.
 node scripts/events-bot.mjs --sources sources.json --calendar calendar.json --dry-run
 ```
 
-`DISCORD_BOT_TOKEN` in the environment, nothing else. With no token, or with no
-enabled server in `sources.json`, it says so and exits successfully: the
-scheduled workflow is in place before anybody has necessarily configured a
-server, and a red run every six hours would train whoever owns the repository to
-ignore it.
+`DISCORD_BOT_TOKEN` in the environment, nothing else.
+
+In the workflow that token is an Actions secret **on the catalogue repository**,
+`FAForeverRustClient/events`, under exactly that name. Not on this repository:
+the job checks this one out to get the script, but secrets do not cross
+repositories and nothing warns you that one is being read from the wrong place.
+`FAForeverRustClient/events/DISCORD-SETUP.md` is the step by step, and
+`gh secret list --repo FAForeverRustClient/events` is how to check.
+
+With no token, or with no enabled server in `sources.json`, the script says so
+and exits successfully. The workflow then decides what that means: a run
+somebody started by hand fails, because they pressed the button expecting
+something to happen, and the cron warns and stays green, because the schedule
+exists before anybody has necessarily configured a server and a red cross every
+six hours would train whoever owns the repository to ignore the job.
 
 The mapping is unit tested in `scripts/events-bot.test.mjs`, which is why
 `vitest.config.ts` reaches into `scripts/` for exactly that one file: publishing
