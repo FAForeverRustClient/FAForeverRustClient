@@ -1,22 +1,14 @@
-import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SocialState, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { MapThumbnail } from "../../shared/MapThumbnail";
-import { flagSrc } from "../../shared/countryFlags";
 import { mapPresentation } from "../../shared/mapPresentation";
-import { gameTeamSummaries, type GamePresence } from "./gameSummary";
+import { type GamePresence } from "./gameSummary";
+import { GameSummaryCard, STATUS_LABEL } from "./GameSummaryCard";
 import { GameStatusSword } from "./GameStatusSword";
-import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "../lobby/joinGame";
-
-const STATUS_LABEL = {
-  hosting: "chat.presence.hosting",
-  lobbying: "chat.presence.lobbying",
-  playing: "chat.presence.playing",
-  playingDelayed: "chat.presence.playingDelayed",
-} as const satisfies Record<GamePresence["status"], MessageKey>;
 
 interface Props {
   presence: GamePresence;
@@ -58,9 +50,16 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
     };
   }, [open, updatePosition]);
 
-  // Team/profile joins are only needed for the one card currently visible;
-  // closed badges stay cheap even in a several-hundred-user channel.
-  const teams = open ? gameTeamSummaries(presence.game, social) : [];
+  // Only the one card currently visible needs a clock, and only while it is
+  // open: a several-hundred-user channel must not run a timer per badge.
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    if (!open) return;
+    setNow(Math.floor(Date.now() / 1000));
+    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => window.clearInterval(timer);
+  }, [open]);
+
   const { t } = useTranslation();
   const status = t(STATUS_LABEL[presence.status]);
 
@@ -114,51 +113,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           className="chat-game-popover"
           style={position}
         >
-          <header className="chat-game-popover-head">
-            <div>
-              <strong>{presence.game.title || t("chat.game.untitled")}</strong>
-              <span>{presentation.displayName}</span>
-            </div>
-            <span className={`chat-game-status is-${presence.status}`}>{status}</span>
-          </header>
-          <div className="chat-game-meta">
-            <span>{presence.game.modName.toUpperCase()}</span>
-            <span>{presence.game.players}/{presence.game.maxPlayers} players</span>
-            {presence.game.averageRating > 0 && <span>{presence.game.averageRating} average</span>}
-          </div>
-          {teams.length > 0 ? (
-            <div className="chat-game-teams">
-              {teams.map((team) => (
-                <section className="chat-game-team surface" key={team.id}>
-                  <h4>
-                    <span>{team.label} ({team.players.length})</span>
-                    {team.rating !== null && <span>{team.rating}</span>}
-                  </h4>
-                  <ul>
-                    {team.players.map((player) => (
-                      <li key={player.login}>
-                        {player.country ? (
-                          <img
-                            src={flagSrc(player.country)}
-                            alt={player.country.toUpperCase()}
-                            width={16}
-                            height={16}
-                            decoding="async"
-                            draggable={false}
-                            onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
-                          />
-                        ) : <span className="chat-game-flag-placeholder" />}
-                        <span>{player.login}</span>
-                        {player.rating !== null && <small>({player.rating})</small>}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <p className="chat-game-no-teams muted">{t("chat.game.noLineup")}</p>
-          )}
+          <GameSummaryCard presence={presence} social={social} vault={vault} now={now} />
         </aside>,
         document.body,
       )}
