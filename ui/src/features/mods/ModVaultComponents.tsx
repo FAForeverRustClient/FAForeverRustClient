@@ -342,18 +342,12 @@ export function ModDetailPanel({
             <Button onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>
               {t("mods.vault.reviews")}
             </Button>
-            {/* Only on your own upload, and only with the folder to hand: a
-                rename is a fresh publish of the local files with `mod_info.lua`
-                rewritten, so there is nothing to send without them. Drawn
-                disabled rather than hidden when the folder is missing, because
-                "why can I not rename my own mod" is the question a missing
-                button would leave. */}
+            {/* Only on your own upload. It does not need the mod installed:
+                renaming the entry changes a field on the server and touches no
+                files. The folder only matters for the fallback, and only if
+                FAF refuses. */}
             {mine && onRename && (
-              <Button
-                disabled={busy || !installed}
-                title={t(installed ? "mods.rename.action" : "mods.rename.needsInstall")}
-                onClick={onRename}
-              >
+              <Button disabled={busy} onClick={onRename}>
                 <Icon name="edit" size={14} />
                 {t("mods.rename.action")}
               </Button>

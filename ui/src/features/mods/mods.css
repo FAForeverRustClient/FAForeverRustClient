@@ -772,3 +772,12 @@
 .mod-rename-field > span {
   color: var(--color-muted);
 }
+
+.mod-rename-refusal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: var(--space-2) 0;
+  text-align: left;
+  font-size: 12px;
+}

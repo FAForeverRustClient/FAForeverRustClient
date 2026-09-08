@@ -176,6 +176,41 @@ pub enum ModToggleStatus {
     },
 }
 
+/// Status of renaming a vault entry.
+///
+/// Its own status rather than a reuse of [`ModInstallStatus`], because the
+/// interesting state is the *refusal*: if the API declines to rename a mod in
+/// place, the only thing FAF can offer is publishing a renamed copy under a
+/// fresh uid, and the view has to be able to offer that instead. So the reason
+/// is kept, and kept beside the id it belongs to.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum ModRenameStatus {
+    #[default]
+    Idle,
+    Renaming {
+        mod_id: i32,
+    },
+    /// The server's own sentence, and whether it refused on principle.
+    ///
+    /// `refused` separates "FAF will not let you rename a mod in place" from
+    /// "the request did not get there". Only the first is a reason to offer
+    /// republishing instead; the second is a reason to try again.
+    Failed {
+        mod_id: i32,
+        reason: String,
+        refused: bool,
+    },
+    Renamed {
+        mod_id: i32,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ModsState {
@@ -193,6 +228,7 @@ pub struct ModsState {
     pub installed: Vec<InstalledMod>,
     pub installed_status: ModListStatus,
     pub install_status: ModInstallStatus,
+    pub rename_status: ModRenameStatus,
     pub toggle_status: ModToggleStatus,
 }
 
@@ -223,6 +259,22 @@ pub enum ModsEvent {
     },
     InstalledLoadFailed {
         reason: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    Renaming {
+        mod_id: i32,
+    },
+    #[serde(rename_all = "camelCase")]
+    Renamed {
+        mod_id: i32,
+        display_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    RenameFailed {
+        mod_id: i32,
+        reason: String,
+        /// Whether FAF declined the change rather than failing to receive it.
+        refused: bool,
     },
     // `rename_all` on the enum only renames variant tags, not the fields of
     // struct-like variants (a serde/specta quirk): so multi-word fields
@@ -279,6 +331,14 @@ pub enum ModsCommand {
     /// `game.prefs`'s `active_mods` table).
     #[serde(rename_all = "camelCase")]
     ToggleMod { uid: String, enabled: bool },
+    /// Rename a vault entry in place.
+    ///
+    /// The mod, not a copy of it: `Mod.displayName` carries no update
+    /// restriction in the API's own model, so this is worth trying before
+    /// falling back to publishing a renamed duplicate under a fresh uid, which
+    /// is what an author had to do by hand and what leaves two entries behind.
+    #[serde(rename_all = "camelCase")]
+    RenameVaultMod { mod_id: i32, display_name: String },
     /// Replace the active set with exactly `uids`.
     ///
     /// Deliberately not a loop over [`Self::ToggleMod`]: every toggle rewrites
@@ -290,6 +350,37 @@ pub enum ModsCommand {
 
 pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
     match event {
+        ModsEvent::Renaming { mod_id } => {
+            state.rename_status = ModRenameStatus::Renaming { mod_id: *mod_id }
+        }
+        ModsEvent::Renamed {
+            mod_id,
+            display_name,
+        } => {
+            state.rename_status = ModRenameStatus::Renamed { mod_id: *mod_id };
+            // Patched here rather than waited for: the vault list is paged and
+            // re-reading it would move the reader off the entry they just
+            // renamed. One field changed, and it is the field they changed.
+            for entry in state
+                .vault
+                .iter_mut()
+                .chain(state.browse.iter_mut())
+                .filter(|entry| entry.mod_id == *mod_id)
+            {
+                entry.display_name = display_name.clone();
+            }
+        }
+        ModsEvent::RenameFailed {
+            mod_id,
+            reason,
+            refused,
+        } => {
+            state.rename_status = ModRenameStatus::Failed {
+                mod_id: *mod_id,
+                reason: reason.clone(),
+                refused: *refused,
+            }
+        }
         ModsEvent::VaultLoading => state.vault_status = ModListStatus::Loading,
         ModsEvent::VaultLoaded { mods } => {
             state.vault = mods.clone();
@@ -364,6 +455,83 @@ pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
                 reason: reason.clone(),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod rename_tests {
+    use super::*;
+
+    fn entry(mod_id: i32, name: &str) -> VaultMod {
+        VaultMod {
+            mod_id,
+            version_id: mod_id,
+            display_name: name.into(),
+            author: "Somebody".into(),
+            uploader: "Somebody".into(),
+            uploader_id: Some(4711),
+            uid: format!("uid-{mod_id}"),
+            version: "1".into(),
+            description: String::new(),
+            filename: String::new(),
+            mod_type: ModType::Ui,
+            ranked: false,
+            recommended: false,
+            rating_tenths: 0,
+            reviews: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+            download_url: String::new(),
+            thumbnail_url: String::new(),
+        }
+    }
+
+    #[test]
+    fn a_rename_moves_the_entry_that_is_already_on_screen() {
+        // The point of renaming in place: one entry, changed. Re-reading the
+        // list instead would page the reader away from what they just renamed.
+        let mut state = ModsState {
+            vault: vec![entry(1, "Old"), entry(2, "Other")],
+            browse: vec![entry(1, "Old")],
+            ..ModsState::default()
+        };
+        reduce(&mut state, &ModsEvent::Renaming { mod_id: 1 });
+        assert_eq!(state.rename_status, ModRenameStatus::Renaming { mod_id: 1 });
+
+        reduce(
+            &mut state,
+            &ModsEvent::Renamed {
+                mod_id: 1,
+                display_name: "New".into(),
+            },
+        );
+        assert_eq!(state.vault[0].display_name, "New");
+        assert_eq!(state.vault[1].display_name, "Other", "only the one named");
+        assert_eq!(state.browse[0].display_name, "New", "both lists it is in");
+        assert_eq!(state.rename_status, ModRenameStatus::Renamed { mod_id: 1 });
+    }
+
+    #[test]
+    fn a_refusal_is_kept_apart_from_a_failure_to_ask() {
+        // Only a refusal is a reason to offer republishing instead: a request
+        // that never arrived is a reason to try the same thing again.
+        let mut state = ModsState::default();
+        reduce(
+            &mut state,
+            &ModsEvent::RenameFailed {
+                mod_id: 1,
+                reason: "FAF rejected the request (403).".into(),
+                refused: true,
+            },
+        );
+        assert_eq!(
+            state.rename_status,
+            ModRenameStatus::Failed {
+                mod_id: 1,
+                reason: "FAF rejected the request (403).".into(),
+                refused: true,
+            }
+        );
     }
 }
 

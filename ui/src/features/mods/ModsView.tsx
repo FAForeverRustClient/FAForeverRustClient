@@ -547,10 +547,10 @@ function VaultView({ busy }: { busy: boolean }) {
           }}
         />
       )}
-      {renaming && installedByUid.get(renaming.uid) && (
+      {renaming && (
         <ModRenameDialog
           mod={renaming}
-          installed={installedByUid.get(renaming.uid)!}
+          installed={installedByUid.get(renaming.uid)}
           onClose={() => setRenaming(null)}
         />
       )}

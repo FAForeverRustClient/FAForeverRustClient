@@ -263,6 +263,34 @@ impl ModsPort for ModsClient {
         list_installed_dir(&mods_dir()).await
     }
 
+    async fn rename_vault_mod(
+        &self,
+        mod_id: i32,
+        display_name: &str,
+    ) -> Result<(), crate::ports::RequestError> {
+        let token = self.tokens.get().ok_or_else(|| {
+            crate::ports::RequestError::unauthorized("You are not signed in to FAF.")
+        })?;
+        let url = url::Url::parse(&format!("{}/data/mod/{mod_id}", self.config.api_base)).map_err(
+            |error| crate::ports::RequestError::unexpected(format!("invalid API base: {error}")),
+        )?;
+        // `Mod.displayName` carries no update restriction in the API's own
+        // model, unlike `recommended`, which is annotated for administrators.
+        // Whether that means the uploader may change it is Elide's answer, not
+        // one this client can work out: it asks, and reports what comes back.
+        crate::infra::jsonapi::patch_document(
+            &self.http,
+            url,
+            &token,
+            serde_json::json!({
+                "type": "mod",
+                "id": mod_id.to_string(),
+                "attributes": { "displayName": display_name },
+            }),
+        )
+        .await
+    }
+
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String> {
         let dir = mods_dir();
         let target = safe_mod_target(&dir, &folder_name)?;
@@ -926,6 +954,16 @@ impl ModsPort for FakeMods {
         _download_url: String,
     ) -> Result<Vec<InstalledMod>, String> {
         Err("mod install is unavailable in offline mode".to_string())
+    }
+
+    async fn rename_vault_mod(
+        &self,
+        _mod_id: i32,
+        _display_name: &str,
+    ) -> Result<(), crate::ports::RequestError> {
+        Err(crate::ports::RequestError::offline(
+            "The mod vault is unavailable in offline mode.",
+        ))
     }
 
     async fn uninstall_mod(&self, _folder_name: String) -> Result<Vec<InstalledMod>, String> {

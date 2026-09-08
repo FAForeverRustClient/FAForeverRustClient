@@ -45,6 +45,18 @@ pub trait ModsPort: Send + Sync {
 
     /// Delete a mod folder and remove its uid from `game.prefs`'s active
     /// set if present. Returns the refreshed installed list.
+    /// Rename a vault entry in place.
+    ///
+    /// Typed, unlike its neighbours, because the caller acts on the category:
+    /// a refusal means FAF does not allow renaming a mod at all, and the only
+    /// thing left to offer is publishing a renamed copy under a fresh uid.
+    /// Anything else means the request did not arrive, which is a retry.
+    async fn rename_vault_mod(
+        &self,
+        mod_id: i32,
+        display_name: &str,
+    ) -> Result<(), crate::ports::RequestError>;
+
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String>;
 
     /// Enable or disable an installed mod without uninstalling it. Returns

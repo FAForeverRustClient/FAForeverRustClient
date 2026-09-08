@@ -3552,6 +3552,33 @@ export type ModPreset = {
 	uids: string[],
 };
 
+/**
+ *  Status of renaming a vault entry.
+ *
+ *  Its own status rather than a reuse of [`ModInstallStatus`], because the
+ *  interesting state is the *refusal*: if the API declines to rename a mod in
+ *  place, the only thing FAF can offer is publishing a renamed copy under a
+ *  fresh uid, and the view has to be able to offer that instead. So the reason
+ *  is kept, and kept beside the id it belongs to.
+ */
+export type ModRenameStatus = { type: "idle" } | { type: "renaming"; payload: {
+	modId: number,
+} } |
+/**
+ *  The server's own sentence, and whether it refused on principle.
+ *
+ *  `refused` separates "FAF will not let you rename a mod in place" from
+ *  "the request did not get there". Only the first is a reason to offer
+ *  republishing instead; the second is a reason to try again.
+ */
+{ type: "failed"; payload: {
+	modId: number,
+	reason: string,
+	refused: boolean,
+} } | { type: "renamed"; payload: {
+	modId: number,
+} };
+
 export type ModSortField = "rating" | "newest" | "updated" | "name";
 
 /**
@@ -3690,6 +3717,18 @@ export type ModsCommand =
 	enabled: boolean,
 } } |
 /**
+ *  Rename a vault entry in place.
+ *
+ *  The mod, not a copy of it: `Mod.displayName` carries no update
+ *  restriction in the API's own model, so this is worth trying before
+ *  falling back to publishing a renamed duplicate under a fresh uid, which
+ *  is what an author had to do by hand and what leaves two entries behind.
+ */
+{ type: "renameVaultMod"; payload: {
+	modId: number,
+	displayName: string,
+} } |
+/**
  *  Replace the active set with exactly `uids`.
  *
  *  Deliberately not a loop over [`Self::ToggleMod`]: every toggle rewrites
@@ -3716,6 +3755,16 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | 
 	mods: InstalledMod[],
 } } | { type: "installedLoadFailed"; payload: {
 	reason: string,
+} } | { type: "renaming"; payload: {
+	modId: number,
+} } | { type: "renamed"; payload: {
+	modId: number,
+	displayName: string,
+} } | { type: "renameFailed"; payload: {
+	modId: number,
+	reason: string,
+	/**  Whether FAF declined the change rather than failing to receive it. */
+	refused: boolean,
 } } | { type: "installing"; payload: {
 	uid: string,
 } } |
@@ -3759,6 +3808,7 @@ export type ModsState = {
 	installed: InstalledMod[],
 	installedStatus: ModListStatus,
 	installStatus: ModInstallStatus,
+	renameStatus: ModRenameStatus,
 	toggleStatus: ModToggleStatus,
 };
 

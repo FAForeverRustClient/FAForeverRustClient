@@ -2810,6 +2810,30 @@ fn chat_message(sender: &str, content: &str) -> ChatMessage {
     }
 }
 
+fn vault_mod(mod_id: i32, display_name: &str) -> VaultMod {
+    VaultMod {
+        mod_id,
+        version_id: mod_id,
+        display_name: display_name.into(),
+        author: "Somebody".into(),
+        uploader: "Somebody".into(),
+        uploader_id: Some(4711),
+        uid: format!("uid-{mod_id}"),
+        version: "1".into(),
+        description: String::new(),
+        filename: String::new(),
+        mod_type: ModType::Ui,
+        ranked: false,
+        recommended: false,
+        rating_tenths: 0,
+        reviews: 0,
+        created_at: String::new(),
+        updated_at: String::new(),
+        download_url: String::new(),
+        thumbnail_url: String::new(),
+    }
+}
+
 fn local_replay(uid: i32) -> LocalReplay {
     LocalReplay {
         path: format!("/replays/{uid}.fafreplay"),
@@ -4500,6 +4524,33 @@ fn cases() -> Vec<Case> {
                 ModsEvent::InstalledLoading.into(),
                 ModsEvent::InstalledLoadFailed {
                     reason: "no mods folder".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "renaming a mod moves the entry that is already on screen",
+            vec![
+                ModsEvent::VaultSearched {
+                    mods: vec![vault_mod(1, "Old"), vault_mod(2, "Other")],
+                    query: faf_domain::protocol::vault_query::ModVaultQuery::default(),
+                    total_pages: Some(1),
+                    total_records: Some(2),
+                }
+                .into(),
+                ModsEvent::Renaming { mod_id: 1 }.into(),
+                ModsEvent::Renamed {
+                    mod_id: 1,
+                    display_name: "New".into(),
+                }
+                .into(),
+                // A refusal is what tells the view to offer republishing under
+                // a fresh uid instead, so the flag travels with the sentence.
+                ModsEvent::Renaming { mod_id: 2 }.into(),
+                ModsEvent::RenameFailed {
+                    mod_id: 2,
+                    reason: "FAF rejected the request (403).".into(),
+                    refused: true,
                 }
                 .into(),
             ],

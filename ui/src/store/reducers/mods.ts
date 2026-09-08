@@ -2,6 +2,33 @@ import type { ModsEvent, ModsState } from "../../ipc/bindings";
 
 export function reduceMods(state: ModsState, event: ModsEvent): ModsState {
   switch (event.type) {
+    case "renaming":
+      return { ...state, renameStatus: { type: "renaming", payload: { modId: event.payload.modId } } };
+    case "renamed": {
+      // Patched here rather than re-read: the vault list is paged, and
+      // reloading it would move the reader off the entry they just renamed.
+      const { modId, displayName } = event.payload;
+      const rename = <T extends { modId: number; displayName: string }>(entry: T): T =>
+        entry.modId === modId ? { ...entry, displayName } : entry;
+      return {
+        ...state,
+        vault: state.vault.map(rename),
+        browse: state.browse.map(rename),
+        renameStatus: { type: "renamed", payload: { modId } },
+      };
+    }
+    case "renameFailed":
+      return {
+        ...state,
+        renameStatus: {
+          type: "failed",
+          payload: {
+            modId: event.payload.modId,
+            reason: event.payload.reason,
+            refused: event.payload.refused,
+          },
+        },
+      };
     case "vaultLoading":
       return { ...state, vaultStatus: { type: "loading" } };
     case "vaultLoaded":
