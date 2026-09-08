@@ -158,9 +158,11 @@ export function groupOf(event: Tourney): ListGroup {
 /**
  * The list, split into its groups, each in the order that group is read in.
  *
- * Upcoming and ongoing keep the service's own order, which is newest-created
- * first. The past is sorted by when it happened rather than when it was made:
- * the interesting end of an archive is the recent end.
+ * Upcoming and ongoing keep the service's own order, which already puts the
+ * soonest event first. The past is re-sorted here because this group is not a
+ * status: an abandoned event keeps saying `signup` and can still carry a date
+ * in the future, so the service filed it among the things ahead of us and only
+ * this grouping knows better.
  */
 export function groupedEvents(events: Tourney[]): Record<ListGroup, Tourney[]> {
   const groups: Record<ListGroup, Tourney[]> = {
