@@ -7,7 +7,8 @@ export type PlayMode = "custom" | "matchmaking" | "coop" | "galacticWar";
 interface Props {
   mode: PlayMode;
   customGames: number;
-  queues: number;
+  /** Players searching right now, summed over the queues. Not the queue count. */
+  queuedPlayers: number;
   coopGames: number;
   /** Players online in Galactic War, as its gateway last reported. */
   galacticWarOnline: number;
@@ -17,10 +18,10 @@ interface Props {
 const TABS: Array<{
   mode: PlayMode;
   label: MessageKey;
-  count: keyof Pick<Props, "customGames" | "queues" | "coopGames" | "galacticWarOnline">;
+  count: keyof Pick<Props, "customGames" | "queuedPlayers" | "coopGames" | "galacticWarOnline">;
 }> = [
   { mode: "custom", label: "lobby.mode.custom", count: "customGames" },
-  { mode: "matchmaking", label: "lobby.mode.matchmaking", count: "queues" },
+  { mode: "matchmaking", label: "lobby.mode.matchmaking", count: "queuedPlayers" },
   { mode: "coop", label: "lobby.mode.coop", count: "coopGames" },
   { mode: "galacticWar", label: "lobby.mode.galacticWar", count: "galacticWarOnline" },
 ];
