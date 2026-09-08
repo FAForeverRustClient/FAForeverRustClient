@@ -10,6 +10,15 @@ import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./nav.css";
 
+/**
+ * The tabs that sit under the spacer rather than in the run of places to play.
+ *
+ * The client's own furniture: where the links out live, and where the settings
+ * live. Named rather than tested for inline in both filters below, which is
+ * how the two of them drift apart when a tab joins this group.
+ */
+const BOTTOM_TABS: Tab[] = ["links", "settings"];
+
 export function TabBar() {
   const mode = useAppStore((s) => s.state.auth.mode);
   // The tab on screen, which is not the selected one when the selected one is
@@ -50,7 +59,7 @@ export function TabBar() {
   return (
     <nav className="tabbar" aria-label={t("nav.main")}>
       <div className="nav-group">
-        {tabs.filter((id) => id !== "contribution" && id !== "settings").map(renderTab)}
+        {tabs.filter((id) => !BOTTOM_TABS.includes(id)).map(renderTab)}
       </div>
       <div className="nav-spacer" />
       <div className="nav-group">
@@ -69,7 +78,7 @@ export function TabBar() {
             <span>{t("auth.signIn")}</span>
           </button>
         )}
-        {tabs.filter((id) => id === "contribution" || id === "settings").map(renderTab)}
+        {tabs.filter((id) => BOTTOM_TABS.includes(id)).map(renderTab)}
       </div>
     </nav>
   );

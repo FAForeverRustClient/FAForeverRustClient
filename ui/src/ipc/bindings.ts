@@ -5555,7 +5555,15 @@ export type SubmitStatus = { type: "idle" } | { type: "sending" } |
  *  A top-level destination. Most are placeholders today; each gets its feature
  *  slice as it lands. The frontend tab registry maps these 1:1 to views.
  */
-export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "training" | "units" | "changelog" | "contribution" | "settings";
+export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "training" | "units" | "changelog" |
+/**
+ *  The link directory: FAF's own sites and what the community built.
+ *
+ *  Named for what it holds rather than for what it used to be. It grew out
+ *  of the Contribution tab, whose repositories and credits are one section
+ *  of it now.
+ */
+"links" | "settings";
 
 /**
  *  How far a team got: the side and round its last match was in.

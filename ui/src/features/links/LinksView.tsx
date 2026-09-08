@@ -1,6 +1,24 @@
+// The link directory tab.
+//
+// Was the Contribution tab, which listed seven GitHub repositories and the
+// people who helped. Those are still here, at the bottom, under a heading of
+// their own: what changed is that the tab is now about everywhere a player
+// might want to go, because that is the thing worth a permanent place in the
+// sidebar and a repository list is not.
+
+import { useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { openHttpsUrl } from "../../shared/externalLinks";
-import "./contribution.css";
+import {
+  countByOrigin,
+  DIRECTORY,
+  LINK_SECTIONS,
+  sectionLinks,
+  type DirectoryLink,
+  type LinkOrigin,
+  type OriginFilter,
+} from "./linkDirectory";
+import "./links.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
 
@@ -47,40 +65,96 @@ const ACKNOWLEDGMENTS = [
   { name: "Nory", note: null },
   { name: "Nuggets", note: "feedback" },
   { name: "Vindex", note: "feedback" },
+  { name: "Sheppy", note: "community hub" },
 ] as const;
 
-export function ContributionView() {
+/** One row of the directory. The chip is the whole point of the page. */
+function LinkCard({ link, originLabel }: { link: DirectoryLink; originLabel: string }) {
   const { t } = useTranslation();
   return (
-    <div className="contribution-view">
-      <section className="contribution-intro">
-        <div className="contribution-icon surface" aria-hidden="true">
-          <Icon name="github" size={24} />
+    <a
+      className="links-link surface surface-interactive"
+      href={link.href}
+      rel="noreferrer"
+      target="_blank"
+      onClick={(event) => {
+        event.preventDefault();
+        void openHttpsUrl(link.href);
+      }}
+    >
+      <span className="links-link-copy">
+        <strong>{t(link.name)}</strong>
+        <small>{t(link.hint)}</small>
+      </span>
+      <span className={`links-origin links-origin-${link.origin}`}>{originLabel}</span>
+      <Icon name="external" size={16} />
+    </a>
+  );
+}
+
+export function LinksView() {
+  const { t } = useTranslation();
+  // Not in the nav slice: which chip is pressed is as ephemeral as a hover, and
+  // nothing in the backend has an opinion about it.
+  const [filter, setFilter] = useState<OriginFilter>(null);
+
+  const originLabel = (origin: LinkOrigin) => t(`links.origin.${origin}`);
+  const chip = (value: OriginFilter, label: string) => (
+    <button
+      type="button"
+      key={label}
+      className={filter === value ? "links-filter-chip is-on" : "links-filter-chip"}
+      aria-pressed={filter === value}
+      onClick={() => setFilter(value)}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="links-view">
+      <section className="links-intro">
+        <div className="links-icon surface" aria-hidden="true">
+          <Icon name="external" size={24} />
         </div>
-        <div className="contribution-intro-copy">
-          <h2 className="view-title">{t("contribution.title")}</h2>
-          <p>{t("contribution.subtitle")}</p>
+        <div className="links-intro-copy">
+          <h2 className="view-title">{t("links.title")}</h2>
+          <p>{t("links.subtitle")}</p>
         </div>
       </section>
 
-      <section className="contribution-section" aria-labelledby="contribution-thanks">
-        <h3 id="contribution-thanks" className="contribution-section-title">{t("contribution.specialThanks")}</h3>
-        <ul className="contribution-thanks-list">
-          {ACKNOWLEDGMENTS.map((person) => (
-            <li key={person.name} className="contribution-thanks-item">
-              <span className="contribution-thanks-name">{person.name}</span>
-              {person.note && <span className="contribution-thanks-note"> ({person.note})</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="links-filters" role="group" aria-label={t("links.filter.aria")}>
+        {chip(null, t("links.filter.all", { count: DIRECTORY.length }))}
+        {chip("official", t("links.filter.official", { count: countByOrigin("official") }))}
+        {chip("community", t("links.filter.community", { count: countByOrigin("community") }))}
+      </div>
 
-      <section className="contribution-section" aria-labelledby="contribution-repositories">
-        <h3 id="contribution-repositories" className="contribution-section-title">{t("contribution.repositories")}</h3>
-        <div className="contribution-links">
+      {LINK_SECTIONS.map((section) => {
+        const links = sectionLinks(section, filter);
+        if (links.length === 0) return null;
+        return (
+          <section className="links-section" key={section} aria-labelledby={`links-section-${section}`}>
+            <h3 id={`links-section-${section}`} className="links-section-title">
+              {t(`links.section.${section}`)}
+            </h3>
+            <div className="links-list">
+              {links.map((link) => (
+                <LinkCard key={link.id} link={link} originLabel={originLabel(link.origin)} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
+      {/* Below the directory, and never filtered: the repositories are not
+          places to visit, they are the answer to "how do I help". */}
+      <section className="links-section" aria-labelledby="links-repositories">
+        <h3 id="links-repositories" className="links-section-title">{t("contribution.repositories")}</h3>
+        <p className="links-section-hint">{t("contribution.subtitle")}</p>
+        <div className="links-list">
           {REPOSITORIES.map((repository) => (
             <a
-              className="contribution-link surface surface-interactive"
+              className="links-link surface surface-interactive"
               href={repository.href}
               key={repository.href}
               rel="noreferrer"
@@ -90,14 +164,26 @@ export function ContributionView() {
                 void openHttpsUrl(repository.href);
               }}
             >
-              <span className="contribution-link-copy">
+              <span className="links-link-copy">
                 <strong>{t(repository.name)}</strong>
                 <small>{t(repository.description)}</small>
               </span>
-              <Icon name="external" size={16} />
+              <Icon name="github" size={16} />
             </a>
           ))}
         </div>
+      </section>
+
+      <section className="links-section" aria-labelledby="links-thanks">
+        <h3 id="links-thanks" className="links-section-title">{t("contribution.specialThanks")}</h3>
+        <ul className="links-thanks-list">
+          {ACKNOWLEDGMENTS.map((person) => (
+            <li key={person.name} className="links-thanks-item">
+              <span className="links-thanks-name">{person.name}</span>
+              {person.note && <span className="links-thanks-note"> ({person.note})</span>}
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

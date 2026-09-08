@@ -25,7 +25,12 @@ pub enum Tab {
     Training,
     Units,
     Changelog,
-    Contribution,
+    /// The link directory: FAF's own sites and what the community built.
+    ///
+    /// Named for what it holds rather than for what it used to be. It grew out
+    /// of the Contribution tab, whose repositories and credits are one section
+    /// of it now.
+    Links,
     Settings,
 }
 

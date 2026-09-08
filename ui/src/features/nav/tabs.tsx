@@ -16,11 +16,11 @@ const ChangelogView = lazy(() =>
 const ChatView = lazy(() =>
   import("../chat/ChatView").then((module) => ({ default: module.ChatView })),
 );
-const ContributionView = lazy(() =>
-  import("../contribution/ContributionView").then((module) => ({ default: module.ContributionView })),
-);
 const LeaderboardView = lazy(() =>
   import("../leaderboard/LeaderboardView").then((module) => ({ default: module.LeaderboardView })),
+);
+const LinksView = lazy(() =>
+  import("../links/LinksView").then((module) => ({ default: module.LinksView })),
 );
 const LobbyView = lazy(() =>
   import("../lobby/LobbyView").then((module) => ({ default: module.LobbyView })),
@@ -70,7 +70,7 @@ export const TAB_ORDER: Tab[] = [
   "training",
   "changelog",
   "units",
-  "contribution",
+  "links",
   "settings",
 ];
 
@@ -107,7 +107,7 @@ export const TABS: Record<Tab, TabDef> = {
   news: { label: "nav.tab.news.label", description: "nav.tab.news.description", icon: "news", Component: NewsView },
   chat: { label: "nav.tab.chat.label", description: "nav.tab.chat.description", icon: "chat", Component: ChatView },
   play: { label: "nav.tab.play.label", description: "nav.tab.play.description", icon: "play", Component: LobbyView },
-  contribution: { label: "nav.tab.contribution.label", description: "nav.tab.contribution.description", icon: "github", Component: ContributionView },
+  links: { label: "nav.tab.links.label", description: "nav.tab.links.description", icon: "external", Component: LinksView },
   replays: { label: "nav.tab.replays.label", description: "nav.tab.replays.description", icon: "replays", Component: ReplaysView },
   maps: { label: "nav.tab.maps.label", description: "nav.tab.maps.description", icon: "maps", Component: MapsView },
   mods: { label: "nav.tab.mods.label", description: "nav.tab.mods.description", icon: "mods", Component: ModsView },

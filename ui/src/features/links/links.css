@@ -1,9 +1,9 @@
-/* Contribution */
-.contribution-view {
+/* The link directory */
+.links-view {
   width: min(100%, 720px);
 }
 
-.contribution-intro {
+.links-intro {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -11,13 +11,13 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.contribution-intro-copy {
+.links-intro-copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.contribution-intro h2 {
+.links-intro h2 {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
@@ -25,14 +25,14 @@
   letter-spacing: -0.025em;
 }
 
-.contribution-intro p {
+.links-intro p {
   margin: 4px 0 0;
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.4;
 }
 
-.contribution-icon {
+.links-icon {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -42,11 +42,11 @@
   color: var(--color-text);
 }
 
-.contribution-section {
+.links-section {
   padding-top: var(--space-4);
 }
 
-.contribution-section-title {
+.links-section-title {
   margin: 0 0 var(--space-3);
   color: var(--color-muted);
   font-size: 12px;
@@ -55,7 +55,7 @@
   text-transform: uppercase;
 }
 
-.contribution-thanks-list {
+.links-thanks-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -67,26 +67,26 @@
   list-style-type: disc;
 }
 
-.contribution-thanks-item {
+.links-thanks-item {
   display: list-item;
 }
 
-.contribution-thanks-name {
+.links-thanks-name {
   font-weight: 550;
   color: var(--color-text);
 }
 
-.contribution-thanks-note {
+.links-thanks-note {
   color: var(--color-muted);
   font-size: 12px;
 }
 
-.contribution-links {
+.links-list {
   display: grid;
   gap: var(--space-2);
 }
 
-.contribution-link {
+.links-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -99,28 +99,98 @@
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.contribution-link > svg {
+.links-link > svg {
   flex: 0 0 auto;
   color: var(--color-muted);
 }
 
-.contribution-link-copy {
+.links-link-copy {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
 }
 
-.contribution-link-copy strong {
+.links-link-copy strong {
   font-size: 13px;
   font-weight: 550;
   color: var(--color-text);
 }
 
-.contribution-link-copy small {
+.links-link-copy small {
   margin-top: 2px;
   overflow: hidden;
   color: var(--color-muted);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── the origin filter ─────────────────────────────────────────────── */
+
+.links-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+}
+
+.links-filter-chip {
+  padding: 4px 10px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.links-filter-chip:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.links-filter-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.links-filter-chip.is-on {
+  color: var(--color-text);
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
+}
+
+.links-section-hint {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Who made it, on the card rather than in the heading: the sections group by
+   what a link is for, so official and community sit next to each other inside
+   one of them. */
+.links-origin {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.links-origin-official {
+  color: var(--color-text);
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
+}
+
+.links-origin-community {
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
 }
