@@ -168,7 +168,14 @@ describe("building the feed", () => {
       releases: [],
       ...window,
     });
-    expect(feed.map((entry) => entry.origin)).toEqual(["official", "community"]);
+    // Keyed rather than positional: both start at the same moment, so the feed
+    // orders them by title and "Dojo Cup" comes first.
+    expect(new Map(feed.map((entry) => [entry.id, entry.origin]))).toEqual(
+      new Map([
+        ["tourney:t1", "official"],
+        ["tourney:t2", "community"],
+      ]),
+    );
   });
 
   it("leaves out a tournament nobody can see yet, and one that was called off", () => {
