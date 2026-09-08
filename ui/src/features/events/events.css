@@ -542,3 +542,122 @@
     min-height: 72px;
   }
 }
+
+/* ── suggesting an event ───────────────────────────────────────────── */
+
+.event-submit-modal {
+  width: min(620px, 94vw);
+}
+
+.event-submit-modal h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.event-submit-intro {
+  margin: var(--space-2) 0 var(--space-4);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.event-submit-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* A name, a summary and an address are all longer than a third of the row. */
+.event-submit-wide {
+  grid-column: 1 / -1;
+}
+
+.event-submit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.event-submit-form label > span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.event-submit-form input,
+.event-submit-form select,
+.event-submit-form textarea {
+  width: 100%;
+  padding: 6px 8px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.event-submit-form textarea {
+  resize: vertical;
+}
+
+.event-submit-form input:disabled {
+  color: var(--color-subtle);
+}
+
+.event-submit-form input:focus-visible,
+.event-submit-form select:focus-visible,
+.event-submit-form textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.event-submit-preview {
+  margin-top: var(--space-4);
+}
+
+.event-submit-preview > summary {
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.event-submit-preview pre {
+  overflow-x: auto;
+  max-height: 220px;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.event-submit-explain {
+  margin: var(--space-3) 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.event-submit-problem {
+  margin: var(--space-3) 0 0;
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.event-submit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 700px) {
+  .event-submit-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

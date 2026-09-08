@@ -46,11 +46,13 @@ events/                           FAForeverRustClient/events
 ├─ README.md                      how to add an event, for people who will
 ├─ calendar.json                  THE document the client fetches
 ├─ sources.json                   which Discord servers the bot mirrors
+├─ DISCORD-SETUP.md               step by step, for whoever enables a server
 └─ .github/
    ├─ ISSUE_TEMPLATE/
-   │  └─ event-submission.yml     the form a submission is filled in on
+   │  └─ event-submission.md      the same entry block, for a submission by hand
    └─ workflows/
       ├─ validate.yml             refuse an entry with no title, start or https link
+      ├─ submissions.yml          check an issue, and apply it once approved
       └─ discord-events.yml       the bot, four times a day
 ```
 
@@ -195,6 +197,51 @@ ignore it.
 The mapping is unit tested in `scripts/events-bot.test.mjs`, which is why
 `vitest.config.ts` reaches into `scripts/` for exactly that one file: publishing
 a wrong date to every client is not something to find out about from a player.
+
+---
+
+## Submitting an event
+
+The Events tab has a **Suggest an event** button, and what it opens is a form
+rather than a browser. That is the point: nobody should have to know this
+document's format, convert their own evening into UTC, or remember how a
+fortnightly rule is spelled.
+
+The path, end to end:
+
+1. `EventSubmitDialog` asks what the catalogue needs, in the player's own time
+   zone. `eventSubmission.ts` converts it, and the dialog shows the entry it
+   built, so somebody who does know the format can check it.
+2. The button opens `github.com/<owner>/<repo>/issues/new` with the title, the
+   labels and a body already filled in. The body carries a sentence for whoever
+   reads the issue and the entry itself in a fenced `json` block. The client
+   does not post it: it has no GitHub identity, and the last step being the
+   player's own click is what keeps a submission attributable to them.
+3. In the catalogue repository, `submissions.yml` runs `events-submission.mjs`
+   on every issue carrying such a block and comments whether it reads cleanly.
+4. A maintainer adds the `approved` label. That commits the entry and closes the
+   issue.
+
+The block rather than the issue *form* fields, and that is worth stating because
+a form was the first design. GitHub renders a form as `### Question` followed by
+the answer, so reading one back means matching on question wording, in whichever
+language somebody wrote the form, and it breaks silently the day a label is
+reworded. The block is the thing being submitted, so it is what is read.
+
+The label is the one step that is not automated. Automating the transcription is
+what this is for; automating the decision would mean anybody who can open an
+issue can put anything on every player's calendar.
+
+Two rules protect what is already there. A submission may not claim an id
+beginning with `discord-`, because those belong to the mirror bot and the next
+run would overwrite it. An id already in the document gets a numeric suffix
+rather than replacing the entry that holds it, so a submission can never edit
+somebody else's. Submitting the identical entry twice changes nothing, which is
+what makes the workflow safe to re-run on an edited issue.
+
+An issue with no block in it is not an error. Somebody wrote it by hand, and it
+is left for a maintainer rather than refused: a red cross on a first
+contribution is a worse outcome than a minute of transcription.
 
 ---
 

@@ -14,12 +14,12 @@ import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
 import { Select } from "../../design-system/Select";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { openHttpsUrl } from "../../shared/externalLinks";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { CalendarView, EventCategory, EventsQuery } from "../../ipc/bindings";
 import { buildFeed, entriesByDay, filterFeed, type CalendarEntry } from "./calendarFeed";
 import { addDays, addMonths, isoDay, resolveAnchor, viewWindow } from "./calendarGrid";
 import { EventDetail } from "./EventDetail";
+import { EventSubmitDialog } from "./EventSubmitDialog";
 import { EventMonth } from "./EventMonth";
 import { EventUpcoming } from "./EventUpcoming";
 import { EventWeek } from "./EventWeek";
@@ -54,6 +54,7 @@ export function EventsView() {
   // in a client that is left open. Not in the slice: nothing in the backend has
   // an opinion about what minute the view was drawn in.
   const [now, setNow] = useState(() => new Date());
+  const [submitting, setSubmitting] = useState(false);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
     return () => window.clearInterval(timer);
@@ -136,8 +137,11 @@ export function EventsView() {
           <h2 className="view-title">{t("events.title")}</h2>
           <p>{t("events.subtitle")}</p>
         </div>
+        {/* Only when the catalogue was read from the network: the copy that
+            ships with the client names no submission address, because it is
+            shown precisely when that address cannot be relied on. */}
         {events.submitUrl && (
-          <Button onClick={() => void openHttpsUrl(events.submitUrl)}>
+          <Button onClick={() => setSubmitting(true)}>
             <Icon name="plus" size={14} /> {t("events.suggest")}
           </Button>
         )}
@@ -274,6 +278,10 @@ export function EventsView() {
 
       {open && (
         <EventDetail entry={open} leadMinutes={openLead} onClose={() => select(null)} />
+      )}
+
+      {submitting && (
+        <EventSubmitDialog submitUrl={events.submitUrl} onClose={() => setSubmitting(false)} />
       )}
     </div>
   );
