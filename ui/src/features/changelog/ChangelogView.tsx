@@ -138,7 +138,18 @@ export function ChangelogView() {
   const changelog = useAppStore((state) => state.state.changelog);
   const [search, setSearch] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const defaultCollapseApplied = useRef(false);
+  const noteBodyRef = useRef<HTMLDivElement>(null);
+  const tocNavRef = useRef<HTMLElement>(null);
+  const isClickScrolling = useRef(false);
+  const clickScrollTimeout = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clickScrollTimeout.current) clearTimeout(clickScrollTimeout.current);
+    };
+  }, []);
 
   useEffect(() => {
     ipc.send({ kind: "Changelog", command: { type: "load" } });
@@ -201,6 +212,54 @@ export function ChangelogView() {
       }];
     });
   }, [entry]);
+
+  useEffect(() => {
+    if (noteBodyRef.current) {
+      noteBodyRef.current.scrollTop = 0;
+    }
+    setActiveHeadingId(tableOfContents[0]?.id ?? null);
+  }, [changelog.selected, tableOfContents]);
+
+  const handleNoteScroll = () => {
+    if (isClickScrolling.current) return;
+    const container = noteBodyRef.current;
+    if (!container || tableOfContents.length === 0) return;
+
+    if (container.scrollHeight - container.scrollTop - container.clientHeight <= 25) {
+      setActiveHeadingId(tableOfContents[tableOfContents.length - 1].id);
+      return;
+    }
+
+    const containerTop = container.getBoundingClientRect().top;
+    const threshold = 60;
+
+    let currentId = tableOfContents[0].id;
+    for (const item of tableOfContents) {
+      const el = document.getElementById(item.id);
+      if (!el) continue;
+      const top = el.getBoundingClientRect().top - containerTop;
+      if (top <= threshold) {
+        currentId = item.id;
+      } else {
+        break;
+      }
+    }
+    setActiveHeadingId(currentId);
+  };
+
+  useEffect(() => {
+    if (!activeHeadingId || !tocNavRef.current) return;
+    const activeBtn = tocNavRef.current.querySelector<HTMLElement>(".changelog-toc-item.active");
+    if (!activeBtn) return;
+    const nav = tocNavRef.current;
+    const navRect = nav.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+    if (btnRect.bottom > navRect.bottom) {
+      nav.scrollTop += btnRect.bottom - navRect.bottom + 8;
+    } else if (btnRect.top < navRect.top) {
+      nav.scrollTop -= navRect.top - btnRect.top + 8;
+    }
+  }, [activeHeadingId]);
 
   const select = (id: string) =>
     ipc.send({ kind: "Changelog", command: { type: "select", payload: { id } } });
@@ -344,7 +403,7 @@ export function ChangelogView() {
           </header>
         )}
 
-        <div className="changelog-note-body">
+        <div className="changelog-note-body" ref={noteBodyRef} onScroll={handleNoteScroll}>
           <div className="changelog-note-copy">
             {loadingEntry && !entry && <p className="play-empty">{t("changelog.loadingNote")}</p>}
 
@@ -368,20 +427,36 @@ export function ChangelogView() {
       </section>
 
       {tableOfContents.length > 0 && (
-        <nav className="changelog-toc surface-panel" aria-label={t("changelog.contents")}>
+        <nav className="changelog-toc surface-panel" ref={tocNavRef} aria-label={t("changelog.contents")}>
           <p className="changelog-toc-title">{t("changelog.contents")}</p>
           <div className="changelog-toc-list">
             {tableOfContents.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                className={`changelog-toc-item changelog-toc-item-level-${item.level}`}
-                onClick={() =>
-                  document.getElementById(item.id)?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  })
-                }
+                className={`changelog-toc-item changelog-toc-item-level-${item.level}${
+                  activeHeadingId === item.id ? " active" : ""
+                }`}
+                onClick={() => {
+                  setActiveHeadingId(item.id);
+                  isClickScrolling.current = true;
+                  if (clickScrollTimeout.current) clearTimeout(clickScrollTimeout.current);
+                  clickScrollTimeout.current = window.setTimeout(() => {
+                    isClickScrolling.current = false;
+                  }, 800);
+
+                  const el = document.getElementById(item.id);
+                  if (el && noteBodyRef.current) {
+                    const container = noteBodyRef.current;
+                    const containerRect = container.getBoundingClientRect();
+                    const elRect = el.getBoundingClientRect();
+                    const targetScrollTop = container.scrollTop + (elRect.top - containerRect.top) - 16;
+                    container.scrollTo({
+                      top: Math.max(0, targetScrollTop),
+                      behavior: "smooth",
+                    });
+                  }
+                }}
               >
                 {item.text}
               </button>

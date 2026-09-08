@@ -11,7 +11,6 @@
   gap: var(--space-4);
   height: 100%;
   min-height: 0;
-  padding: var(--space-4);
   box-sizing: border-box;
 }
 
@@ -288,10 +287,10 @@
 /* ── Table of Contents ─────────────────────────────────────────────────── */
 .changelog-toc {
   position: sticky;
-  top: var(--space-4);
+  top: 0;
   align-self: start;
   min-width: 0;
-  max-height: calc(100% - var(--space-4));
+  max-height: 100%;
   box-sizing: border-box;
   padding: 12px 0 12px var(--space-4);
   overflow-y: auto;
@@ -329,7 +328,7 @@
   cursor: pointer;
   background: transparent;
   border: 0;
-  transition: color 0.12s;
+  transition: color 120ms ease;
 }
 
 .changelog-toc-item:hover {
@@ -341,8 +340,17 @@
   outline-offset: 2px;
 }
 
+.changelog-toc-item.active {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .changelog-toc-item-level-1 {
   font-weight: 600;
+  color: var(--color-muted);
+}
+
+.changelog-toc-item-level-1.active {
   color: var(--color-text);
 }
 
@@ -362,6 +370,7 @@
   font-weight: 650;
   letter-spacing: -0.01em;
   color: var(--color-text);
+  scroll-margin-top: 16px;
 }
 
 .changelog-note-copy > .changelog-heading:first-child {
