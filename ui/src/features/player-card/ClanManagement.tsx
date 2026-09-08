@@ -25,6 +25,12 @@ const MAX_TAG = 3;
 
 const send = (command: ClanCommand) => ipc.send({ kind: "Clan", command });
 
+// A module constant, not a literal in the JSX. `ClanForm` resets itself when
+// its `initial` changes, and a fresh object every render is a change: the
+// founding form would empty itself the moment anything in the slice moved,
+// which includes the failure telling you the name was taken.
+const EMPTY_DRAFT: ClanDraft = { name: "", tag: "", description: "" };
+
 const load = () => send({ type: "load" });
 
 const ACTION_LABEL = {
@@ -226,7 +232,7 @@ function NoClanPanel({ busy }: { busy: boolean }) {
         <h4>{t("clan.create.title")}</h4>
         <p className="muted">{t("clan.create.hint")}</p>
         <ClanForm
-          initial={{ name: "", tag: "", description: "" }}
+          initial={EMPTY_DRAFT}
           submitLabel="clan.create.submit"
           busy={busy}
           onSubmit={(draft) => send({ type: "create", payload: { draft } })}
