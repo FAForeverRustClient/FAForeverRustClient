@@ -866,9 +866,7 @@ fn attribute(open_tag: &str, name: &str) -> Option<String> {
             continue;
         }
         let value = &open_tag[at + key.len()..];
-        let Some(quote) = value.chars().next() else {
-            return None;
-        };
+        let quote = value.chars().next()?;
         if quote != '"' {
             let end = value.find(|c: char| c.is_whitespace() || c == '>')?;
             return Some(decode_entities(&value[..end]));
