@@ -42,6 +42,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "nav.tab.links.description": "FAF-Seiten und Community-Werkzeuge",
   "nav.tab.settings.label": "Einstellungen",
   "nav.tab.settings.description": "Client-Einstellungen",
+  "gameFolders.title": "Spielordner",
+  "gameFolders.diagnostics": "Diagnose",
   "nav.main": "Hauptnavigation",
   "nav.content.aria": "Inhalt: {tab}",
 

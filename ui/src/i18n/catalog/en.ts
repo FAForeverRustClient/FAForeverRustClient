@@ -70,6 +70,9 @@ export const en = {
   "nav.tab.links.description": "FAF sites and community tools",
   "nav.tab.settings.label": "Settings",
   "nav.tab.settings.description": "Client preferences",
+  // The sidebar's Game folders disclosure, between the links and the settings.
+  "gameFolders.title": "Game folders",
+  "gameFolders.diagnostics": "Diagnostics",
   "nav.main": "Main navigation",
   "nav.content.aria": "{tab} content",
 
