@@ -37,7 +37,6 @@ import {
   sizeLabel,
 } from "./MapVaultComponents";
 import { GenerateMapModal, GeneratorProgress, stillRunning } from "./GenerateMapModal";
-import { MapUploadModal } from "./MapUploadModal";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -921,8 +920,6 @@ export function MapsView() {
   const { t } = useTranslation();
   const [subView, setSubView] = useState<SubView>("vault");
   const [generating, setGenerating] = useState(false);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const installed = useAppStore((state) => state.state.maps.installed);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
   const busy = installStatus.type === "installing";
@@ -938,9 +935,10 @@ export function MapsView() {
           onChange={setSubView}
         />
         <div className="vault-subnav-actions">
-          <Button variant="ghost" onClick={() => setUploadModalOpen(true)}>
-            <Icon name="upload" size={15} /> {t("uploads.title.map")}
-          </Button>
+          {/* No publish button here. Uploading a map is one action with one
+              entry point, which is "Upload map" in the vault's own toolbar:
+              this one opened a second dialog that did the same thing from a
+              list of installed maps instead of a folder. */}
           {subView === "installed" && (
             <>
               {/* Generated maps are reproducible from their name, so removing them
@@ -955,12 +953,6 @@ export function MapsView() {
       </div>
       <Component busy={busy} />
       {generating && <GenerateMapModal onClose={() => setGenerating(false)} />}
-      {uploadModalOpen && (
-        <MapUploadModal
-          installed={installed}
-          onClose={() => setUploadModalOpen(false)}
-        />
-      )}
       {/* Progress stays visible after the dialog closes: a run started here
           keeps going, and it is slow enough that the user will navigate away. */}
       {!generating && stillRunning(generatorStatus) && (
