@@ -40,15 +40,17 @@ the bot.
 
 ## Repository layout
 
+The repository exists: [`FAForeverRustClient/events`](https://github.com/FAForeverRustClient/events).
+
 ```
 events/                           FAForeverRustClient/events
 ├─ README.md                      how to add an event, for people who will
-├─ calendar.json                  THE manifest the client fetches
+├─ calendar.json                  THE document the client fetches
 └─ .github/
    ├─ ISSUE_TEMPLATE/
    │  └─ event-submission.yml     the form a submission is filled in on
    └─ workflows/
-      └─ validate.yml             fail a pull request whose manifest does not parse
+      └─ validate.yml             refuse an entry with no title, start or https link
 ```
 
 `calendar.json` is the only file the client reads.
@@ -140,3 +142,10 @@ about 500 bytes, so that is a few thousand events.
   actually happening.
 - **Reminders.** Set in the client, kept in the client's own settings file, and
   never sent anywhere.
+
+One note on the submission link. `submitUrl` is offered by the tab only when the
+catalogue was actually read from the network. The copy that ships inside the
+client names no address at all, because it is used precisely when the published
+document could not be read, which is the state in which a button into that
+document's repository is least likely to answer. The button was a 404 before
+that rule existed.

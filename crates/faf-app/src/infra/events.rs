@@ -162,13 +162,19 @@ impl EventsPort for FakeEvents {
 /// The seed, parsed. A broken seed is a packaging bug, so it fails loudly in
 /// tests and degrades to an empty catalogue at runtime rather than panicking in
 /// somebody's client.
+///
+/// It never carries a submission address, and that is the fix for a real fault:
+/// the button opened a 404. The seed is what is shown when the published
+/// catalogue could not be read, which is the one state in which an address
+/// *inside* that catalogue's repository is least likely to answer, whether
+/// because the machine is offline or because the repository is not there yet.
+/// A catalogue that came off the network has proved the opposite, so that is
+/// the only one whose submission link is offered.
 pub fn seed_catalogue() -> EventCatalogue {
     match parse_manifest(SEED.as_bytes()) {
         Ok(mut catalogue) => {
             catalogue.source = EventsSource::Bundled;
-            if catalogue.submit_url.is_empty() {
-                catalogue.submit_url = DEFAULT_SUBMIT_URL.into();
-            }
+            catalogue.submit_url = String::new();
             catalogue
         }
         Err(reason) => {
@@ -378,6 +384,14 @@ mod tests {
             .events
             .iter()
             .all(|event| !event.id.is_empty() && event.starts_at > 0));
+    }
+
+    #[test]
+    fn the_bundled_catalogue_offers_no_submission_link() {
+        // It is shown when the published document could not be read, and a
+        // button into that document's repository is exactly what cannot be
+        // relied on in that state. The UI hides the button on an empty value.
+        assert!(seed_catalogue().submit_url.is_empty());
     }
 
     #[test]

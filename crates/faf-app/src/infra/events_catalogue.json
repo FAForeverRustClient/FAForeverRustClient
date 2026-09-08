@@ -12,9 +12,12 @@
     "a client release. See docs/events-catalogue.md for the format.",
     "",
     "The one entry below is the exception the design of this feature named: a",
-    "recurrence rule needs no source, because the rule is the fact."
+    "recurrence rule needs no source, because the rule is the fact.",
+    "",
+    "No submitUrl here on purpose: this copy is used when the published",
+    "document could not be read, so a button into that document's repository",
+    "is the one thing that cannot be relied on. See seed_catalogue()."
   ],
-  "submitUrl": "https://github.com/FAForeverRustClient/events/issues/new/choose",
   "events": [
     {
       "id": "ladder-pool-rotation",
