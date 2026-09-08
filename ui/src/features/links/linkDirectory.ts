@@ -9,6 +9,12 @@
 // hardcoded list is a smaller attack surface, works offline, and is a one-line
 // pull request when somebody launches something new.
 //
+// The hub itself is not one of the entries. Every destination it lists is in
+// here, so linking to it would be linking to a longer way round to this page.
+// The two it lists that are missing are deliberate: FAF's unit database is a
+// tab of this client already, and the wiki's beginner guide is a page of the
+// wiki, which is the second entry below.
+//
 // Every entry says who made it. That is the one thing the issue asked for
 // explicitly: a player following a link out of the client should know whether
 // they are going somewhere FAF runs or somewhere a player runs.
@@ -24,11 +30,11 @@ export type LinkOrigin = "official" | "community";
  * Purpose first, origin second: somebody looking for a rating history wants the
  * tools, and whether FAF or a player wrote the tool is the next question, not
  * the first. Splitting the page into "official" and "community" instead would
- * bury the four things people come here for under a provenance question.
+ * bury the things people come here for under a provenance question.
  */
-export type LinkSection = "play" | "tools" | "games" | "learn" | "watch";
+export type LinkSection = "play" | "tools" | "games" | "watch";
 
-export const LINK_SECTIONS: LinkSection[] = ["play", "tools", "games", "learn", "watch"];
+export const LINK_SECTIONS: LinkSection[] = ["play", "tools", "games", "watch"];
 
 export interface DirectoryLink {
   /** Stable id, used as the React key and in tests. */
@@ -45,12 +51,18 @@ export interface DirectoryLink {
  *
  * Sources: the community hub above, plus the DoodlePros sites it does not list
  * (FAFScribbl is missing from it, which the issue points out) and FAF's own
- * wiki. Ordered within a section by how often somebody is likely to want it.
+ * wiki. Ordered within a section by how often somebody is likely to want it,
+ * which for the first four is the order a new player meets them in.
  */
 export const DIRECTORY: readonly DirectoryLink[] = [
   {
     id: "faforever",
     name: "links.entry.website",
+    // Deliberately not "news, leaderboards and the vaults", which is what this
+    // said first and is wrong on all three counts: the site's news is out of
+    // date, and its map and mod pages are not where anybody browses either.
+    // What it is good for is being the first address a player who has never run
+    // FAF is given.
     hint: "links.entry.websiteHint",
     href: "https://www.faforever.com/",
     origin: "official",
@@ -65,26 +77,18 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "play",
   },
   {
+    id: "wiki",
+    name: "links.entry.wiki",
+    hint: "links.entry.wikiHint",
+    href: "https://wiki.faforever.com/",
+    origin: "official",
+    section: "play",
+  },
+  {
     id: "discord",
     name: "links.entry.discord",
     hint: "links.entry.discordHint",
     href: "https://discord.gg/fQxrjwru6E",
-    origin: "official",
-    section: "play",
-  },
-  {
-    id: "steam",
-    name: "links.entry.steam",
-    hint: "links.entry.steamHint",
-    href: "https://store.steampowered.com/app/9420/Supreme_Commander_Forged_Alliance/",
-    origin: "official",
-    section: "play",
-  },
-  {
-    id: "gog",
-    name: "links.entry.gog",
-    hint: "links.entry.gogHint",
-    href: "https://www.gog.com/en/game/supreme_commander_gold_edition",
     origin: "official",
     section: "play",
   },
@@ -129,14 +133,6 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     section: "tools",
   },
   {
-    id: "hub",
-    name: "links.entry.hub",
-    hint: "links.entry.hubHint",
-    href: "https://faf-hub.services.atlantishq.de/",
-    origin: "community",
-    section: "tools",
-  },
-  {
     id: "guessr",
     name: "links.entry.guessr",
     hint: "links.entry.guessrHint",
@@ -159,30 +155,6 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     href: "https://daily.doodlepros.com/",
     origin: "community",
     section: "games",
-  },
-  {
-    id: "wiki",
-    name: "links.entry.wiki",
-    hint: "links.entry.wikiHint",
-    href: "https://wiki.faforever.com/",
-    origin: "official",
-    section: "learn",
-  },
-  {
-    id: "beginners",
-    name: "links.entry.beginners",
-    hint: "links.entry.beginnersHint",
-    href: "https://wiki.faforever.com/Play/Learning-SupCom/Beginners-Guide-to-Forged-Alliance",
-    origin: "official",
-    section: "learn",
-  },
-  {
-    id: "unitdb",
-    name: "links.entry.unitDb",
-    hint: "links.entry.unitDbHint",
-    href: "https://faforever.github.io/etfreeman-db/",
-    origin: "official",
-    section: "learn",
   },
   {
     id: "twitch",
@@ -225,7 +197,7 @@ export type OriginFilter = LinkOrigin | null;
  * The entries of one section under the current filter, in directory order.
  *
  * A section with nothing left in it returns empty and the view draws no
- * heading: filtering to "official" should not leave four empty groups behind.
+ * heading: filtering to "official" should not leave empty groups behind.
  */
 export function sectionLinks(section: LinkSection, filter: OriginFilter): DirectoryLink[] {
   return DIRECTORY.filter(
