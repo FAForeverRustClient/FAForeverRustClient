@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::state::{
-    AuthCommand, ChangelogCommand, ChatCommand, ClientUpdateCommand, CoopCommand,
+    AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand, CoopCommand,
     GalacticWarCommand, GuidesCommand, LeaderboardCommand, LobbyCommand, MapGeneratorCommand,
     MapsCommand, ModsCommand, NavCommand, NotificationCommand, PlayerCardCommand, ReplayCommand,
     ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SocialCommand,
@@ -26,6 +26,7 @@ pub enum AppCommand {
     Nav(NavCommand),
     Notifications(NotificationCommand),
     Chat(ChatCommand),
+    Clan(ClanCommand),
     Coop(CoopCommand),
     Lobby(LobbyCommand),
     Replays(ReplayCommand),
@@ -171,6 +172,12 @@ impl From<TutorialsCommand> for AppCommand {
 impl From<ChangelogCommand> for AppCommand {
     fn from(c: ChangelogCommand) -> Self {
         AppCommand::Changelog(c)
+    }
+}
+
+impl From<ClanCommand> for AppCommand {
+    fn from(c: ClanCommand) -> Self {
+        AppCommand::Clan(c)
     }
 }
 

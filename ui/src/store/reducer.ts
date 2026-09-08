@@ -5,6 +5,7 @@
 import type { AppEvent, AppState } from "../ipc/bindings";
 import { reduceChangelog } from "./reducers/changelog";
 import { reduceChat } from "./reducers/chat";
+import { reduceClan } from "./reducers/clan";
 import { reduceClientUpdate } from "./reducers/clientUpdate";
 import { reduceCoop } from "./reducers/coop";
 import { reduceAuth, reduceInstall, reduceNav, reduceSession, reduceSettings } from "./reducers/core";
@@ -41,6 +42,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, notifications: reduceNotifications(state.notifications, event.event) };
     case "Chat":
       return { ...state, chat: reduceChat(state.chat, event.event) };
+    case "Clan":
+      return { ...state, clan: reduceClan(state.clan, event.event) };
     case "Changelog":
       return { ...state, changelog: reduceChangelog(state.changelog, event.event) };
     case "Coop":

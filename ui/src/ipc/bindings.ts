@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -25,6 +25,7 @@ export type AppState = {
 	nav: NavState,
 	notifications: NotificationState,
 	chat: ChatState,
+	clan: ClanState,
 	coop: CoopState,
 	lobby: LobbyState,
 	replays: ReplayState,
@@ -887,13 +888,159 @@ export type ChatUser = {
 	elevation: string,
 };
 
+/**
+ *  Which mutation is in flight, so the view can name what it is waiting for
+ *  and disable the right control rather than all of them.
+ */
+export type ClanAction = "creating" | "editing" | "inviting" | "joining" | "removing" | "leaving" | "handingOver" | "disbanding";
+
+export type ClanActionStatus = { type: "idle" } | { type: "working"; payload: {
+	action: ClanAction,
+} } |
+/**
+ *  The server's own sentence. `faf-java-api` answers a refused clan write
+ *  with a written reason ("the clan name Foo is already taken"), and that
+ *  is worth more than any category this client could map it to.
+ */
+{ type: "failed"; payload: {
+	action: ClanAction,
+	reason: string,
+	kind: RequestFailureKind,
+} } | { type: "succeeded"; payload: {
+	action: ClanAction,
+} };
+
+export type ClanCommand =
+/**  Read who this account is and, if it is in a clan, that clan. */
+{ type: "load" } | { type: "create"; payload: {
+	draft: ClanDraft,
+} } |
+/**  Edit name, tag and description. Leader only, server side. */
+{ type: "edit"; payload: {
+	draft: ClanDraft,
+} } |
+/**  Accounts to offer in the invite field. */
+{ type: "searchCandidates"; payload: {
+	query: string,
+} } | { type: "invite"; payload: {
+	playerId: number,
+	login: string,
+} } | { type: "clearInvitation" } |
+/**  Accept an invitation somebody sent, as a token or as the whole link. */
+{ type: "acceptInvitation"; payload: {
+	token: string,
+} } |
+/**  Remove another member. Leader only, server side. */
+{ type: "remove"; payload: {
+	playerId: number,
+} } |
+/**
+ *  Leave the clan. The leader cannot: the server refuses to delete the
+ *  leader's own membership, so the control hands over first.
+ */
+{ type: "leave" } | { type: "handOver"; payload: {
+	playerId: number,
+} } | { type: "disband" };
+
+/**
+ *  What a clan is being changed to. One shape for founding and for editing,
+ *  because the server takes the same three fields either way.
+ */
+export type ClanDraft = {
+	name: string,
+	tag: string,
+	description: string,
+};
+
+export type ClanEvent = { type: "loading" } | { type: "loaded"; payload: {
+	identity: ClanIdentity,
+	clan: PlayerClan | null,
+} } | { type: "loadFailed"; payload: {
+	reason: string,
+} } | { type: "actionStarted"; payload: {
+	action: ClanAction,
+} } | { type: "actionFailed"; payload: {
+	action: ClanAction,
+	reason: string,
+	kind: RequestFailureKind,
+} } | { type: "actionSucceeded"; payload: {
+	action: ClanAction,
+} } | { type: "candidatesLoaded"; payload: {
+	candidates: PlayerSummary[],
+} } |
+/**  A generated invitation, waiting to be delivered. */
+{ type: "invitationReady"; payload: {
+	invitation: ClanInvitation,
+} } | { type: "invitationCleared" };
+
+/**  Who this account is, in clan terms: the answer to `GET /clans/me`. */
+export type ClanIdentity = {
+	playerId: number,
+	login: string,
+	/**  The clan id, or empty when this account is in none. */
+	clanId: string,
+	clanName: string,
+	clanTag: string,
+	/**
+	 *  Whether this account leads that clan.
+	 *
+	 *  Resolved by the service from the clan document rather than sent by
+	 *  `/clans/me`, which reports only id, name and tag.
+	 */
+	isLeader: boolean,
+};
+
+/**
+ *  An invitation the leader generated, ready to be sent to its recipient.
+ *
+ *  The token *is* the invitation: `ClansController.generateInvitationLink`
+ *  returns a signed JWT naming the clan, the invitee and an expiry, and
+ *  `joinClan` takes it back. Nothing is stored server side, so the leader has
+ *  to actually deliver this, which is why it is held here to be copied rather
+ *  than fired off and forgotten.
+ */
+export type ClanInvitation = {
+	token: string,
+	playerId: number,
+	login: string,
+};
+
 export type ClanMember = {
+	/**
+	 *  The `clanMembership` row, which is what a removal deletes.
+	 *
+	 *  Held beside the player because the two are different resources: the
+	 *  server takes a membership id and refuses a player id, and the roster is
+	 *  the only place that join is already made.
+	 */
+	membershipId: string,
 	playerId: number,
 	login: string,
 	joinedAt: string,
 	accountCreatedAt: string,
 	lastSeenAt: string,
 };
+
+export type ClanState = {
+	identity: ClanIdentity,
+	status: ClanStatus,
+	/**
+	 *  The full clan this account belongs to, once loaded.
+	 *
+	 *  The same type the player card shows, because it is the same document:
+	 *  one parser, and a roster that cannot disagree with itself depending on
+	 *  which screen drew it.
+	 */
+	clan: PlayerClan | null,
+	action: ClanActionStatus,
+	/**  Accounts matching what was typed into the invite field. */
+	candidates: PlayerSummary[],
+	invitation: ClanInvitation | null,
+};
+
+export type ClanStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 export type ClientNotification = {
 	id: string,

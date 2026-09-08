@@ -40,6 +40,25 @@
       "showJoinsParts": false,
       "serverAutoJoin": []
     },
+    "clan": {
+      "identity": {
+        "playerId": 0,
+        "login": "",
+        "clanId": "",
+        "clanName": "",
+        "clanTag": "",
+        "isLeader": false
+      },
+      "status": {
+        "type": "idle"
+      },
+      "clan": null,
+      "action": {
+        "type": "idle"
+      },
+      "candidates": [],
+      "invitation": null
+    },
     "coop": {
       "scenarios": [],
       "missions": [],
@@ -343,6 +362,7 @@
       },
       "browseQuery": {
         "search": "",
+        "exactName": false,
         "author": "",
         "uploaderId": null,
         "modType": "",
@@ -4574,6 +4594,400 @@
       ]
     },
     {
+      "name": "founding a clan retires its own banner when the reload lands",
+      "steps": [
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "actionStarted",
+              "payload": {
+                "action": "creating"
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "payload": {
+                "action": "creating"
+              },
+              "type": "working"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "",
+              "clanName": "",
+              "clanTag": "",
+              "isLeader": false,
+              "login": "",
+              "playerId": 0
+            },
+            "invitation": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "actionSucceeded",
+              "payload": {
+                "action": "creating"
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "payload": {
+                "action": "creating"
+              },
+              "type": "succeeded"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "",
+              "clanName": "",
+              "clanTag": "",
+              "isLeader": false,
+              "login": "",
+              "playerId": 0
+            },
+            "invitation": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "identity": {
+                  "playerId": 7,
+                  "login": "Ada",
+                  "clanId": "42",
+                  "clanName": "Brotherhood",
+                  "clanTag": "BRO",
+                  "isLeader": true
+                },
+                "clan": null
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "type": "idle"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "42",
+              "clanName": "Brotherhood",
+              "clanTag": "BRO",
+              "isLeader": true,
+              "login": "Ada",
+              "playerId": 7
+            },
+            "invitation": null,
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a refused clan write survives the reload that follows it",
+      "steps": [
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "actionStarted",
+              "payload": {
+                "action": "creating"
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "payload": {
+                "action": "creating"
+              },
+              "type": "working"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "",
+              "clanName": "",
+              "clanTag": "",
+              "isLeader": false,
+              "login": "",
+              "playerId": 0
+            },
+            "invitation": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "actionFailed",
+              "payload": {
+                "action": "creating",
+                "reason": "the clan name Brotherhood is already taken",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "payload": {
+                "action": "creating",
+                "kind": "rejected",
+                "reason": "the clan name Brotherhood is already taken"
+              },
+              "type": "failed"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "",
+              "clanName": "",
+              "clanTag": "",
+              "isLeader": false,
+              "login": "",
+              "playerId": 0
+            },
+            "invitation": null,
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "identity": {
+                  "playerId": 0,
+                  "login": "",
+                  "clanId": "",
+                  "clanName": "",
+                  "clanTag": "",
+                  "isLeader": false
+                },
+                "clan": null
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "payload": {
+                "action": "creating",
+                "kind": "rejected",
+                "reason": "the clan name Brotherhood is already taken"
+              },
+              "type": "failed"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "",
+              "clanName": "",
+              "clanTag": "",
+              "isLeader": false,
+              "login": "",
+              "playerId": 0
+            },
+            "invitation": null,
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "an invitation clears the candidate list, and leaving clears the invitation",
+      "steps": [
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "identity": {
+                  "playerId": 7,
+                  "login": "Ada",
+                  "clanId": "42",
+                  "clanName": "Brotherhood",
+                  "clanTag": "BRO",
+                  "isLeader": true
+                },
+                "clan": null
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "type": "idle"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "42",
+              "clanName": "Brotherhood",
+              "clanTag": "BRO",
+              "isLeader": true,
+              "login": "Ada",
+              "playerId": 7
+            },
+            "invitation": null,
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "candidatesLoaded",
+              "payload": {
+                "candidates": [
+                  {
+                    "id": 9,
+                    "login": "Recruit",
+                    "avatarUrl": "",
+                    "country": "de",
+                    "globalRating": 1200,
+                    "ladderRating": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "type": "idle"
+            },
+            "candidates": [
+              {
+                "avatarUrl": "",
+                "country": "de",
+                "globalRating": 1200,
+                "id": 9,
+                "ladderRating": null,
+                "login": "Recruit"
+              }
+            ],
+            "clan": null,
+            "identity": {
+              "clanId": "42",
+              "clanName": "Brotherhood",
+              "clanTag": "BRO",
+              "isLeader": true,
+              "login": "Ada",
+              "playerId": 7
+            },
+            "invitation": null,
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "invitationReady",
+              "payload": {
+                "invitation": {
+                  "token": "jwt",
+                  "playerId": 9,
+                  "login": "Recruit"
+                }
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "type": "idle"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "42",
+              "clanName": "Brotherhood",
+              "clanTag": "BRO",
+              "isLeader": true,
+              "login": "Ada",
+              "playerId": 7
+            },
+            "invitation": {
+              "login": "Recruit",
+              "playerId": 9,
+              "token": "jwt"
+            },
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Clan",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "identity": {
+                  "playerId": 0,
+                  "login": "",
+                  "clanId": "",
+                  "clanName": "",
+                  "clanTag": "",
+                  "isLeader": false
+                },
+                "clan": null
+              }
+            }
+          },
+          "expected": {
+            "action": {
+              "type": "idle"
+            },
+            "candidates": [],
+            "clan": null,
+            "identity": {
+              "clanId": "",
+              "clanName": "",
+              "clanTag": "",
+              "isLeader": false,
+              "login": "",
+              "playerId": 0
+            },
+            "invitation": null,
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "reviews summarise on load and again on save",
       "steps": [
         {
@@ -4836,7 +5250,8 @@
                   "folderName": "my_map.v0001",
                   "displayName": "My Map",
                   "ranked": false,
-                  "sourcePath": null
+                  "sourcePath": null,
+                  "renameTo": ""
                 }
               }
             }
@@ -4847,6 +5262,7 @@
               "folderName": "my_map.v0001",
               "kind": "map",
               "ranked": false,
+              "renameTo": "",
               "sourcePath": null
             },
             "status": {
@@ -4870,6 +5286,7 @@
               "folderName": "my_map.v0001",
               "kind": "map",
               "ranked": true,
+              "renameTo": "",
               "sourcePath": null
             },
             "status": {
@@ -4895,6 +5312,7 @@
               "folderName": "my_map.v0001",
               "kind": "map",
               "ranked": true,
+              "renameTo": "",
               "sourcePath": null
             },
             "status": {
@@ -21887,6 +22305,7 @@
               "author": "",
               "before": "",
               "dateFieldUpdated": true,
+              "exactName": false,
               "maxRatingTenths": null,
               "minRatingTenths": null,
               "modType": "",
@@ -21929,6 +22348,7 @@
                 "mods": [],
                 "query": {
                   "search": "",
+                  "exactName": false,
                   "author": "",
                   "uploaderId": null,
                   "modType": "ui",
@@ -21956,6 +22376,7 @@
               "author": "",
               "before": "",
               "dateFieldUpdated": true,
+              "exactName": false,
               "maxRatingTenths": null,
               "minRatingTenths": null,
               "modType": "ui",
@@ -22006,6 +22427,7 @@
               "author": "",
               "before": "",
               "dateFieldUpdated": true,
+              "exactName": false,
               "maxRatingTenths": null,
               "minRatingTenths": null,
               "modType": "ui",
@@ -22056,6 +22478,7 @@
               "author": "",
               "before": "",
               "dateFieldUpdated": true,
+              "exactName": false,
               "maxRatingTenths": null,
               "minRatingTenths": null,
               "modType": "ui",
@@ -22109,6 +22532,7 @@
               "author": "",
               "before": "",
               "dateFieldUpdated": true,
+              "exactName": false,
               "maxRatingTenths": null,
               "minRatingTenths": null,
               "modType": "ui",

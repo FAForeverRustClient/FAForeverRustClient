@@ -216,6 +216,7 @@ mod tests {
             display_name: "My Map".into(),
             ranked: false,
             source_path: None,
+            rename_to: String::new(),
         }
     }
 

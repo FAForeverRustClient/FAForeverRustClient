@@ -714,6 +714,18 @@ fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfi
     })
 }
 
+/// The clan out of a player document that included `clanMembership.clan`.
+///
+/// Shared with `infra::clan`, which reads the same document for the same
+/// reason: the clan management screen is about the clan *this account is in*,
+/// and `joined_at` is a fact about the membership rather than about the clan.
+/// One parser, so the roster cannot differ depending on which screen drew it.
+pub(crate) fn clan_from_player_document(doc: &JsonApiDoc) -> Option<PlayerClan> {
+    let index = index(doc);
+    let player = doc.data.first()?;
+    parse_clan(player, &index)
+}
+
 fn parse_clan(player: &Resource, index: &Index<'_>) -> Option<PlayerClan> {
     let membership = related(player, "clanMembership", index)?;
     let clan = related(membership, "clan", index)?;
@@ -728,6 +740,7 @@ fn parse_clan(player: &Resource, index: &Index<'_>) -> Option<PlayerClan> {
         .filter_map(|member| {
             let account = related(member, "player", index)?;
             Some(ClanMember {
+                membership_id: member.id.clone(),
                 player_id: account.id.parse().ok()?,
                 login: text(account, "login"),
                 joined_at: text(member, "createTime"),

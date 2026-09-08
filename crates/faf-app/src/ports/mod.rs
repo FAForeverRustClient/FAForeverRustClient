@@ -7,6 +7,7 @@
 pub mod auth;
 pub mod changelog;
 pub mod chat;
+pub mod clan;
 pub mod client_update;
 pub mod coop;
 pub mod discord;
@@ -35,6 +36,7 @@ pub mod uploads;
 pub use auth::{AuthError, AuthPort, AuthResult};
 pub use changelog::ChangelogPort;
 pub use chat::{ChatPort, ChatUpdate};
+pub use clan::ClanPort;
 pub use client_update::{ClientUpdatePort, DownloadProgress};
 pub use coop::CoopPort;
 pub use discord::{DiscordPort, DiscordRequest};
@@ -93,6 +95,10 @@ pub struct Ports {
     pub paths: Arc<dyn PathsPort>,
     pub leaderboard: Arc<dyn LeaderboardPort>,
     pub player_card: Arc<dyn PlayerCardPort>,
+    /// Clan management: the half of a clan that used to be the website's alone.
+    /// Reads and edits are Elide; founding, inviting and joining go through
+    /// `ClansController`, which exists because they cannot be resource writes.
+    pub clan: Arc<dyn ClanPort>,
     pub reporting: Arc<dyn ReportingPort>,
     pub reviews: Arc<dyn ReviewsPort>,
     pub tourney: Arc<dyn TourneyPort>,

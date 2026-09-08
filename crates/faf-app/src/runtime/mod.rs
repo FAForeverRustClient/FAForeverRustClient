@@ -107,6 +107,14 @@ pub struct ServiceCtx {
     /// bracket on every confirmed result, so two overlapping reports would each
     /// be answered against a bracket the other has already moved.
     pub tourney_mutation: SerialMutation,
+    /// Clan writes go one at a time, and each ends by reloading. Two
+    /// overlapping edits would otherwise reload in response order rather than
+    /// command order and leave the older answer standing.
+    pub clan_mutation: SerialMutation,
+    /// Only the newest invite-field answer may land: the field searches per
+    /// keystroke, and an earlier prefix arriving late would replace the list
+    /// with matches for something no longer typed.
+    pub clan_candidate_generation: LatestRequest,
     /// Only the newest detail response may land: opening three events in a row
     /// must not leave the first one's bracket on screen because it answered
     /// last.
@@ -291,6 +299,8 @@ impl App {
             mods_mutation: SerialMutation::default(),
             auth_mutation: SerialMutation::default(),
             tourney_mutation: SerialMutation::default(),
+            clan_mutation: SerialMutation::default(),
+            clan_candidate_generation: LatestRequest::default(),
             tourney_detail_generation: LatestRequest::default(),
             tourney_chat_generation: LatestRequest::default(),
             tourney_account_search_generation: LatestRequest::default(),
@@ -451,6 +461,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Leaderboard(c) => services::leaderboard::handle(c, ctx, sink).await,
         AppCommand::PlayerCard(c) => services::player_card::handle(c, ctx, sink).await,
         AppCommand::Reporting(c) => services::reporting::handle(c, ctx, sink).await,
+        AppCommand::Clan(c) => services::clan::handle(c, ctx, sink).await,
         AppCommand::Reviews(c) => services::reviews::handle(c, ctx, sink).await,
         AppCommand::Tourney(c) => services::tourney::handle(c, ctx, sink).await,
         AppCommand::Guides(c) => services::guides::handle(c, ctx, sink).await,
