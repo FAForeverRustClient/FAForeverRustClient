@@ -216,9 +216,8 @@ mod tests {
         // The second of the two renames, and the reason this is a `match` now:
         // somebody whose start page was the Contribution tab would otherwise
         // lose their theme, their game path and everything else in the file.
-        let document = migrated(
-            serde_json::from_str(r#"{"general":{"startPage":"contribution"}}"#).unwrap(),
-        );
+        let document =
+            migrated(serde_json::from_str(r#"{"general":{"startPage":"contribution"}}"#).unwrap());
         let settings: SettingsState =
             serde_json::from_value(document).expect("an older document still parses");
         assert_eq!(settings.general.start_page, faf_domain::state::Tab::Links);

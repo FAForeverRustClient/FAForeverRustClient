@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "The events catalogue that ships with the client, and the floor the tab",
+    "falls back to when the published manifest cannot be read.",
+    "",
+    "It is deliberately almost empty. Everything on this calendar that the",
+    "client can work out for itself already comes from somewhere else:",
+    "tournaments from the tournament service, released patches from the",
+    "changelog index. What belongs here is what only a person knows, and this",
+    "file cannot know it: a game night's weekday, a CGN date, a meetup. Those",
+    "belong in the published document, where adding one is a commit rather than",
+    "a client release. See docs/events-catalogue.md for the format.",
+    "",
+    "The one entry below is the exception the design of this feature named: a",
+    "recurrence rule needs no source, because the rule is the fact."
+  ],
+  "submitUrl": "https://github.com/FAForeverRustClient/events/issues/new/choose",
+  "events": [
+    {
+      "id": "ladder-pool-rotation",
+      "title": "Ladder map pool rotation",
+      "summary": "The 1v1 ladder pool changes at the start of the month. Which maps come in is announced when it happens.",
+      "category": "ladderPool",
+      "origin": "official",
+      "host": "FAForever",
+      "startsAt": "2026-10-01",
+      "allDay": true,
+      "recurrence": "monthly"
+    }
+  ]
+}

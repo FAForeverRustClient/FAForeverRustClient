@@ -244,6 +244,16 @@ const INITIAL: AppState = {
     },
   },
   social: { friends: [], foes: [], players: [] },
+  events: {
+    catalogue: [],
+    source: "bundled",
+    submitUrl: "",
+    status: { type: "idle" },
+    view: "month",
+    anchor: "",
+    query: { text: "", category: null, origin: null, onlyReminders: false },
+    selected: null,
+  },
   coop: {
     scenarios: [],
     missions: [],
@@ -522,6 +532,7 @@ const INITIAL: AppState = {
       replayVaultPlayer: "",
       legacyStorageMigrated: false,
     },
+    events: { weekStart: "monday", reminders: [] },
   },
 };
 

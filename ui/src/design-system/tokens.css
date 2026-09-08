@@ -49,6 +49,17 @@
   --color-league-master: #8aaec4;
   --color-league-grandmaster: #e27e84;
 
+  /* Calendar categories. Aliases rather than six new colours: the palette
+     already carries four faction hues and a gold that read as distinct at the
+     3 px edge of an event chip, and inventing six more would mean maintaining
+     them in every theme for no gain. They carry no faction meaning here. */
+  --color-event-tournament: var(--color-league-gold);
+  --color-event-cgn: var(--color-faction-cybran);
+  --color-event-meetup: var(--color-faction-aeon);
+  --color-event-patch: var(--color-faction-uef);
+  --color-event-ladderPool: var(--color-league-diamond);
+  --color-event-other: var(--color-subtle);
+
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;

@@ -260,9 +260,9 @@ changing a state type or a default.
 
 ## 9. Current Status
 
-- **Implemented:** 22 state slices (session, auth, nav, lobby, chat, social, maps, mods,
-  replays, settings, notifications, player card, coop, tournaments, tutorials, reviews,
-  reporting, uploads, leaderboard, install, map generator, client update), complete loop,
+- **Implemented:** 23 state slices (session, auth, nav, lobby, chat, social, maps, mods,
+  replays, settings, notifications, player card, coop, tournaments, events, tutorials,
+  reviews, reporting, uploads, leaderboard, install, map generator, client update), complete loop,
   type generation, multi-tab shell, CI + bindings-drift and reducer-conformance checks.
 - **Real auth:** `OAuthAuth`: FAF Ory Hydra, Authorization Code + PKCE. `FakeAuth` remains
   for tests and offline dev (`FAF_FAKE_AUTH=1`).

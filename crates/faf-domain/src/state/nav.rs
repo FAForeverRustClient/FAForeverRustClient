@@ -22,6 +22,8 @@ pub enum Tab {
     Mods,
     Leaderboard,
     Tournaments,
+    /// The community calendar: what is happening in FAF, and when.
+    Events,
     Training,
     Units,
     Changelog,

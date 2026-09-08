@@ -431,6 +431,10 @@ impl AppLoop {
         // signed in should come back without them asking.
         services::reconnect::spawn(ctx.clone(), self.sink.clone());
 
+        // And likewise: a calendar reminder is due at a moment, not in answer
+        // to anything the user just did.
+        services::events::spawn(ctx.clone(), self.sink.clone());
+
         while let Some(queued) = self.cmd_rx.recv().await {
             let ctx = ctx.clone();
             let sink = self.sink.clone();
@@ -450,6 +454,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Session(c) => services::session::handle(c, ctx, sink).await,
         AppCommand::Auth(c) => services::auth::handle(c, ctx, sink).await,
         AppCommand::Nav(c) => services::nav::handle(c, ctx, sink).await,
+        AppCommand::Events(c) => services::events::handle(c, ctx, sink).await,
         AppCommand::Notifications(c) => services::notifications::handle(c, ctx, sink).await,
         AppCommand::Chat(c) => services::chat::handle(c, ctx, sink).await,
         AppCommand::Coop(c) => services::coop::handle(c, ctx, sink).await,
