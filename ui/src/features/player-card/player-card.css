@@ -561,9 +561,19 @@
   margin: var(--space-1) 0;
 }
 
+/* The rating, and the queue it belongs to, in the theme's rating colour.
+   Everything else on the card is text, muted or subtle; these two are what
+   somebody opened a player card to read, and they were the same white as the
+   games count next to them. The queue name keeps the eyebrow's size and
+   spacing and only changes colour, so the card's shape is unchanged. */
 .player-rating-value > strong {
+  color: var(--color-rating);
   font-size: 27px;
   font-weight: 600;
+}
+
+.player-rating-summary > .player-card-eyebrow {
+  color: var(--color-rating);
 }
 
 .player-rating-value > span {
