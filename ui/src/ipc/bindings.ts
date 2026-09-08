@@ -342,9 +342,13 @@ export type ChangelogChange = {
 };
 
 export type ChangelogCommand =
-/**  Fetch the release index. The service ignores this once it is `Ready`. */
+/**
+ *  Fetch the release index. Sent on every visit to the tab, and answered
+ *  with a fresh read: a release published while the client was open has to
+ *  be able to appear.
+ */
 { type: "load" } |
-/**  Show a release, fetching its note unless it is already cached. */
+/**  Show a release, fetching its note unless a final copy is already cached. */
 { type: "select"; payload: {
 	id: string,
 } };
@@ -399,7 +403,10 @@ export type ChangelogRelease = {
 	date: string,
 	/**  Calendar year as printed on the index, for grouping. Empty for rolling. */
 	year: string,
-	/**  Absolute URL of the Markdown source this release is rendered from. */
+	/**
+	 *  Absolute URL of the document this release's note is read from: the
+	 *  Markdown post for a dated release, the rendered page for a rolling one.
+	 */
 	sourceUrl: string,
 	/**  The page a "view on the website" link should open. */
 	webUrl: string,
@@ -426,7 +433,9 @@ export type ChangelogState = {
 	selected: string,
 	/**
 	 *  Notes fetched this session, by release id. Kept rather than replaced so
-	 *  moving back and forth through the list costs nothing after the first read.
+	 *  moving back and forth through the archive costs nothing after the first
+	 *  read. A rolling branch note is stored here too, but the service reads it
+	 *  again rather than serving it back: only a dated post is final.
 	 */
 	entries: { [key in string]: ChangelogEntry },
 	entryStatus: ChangelogEntryStatus,

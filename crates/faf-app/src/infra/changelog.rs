@@ -1,18 +1,23 @@
 //! Changelog: two plain GETs against FAForever/fa's published documents.
 //!
 //! No authentication and no API. The index is the rendered page on GitHub
-//! Pages and a note is its Markdown source on `raw.githubusercontent.com`;
-//! both are CDN-served static files, which is what keeps this off GitHub's
-//! rate-limited API. All parsing is in [`faf_domain::protocol::changelog`].
+//! Pages; a dated note is its Markdown source on `raw.githubusercontent.com`
+//! and a rolling branch note is its own rendered page, for the reason the
+//! codec's header gives. All three are CDN-served static files, which is what
+//! keeps this off GitHub's rate-limited API. All parsing is in
+//! [`faf_domain::protocol::changelog`].
 
 use async_trait::async_trait;
-use faf_domain::protocol::changelog::{parse_entry, parse_index, ChangelogEntry, ChangelogRelease};
+use faf_domain::protocol::changelog::{
+    parse_entry, parse_index, parse_rendered_entry, ChangelogEntry, ChangelogRelease,
+};
 
 use crate::infra::env_or;
 use crate::ports::ChangelogPort;
 
 /// Guards against a redirect to something unbounded. The largest note in the
-/// repository is a little over 100 KB; the index is around 30 KB.
+/// repository is a little over 100 KB; the index and a rendered branch page are
+/// around 30 KB each.
 const MAX_DOCUMENT_BYTES: usize = 4 * 1024 * 1024;
 
 #[derive(Debug, Clone)]
@@ -89,12 +94,18 @@ impl ChangelogPort for ChangelogClient {
         Ok(releases)
     }
 
-    async fn load_entry(&self, id: String, source_url: String) -> Result<ChangelogEntry, String> {
-        if source_url.is_empty() {
-            return Err(format!("release {id} has no published source"));
+    async fn load_entry(&self, release: ChangelogRelease) -> Result<ChangelogEntry, String> {
+        if release.source_url.is_empty() {
+            return Err(format!("release {} has no published source", release.id));
         }
-        let markdown = self.fetch_text(&source_url).await?;
-        Ok(parse_entry(&id, &markdown))
+        let document = self.fetch_text(&release.source_url).await?;
+        Ok(if release.is_rolling() {
+            // The branch pages carry nothing until the Pages build appends the
+            // deployed snippets to them, so the built page is the source.
+            parse_rendered_entry(&release.id, &document)
+        } else {
+            parse_entry(&release.id, &document)
+        })
     }
 }
 
@@ -108,7 +119,7 @@ impl ChangelogPort for FakeChangelog {
         Err("the changelog is unavailable in offline mode".into())
     }
 
-    async fn load_entry(&self, _id: String, _source_url: String) -> Result<ChangelogEntry, String> {
+    async fn load_entry(&self, _release: ChangelogRelease) -> Result<ChangelogEntry, String> {
         Err("the changelog is unavailable in offline mode".into())
     }
 }

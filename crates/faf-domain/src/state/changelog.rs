@@ -3,7 +3,12 @@
 //! Two-step on purpose. The index is one document listing every release, while
 //! each note is its own document averaging a few kilobytes; fetching all 168 up
 //! front would move megabytes to show a list. So the index loads with the tab
-//! and a note loads when it is opened, then stays cached for the session.
+//! and a note loads when it is opened.
+//!
+//! What may then be kept depends on what it is. A dated post never changes
+//! again and is cached for the session; the two rolling branch entries are
+//! rewritten every time something is deployed to those branches, and are read
+//! again each time they are opened.
 //!
 //! Parsing lives in [`crate::protocol::changelog`]; this slice only holds what
 //! has been loaded and which release is selected.
@@ -53,7 +58,9 @@ pub struct ChangelogState {
     /// Release id currently shown, empty before the first selection.
     pub selected: String,
     /// Notes fetched this session, by release id. Kept rather than replaced so
-    /// moving back and forth through the list costs nothing after the first read.
+    /// moving back and forth through the archive costs nothing after the first
+    /// read. A rolling branch note is stored here too, but the service reads it
+    /// again rather than serving it back: only a dated post is final.
     pub entries: BTreeMap<String, ChangelogEntry>,
     pub entry_status: ChangelogEntryStatus,
 }
@@ -94,9 +101,11 @@ pub enum ChangelogEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ChangelogCommand {
-    /// Fetch the release index. The service ignores this once it is `Ready`.
+    /// Fetch the release index. Sent on every visit to the tab, and answered
+    /// with a fresh read: a release published while the client was open has to
+    /// be able to appear.
     Load,
-    /// Show a release, fetching its note unless it is already cached.
+    /// Show a release, fetching its note unless a final copy is already cached.
     #[serde(rename_all = "camelCase")]
     Select { id: String },
 }
