@@ -31,10 +31,9 @@ whatever the club that runs it says it is, and the client's copy of that is a
 convenience. So the format is deliberately lenient (see below), and every entry
 carries links back to wherever the real answer lives.
 
-The Discord bot the issue thread discusses, reading a guild's scheduled events
-and forwarding them, is not a second source: when it exists it commits into this
-same document. That is the point of the document being the boundary rather than
-the bot.
+The Discord bot is not a second source: it commits into this same document.
+That is the point of the document being the boundary rather than the bot, and it
+is documented in its own section below.
 
 ---
 
@@ -46,11 +45,13 @@ The repository exists: [`FAForeverRustClient/events`](https://github.com/FAForev
 events/                           FAForeverRustClient/events
 ├─ README.md                      how to add an event, for people who will
 ├─ calendar.json                  THE document the client fetches
+├─ sources.json                   which Discord servers the bot mirrors
 └─ .github/
    ├─ ISSUE_TEMPLATE/
    │  └─ event-submission.yml     the form a submission is filled in on
    └─ workflows/
-      └─ validate.yml             refuse an entry with no title, start or https link
+      ├─ validate.yml             refuse an entry with no title, start or https link
+      └─ discord-events.yml       the bot, four times a day
 ```
 
 `calendar.json` is the only file the client reads.
@@ -128,6 +129,72 @@ complete; the leniency is at the boundary, in
 
 A manifest over 1 MB is refused as a wrong URL. For scale, the example above is
 about 500 bytes, so that is a few thousand events.
+
+---
+
+## The Discord bot
+
+`scripts/events-bot.mjs` in **this** repository, run by a workflow in the
+catalogue repository four times a day. It reads the **guild scheduled events** of
+every server listed in that repository's `sources.json` and writes them into
+`calendar.json`.
+
+### Why scheduled events and not announcements
+
+The issue thread's first plan was a bot that reads a server's announcements
+channel and picks the event announcements out of it. That needs Discord's
+**Message Content** intent, which is privileged and reviewed per application,
+and it then needs to parse English prose into a date and a recurrence. A guild
+scheduled event is the same information as structured metadata that the
+organiser has already filled in: `name`, `description`,
+`scheduled_start_time`, `scheduled_end_time` and `recurrence_rule`. No
+privileged intent, no parsing, and nothing the bot can see is a conversation.
+
+The endpoint is `GET /guilds/{guild.id}/scheduled-events`. Reading it needs the
+bot in the server with `View Channels`, which the default role has; **Manage
+Events** is a write permission and is deliberately not requested.
+
+### What it owns
+
+Every entry whose `id` begins with `discord-`, and nothing else. Hand-written
+entries in `calendar.json` are left exactly as they are, so the two ways of
+adding an event never fight over one file. An event deleted on Discord
+disappears from the calendar on the next run, which is the reason the bot owns
+its ids rather than appending to the list.
+
+An event that is `COMPLETED` or `CANCELED` on Discord is not published, and one
+run that cannot reach one of its servers writes nothing at all rather than a
+document that quietly lost that server's events.
+
+### Recurrence, and where it stops
+
+| Discord rule | What is published |
+|---|---|
+| Weekly, one weekday, interval N | `{ "weekly": { "interval": N } }` |
+| Monthly, interval 1 | `"monthly"` |
+| Anything else | the next occurrence, with no rule |
+
+"Anything else" is daily, yearly, every-other-month, and a weekly rule naming
+more than one weekday. The catalogue's weekly rule repeats on the weekday of its
+first occurrence, so a Tuesday-and-Thursday event would silently lose one of the
+two. One entry with no rule is wrong in a way a reader can see; an invented
+series is wrong in a way they cannot. Split such an event on Discord instead.
+
+### Running it by hand
+
+```bash
+node scripts/events-bot.mjs --sources sources.json --calendar calendar.json --dry-run
+```
+
+`DISCORD_BOT_TOKEN` in the environment, nothing else. With no token, or with no
+enabled server in `sources.json`, it says so and exits successfully: the
+scheduled workflow is in place before anybody has necessarily configured a
+server, and a red run every six hours would train whoever owns the repository to
+ignore it.
+
+The mapping is unit tested in `scripts/events-bot.test.mjs`, which is why
+`vitest.config.ts` reaches into `scripts/` for exactly that one file: publishing
+a wrong date to every client is not something to find out about from a player.
 
 ---
 
