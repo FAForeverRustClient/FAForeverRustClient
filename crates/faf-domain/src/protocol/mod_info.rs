@@ -7,6 +7,13 @@
 //! procedure, and it is entirely mechanical, which is why it is done here
 //! instead of in a forum post explaining it.
 //!
+//! Renaming the vault entry in place was tried and does not work.
+//! `Mod.displayName` carries no `@UpdatePermission` in faf-java-api, which
+//! reads like an omission and is not one: Elide denies an unannotated field,
+//! and `PATCH /data/mod/{id}` answers **UpdatePermission Denied** to the mod's
+//! own uploader. So this really is the only way, and the client says so rather
+//! than offering a button that cannot work.
+//!
 //! What this is not: a Lua parser. `mod_info.lua` is a flat table of
 //! assignments written from the same handful of templates, so the two lines
 //! that matter are found by their key and their value is replaced. A file that

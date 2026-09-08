@@ -153,7 +153,6 @@ const INITIAL: AppState = {
   },
   mods: {
     vault: [],
-    renameStatus: { type: "idle" },
     vaultStatus: { type: "idle" },
     browse: [],
     browseStatus: { type: "idle" },

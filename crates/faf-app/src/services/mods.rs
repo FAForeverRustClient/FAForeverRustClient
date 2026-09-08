@@ -62,35 +62,6 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ModsEvent::UninstallFailed { reason }),
             }
         }
-        ModsCommand::RenameVaultMod {
-            mod_id,
-            display_name,
-        } => {
-            let display_name = display_name.trim().to_string();
-            if display_name.is_empty() {
-                return;
-            }
-            let _guard = ctx.mods_mutation.acquire().await;
-            out.emit(ModsEvent::Renaming { mod_id });
-            match ctx.ports.mods.rename_vault_mod(mod_id, &display_name).await {
-                Ok(()) => out.emit(ModsEvent::Renamed {
-                    mod_id,
-                    display_name,
-                }),
-                // `refused` is the whole point of the branch: only a rejection
-                // means FAF will not rename a mod in place, and only then is
-                // publishing a renamed copy the thing left to offer.
-                Err(error) => out.emit(ModsEvent::RenameFailed {
-                    mod_id,
-                    reason: error.to_string(),
-                    refused: matches!(
-                        error.kind(),
-                        faf_domain::state::RequestFailureKind::Rejected
-                            | faf_domain::state::RequestFailureKind::NotFound
-                    ),
-                }),
-            }
-        }
         ModsCommand::ToggleMod { uid, enabled } => {
             let _guard = ctx.mods_mutation.acquire().await;
             out.emit(ModsEvent::Toggling { uid: uid.clone() });
