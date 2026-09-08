@@ -64,6 +64,7 @@ const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", co
 
 interface ModFilterState {
   search: string;
+  exactName: boolean;
   creator: string;
   sort: ModSort;
   modType: ModTypeFilter;
@@ -94,6 +95,7 @@ function modVaultQuery(
   return {
     ...EMPTY_MOD_QUERY,
     search: applied.search.trim(),
+    exactName: applied.exactName,
     author: applied.creator.trim(),
     // The uploader, not the declared author: see `ModVaultQuery::uploader_id`.
     // Unlike the map vault this asks for no hidden versions, because nothing
@@ -139,6 +141,7 @@ function VaultView({ busy }: { busy: boolean }) {
     return "rating";
   })();
   const [search, setSearch] = useState("");
+  const [exactName, setExactName] = useState(false);
   const [sort, setSort] = useState<ModSort>(initialSort);
   const [modType, setModType] = useState<ModTypeFilter>("all");
   const [ranked, setRanked] = useState<RankedFilter>("all");
@@ -156,6 +159,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const [applied, setApplied] = useState<ModFilterState>({
     search: "",
+    exactName: false,
     creator: "",
     sort: initialSort,
     modType: "all",
@@ -225,6 +229,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const applySearch = () => {
     setApplied({
       search,
+      exactName,
       creator,
       sort,
       modType,
@@ -266,6 +271,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const clearSearch = () => {
     setSearch("");
+    setExactName(false);
     setCreator("");
     setModType("all");
     setRanked("all");
@@ -277,6 +283,7 @@ function VaultView({ busy }: { busy: boolean }) {
     setMaximumRating(null);
     setApplied({
       search: "",
+      exactName: false,
       creator: "",
       sort: "rating",
       modType: "all",
@@ -385,6 +392,16 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("mods.view.dateField")}><select className="search-panel-control" value={dateField} onChange={(event) => setDateField(event.target.value as DateField)}><option value="updated">{t("mods.view.lastUpdated")}</option><option value="uploaded">{t("mods.view.uploaded")}</option></select></SearchField>
               <SearchField label={t("mods.view.after")}><input className="search-panel-control" type="date" value={dateAfter} onChange={(event) => setDateAfter(event.target.value)} /></SearchField>
               <SearchField label={t("mods.view.before")}><input className="search-panel-control" type="date" value={dateBefore} onChange={(event) => setDateBefore(event.target.value)} /></SearchField>
+            </div>
+            <div className="vault-search-checks">
+              <label className="option-check" title={t("mods.view.exactNameHint")}>
+                <input
+                  type="checkbox"
+                  checked={exactName}
+                  onChange={(event) => setExactName(event.target.checked)}
+                />
+                {t("mods.view.exactName")}
+              </label>
             </div>
           </div>
         ) : undefined}

@@ -63,6 +63,8 @@ export function ModUploadModal({
     initialMod?.folderName || customMods[0]?.folderName || "",
   );
   const [agreedToRules, setAgreedToRules] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const selectedMod = useMemo(
     () => customMods.find((m) => m.folderName.toLowerCase() === selectedFolder.toLowerCase()) ?? null,
@@ -79,8 +81,15 @@ export function ModUploadModal({
   const failed = uploadsState.status.type === "failed";
   const progress = statusProgress(uploadsState.status, t);
 
+  // A rename has to actually be a different name: publishing under the one
+  // the folder already declares would spend a new uid to say nothing.
+  const renameTo = renaming ? newName.trim() : "";
+  const renameIsRedundant = renameTo !== "" && renameTo === selectedMod?.displayName;
+  const renameIsIncomplete = renaming && renameTo === "";
+
   const handlePublish = () => {
     if (!selectedMod || !agreedToRules || busy) return;
+    if (renameIsIncomplete || renameIsRedundant) return;
     ipc.send({
       kind: "Uploads",
       command: {
@@ -89,11 +98,12 @@ export function ModUploadModal({
           request: {
             kind: "mod",
             folderName: selectedMod.folderName,
-            displayName: selectedMod.displayName,
+            displayName: renameTo || selectedMod.displayName,
             ranked: false,
             // Installed, so there is no archive to point at: the backend finds
             // the folder in the user's mods directory itself.
             sourcePath: null,
+            renameTo,
           },
         },
       },
@@ -176,6 +186,50 @@ export function ModUploadModal({
               </div>
             )}
 
+            {/* FAF has no rename. A mod is its uid, and the vault will not
+                take a second upload carrying one it already holds, so an
+                author who wants a different name has to edit mod_info.lua,
+                invent a fresh uid, and upload the result as a new mod. That
+                whole procedure is mechanical, so it happens here. */}
+            <div className="mod-upload-options">
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={renaming}
+                  disabled={busy || done}
+                  onChange={(event) => {
+                    setRenaming(event.target.checked);
+                    if (event.target.checked && !newName) {
+                      setNewName(selectedMod?.displayName ?? "");
+                    }
+                  }}
+                />
+                <span>
+                  <strong>{t("mods.upload.rename")}</strong>
+                  <small className="muted display-block">{t("mods.upload.renameHint")}</small>
+                </span>
+              </label>
+
+              {renaming && (
+                <div className="mod-upload-field mod-upload-rename-field">
+                  <label htmlFor="mod-upload-new-name" className="mod-upload-label">
+                    {t("mods.upload.newName")}
+                  </label>
+                  <input
+                    id="mod-upload-new-name"
+                    className="search-panel-control"
+                    value={newName}
+                    disabled={busy || done}
+                    onChange={(event) => setNewName(event.target.value)}
+                    placeholder={selectedMod?.displayName ?? ""}
+                  />
+                  {renameIsRedundant && (
+                    <small className="muted display-block">{t("mods.upload.renameSame")}</small>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="mod-upload-options">
               <label className="check-field mod-upload-rules-check">
                 <input
@@ -227,11 +281,13 @@ export function ModUploadModal({
         {!done && customMods.length > 0 && (
           <Button
             variant="primary"
-            disabled={!selectedMod || !agreedToRules || busy}
+            disabled={
+              !selectedMod || !agreedToRules || busy || renameIsIncomplete || renameIsRedundant
+            }
             onClick={handlePublish}
           >
             <Icon name="upload" size={15} />
-            {t(busy ? "uploads.publishing" : "uploads.publish")}
+            {t(busy ? "uploads.publishing" : renameTo ? "mods.upload.publishRenamed" : "uploads.publish")}
           </Button>
         )}
       </footer>

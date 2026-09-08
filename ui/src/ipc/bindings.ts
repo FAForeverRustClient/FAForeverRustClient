@@ -3428,7 +3428,21 @@ export type ModType = "ui" | "sim";
 
 /**  A page of the mod vault. */
 export type ModVaultQuery = {
+	/**
+	 *  Free text. By default every word in it has to appear somewhere in the
+	 *  mod's name, its description or its uid; [`Self::exact_name`] narrows
+	 *  that to the whole name and nothing else.
+	 */
 	search: string,
+	/**
+	 *  Match the whole display name rather than looking for the words in it.
+	 *
+	 *  The counterpart of the replay tab's "exact player name" box, and off by
+	 *  default where that one is on. The two are asked in opposite spirits: a
+	 *  replay search starts from a login somebody knows, while a mod is looked
+	 *  for by half a name and a word describing what it does.
+	 */
+	exactName: boolean,
 	/**
 	 *  Matched against the mod's author, which on this endpoint is a plain
 	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
@@ -7346,6 +7360,18 @@ export type UploadRequest = {
 	 *  directory of ours, so the name guard does not apply to it.
 	 */
 	sourcePath: string | null,
+	/**
+	 *  Mods only: publish under this name instead of the one the folder
+	 *  declares. Empty for an ordinary publish.
+	 *
+	 *  FAF has no rename. A mod is its `uid`, and the vault refuses a second
+	 *  upload carrying one it already holds, so changing a name means editing
+	 *  `mod_info.lua`, inventing a fresh uid, and uploading the result as a new
+	 *  mod. Set, the client does exactly that procedure while writing the
+	 *  archive: the author's own folder is never touched, so the copy they
+	 *  play with keeps working under its old identity.
+	 */
+	renameTo: string,
 };
 
 /**

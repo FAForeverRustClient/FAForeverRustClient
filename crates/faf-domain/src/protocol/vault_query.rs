@@ -151,7 +151,17 @@ impl Default for MapVaultQuery {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ModVaultQuery {
+    /// Free text. By default every word in it has to appear somewhere in the
+    /// mod's name, its description or its uid; [`Self::exact_name`] narrows
+    /// that to the whole name and nothing else.
     pub search: String,
+    /// Match the whole display name rather than looking for the words in it.
+    ///
+    /// The counterpart of the replay tab's "exact player name" box, and off by
+    /// default where that one is on. The two are asked in opposite spirits: a
+    /// replay search starts from a login somebody knows, while a mod is looked
+    /// for by half a name and a word describing what it does.
+    pub exact_name: bool,
     /// Matched against the mod's author, which on this endpoint is a plain
     /// string field rather than a related player (`MOD_PROPERTY_MAPPING`).
     pub author: String,
@@ -183,6 +193,7 @@ impl Default for ModVaultQuery {
     fn default() -> Self {
         Self {
             search: String::new(),
+            exact_name: false,
             author: String::new(),
             uploader_id: None,
             mod_type: String::new(),
@@ -276,14 +287,56 @@ impl ModVaultQuery {
         sort_param(self.sort_by.property(), self.sort_descending)
     }
 
+    /// What the search box narrows on.
+    ///
+    /// A single glob over `displayName` was all this ever sent, while the box
+    /// itself offered "name, description, or UID": a mod whose name you half
+    /// remember and whose purpose you can describe was unfindable, and typing
+    /// the words in the wrong order found nothing at all.
+    ///
+    /// So each word becomes its own clause, and inside that clause it may
+    /// match the name, the description or the uid. Words are ANDed, which is
+    /// what makes a second word narrow a search rather than widen it.
+    /// `latestVersion.description` and `latestVersion.uid` are both in the
+    /// Java client's `MOD_PROPERTY_MAPPING`, so both are known-filterable: a
+    /// property the API does not recognise fails the whole request.
+    ///
+    /// Parenthesised because RSQL binds `;` tighter than `,`. Ungrouped,
+    /// `hidden=='false';name=="*x*",description=="*x*"` reads as
+    /// `(hidden AND name) OR description`, and withdrawn versions come back
+    /// through the second half.
+    fn search_clauses(&self) -> Vec<String> {
+        if self.search.trim().is_empty() {
+            return Vec::new();
+        }
+        if self.exact_name {
+            let name = escape(self.search.trim());
+            return match name.is_empty() {
+                true => Vec::new(),
+                false => vec![format!(r#"displayName=="{name}""#)],
+            };
+        }
+        self.search
+            .split_whitespace()
+            // A word made entirely of the characters `escape` removes would
+            // glob to `**`, which matches every mod in the vault: dropping it
+            // is the difference between narrowing and silently un-narrowing.
+            .filter(|word| !escape(word).is_empty())
+            .map(|word| {
+                let pattern = glob(word);
+                format!(
+                    r#"(displayName=="{pattern}",latestVersion.description=="{pattern}",latestVersion.uid=="{pattern}")"#
+                )
+            })
+            .collect()
+    }
+
     pub fn build_filter(&self) -> Option<String> {
         let mut clauses = vec!["latestVersion.hidden=='false'".to_string()];
         if self.recommended {
             clauses.push(r#"recommended=="true""#.to_string());
         }
-        if !self.search.is_empty() {
-            clauses.push(format!(r#"displayName=="{}""#, glob(&self.search)));
-        }
+        clauses.extend(self.search_clauses());
         if !self.author.is_empty() {
             clauses.push(format!(r#"author=="{}""#, glob(&self.author)));
         }
@@ -514,6 +567,90 @@ mod tests {
         // Withdrawn versions stay out: unlike maps, nothing here can put one
         // back, so showing them would only be a dead end.
         assert!(filter.contains("latestVersion.hidden=='false'"), "{filter}");
+    }
+
+    #[test]
+    fn a_mod_search_looks_in_the_description_and_the_uid_too() {
+        // The box has always said "name, description, or UID" and the filter
+        // has always been a single glob over the name.
+        let query = ModVaultQuery {
+            search: "sorian".into(),
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert!(filter.contains(r#"displayName=="*sorian*""#), "{filter}");
+        assert!(
+            filter.contains(r#"latestVersion.description=="*sorian*""#),
+            "{filter}"
+        );
+        assert!(
+            filter.contains(r#"latestVersion.uid=="*sorian*""#),
+            "{filter}"
+        );
+    }
+
+    #[test]
+    fn every_word_has_to_land_somewhere_but_not_in_the_same_place() {
+        // Two words in the wrong order found nothing, because both had to be
+        // one substring of one field. Now each is its own alternative group,
+        // and the groups are ANDed: a second word still narrows.
+        let query = ModVaultQuery {
+            search: "  advanced   strategic  ".into(),
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert_eq!(
+            filter.matches("displayName==").count(),
+            2,
+            "one group per word: {filter}"
+        );
+        assert!(filter.contains(r#"*advanced*"#), "{filter}");
+        assert!(filter.contains(r#"*strategic*"#), "{filter}");
+    }
+
+    #[test]
+    fn the_alternatives_are_grouped_so_they_cannot_leak_past_the_hidden_clause() {
+        // RSQL binds `;` tighter than `,`, so an ungrouped alternative reads
+        // as `(hidden AND name) OR description` and brings withdrawn versions
+        // back through the second half.
+        let query = ModVaultQuery {
+            search: "sorian".into(),
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert!(
+            filter.contains(r#";(displayName=="*sorian*","#),
+            "the alternatives are not parenthesised: {filter}"
+        );
+    }
+
+    #[test]
+    fn an_exact_search_is_the_whole_name_and_only_the_name() {
+        let query = ModVaultQuery {
+            search: "Total Mayhem".into(),
+            exact_name: true,
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert!(
+            filter.contains(r#"displayName=="Total Mayhem""#),
+            "{filter}"
+        );
+        assert!(!filter.contains('*'), "no globbing: {filter}");
+        assert!(!filter.contains("description"), "{filter}");
+    }
+
+    #[test]
+    fn a_search_of_nothing_but_stripped_characters_does_not_match_the_vault() {
+        // `escape` removes the RSQL metacharacters, so a word made only of
+        // them would glob to `**`. Sent, that is every mod there is, dressed
+        // up as a search result.
+        let query = ModVaultQuery {
+            search: "*** ,,,".into(),
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert!(!filter.contains("displayName"), "{filter}");
     }
 
     #[test]

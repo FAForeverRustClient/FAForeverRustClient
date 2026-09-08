@@ -20,7 +20,9 @@ export const openUpload = (kind: UploadKind, folderName: string, displayName: st
     kind: "Uploads",
     command: {
       type: "open",
-      payload: { request: { kind, folderName, displayName, ranked: false, sourcePath: null } },
+      payload: {
+        request: { kind, folderName, displayName, ranked: false, sourcePath: null, renameTo: "" },
+      },
     },
   });
 
@@ -50,7 +52,14 @@ export async function openUploadFromDisk(kind: UploadKind): Promise<void> {
     command: {
       type: "open",
       payload: {
-        request: { kind, folderName, displayName: folderName, ranked: false, sourcePath: path },
+        request: {
+          kind,
+          folderName,
+          displayName: folderName,
+          ranked: false,
+          sourcePath: path,
+          renameTo: "",
+        },
       },
     },
   });

@@ -11,6 +11,8 @@ import type {
   VaultMod,
 } from "../../ipc/bindings";
 import { formatShortDate } from "../../shared/dates";
+import { openHttpsUrl } from "../../shared/externalLinks";
+import { linkifyText } from "../../shared/linkify";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -32,6 +34,66 @@ export function toggleNote(status: ModToggleStatus): string | null {
 
 export function cleanDescription(value: string): string {
   return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
+}
+
+/**
+ * A mod description, with its links followed rather than transcribed.
+ *
+ * Authors put the URL of the real readme in here, and it was drawn as flat
+ * text: the only way to reach it was to type it out by hand. The text stays
+ * selectable beside the link, and the copy button covers the rest of the
+ * description, so neither half of "you cannot copy text from a mod
+ * description" survives.
+ */
+export function ModDescription({ description }: { description: string }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 2_000);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
+
+  if (!description) return <p className="mod-vault-description-text">{t("mods.vault.noDescription")}</p>;
+
+  return (
+    <>
+      <p className="mod-vault-description-text">
+        {linkifyText(description).map(({ text, href }, index) =>
+          href === null ? (
+            <span key={index}>{text}</span>
+          ) : (
+            <a
+              key={index}
+              href={href}
+              className="mod-vault-description-link"
+              onClick={(event) => {
+                event.preventDefault();
+                void openHttpsUrl(href);
+              }}
+            >
+              {text}
+            </a>
+          ),
+        )}
+      </p>
+      <Button
+        className="mod-vault-description-copy"
+        onClick={() => {
+          void navigator.clipboard?.writeText(description).then(
+            () => setCopied(true),
+            // A refused clipboard is not worth an error dialog: the text is
+            // right there and selectable.
+            () => setCopied(false),
+          );
+        }}
+      >
+        <Icon name="copy" size={13} />
+        {t(copied ? "mods.vault.descriptionCopied" : "mods.vault.copyDescription")}
+      </Button>
+    </>
+  );
 }
 
 function ratingLabel(mod: VaultMod): string {
@@ -103,6 +165,14 @@ export function ModCard({
             {mod.modType === "sim" && (
               <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
+              </span>
+            )}
+            {/* Installed says only that the folder is there. Enabled is the
+                one that answers "am I playing with this right now", which
+                nothing in the vault used to say. */}
+            {installed?.enabled && (
+              <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
+                {t("mods.vault.inUse")}
               </span>
             )}
           </span>
@@ -205,6 +275,12 @@ export function ModDetailPanel({
               </span>
             )}
             {mod.recommended && <span className="vault-badge is-accent">{t("mods.vault.featured")}</span>}
+            {installed?.enabled && (
+              <span className="vault-badge is-ok mod-badge-in-use" title={t("mods.vault.inUseHint")}>
+                <Icon name="check" size={12} />
+                {t("mods.vault.inUse")}
+              </span>
+            )}
           </div>
           <h2 className="vault-detail-title">{mod.displayName}</h2>
           <p className="vault-detail-byline mod-vault-byline">
@@ -243,7 +319,7 @@ export function ModDetailPanel({
 
         <section className="vault-detail-description mod-vault-description">
           <h3>{t("mods.vault.description")}</h3>
-          <p>{description || t("mods.vault.noDescription")}</p>
+          <ModDescription description={description} />
         </section>
 
         <div className="vault-detail-actions mod-vault-detail-actions">

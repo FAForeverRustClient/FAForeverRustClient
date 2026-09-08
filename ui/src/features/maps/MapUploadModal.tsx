@@ -108,6 +108,8 @@ export function MapUploadModal({
             // the folder in the user's maps directory itself. A path is only set
             // when an archive was picked off the filesystem.
             sourcePath: null,
+            // Maps have no uid to regenerate and no mod_info.lua to rewrite.
+            renameTo: "",
           },
         },
       },
