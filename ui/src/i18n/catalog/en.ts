@@ -1534,9 +1534,6 @@ export const en = {
   "playerCard.history.loading": "Loading rating history…",
   "playerCard.history.loadingShort": "Loading…",
   "playerCard.history.entriesLoaded": "{count} entries loaded",
-  "playerCard.history.pageOf": "page {page} of {total}",
-  "playerCard.history.loadNextPage": "Load next page",
-  "playerCard.history.loadComplete": "Load complete history",
 
   // Player card: overview section.
   "playerCard.overview.warnings": "Some profile sections could not be loaded",

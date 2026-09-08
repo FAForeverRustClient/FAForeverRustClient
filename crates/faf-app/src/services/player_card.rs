@@ -28,38 +28,21 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
             ctx.player_card_history_generation.invalidate();
             out.emit(PlayerCardEvent::Closed);
         }
-        PlayerCardCommand::LoadHistory { mut query, append } => {
+        PlayerCardCommand::LoadHistory { mut query } => {
             let generation = ctx.player_card_history_generation.begin();
             query.page = query.page.max(1);
             query.page_size = query.page_size.clamp(100, 10_000);
-            out.emit(PlayerCardEvent::HistoryLoading {
-                query: query.clone(),
-                append,
-            });
-            let result = ctx.ports.player_card.load_rating_history(&query).await;
-            if !ctx.player_card_history_generation.is_current(generation) {
-                return;
-            }
-            match result {
-                Ok(page) => out.emit(PlayerCardEvent::HistoryLoaded {
-                    query,
-                    page,
-                    append,
-                }),
-                Err(reason) => out.emit(PlayerCardEvent::HistoryLoadFailed { reason }),
-            }
-        }
-        PlayerCardCommand::LoadAllHistory { mut query } => {
-            let generation = ctx.player_card_history_generation.begin();
-            query.page = query.page.max(1);
-            query.page_size = query.page_size.clamp(100, 10_000);
+            // Every page of the period, in order. `append` is the page number
+            // rather than a flag from the caller: the first page replaces
+            // whatever the last period left behind, and the rest add to it.
             loop {
                 if !ctx.player_card_history_generation.is_current(generation) {
                     return;
                 }
+                let append = query.page > 1;
                 out.emit(PlayerCardEvent::HistoryLoading {
                     query: query.clone(),
-                    append: true,
+                    append,
                 });
                 let result = ctx.ports.player_card.load_rating_history(&query).await;
                 if !ctx.player_card_history_generation.is_current(generation) {
@@ -71,7 +54,7 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
                         out.emit(PlayerCardEvent::HistoryLoaded {
                             query: query.clone(),
                             page,
-                            append: true,
+                            append,
                         });
                         if query.page >= last_page {
                             break;

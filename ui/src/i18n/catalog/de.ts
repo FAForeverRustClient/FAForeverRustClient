@@ -1418,9 +1418,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.history.loading": "Ratingverlauf wird geladen…",
   "playerCard.history.loadingShort": "Wird geladen…",
   "playerCard.history.entriesLoaded": "{count} Einträge geladen",
-  "playerCard.history.pageOf": "Seite {page} von {total}",
-  "playerCard.history.loadNextPage": "Nächste Seite laden",
-  "playerCard.history.loadComplete": "Vollständigen Verlauf laden",
 
   "playerCard.overview.warnings": "Einige Profilabschnitte konnten nicht geladen werden",
   "playerCard.overview.ratingsEyebrow": "Ratings",

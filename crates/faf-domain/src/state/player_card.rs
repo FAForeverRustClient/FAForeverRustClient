@@ -308,13 +308,16 @@ pub enum PlayerCardCommand {
         login: String,
     },
     Close,
+    /// Load the rating history for one queue over one period, all of it.
+    ///
+    /// Every page, not the first one. The period dropdown is the only thing
+    /// that decides how much history is on screen: it used to load a page and
+    /// offer "load complete history" beside a dropdown already reading "all
+    /// time", which asked the reader to reconcile two answers to one question.
+    /// The pages are an artefact of the API, and paging through them was never
+    /// something anybody came here to do.
     #[serde(rename_all = "camelCase")]
     LoadHistory {
-        query: RatingHistoryQuery,
-        append: bool,
-    },
-    #[serde(rename_all = "camelCase")]
-    LoadAllHistory {
         query: RatingHistoryQuery,
     },
     #[serde(rename_all = "camelCase")]
