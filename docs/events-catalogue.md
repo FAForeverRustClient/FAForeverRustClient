@@ -168,6 +168,35 @@ An event that is `COMPLETED` or `CANCELED` on Discord is not published, and one
 run that cannot reach one of its servers writes nothing at all rather than a
 document that quietly lost that server's events.
 
+### What it does not publish: tournaments
+
+A club announces its tournaments as scheduled events on its own server, and
+registers those same tournaments with FAF's tournament service. The calendar
+already draws that service's tournaments out of `TourneyState`, so mirroring the
+Discord copy as well puts **two squares on one afternoon for one tournament**.
+
+So a scheduled event that links to a tournament on
+`tournaments.doodlepros.com/t/…`, in its description or its location, is not
+mirrored. The link is the marker rather than the title: it is a fact about the
+event, where "Average Joe Olympics #6" contains neither the word tournament nor
+the word cup, and matching on prose would also drop a game night whose
+description merely mentions one.
+
+Two dials in `sources.json`, both of them a commit in the calendar repository
+rather than a client release:
+
+| In a source | Effect |
+|---|---|
+| `"mirrorTournaments": true` | Mirror them anyway. For a server whose tournaments are not registered with the service, and which would otherwise lose them. |
+| `"rules": [{ "match": "…", "skip": true }]` | Do not mirror an event whose name contains this. The escape hatch for a duplicate no link betrays. |
+
+A `skip` rule that names no category leaves the category alone, so it can sit in
+the same list as the colour rules.
+
+The run summary counts them: `FAF Dojo: 1 of 6 events, 5 already in the
+Tournaments tab`. An organiser who cannot find tonight's tournament on the
+calendar is owed that line.
+
 ### Recurrence, and where it stops
 
 | Discord rule | What is published |

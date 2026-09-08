@@ -47,6 +47,46 @@ const STATUS_ACTIVE = 2;
 const FREQUENCY_MONTHLY = 1;
 const FREQUENCY_WEEKLY = 2;
 
+/**
+ * FAF's tournament service, the one the client's Tournaments tab reads
+ * (`DEFAULT_API_BASE` in `crates/faf-app/src/infra/tourney.rs`).
+ *
+ * This is here because of what a club's Discord actually looks like. The Dojo
+ * announces its tournaments as scheduled events on its own server, and those
+ * tournaments are *also* registered with FAF's tournament service, which is
+ * where the Tournaments tab and therefore the calendar already draw them from.
+ * Mirroring the Discord copy as well puts two squares on one afternoon for one
+ * tournament.
+ *
+ * A tournament's own page on that service is the marker: the announcement links
+ * to it, because that is where people sign up. That link is a fact about the
+ * event rather than a guess about its title, which is why it is matched on
+ * instead of the name: "Average Joe Olympics #6" contains neither the word
+ * tournament nor cup, and matching prose would drop game nights whose
+ * description happens to mention one.
+ */
+const TOURNEY_SERVICE_HOSTS = ["tournaments.doodlepros.com"];
+
+/**
+ * Whether Discord's copy of this event is a tournament the client already has.
+ *
+ * The description and the location, which is where an organiser puts the signup
+ * address. A server that wants its tournaments mirrored anyway (one whose
+ * events are not registered with the service, say) sets `mirrorTournaments` on
+ * its source.
+ */
+export function alreadyATournament(event, source) {
+  if (source?.mirrorTournaments === true) return false;
+  const text =
+    `${event.description ?? ""} ${event.entity_metadata?.location ?? ""}`.toLowerCase();
+  return TOURNEY_SERVICE_HOSTS.some((host) => text.includes(`${host}/t/`));
+}
+
+/** Whether Discord still considers the event upcoming or running. */
+function isLive(event) {
+  return event.status === STATUS_SCHEDULED || event.status === STATUS_ACTIVE;
+}
+
 /** Cut a Discord description down to something a calendar chip can hold. */
 const SUMMARY_LIMIT = 280;
 
@@ -81,31 +121,48 @@ export function recurrenceOf(rule) {
 }
 
 /**
- * Which category one event's name earns, under one source's rules.
+ * The first rule of a source whose `match` appears in an event's name, or
+ * `null`.
  *
- * First match wins, and the source's own default applies when nothing matches.
  * Substring matching rather than anything cleverer, because the input is a name
  * a human typed and the output is a colour on a chip: being wrong costs a
  * misfiled entry, not a wrong date.
  */
-export function categoryOf(name, source) {
+export function ruleFor(name, source) {
   const haystack = (name ?? "").toLowerCase();
-  for (const rule of source.rules ?? []) {
-    if (rule.match && haystack.includes(String(rule.match).toLowerCase())) return rule.category;
-  }
-  return source.category ?? "other";
+  return (
+    (source.rules ?? []).find(
+      (rule) => rule.match && haystack.includes(String(rule.match).toLowerCase()),
+    ) ?? null
+  );
+}
+
+/**
+ * Which category one event's name earns, under one source's rules.
+ *
+ * First match wins, and the source's own default applies when nothing matches
+ * or when the matching rule only said to skip.
+ */
+export function categoryOf(name, source) {
+  return ruleFor(name, source)?.category ?? source.category ?? "other";
 }
 
 /**
  * One catalogue entry for one Discord scheduled event, or `null` to skip it.
  *
- * Skipped: anything not scheduled or running, and anything without a name or a
- * start, which the client would drop anyway.
+ * Skipped: anything not scheduled or running; anything without a name or a
+ * start, which the client would drop anyway; a tournament the client already
+ * draws from the tournament service; and anything a source's rules say to skip
+ * by name, which is the escape hatch for a duplicate this cannot see. That is a
+ * line in `sources.json` rather than a change here, so nobody waits on a
+ * client.
  */
 export function entryOf(event, source) {
-  if (event.status !== STATUS_SCHEDULED && event.status !== STATUS_ACTIVE) return null;
+  if (!isLive(event)) return null;
   const title = (event.name ?? "").trim();
   if (!title || !event.scheduled_start_time) return null;
+  if (alreadyATournament(event, source)) return null;
+  if (ruleFor(title, source)?.skip) return null;
 
   const links = [
     {
@@ -206,7 +263,16 @@ async function main() {
     try {
       const events = await fetchScheduledEvents(source.guildId, token);
       const mapped = events.map((event) => entryOf(event, source)).filter(Boolean);
-      console.log(`${source.host ?? source.guildId}: ${mapped.length} of ${events.length} events`);
+      // The tournament count on the same line as the total: an organiser who
+      // looks for tonight's tournament on the calendar and does not find it is
+      // owed the reason, and the run summary is where they will look.
+      const tournaments = events.filter(
+        (event) => isLive(event) && alreadyATournament(event, source),
+      ).length;
+      const already = tournaments > 0 ? `, ${tournaments} already in the Tournaments tab` : "";
+      console.log(
+        `${source.host ?? source.guildId}: ${mapped.length} of ${events.length} events${already}`,
+      );
       ours.push(...mapped);
     } catch (error) {
       // One unreachable server must not blank the others' events, and it must

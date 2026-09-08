@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { categoryOf, entryOf, mergeCalendar, recurrenceOf, summaryOf } from "./events-bot.mjs";
+import {
+  alreadyATournament,
+  categoryOf,
+  entryOf,
+  mergeCalendar,
+  recurrenceOf,
+  summaryOf,
+} from "./events-bot.mjs";
 
 /** The Dojo, as a source would be configured. */
 const dojo = {
@@ -71,6 +78,53 @@ describe("mapping a Discord scheduled event", () => {
     expect(entryOf(scheduled({ status: 2 }), dojo)).not.toBeNull();
   });
 
+  it("skips a tournament the Tournaments tab already shows", () => {
+    // The real shape of the fault: the Dojo announces its tournaments as
+    // scheduled events, and those same tournaments are registered with FAF's
+    // tournament service, from which the calendar already draws them. Two
+    // squares, one tournament.
+    const olympics = scheduled({
+      name: "Average Joe Olympics #6 - 2v2",
+      description:
+        "Details & Signup: [Tournament Page](https://tournaments.doodlepros.com/t/2910276f77) - Rewards: $100 + Dojo Avatars",
+    });
+    expect(alreadyATournament(olympics, dojo)).toBe(true);
+    expect(entryOf(olympics, dojo)).toBeNull();
+  });
+
+  it("keeps a game night whose description links somewhere else", () => {
+    // The Dojo's 1v1 Night links its own Notion page. Nothing on the
+    // tournament service means nothing else on the calendar draws it.
+    const night = scheduled({
+      description: "Details: [See event page!](https://wholesale-cyclone-caa.notion.site/1v1)",
+    });
+    expect(alreadyATournament(night, dojo)).toBe(false);
+    expect(entryOf(night, dojo)).not.toBeNull();
+  });
+
+  it("reads the signup address out of an external event's location too", () => {
+    const streamed = scheduled({
+      entity_type: 3,
+      entity_metadata: { location: "https://tournaments.doodlepros.com/t/a04f7fb779" },
+    });
+    expect(entryOf(streamed, dojo)).toBeNull();
+  });
+
+  it("mirrors tournaments anyway for a source that asks to", () => {
+    const olympics = scheduled({
+      description: "Signup: https://tournaments.doodlepros.com/t/2910276f77",
+    });
+    expect(entryOf(olympics, { ...dojo, mirrorTournaments: true })).not.toBeNull();
+  });
+
+  it("skips a name a source's rules say to skip", () => {
+    // The escape hatch for a duplicate the link cannot see: a line in
+    // sources.json, in the calendar repository, rather than a change here.
+    const source = { ...dojo, rules: [{ match: "olympics", skip: true }] };
+    expect(entryOf(scheduled({ name: "Average Joe Olympics #6" }), source)).toBeNull();
+    expect(entryOf(scheduled({ name: "Dojo 1v1 Night" }), source)).not.toBeNull();
+  });
+
   it("skips an event the client would drop anyway", () => {
     expect(entryOf(scheduled({ name: "  " }), dojo)).toBeNull();
     expect(entryOf(scheduled({ scheduled_start_time: null }), dojo)).toBeNull();
@@ -131,6 +185,11 @@ describe("choosing a category", () => {
   it("falls back to the source's own default", () => {
     expect(categoryOf("Dojo 1v1 Night", dojo)).toBe("meetup");
     expect(categoryOf("anything", { guildId: "1" })).toBe("other");
+  });
+
+  it("falls back for a rule that only said to skip", () => {
+    const source = { ...dojo, rules: [{ match: "olympics", skip: true }] };
+    expect(categoryOf("Average Joe Olympics", source)).toBe("meetup");
   });
 });
 
