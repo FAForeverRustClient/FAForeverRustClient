@@ -236,7 +236,7 @@ export const en = {
   "clan.invite.copy": "Copy invitation",
   "clan.invite.copied": "Copied",
   "clan.invite.done": "Done",
-  "clan.roster.title": "Members",
+  "clan.roster.manageTitle": "Manage members",
   "clan.roster.aloneHint": "Nobody else has joined yet.",
   "clan.roster.remove": "Remove",
   "clan.roster.handOver": "Make leader",

@@ -290,8 +290,15 @@ export function ClanManagement() {
     (member) => member.playerId !== identity.playerId,
   );
 
-  if (clan.status.type === "loading" && !inAClan) {
-    return <p className="muted clan-banner">{t("clan.loading")}</p>;
+  // Nothing is drawn until the answer is in. Rendering "found a clan" under
+  // the roster of the clan you are already in, for the length of a request,
+  // is worse than a line of text.
+  if (clan.status.type !== "ready") {
+    return (
+      <p className={clan.status.type === "failed" ? "clan-banner is-error" : "muted clan-banner"}>
+        {clan.status.type === "failed" ? clan.status.payload.reason : t("clan.loading")}
+      </p>
+    );
   }
 
   return (
@@ -317,7 +324,7 @@ export function ClanManagement() {
               <InvitePanel clan={clan} busy={busy} />
 
               <section className="clan-panel surface-panel">
-                <h4>{t("clan.roster.title")}</h4>
+                <h4>{t("clan.roster.manageTitle")}</h4>
                 {others.length === 0 ? (
                   <p className="muted">{t("clan.roster.aloneHint")}</p>
                 ) : (

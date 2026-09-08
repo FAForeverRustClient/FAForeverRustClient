@@ -200,7 +200,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "clan.invite.copy": "Einladung kopieren",
   "clan.invite.copied": "Kopiert",
   "clan.invite.done": "Fertig",
-  "clan.roster.title": "Mitglieder",
+  "clan.roster.manageTitle": "Mitglieder verwalten",
   "clan.roster.aloneHint": "Bisher ist noch niemand beigetreten.",
   "clan.roster.remove": "Entfernen",
   "clan.roster.handOver": "Zum Anführer machen",
