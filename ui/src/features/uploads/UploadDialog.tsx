@@ -111,6 +111,14 @@ export function UploadDialog() {
           not enough to tell two copies apart. */}
       <p className="upload-folder muted">{request.sourcePath ?? request.folderName}</p>
 
+      {/* A rename is not a rename as far as FAF is concerned: it is a new mod
+          with a new uid, and this is the last screen before that happens. */}
+      {request.renameTo !== "" && (
+        <p className="upload-status muted">
+          {t("uploads.renamingTo", { name: request.renameTo })}
+        </p>
+      )}
+
       {/* Maps only: the ranked flag decides whether games on it affect
           ratings. Neither reference client offers an equivalent for mods. */}
       {request.kind === "map" && (

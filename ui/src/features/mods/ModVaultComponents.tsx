@@ -239,10 +239,12 @@ export function ModDetailPanel({
   busy,
   installing,
   toggling,
+  mine = false,
   onInstall,
   onToggle,
   onUninstall,
   onToggleFavorite,
+  onRename,
 }: {
   mod: VaultMod;
   installed: InstalledMod | undefined;
@@ -250,10 +252,13 @@ export function ModDetailPanel({
   busy: boolean;
   installing: boolean;
   toggling: boolean;
+  /** Whether the signed-in account is this mod's uploader. */
+  mine?: boolean;
   onInstall: () => void;
   onToggle: () => void;
   onUninstall: () => void;
   onToggleFavorite?: () => void;
+  onRename?: () => void;
 }) {
   const { t } = useTranslation();
   const description = cleanDescription(mod.description);
@@ -337,6 +342,22 @@ export function ModDetailPanel({
             <Button onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>
               {t("mods.vault.reviews")}
             </Button>
+            {/* Only on your own upload, and only with the folder to hand: a
+                rename is a fresh publish of the local files with `mod_info.lua`
+                rewritten, so there is nothing to send without them. Drawn
+                disabled rather than hidden when the folder is missing, because
+                "why can I not rename my own mod" is the question a missing
+                button would leave. */}
+            {mine && onRename && (
+              <Button
+                disabled={busy || !installed}
+                title={t(installed ? "mods.rename.action" : "mods.rename.needsInstall")}
+                onClick={onRename}
+              >
+                <Icon name="edit" size={14} />
+                {t("mods.rename.action")}
+              </Button>
+            )}
             {installed && (
               <Button disabled={busy} onClick={onToggle}>
                 {t(toggling ? "mods.vault.toggling" : installed.enabled ? "mods.vault.disable" : "mods.vault.enable")}

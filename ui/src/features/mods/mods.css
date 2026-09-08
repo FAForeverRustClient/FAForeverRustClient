@@ -758,7 +758,17 @@
   gap: 5px;
 }
 
-.mod-upload-rename-field {
-  margin-top: var(--space-2);
-  padding-left: 26px;
+/* The rename prompt: one field, so it is laid out as a field rather than as
+   a form. */
+.mod-rename-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: var(--space-2) 0;
+  text-align: left;
+  font-size: 12px;
+}
+
+.mod-rename-field > span {
+  color: var(--color-muted);
 }

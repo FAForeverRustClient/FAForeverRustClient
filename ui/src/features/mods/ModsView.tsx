@@ -15,7 +15,7 @@ import {
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMod, ModVaultQuery } from "../../ipc/bindings";
+import type { InstalledMod, ModVaultQuery, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { EMPTY_MOD_QUERY } from "../../shared/vaultQuery";
 import { loadStatusNote } from "../../shared/loadStatusNote";
@@ -30,6 +30,7 @@ import { InstalledModsView } from "./InstalledModsView";
 // that is already installed, and `openUploadFromDisk` takes an archive straight
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
+import { ModRenameDialog } from "./ModRenameDialog";
 import { ModUploadModal } from "./ModUploadModal";
 import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
 import "./mods.css";
@@ -156,6 +157,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const [page, setPage] = useState(1);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
+  const [renaming, setRenaming] = useState<VaultMod | null>(null);
 
   const [applied, setApplied] = useState<ModFilterState>({
     search: "",
@@ -523,10 +525,12 @@ function VaultView({ busy }: { busy: boolean }) {
                   busy={busy}
                   installing={installing}
                   toggling={toggling}
+                  mine={playerId !== null && selected.uploaderId === playerId}
                   onInstall={() => installMod(selected.uid, selected.downloadUrl)}
                   onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
                   onUninstall={() => installedMod && setPendingUninstall(installedMod)}
                   onToggleFavorite={() => toggleFavorite(selected.uid)}
+                  onRename={() => setRenaming(selected)}
                 />
               );
             })()}
@@ -541,6 +545,13 @@ function VaultView({ busy }: { busy: boolean }) {
             uninstallMod(pendingUninstall.folderName, pendingUninstall.uid);
             setPendingUninstall(null);
           }}
+        />
+      )}
+      {renaming && installedByUid.get(renaming.uid) && (
+        <ModRenameDialog
+          mod={renaming}
+          installed={installedByUid.get(renaming.uid)!}
+          onClose={() => setRenaming(null)}
         />
       )}
     </>
