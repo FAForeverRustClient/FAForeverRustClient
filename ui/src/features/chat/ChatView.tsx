@@ -23,6 +23,7 @@ import { typistsAt } from "../../store/reducers/chat";
 import { ChannelTabs } from "./ChannelTabs";
 import type { ChatGameLink } from "./chatFormat";
 import { Composer } from "./Composer";
+import { ConversationAside } from "./ConversationAside";
 import { MessageList, type MessageReactionsMap } from "./MessageList";
 import { visibleChatMessages } from "./messageFilters";
 import { RosterResizeHandle, clampRosterWidth } from "./RosterResizeHandle";
@@ -185,6 +186,20 @@ export function ChatView() {
     return () => window.clearInterval(timer);
   }, [anyTyping]);
 
+  // The game time in a private conversation's panel advances on the reader's
+  // clock, so the view supplies the tick. Half a minute, because the label is
+  // written in whole minutes and a slower tick would leave it visibly behind.
+  // Kept apart from the typing clock above, which retires notices per second
+  // and only while somebody is actually typing.
+  const [minuteNow, setMinuteNow] = useState(() => Math.floor(Date.now() / 1000));
+  const inPrivateConversation = !!active && isPrivateChannel(active.name);
+  useEffect(() => {
+    if (!inPrivateConversation) return;
+    setMinuteNow(Math.floor(Date.now() / 1000));
+    const timer = window.setInterval(() => setMinuteNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => window.clearInterval(timer);
+  }, [inPrivateConversation]);
+
   const openConversation = useCallback((nick: string) => {
     if (!nick || nick === self) return;
     void joinChannel(nick);
@@ -336,6 +351,27 @@ export function ChatView() {
             preferences={chatPreferences}
             onOpenConversation={openConversation}
             onContextMenu={openPlayerMenu}
+          />
+        </div>
+      )}
+
+      {/* A private conversation has no roster, and the column was reserved and
+          left blank. What belongs there is the context of the conversation:
+          what the other person is doing, and how long they have been at it. */}
+      {active && isPrivateChannel(active.name) && (
+        <div className="chat-roster-shell">
+          <RosterResizeHandle
+            width={rosterWidth}
+            onResize={setRosterWidth}
+            onCommit={commitRosterWidth}
+          />
+          <ConversationAside
+            peer={active.name}
+            social={social}
+            openGames={games}
+            liveGames={liveGames}
+            mapVault={mapVault}
+            now={minuteNow}
           />
         </div>
       )}

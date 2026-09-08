@@ -3475,6 +3475,93 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // ── clan ─────────────────────────────────────────────────────────
+        case(
+            "founding a clan retires its own banner when the reload lands",
+            vec![
+                ClanEvent::ActionStarted {
+                    action: ClanAction::Creating,
+                }
+                .into(),
+                ClanEvent::ActionSucceeded {
+                    action: ClanAction::Creating,
+                }
+                .into(),
+                ClanEvent::Loaded {
+                    identity: ClanIdentity {
+                        player_id: 7,
+                        login: "Ada".into(),
+                        clan_id: "42".into(),
+                        clan_name: "Brotherhood".into(),
+                        clan_tag: "BRO".into(),
+                        is_leader: true,
+                    },
+                    clan: None,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a refused clan write survives the reload that follows it",
+            vec![
+                ClanEvent::ActionStarted {
+                    action: ClanAction::Creating,
+                }
+                .into(),
+                ClanEvent::ActionFailed {
+                    action: ClanAction::Creating,
+                    reason: "the clan name Brotherhood is already taken".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                ClanEvent::Loaded {
+                    identity: ClanIdentity::default(),
+                    clan: None,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "an invitation clears the candidate list, and leaving clears the invitation",
+            vec![
+                ClanEvent::Loaded {
+                    identity: ClanIdentity {
+                        player_id: 7,
+                        login: "Ada".into(),
+                        clan_id: "42".into(),
+                        clan_name: "Brotherhood".into(),
+                        clan_tag: "BRO".into(),
+                        is_leader: true,
+                    },
+                    clan: None,
+                }
+                .into(),
+                ClanEvent::CandidatesLoaded {
+                    candidates: vec![PlayerSummary {
+                        id: 9,
+                        login: "Recruit".into(),
+                        avatar_url: String::new(),
+                        country: "de".into(),
+                        global_rating: Some(1200),
+                        ladder_rating: None,
+                    }],
+                }
+                .into(),
+                ClanEvent::InvitationReady {
+                    invitation: ClanInvitation {
+                        token: "jwt".into(),
+                        player_id: 9,
+                        login: "Recruit".into(),
+                    },
+                }
+                .into(),
+                ClanEvent::Loaded {
+                    identity: ClanIdentity::default(),
+                    clan: None,
+                }
+                .into(),
+            ],
+        ),
         // ── reviews ──────────────────────────────────────────────────────
         case(
             "reviews summarise on load and again on save",
@@ -3536,6 +3623,7 @@ fn cases() -> Vec<Case> {
                         display_name: "My Map".into(),
                         ranked: false,
                         source_path: None,
+                        rename_to: String::new(),
                     },
                 }
                 .into(),

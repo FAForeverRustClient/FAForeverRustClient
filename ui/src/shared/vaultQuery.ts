@@ -30,6 +30,7 @@ export const EMPTY_MAP_QUERY: MapVaultQuery = {
 
 export const EMPTY_MOD_QUERY: ModVaultQuery = {
   search: "",
+  exactName: false,
   author: "",
   uploaderId: null,
   modType: "",
@@ -64,6 +65,7 @@ export function activeMapFilterCount(query: MapVaultQuery): number {
 
 export function activeModFilterCount(query: ModVaultQuery): number {
   return [
+    query.exactName,
     query.author !== "",
     query.modType !== "",
     query.ranked !== null,

@@ -718,3 +718,57 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* "In use" is the one fact the vault never showed: installed says the folder
+   is there, this says the next game will load it. Green rather than the type
+   badge's neutral, because it is a state of yours rather than a property of
+   the mod. */
+.mod-vault-type.in-use {
+  background: color-mix(in srgb, var(--color-ok) 16%, transparent);
+  color: var(--color-ok);
+}
+
+.vault-badge.mod-badge-in-use {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Selectable explicitly: a description is something people copy out of, and a
+   webview that inherits a non-selectable default would silently make the copy
+   button the only way to get at it. */
+.mod-vault-description-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.mod-vault-description-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mod-vault-description-copy {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* The rename prompt: one field, so it is laid out as a field rather than as
+   a form. */
+.mod-rename-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: var(--space-2) 0;
+  text-align: left;
+  font-size: 12px;
+}
+
+.mod-rename-field > span {
+  color: var(--color-muted);
+}

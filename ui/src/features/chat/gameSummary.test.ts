@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Game, PlayerProfile, SocialState } from "../../ipc/bindings";
-import { gamePresenceForPlayer, gameTeamSummaries } from "./gameSummary";
+import { formatGameTime } from "../../shared/durations";
+import { gameElapsedSeconds, gamePresenceForPlayer, gameTeamSummaries } from "./gameSummary";
 
 const game = (id: number, host: string, teams: Record<string, string[]>): Game => ({
   id,
@@ -80,5 +81,52 @@ describe("game team summaries", () => {
     expect(teams[0].players[1].rating).toBeNull();
     expect(teams[1].rating).toBe(1_400);
     expect(teams[2].rating).toBeNull();
+  });
+});
+
+describe("game time", () => {
+  const now = 1_700_000_000;
+
+  it("measures a live game from when it launched", () => {
+    const presence = gamePresenceForPlayer(
+      [],
+      [{ ...game(1, "Host", { "1": ["Player"] }), launchedAt: now - 4_320 }],
+      "player",
+      now,
+    );
+    expect(presence).not.toBeNull();
+    expect(gameElapsedSeconds(presence!, now)).toBe(4_320);
+    expect(formatGameTime(gameElapsedSeconds(presence!, now)!)).toBe("1h 12m");
+  });
+
+  it("measures a lobby from when it was hosted", () => {
+    // `hostedAt` is an ISO instant while `launchedAt` is already epoch
+    // seconds, and reading one as the other is off by three orders of
+    // magnitude rather than visibly wrong.
+    const hostedAt = new Date((now - 180) * 1000).toISOString();
+    const presence = gamePresenceForPlayer(
+      [{ ...game(1, "Host", { "1": ["Host"] }), hostedAt }],
+      [],
+      "host",
+      now,
+    );
+    expect(gameElapsedSeconds(presence!, now)).toBe(180);
+    expect(formatGameTime(180)).toBe("3m");
+  });
+
+  it("has nothing to say when the lobby never said", () => {
+    const presence = gamePresenceForPlayer([game(1, "Host", { "1": ["Host"] })], [], "host", now);
+    expect(gameElapsedSeconds(presence!, now)).toBeNull();
+  });
+
+  it("reads a clock running behind the server as a game that just started", () => {
+    const presence = gamePresenceForPlayer(
+      [],
+      [{ ...game(1, "Host", { "1": ["Player"] }), launchedAt: now + 30 }],
+      "player",
+      now,
+    );
+    expect(gameElapsedSeconds(presence!, now)).toBe(0);
+    expect(formatGameTime(0)).toBe("0m");
   });
 });

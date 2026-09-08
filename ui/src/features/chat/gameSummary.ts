@@ -77,6 +77,35 @@ export function gamePresenceIndex(
   return result;
 }
 
+/**
+ * How long this game has been going, in seconds, or null when the lobby never
+ * said.
+ *
+ * Measured from launch for a game being played and from hosting for one still
+ * in its lobby, because those are the two different questions being asked: how
+ * much longer somebody is likely to be busy, and how long a lobby has been
+ * sitting there. Clamped at zero rather than rejected, so a clock a few
+ * seconds behind the server reads as a game that just started instead of as a
+ * game with no time at all.
+ */
+export function gameElapsedSeconds(
+  presence: GamePresence,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): number | null {
+  const started = presence.status === "hosting" || presence.status === "lobbying"
+    ? hostedAtSeconds(presence.game.hostedAt)
+    : presence.game.launchedAt;
+  if (started === null || started === undefined || started <= 0) return null;
+  return Math.max(0, nowSeconds - started);
+}
+
+/** `hostedAt` is an ISO instant, unlike `launchedAt`, which is already epoch. */
+function hostedAtSeconds(hostedAt: string | null): number | null {
+  if (!hostedAt) return null;
+  const parsed = Date.parse(hostedAt);
+  return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+}
+
 function teamLabel(id: string): string {
   if (id === "-1" || id === "null") return "Observers";
   if (id === "0") return "No team";

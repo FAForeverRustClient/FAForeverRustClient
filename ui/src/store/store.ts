@@ -7,6 +7,7 @@ import type { AppEvent, AppState } from "../ipc/bindings";
 import { EMPTY_REPLAY_QUERY } from "../shared/replayQuery";
 import { EMPTY_TRAINING_QUERY } from "../shared/trainingQuery";
 import { EMPTY_MAP_QUERY, EMPTY_MOD_QUERY } from "../shared/vaultQuery";
+import { EMPTY_CLAN_STATE } from "./reducers/clan";
 import { applyEvent } from "./reducer";
 
 const INITIAL: AppState = {
@@ -23,6 +24,7 @@ const INITIAL: AppState = {
     showJoinsParts: false,
     serverAutoJoin: [],
   },
+  clan: EMPTY_CLAN_STATE,
   lobby: {
     status: "disconnected",
     games: [],

@@ -15,7 +15,7 @@ import {
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMod, ModVaultQuery } from "../../ipc/bindings";
+import type { InstalledMod, ModVaultQuery, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { EMPTY_MOD_QUERY } from "../../shared/vaultQuery";
 import { loadStatusNote } from "../../shared/loadStatusNote";
@@ -30,6 +30,7 @@ import { InstalledModsView } from "./InstalledModsView";
 // that is already installed, and `openUploadFromDisk` takes an archive straight
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
+import { ModRenameDialog } from "./ModRenameDialog";
 import { ModUploadModal } from "./ModUploadModal";
 import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
 import "./mods.css";
@@ -64,6 +65,7 @@ const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", co
 
 interface ModFilterState {
   search: string;
+  exactName: boolean;
   creator: string;
   sort: ModSort;
   modType: ModTypeFilter;
@@ -94,6 +96,7 @@ function modVaultQuery(
   return {
     ...EMPTY_MOD_QUERY,
     search: applied.search.trim(),
+    exactName: applied.exactName,
     author: applied.creator.trim(),
     // The uploader, not the declared author: see `ModVaultQuery::uploader_id`.
     // Unlike the map vault this asks for no hidden versions, because nothing
@@ -139,6 +142,7 @@ function VaultView({ busy }: { busy: boolean }) {
     return "rating";
   })();
   const [search, setSearch] = useState("");
+  const [exactName, setExactName] = useState(false);
   const [sort, setSort] = useState<ModSort>(initialSort);
   const [modType, setModType] = useState<ModTypeFilter>("all");
   const [ranked, setRanked] = useState<RankedFilter>("all");
@@ -153,9 +157,11 @@ function VaultView({ busy }: { busy: boolean }) {
   const [page, setPage] = useState(1);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
+  const [renaming, setRenaming] = useState<VaultMod | null>(null);
 
   const [applied, setApplied] = useState<ModFilterState>({
     search: "",
+    exactName: false,
     creator: "",
     sort: initialSort,
     modType: "all",
@@ -225,6 +231,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const applySearch = () => {
     setApplied({
       search,
+      exactName,
       creator,
       sort,
       modType,
@@ -266,6 +273,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const clearSearch = () => {
     setSearch("");
+    setExactName(false);
     setCreator("");
     setModType("all");
     setRanked("all");
@@ -277,6 +285,7 @@ function VaultView({ busy }: { busy: boolean }) {
     setMaximumRating(null);
     setApplied({
       search: "",
+      exactName: false,
       creator: "",
       sort: "rating",
       modType: "all",
@@ -385,6 +394,16 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("mods.view.dateField")}><select className="search-panel-control" value={dateField} onChange={(event) => setDateField(event.target.value as DateField)}><option value="updated">{t("mods.view.lastUpdated")}</option><option value="uploaded">{t("mods.view.uploaded")}</option></select></SearchField>
               <SearchField label={t("mods.view.after")}><input className="search-panel-control" type="date" value={dateAfter} onChange={(event) => setDateAfter(event.target.value)} /></SearchField>
               <SearchField label={t("mods.view.before")}><input className="search-panel-control" type="date" value={dateBefore} onChange={(event) => setDateBefore(event.target.value)} /></SearchField>
+            </div>
+            <div className="vault-search-checks">
+              <label className="option-check" title={t("mods.view.exactNameHint")}>
+                <input
+                  type="checkbox"
+                  checked={exactName}
+                  onChange={(event) => setExactName(event.target.checked)}
+                />
+                {t("mods.view.exactName")}
+              </label>
             </div>
           </div>
         ) : undefined}
@@ -506,10 +525,12 @@ function VaultView({ busy }: { busy: boolean }) {
                   busy={busy}
                   installing={installing}
                   toggling={toggling}
+                  mine={playerId !== null && selected.uploaderId === playerId}
                   onInstall={() => installMod(selected.uid, selected.downloadUrl)}
                   onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
                   onUninstall={() => installedMod && setPendingUninstall(installedMod)}
                   onToggleFavorite={() => toggleFavorite(selected.uid)}
+                  onRename={() => setRenaming(selected)}
                 />
               );
             })()}
@@ -524,6 +545,13 @@ function VaultView({ busy }: { busy: boolean }) {
             uninstallMod(pendingUninstall.folderName, pendingUninstall.uid);
             setPendingUninstall(null);
           }}
+        />
+      )}
+      {renaming && installedByUid.get(renaming.uid) && (
+        <ModRenameDialog
+          mod={renaming}
+          installed={installedByUid.get(renaming.uid)!}
+          onClose={() => setRenaming(null)}
         />
       )}
     </>

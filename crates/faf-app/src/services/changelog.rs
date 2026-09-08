@@ -1,4 +1,5 @@
-//! Changelog orchestration: load the index once, load a note on demand.
+//! Changelog orchestration: refresh the index on every visit, load a note on
+//! demand, and never serve a rolling branch note out of the cache.
 
 use faf_domain::protocol::changelog::ChangelogRelease;
 use faf_domain::state::{ChangelogCommand, ChangelogEvent, ChangelogStatus};
@@ -22,19 +23,20 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
         return;
     };
 
-    // The tab re-mounts on every visit, and the index does not change within a
-    // session. Reloading it on each visit would be a request per tab switch,
-    // but the selection should still reset to the newest dated patch.
-    let already = out.with_state(|state| matches!(state.changelog.status, ChangelogStatus::Ready));
-    if already {
-        let newest = out.with_state(|state| newest_patch_id(&state.changelog.releases));
-        if let Some(id) = newest {
-            select(id, ctx, out).await;
-        }
-        return;
+    // The index is re-read on every visit rather than once per session. It was
+    // held for the session on the grounds that it does not change, which is
+    // true of an entry that is already in it and false of the list: a patch
+    // published while the client was open never appeared, and the two rolling
+    // branch entries move several times a week.
+    //
+    // The reader is not shown a spinner for it. `Loading` blanks the tab, and
+    // there is nothing to blank it for when a perfectly good list is already
+    // on screen.
+    let showing = out.with_state(|state| matches!(state.changelog.status, ChangelogStatus::Ready));
+    if !showing {
+        out.emit(ChangelogEvent::Loading);
     }
 
-    out.emit(ChangelogEvent::Loading);
     match ctx.ports.changelog.list_releases().await {
         Ok(releases) => {
             // Open on the newest dated patch, not one of the rolling branch
@@ -45,7 +47,16 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
                 select(id, ctx, out).await;
             }
         }
-        Err(reason) => out.emit(ChangelogEvent::LoadFailed { reason }),
+        // A refresh that fails leaves what is on screen alone: the list the
+        // reader is looking at is still the list, and replacing it with an
+        // error page would make a tab switch on a flaky connection destroy a
+        // working tab. The failure is only worth reporting when there is
+        // nothing to report it in place of.
+        Err(reason) => {
+            if !showing {
+                out.emit(ChangelogEvent::LoadFailed { reason });
+            }
+        }
     }
 }
 
@@ -64,31 +75,34 @@ async fn select(id: String, ctx: &ServiceCtx, out: &EventSink) {
     // and silently replaces the selection the user just made.
     let generation = ctx.changelog_entry_generation.begin();
 
-    let (cached, source_url) = out.with_state(|state| {
+    let (cached, release) = out.with_state(|state| {
         (
             state.changelog.entries.get(&id).cloned(),
-            state
-                .changelog
-                .release(&id)
-                .map(|release| release.source_url.clone()),
+            state.changelog.release(&id).cloned(),
         )
     });
 
-    // Already read this session: swap the selection without a round trip.
-    if let Some(entry) = cached {
-        out.emit(ChangelogEvent::EntryLoaded { entry });
-        return;
-    }
-
-    let Some(source_url) = source_url else {
+    let Some(release) = release else {
         out.emit(ChangelogEvent::EntryLoadFailed {
             reason: format!("release {id} is not in the index"),
         });
         return;
     };
 
+    // Already read this session: swap the selection without a round trip. Only
+    // for a dated post, which is finished the day it is published, so a second
+    // read could only return what is already here. A rolling branch page is
+    // rewritten every time something is deployed to it, and serving that from
+    // a cache pins the reader to whatever it said the first time they opened
+    // the tab, which is how "there are new changes in fafbeta and they are not
+    // shown" survives even once the note is fetched correctly.
+    if let Some(entry) = cached.filter(|_| !release.is_rolling()) {
+        out.emit(ChangelogEvent::EntryLoaded { entry });
+        return;
+    }
+
     out.emit(ChangelogEvent::EntryLoading { id: id.clone() });
-    let loaded = ctx.ports.changelog.load_entry(id, source_url).await;
+    let loaded = ctx.ports.changelog.load_entry(release).await;
     if !ctx.changelog_entry_generation.is_current(generation) {
         // A newer selection is already in flight or has already landed;
         // emitting now would move the reader back to the release they left.

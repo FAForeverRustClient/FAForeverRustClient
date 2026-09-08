@@ -434,7 +434,17 @@ export function PlayerCardModal() {
             {tab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
             {tab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
             {tab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
-            {tab === "clan" && <PlayerClanView clan={profile.clan} selfLogin={me?.name ?? ""} onMessageLeader={messagePlayer} />}
+            {tab === "clan" && (
+              <PlayerClanView
+                clan={profile.clan}
+                selfLogin={me?.name ?? ""}
+                onMessageLeader={messagePlayer}
+                /* Management only on your own card. Every control it draws is
+                   about the clan *you* are in, and the server would refuse
+                   every one of them aimed at somebody else's. */
+                manageable={me !== null && me.id === profile.playerId}
+              />
+            )}
           </div>
         </>
       )}

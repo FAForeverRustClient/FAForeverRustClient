@@ -27,6 +27,7 @@ pub const OFFLINE_FAF_NAME: &str = "Nuggets";
 pub mod auth;
 pub mod changelog;
 pub mod chat;
+pub mod clan;
 pub mod client_update;
 pub mod coop;
 pub mod discord;
@@ -73,6 +74,7 @@ pub(crate) mod vault_install;
 pub use auth::FakeAuth;
 pub use changelog::{ChangelogClient, ChangelogConfig, FakeChangelog};
 pub use chat::FakeChat;
+pub use clan::{ClanClient, ClanConfig, FakeClan};
 pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
 pub use coop::{CoopClient, CoopConfig, FakeCoop};
 pub use discord::{DiscordClient, DiscordConfig, FakeDiscord};
@@ -430,6 +432,7 @@ pub fn fake_ports() -> Ports {
         leaderboard: Arc::new(FakeLeaderboard),
         player_card: Arc::new(FakePlayerCard),
         reporting: Arc::new(FakeReporting),
+        clan: Arc::new(FakeClan),
         reviews: Arc::new(FakeReviews::default()),
         tourney: Arc::new(FakeTourney::default()),
         training: Arc::new(FakeTraining),
@@ -552,6 +555,7 @@ pub fn real_ports() -> Ports {
     // Public static documents, so no token and no gating: like the update check
     // below, this works before login.
     let changelog: Arc<dyn crate::ports::ChangelogPort> = Arc::new(ChangelogClient::faf());
+    let clan: Arc<dyn crate::ports::ClanPort> = Arc::new(ClanClient::faf(tokens.clone()));
     let reviews: Arc<dyn crate::ports::ReviewsPort> = Arc::new(ReviewsClient::faf(tokens.clone()));
     let uploads: Arc<dyn crate::ports::UploadsPort> = Arc::new(UploadsClient::faf(tokens.clone()));
 
@@ -593,6 +597,7 @@ pub fn real_ports() -> Ports {
         paths: Arc::new(ConfiguredPaths),
         leaderboard,
         player_card,
+        clan,
         reporting,
         reviews,
         tourney,

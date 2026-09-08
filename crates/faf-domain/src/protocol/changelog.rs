@@ -1,8 +1,18 @@
 //! Codec for FAForever/fa's changelog: the index page and one patch note.
 //!
-//! Two shapes, one origin. The index is the rendered Jekyll page at
-//! `faforever.github.io/fa/changelog`; a patch note is the Markdown source of
-//! the matching post in `docs/_posts`.
+//! Three shapes, one origin. The index is the rendered Jekyll page at
+//! `faforever.github.io/fa/changelog`; a dated patch note is the Markdown
+//! source of the matching post in `docs/_posts`; and the two rolling branch
+//! pages are read from their *rendered* HTML, because their Markdown source
+//! does not contain them.
+//!
+//! That last one is not a preference. `docs/changelog/fafbeta.md` on `master`
+//! is a Jekyll template with a header and nothing else: the body is assembled
+//! during the Pages build by `docs-build.yml`, which concatenates
+//! `changelog/snippets/*.md` from the `deploy/fafbeta` branch onto it. Reading
+//! the raw file therefore shows a client the preamble and none of the changes,
+//! which is exactly what it did. The built page is the only published place
+//! the compiled notes exist.
 //!
 //! Reading the index from the rendered page rather than the GitHub API is
 //! deliberate: the API is rate limited per IP (60/hour unauthenticated), which
@@ -24,7 +34,7 @@ use specta::Type;
 
 /// Where a patch note's Markdown lives, and where its unit icons come from.
 const RAW_POSTS_BASE: &str = "https://raw.githubusercontent.com/FAForever/fa/master/docs/_posts";
-const RAW_CHANGELOG_BASE: &str = "https://raw.githubusercontent.com/FAForever/fa/master/docs";
+const PAGES_BASE: &str = "https://faforever.github.io/fa";
 const ICON_BASE: &str = "https://faforever.github.io/fa/assets/icons";
 const ISSUE_BASE: &str = "https://github.com/FAForever/fa/issues";
 
@@ -41,10 +51,25 @@ pub struct ChangelogRelease {
     pub date: String,
     /// Calendar year as printed on the index, for grouping. Empty for rolling.
     pub year: String,
-    /// Absolute URL of the Markdown source this release is rendered from.
+    /// Absolute URL of the document this release's note is read from: the
+    /// Markdown post for a dated release, the rendered page for a rolling one.
     pub source_url: String,
     /// The page a "view on the website" link should open.
     pub web_url: String,
+}
+
+impl ChangelogRelease {
+    /// Whether this is one of the two rolling branch pages rather than a dated
+    /// post.
+    ///
+    /// Worth a name because the answer decides three separate things: which
+    /// codec reads the note, whether the note may be cached at all, and whether
+    /// the release is a candidate for "open on the newest patch". A dated post
+    /// is finished the day it is published; a branch page is rewritten every
+    /// time something is deployed to that branch.
+    pub fn is_rolling(&self) -> bool {
+        self.date.is_empty()
+    }
 }
 
 /// An inline run inside a paragraph or list item.
@@ -136,10 +161,12 @@ pub fn post_source_url(date: &str, patch: &str) -> String {
     format!("{RAW_POSTS_BASE}/{date}-{patch}.md")
 }
 
-/// Absolute Markdown URL for one of the two rolling branch pages, which live
-/// outside `_posts` and therefore have no date in their path.
+/// Where one of the two rolling branch notes is actually readable.
+///
+/// The built page rather than `docs/changelog/{branch}.md`, which holds only
+/// the template the build appends the snippets to. See the module header.
 pub fn branch_source_url(branch: &str) -> String {
-    format!("{RAW_CHANGELOG_BASE}/changelog/{branch}.md")
+    format!("{PAGES_BASE}/changelog/{branch}")
 }
 
 /// Icon URL for a unit id, mirroring `unit_block.rb`: enhancements keep their
@@ -633,6 +660,543 @@ fn issue_reference(rest: &str) -> Option<(String, usize)> {
     Some((number.to_string(), number.len() + 3))
 }
 
+/// Parse one of the rolling branch pages out of its rendered HTML.
+///
+/// The counterpart to [`parse_entry`], producing the same blocks from the built
+/// page instead of from Markdown, because for these two pages the Markdown
+/// source is empty (see the module header).
+///
+/// The markup is not general HTML: it is what Jekyll's `just-the-docs` theme
+/// plus this repository's two Liquid plugins emit, so this handles that subset
+/// and ignores the rest. Anything unrecognised contributes its text rather than
+/// vanishing, which is the failure mode to prefer for a changelog.
+pub fn parse_rendered_entry(id: &str, html: &str) -> ChangelogEntry {
+    // Stripped once, up front, rather than skipped during the walk: the branch
+    // template ends in a comment explaining that the content below is appended
+    // by the build, and that sentence is not part of the patch notes.
+    let body = strip_comments(main_content(html));
+    ChangelogEntry {
+        id: id.to_string(),
+        title: rendered_title(html).unwrap_or_else(|| id.to_string()),
+        blocks: parse_html_blocks(&body),
+    }
+}
+
+/// The page title as the front matter set it, without the site name Jekyll
+/// appends. Matches what [`parse_entry`] reads out of `title:`.
+fn rendered_title(html: &str) -> Option<String> {
+    let raw = slice_between(html, "<title>", "</title>")?;
+    let decoded = decode_entities(raw.trim());
+    let title = decoded.split(" | ").next().unwrap_or(&decoded).trim();
+    (!title.is_empty()).then(|| title.to_string())
+}
+
+/// The article body, or the whole document if the theme's `<main>` is missing.
+/// Everything outside it is navigation, breadcrumbs and a footer.
+fn main_content(html: &str) -> &str {
+    match slice_between(html, "<main", "</main>") {
+        Some(inner) => match inner.find('>') {
+            Some(at) => &inner[at + 1..],
+            None => inner,
+        },
+        None => html,
+    }
+}
+
+fn slice_between<'a>(html: &'a str, open: &str, close: &str) -> Option<&'a str> {
+    let start = html.find(open)? + open.len();
+    let rest = &html[start..];
+    let end = rest.find(close)?;
+    Some(&rest[..end])
+}
+
+fn strip_comments(html: &str) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(at) = rest.find("<!--") {
+        out.push_str(&rest[..at]);
+        match rest[at..].find("-->") {
+            Some(end) => rest = &rest[at + end + "-->".len()..],
+            // Unterminated: everything after it is comment, not content.
+            None => return out,
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// One element found by [`next_element`], with the markup that preceded it.
+struct Element<'a> {
+    /// Lower-cased tag name.
+    name: String,
+    /// The opening tag verbatim, so attributes can still be read off it.
+    open_tag: &'a str,
+    /// Whatever came before it, which belongs to the enclosing content.
+    before: &'a str,
+    inner: &'a str,
+    after: &'a str,
+}
+
+impl Element<'_> {
+    /// Whether the opening tag carries this class. Whole values only, so
+    /// `change` never matches `change-category`.
+    fn has_class(&self, class: &str) -> bool {
+        attribute(self.open_tag, "class")
+            .is_some_and(|value| value.split_whitespace().any(|present| present == class))
+    }
+}
+
+/// Elements that never carry a closing tag, so their content is not searched
+/// for one. `img` is the one that actually appears here; the rest are cheap
+/// insurance against a theme change.
+const VOID_TAGS: [&str; 6] = ["img", "br", "hr", "input", "meta", "link"];
+
+/// The next element at this level, or `None` once the markup runs out.
+fn next_element(html: &str) -> Option<Element<'_>> {
+    let mut cursor = 0;
+    loop {
+        let at = html[cursor..].find('<')? + cursor;
+        let after_bracket = &html[at + 1..];
+
+        // A stray closing tag or a doctype: not the start of anything.
+        if after_bracket.starts_with('/') || after_bracket.starts_with('!') {
+            cursor = at + 1;
+            continue;
+        }
+
+        let name_end = after_bracket
+            .find(|c: char| c.is_whitespace() || c == '>' || c == '/')
+            .unwrap_or(after_bracket.len());
+        let name = after_bracket[..name_end].to_ascii_lowercase();
+        if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric()) {
+            cursor = at + 1;
+            continue;
+        }
+
+        let tag_end = at + 1 + after_bracket.find('>')?;
+        let open_tag = &html[at..=tag_end];
+        let before = &html[..at];
+
+        if open_tag.ends_with("/>") || VOID_TAGS.contains(&name.as_str()) {
+            return Some(Element {
+                name,
+                open_tag,
+                before,
+                inner: "",
+                after: &html[tag_end + 1..],
+            });
+        }
+
+        let (inner, after) = match inner_of(&html[tag_end + 1..], &name) {
+            Some(split) => split,
+            // Unclosed: read the rest as its content rather than dropping the
+            // remainder of the document.
+            None => (&html[tag_end + 1..], ""),
+        };
+        return Some(Element {
+            name,
+            open_tag,
+            before,
+            inner,
+            after,
+        });
+    }
+}
+
+/// Split at the closing tag matching an already-open one, counting nested opens
+/// of the same name: lists inside lists are the whole reason this cannot simply
+/// search for the first `</ul>`.
+fn inner_of<'a>(rest: &'a str, name: &str) -> Option<(&'a str, &'a str)> {
+    let open_pat = format!("<{name}");
+    let close_pat = format!("</{name}");
+    let mut depth = 1usize;
+    let mut cursor = 0usize;
+
+    loop {
+        let next_open = find_tag(rest, &open_pat, cursor);
+        let next_close = find_tag(rest, &close_pat, cursor);
+        match (next_open, next_close) {
+            (_, None) => return None,
+            (Some(open), Some(close)) if open < close => {
+                depth += 1;
+                cursor = open + open_pat.len();
+            }
+            (_, Some(close)) => {
+                depth -= 1;
+                if depth == 0 {
+                    let end = rest[close..].find('>')? + close + 1;
+                    return Some((&rest[..close], &rest[end..]));
+                }
+                cursor = close + close_pat.len();
+            }
+        }
+    }
+}
+
+/// Find `pattern` only where it is a whole tag name, so a search for `<p` does
+/// not stop on `<pre`.
+fn find_tag(html: &str, pattern: &str, from: usize) -> Option<usize> {
+    let mut cursor = from;
+    loop {
+        let offset = html.get(cursor..)?.find(pattern)?;
+        let at = cursor + offset;
+        match html[at + pattern.len()..].chars().next() {
+            Some(c) if c.is_whitespace() || c == '>' || c == '/' => return Some(at),
+            None => return None,
+            _ => cursor = at + pattern.len(),
+        }
+    }
+}
+
+/// Read one attribute off an opening tag.
+fn attribute(open_tag: &str, name: &str) -> Option<String> {
+    let key = format!("{name}=");
+    let mut cursor = 0;
+    while let Some(offset) = open_tag[cursor..].find(&key) {
+        let at = cursor + offset;
+        // Guard against matching the tail of a longer attribute name, which is
+        // not hypothetical: every icon in a heading carries `xlink:href`.
+        let starts_here = at == 0
+            || open_tag[..at]
+                .chars()
+                .next_back()
+                .is_some_and(char::is_whitespace);
+        cursor = at + key.len();
+        if !starts_here {
+            continue;
+        }
+        let value = &open_tag[at + key.len()..];
+        let quote = value.chars().next()?;
+        if quote != '"' {
+            let end = value.find(|c: char| c.is_whitespace() || c == '>')?;
+            return Some(decode_entities(&value[..end]));
+        }
+        let end = value[1..].find(quote)?;
+        return Some(decode_entities(&value[1..1 + end]));
+    }
+    None
+}
+
+fn parse_html_blocks(html: &str) -> Vec<ChangelogBlock> {
+    let mut blocks = Vec::new();
+    let mut rest = html;
+
+    while let Some(element) = next_element(rest) {
+        match element.name.as_str() {
+            "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
+                let level = element.name[1..].parse::<u8>().unwrap_or(1);
+                let text = html_text(element.inner);
+                if !text.is_empty() {
+                    blocks.push(ChangelogBlock::Heading { level, text });
+                }
+            }
+            "p" => {
+                let spans = parse_html_spans(element.inner);
+                if !spans.is_empty() {
+                    blocks.push(ChangelogBlock::Paragraph { spans });
+                }
+            }
+            "ul" | "ol" => {
+                let items = parse_html_items(element.inner);
+                if !items.is_empty() {
+                    blocks.push(ChangelogBlock::List { items });
+                }
+            }
+            "div" if element.has_class("unit-header") => {
+                if let Some(block) = parse_html_unit(element.inner) {
+                    blocks.push(block);
+                }
+            }
+            // A wrapper the theme added: look inside it rather than past it.
+            "div" | "section" | "article" | "main" => {
+                blocks.extend(parse_html_blocks(element.inner));
+            }
+            _ => {}
+        }
+        rest = element.after;
+    }
+
+    blocks
+}
+
+/// The `unit_block.rb` header: the icons, and the name beside them.
+fn parse_html_unit(html: &str) -> Option<ChangelogBlock> {
+    let mut units = Vec::new();
+    let mut name = String::new();
+    let mut rest = html;
+
+    while let Some(element) = next_element(rest) {
+        if element.name == "img" && element.has_class("unit-icon") {
+            let id = attribute(element.open_tag, "src")
+                .as_deref()
+                .and_then(unit_id_from_icon);
+            if let Some(unit_id) = id {
+                units.push(ChangelogUnit {
+                    icon_url: unit_icon_url(&unit_id),
+                    unit_id,
+                });
+            }
+        } else if element.has_class("unit-name") {
+            name = html_text(element.inner);
+        }
+        rest = element.after;
+    }
+
+    (!units.is_empty() || !name.is_empty()).then_some(ChangelogBlock::Unit { units, name })
+}
+
+/// `"../assets/icons/UAB0304_icon.png"` becomes `"UAB0304"`, and an
+/// enhancement's `"../assets/icons/enhancements/xyz.png"` becomes
+/// `"enhancements/xyz"`: exactly what [`unit_icon_url`] turns back into the URL
+/// it came from, so the icon a rolling page shows is the icon the archive shows.
+fn unit_id_from_icon(src: &str) -> Option<String> {
+    let path = src.rsplit_once("assets/icons/").map(|(_, tail)| tail)?;
+    let stem = path.strip_suffix(".png").unwrap_or(path);
+    let id = stem.strip_suffix("_icon").unwrap_or(stem);
+    (!id.is_empty()).then(|| id.to_string())
+}
+
+fn parse_html_items(html: &str) -> Vec<ChangelogListItem> {
+    let mut items = Vec::new();
+    let mut rest = html;
+
+    while let Some(element) = next_element(rest) {
+        if element.name == "li" {
+            let own = own_content(element.inner);
+            items.push(ChangelogListItem {
+                change: parse_html_change(&own),
+                spans: parse_html_spans(&own),
+                children: nested_items(element.inner),
+            });
+        }
+        rest = element.after;
+    }
+
+    items
+}
+
+/// One item's own markup, with its sub-lists removed.
+///
+/// Needed because a category row holds no values of its own: reading the whole
+/// subtree would hand `Adjacency:` the first pair of numbers belonging to the
+/// row underneath it.
+fn own_content(html: &str) -> String {
+    let mut own = String::new();
+    let mut rest = html;
+
+    loop {
+        let Some(element) = next_element(rest) else {
+            own.push_str(rest);
+            break;
+        };
+        own.push_str(element.before);
+        if element.name != "ul" && element.name != "ol" {
+            own.push_str(element.open_tag);
+            if !element.open_tag.ends_with("/>") && !VOID_TAGS.contains(&element.name.as_str()) {
+                own.push_str(element.inner);
+                own.push_str("</");
+                own.push_str(&element.name);
+                own.push('>');
+            }
+        }
+        rest = element.after;
+    }
+
+    own
+}
+
+fn nested_items(html: &str) -> Vec<ChangelogListItem> {
+    let mut items = Vec::new();
+    let mut rest = html;
+
+    while let Some(element) = next_element(rest) {
+        if element.name == "ul" || element.name == "ol" {
+            items.extend(parse_html_items(element.inner));
+        }
+        rest = element.after;
+    }
+
+    items
+}
+
+/// The rendered form of a `balance_change.rb` line:
+/// `<span class="change">Health: </span><span class="old">500</span>`, an
+/// arrow, `<span class="new">1340</span>`.
+fn parse_html_change(html: &str) -> Option<ChangelogChange> {
+    let label = span_with_class(html, "change")?;
+    let old = span_with_class(html, "old")?;
+    let new = span_with_class(html, "new")?;
+
+    let label = label.trim().trim_end_matches(':').trim();
+    let (old, new) = (old.trim(), new.trim());
+    if label.is_empty() || old.is_empty() || new.is_empty() {
+        return None;
+    }
+    Some(ChangelogChange {
+        label: label.to_string(),
+        old: old.to_string(),
+        new: new.to_string(),
+    })
+}
+
+/// Text of the first element carrying this class, at any depth.
+fn span_with_class(html: &str, class: &str) -> Option<String> {
+    let mut rest = html;
+    while let Some(element) = next_element(rest) {
+        if element.has_class(class) {
+            return Some(html_text(element.inner));
+        }
+        if let Some(found) = span_with_class(element.inner, class) {
+            return Some(found);
+        }
+        rest = element.after;
+    }
+    None
+}
+
+/// Inline parsing, mirroring [`parse_spans`] over the rendered equivalents.
+fn parse_html_spans(html: &str) -> Vec<ChangelogSpan> {
+    finish_spans(collect_html_spans(html))
+}
+
+/// The walk itself. Separate from [`parse_html_spans`] because tidying the runs
+/// is only correct once, at the end: doing it per nested element would trim the
+/// space that separates a label from the value after it.
+fn collect_html_spans(html: &str) -> Vec<ChangelogSpan> {
+    let mut spans = Vec::new();
+    let mut plain = String::new();
+    let mut rest = html;
+
+    loop {
+        let Some(element) = next_element(rest) else {
+            plain.push_str(&decode_entities(rest));
+            break;
+        };
+        plain.push_str(&decode_entities(element.before));
+
+        match element.name.as_str() {
+            // Decoration, and the theme's own furniture.
+            "svg" | "img" | "button" | "use" | "path" => {}
+            "a" if element.has_class("anchor-heading") => {}
+            "strong" | "b" => {
+                push_text(&mut plain, &mut spans);
+                spans.push(ChangelogSpan::Strong(html_text(element.inner)));
+            }
+            "code" => {
+                push_text(&mut plain, &mut spans);
+                spans.push(ChangelogSpan::Code(html_text(element.inner)));
+            }
+            "a" => {
+                let url = attribute(element.open_tag, "href").unwrap_or_default();
+                let text = html_text(element.inner);
+                push_text(&mut plain, &mut spans);
+                spans.extend(anchor_span(&text, url));
+            }
+            // `p`, `span`, `em` and anything else: transparent, contributing
+            // its content in place.
+            _ => {
+                push_text(&mut plain, &mut spans);
+                spans.extend(collect_html_spans(element.inner));
+            }
+        }
+        rest = element.after;
+    }
+
+    push_text(&mut plain, &mut spans);
+    spans
+}
+
+/// One anchor, as the span it should be.
+///
+/// `changelog-links.sh` has already turned every `(#7121)` into a link by the
+/// time the page is built, so a citation arrives here as an anchor. It is put
+/// back into the shape the Markdown path produces rather than left as one more
+/// blue word, so both halves of the tab render a pull request reference alike.
+fn anchor_span(text: &str, url: String) -> Option<ChangelogSpan> {
+    if let Some(number) = text.strip_prefix('#') {
+        if !number.is_empty() && number.chars().all(|c| c.is_ascii_digit()) {
+            return Some(ChangelogSpan::Issue {
+                url: if url.is_empty() {
+                    format!("{ISSUE_BASE}/{number}")
+                } else {
+                    url
+                },
+                number: number.to_string(),
+            });
+        }
+    }
+    (!text.is_empty()).then(|| ChangelogSpan::Link {
+        text: text.to_string(),
+        url,
+    })
+}
+
+/// Plain text of a fragment: tags dropped, entities decoded, whitespace
+/// collapsed the way a browser would collapse it.
+fn html_text(html: &str) -> String {
+    let mut text = String::new();
+    let mut rest = html;
+
+    loop {
+        let Some(element) = next_element(rest) else {
+            text.push_str(&decode_entities(rest));
+            break;
+        };
+        text.push_str(&decode_entities(element.before));
+        if !matches!(element.name.as_str(), "svg" | "use" | "path" | "button") {
+            text.push(' ');
+            text.push_str(&html_text(element.inner));
+            text.push(' ');
+        }
+        rest = element.after;
+    }
+
+    collapse_whitespace(&text)
+}
+
+fn collapse_whitespace(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Rejoin the runs the tag boundaries split, so a line assembled out of three
+/// spans reads as the one sentence it is, and drop the whitespace that is only
+/// there because the markup was indented.
+fn finish_spans(spans: Vec<ChangelogSpan>) -> Vec<ChangelogSpan> {
+    let mut merged: Vec<ChangelogSpan> = Vec::with_capacity(spans.len());
+    for span in spans {
+        let span = match span {
+            // Collapsed rather than trimmed: an inner run's spaces separate it
+            // from the spans on either side and have to survive.
+            ChangelogSpan::Text(text) => {
+                let mut collapsed = collapse_whitespace(&text);
+                if text.starts_with(char::is_whitespace) {
+                    collapsed.insert(0, ' ');
+                }
+                if text.ends_with(char::is_whitespace) && !collapsed.is_empty() {
+                    collapsed.push(' ');
+                }
+                ChangelogSpan::Text(collapsed)
+            }
+            other => other,
+        };
+        match (merged.last_mut(), span) {
+            (Some(ChangelogSpan::Text(previous)), ChangelogSpan::Text(next)) => {
+                previous.push_str(&next)
+            }
+            (_, span) => merged.push(span),
+        }
+    }
+
+    if let Some(ChangelogSpan::Text(first)) = merged.first_mut() {
+        *first = first.trim_start().to_string();
+    }
+    if let Some(ChangelogSpan::Text(last)) = merged.last_mut() {
+        *last = last.trim_end().to_string();
+    }
+    merged.retain(|span| !matches!(span, ChangelogSpan::Text(text) if text.is_empty()));
+    merged
+}
+
 fn decode_entities(text: &str) -> String {
     text.replace("&amp;", "&")
         .replace("&lt;", "<")
@@ -666,10 +1230,14 @@ mod tests {
         assert_eq!(branch.id, "fafbeta");
         assert_eq!(branch.kind, "FAF Beta Balance");
         assert!(branch.date.is_empty(), "a rolling branch has no date");
+        // The built page, not `docs/changelog/fafbeta.md`: the Markdown holds
+        // only the template the Pages build appends the snippets to.
         assert_eq!(
             branch.source_url,
-            "https://raw.githubusercontent.com/FAForever/fa/master/docs/changelog/fafbeta.md"
+            "https://faforever.github.io/fa/changelog/fafbeta"
         );
+        assert_eq!(branch.source_url, branch.web_url);
+        assert!(branch.is_rolling());
 
         let latest = &releases[1];
         assert_eq!(latest.id, "3837");
@@ -874,6 +1442,135 @@ mod tests {
     }
 
     #[test]
+    fn a_rendered_balance_row_reads_as_the_change_it_is() {
+        let entry = parse_rendered_entry(
+            "fafbeta",
+            concat!(
+                "<title>FAF Beta Balance | FAForever Game Repo</title>",
+                "<main>",
+                "<h2 id=\"balance\"><a href=\"#balance\" class=\"anchor-heading\">",
+                "<svg><use xlink:href=\"#svg-link\"></use></svg></a> Balance </h2>",
+                "<div class=\"unit-header\">",
+                "<img class=\"unit-icon\" src=\"../assets/icons/UAB0304_icon.png\" />",
+                "<span class=\"unit-name\">Quantum Gateways</span></div>",
+                "<ul>",
+                "<li><span class=\"change\">Mass cost: </span>",
+                "<span class=\"old\">3000</span> \u{2192} <span class=\"new\">2550</span></li>",
+                "<li><span class=\"change-category\">Adjacency: </span><ul>",
+                "<li><span class=\"change\">Energy discount: </span>",
+                "<span class=\"old\">0.25%</span> \u{2192} <span class=\"new\">1.563%</span></li>",
+                "</ul></li>",
+                "</ul>",
+                "</main>",
+            ),
+        );
+
+        assert_eq!(entry.title, "FAF Beta Balance", "the site name is dropped");
+        assert_eq!(
+            entry.blocks[0],
+            ChangelogBlock::Heading {
+                level: 2,
+                text: "Balance".into()
+            },
+            "the theme's anchor icon is not part of the heading"
+        );
+        assert_eq!(
+            entry.blocks[1],
+            ChangelogBlock::Unit {
+                units: vec![ChangelogUnit {
+                    unit_id: "UAB0304".into(),
+                    icon_url: unit_icon_url("UAB0304"),
+                }],
+                name: "Quantum Gateways".into(),
+            },
+            "the icon resolves to the same absolute URL the archive uses"
+        );
+
+        let ChangelogBlock::List { items } = &entry.blocks[2] else {
+            panic!("expected the change list, got {:?}", entry.blocks[2]);
+        };
+        assert_eq!(
+            items[0].change,
+            Some(ChangelogChange {
+                label: "Mass cost".into(),
+                old: "3000".into(),
+                new: "2550".into(),
+            })
+        );
+        assert_eq!(
+            items[0].spans,
+            vec![ChangelogSpan::Text("Mass cost: 3000 \u{2192} 2550".into())],
+            "the runs the tags split are rejoined"
+        );
+
+        // A category owns no values: reading its subtree would hand it the
+        // first pair belonging to the row underneath it.
+        assert_eq!(items[1].change, None);
+        assert_eq!(
+            items[1].spans,
+            vec![ChangelogSpan::Text("Adjacency:".into())]
+        );
+        assert_eq!(items[1].children.len(), 1);
+        assert_eq!(
+            items[1].children[0].change,
+            Some(ChangelogChange {
+                label: "Energy discount".into(),
+                old: "0.25%".into(),
+                new: "1.563%".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn a_rendered_citation_becomes_the_same_issue_span_the_markdown_gives() {
+        // `changelog-links.sh` links these during the build, so they arrive as
+        // anchors rather than as the `(#7141)` the Markdown path sees. Both
+        // halves of the tab should render one the same way.
+        let entry = parse_rendered_entry(
+            "fafbeta",
+            concat!(
+                "<main><ul><li><p>Fix <code>ACUUnit.lua</code> ",
+                "(<a href=\"https://github.com/FAForever/fa/pull/7215\">#7215</a>).</p>",
+                "</li></ul></main>",
+            ),
+        );
+
+        let ChangelogBlock::List { items } = &entry.blocks[0] else {
+            panic!("expected a list, got {:?}", entry.blocks[0]);
+        };
+        assert_eq!(
+            items[0].spans,
+            vec![
+                ChangelogSpan::Text("Fix ".into()),
+                ChangelogSpan::Code("ACUUnit.lua".into()),
+                ChangelogSpan::Text(" (".into()),
+                ChangelogSpan::Issue {
+                    number: "7215".into(),
+                    url: "https://github.com/FAForever/fa/pull/7215".into(),
+                },
+                ChangelogSpan::Text(").".into()),
+            ],
+            "the loose list's paragraph wrapper is transparent"
+        );
+    }
+
+    #[test]
+    fn the_template_comment_is_not_part_of_the_notes() {
+        // The branch template ends with an HTML comment explaining that the
+        // build appends the content below it. It is not a patch note.
+        let entry = parse_rendered_entry(
+            "fafbeta",
+            "<main><!-- This is a template, content is appended --><p>Real.</p></main>",
+        );
+        assert_eq!(
+            entry.blocks,
+            vec![ChangelogBlock::Paragraph {
+                spans: vec![ChangelogSpan::Text("Real.".into())],
+            }]
+        );
+    }
+
+    #[test]
     fn a_page_without_front_matter_is_all_body() {
         let entry = parse_entry("fafdevelop", "## Balance\n\nSome text.\n");
         assert_eq!(entry.title, "fafdevelop");
@@ -891,6 +1588,9 @@ mod real_document_tests {
     const INDEX_HTML: &str = include_str!("fixtures/changelog-index.html");
     const POST_3837: &str = include_str!("fixtures/changelog-3837.md");
     const POST_3836: &str = include_str!("fixtures/changelog-3836.md");
+    /// The built page for the rolling beta branch, which is where its notes
+    /// exist: `docs/changelog/fafbeta.md` is the template alone.
+    const PAGE_FAFBETA: &str = include_str!("fixtures/changelog-fafbeta.html");
 
     #[test]
     fn the_published_index_parses_into_every_release() {
@@ -926,6 +1626,74 @@ mod real_document_tests {
         let latest = dated.first().expect("at least one dated release");
         assert_eq!(latest.id, "3837");
         assert_eq!(latest.date, "2026-08-14");
+    }
+
+    #[test]
+    fn the_published_branch_page_parses_into_the_same_shape_as_a_patch_note() {
+        let entry = parse_rendered_entry("fafbeta", PAGE_FAFBETA);
+        assert_eq!(entry.title, "FAF Beta Balance");
+
+        let units = entry
+            .blocks
+            .iter()
+            .filter(|block| matches!(block, ChangelogBlock::Unit { .. }))
+            .count();
+        let lists: Vec<&ChangelogListItem> = entry
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                ChangelogBlock::List { items } => Some(items),
+                _ => None,
+            })
+            .flatten()
+            .collect();
+
+        assert!(units >= 5, "expected unit headers, got {units}");
+        assert!(
+            lists.iter().filter(|item| item.change.is_some()).count() >= 15,
+            "expected the balance rows to read as changes"
+        );
+
+        // The regression itself: reading the Markdown source gave the preamble
+        // and nothing else, so the tab showed a branch with no changes in it.
+        assert!(
+            entry.blocks.len() > 20,
+            "expected the deployed changes, got {} blocks",
+            entry.blocks.len()
+        );
+        assert!(
+            entry.blocks.iter().any(|block| matches!(
+                block,
+                ChangelogBlock::Heading { text, .. } if text == "Balance"
+            )),
+            "the Balance section is the point of the page"
+        );
+
+        // Every icon must be an absolute URL: the page writes them relative to
+        // itself, and the client is not serving from faforever.github.io.
+        for block in &entry.blocks {
+            if let ChangelogBlock::Unit { units, .. } = block {
+                assert!(
+                    units
+                        .iter()
+                        .all(|unit| unit.icon_url.starts_with("https://")),
+                    "a relative icon reached the state: {units:?}"
+                );
+            }
+        }
+
+        // Nothing from the navigation, the breadcrumbs or the footer.
+        assert!(
+            !entry.blocks.iter().any(|block| matches!(
+                block,
+                ChangelogBlock::Paragraph { spans }
+                    if spans.iter().any(|span| matches!(
+                        span,
+                        ChangelogSpan::Link { text, .. } if text == "Just the Docs"
+                    ))
+            )),
+            "the theme's footer is not a patch note"
+        );
     }
 
     #[test]

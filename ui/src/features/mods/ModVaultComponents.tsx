@@ -11,6 +11,8 @@ import type {
   VaultMod,
 } from "../../ipc/bindings";
 import { formatShortDate } from "../../shared/dates";
+import { openHttpsUrl } from "../../shared/externalLinks";
+import { linkifyText } from "../../shared/linkify";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -32,6 +34,66 @@ export function toggleNote(status: ModToggleStatus): string | null {
 
 export function cleanDescription(value: string): string {
   return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
+}
+
+/**
+ * A mod description, with its links followed rather than transcribed.
+ *
+ * Authors put the URL of the real readme in here, and it was drawn as flat
+ * text: the only way to reach it was to type it out by hand. The text stays
+ * selectable beside the link, and the copy button covers the rest of the
+ * description, so neither half of "you cannot copy text from a mod
+ * description" survives.
+ */
+export function ModDescription({ description }: { description: string }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 2_000);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
+
+  if (!description) return <p className="mod-vault-description-text">{t("mods.vault.noDescription")}</p>;
+
+  return (
+    <>
+      <p className="mod-vault-description-text">
+        {linkifyText(description).map(({ text, href }, index) =>
+          href === null ? (
+            <span key={index}>{text}</span>
+          ) : (
+            <a
+              key={index}
+              href={href}
+              className="mod-vault-description-link"
+              onClick={(event) => {
+                event.preventDefault();
+                void openHttpsUrl(href);
+              }}
+            >
+              {text}
+            </a>
+          ),
+        )}
+      </p>
+      <Button
+        className="mod-vault-description-copy"
+        onClick={() => {
+          void navigator.clipboard?.writeText(description).then(
+            () => setCopied(true),
+            // A refused clipboard is not worth an error dialog: the text is
+            // right there and selectable.
+            () => setCopied(false),
+          );
+        }}
+      >
+        <Icon name="copy" size={13} />
+        {t(copied ? "mods.vault.descriptionCopied" : "mods.vault.copyDescription")}
+      </Button>
+    </>
+  );
 }
 
 function ratingLabel(mod: VaultMod): string {
@@ -105,6 +167,14 @@ export function ModCard({
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
               </span>
             )}
+            {/* Installed says only that the folder is there. Enabled is the
+                one that answers "am I playing with this right now", which
+                nothing in the vault used to say. */}
+            {installed?.enabled && (
+              <span className="mod-vault-type in-use" title={t("mods.vault.inUseHint")}>
+                {t("mods.vault.inUse")}
+              </span>
+            )}
           </span>
           <span className="mod-vault-facts-row mod-vault-facts-sub">
             <span className="mod-vault-fact is-date" title={t("mods.vault.lastUpdated")}>
@@ -169,10 +239,12 @@ export function ModDetailPanel({
   busy,
   installing,
   toggling,
+  mine = false,
   onInstall,
   onToggle,
   onUninstall,
   onToggleFavorite,
+  onRename,
 }: {
   mod: VaultMod;
   installed: InstalledMod | undefined;
@@ -180,10 +252,13 @@ export function ModDetailPanel({
   busy: boolean;
   installing: boolean;
   toggling: boolean;
+  /** Whether the signed-in account is this mod's uploader. */
+  mine?: boolean;
   onInstall: () => void;
   onToggle: () => void;
   onUninstall: () => void;
   onToggleFavorite?: () => void;
+  onRename?: () => void;
 }) {
   const { t } = useTranslation();
   const description = cleanDescription(mod.description);
@@ -205,6 +280,12 @@ export function ModDetailPanel({
               </span>
             )}
             {mod.recommended && <span className="vault-badge is-accent">{t("mods.vault.featured")}</span>}
+            {installed?.enabled && (
+              <span className="vault-badge is-ok mod-badge-in-use" title={t("mods.vault.inUseHint")}>
+                <Icon name="check" size={12} />
+                {t("mods.vault.inUse")}
+              </span>
+            )}
           </div>
           <h2 className="vault-detail-title">{mod.displayName}</h2>
           <p className="vault-detail-byline mod-vault-byline">
@@ -243,7 +324,7 @@ export function ModDetailPanel({
 
         <section className="vault-detail-description mod-vault-description">
           <h3>{t("mods.vault.description")}</h3>
-          <p>{description || t("mods.vault.noDescription")}</p>
+          <ModDescription description={description} />
         </section>
 
         <div className="vault-detail-actions mod-vault-detail-actions">
@@ -261,6 +342,22 @@ export function ModDetailPanel({
             <Button onClick={() => void openReviews("mod", mod.modId, mod.displayName)}>
               {t("mods.vault.reviews")}
             </Button>
+            {/* Only on your own upload, and only with the folder to hand: a
+                rename is a fresh publish of the local files with `mod_info.lua`
+                rewritten, so there is nothing to send without them. Drawn
+                disabled rather than hidden when the folder is missing, because
+                "why can I not rename my own mod" is the question a missing
+                button would leave. */}
+            {mine && onRename && (
+              <Button
+                disabled={busy || !installed}
+                title={t(installed ? "mods.rename.action" : "mods.rename.needsInstall")}
+                onClick={onRename}
+              >
+                <Icon name="edit" size={14} />
+                {t("mods.rename.action")}
+              </Button>
+            )}
             {installed && (
               <Button disabled={busy} onClick={onToggle}>
                 {t(toggling ? "mods.vault.toggling" : installed.enabled ? "mods.vault.disable" : "mods.vault.enable")}

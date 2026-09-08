@@ -55,6 +55,16 @@ pub struct UploadRequest {
     /// picking is the authorisation, and the path is never joined to a
     /// directory of ours, so the name guard does not apply to it.
     pub source_path: Option<String>,
+    /// Mods only: publish under this name instead of the one the folder
+    /// declares. Empty for an ordinary publish.
+    ///
+    /// FAF has no rename. A mod is its `uid`, and the vault refuses a second
+    /// upload carrying one it already holds, so changing a name means editing
+    /// `mod_info.lua`, inventing a fresh uid, and uploading the result as a new
+    /// mod. Set, the client does exactly that procedure while writing the
+    /// archive: the author's own folder is never touched, so the copy they
+    /// play with keeps working under its old identity.
+    pub rename_to: String,
 }
 
 /// How far along a publish is.
@@ -206,6 +216,7 @@ mod tests {
             display_name: "My Map".into(),
             ranked: false,
             source_path: None,
+            rename_to: String::new(),
         }
     }
 

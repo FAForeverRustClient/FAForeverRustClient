@@ -94,6 +94,10 @@ export function ModUploadModal({
             // Installed, so there is no archive to point at: the backend finds
             // the folder in the user's mods directory itself.
             sourcePath: null,
+            // Renaming is not published from here. It belongs on the vault
+            // entry of the mod being renamed, where somebody looking for it
+            // will actually be.
+            renameTo: "",
           },
         },
       },

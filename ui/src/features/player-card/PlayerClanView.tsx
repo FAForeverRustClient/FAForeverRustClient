@@ -6,6 +6,7 @@ import { Button } from "../../design-system/Button";
 import { openPlayerCard } from "./playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
+import { ClanManagement } from "./ClanManagement";
 
 function displayDate(value: string): string {
   return formatDate(value, "N/A");
@@ -15,15 +16,24 @@ export function PlayerClanView({
   clan,
   selfLogin,
   onMessageLeader,
+  manageable = false,
 }: {
   clan: PlayerClan | null;
   selfLogin: string;
   onMessageLeader: (login: string) => Promise<void>;
+  /** Whether this is your own card, and so whether anything here can be changed. */
+  manageable?: boolean;
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const members = useMemo(() => clan?.members.filter((member) => member.login.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) ?? [], [clan, search]);
-  if (!clan) return <div className="player-card-empty muted">{t("playerCard.clan.none")}</div>;
+  // On your own card, "no clan" is not an empty state: it is the one place
+  // that offers founding one and redeeming an invitation to one.
+  if (!clan) {
+    return manageable
+      ? <ClanManagement />
+      : <div className="player-card-empty muted">{t("playerCard.clan.none")}</div>;
+  }
   const leader = clan.leader.trim();
   const canMessageLeader = leader !== "" && leader.localeCompare(selfLogin, undefined, { sensitivity: "base" }) !== 0;
   const websiteUrl = optionalHttpsUrl(clan.websiteUrl);
@@ -59,6 +69,7 @@ export function PlayerClanView({
           ))}
         </div>
       </section>
+      {manageable && <ClanManagement />}
     </div>
   );
 }

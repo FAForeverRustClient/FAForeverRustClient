@@ -28,6 +28,7 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
+use faf_domain::protocol::mod_info;
 use faf_domain::state::{is_safe_folder_name, UploadKind, UploadRequest, UploadStatus};
 use serde_json::Value;
 use tokio::io::AsyncReadExt as _;
@@ -111,7 +112,7 @@ async fn run(
 
     let source = source_folder(request)?;
     let _ = tx.send(UploadStatus::Compressing).await;
-    let archive = zip_folder(&source, request.kind).await?;
+    let archive = zip_folder(&source, request.kind, rename(request)).await?;
 
     // Always remove the temporary archive, however this ends: both reference
     // clients delete it in a `finally`.
@@ -204,6 +205,18 @@ fn looks_like(folder: &Path, kind: UploadKind) -> Result<(), String> {
     })
 }
 
+/// Whether this archive entry is the mod's own `mod_info.lua`.
+///
+/// Only the one at the archive root: a mod that ships an example folder with
+/// its own `mod_info.lua` must not have that one renamed instead.
+fn is_root_mod_info(archive_name: &str) -> bool {
+    let mut parts = archive_name.split('/');
+    let (Some(_root), Some(file), None) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    file.eq_ignore_ascii_case("mod_info.lua")
+}
+
 /// A name safe to put in a multipart header.
 ///
 /// An installed folder's name has already passed `is_safe_folder_name`; a
@@ -229,7 +242,54 @@ fn archive_file_name(folder_name: &str) -> String {
 /// Zip `source` into a temporary archive, with the folder itself as the single
 /// top-level entry: the shape the vault expects, and the same shape our own
 /// installer reads back (see `infra::maps::extract_zip`).
-async fn zip_folder(source: &Path, kind: UploadKind) -> Result<PathBuf, String> {
+/// The rename to apply while archiving, with the fresh uid it needs.
+///
+/// Generated here rather than in the domain because randomness is a side
+/// effect, and generated per publish because reusing one is the single thing
+/// the vault will reject.
+fn rename(request: &UploadRequest) -> Option<Rename> {
+    let name = request.rename_to.trim();
+    if name.is_empty() || request.kind != UploadKind::Mod {
+        return None;
+    }
+    Some(Rename {
+        name: name.to_string(),
+        uid: fresh_uid(),
+    })
+}
+
+/// A version 4 UUID, which is what the mods in the vault carry as their uid.
+fn fresh_uid() -> String {
+    use rand::RngCore;
+    let mut bytes = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    // The version and variant nibbles, so this is a well-formed v4 rather than
+    // 32 random hex characters that happen to be the right length.
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    let hex: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
+}
+
+/// What a publish-under-a-new-name substitutes into the archive.
+#[derive(Debug, Clone)]
+struct Rename {
+    name: String,
+    uid: String,
+}
+
+async fn zip_folder(
+    source: &Path,
+    kind: UploadKind,
+    rename: Option<Rename>,
+) -> Result<PathBuf, String> {
     let source = source.to_path_buf();
     let target = cache_dir()?.join(format!(
         "upload-{}-{}.zip",
@@ -242,7 +302,7 @@ async fn zip_folder(source: &Path, kind: UploadKind) -> Result<PathBuf, String> 
 
     let output = target.clone();
     // `zip` is synchronous and this walks a whole directory.
-    tokio::task::spawn_blocking(move || write_archive(&source, &output))
+    tokio::task::spawn_blocking(move || write_archive(&source, &output, rename.as_ref()))
         .await
         .map_err(|error| format!("compression task failed: {error}"))??;
 
@@ -261,7 +321,8 @@ async fn zip_folder(source: &Path, kind: UploadKind) -> Result<PathBuf, String> 
     Ok(target)
 }
 
-fn write_archive(source: &Path, target: &Path) -> Result<(), String> {
+fn write_archive(source: &Path, target: &Path, rename: Option<&Rename>) -> Result<(), String> {
+    let mut renamed = false;
     let root_name = source
         .file_name()
         .and_then(|name| name.to_str())
@@ -303,8 +364,20 @@ fn write_archive(source: &Path, target: &Path) -> Result<(), String> {
                     .map_err(|error| format!("could not add {name}: {error}"))?;
                 stack.push(path);
             } else if file_type.is_file() {
-                let bytes = std::fs::read(&path)
+                let mut bytes = std::fs::read(&path)
                     .map_err(|error| format!("could not read {}: {error}", path.display()))?;
+                // The rename happens on the way into the archive, so the
+                // author's own installed copy is left exactly as it was: they
+                // keep playing with the mod they have while the vault gets the
+                // renamed one.
+                if let Some(rename) = rename.filter(|_| !renamed && is_root_mod_info(&name)) {
+                    let source_text = String::from_utf8(bytes).map_err(|_| {
+                        "mod_info.lua is not valid UTF-8, so it cannot be renamed".to_string()
+                    })?;
+                    bytes = mod_info::rename_mod_info(&source_text, &rename.name, &rename.uid)
+                        .into_bytes();
+                    renamed = true;
+                }
                 writer
                     .start_file(&name, options)
                     .map_err(|error| format!("could not add {name}: {error}"))?;
@@ -323,6 +396,12 @@ fn write_archive(source: &Path, target: &Path) -> Result<(), String> {
 
     if !wrote_anything {
         return Err("that folder is empty".to_string());
+    }
+    if rename.is_some() && !renamed {
+        // Publishing the folder unchanged under a new title would put an entry
+        // in the vault whose own file still calls it something else, and whose
+        // uid is one the vault already holds.
+        return Err("that folder holds no mod_info.lua, so it cannot be renamed".to_string());
     }
     writer
         .finish()
@@ -661,6 +740,129 @@ mod tests {
     }
 
     #[test]
+    fn publishing_under_a_new_name_rewrites_the_archive_and_not_the_folder() {
+        // FAF has no rename: a mod is its uid, and the vault refuses one it
+        // already holds. So the copy that goes up carries the new name and a
+        // fresh uid, and the copy the author plays with is untouched.
+        let root = temp_dir("rename");
+        let source = root.join("MyMod");
+        std::fs::create_dir_all(source.join("hook")).unwrap();
+        let original = "name = \"Old\"\nuid = \"1111\"\nversion = 2\n";
+        std::fs::write(source.join("mod_info.lua"), original).unwrap();
+        std::fs::write(source.join("hook").join("x.lua"), b"-- x").unwrap();
+
+        let archive = root.join("out.zip");
+        write_archive(
+            &source,
+            &archive,
+            Some(&Rename {
+                name: "New".into(),
+                uid: "2222".into(),
+            }),
+        )
+        .expect("the archive should be written");
+
+        let file = std::fs::File::open(&archive).unwrap();
+        let mut zip = zip::ZipArchive::new(file).unwrap();
+        let mut published = String::new();
+        {
+            use std::io::Read as _;
+            zip.by_name("MyMod/mod_info.lua")
+                .expect("mod_info.lua is in the archive")
+                .read_to_string(&mut published)
+                .unwrap();
+        }
+        assert!(published.contains(r#"name = "New""#), "{published}");
+        assert!(published.contains(r#"uid = "2222""#), "{published}");
+        assert!(published.contains("version = 2"), "{published}");
+
+        let on_disk = std::fs::read_to_string(source.join("mod_info.lua")).unwrap();
+        assert_eq!(on_disk, original, "the author's own folder was edited");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_folder_with_no_mod_info_is_refused_rather_than_published_unrenamed() {
+        // Publishing it anyway would put an entry in the vault whose own file
+        // still calls it something else, under a uid the vault already holds.
+        let root = temp_dir("rename-missing");
+        let source = root.join("NotAMod");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("readme.txt"), b"hello").unwrap();
+
+        let result = write_archive(
+            &source,
+            &root.join("out.zip"),
+            Some(&Rename {
+                name: "New".into(),
+                uid: "2222".into(),
+            }),
+        );
+        assert!(result.is_err(), "{result:?}");
+        assert!(result.unwrap_err().contains("cannot be renamed"));
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn only_the_mod_s_own_mod_info_is_the_one_renamed() {
+        // A mod that ships an example folder carries a second mod_info.lua,
+        // and renaming that one would leave the real one untouched.
+        assert!(is_root_mod_info("MyMod/mod_info.lua"));
+        assert!(is_root_mod_info("MyMod/MOD_INFO.LUA"));
+        assert!(!is_root_mod_info("MyMod/example/mod_info.lua"));
+        assert!(!is_root_mod_info("MyMod/mod_info.lua.bak"));
+    }
+
+    #[test]
+    fn a_fresh_uid_is_a_uuid_and_never_the_same_one_twice() {
+        let first = fresh_uid();
+        let second = fresh_uid();
+        assert_ne!(first, first.to_uppercase(), "lower case hex");
+        assert_ne!(
+            first, second,
+            "a reused uid is the one thing the vault refuses"
+        );
+        let groups: Vec<usize> = first.split('-').map(str::len).collect();
+        assert_eq!(groups, vec![8, 4, 4, 4, 12], "{first}");
+        assert_eq!(&first[14..15], "4", "version nibble: {first}");
+        assert!(
+            matches!(&first[19..20], "8" | "9" | "a" | "b"),
+            "variant nibble: {first}"
+        );
+    }
+
+    #[test]
+    fn a_rename_is_only_ever_applied_to_a_mod() {
+        // Maps have no uid to regenerate and no mod_info.lua to rewrite, so a
+        // stray value in the field must not reach the archive writer.
+        let map = UploadRequest {
+            kind: UploadKind::Map,
+            folder_name: "x.v0001".into(),
+            display_name: "x".into(),
+            ranked: false,
+            source_path: None,
+            rename_to: "Something".into(),
+        };
+        assert!(rename(&map).is_none());
+
+        let blank = UploadRequest {
+            kind: UploadKind::Mod,
+            rename_to: "   ".into(),
+            ..map.clone()
+        };
+        assert!(rename(&blank).is_none(), "whitespace is not a new name");
+
+        let renamed = UploadRequest {
+            kind: UploadKind::Mod,
+            rename_to: "  Total Mayhem  ".into(),
+            ..map
+        };
+        assert_eq!(rename(&renamed).unwrap().name, "Total Mayhem");
+    }
+
+    #[test]
     fn an_archive_nests_everything_under_the_folder_name() {
         // The vault expects a single top-level directory, and it is the shape
         // our own installer reads back.
@@ -671,7 +873,7 @@ mod tests {
         std::fs::write(source.join("sub").join("script.lua"), b"-- x").unwrap();
 
         let archive = root.join("out.zip");
-        write_archive(&source, &archive).expect("the archive should be written");
+        write_archive(&source, &archive, None).expect("the archive should be written");
 
         let file = std::fs::File::open(&archive).unwrap();
         let mut zip = zip::ZipArchive::new(file).unwrap();
@@ -697,7 +899,7 @@ mod tests {
         let source = root.join("nothing.v0001");
         std::fs::create_dir_all(&source).unwrap();
 
-        let result = write_archive(&source, &root.join("out.zip"));
+        let result = write_archive(&source, &root.join("out.zip"), None);
         assert!(result.is_err(), "{result:?}");
         assert!(result.unwrap_err().contains("empty"));
 
@@ -716,7 +918,7 @@ mod tests {
         std::fs::write(&private, b"must not be published").unwrap();
         symlink(&private, source.join("innocent.txt")).unwrap();
 
-        let result = write_archive(&source, &root.join("out.zip"));
+        let result = write_archive(&source, &root.join("out.zip"), None);
         assert!(result.is_err(), "a symlink must never be followed");
         assert!(result.unwrap_err().contains("symbolic links"));
 
@@ -734,6 +936,7 @@ mod tests {
                 display_name: "x".into(),
                 ranked: false,
                 source_path: None,
+                rename_to: String::new(),
             };
             let result = source_folder(&request);
             assert!(result.is_err(), "{name} must be refused");
@@ -752,6 +955,7 @@ mod tests {
             display_name: "Ghost Map".into(),
             ranked: false,
             source_path: None,
+            rename_to: String::new(),
         };
         let error = source_folder(&request).unwrap_err();
         assert!(error.contains("Ghost Map"), "names what is missing");
@@ -778,6 +982,7 @@ mod tests {
                 display_name: "My Mod".into(),
                 ranked: false,
                 source_path: None,
+                rename_to: String::new(),
             })
             .await;
 
@@ -805,6 +1010,7 @@ mod tests {
             display_name: "Brand New Map".into(),
             ranked: false,
             source_path: Some(source.to_string_lossy().into_owned()),
+            rename_to: String::new(),
         };
         assert_eq!(source_folder(&request).unwrap(), source);
 
@@ -826,6 +1032,7 @@ mod tests {
             display_name: "holiday photos".into(),
             ranked: false,
             source_path: Some(source.to_string_lossy().into_owned()),
+            rename_to: String::new(),
         };
         let error = source_folder(&request).unwrap_err();
         assert!(error.contains(".scmap"), "{error}");
@@ -851,6 +1058,7 @@ mod tests {
                 display_name: "My Map".into(),
                 ranked: true,
                 source_path: None,
+                rename_to: String::new(),
             })
             .await;
 
@@ -941,6 +1149,7 @@ mod tests {
             display_name: "Test".into(),
             ranked: true,
             source_path: None,
+            rename_to: String::new(),
         };
         let total = std::fs::metadata(&archive).unwrap().len();
         let result = tokio::time::timeout(

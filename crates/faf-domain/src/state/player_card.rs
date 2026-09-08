@@ -72,6 +72,12 @@ pub struct PlayerNameRecord {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ClanMember {
+    /// The `clanMembership` row, which is what a removal deletes.
+    ///
+    /// Held beside the player because the two are different resources: the
+    /// server takes a membership id and refuses a player id, and the roster is
+    /// the only place that join is already made.
+    pub membership_id: String,
     pub player_id: i32,
     pub login: String,
     pub joined_at: String,

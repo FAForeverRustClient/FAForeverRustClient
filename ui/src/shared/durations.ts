@@ -20,6 +20,22 @@ export function formatDuration(seconds: number | null, fallback = ""): string {
   return `${minutes}m ${String(total % 60).padStart(2, "0")}s`;
 }
 
+/**
+ * How long a game has been going, as `24m` or `1h 12m`.
+ *
+ * Neither of the two above it. `formatDuration` keeps seconds below the hour,
+ * which is noise on a value nobody reads to the second and would force the
+ * view to tick once a second to stay honest. `formatRelativeDuration` answers
+ * "now" under a minute, which is right for the age of a lobby listing and
+ * wrong as the value of a field labelled "game time".
+ */
+export function formatGameTime(seconds: number): string {
+  const total = wholeSeconds(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 interface RelativeDurationOptions {
   nowLabel?: string;
   suffix?: string;

@@ -20,7 +20,9 @@ export const openUpload = (kind: UploadKind, folderName: string, displayName: st
     kind: "Uploads",
     command: {
       type: "open",
-      payload: { request: { kind, folderName, displayName, ranked: false, sourcePath: null } },
+      payload: {
+        request: { kind, folderName, displayName, ranked: false, sourcePath: null, renameTo: "" },
+      },
     },
   });
 
@@ -50,7 +52,14 @@ export async function openUploadFromDisk(kind: UploadKind): Promise<void> {
     command: {
       type: "open",
       payload: {
-        request: { kind, folderName, displayName: folderName, ranked: false, sourcePath: path },
+        request: {
+          kind,
+          folderName,
+          displayName: folderName,
+          ranked: false,
+          sourcePath: path,
+          renameTo: "",
+        },
       },
     },
   });
@@ -101,6 +110,14 @@ export function UploadDialog() {
       {/* The full path when it was picked from disk: the folder name alone is
           not enough to tell two copies apart. */}
       <p className="upload-folder muted">{request.sourcePath ?? request.folderName}</p>
+
+      {/* A rename is not a rename as far as FAF is concerned: it is a new mod
+          with a new uid, and this is the last screen before that happens. */}
+      {request.renameTo !== "" && (
+        <p className="upload-status muted">
+          {t("uploads.renamingTo", { name: request.renameTo })}
+        </p>
+      )}
 
       {/* Maps only: the ranked flag decides whether games on it affect
           ratings. Neither reference client offers an equivalent for mods. */}

@@ -10,8 +10,10 @@ pub trait ChangelogPort: Send + Sync {
 
     /// One release's note.
     ///
-    /// Takes the source URL rather than deriving it from `id`, because the
-    /// index is what knows where a release's Markdown lives: dated posts and
-    /// the two rolling branches sit in different directories.
-    async fn load_entry(&self, id: String, source_url: String) -> Result<ChangelogEntry, String>;
+    /// Takes the whole release rather than an id, because the index is what
+    /// knows both where the document lives and which of the two it is: a dated
+    /// post is Markdown under `_posts`, while a rolling branch is only complete
+    /// in its built page. Handing over an id and a URL left the adapter to
+    /// guess the second from the shape of the first.
+    async fn load_entry(&self, release: ChangelogRelease) -> Result<ChangelogEntry, String>;
 }

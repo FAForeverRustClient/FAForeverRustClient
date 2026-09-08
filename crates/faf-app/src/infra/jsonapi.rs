@@ -176,6 +176,14 @@ pub(crate) fn request_error(error: reqwest::Error) -> RequestError {
     }
 }
 
+/// A failed write, as the category the caller can act on.
+///
+/// The same reading as a failed read: they differ only in which verb produced
+/// the status, and a 403 on a clan edit means what a 403 on a clan read means.
+pub(crate) fn write_error(status: reqwest::StatusCode, path: &str, body: &str) -> RequestError {
+    response_error(status, path, body)
+}
+
 fn response_error(status: reqwest::StatusCode, path: &str, body: &str) -> RequestError {
     let detail = api_error_detail(body);
     match status {
@@ -249,6 +257,59 @@ pub(crate) async fn patch_resource(
         .await
         .map_err(|error| format!("request failed: {error}"))?;
     write_response(url.path(), response).await.map(|_| ())
+}
+
+/// Update a resource with a caller-supplied `data` object.
+///
+/// The counterpart of [`patch_resource`] for a write that changes a
+/// *relationship* rather than an attribute: handing a clan to a new leader is
+/// `relationships.leader`, which an attributes-only body cannot express.
+///
+/// Typed failures, because the categories are the point of these writes: a 403
+/// means somebody else is the leader now, and a 409 means the change collided
+/// with one made elsewhere.
+pub(crate) async fn patch_document(
+    http: &reqwest::Client,
+    url: url::Url,
+    token: &str,
+    data: Value,
+) -> Result<(), RequestError> {
+    let response = http
+        .patch(url.clone())
+        .bearer_auth(token)
+        .header(reqwest::header::CONTENT_TYPE, MEDIA_TYPE)
+        .header(reqwest::header::ACCEPT, MEDIA_TYPE)
+        .json(&serde_json::json!({ "data": data }))
+        .send()
+        .await
+        .map_err(request_error)?;
+    typed_write_response(url.path(), response).await
+}
+
+/// Delete a resource, keeping the failure's category.
+pub(crate) async fn delete_resource_typed(
+    http: &reqwest::Client,
+    url: url::Url,
+    token: &str,
+) -> Result<(), RequestError> {
+    let response = http
+        .delete(url.clone())
+        .bearer_auth(token)
+        .header(reqwest::header::ACCEPT, MEDIA_TYPE)
+        .send()
+        .await
+        .map_err(request_error)?;
+    typed_write_response(url.path(), response).await
+}
+
+/// A write's outcome, keeping both the server's sentence and its category.
+async fn typed_write_response(path: &str, response: reqwest::Response) -> Result<(), RequestError> {
+    let status = response.status();
+    let body = bounded_document_body(response).await?;
+    if !status.is_success() {
+        return Err(write_error(status, path, &body));
+    }
+    Ok(())
 }
 
 pub(crate) async fn delete_resource(

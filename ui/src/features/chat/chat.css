@@ -1524,3 +1524,63 @@ img.chat-game-map {
     display: none;
   }
 }
+
+/* The side panel of a private conversation. It occupies the column a channel
+   fills with its roster, so it matches the roster's frame rather than the
+   floating popover's: no shadow, no fixed position, and it scrolls with its
+   own content when a lineup is long. */
+.chat-conversation-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.chat-conversation-aside-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chat-conversation-aside-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+}
+
+/* The map is a thumbnail here rather than the badge it is in a roster row:
+   the panel has the width for it, and it is the fastest way to recognise a
+   game you are being told about. */
+.chat-conversation-aside .chat-game-card-map {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.chat-conversation-aside .chat-game-popover-head {
+  align-items: center;
+}
+
+.chat-conversation-aside .chat-game-teams {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.chat-game-elapsed b {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.chat-aside-action {
+  align-self: flex-start;
+}

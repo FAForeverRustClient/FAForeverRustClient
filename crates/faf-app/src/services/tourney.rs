@@ -1267,21 +1267,54 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
     match ctx.ports.tourney.list().await {
         Ok(mut events) => {
             // Sorted here rather than in the view, because ordering is part of
-            // the state every consumer shares. Signups come first, being the
-            // one thing a player can still act on, then running, then the rest,
-            // newest first within each group.
-            events.sort_by(|left, right| {
-                rank(left.status)
-                    .cmp(&rank(right.status))
-                    .then_with(|| right.event_date.cmp(&left.event_date))
-                    .then_with(|| right.created_at.cmp(&left.created_at))
-            });
+            // the state every consumer shares.
+            sort_events(&mut events, super::now_seconds());
             out.emit(TourneyEvent::Loaded { events });
         }
         Err(error) => out.emit(TourneyEvent::LoadFailed {
             reason: error.to_string(),
             kind: error.kind(),
         }),
+    }
+}
+
+/// The list, in the order every consumer reads it.
+///
+/// What a player can still act on comes first, and within one status the
+/// soonest event does: a signup that closes tomorrow is worth more than one
+/// three months out, which is the whole of what "closest upcoming first" asks
+/// for. Once a date is behind us it stops being a countdown and becomes an
+/// archive entry, so the past runs the other way, most recent first.
+///
+/// `now` is passed in rather than read here so the order is a pure function of
+/// its inputs and can be asserted without a clock.
+fn sort_events(events: &mut [faf_domain::state::Tourney], now: u32) {
+    events.sort_by(|left, right| {
+        rank(left.status)
+            .cmp(&rank(right.status))
+            .then_with(|| timing(left.event_date, now).cmp(&timing(right.event_date, now)))
+            .then_with(|| right.created_at.cmp(&left.created_at))
+    });
+}
+
+/// Where an event sits relative to now, as a sort key.
+///
+/// The derived `Ord` is the ordering: variants in declaration order, so
+/// everything still ahead outranks everything behind it, and an event with no
+/// date at all sorts last rather than being read as "happening imminently".
+/// [`Reverse`] on the past is what turns an archive the right way round.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum Timing {
+    Upcoming(u32),
+    Past(std::cmp::Reverse<u32>),
+    Undated,
+}
+
+fn timing(event_date: Option<u32>, now: u32) -> Timing {
+    match event_date {
+        Some(at) if at >= now => Timing::Upcoming(at),
+        Some(at) => Timing::Past(std::cmp::Reverse(at)),
+        None => Timing::Undated,
     }
 }
 
@@ -1584,7 +1617,7 @@ fn failed(action: TourneyAction, error: &RequestError) -> TourneyEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use faf_domain::state::TourneyStatus;
+    use faf_domain::state::{Tourney, TourneyStatus};
 
     #[test]
     fn the_list_puts_what_a_player_can_still_join_first() {
@@ -1606,6 +1639,57 @@ mod tests {
                 TourneyStatus::Finished,
             ]
         );
+    }
+
+    #[test]
+    fn the_soonest_event_in_a_group_is_the_one_at_the_top() {
+        // The complaint this answers: a signup three months out sat above one
+        // closing tomorrow, because the list was ordered newest-first.
+        const DAY: u32 = 86_400;
+        let now = 100 * DAY;
+        let at = |id: &str, event_date: Option<u32>| Tourney {
+            id: id.into(),
+            status: TourneyStatus::Signup,
+            event_date,
+            ..Tourney::default()
+        };
+        let mut events = vec![
+            at("far", Some(now + 90 * DAY)),
+            at("undated", None),
+            at("stale", Some(now - 5 * DAY)),
+            at("soon", Some(now + DAY)),
+            at("older", Some(now - 60 * DAY)),
+        ];
+        sort_events(&mut events, now);
+        let order: Vec<&str> = events.iter().map(|event| event.id.as_str()).collect();
+        // Ahead of us, soonest first; then the past, most recent first; then
+        // the one that never said when it happens.
+        assert_eq!(order, ["soon", "far", "stale", "older", "undated"]);
+    }
+
+    #[test]
+    fn what_a_player_can_join_still_outranks_what_is_happening_sooner() {
+        // Timing is the tie-break inside a status, not a replacement for it: a
+        // running event tonight does not push tomorrow's open signup down.
+        const DAY: u32 = 86_400;
+        let now = 100 * DAY;
+        let mut events = vec![
+            Tourney {
+                id: "running-tonight".into(),
+                status: TourneyStatus::Running,
+                event_date: Some(now),
+                ..Tourney::default()
+            },
+            Tourney {
+                id: "signup-tomorrow".into(),
+                status: TourneyStatus::Signup,
+                event_date: Some(now + DAY),
+                ..Tourney::default()
+            },
+        ];
+        sort_events(&mut events, now);
+        let order: Vec<&str> = events.iter().map(|event| event.id.as_str()).collect();
+        assert_eq!(order, ["signup-tomorrow", "running-tonight"]);
     }
 
     #[test]

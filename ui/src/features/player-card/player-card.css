@@ -1440,3 +1440,131 @@
 .player-maps-sort:hover svg {
   opacity: 1;
 }
+
+/* Clan management, on your own card's clan tab. Panels rather than one long
+   form: founding, inviting, the roster and closing down are four separate
+   decisions and reading them as one list of fields invites the wrong click. */
+.clan-management {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.clan-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.clan-panel h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.clan-banner {
+  margin: 0;
+  font-size: 12px;
+}
+
+.clan-banner.is-error {
+  color: var(--color-error);
+}
+
+.clan-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  gap: var(--space-2);
+}
+
+.clan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.clan-field > span {
+  color: var(--color-muted);
+}
+
+.clan-field input,
+.clan-field textarea {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.clan-field-wide,
+.clan-form-actions {
+  grid-column: 1 / -1;
+}
+
+.clan-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.clan-candidates,
+.clan-roster-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clan-candidates li,
+.clan-roster-admin li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.clan-invitation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.clan-invitation p {
+  margin: 0;
+}
+
+/* The token is long, wraps badly and is meant to be selected whole, so it is
+   a read-only field rather than a paragraph. */
+.clan-invitation-token {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+.clan-invitation-actions {
+  display: flex;
+  gap: var(--space-2);
+}

@@ -7,6 +7,7 @@
 pub mod auth;
 pub mod changelog;
 pub mod chat;
+pub mod clan;
 pub mod client_update;
 pub mod coop;
 pub mod failure;
@@ -41,6 +42,10 @@ pub use chat::{
     read_marker_key, ChatChannel, ChatCommand, ChatEvent, ChatMessage, ChatMessageKind, ChatState,
     ChatStatus, ChatUser, MessageReactions, Reaction, TypingNotice, DEFAULT_CHANNEL,
     DEFAULT_NEWBIE_THRESHOLD, NEWBIE_CHANNEL, TYPING_TIMEOUT_SECONDS,
+};
+pub use clan::{
+    ClanAction, ClanActionStatus, ClanCommand, ClanDraft, ClanDraftProblem, ClanEvent,
+    ClanIdentity, ClanInvitation, ClanState, ClanStatus, MAX_CLAN_TAG,
 };
 pub use client_update::{
     compare_versions, is_release_version, should_update, strip_version_prefix, ClientRelease,
@@ -182,6 +187,7 @@ pub struct AppState {
     pub nav: NavState,
     pub notifications: NotificationState,
     pub chat: ChatState,
+    pub clan: ClanState,
     pub coop: CoopState,
     pub lobby: LobbyState,
     pub replays: ReplayState,

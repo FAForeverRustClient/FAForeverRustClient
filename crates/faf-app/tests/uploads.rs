@@ -76,6 +76,7 @@ fn request(kind: UploadKind, folder: &str) -> UploadRequest {
         display_name: "Something".into(),
         ranked: false,
         source_path: None,
+        rename_to: String::new(),
     }
 }
 
