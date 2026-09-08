@@ -1,6 +1,7 @@
 import type {
   AuthEvent,
   AuthState,
+  EventReminder,
   InstallEvent,
   InstallState,
   NavEvent,
@@ -67,9 +68,33 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
       return { ...state, browsing: normalizeBrowsingPreferences(event.payload.preferences) };
     case "mapGeneratorChanged":
       return { ...state, mapGenerator: event.payload.preferences };
+    case "eventsChanged":
+      return {
+        ...state,
+        events: {
+          ...event.payload.preferences,
+          reminders: dedupedReminders(event.payload.preferences.reminders),
+        },
+      };
     case "cacheInfoUpdated":
       return { ...state, cacheInfo: event.payload.info };
   }
+}
+
+/**
+ * Twin of `EventsPreferences::pruned`, for the half of it that is not the clock.
+ *
+ * The Rust side prunes by time at the persistence boundary, where the clock is,
+ * and deduplicates in the reducer, where a hand-edited settings file with the
+ * same occurrence twice would otherwise be raised twice. The first copy wins.
+ */
+function dedupedReminders(reminders: EventReminder[]): EventReminder[] {
+  const seen = new Set<string>();
+  return reminders.filter((reminder) => {
+    if (seen.has(reminder.occurrenceId)) return false;
+    seen.add(reminder.occurrenceId);
+    return true;
+  });
 }
 
 export function reduceNav(state: NavState, event: NavEvent): NavState {

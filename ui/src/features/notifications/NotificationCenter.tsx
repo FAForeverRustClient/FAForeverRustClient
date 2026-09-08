@@ -27,6 +27,7 @@ function actionLabel(action: NotificationAction | null): string | null {
     case "acceptPartyInvite": return t("notifications.action.acceptPartyInvite");
     case "watchLive": return t("notifications.action.watchLive");
     case "openSettings": return t("notifications.action.openSettings");
+    case "openEvent": return t("notifications.action.openEvent");
   }
 }
 
@@ -55,6 +56,16 @@ async function runAction(item: ClientNotification) {
       case "watchLive":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
         await ipc.dispatch({ kind: "Replays", command: { type: "watchLive", payload: action.payload.target } });
+        break;
+      case "openEvent":
+        // The calendar opens on the occurrence the reminder was set for, which
+        // may be weeks from the month the tab was left on: the anchor moves
+        // with the selection rather than the reader having to find it.
+        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "events" } } });
+        await ipc.settle({
+          kind: "Events",
+          command: { type: "select", payload: { occurrenceId: action.payload.occurrenceId } },
+        });
         break;
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });

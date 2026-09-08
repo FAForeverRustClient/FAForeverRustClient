@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -27,6 +27,7 @@ export type AppState = {
 	chat: ChatState,
 	clan: ClanState,
 	coop: CoopState,
+	events: EventsState,
 	lobby: LobbyState,
 	replays: ReplayState,
 	maps: MapsState,
@@ -297,6 +298,60 @@ export type CachedGameVersion = {
 	sizeBytes: number | null,
 	url: string | null,
 };
+
+/**
+ *  One entry of the community catalogue.
+ *
+ *  Times are Unix seconds in UTC, and stay that way through the whole client.
+ *  The reader's own zone is applied when it is drawn, which is what the issue
+ *  asks for and is also the only thing a desktop client can get right: the
+ *  operating system already knows where the player is, and a timezone setting
+ *  is one more thing that can be wrong.
+ */
+export type CalendarEvent = {
+	/**
+	 *  Stable within the catalogue. Also part of the reminder key, so renaming
+	 *  one drops the reminders people set on it.
+	 */
+	id: string,
+	title: string,
+	/**  One or two sentences. Plain text: the calendar renders no markup. */
+	summary: string,
+	category: EventCategory,
+	origin: EventOrigin,
+	/**  Who is putting it on, in their own words. Empty when nobody said. */
+	host: string,
+	/**  Unix seconds, UTC. */
+	startsAt: number,
+	/**  Unix seconds, or 0 when the entry states no end. */
+	endsAt: number,
+	/**
+	 *  A day rather than a moment: drawn with no time and never converted.
+	 *
+	 *  A patch release is the case that matters: "3837 was released on the
+	 *  14th" is a date, and showing it as 02:00 in one player's zone and 21:00
+	 *  the previous day in another's would be worse than saying nothing.
+	 */
+	allDay: boolean,
+	links: EventLink[],
+	/**  How it repeats, or `None` for a one-off. */
+	recurrence: Recurrence | null,
+	/**  When repeating stops, in Unix seconds, or 0 for open-ended. */
+	recursUntil: number,
+};
+
+/**  Which way the calendar is drawn. */
+export type CalendarView =
+/**  A grid of the whole month. The issue asked for it first. */
+"month" |
+/**  Seven days, with times. */
+"week" |
+/**
+ *  Everything still to come, nearest first. Not in the issue, and the one
+ *  most people will leave it on: a calendar grid answers "what is on the
+ *  14th", and this answers "what is next".
+ */
+"upcoming";
 
 /**
  *  Somebody allowed to watch the whole event in order to cast it.
@@ -1506,6 +1561,197 @@ export type DraftPick = {
 	 */
 	atIndex: number,
 };
+
+/**  The catalogue document, as the port hands it over. */
+export type EventCatalogue = {
+	events: CalendarEvent[],
+	source: EventsSource,
+	/**
+	 *  Where "suggest an event" goes: the catalogue repository's issue form.
+	 *  Empty hides the button rather than sending anybody to a guess.
+	 */
+	submitUrl: string,
+};
+
+/**
+ *  What sort of thing an entry is.
+ *
+ *  The list the issue asked for, plus the ladder pool rotation, which is the
+ *  one recurring date the client can state without being told: FAF rotates the
+ *  pool on the first of the month.
+ */
+export type EventCategory =
+/**  A game patch: released, or announced for a date. */
+"patch" |
+/**
+ *  A tournament, whether it came from the tournament service or the
+ *  catalogue.
+ */
+"tournament" |
+/**  A get-together, online or in person. */
+"meetup" |
+/**  Community Game Night. */
+"cgn" |
+/**  The ladder map pool rotating. */
+"ladderPool" | "other";
+
+/**  One button on an entry: join the Discord, read the rules, watch the stream. */
+export type EventLink = {
+	label: string,
+	/**
+	 *  An `https` address. Checked by the boundary that reads the catalogue,
+	 *  never here: this type holds what was published, and the reader decides
+	 *  what it is willing to offer.
+	 */
+	url: string,
+};
+
+/**  Who is running it. Drawn as a tag, exactly as the issue asked. */
+export type EventOrigin =
+/**
+ *  FAF itself: a patch, an FAF-run tournament, an announcement from the
+ *  association.
+ */
+"official" |
+/**  Anybody else: a club, a Discord, a player. */
+"community";
+
+/**
+ *  One reminder this client will raise, and has to survive a restart.
+ *
+ *  It carries the title and the start rather than an id to look up, because the
+ *  occurrence it names is not always in the events slice: a tournament comes
+ *  from the tournament service and a released patch from the changelog. The
+ *  ticker needs what to say and when, and nothing else.
+ */
+export type EventReminder = {
+	/**
+	 *  The occurrence key: `catalogue:<id>@<unix start>`, `tourney:<id>` or
+	 *  `patch:<id>`, as `ui/src/features/events/calendarFeed.ts` builds them.
+	 *
+	 *  One reminder per *occurrence* rather than per event, so a weekly game
+	 *  night can be watched for one week only. The start rather than the date
+	 *  is in the key so that it does not depend on the reader's time zone.
+	 */
+	occurrenceId: string,
+	title: string,
+	/**  Unix seconds the occurrence starts at. */
+	startsAt: number,
+	/**  How far ahead to raise it, in minutes. */
+	leadMinutes: number,
+	/**
+	 *  Whether it has already been raised.
+	 *
+	 *  Persisted, so a client that is restarted between the reminder and the
+	 *  event does not repeat it, and one restarted before the reminder still
+	 *  raises it.
+	 */
+	notified?: boolean,
+};
+
+export type EventsCommand =
+/**
+ *  Fetch the catalogue. Sent on every visit to the tab: an event added an
+ *  hour ago should not need a restart.
+ */
+{ type: "load" } | { type: "setView"; payload: {
+	view: CalendarView,
+} } | { type: "setAnchor"; payload: {
+	day: string,
+} } | { type: "setQuery"; payload: {
+	query: EventsQuery,
+} } | { type: "select"; payload: {
+	occurrenceId: string | null,
+} } |
+/**
+ *  Ask to be reminded about one occurrence, or change its lead time.
+ *
+ *  The whole reminder is carried in the command rather than looked up,
+ *  because the occurrence it names may not be in this slice at all: a
+ *  tournament comes from `TourneyState` and a patch from the changelog. The
+ *  ticker only needs to know what to say and when.
+ */
+{ type: "remind"; payload: {
+	occurrenceId: string,
+	title: string,
+	startsAt: number,
+	leadMinutes: number,
+} } |
+/**  Stop reminding about one occurrence. */
+{ type: "forget"; payload: {
+	occurrenceId: string,
+} };
+
+export type EventsEvent = { type: "loading" } | { type: "loaded"; payload: {
+	catalogue: EventCatalogue,
+} } | { type: "loadFailed"; payload: {
+	reason: string,
+} } | { type: "viewChanged"; payload: {
+	view: CalendarView,
+} } |
+/**  ISO `YYYY-MM-DD`, or empty for "back to today". */
+{ type: "anchorChanged"; payload: {
+	day: string,
+} } | { type: "queryChanged"; payload: {
+	query: EventsQuery,
+} } | { type: "selected"; payload: {
+	occurrenceId: string | null,
+} };
+
+export type EventsPreferences = {
+	weekStart: WeekStart,
+	reminders: EventReminder[],
+};
+
+/**
+ *  What the calendar is filtered to.
+ *
+ *  Filters live in state rather than in the component because the tab is
+ *  re-entered constantly, following a link into the Tournaments tab and back,
+ *  and losing the filter every time would make it useless.
+ */
+export type EventsQuery = {
+	/**  Free text, matched against the title and the host. */
+	text: string,
+	category: EventCategory | null,
+	origin: EventOrigin | null,
+	/**  Only entries this client has a reminder set on: the issue's "my events". */
+	onlyReminders: boolean,
+};
+
+/**  Whether the catalogue on screen came off the network or out of the binary. */
+export type EventsSource =
+/**
+ *  Shipped with the client, because no manifest is configured or the
+ *  configured one could not be read.
+ */
+"bundled" | "remote";
+
+export type EventsState = {
+	catalogue: CalendarEvent[],
+	source: EventsSource,
+	submitUrl: string,
+	status: EventsStatus,
+	view: CalendarView,
+	/**
+	 *  The day the view is drawn around, as ISO `YYYY-MM-DD` in the reader's
+	 *  own zone.
+	 *
+	 *  A string rather than a timestamp because that is what it means: "the
+	 *  month containing the 3rd of March" is a calendar fact, not an instant,
+	 *  and turning it into one would make which month is shown depend on the
+	 *  hour. Empty means today, resolved when it is drawn, so a client left
+	 *  open overnight opens on the right month in the morning.
+	 */
+	anchor: string,
+	query: EventsQuery,
+	/**  The entry whose detail panel is open, by occurrence key. */
+	selected: string | null,
+};
+
+export type EventsStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 /**  The parent this tournament feeds, where it feeds one. */
 export type FeedsInto = {
@@ -3800,6 +4046,10 @@ export type NotificationAction = { type: "openChat"; payload: {
 	target: LiveReplayTarget,
 } } | { type: "openSettings"; payload: {
 	section: string | null,
+} } |
+/**  Open the calendar on one occurrence's detail panel. */
+{ type: "openEvent"; payload: {
+	occurrenceId: string,
 } };
 
 export type NotificationCommand = { type: "markRead"; payload: {
@@ -3816,7 +4066,9 @@ export type NotificationEvent = { type: "added"; payload: {
 	id: string,
 } } | { type: "cleared" };
 
-export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "friendOnline" | "friendOffline" | "friendPlaying" | "newCustomGame" | "gameFull" | "gameLaunched" | "reviewReminder" | "replayAvailable" | "partyInvite" | "reportSubmitted" |
+export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "friendOnline" | "friendOffline" | "friendPlaying" | "newCustomGame" | "gameFull" | "gameLaunched" | "reviewReminder" |
+/**  A calendar event the player asked to be reminded about is coming up. */
+"eventReminder" | "replayAvailable" | "partyInvite" | "reportSubmitted" |
 /**  An operational message authored by the FAF lobby server. */
 "serverNotice" |
 /**  A non-fatal server notice that still requires attention. */
@@ -4015,10 +4267,18 @@ export type PlayerAvatar = {
 export type PlayerCardCommand = { type: "open"; payload: {
 	playerId: number | null,
 	login: string,
-} } | { type: "close" } | { type: "loadHistory"; payload: {
-	query: RatingHistoryQuery,
-	append: boolean,
-} } | { type: "loadAllHistory"; payload: {
+} } | { type: "close" } |
+/**
+ *  Load the rating history for one queue over one period, all of it.
+ *
+ *  Every page, not the first one. The period dropdown is the only thing
+ *  that decides how much history is on screen: it used to load a page and
+ *  offer "load complete history" beside a dropdown already reading "all
+ *  time", which asked the reader to reconcile two answers to one question.
+ *  The pages are an artefact of the API, and paging through them was never
+ *  something anybody came here to do.
+ */
+{ type: "loadHistory"; payload: {
 	query: RatingHistoryQuery,
 } } | { type: "loadMatchmakerProfile"; payload: {
 	playerId: number,
@@ -4539,6 +4799,25 @@ export type Reaction = {
 	 */
 	senders: string[],
 };
+
+/**
+ *  How an entry repeats.
+ *
+ *  Deliberately two rules and no more. Everything the thread named is one of
+ *  them: a weekly game night, and a monthly pool rotation. A general
+ *  recurrence language (RFC 5545) is a parser, an edge-case surface and a test
+ *  suite, in exchange for expressing dates nobody has asked to express.
+ */
+export type Recurrence =
+/**
+ *  Every `interval` weeks, on the weekday the first occurrence falls on.
+ *  An interval of 1 is weekly, 2 is fortnightly.
+ */
+{ type: "weekly"; payload: {
+	interval: number,
+} } |
+/**  Once a month, on the day of the month the first occurrence falls on. */
+{ type: "monthly" };
 
 /**
  *  Why a submission was turned down.
@@ -5342,6 +5621,8 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	preferences: GeneratorOptions,
 } } | { type: "setBrowsing"; payload: {
 	preferences: BrowsingPreferences,
+} } | { type: "setEvents"; payload: {
+	preferences: EventsPreferences,
 } } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
 
 export type SettingsEvent = { type: "loaded"; payload: {
@@ -5384,6 +5665,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: BrowsingPreferences,
 } } | { type: "mapGeneratorChanged"; payload: {
 	preferences: GeneratorOptions,
+} } | { type: "eventsChanged"; payload: {
+	preferences: EventsPreferences,
 } } |
 /**
  *  Generated maps a finished run asked to keep. Additive: a later run that
@@ -5416,6 +5699,7 @@ export type SettingsState = {
 	debug: DebugPreferences,
 	updates: UpdatePreferences,
 	browsing: BrowsingPreferences,
+	events: EventsPreferences,
 	/**
 	 *  Generated maps the user asked to keep, by folder name.
 	 *
@@ -5555,7 +5839,17 @@ export type SubmitStatus = { type: "idle" } | { type: "sending" } |
  *  A top-level destination. Most are placeholders today; each gets its feature
  *  slice as it lands. The frontend tab registry maps these 1:1 to views.
  */
-export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" | "training" | "units" | "changelog" | "contribution" | "settings";
+export type Tab = "news" | "chat" | "play" | "replays" | "maps" | "mods" | "leaderboard" | "tournaments" |
+/**  The community calendar: what is happening in FAF, and when. */
+"events" | "training" | "units" | "changelog" |
+/**
+ *  The link directory: FAF's own sites and what the community built.
+ *
+ *  Named for what it holds rather than for what it used to be. It grew out
+ *  of the Contribution tab, whose repositories and credits are one section
+ *  of it now.
+ */
+"links" | "settings";
 
 /**
  *  How far a team got: the side and round its last match was in.
@@ -7817,3 +8111,12 @@ export type VetoMode =
 "upfront" |
 /**  One step between games. */
 "continuous";
+
+/**
+ *  Which day a calendar week starts on.
+ *
+ *  A preference rather than a locale lookup because the issue asked for one,
+ *  and because the answer is not always the locale's: FAF's own weekend events
+ *  are talked about in a Monday-first week regardless of where the player is.
+ */
+export type WeekStart = "monday" | "sunday";

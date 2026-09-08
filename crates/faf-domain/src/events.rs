@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::state::{
-    AuthEvent, ChangelogEvent, ChatEvent, ClanEvent, ClientUpdateEvent, CoopEvent,
+    AuthEvent, ChangelogEvent, ChatEvent, ClanEvent, ClientUpdateEvent, CoopEvent, EventsEvent,
     GalacticWarEvent, GuidesEvent, InstallEvent, LeaderboardEvent, LobbyEvent, MapGeneratorEvent,
     MapsEvent, ModsEvent, NavEvent, NotificationEvent, PlayerCardEvent, ReplayEvent,
     ReportingEvent, ReviewsEvent, SessionEvent, SettingsEvent, SocialEvent, TourneyEvent,
@@ -41,6 +41,7 @@ pub enum AppEvent {
     Training(TrainingEvent),
     Tutorials(TutorialsEvent),
     Changelog(ChangelogEvent),
+    Events(EventsEvent),
     Uploads(UploadsEvent),
     GalacticWar(GalacticWarEvent),
     Guides(GuidesEvent),
@@ -172,6 +173,12 @@ impl From<TrainingEvent> for AppEvent {
 impl From<TutorialsEvent> for AppEvent {
     fn from(e: TutorialsEvent) -> Self {
         AppEvent::Tutorials(e)
+    }
+}
+
+impl From<EventsEvent> for AppEvent {
+    fn from(e: EventsEvent) -> Self {
+        AppEvent::Events(e)
     }
 }
 

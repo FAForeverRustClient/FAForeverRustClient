@@ -9,6 +9,7 @@ import { reduceClan } from "./reducers/clan";
 import { reduceClientUpdate } from "./reducers/clientUpdate";
 import { reduceCoop } from "./reducers/coop";
 import { reduceAuth, reduceInstall, reduceNav, reduceSession, reduceSettings } from "./reducers/core";
+import { reduceEvents } from "./reducers/events";
 import { reduceGalacticWar } from "./reducers/galacticWar";
 import { reduceGuides } from "./reducers/guides";
 import { reduceLeaderboard } from "./reducers/leaderboard";
@@ -48,6 +49,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, changelog: reduceChangelog(state.changelog, event.event) };
     case "Coop":
       return { ...state, coop: reduceCoop(state.coop, event.event) };
+    case "Events":
+      return { ...state, events: reduceEvents(state.events, event.event) };
     case "Install":
       return { ...state, install: reduceInstall(state.install, event.event) };
     case "Social":

@@ -13,6 +13,8 @@ document.
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | The architecture contract: the layering rules, why they exist, and what is not allowed to cross which boundary. The README points every contributor here, and CI enforces parts of it. |
 | [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) | The map: what each crate and directory is for, where to add a new state slice, command, port or screen, and one click traced end to end. |
 | [`design-philosophy.md`](design-philosophy.md) | Why the interface looks and behaves the way it does. |
+| [`training-catalogue.md`](training-catalogue.md) | The contract for the training library's published manifest: repository layout, the manifest format, and why it is a Git document rather than a service. |
+| [`events-catalogue.md`](events-catalogue.md) | The same, for the community calendar the Events tab reads. Says which parts of that calendar the client already knows without being told. |
 | [`env.example.txt`](env.example.txt) | Template for a local dev launch. Copy it to `docs/env.txt`, which is gitignored, and put your own paths in that copy. |
 
 ## Notes

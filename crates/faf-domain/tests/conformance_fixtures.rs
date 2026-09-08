@@ -2923,6 +2923,91 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // ── events ───────────────────────────────────────────────────────
+        case(
+            "a calendar is loaded, filtered, and keeps what it has when a reload fails",
+            vec![
+                EventsEvent::Loading.into(),
+                EventsEvent::Loaded {
+                    catalogue: EventCatalogue {
+                        events: vec![CalendarEvent {
+                            id: "cgn-42".into(),
+                            title: "Community Game Night 42".into(),
+                            summary: "Setons, all welcome.".into(),
+                            category: EventCategory::Cgn,
+                            origin: EventOrigin::Community,
+                            host: "Setons Clutch".into(),
+                            starts_at: 1_773_514_800,
+                            ends_at: 0,
+                            all_day: false,
+                            links: vec![EventLink {
+                                label: "Discord".into(),
+                                url: "https://example.invalid/discord".into(),
+                            }],
+                            recurrence: Some(Recurrence::Weekly { interval: 1 }),
+                            recurs_until: 1_781_000_000,
+                        }],
+                        source: EventsSource::Remote,
+                        submit_url: "https://example.invalid/submit".into(),
+                    },
+                }
+                .into(),
+                EventsEvent::ViewChanged {
+                    view: CalendarView::Week,
+                }
+                .into(),
+                EventsEvent::AnchorChanged {
+                    day: "2026-03-14".into(),
+                }
+                .into(),
+                EventsEvent::QueryChanged {
+                    query: EventsQuery {
+                        text: "cgn".into(),
+                        category: Some(EventCategory::Cgn),
+                        origin: None,
+                        only_reminders: true,
+                    },
+                }
+                .into(),
+                EventsEvent::Selected {
+                    occurrence_id: Some("catalogue:cgn-42@2026-03-14".into()),
+                }
+                .into(),
+                // The reload fails: the calendar keeps its entries and says so.
+                EventsEvent::Loading.into(),
+                EventsEvent::LoadFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a reminder is set, moved, and the duplicate a hand-edited file left is dropped",
+            vec![
+                SettingsEvent::EventsChanged {
+                    preferences: Box::new(EventsPreferences {
+                        week_start: WeekStart::Sunday,
+                        reminders: vec![
+                            EventReminder {
+                                occurrence_id: "catalogue:cgn-42@2026-03-14".into(),
+                                title: "Community Game Night 42".into(),
+                                starts_at: 1_773_514_800,
+                                lead_minutes: 60,
+                                notified: false,
+                            },
+                            EventReminder {
+                                occurrence_id: "catalogue:cgn-42@2026-03-14".into(),
+                                title: "A second copy of the same occurrence".into(),
+                                starts_at: 1_773_514_800,
+                                lead_minutes: 10,
+                                notified: true,
+                            },
+                        ],
+                    }),
+                }
+                .into(),
+            ],
+        ),
         // ── session / auth / nav ─────────────────────────────────────────
         case(
             "session connects and reports its version",

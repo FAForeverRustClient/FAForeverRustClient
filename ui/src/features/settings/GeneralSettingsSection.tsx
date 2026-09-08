@@ -1,4 +1,5 @@
-import type { GeneralPreferences, Tab } from "../../ipc/bindings";
+import type { EventsPreferences, GeneralPreferences, Tab, WeekStart } from "../../ipc/bindings";
+import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
@@ -17,14 +18,26 @@ const START_PAGES: Tab[] = [
   "mods",
   "leaderboard",
   "tournaments",
+  "events",
   "training",
 ];
 
 const save = (preferences: GeneralPreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setGeneral", payload: { preferences } } });
 
+/**
+ * The calendar's two preferences.
+ *
+ * Here rather than in a section of their own: one is a week start and the other
+ * is a list somebody manages from the Events tab, and a section holding two
+ * rows would be another tab to look through for them.
+ */
+const saveEvents = (preferences: EventsPreferences) =>
+  ipc.send({ kind: "Settings", command: { type: "setEvents", payload: { preferences } } });
+
 export function GeneralSettingsSection() {
   const preferences = useAppStore((state) => state.state.settings.general);
+  const events = useAppStore((state) => state.state.settings.events);
   const { t, locale, setLocale } = useTranslation();
 
   return (
@@ -54,6 +67,41 @@ export function GeneralSettingsSection() {
           onChange={(checked) => void save({ ...preferences, autoLogin: checked })}
           label={t("settings.general.autoLogin.label")}
         />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.events.weekStart.label")}
+        hint={t("settings.events.weekStart.hint")}
+      >
+        <select
+          className="settings-select"
+          value={events.weekStart}
+          onChange={(event) =>
+            void saveEvents({ ...events, weekStart: event.target.value as WeekStart })
+          }
+          aria-label={t("settings.events.weekStart.label")}
+        >
+          <option value="monday">{t("settings.events.weekStart.monday")}</option>
+          <option value="sunday">{t("settings.events.weekStart.sunday")}</option>
+        </select>
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.events.reminders.label")}
+        hint={t("settings.events.reminders.hint")}
+      >
+        {events.reminders.length === 0 ? (
+          <span className="muted">{t("settings.events.reminders.none")}</span>
+        ) : (
+          <div className="settings-diagnostic-actions">
+            <span className="muted">
+              {t("settings.events.reminders.count", { count: events.reminders.length })}
+            </span>
+            <Button onClick={() => void saveEvents({ ...events, reminders: [] })}>
+              {t("settings.events.reminders.clear")}
+            </Button>
+          </div>
+        )}
       </SettingRow>
 
       {/* Frontend-only for now: the language is read back from localStorage on

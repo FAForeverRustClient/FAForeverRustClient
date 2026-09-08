@@ -72,6 +72,23 @@
         "type": "idle"
       }
     },
+    "events": {
+      "catalogue": [],
+      "source": "bundled",
+      "submitUrl": "",
+      "status": {
+        "type": "idle"
+      },
+      "view": "month",
+      "anchor": "",
+      "query": {
+        "text": "",
+        "category": null,
+        "origin": null,
+        "onlyReminders": false
+      },
+      "selected": null
+    },
     "lobby": {
       "status": "disconnected",
       "games": [],
@@ -798,6 +815,10 @@
         "replayVaultPlayer": "",
         "legacyStorageMigrated": false
       },
+      "events": {
+        "weekStart": "monday",
+        "reminders": []
+      },
       "keptGeneratedMaps": [],
       "mapGenerator": {
         "version": null,
@@ -1211,6 +1232,690 @@
             "selected": "3837",
             "status": {
               "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a calendar is loaded, filtered, and keeps what it has when a reload fails",
+      "steps": [
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "loading"
+            }
+          },
+          "expected": {
+            "anchor": "",
+            "catalogue": [],
+            "query": {
+              "category": null,
+              "onlyReminders": false,
+              "origin": null,
+              "text": ""
+            },
+            "selected": null,
+            "source": "bundled",
+            "status": {
+              "type": "loading"
+            },
+            "submitUrl": "",
+            "view": "month"
+          }
+        },
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "catalogue": {
+                  "events": [
+                    {
+                      "id": "cgn-42",
+                      "title": "Community Game Night 42",
+                      "summary": "Setons, all welcome.",
+                      "category": "cgn",
+                      "origin": "community",
+                      "host": "Setons Clutch",
+                      "startsAt": 1773514800,
+                      "endsAt": 0,
+                      "allDay": false,
+                      "links": [
+                        {
+                          "label": "Discord",
+                          "url": "https://example.invalid/discord"
+                        }
+                      ],
+                      "recurrence": {
+                        "type": "weekly",
+                        "payload": {
+                          "interval": 1
+                        }
+                      },
+                      "recursUntil": 1781000000
+                    }
+                  ],
+                  "source": "remote",
+                  "submitUrl": "https://example.invalid/submit"
+                }
+              }
+            }
+          },
+          "expected": {
+            "anchor": "",
+            "catalogue": [
+              {
+                "allDay": false,
+                "category": "cgn",
+                "endsAt": 0,
+                "host": "Setons Clutch",
+                "id": "cgn-42",
+                "links": [
+                  {
+                    "label": "Discord",
+                    "url": "https://example.invalid/discord"
+                  }
+                ],
+                "origin": "community",
+                "recurrence": {
+                  "payload": {
+                    "interval": 1
+                  },
+                  "type": "weekly"
+                },
+                "recursUntil": 1781000000,
+                "startsAt": 1773514800,
+                "summary": "Setons, all welcome.",
+                "title": "Community Game Night 42"
+              }
+            ],
+            "query": {
+              "category": null,
+              "onlyReminders": false,
+              "origin": null,
+              "text": ""
+            },
+            "selected": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "submitUrl": "https://example.invalid/submit",
+            "view": "month"
+          }
+        },
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "viewChanged",
+              "payload": {
+                "view": "week"
+              }
+            }
+          },
+          "expected": {
+            "anchor": "",
+            "catalogue": [
+              {
+                "allDay": false,
+                "category": "cgn",
+                "endsAt": 0,
+                "host": "Setons Clutch",
+                "id": "cgn-42",
+                "links": [
+                  {
+                    "label": "Discord",
+                    "url": "https://example.invalid/discord"
+                  }
+                ],
+                "origin": "community",
+                "recurrence": {
+                  "payload": {
+                    "interval": 1
+                  },
+                  "type": "weekly"
+                },
+                "recursUntil": 1781000000,
+                "startsAt": 1773514800,
+                "summary": "Setons, all welcome.",
+                "title": "Community Game Night 42"
+              }
+            ],
+            "query": {
+              "category": null,
+              "onlyReminders": false,
+              "origin": null,
+              "text": ""
+            },
+            "selected": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "submitUrl": "https://example.invalid/submit",
+            "view": "week"
+          }
+        },
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "anchorChanged",
+              "payload": {
+                "day": "2026-03-14"
+              }
+            }
+          },
+          "expected": {
+            "anchor": "2026-03-14",
+            "catalogue": [
+              {
+                "allDay": false,
+                "category": "cgn",
+                "endsAt": 0,
+                "host": "Setons Clutch",
+                "id": "cgn-42",
+                "links": [
+                  {
+                    "label": "Discord",
+                    "url": "https://example.invalid/discord"
+                  }
+                ],
+                "origin": "community",
+                "recurrence": {
+                  "payload": {
+                    "interval": 1
+                  },
+                  "type": "weekly"
+                },
+                "recursUntil": 1781000000,
+                "startsAt": 1773514800,
+                "summary": "Setons, all welcome.",
+                "title": "Community Game Night 42"
+              }
+            ],
+            "query": {
+              "category": null,
+              "onlyReminders": false,
+              "origin": null,
+              "text": ""
+            },
+            "selected": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "submitUrl": "https://example.invalid/submit",
+            "view": "week"
+          }
+        },
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "queryChanged",
+              "payload": {
+                "query": {
+                  "text": "cgn",
+                  "category": "cgn",
+                  "origin": null,
+                  "onlyReminders": true
+                }
+              }
+            }
+          },
+          "expected": {
+            "anchor": "2026-03-14",
+            "catalogue": [
+              {
+                "allDay": false,
+                "category": "cgn",
+                "endsAt": 0,
+                "host": "Setons Clutch",
+                "id": "cgn-42",
+                "links": [
+                  {
+                    "label": "Discord",
+                    "url": "https://example.invalid/discord"
+                  }
+                ],
+                "origin": "community",
+                "recurrence": {
+                  "payload": {
+                    "interval": 1
+                  },
+                  "type": "weekly"
+                },
+                "recursUntil": 1781000000,
+                "startsAt": 1773514800,
+                "summary": "Setons, all welcome.",
+                "title": "Community Game Night 42"
+              }
+            ],
+            "query": {
+              "category": "cgn",
+              "onlyReminders": true,
+              "origin": null,
+              "text": "cgn"
+            },
+            "selected": null,
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "submitUrl": "https://example.invalid/submit",
+            "view": "week"
+          }
+        },
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "selected",
+              "payload": {
+                "occurrenceId": "catalogue:cgn-42@2026-03-14"
+              }
+            }
+          },
+          "expected": {
+            "anchor": "2026-03-14",
+            "catalogue": [
+              {
+                "allDay": false,
+                "category": "cgn",
+                "endsAt": 0,
+                "host": "Setons Clutch",
+                "id": "cgn-42",
+                "links": [
+                  {
+                    "label": "Discord",
+                    "url": "https://example.invalid/discord"
+                  }
+                ],
+                "origin": "community",
+                "recurrence": {
+                  "payload": {
+                    "interval": 1
+                  },
+                  "type": "weekly"
+                },
+                "recursUntil": 1781000000,
+                "startsAt": 1773514800,
+                "summary": "Setons, all welcome.",
+                "title": "Community Game Night 42"
+              }
+            ],
+            "query": {
+              "category": "cgn",
+              "onlyReminders": true,
+              "origin": null,
+              "text": "cgn"
+            },
+            "selected": "catalogue:cgn-42@2026-03-14",
+            "source": "remote",
+            "status": {
+              "type": "ready"
+            },
+            "submitUrl": "https://example.invalid/submit",
+            "view": "week"
+          }
+        },
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "loading"
+            }
+          },
+          "expected": {
+            "anchor": "2026-03-14",
+            "catalogue": [
+              {
+                "allDay": false,
+                "category": "cgn",
+                "endsAt": 0,
+                "host": "Setons Clutch",
+                "id": "cgn-42",
+                "links": [
+                  {
+                    "label": "Discord",
+                    "url": "https://example.invalid/discord"
+                  }
+                ],
+                "origin": "community",
+                "recurrence": {
+                  "payload": {
+                    "interval": 1
+                  },
+                  "type": "weekly"
+                },
+                "recursUntil": 1781000000,
+                "startsAt": 1773514800,
+                "summary": "Setons, all welcome.",
+                "title": "Community Game Night 42"
+              }
+            ],
+            "query": {
+              "category": "cgn",
+              "onlyReminders": true,
+              "origin": null,
+              "text": "cgn"
+            },
+            "selected": "catalogue:cgn-42@2026-03-14",
+            "source": "remote",
+            "status": {
+              "type": "loading"
+            },
+            "submitUrl": "https://example.invalid/submit",
+            "view": "week"
+          }
+        },
+        {
+          "event": {
+            "kind": "Events",
+            "event": {
+              "type": "loadFailed",
+              "payload": {
+                "reason": "offline"
+              }
+            }
+          },
+          "expected": {
+            "anchor": "2026-03-14",
+            "catalogue": [
+              {
+                "allDay": false,
+                "category": "cgn",
+                "endsAt": 0,
+                "host": "Setons Clutch",
+                "id": "cgn-42",
+                "links": [
+                  {
+                    "label": "Discord",
+                    "url": "https://example.invalid/discord"
+                  }
+                ],
+                "origin": "community",
+                "recurrence": {
+                  "payload": {
+                    "interval": 1
+                  },
+                  "type": "weekly"
+                },
+                "recursUntil": 1781000000,
+                "startsAt": 1773514800,
+                "summary": "Setons, all welcome.",
+                "title": "Community Game Night 42"
+              }
+            ],
+            "query": {
+              "category": "cgn",
+              "onlyReminders": true,
+              "origin": null,
+              "text": "cgn"
+            },
+            "selected": "catalogue:cgn-42@2026-03-14",
+            "source": "remote",
+            "status": {
+              "payload": {
+                "reason": "offline"
+              },
+              "type": "failed"
+            },
+            "submitUrl": "https://example.invalid/submit",
+            "view": "week"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a reminder is set, moved, and the duplicate a hand-edited file left is dropped",
+      "steps": [
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "eventsChanged",
+              "payload": {
+                "preferences": {
+                  "weekStart": "sunday",
+                  "reminders": [
+                    {
+                      "occurrenceId": "catalogue:cgn-42@2026-03-14",
+                      "title": "Community Game Night 42",
+                      "startsAt": 1773514800,
+                      "leadMinutes": 60,
+                      "notified": false
+                    },
+                    {
+                      "occurrenceId": "catalogue:cgn-42@2026-03-14",
+                      "title": "A second copy of the same occurrence",
+                      "startsAt": 1773514800,
+                      "leadMinutes": 10,
+                      "notified": true
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "gameTileColumns": 0,
+              "reduceMotion": false,
+              "uiScale": 100
+            },
+            "browsing": {
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players"
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "rating",
+                "games",
+                "wins",
+                "winRate",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "mapVaultPreset": "recommended",
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "replayVaultPlayer": "",
+              "replaysView": "tiles"
+            },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "fontSize": 13,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "senderWidth": 116,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "java",
+              "selectionVersion": 1
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "events": {
+              "reminders": [
+                {
+                  "leadMinutes": 60,
+                  "notified": false,
+                  "occurrenceId": "catalogue:cgn-42@2026-03-14",
+                  "startsAt": 1773514800,
+                  "title": "Community Game Night 42"
+                }
+              ],
+              "weekStart": "sunday"
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10,
+              "keepGeneratedMaps": false,
+              "pipeLiveReplay": false
+            },
+            "gamePath": "",
+            "general": {
+              "autoLogin": true,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "notifications": {
+              "desktop": true,
+              "desktopAllKinds": false,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "reviewReminder": true,
+              "sound": true,
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "",
+              "modsDir": "",
+              "replaysDir": "",
+              "vaultDir": ""
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": []
+            },
+            "theme": "forgeDark",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
             }
           }
         }
@@ -27884,6 +28589,10 @@
               "disallowJoins": false,
               "enabled": true
             },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
+            },
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
@@ -28097,6 +28806,10 @@
             "discord": {
               "disallowJoins": false,
               "enabled": true
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
             },
             "game": {
               "additionalArguments": [],
@@ -28320,6 +29033,10 @@
               "disallowJoins": false,
               "enabled": true
             },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
+            },
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
@@ -28538,6 +29255,10 @@
               "disallowJoins": false,
               "enabled": true
             },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
+            },
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
@@ -28755,6 +29476,10 @@
             "discord": {
               "disallowJoins": false,
               "enabled": true
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
             },
             "game": {
               "additionalArguments": [],
@@ -28996,6 +29721,10 @@
               "disallowJoins": false,
               "enabled": true
             },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
+            },
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
@@ -29226,6 +29955,10 @@
             "discord": {
               "disallowJoins": true,
               "enabled": false
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
             },
             "game": {
               "additionalArguments": [],
@@ -29459,6 +30192,10 @@
             "discord": {
               "disallowJoins": true,
               "enabled": false
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
             },
             "game": {
               "additionalArguments": [],
@@ -29776,6 +30513,10 @@
             "discord": {
               "disallowJoins": true,
               "enabled": false
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
             },
             "game": {
               "additionalArguments": [],

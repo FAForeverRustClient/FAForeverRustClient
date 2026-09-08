@@ -207,9 +207,11 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
     page,
     pageSize: 10_000,
   });
-  const load = (page = 1, append = false) => ipc.send({
+  // One command, and it loads every page of the chosen period. The dropdown is
+  // the only control over how much history is on screen.
+  const load = () => ipc.send({
     kind: "PlayerCard",
-    command: { type: "loadHistory", payload: { query: query(page), append } },
+    command: { type: "loadHistory", payload: { query: query(1) } },
   });
 
   useEffect(() => {
@@ -226,7 +228,6 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
             page: 1,
             pageSize: 10_000,
           },
-          append: false,
         },
       },
     });
@@ -242,7 +243,6 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
   // tile claimed a number it had no way to know.
   const peak = state.historyMaximum?.rating ?? loadedMaximum ?? null;
   const peakIsAuthoritative = state.historyMaximum?.rating != null;
-  const complete = state.historyPage >= state.historyTotalPages;
   const busy = state.historyStatus === "loading";
 
   return (
@@ -307,24 +307,15 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
           : <RatingHistoryChart points={state.history} maximum={state.historyMaximum} showMaximum={showMaximum} />}
       </div>
 
+      {/* What was loaded, and nothing to press. The two paging buttons that
+          were here contradicted the period above them: "load complete history"
+          next to a dropdown already reading "All time" is two answers to one
+          question, and the dropdown is the one the reader chose. */}
       <div className="player-history-paging">
         <span className="muted">
           {busy && `${t("playerCard.history.loadingShort")} `}
           {t("playerCard.history.entriesLoaded", { count: formatNumber(state.history.length) })}
-          {!complete && ` · ${t("playerCard.history.pageOf", { page: state.historyPage, total: state.historyTotalPages })}`}
         </span>
-        {!complete && (
-          <>
-            <Button disabled={busy} onClick={() => load(state.historyPage + 1, true)}>{t("playerCard.history.loadNextPage")}</Button>
-            <Button
-              variant="primary"
-              disabled={busy}
-              onClick={() => ipc.send({ kind: "PlayerCard", command: { type: "loadAllHistory", payload: { query: query(state.historyPage + 1) } } })}
-            >
-              {t("playerCard.history.loadComplete")}
-            </Button>
-          </>
-        )}
       </div>
     </div>
   );

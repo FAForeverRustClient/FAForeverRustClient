@@ -10,6 +10,7 @@ pub mod chat;
 pub mod clan;
 pub mod client_update;
 pub mod coop;
+pub mod events;
 pub mod failure;
 pub mod galactic_war;
 pub mod guides;
@@ -54,6 +55,10 @@ pub use client_update::{
 pub use coop::{
     missions_of, rank_results, CoopCategory, CoopCommand, CoopEvent, CoopFaction, CoopMission,
     CoopResult, CoopScenario, CoopState, CoopStatus, ANY_PLAYER_COUNT, PLAYER_COUNT_OPTIONS,
+};
+pub use events::{
+    CalendarEvent, CalendarView, EventCatalogue, EventCategory, EventLink, EventOrigin,
+    EventsCommand, EventsEvent, EventsQuery, EventsSource, EventsState, EventsStatus, Recurrence,
 };
 pub use failure::RequestFailureKind;
 pub use galactic_war::{
@@ -125,10 +130,10 @@ pub use settings::{
     AppearancePreferences, BrowsingPreferences, CachedGameVersion, ChatNameColors, ChatPreferences,
     ConnectivityPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, DebugPreferences,
-    DiscordPreferences, GameCacheInfo, GamePreferences, GeneralPreferences, HostGamePreferences,
-    IceAdapter, LiveReplayFilters, NotificationPreferences, PathPreferences, PlayerNote,
-    SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme, UiDensity,
-    UpdatePreferences,
+    DiscordPreferences, EventReminder, EventsPreferences, GameCacheInfo, GamePreferences,
+    GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
+    NotificationPreferences, PathPreferences, PlayerNote, SettingsCommand, SettingsEvent,
+    SettingsState, SocialPreferences, Theme, UiDensity, UpdatePreferences, WeekStart,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
@@ -189,6 +194,7 @@ pub struct AppState {
     pub chat: ChatState,
     pub clan: ClanState,
     pub coop: CoopState,
+    pub events: EventsState,
     pub lobby: LobbyState,
     pub replays: ReplayState,
     pub maps: MapsState,

@@ -25,6 +25,7 @@ import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
 import { GameMapImage } from "./GameMapImage";
 import { requestModVaultFocus } from "../mods/modVaultFocus";
 import { PlayModeTabs } from "./PlayModeTabs";
+import { queuedPlayerCount } from "./queuedPlayers";
 import { PrivateGameDialog } from "./PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
 import { isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
@@ -603,7 +604,7 @@ export function LobbyView() {
       <PlayModeTabs
         mode={lobby.playMode}
         customGames={customGames.length}
-        queues={lobby.matchmakerQueues.length}
+        queuedPlayers={queuedPlayerCount(lobby.matchmakerQueues)}
         coopGames={coopGames.length}
         galacticWarOnline={galacticWar.statistics?.season?.numOnlinePlayers ?? 0}
         onChange={(mode) =>

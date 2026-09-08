@@ -1,0 +1,663 @@
+/* The community calendar. */
+.events-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.events-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.events-head-copy h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.events-head-copy p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.events-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.events-period {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.events-period strong {
+  min-width: 168px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.events-period > button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.events-period > button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.events-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.events-search {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 280px;
+  padding: 0 var(--space-2);
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.events-search input {
+  width: 100%;
+  padding: 6px 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.events-category-select {
+  min-width: 148px;
+}
+
+.events-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.3;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.events-chip:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.events-chip.is-on {
+  color: var(--color-text);
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
+}
+
+.events-notice {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── one entry ─────────────────────────────────────────────────────── */
+
+.event-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  background: var(--color-surface-raised);
+  border: none;
+  border-left: 3px solid var(--color-event-other);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.event-chip:hover {
+  background: var(--color-surface-hover);
+}
+
+.event-chip.is-tournament {
+  border-left-color: var(--color-event-tournament);
+}
+
+.event-chip.is-cgn {
+  border-left-color: var(--color-event-cgn);
+}
+
+.event-chip.is-meetup {
+  border-left-color: var(--color-event-meetup);
+}
+
+.event-chip.is-patch {
+  border-left-color: var(--color-event-patch);
+}
+
+.event-chip.is-ladderPool {
+  border-left-color: var(--color-event-ladderPool);
+}
+
+.event-chip.is-past {
+  opacity: 0.55;
+}
+
+.event-chip-time {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-chip-title {
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-chip-bell {
+  flex: 0 0 auto;
+  color: var(--color-accent);
+}
+
+/* ── the month grid ────────────────────────────────────────────────── */
+
+.event-month {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.event-month-head,
+.event-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.event-month-head span {
+  padding: 0 4px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.event-day {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 92px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.event-day.is-outside {
+  background: none;
+}
+
+.event-day.is-outside .event-day-number {
+  color: var(--color-subtle);
+}
+
+.event-day.is-today {
+  border-color: var(--color-accent);
+}
+
+.event-day-number {
+  align-self: flex-start;
+  padding: 1px 5px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.event-day-number:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.event-day.is-today .event-day-number {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.event-day-entries {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-day-more {
+  align-self: flex-start;
+  padding: 1px 5px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 11px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.event-day-more:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+/* ── the week columns ──────────────────────────────────────────────── */
+
+.event-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  min-width: 0;
+}
+
+.event-week-day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 220px;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.event-week-day.is-today {
+  border-color: var(--color-accent);
+}
+
+.event-week-day > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.event-week-weekday {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.event-week-date {
+  color: var(--color-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-week-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.event-week-empty {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+/* ── the upcoming list ─────────────────────────────────────────────── */
+
+.event-upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(100%, 720px);
+}
+
+.event-upcoming-day h3 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.event-upcoming-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.event-upcoming .event-chip {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+/* ── one entry, opened ─────────────────────────────────────────────── */
+
+.event-detail-modal {
+  width: min(560px, 92vw);
+}
+
+.event-detail-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.event-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.event-tag,
+.event-origin {
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.event-tag {
+  color: var(--color-text);
+  border-left: 3px solid var(--color-event-other);
+}
+
+.event-tag.is-tournament {
+  border-left-color: var(--color-event-tournament);
+}
+
+.event-tag.is-cgn {
+  border-left-color: var(--color-event-cgn);
+}
+
+.event-tag.is-meetup {
+  border-left-color: var(--color-event-meetup);
+}
+
+.event-tag.is-patch {
+  border-left-color: var(--color-event-patch);
+}
+
+.event-tag.is-ladderPool {
+  border-left-color: var(--color-event-ladderPool);
+}
+
+.event-origin.is-official {
+  color: var(--color-text);
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
+}
+
+.event-origin.is-community {
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+}
+
+.event-detail-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-4) 0 0;
+  font-size: 13px;
+}
+
+.event-detail-facts dt {
+  color: var(--color-muted);
+}
+
+.event-detail-facts dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.event-detail-zone {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.event-detail-summary {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.event-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.event-detail-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.event-detail-reminder-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-detail-reminder-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.event-detail-reminder-copy small {
+  margin-top: 2px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.event-detail-reminder-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.event-lead-select {
+  min-width: 150px;
+}
+
+/* A narrow window cannot hold seven readable columns. The week becomes a
+   stack, which is the same information in one column, and the month grid keeps
+   its shape because a month is only legible as a grid. */
+@media (max-width: 900px) {
+  .event-week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .event-week-day {
+    min-height: 0;
+  }
+
+  .event-day {
+    min-height: 72px;
+  }
+}
+
+/* ── suggesting an event ───────────────────────────────────────────── */
+
+.event-submit-modal {
+  width: min(620px, 94vw);
+}
+
+.event-submit-modal h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.event-submit-intro {
+  margin: var(--space-2) 0 var(--space-4);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.event-submit-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* A name, a summary and an address are all longer than a third of the row. */
+.event-submit-wide {
+  grid-column: 1 / -1;
+}
+
+.event-submit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.event-submit-form label > span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.event-submit-form input,
+.event-submit-form select,
+.event-submit-form textarea {
+  width: 100%;
+  padding: 6px 8px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.event-submit-form textarea {
+  resize: vertical;
+}
+
+.event-submit-form input:disabled {
+  color: var(--color-subtle);
+}
+
+.event-submit-form input:focus-visible,
+.event-submit-form select:focus-visible,
+.event-submit-form textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.event-submit-preview {
+  margin-top: var(--space-4);
+}
+
+.event-submit-preview > summary {
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.event-submit-preview pre {
+  overflow-x: auto;
+  max-height: 220px;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.event-submit-explain {
+  margin: var(--space-3) 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.event-submit-problem {
+  margin: var(--space-3) 0 0;
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.event-submit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 700px) {
+  .event-submit-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

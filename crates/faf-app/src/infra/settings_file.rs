@@ -72,12 +72,19 @@ fn parse(bytes: &[u8]) -> Result<SettingsState, serde_json::Error> {
 
 /// Rewrite values whose spelling changed between client versions.
 fn migrated(mut document: serde_json::Value) -> serde_json::Value {
-    // `Tab::Tutorials` became `Tab::Training` when the tutorials tab grew into
-    // the training hub. `general.startPage` is the one place a `Tab` is
-    // persisted, so this is the whole of that rename's migration.
+    // Two tabs have been renamed so far. `Tab::Tutorials` became `Tab::Training`
+    // when the tutorials tab grew into the training hub, and `Tab::Contribution`
+    // became `Tab::Links` when the repository list grew into the link directory.
+    // `general.startPage` is the one place a `Tab` is persisted, so this is the
+    // whole of both renames' migration.
     if let Some(start_page) = document.pointer_mut("/general/startPage") {
-        if start_page.as_str() == Some("tutorials") {
-            *start_page = serde_json::Value::String("training".into());
+        let renamed = match start_page.as_str() {
+            Some("tutorials") => Some("training"),
+            Some("contribution") => Some("links"),
+            _ => None,
+        };
+        if let Some(name) = renamed {
+            *start_page = serde_json::Value::String(name.into());
         }
     }
     document
@@ -202,6 +209,18 @@ mod tests {
             faf_domain::state::Tab::Training,
             "the startup path reads the same file"
         );
+    }
+
+    #[test]
+    fn the_contribution_tab_is_read_as_the_link_directory() {
+        // The second of the two renames, and the reason this is a `match` now:
+        // somebody whose start page was the Contribution tab would otherwise
+        // lose their theme, their game path and everything else in the file.
+        let document =
+            migrated(serde_json::from_str(r#"{"general":{"startPage":"contribution"}}"#).unwrap());
+        let settings: SettingsState =
+            serde_json::from_value(document).expect("an older document still parses");
+        assert_eq!(settings.general.start_page, faf_domain::state::Tab::Links);
     }
 
     #[test]

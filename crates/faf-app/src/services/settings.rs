@@ -133,6 +133,13 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(SettingsEvent::GeneralChanged { preferences });
             persist(ctx, out).await;
         }
+        // The calendar's own writes go through `services::events`, which is
+        // where the reminder list is understood. This arm is the settings tab's
+        // half of the same preferences: the week start.
+        SettingsCommand::SetEvents { preferences } => {
+            out.emit(SettingsEvent::EventsChanged { preferences });
+            persist(ctx, out).await;
+        }
         SettingsCommand::SetAppearance { preferences } => {
             out.emit(SettingsEvent::AppearanceChanged { preferences });
             persist(ctx, out).await;

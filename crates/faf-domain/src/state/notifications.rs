@@ -16,6 +16,8 @@ pub enum NotificationKind {
     GameFull,
     GameLaunched,
     ReviewReminder,
+    /// A calendar event the player asked to be reminded about is coming up.
+    EventReminder,
     ReplayAvailable,
     PartyInvite,
     ReportSubmitted,
@@ -53,6 +55,10 @@ impl NotificationKind {
     /// - [`Self::GameLaunched`]: the game is up and the lobby is holding.
     /// - [`Self::MapGenerated`]: generation is slow, which is exactly why the
     ///   user tabbed away, and a lobby join is blocked until it finishes.
+    /// - [`Self::EventReminder`]: the player asked to be told before a thing
+    ///   starts, and being told after it started is the one failure a reminder
+    ///   has. It is also the only kind on this list the player opted into one
+    ///   at a time.
     ///
     /// Everything else fails that test, including the loud-sounding ones. An
     /// error, a server notice, a cache warning and a new client version are all
@@ -65,7 +71,11 @@ impl NotificationKind {
     pub fn raises_os_notification(self) -> bool {
         matches!(
             self,
-            Self::MatchFound | Self::PartyInvite | Self::GameLaunched | Self::MapGenerated
+            Self::MatchFound
+                | Self::PartyInvite
+                | Self::GameLaunched
+                | Self::MapGenerated
+                | Self::EventReminder
         )
     }
 }
@@ -78,12 +88,25 @@ impl NotificationKind {
     rename_all_fields = "camelCase"
 )]
 pub enum NotificationAction {
-    OpenChat { channel: String },
+    OpenChat {
+        channel: String,
+    },
     OpenMatchmaking,
     OpenCustomGames,
-    AcceptPartyInvite { player_id: i32 },
-    WatchLive { target: super::LiveReplayTarget },
-    OpenSettings { section: Option<String> },
+    AcceptPartyInvite {
+        player_id: i32,
+    },
+    WatchLive {
+        target: super::LiveReplayTarget,
+    },
+    OpenSettings {
+        section: Option<String>,
+    },
+    /// Open the calendar on one occurrence's detail panel.
+    #[serde(rename_all = "camelCase")]
+    OpenEvent {
+        occurrence_id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]

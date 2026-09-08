@@ -4,11 +4,22 @@
 
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { GameFoldersMenu } from "../game-folders/GameFoldersMenu";
 import { openTabForMode, TABS, tabsForMode } from "./tabs";
 import type { Tab } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./nav.css";
+
+/**
+ * The tabs that sit under the spacer rather than in the run of places to play.
+ *
+ * The client's own furniture: where the links out live, and where the settings
+ * live. The bottom group draws them one at a time, because the Game folders
+ * button goes between them; this list is what keeps them out of the group
+ * above.
+ */
+const BOTTOM_TABS: Tab[] = ["links", "settings"];
 
 export function TabBar() {
   const mode = useAppStore((s) => s.state.auth.mode);
@@ -50,7 +61,7 @@ export function TabBar() {
   return (
     <nav className="tabbar" aria-label={t("nav.main")}>
       <div className="nav-group">
-        {tabs.filter((id) => id !== "contribution" && id !== "settings").map(renderTab)}
+        {tabs.filter((id) => !BOTTOM_TABS.includes(id)).map(renderTab)}
       </div>
       <div className="nav-spacer" />
       <div className="nav-group">
@@ -69,7 +80,15 @@ export function TabBar() {
             <span>{t("auth.signIn")}</span>
           </button>
         )}
-        {tabs.filter((id) => id === "contribution" || id === "settings").map(renderTab)}
+        {tabs.filter((id) => id === "links").map(renderTab)}
+        {/* Not a tab: it opens directories in the operating system's file
+            manager rather than a view in the client, so it selects nothing and
+            has no place in the registry. It sits here because this is where the
+            issue put it, between the links out and the settings. Offline too:
+            these folders are on this disk and are exactly what a session with
+            no account can still use. */}
+        <GameFoldersMenu />
+        {tabs.filter((id) => id === "settings").map(renderTab)}
       </div>
     </nav>
   );

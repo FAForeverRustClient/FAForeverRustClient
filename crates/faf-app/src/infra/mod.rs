@@ -31,6 +31,7 @@ pub mod clan;
 pub mod client_update;
 pub mod coop;
 pub mod discord;
+pub mod events;
 pub(crate) mod faf_content;
 pub mod galactic_war;
 pub mod game;
@@ -78,6 +79,7 @@ pub use clan::{ClanClient, ClanConfig, FakeClan};
 pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
 pub use coop::{CoopClient, CoopConfig, FakeCoop};
 pub use discord::{DiscordClient, DiscordConfig, FakeDiscord};
+pub use events::{EventsCatalogueClient, EventsConfig, FakeEvents};
 pub use galactic_war::{FakeGalacticWar, GalacticWarConfig, GalacticWarGateway};
 pub use game::{FakeGame, GameConfig, GameProcess};
 pub use guides::{FakeGuides, GuidesClient, GuidesConfig};
@@ -435,6 +437,7 @@ pub fn fake_ports() -> Ports {
         clan: Arc::new(FakeClan),
         reviews: Arc::new(FakeReviews::default()),
         tourney: Arc::new(FakeTourney::default()),
+        events: Arc::new(FakeEvents),
         training: Arc::new(FakeTraining),
         guides: Arc::new(FakeGuides),
         tutorials: Arc::new(FakeTutorials),
@@ -548,6 +551,10 @@ pub fn real_ports() -> Ports {
     // training team publishes, so no token and no gating. Falls back to the
     // catalogue shipped with the client when none is configured.
     let training: Arc<dyn crate::ports::TrainingPort> = Arc::new(TrainingCatalogueClient::faf());
+    // The same shape, and for the same reason: the community half of the
+    // calendar is a document somebody publishes, so there is no token and
+    // nothing to gate. Falls back to the shipped copy when it cannot be read.
+    let events: Arc<dyn crate::ports::EventsPort> = Arc::new(EventsCatalogueClient::faf());
     // The write side of the same catalogue. Its own identity (GitHub's) and its
     // own keyring entry; unconfigured until an OAuth client id is supplied, in
     // which case it still reads the public submission queue.
@@ -601,6 +608,7 @@ pub fn real_ports() -> Ports {
         reporting,
         reviews,
         tourney,
+        events,
         training,
         guides,
         tutorials,

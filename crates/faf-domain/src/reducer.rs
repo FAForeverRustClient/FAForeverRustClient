@@ -4,9 +4,9 @@
 //! slice reducer. To add a slice, add one match arm here (ARCHITECTURE.md §3.3).
 
 use crate::state::{
-    auth, changelog, chat, clan, client_update, coop, galactic_war, guides, install, leaderboard,
-    lobby, map_generator, maps, mods, nav, notifications, player_card, replays, reporting, reviews,
-    session, settings, social, tourney, training, tutorials, uploads,
+    auth, changelog, chat, clan, client_update, coop, events, galactic_war, guides, install,
+    leaderboard, lobby, map_generator, maps, mods, nav, notifications, player_card, replays,
+    reporting, reviews, session, settings, social, tourney, training, tutorials, uploads,
 };
 use crate::{AppEvent, AppState};
 
@@ -19,6 +19,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) {
         AppEvent::Chat(e) => chat::reduce(&mut state.chat, e),
         AppEvent::Clan(e) => clan::reduce(&mut state.clan, e),
         AppEvent::Coop(e) => coop::reduce(&mut state.coop, e),
+        AppEvent::Events(e) => events::reduce(&mut state.events, e),
         AppEvent::Lobby(e) => lobby::reduce(&mut state.lobby, e),
         AppEvent::Replays(e) => replays::reduce(&mut state.replays, e),
         AppEvent::Maps(e) => maps::reduce(&mut state.maps, e),

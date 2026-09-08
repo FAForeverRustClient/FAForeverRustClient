@@ -23,6 +23,7 @@ pub mod clan;
 pub mod client_update;
 pub mod coop;
 pub mod discord;
+pub mod events;
 pub mod galactic_war;
 pub mod guides;
 pub mod launcher;

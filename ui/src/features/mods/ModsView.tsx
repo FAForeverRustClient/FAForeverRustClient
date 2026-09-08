@@ -31,7 +31,6 @@ import { InstalledModsView } from "./InstalledModsView";
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
-import { ModUploadModal } from "./ModUploadModal";
 import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -566,8 +565,6 @@ const SUB_VIEW_LABELS: Record<SubView, MessageKey> = {
 export function ModsView() {
   const { t } = useTranslation();
   const [subView, setSubView] = useState<SubView>("vault");
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const installed = useAppStore((state) => state.state.mods.installed);
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const busy = installStatus.type === "installing" || toggleStatus.type === "toggling";
@@ -588,22 +585,13 @@ export function ModsView() {
           items={(Object.keys(SUB_VIEW_LABELS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEW_LABELS[key]) }))}
           onChange={setSubView}
         />
-        <div className="vault-subnav-actions">
-          <Button variant="ghost" onClick={() => setUploadModalOpen(true)}>
-            <Icon name="upload" size={15} /> {t("uploads.title.mod")}
-          </Button>
-        </div>
+        {/* No publish button here. Uploading a mod is one action with one
+            entry point, which is "Upload mod" in the vault's own toolbar. */}
       </div>
       {subView === "vault" ? (
         <VaultView busy={busy} />
       ) : (
         <InstalledModsView busy={busy} onOpenInVault={openInVault} />
-      )}
-      {uploadModalOpen && (
-        <ModUploadModal
-          installed={installed}
-          onClose={() => setUploadModalOpen(false)}
-        />
       )}
     </div>
   );

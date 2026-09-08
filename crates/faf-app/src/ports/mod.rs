@@ -12,6 +12,7 @@ pub mod client_update;
 pub mod coop;
 pub mod discord;
 pub mod error;
+pub mod events;
 pub mod galactic_war;
 pub mod guides;
 pub mod ice;
@@ -41,6 +42,7 @@ pub use client_update::{ClientUpdatePort, DownloadProgress};
 pub use coop::CoopPort;
 pub use discord::{DiscordPort, DiscordRequest};
 pub use error::RequestError;
+pub use events::EventsPort;
 pub use galactic_war::{GalacticWarPort, InstallProgress};
 pub use guides::{DeviceCode, GuidesPort};
 pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
@@ -102,6 +104,10 @@ pub struct Ports {
     pub reporting: Arc<dyn ReportingPort>,
     pub reviews: Arc<dyn ReviewsPort>,
     pub tourney: Arc<dyn TourneyPort>,
+    /// The community calendar's catalogue. A read of one document, and the last
+    /// of the three sources the Events tab draws: the other two, tournaments
+    /// and the changelog index, already have ports of their own.
+    pub events: Arc<dyn EventsPort>,
     /// The training hub's catalogue of community material. A read of one
     /// document; the hub's two write-shaped paths compose a forum post the
     /// player sends themselves rather than crossing a port.
