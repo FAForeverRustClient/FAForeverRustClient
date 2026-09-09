@@ -731,6 +731,10 @@ export const en = {
   "lobby.browser.ranking": "Ranking",
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
+  // One friend is named; several are counted, because a row has no room for
+  // four logins and the tooltip carries them.
+  "lobby.browser.friendCount": { one: "{count} friend", other: "{count} friends" },
+  "lobby.browser.friendsHere": "On your friends list: {names}",
   "lobby.browser.mapSize": "Map size",
   "lobby.browser.mapFullName": "Map name",
   "lobby.browser.copyMapName": "Copy the full map name",
