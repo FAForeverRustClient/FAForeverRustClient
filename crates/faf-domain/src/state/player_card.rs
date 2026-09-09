@@ -584,14 +584,20 @@ const KNOWN_LEADERBOARDS: &[(&str, &str)] = &[
     ("4v4_share_until_death_league", "4v4 No Share League"),
 ];
 
-/// The 4v4 queue that was retired weeks after it appeared.
+/// The 4v4 queue that was retired weeks after it appeared, and its league.
 ///
-/// Its rating row still exists for everyone who played it, so the API still
-/// returns it, and it still takes a card in the profile for a mode nobody can
-/// queue for. Hidden rather than deleted: the row is the player's, and hiding
-/// it is a display decision this one function states. The leaderboard tab
-/// still lists the board, which is the only place that rating can be read.
-const RETIRED_LEADERBOARD: &str = "tmm_4v4_share_until_death";
+/// The rows still exist for everyone who played it, so the API still returns
+/// them, and they took a card in the profile and a page on the leaderboard for
+/// a mode nobody can queue for. Hidden rather than deleted: the rows are the
+/// players', and hiding them is a display decision these two lines state.
+const RETIRED_LEADERBOARDS: [&str; 2] =
+    ["tmm_4v4_share_until_death", "4v4_share_until_death_league"];
+
+/// Whether a board is one nobody can play any more, and so one this client
+/// does not offer.
+pub fn is_retired_leaderboard(technical_name: &str) -> bool {
+    RETIRED_LEADERBOARDS.contains(&technical_name)
+}
 
 /// What to call a leaderboard, or `None` for one this client has never heard
 /// of, which every caller names from the API's own fields instead.
@@ -615,7 +621,7 @@ pub fn leaderboard_display_rank(technical_name: &str) -> Option<usize> {
 /// after them, most played first, which is the only ranking a board this code
 /// has never heard of comes with. The retired 4v4 queue is dropped.
 pub fn sort_rating_summaries(ratings: &mut Vec<PlayerRatingSummary>) {
-    ratings.retain(|rating| rating.technical_name != RETIRED_LEADERBOARD);
+    ratings.retain(|rating| !is_retired_leaderboard(&rating.technical_name));
     ratings.sort_by(|left, right| {
         match (
             leaderboard_display_rank(&left.technical_name),
@@ -1242,6 +1248,14 @@ mod generated_map_tests {
             order(&["4v4_full_share_league", "1v1_league", "2v2_league"]),
             ["1v1_league", "2v2_league", "4v4_full_share_league"]
         );
+    }
+
+    #[test]
+    fn the_retired_4v4_league_is_recognised_too() {
+        assert!(is_retired_leaderboard("tmm_4v4_share_until_death"));
+        assert!(is_retired_leaderboard("4v4_share_until_death_league"));
+        assert!(!is_retired_leaderboard("tmm_4v4_full_share"));
+        assert!(!is_retired_leaderboard("global"));
     }
 
     #[test]

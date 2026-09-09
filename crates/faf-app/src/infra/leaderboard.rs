@@ -4,8 +4,9 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    leaderboard_display_name, leaderboard_display_rank, LeaderboardEntry, LeaderboardTier, League,
-    LeagueSeason, RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
+    is_retired_leaderboard, leaderboard_display_name, leaderboard_display_rank, LeaderboardEntry,
+    LeaderboardTier, League, LeagueSeason, RatingLeaderboard, RatingPage, RatingQuery,
+    SeasonLeaderboard,
 };
 use serde_json::Value;
 
@@ -440,6 +441,10 @@ fn parse_rating_leaderboards(doc: &JsonApiDoc) -> Vec<RatingLeaderboard> {
         .filter_map(|resource| {
             let id = resource.id.parse().ok()?;
             let technical_name = string_attr(resource, "technicalName")?.to_string();
+            // A queue nobody can play is not a leaderboard anybody can climb.
+            if is_retired_leaderboard(&technical_name) {
+                return None;
+            }
             let name_key = string_attr(resource, "nameKey").unwrap_or_default();
             Some(RatingLeaderboard {
                 id,
@@ -465,6 +470,9 @@ fn parse_leagues(doc: &JsonApiDoc) -> Vec<League> {
         .filter_map(|resource| {
             let id = resource.id.parse().ok()?;
             let technical_name = string_attr(resource, "technicalName")?.to_string();
+            if is_retired_leaderboard(&technical_name) {
+                return None;
+            }
             let name_key = string_attr(resource, "nameKey").unwrap_or_default();
             Some(League {
                 id,
@@ -1021,12 +1029,8 @@ mod tests {
         let names: Vec<_> = parsed.iter().map(|league| league.name.as_str()).collect();
         assert_eq!(
             names,
-            [
-                "1v1 League",
-                "2v2 League",
-                "4v4 League",
-                "4v4 No Share League"
-            ]
+            ["1v1 League", "2v2 League", "4v4 League"],
+            "the no-share league is a season nobody can enter, so it is not listed"
         );
     }
 
