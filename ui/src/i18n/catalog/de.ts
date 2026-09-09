@@ -2136,50 +2136,81 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.player.markFoe": "Als Feind markieren",
   "leaderboard.view.myProfile": "Mein Profil",
 
+
   "leaderboard.rating.explainShort": "Wie Rating funktioniert",
   "leaderboard.rating.explainTitle": "Wie dein Rating berechnet wird",
   "leaderboard.rating.lede":
     "FAF wertet mit TrueSkill, nicht mit Elo. Daher bleibt dein Rating nach einem Sieg manchmal stehen, startet ein neuer Account bei null, und lässt sich ein 2v2v2 überhaupt werten.",
 
+  "leaderboard.rating.whyTrueskillTitle": "Warum TrueSkill statt Elo",
+  "leaderboard.rating.whyTrueskillBody":
+    "Elo kann nur einen Spieler gegen einen anderen werten. Ein Team gilt ihm als ein einzelner Spieler, ein Free-for-all oder ein Spiel mit mehr als zwei Seiten kann es also nicht sauber gewichten, und ein Unentschieden behandelt es als halben Sieg statt als das, was es ist: eine Partie gegen jemanden auf deinem Niveau. TrueSkill wertet jede Spielform, und FAF rechnet überall mit 10 Prozent Unentschieden-Wahrscheinlichkeit.",
+  "leaderboard.rating.inflation":
+    "Elo inflationiert außerdem. Es vergleicht zwei Ratings und sonst nichts, also gewinnt ein starker Spieler, der viel spielt, immer weiter dazu: die Spitze der alten GPGnet-Leiter driftete von etwa 1900 auf 2700, ohne dass jemand so viel besser geworden wäre, und die übliche Antwort, eine Obergrenze für die Punkte pro Spiel, ist ein willkürlicher Deckel statt einer Lösung. TrueSkill rechnet vorher aus, wie wahrscheinlich jedes Ergebnis ist: ein erwarteter Sieg ändert wenig, ein unerwarteter viel. Auf deinem echten Niveau bleibst du dann auch.",
+  "leaderboard.rating.trajectoriesAlt":
+    "Fünf Rating-Linien über die letzten vierzig Spiele, vier stabil und eine steil von unten ansteigend",
+  "leaderboard.rating.trajectoriesCaption":
+    "Fünf Teams über ihre letzten vierzig Spiele. Vier sind eingependelt und bleiben es. Das von unten ansteigende ist ein starkes neues Team, das anfangs viel zu niedrig eingestuft war: nach etwa fünfzehn Spielen hatte das System sein Niveau gefunden.",
+
   "leaderboard.rating.twoNumbersTitle": "Eine Zahl siehst du, zwei speichert der Server",
   "leaderboard.rating.twoNumbersBody":
-    "Dein Rating ist kein Punktestand. Es ist eine Glockenkurve darüber, wie gut der Server dich einschätzt, und für eine Kurve braucht es zwei Zahlen. Beide stehen in deinem Profil neben jeder Queue.",
+    "Die Zahl in der Bestenliste ist eine Näherung. Zwei Spieler mit demselben Rating können in Wahrheit unterschiedlich stark spielen, denn darunter ist dein Rating eine Glockenkurve darüber, wie gut der Server dich einschätzt, und für eine Kurve braucht es zwei Zahlen. Beide stehen in deinem Profil neben jeder Queue.",
   "leaderboard.rating.meanAndDeviation":
-    "Der Mittelwert ist die Mitte der Kurve: das Niveau, das der Server von dir erwartet. Die Abweichung ist seine Unsicherheit, also die Breite der Kurve. Eine breite Kurve heißt, derselbe Spieler könnte mit 1000 oder mit 2000 auftauchen.",
-  "leaderboard.rating.formula": "Rating = Mittelwert - 3 x Abweichung",
-  "leaderboard.rating.formulaWhy":
-    "Die Bestenliste zeigt absichtlich das untere Ende dieser Kurve statt ihrer Mitte. Das ist die vorsichtige Lesart: wer mit 1200 gelistet ist, spielt wahrscheinlich besser als 1200 und kaum schlechter. Sicherheit zählt damit genauso viel wie Stärke.",
-  "leaderboard.rating.formulaExample":
-    "Ein Spieler mit Mittelwert 2260 und Abweichung 139 steht mit 1842 in der Liste.",
-
-  "leaderboard.rating.newAccountTitle": "Warum ein neuer Account bei null steht und springt",
+    "Der Mittelwert ist die Mitte der Kurve: das Niveau, das der Server von dir erwartet, und das Beste, was er dir derzeit zutraut. Die Abweichung ist seine Unsicherheit, also die Breite der Kurve. Eine breite Kurve heißt, derselbe Spieler könnte mit 1000 oder mit 2000 auftauchen.",
   "leaderboard.rating.newAccountBody":
-    "Ein neuer Account bekommt Mittelwert 1500, das Durchschnittsniveau, und Abweichung 500, weil noch nichts über ihn bekannt ist. Dreimal 500 von 1500 abgezogen ergibt null, und genau das steht dann in der Liste.",
+    "Ein neuer Account startet mit Mittelwert 1500, dem Durchschnittsniveau, und Abweichung 500, weil noch nichts über ihn bekannt ist.",
   "leaderboard.rating.newPlayerAlt": "Eine breite Glockenkurve um 1500, etwa von 0 bis 3000",
   "leaderboard.rating.newPlayerCaption":
     "Ein neuer Account: Mittelwert 1500, Abweichung 500. Der Server erwartet ein durchschnittliches Spiel und wäre von 1000 wie von 2000 nicht überrascht.",
-  "leaderboard.rating.thirtyGames":
-    "Jedes gewertete Spiel verschmälert die Kurve, egal wie es ausgeht, denn jedes Spiel ist ein Hinweis. Weil die Abweichung dreifach abgezogen wird, steigt die angezeigte Zahl anfangs schnell, auch wenn sich der Mittelwert kaum bewegt, und sie springt dabei. Unter etwa dreißig Spielen sagt sie wenig; nach dreißig bis vierzig hat das System dich erfasst.",
-  "leaderboard.rating.afterThirtyAlt": "Eine schmalere Glockenkurve um etwa 1190",
-  "leaderboard.rating.afterThirtyCaption":
-    "Derselbe Spieler nach dreißig Spielen: Mittelwert 1188, Abweichung 91. Erwartet werden jetzt etwa 1100 bis 1300.",
+  "leaderboard.rating.settledLead":
+    "Jedes gewertete Spiel verschmälert diese Kurve, egal wie es ausgeht, denn jedes Spiel ist ein Hinweis. Zwei Accounts, von denen der Server genug gesehen hat:",
   "leaderboard.rating.settledAlt": "Eine schmale Glockenkurve um etwa 2190",
   "leaderboard.rating.settledCaption":
-    "Und nach fünfhundert: Mittelwert 2189, Abweichung 57. Alles außerhalb von 2150 bis 2250 ist unwahrscheinlich geworden.",
+    "Nach fünfhundert Spielen: Mittelwert 2189, Abweichung 57. Alles außerhalb von 2150 bis 2250 ist unwahrscheinlich geworden.",
+  "leaderboard.rating.afterThirtyAlt": "Eine schmalere Glockenkurve um etwa 1190",
+  "leaderboard.rating.afterThirtyCaption":
+    "Und nach dreißig: Mittelwert 1188, Abweichung 91. Unter dem Durchschnitt, erwartet werden etwa 1100 bis 1300.",
+
+  "leaderboard.rating.leaderboardNumberTitle": "Was die Bestenliste daraus macht",
+  "leaderboard.rating.formula": "Rating = Mittelwert - 3 x Abweichung",
+  "leaderboard.rating.formulaWhy":
+    "Sie zeigt absichtlich das untere Ende der Kurve statt ihrer Mitte. Das ist die vorsichtige Lesart: wer mit 1200 gelistet ist, spielt wahrscheinlich besser als 1200 und kaum schlechter. Sicherheit zählt damit genauso viel wie Stärke, und ein neuer Account steht bei 1500 minus dreimal 500, also bei null.",
+  "leaderboard.rating.formulaExample":
+    "Ein Spieler mit Mittelwert 2260 und Abweichung 139 steht mit 1842 in der Liste.",
+  "leaderboard.rating.thirtyGames":
+    "Weil die Abweichung dreifach abgezogen wird, steigt die angezeigte Zahl anfangs schnell, auch wenn sich der Mittelwert kaum bewegt, und sie springt dabei. Unter etwa dreißig Spielen sagt sie wenig. Nach dreißig bis vierzig hat das System dich erfasst, und sie fängt an, etwas zu sagen.",
 
   "leaderboard.rating.nothingForAWinTitle": "Warum ein Sieg manchmal nichts bringt",
   "leaderboard.rating.nothingForAWinBody":
-    "Vor dem Spiel rechnet TrueSkill aus, wer gewinnen sollte. Ein Sieg mit 90 Prozent Siegchance sagt nichts Neues, also bleibt der Mittelwert stehen und nur die Abweichung schrumpft. Ein Sieg, den niemand erwartet hat, ist eine Neuigkeit und bewegt den Mittelwert. Deshalb inflationiert das Rating hier auch nicht wie eine Elo-Leiter: viel spielen ist nicht dasselbe wie besser werden.",
+    "Vor dem Spiel rechnet TrueSkill aus, wer gewinnen sollte. Ein Sieg mit 90 Prozent Siegchance sagt nichts Neues, also bleibt der Mittelwert stehen und nur die Abweichung schrumpft. Ein Sieg, den niemand erwartet hat, ist eine Neuigkeit und bewegt den Mittelwert. Für ein Spiel, das du gewinnen musstest, bekommst du wenig, und für eines, das du nie gewinnen konntest, verlierst du wenig.",
   "leaderboard.rating.wentDownOnAWin":
     "Vor jedem Spiel legt der Server außerdem etwas Abweichung drauf, weil niemand an jedem Abend gleich spielt. In einem Spiel, das nichts klärt, kann dieser Zuschlag größer sein als das, was das Spiel abgezogen hat, und weil die Abweichung dreifach zählt, kann das angezeigte Rating nach einem Sieg um ein, zwei Punkte fallen. Der Mittelwert ist trotzdem gestiegen. Verloren hast du nichts.",
 
   "leaderboard.rating.teamsTitle": "Teamspiele und alles, was kein 1v1 ist",
   "leaderboard.rating.teamsBody":
-    "Ein Team gilt als Summe seiner Spieler, und das Teamergebnis wird an jeden einzelnen weitergereicht. Im Replay steht nicht, wer getragen hat, also rät auch niemand: ein Mitspieler kann viel aus einem Spiel mitnehmen, aus dem du nichts mitnimmst. Genau das kann Elo gar nicht, und deshalb lassen sich hier FFA und 2v2v2 überhaupt werten.",
+    "Ein Team gilt als Summe seiner Spieler, und das Teamergebnis wird an jeden einzelnen weitergereicht. Im Replay steht nicht, wer getragen hat, also rät auch niemand: ein Mitspieler kann viel aus einem Spiel mitnehmen, aus dem du nichts mitnimmst. Ein Ergebnis zählt außerdem umso weniger, je weniger es aussagt, weshalb ein Free-for-all ein Rating weniger bewegt als ein 1v1.",
+
+  "leaderboard.rating.balanceTitle": "Die Balance-Angabe an einer Lobby",
+  "leaderboard.rating.balanceBody":
+    "Der Prozentwert neben einem Spiel ist die Wahrscheinlichkeit für ein Unentschieden, und das ist dieselbe Frage wie die nach der Ausgeglichenheit. Hundert Prozent heißt Münzwurf, null heißt, eine Seite kann statistisch nicht gewinnen. Vierzig Prozent heißt nicht, dass das Spiel schlecht wird. Fünf Prozent heißt das.",
+  "leaderboard.rating.balanceDeviation":
+    "Zwei Spieler mit gleichem angezeigten Rating können trotzdem ein schlechtes Spiel ergeben, weil diese Zahl zwei verschiedene Kurven verbirgt. Je breiter sie sind, desto weniger ist ihre Mitte wert:",
+  "leaderboard.rating.balanceNewCaption":
+    "Zwei neue Accounts auf dieser Kurve könnten in Wahrheit 1100 und 1700 sein. Der Client kann es nicht wissen und berücksichtigt es: so eine Paarung liest sich als 44 Prozent.",
+  "leaderboard.rating.balanceSettledCaption":
+    "Zwei Spieler auf dieser hier sind bekannte Größen, und derselbe nominelle Abstand liest sich als 94 Prozent.",
+  "leaderboard.rating.balanceChainLead":
+    "Bei mehr als zwei Seiten wird der Wert entlang einer Kette bestimmt, vom schwächsten zum stärksten.",
+  "leaderboard.rating.skillChainAlt":
+    "Fünf Spieler in einer Reihe, je zwei verbunden durch einen mit Beta und 20 zu 80 Prozent beschrifteten Abstand",
+  "leaderboard.rating.skillChainCaption":
+    "Jedes Glied ist ein Beta, also der Abstand, der die stärkere Seite zum 80-Prozent-Favoriten macht. Je weniger Betas über die ganze Kette, desto besser das Spiel.",
+  "leaderboard.rating.balanceCaveat":
+    "Es ist eine Zahl über Ratings, und sie kennt weder die Karte noch die Positionen noch wer schon zusammen gespielt hat oder worin jemand besonders gut ist. Ein Spiel mit 20 Prozent kann ein guter Abend werden. Lehne deswegen nichts ab.",
 
   "leaderboard.rating.whichGamesTitle": "Welche Spiele zählen",
   "leaderboard.rating.whichGamesBody":
-    "Jede Queue führt eigenen Mittelwert und eigene Abweichung, ein Spiel ändert also genau eine davon. Global ist das Rating für Custom-Spiele: Matchmaker-Spiele zählen für ihre eigene Queue, nicht für Global.",
+    "Jede Queue führt eigenen Mittelwert und eigene Abweichung, ein Spiel ändert also genau eine davon. Global ist das Rating für Custom-Spiele: Matchmaker-Spiele zählen für ihre eigene Queue und nicht für Global. Es zählt nur das Ergebnis, nie wie gut du gespielt hast.",
   "leaderboard.rating.unratedLead": "Ein normales Spiel wird gewertet. Diese nicht:",
   "leaderboard.rating.unratedSettings":
     "Geänderte Einstellungen: eine andere Siegbedingung als Assassination, Nebel des Krieges aus, Cheats, vorgebaute Einheiten, No Rush, Einheitenbeschränkungen oder offene Teams.",
@@ -2190,26 +2221,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.rating.unratedSimMods":
     "Simulationsmods, bis auf eine Handvoll alter Ausnahmen. UI-Mods spielen nie eine Rolle.",
   "leaderboard.rating.unratedDesyncs": "Spiele mit zu vielen Desyncs, um verlässlich zu sein.",
-
-  "leaderboard.rating.balanceTitle": "Die Balance-Angabe an einer Lobby",
-  "leaderboard.rating.balanceBody":
-    "Der Prozentwert neben einem Spiel ist die Wahrscheinlichkeit für ein Unentschieden, und das ist dieselbe Frage wie die nach der Ausgeglichenheit. Hundert Prozent heißt Münzwurf, null heißt, eine Seite kann statistisch nicht gewinnen.",
-  "leaderboard.rating.balanceDeviation":
-    "Zwei Spieler mit gleichem angezeigten Rating können trotzdem ein schlechtes Spiel ergeben, weil diese Zahl zwei verschiedene Kurven verbirgt. Zwei neue Accounts könnten in Wahrheit 1100 und 1700 sein, und der Wert berücksichtigt das: so eine Paarung liest sich als 44 Prozent, zwei eingespielte Spieler auf gleichem Niveau als 94.",
-  "leaderboard.rating.skillChainAlt":
-    "Fünf Spieler in einer Reihe, je zwei verbunden durch einen mit Beta und 20 zu 80 Prozent beschrifteten Abstand",
-  "leaderboard.rating.skillChainCaption":
-    "Bei mehr als zwei Seiten ist es eine Kette, vom schwächsten zum stärksten. Jedes Glied ist ein Beta, also der Abstand, der die stärkere Seite zum 80-Prozent-Favoriten macht: je weniger Betas über die Kette, desto besser das Spiel.",
-  "leaderboard.rating.balanceCaveat":
-    "Es ist eine Zahl über Ratings, und sie kennt weder die Karte noch die Positionen noch wer schon zusammen gespielt hat oder worin jemand besonders gut ist. Ein Spiel mit 20 Prozent kann ein guter Abend werden. Lehne deswegen nichts ab.",
-
-  "leaderboard.rating.whyTrueskillTitle": "Warum TrueSkill statt Elo",
-  "leaderboard.rating.whyTrueskillBody":
-    "Elo kann nur einen Spieler gegen einen anderen werten. Ein Free-for-all kann es nicht gewichten, ein Unentschieden behandelt es als halben Sieg, und es inflationiert: ein starker Spieler, der viel spielt, gewinnt immer weiter dazu. So driftete die Spitze der alten GPGnet-Leiter von etwa 1900 auf 2700, ohne dass jemand so viel besser geworden wäre. TrueSkill wertet jede Spielform, nimmt ein Unentschieden als das Ergebnis, das es ist, und pendelt sich ein, statt zu driften.",
-  "leaderboard.rating.trajectoriesAlt":
-    "Fünf Rating-Linien über die letzten vierzig Spiele, vier stabil und eine steil von unten ansteigend",
-  "leaderboard.rating.trajectoriesCaption":
-    "Fünf Teams über ihre letzten vierzig Spiele. Vier sind eingependelt und bleiben es. Das von unten ansteigende ist ein starkes neues Team, das anfangs viel zu niedrig eingestuft war: nach etwa fünfzehn Spielen hatte das System sein Niveau gefunden.",
 
   "leaderboard.rating.moreOnTheWiki":
     "Das ist die Kurzfassung der Rating-Seite im FAF-Wiki, wo sie auch aktuell gehalten wird.",

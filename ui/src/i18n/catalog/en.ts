@@ -2263,50 +2263,86 @@ export const en = {
   // own rating page (wiki.faforever.com/en/Infrastructure/Rating-System), in
   // the client's voice: that page is also about the server and the API, and
   // half of it answers questions a leaderboard reader is not asking.
+
+  // "How rating works", the third leaderboard tab. The FAF wiki's rating page
+  // (wiki.faforever.com/en/Infrastructure/Rating-System) in the client's voice
+  // and in the wiki's own order, figures included: that page is also about the
+  // server and the API, and half of it answers questions a leaderboard reader
+  // is not asking.
   "leaderboard.rating.explainShort": "How rating works",
   "leaderboard.rating.explainTitle": "How your rating is calculated",
   "leaderboard.rating.lede":
     "FAF rates with TrueSkill, not with Elo. That is why your rating can sit still after a win, why a new account starts at zero, and why a 2v2v2 can be rated at all.",
 
+  "leaderboard.rating.whyTrueskillTitle": "Why TrueSkill rather than Elo",
+  "leaderboard.rating.whyTrueskillBody":
+    "Elo can only rate one player against one other. A team counts as a single player to it, so it cannot properly weigh a free for all or a game with more than two sides, and it treats a draw as half a win rather than as what it is: a match against somebody your own strength. TrueSkill rates any shape of game, and FAF assumes a 10 percent chance of a draw in all of them.",
+  "leaderboard.rating.inflation":
+    "Elo also inflates. It compares two ratings and nothing else, so a strong player who plays often keeps gaining: the top of the old GPGnet ladder drifted from about 1900 to 2700 without anybody getting that much better, and the usual answer, a cap on the points one game can move, is an arbitrary lid rather than a fix. TrueSkill works out beforehand how likely each result is, so a win that was expected changes little and one that was not changes a lot. Once you reach your real level you stay there.",
+  "leaderboard.rating.trajectoriesAlt":
+    "Five rating lines over the last forty games, four steady and one climbing steeply from below",
+  "leaderboard.rating.trajectoriesCaption":
+    "Five teams over their last forty games. Four are settled and stay put. The one climbing from the bottom is a strong new team that was rated far too low at first, and the system found its level in about fifteen games.",
+
   "leaderboard.rating.twoNumbersTitle": "One number you see, two the server keeps",
   "leaderboard.rating.twoNumbersBody":
-    "Your rating is not a score. It is a bell curve over how well the server thinks you would play, and it takes two numbers to draw one. Both are on your profile beside every queue.",
+    "The number on a leaderboard is an approximation. Two players listed at the same rating can in truth play at different levels, because underneath it your rating is a bell curve over how well the server thinks you would play, and it takes two numbers to draw one. Both are on your profile beside every queue.",
   "leaderboard.rating.meanAndDeviation":
-    "The mean is the middle of that curve: the level the server expects of you. The deviation is how unsure it is, the width of the curve. A wide curve says the same player might turn up at 1000 or at 2000.",
-  "leaderboard.rating.formula": "rating = mean - 3 x deviation",
-  "leaderboard.rating.formulaWhy":
-    "The leaderboard shows the bottom of that curve rather than its middle, on purpose. It is a cautious reading: a player listed at 1200 will probably play better than 1200, and is unlikely to play worse. Being certain of a level therefore counts for as much as reaching it.",
-  "leaderboard.rating.formulaExample":
-    "A player with a mean of 2260 and a deviation of 139 is listed at 1842.",
-
-  "leaderboard.rating.newAccountTitle": "Why a new account starts at zero and jumps around",
+    "The mean is the middle of that curve: the level the server expects of you, and the most it thinks you can currently manage. The deviation is its uncertainty, the width of the curve. A wide curve says the same player might turn up at 1000 or at 2000.",
   "leaderboard.rating.newAccountBody":
-    "A new account is given a mean of 1500, the average level, and a deviation of 500, because nothing is known about it yet. Three times 500 subtracted from 1500 is zero, which is exactly what a new leaderboard entry says.",
+    "A new account starts at a mean of 1500, the average level, and a deviation of 500, because nothing is known about it yet.",
   "leaderboard.rating.newPlayerAlt": "A wide bell curve centred on 1500, spanning roughly 0 to 3000",
   "leaderboard.rating.newPlayerCaption":
     "A new account: mean 1500, deviation 500. The server expects an average game and would not be surprised by 1000 or by 2000.",
-  "leaderboard.rating.thirtyGames":
-    "Every rated game narrows the curve, whatever its result, because every game is evidence. Since the deviation is subtracted three times over, the listed number climbs quickly at first even when the mean barely moves, and it is jumpy while it does. Under about thirty games it does not mean much; after thirty to forty the system has learned you and it starts to.",
-  "leaderboard.rating.afterThirtyAlt": "A narrower bell curve centred on about 1190",
-  "leaderboard.rating.afterThirtyCaption":
-    "The same reader after thirty games: mean 1188, deviation 91. The server now expects between about 1100 and 1300.",
+  "leaderboard.rating.settledLead":
+    "Every rated game narrows that curve, whatever its result, because every game is evidence. Two accounts the server has seen enough of:",
   "leaderboard.rating.settledAlt": "A narrow bell curve centred on about 2190",
   "leaderboard.rating.settledCaption":
-    "And after five hundred: mean 2189, deviation 57. Anything outside 2150 to 2250 has become unlikely.",
+    "After five hundred games: mean 2189, deviation 57. Anything outside 2150 to 2250 has become unlikely.",
+  "leaderboard.rating.afterThirtyAlt": "A narrower bell curve centred on about 1190",
+  "leaderboard.rating.afterThirtyCaption":
+    "And after thirty: mean 1188, deviation 91. Below the average, and expected between about 1100 and 1300.",
+
+  "leaderboard.rating.leaderboardNumberTitle": "What the leaderboard does with them",
+  "leaderboard.rating.formula": "rating = mean - 3 x deviation",
+  "leaderboard.rating.formulaWhy":
+    "It shows the bottom of the curve rather than its middle, on purpose. It is a cautious reading: a player listed at 1200 will probably play better than 1200, and is unlikely to play worse. Being certain of a level therefore counts for as much as reaching it, and a new account, at 1500 minus three times 500, is listed at zero.",
+  "leaderboard.rating.formulaExample":
+    "A player with a mean of 2260 and a deviation of 139 is listed at 1842.",
+  "leaderboard.rating.thirtyGames":
+    "Because the deviation is subtracted three times over, the listed number climbs quickly at first even when the mean barely moves, and it is jumpy while it does. Under about thirty games it does not mean much. After thirty to forty the system has learned you, and it starts to.",
 
   "leaderboard.rating.nothingForAWinTitle": "Why a win sometimes gains nothing",
   "leaderboard.rating.nothingForAWinBody":
-    "Before the game, TrueSkill works out who ought to win. Winning a game you had a 90 percent chance of winning tells it nothing it did not already believe, so your mean stays where it is and only your deviation shrinks. Winning one you were expected to lose is news, and moves the mean. This is also why the ratings here do not inflate the way an Elo ladder does: playing a lot is not the same as improving.",
+    "Before the game, TrueSkill works out who ought to win. Winning a game you had a 90 percent chance of winning tells it nothing it did not already believe, so your mean stays where it is and only your deviation shrinks. Winning one you were expected to lose is news, and moves the mean. You will not gain much for a game you were supposed to win, and you will not lose much for one you were never going to.",
   "leaderboard.rating.wentDownOnAWin":
     "The server also adds a little deviation before every game, to allow for the fact that nobody plays the same on every evening. In a game that settles nothing, that addition can outweigh what the game took off, and since the deviation is subtracted three times, the listed rating can fall by a point or two after a win. The mean still went up. It is not a lost point.",
 
   "leaderboard.rating.teamsTitle": "Team games, and everything that is not 1v1",
   "leaderboard.rating.teamsBody":
-    "A team is treated as the sum of the players in it, and the team's result is passed back to each of them. Nothing in the replay says who carried, so nothing tries to guess: a teammate can gain a great deal from a game in which you gain nothing. This is the part Elo cannot do at all, and it is why FFA and 2v2v2 can be rated here.",
+    "A team is treated as the sum of the players in it, and the team's result is passed back to each of them. Nothing in the replay says who carried, so nothing tries to guess: a teammate can gain a great deal from a game in which you gain nothing. A result also counts for less the less it says, which is why a free for all moves a rating less than a 1v1 does.",
+
+  "leaderboard.rating.balanceTitle": "The balance figure on a lobby",
+  "leaderboard.rating.balanceBody":
+    "The percentage beside a game is the chance that it ends in a draw, which is the same question as how evenly the sides are matched. A hundred percent is a coin toss; nought means one side statistically cannot win. Forty percent does not mean the game will be bad. Five percent means it.",
+  "leaderboard.rating.balanceDeviation":
+    "Two players with the same listed rating can still make a poor game, because that number hides two different curves. The wider they are, the less the middle of them is worth:",
+  "leaderboard.rating.balanceNewCaption":
+    "Two new accounts on this curve might really be 1100 and 1700. The client cannot know, so it allows for it: that match reads as 44 percent.",
+  "leaderboard.rating.balanceSettledCaption":
+    "Two players on this one are known quantities, and the same nominal gap reads as 94 percent.",
+  "leaderboard.rating.balanceChainLead":
+    "With more than two sides the figure is worked out along a chain, weakest to strongest.",
+  "leaderboard.rating.skillChainAlt":
+    "Five players in a row, each linked to the next by a gap marked beta and 20 to 80 percent",
+  "leaderboard.rating.skillChainCaption":
+    "Each link is one beta, the gap that makes the stronger side an 80 percent favourite. The fewer betas across the whole chain, the better the game.",
+  "leaderboard.rating.balanceCaveat":
+    "It is one number about ratings, and it does not know the map, the positions, who has played together before, or who is good at exactly this. A game at 20 percent can still be a good evening. Do not use it to refuse to play.",
 
   "leaderboard.rating.whichGamesTitle": "Which games count",
   "leaderboard.rating.whichGamesBody":
-    "Every queue keeps its own mean and deviation, so a game changes exactly one of them. Global is the custom game rating: matchmaker games count towards their own queue, not towards Global.",
+    "Every queue keeps its own mean and deviation, so a game changes exactly one of them. Global is the custom game rating: matchmaker games count towards their own queue and not towards Global. Only the result counts, never how well you played.",
   "leaderboard.rating.unratedLead": "A standard game is rated. These are not:",
   "leaderboard.rating.unratedSettings":
     "Changed settings: a victory condition other than Assassination, fog of war off, cheats, prebuilt units, No Rush, unit restrictions, or unlocked teams.",
@@ -2317,26 +2353,6 @@ export const en = {
   "leaderboard.rating.unratedSimMods":
     "Simulation mods, with a handful of long-standing exceptions. UI mods never affect this.",
   "leaderboard.rating.unratedDesyncs": "Games that desynced too often to be trusted.",
-
-  "leaderboard.rating.balanceTitle": "The balance figure on a lobby",
-  "leaderboard.rating.balanceBody":
-    "The percentage beside a game is the chance that it ends in a draw, which is the same thing as asking how evenly the sides are matched. A hundred percent is a coin toss; nought means one side statistically cannot win.",
-  "leaderboard.rating.balanceDeviation":
-    "Two players with the same listed rating can still make a poor game, because that number hides two different curves. Two new accounts might really be 1100 and 1700, and the figure allows for it: that match reads as 44 percent, while two settled players at the same level read as 94.",
-  "leaderboard.rating.skillChainAlt":
-    "Five players in a row, each linked to the next by a gap marked beta and 20 to 80 percent",
-  "leaderboard.rating.skillChainCaption":
-    "With more than two sides it is a chain, weakest to strongest. Each link is one beta, the gap that makes the stronger side an 80 percent favourite, so the fewer betas across the chain the better the game.",
-  "leaderboard.rating.balanceCaveat":
-    "It is one number about ratings, and it does not know the map, the positions, who has played together before, or who is good at exactly this. A game at 20 percent can still be a good evening. Do not use it to refuse to play.",
-
-  "leaderboard.rating.whyTrueskillTitle": "Why TrueSkill rather than Elo",
-  "leaderboard.rating.whyTrueskillBody":
-    "Elo can only rate one player against one other. It cannot weigh a free for all, it treats a draw as half a win, and it inflates: a strong player who plays a lot keeps gaining, which is why the top of the old GPGnet ladder drifted from about 1900 to 2700 without anybody getting that much better. TrueSkill rates any shape of game, treats a draw as the meaningful result it is, and settles rather than drifts.",
-  "leaderboard.rating.trajectoriesAlt":
-    "Five rating lines over the last forty games, four steady and one climbing steeply from below",
-  "leaderboard.rating.trajectoriesCaption":
-    "Five teams over their last forty games. Four are settled and stay put. The one climbing from the bottom is a strong new team that was rated far too low at first, and the system found its level in about fifteen games.",
 
   "leaderboard.rating.moreOnTheWiki":
     "This is the short version of the FAF wiki's rating page, which is where it stays current.",

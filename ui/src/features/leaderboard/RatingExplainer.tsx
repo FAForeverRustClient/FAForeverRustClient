@@ -17,8 +17,8 @@ const RATING_SYSTEM_WIKI = "https://wiki.faforever.com/en/Infrastructure/Rating-
 
 /// A figure from the wiki page, with the caption that says what to look at.
 ///
-/// Loaded lazily and given fixed room by an aspect ratio, so opening the tab
-/// does not reflow as five PNGs arrive.
+/// Loaded lazily, and sized to the image rather than to a frame, so a wide
+/// chart and a square histogram both arrive without letterboxing.
 function Figure({ src, alt, caption }: { src: string; alt: MessageKey; caption: MessageKey }) {
   const { t } = useTranslation();
   return (
@@ -42,11 +42,15 @@ function Section({ title, children }: { title: MessageKey; children: React.React
 /**
  * How the number on a leaderboard is arrived at.
  *
- * Written from the FAF wiki's own rating page, which the maintainers pointed
- * at, and kept in the client's voice rather than pasted: the wiki page is also
- * about the server and the API, and half of it answers questions a leaderboard
- * reader is not asking. What is here is what that reader asks, in the order
- * they ask it, and the link at the bottom goes to the page itself.
+ * The FAF wiki's rating page, in the client's voice and in the wiki's own
+ * order: why TrueSkill at all, then what the two numbers are, then what the
+ * leaderboard does with them, then the questions people actually ask about
+ * their own rating, then the balance figure, then which games count.
+ *
+ * The figures are the wiki's, in its sequence, and two of them appear twice
+ * because the wiki uses them twice: the same pair of curves that explains a
+ * new account is what explains why two equal ratings can still make a lopsided
+ * game.
  *
  * The one thing the client can check for itself is the formula: a player card
  * lists a rating beside its mean and deviation, and `2260 - 3 x 139.3 = 1842`
@@ -66,36 +70,47 @@ export function RatingExplainerPanel() {
         <p className="muted">{t("leaderboard.rating.lede")}</p>
       </header>
 
+      <Section title="leaderboard.rating.whyTrueskillTitle">
+        <p>{t("leaderboard.rating.whyTrueskillBody")}</p>
+        <p>{t("leaderboard.rating.inflation")}</p>
+        <Figure
+          src={trajectories}
+          alt="leaderboard.rating.trajectoriesAlt"
+          caption="leaderboard.rating.trajectoriesCaption"
+        />
+      </Section>
+
       <Section title="leaderboard.rating.twoNumbersTitle">
         <p>{t("leaderboard.rating.twoNumbersBody")}</p>
         <p>{t("leaderboard.rating.meanAndDeviation")}</p>
-        <p className="rating-explainer-formula">
-          <code>{t("leaderboard.rating.formula")}</code>
-        </p>
-        <p>{t("leaderboard.rating.formulaWhy")}</p>
-        <p className="muted">{t("leaderboard.rating.formulaExample")}</p>
-      </Section>
-
-      <Section title="leaderboard.rating.newAccountTitle">
         <p>{t("leaderboard.rating.newAccountBody")}</p>
         <Figure
           src={newPlayerCurve}
           alt="leaderboard.rating.newPlayerAlt"
           caption="leaderboard.rating.newPlayerCaption"
         />
-        <p>{t("leaderboard.rating.thirtyGames")}</p>
+        <p>{t("leaderboard.rating.settledLead")}</p>
         <div className="rating-explainer-figure-pair">
-          <Figure
-            src={afterThirtyGamesCurve}
-            alt="leaderboard.rating.afterThirtyAlt"
-            caption="leaderboard.rating.afterThirtyCaption"
-          />
           <Figure
             src={settledPlayerCurve}
             alt="leaderboard.rating.settledAlt"
             caption="leaderboard.rating.settledCaption"
           />
+          <Figure
+            src={afterThirtyGamesCurve}
+            alt="leaderboard.rating.afterThirtyAlt"
+            caption="leaderboard.rating.afterThirtyCaption"
+          />
         </div>
+      </Section>
+
+      <Section title="leaderboard.rating.leaderboardNumberTitle">
+        <p className="rating-explainer-formula">
+          <code>{t("leaderboard.rating.formula")}</code>
+        </p>
+        <p>{t("leaderboard.rating.formulaWhy")}</p>
+        <p className="muted">{t("leaderboard.rating.formulaExample")}</p>
+        <p>{t("leaderboard.rating.thirtyGames")}</p>
       </Section>
 
       <Section title="leaderboard.rating.nothingForAWinTitle">
@@ -105,6 +120,30 @@ export function RatingExplainerPanel() {
 
       <Section title="leaderboard.rating.teamsTitle">
         <p>{t("leaderboard.rating.teamsBody")}</p>
+      </Section>
+
+      <Section title="leaderboard.rating.balanceTitle">
+        <p>{t("leaderboard.rating.balanceBody")}</p>
+        <p>{t("leaderboard.rating.balanceDeviation")}</p>
+        <div className="rating-explainer-figure-pair">
+          <Figure
+            src={newPlayerCurve}
+            alt="leaderboard.rating.newPlayerAlt"
+            caption="leaderboard.rating.balanceNewCaption"
+          />
+          <Figure
+            src={afterThirtyGamesCurve}
+            alt="leaderboard.rating.afterThirtyAlt"
+            caption="leaderboard.rating.balanceSettledCaption"
+          />
+        </div>
+        <p>{t("leaderboard.rating.balanceChainLead")}</p>
+        <Figure
+          src={skillChain}
+          alt="leaderboard.rating.skillChainAlt"
+          caption="leaderboard.rating.skillChainCaption"
+        />
+        <p className="muted">{t("leaderboard.rating.balanceCaveat")}</p>
       </Section>
 
       <Section title="leaderboard.rating.whichGamesTitle">
@@ -118,26 +157,6 @@ export function RatingExplainerPanel() {
           <li>{t("leaderboard.rating.unratedSimMods")}</li>
           <li>{t("leaderboard.rating.unratedDesyncs")}</li>
         </ul>
-      </Section>
-
-      <Section title="leaderboard.rating.balanceTitle">
-        <p>{t("leaderboard.rating.balanceBody")}</p>
-        <p>{t("leaderboard.rating.balanceDeviation")}</p>
-        <Figure
-          src={skillChain}
-          alt="leaderboard.rating.skillChainAlt"
-          caption="leaderboard.rating.skillChainCaption"
-        />
-        <p className="muted">{t("leaderboard.rating.balanceCaveat")}</p>
-      </Section>
-
-      <Section title="leaderboard.rating.whyTrueskillTitle">
-        <p>{t("leaderboard.rating.whyTrueskillBody")}</p>
-        <Figure
-          src={trajectories}
-          alt="leaderboard.rating.trajectoriesAlt"
-          caption="leaderboard.rating.trajectoriesCaption"
-        />
       </Section>
 
       <div className="rating-explainer-actions">
