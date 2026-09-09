@@ -1260,7 +1260,7 @@ export const en = {
   "settings.game.autoGenerateMaps": "Automatically generate missing maps",
   "settings.game.autoGenerateMapsHint": "Download the Neroxis generator and create required generated maps automatically when joining a lobby.",
   "settings.game.keepGeneratedMaps": "Keep generated maps",
-  "settings.game.keepGeneratedMapsHint": "Spare every map the generator produces when generated maps are cleared in the Maps tab. Off, they are treated as disposable.",
+  "settings.game.keepGeneratedMapsHint": "Keep the maps you generate when you press \"Clear generated\" in the Maps tab. Off, they are deleted with the rest.",
   "settings.game.cacheLifetime": "Game cache retention",
   "settings.game.cacheLifetimeHint": "Maximum age of cached game files and replays before automatic cleanup.",
   "settings.game.cacheLifetime.days": "{days} days",
