@@ -3922,6 +3922,24 @@ export type ModsCommand =
 	uid: string,
 	downloadUrl: string,
 } } |
+/**
+ *  Replace an installed mod with the vault's current version.
+ *
+ *  Not a client-side `uninstall` followed by an `install`, which is what
+ *  the user had to do by hand: an install refuses a folder that already
+ *  exists, so the two have to happen in that order, and doing it from the
+ *  UI means a failed download leaves the mod gone. The port downloads
+ *  first, removes the old folder second, and puts the mod back into
+ *  `game.prefs` if the version it replaced was enabled.
+ *
+ *  `folder_name` is the installed copy's folder, which is what has to be
+ *  removed; `uid` and `download_url` name the version to put in its place.
+ */
+{ type: "updateMod"; payload: {
+	uid: string,
+	folderName: string,
+	downloadUrl: string,
+} } |
 /**  Delete a mod folder (mirrors `MapsCommand::UninstallMap`). */
 { type: "uninstallMod"; payload: {
 	folderName: string,

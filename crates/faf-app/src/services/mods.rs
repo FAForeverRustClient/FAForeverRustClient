@@ -54,6 +54,25 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ModsEvent::InstallFailed { reason }),
             }
         }
+        ModsCommand::UpdateMod {
+            uid,
+            folder_name,
+            download_url,
+        } => {
+            let _guard = ctx.mods_mutation.acquire().await;
+            // The same status an install shows: from the user's side this *is*
+            // an install, and the row it belongs to is named by the new uid.
+            out.emit(ModsEvent::Installing { uid: uid.clone() });
+            match ctx
+                .ports
+                .mods
+                .update_mod(uid, folder_name, download_url)
+                .await
+            {
+                Ok(installed) => out.emit(ModsEvent::Installed { installed }),
+                Err(reason) => out.emit(ModsEvent::InstallFailed { reason }),
+            }
+        }
         ModsCommand::UninstallMod { folder_name, uid } => {
             let _guard = ctx.mods_mutation.acquire().await;
             out.emit(ModsEvent::Installing { uid });

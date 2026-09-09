@@ -263,6 +263,40 @@ impl ModsPort for ModsClient {
         list_installed_dir(&mods_dir()).await
     }
 
+    async fn update_mod(
+        &self,
+        uid: String,
+        folder_name: String,
+        download_url: String,
+    ) -> Result<Vec<InstalledMod>, String> {
+        // Fetched before anything is deleted. An update that fails on a flaky
+        // connection has to leave the installed copy alone: the whole reason
+        // this exists is that doing it by hand meant uninstalling first and
+        // discovering the download problem with nothing left on disk.
+        let bytes = self.download_mod_archive(&uid, &download_url).await?;
+
+        // Whether the version being replaced was switched on, read before the
+        // uninstall scrubs its uid out of `game.prefs`. A new version is a new
+        // uid, so the flag cannot simply be left in place.
+        let was_enabled = list_installed_dir(&mods_dir())
+            .await?
+            .into_iter()
+            .find(|installed| installed.folder_name.eq_ignore_ascii_case(&folder_name))
+            .is_some_and(|installed| installed.enabled);
+
+        self.uninstall_mod(folder_name).await?;
+        self.extract_mod_archive(&uid, bytes).await?;
+
+        if was_enabled {
+            let mut active = read_active_mod_uids().await;
+            if !active.contains(&uid) {
+                active.push(uid);
+            }
+            write_active_mod_uids_to_disk(&active).await?;
+        }
+        list_installed_dir(&mods_dir()).await
+    }
+
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String> {
         let dir = mods_dir();
         let target = safe_mod_target(&dir, &folder_name)?;
@@ -926,6 +960,15 @@ impl ModsPort for FakeMods {
         _download_url: String,
     ) -> Result<Vec<InstalledMod>, String> {
         Err("mod install is unavailable in offline mode".to_string())
+    }
+
+    async fn update_mod(
+        &self,
+        _uid: String,
+        _folder_name: String,
+        _download_url: String,
+    ) -> Result<Vec<InstalledMod>, String> {
+        Err("mod update is unavailable in offline mode".to_string())
     }
 
     async fn uninstall_mod(&self, _folder_name: String) -> Result<Vec<InstalledMod>, String> {

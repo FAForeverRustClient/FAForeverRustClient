@@ -43,6 +43,20 @@ pub trait ModsPort: Send + Sync {
         download_url: String,
     ) -> Result<Vec<InstalledMod>, String>;
 
+    /// Replace the version in `folder_name` with the one `uid` names.
+    ///
+    /// Ordered so that nothing is lost when a step fails: the archive is
+    /// fetched first, and only a download that arrived removes the installed
+    /// copy. A mod that was enabled is enabled again afterwards under the new
+    /// version's uid, since `uninstall_mod` scrubs the old one out of
+    /// `game.prefs` and an update is not a request to turn the mod off.
+    async fn update_mod(
+        &self,
+        uid: String,
+        folder_name: String,
+        download_url: String,
+    ) -> Result<Vec<InstalledMod>, String>;
+
     /// Delete a mod folder and remove its uid from `game.prefs`'s active
     /// set if present. Returns the refreshed installed list.
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String>;

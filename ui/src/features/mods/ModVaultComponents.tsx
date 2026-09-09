@@ -13,6 +13,7 @@ import type {
 import { formatShortDate } from "../../shared/dates";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { linkifyText } from "../../shared/linkify";
+import { modUpdateAvailable } from "./modVersions";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -123,6 +124,7 @@ export function ModCard({
   working,
   onSelect,
   onInstall,
+  onUpdate,
   onUninstall,
   onToggleFavorite,
 }: {
@@ -134,11 +136,14 @@ export function ModCard({
   working: boolean;
   onSelect: () => void;
   onInstall: () => void;
+  /// Replace the installed copy in one step. Separate from `onInstall`
+  /// because an install refuses a folder that already exists.
+  onUpdate?: () => void;
   onUninstall?: () => void;
   onToggleFavorite?: () => void;
 }) {
   const { t } = useTranslation();
-  const updateAvailable = Boolean(installed && installed.version !== mod.version);
+  const updateAvailable = Boolean(installed && modUpdateAvailable(installed.version, mod.version));
 
   return (
     <article className={active ? "mod-vault-card surface-panel active" : "mod-vault-card surface-panel"}>
@@ -212,7 +217,7 @@ export function ModCard({
                 <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
                   {t("mods.vault.uninstall")}
                 </Button>
-                <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
+                <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onUpdate ?? onInstall}>
                   {t(working ? "mods.vault.busy" : "mods.vault.update")}
                 </Button>
               </>
@@ -241,6 +246,7 @@ export function ModDetailPanel({
   toggling,
   mine = false,
   onInstall,
+  onUpdate,
   onToggle,
   onUninstall,
   onToggleFavorite,
@@ -255,6 +261,8 @@ export function ModDetailPanel({
   /** Whether the signed-in account is this mod's uploader. */
   mine?: boolean;
   onInstall: () => void;
+  /// See `ModCard`'s. The panel's "Install update" is the same one step.
+  onUpdate?: () => void;
   onToggle: () => void;
   onUninstall: () => void;
   onToggleFavorite?: () => void;
@@ -262,7 +270,7 @@ export function ModDetailPanel({
 }) {
   const { t } = useTranslation();
   const description = cleanDescription(mod.description);
-  const updateAvailable = Boolean(installed && installed.version !== mod.version);
+  const updateAvailable = Boolean(installed && modUpdateAvailable(installed.version, mod.version));
   return (
     <aside className="vault-detail-panel mod-vault-details surface-panel">
       <div className="vault-detail-preview mod-vault-detail-preview">
@@ -367,7 +375,7 @@ export function ModDetailPanel({
 
           <div className="vault-detail-actions-right">
             {updateAvailable ? (
-              <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onInstall}>
+              <Button variant="primary" disabled={busy || !mod.downloadUrl} onClick={onUpdate ?? onInstall}>
                 {t(installing ? "mods.vault.busy" : "mods.vault.installUpdate")}
               </Button>
             ) : installed ? (
