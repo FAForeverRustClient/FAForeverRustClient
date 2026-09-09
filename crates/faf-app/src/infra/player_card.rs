@@ -4,10 +4,10 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    aggregate_map_stats, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
-    PlayerAchievementState, PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount,
-    PlayerLeaguePlacement, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
-    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, sort_rating_summaries, ClanMember, MatchmakerPlayerProfile, PlayedGame,
+    PlayerAchievement, PlayerAchievementState, PlayerAvatar, PlayerCardProfile, PlayerClan,
+    PlayerEventCount, PlayerLeaguePlacement, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary,
+    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 use serde_json::Value;
 
@@ -786,7 +786,9 @@ fn parse_ratings(doc: &JsonApiDoc) -> Vec<PlayerRatingSummary> {
             })
         })
         .collect();
-    ratings.sort_by_key(|rating| std::cmp::Reverse(rating.games_played));
+    // Solo first, then by team size, and without the retired 4v4 queue: the
+    // profile shows the same queues in the same places on every visit.
+    sort_rating_summaries(&mut ratings);
     ratings
 }
 
