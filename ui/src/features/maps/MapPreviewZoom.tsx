@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreview, type PreviewableMap } from "./MapVaultComponents";
@@ -19,6 +20,10 @@ import {
 /// only way to see the other three quarters of the map.
 const KEY_PAN = 60;
 
+/// Where a double click lands. Two and a half times is a quarter of the map
+/// filling the dialog, which is the "let me look at that spawn" step.
+const DOUBLE_CLICK_SCALE = 2.5;
+
 /**
  * Put the preview PNG on the clipboard.
  *
@@ -32,6 +37,9 @@ const KEY_PAN = 60;
  * broken image rather than an uncopyable one.
  */
 async function copyImageToClipboard(url: string): Promise<void> {
+  if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
+    throw new Error("this webview cannot put an image on the clipboard");
+  }
   const image = new Image();
   image.crossOrigin = "anonymous";
   const loaded = new Promise<void>((resolve, reject) => {
@@ -65,7 +73,7 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
   const { t } = useTranslation();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState<ZoomTransform>(NO_ZOOM);
-  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
+  const [copied, setCopied] = useState<"idle" | "image" | "link" | "failed">("idle");
   const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
   const size = () => {
@@ -113,12 +121,24 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
       setCopied("failed");
       return;
     }
-    // Reported either way: a clipboard that refused is worth knowing about
-    // before pasting into a Discord message and finding nothing there.
+    // The image first, then its address.
+    //
+    // Putting a PNG on the clipboard needs a permission the webview is allowed
+    // to refuse, and the address is not a consolation prize: the reason given
+    // for wanting this was pasting a map into a Discord message, and Discord
+    // unfurls a link to a PNG into the picture itself. Text is also the
+    // clipboard call this client already makes in eight other places, so it is
+    // the one known to work everywhere the client runs.
+    //
+    // Which of the two happened is on the button, because pasting and finding
+    // the wrong thing is worse than being told.
     ipc.run(
       copyImageToClipboard(url).then(
-        () => setCopied("done"),
-        () => setCopied("failed"),
+        () => setCopied("image"),
+        () => navigator.clipboard.writeText(url).then(
+          () => setCopied("link"),
+          () => setCopied("failed"),
+        ),
       ),
     );
   };
@@ -149,8 +169,15 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
         }}
         onPointerCancel={() => { dragRef.current = null; }}
         onDoubleClick={(event) => {
-          setTransform((current) =>
-            zoomTo(current, current.scale > MIN_SCALE ? MIN_SCALE : 2.5, pointIn(event), size()));
+          // In, unless the reader is already in. A double click at 130 % that
+          // jumped straight back out read as the control ignoring the gesture,
+          // because a closer look is the thing somebody double-clicks a map for.
+          setTransform((current) => zoomTo(
+            current,
+            current.scale >= DOUBLE_CLICK_SCALE ? MIN_SCALE : DOUBLE_CLICK_SCALE,
+            pointIn(event),
+            size(),
+          ));
         }}
         onKeyDown={(event) => {
           const pan = (x: number, y: number) => {
@@ -215,15 +242,41 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
           </Button>
         </div>
         <Button onClick={copy} title={t("maps.preview.copyImage")}>
-          <Icon name={copied === "done" ? "check" : "copy"} size={14} />
-          {t(copied === "done"
+          <Icon name={copied === "image" || copied === "link" ? "check" : "copy"} size={14} />
+          {t(copied === "image"
             ? "maps.preview.imageCopied"
-            : copied === "failed"
-              ? "maps.preview.copyFailed"
-              : "maps.preview.copyImage")}
+            : copied === "link"
+              ? "maps.preview.linkCopied"
+              : copied === "failed"
+                ? "maps.preview.copyFailed"
+                : "maps.preview.copyImage")}
         </Button>
       </div>
       <p className="map-preview-hint muted">{t("maps.preview.zoomHint")}</p>
     </div>
+  );
+}
+
+/**
+ * The enlarged preview, wherever a map is shown too small to read.
+ *
+ * One dialog rather than one per tab: the Vault's detail panel opened this and
+ * the Installed grid had no way to enlarge anything at all, which is half of
+ * the maps a player looks at.
+ */
+export function MapPreviewDialog({ map, meta, onClose }: {
+  map: PreviewableMap;
+  /// The line under the picture: size, player count, whatever the tab knows.
+  meta?: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <Modal onClose={onClose}>
+      <div className="map-preview-dialog">
+        <h2>{map.displayName || map.folderName}</h2>
+        <MapPreviewZoom map={map} />
+        {meta && <p>{meta}</p>}
+      </div>
+    </Modal>
   );
 }

@@ -17,7 +17,6 @@ import {
 // Only the from-disk entry point: publishing an installed map moved into its own
 // modal on this branch, so `openUpload` is no longer called from here.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
-import { Modal } from "../../design-system/Modal";
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -36,7 +35,7 @@ import {
   ratingLabel,
   sizeLabel,
 } from "./MapVaultComponents";
-import { MapPreviewZoom } from "./MapPreviewZoom";
+import { MapPreviewDialog } from "./MapPreviewZoom";
 import { GenerateMapModal, GeneratorProgress, stillRunning } from "./GenerateMapModal";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
@@ -560,23 +559,21 @@ function VaultView({ busy }: { busy: boolean }) {
       {pendingUninstall && <MapUninstallDialog mapName={pendingUninstall.displayName} onCancel={() => setPendingUninstall(null)} onConfirm={() => { uninstallMap(pendingUninstall.folderName); setPendingUninstall(null); }} />}
       {pendingHide && <MapHideDialog mapName={pendingHide.displayName} onCancel={() => setPendingHide(null)} onConfirm={() => { setMapVersionHidden(pendingHide.versionId, true); setPendingHide(null); }} />}
       {previewMap && (
-        <Modal onClose={() => setPreviewMap(null)}>
-          <div className="map-preview-dialog">
-            <h2>{previewMap.displayName}</h2>
-            <MapPreviewZoom map={previewMap} />
-            <p>
-              {sizeLabel(previewMap)} · {previewMap.maxPlayers} players
-              {typeof previewMap.ranked === "boolean" && (
-                <>
-                  {" · "}
-                  <span className={previewMap.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
-                    {t(previewMap.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
-                  </span>
-                </>
-              )}
-            </p>
-          </div>
-        </Modal>
+        <MapPreviewDialog
+          map={previewMap}
+          onClose={() => setPreviewMap(null)}
+          meta={<>
+            {sizeLabel(previewMap)} · {previewMap.maxPlayers} players
+            {typeof previewMap.ranked === "boolean" && (
+              <>
+                {" · "}
+                <span className={previewMap.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
+                  {t(previewMap.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
+                </span>
+              </>
+            )}
+          </>}
+        />
       )}
     </>
   );
@@ -597,6 +594,10 @@ function InstalledView({ busy }: { busy: boolean }) {
     [browsing.favoriteMaps],
   );
 
+  // The Installed grid could not enlarge anything: half the maps a player
+  // looks at were stuck at thumbnail size, which is the complaint the Vault's
+  // zoom answers.
+  const [previewMap, setPreviewMap] = useState<InstalledMap | VaultMap | null>(null);
   const [search, setSearch] = useState("");
   const [author, setAuthor] = useState("");
   const [preset, setPreset] = useState<InstalledPreset>("all");
@@ -857,7 +858,15 @@ function InstalledView({ busy }: { busy: boolean }) {
               const isRanked = metadata ? metadata.ranked : isOfficialMap(map.folderName);
               return (
                 <article className="installed-map-card surface-panel" key={map.folderName}>
-                  <MapPreview map={metadata ?? map} />
+                  <button
+                    type="button"
+                    className="installed-map-preview-button"
+                    onClick={() => setPreviewMap(metadata ?? map)}
+                    aria-label={t("maps.preview.enlarge", { name: metadata?.displayName || map.displayName })}
+                    title={t("maps.preview.enlarge", { name: metadata?.displayName || map.displayName })}
+                  >
+                    <MapPreview map={metadata ?? map} />
+                  </button>
                   <span>
                     <span className="installed-map-title-row">
                       <strong title={metadata?.displayName || map.displayName}>{metadata?.displayName || map.displayName}</strong>
@@ -894,6 +903,13 @@ function InstalledView({ busy }: { busy: boolean }) {
             </div>
           )}
         </section>
+      )}
+      {previewMap && (
+        <MapPreviewDialog
+          map={previewMap}
+          onClose={() => setPreviewMap(null)}
+          meta={<>{sizeLabel(previewMap)} · {previewMap.maxPlayers ?? 2} players</>}
+        />
       )}
       {pendingUninstall && (
         <MapUninstallDialog

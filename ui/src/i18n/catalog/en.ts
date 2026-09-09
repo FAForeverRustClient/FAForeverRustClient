@@ -2015,6 +2015,7 @@ export const en = {
   "maps.vault.builtIn": "Built in",
   // The preview dialog, which zooms: a client that is not run full screen
   // cannot show a 20 km map at a size anybody can read a mex layout on.
+  "maps.preview.enlarge": "Enlarge the {name} preview",
   "maps.preview.zoomAria": "{name} preview. Drag to pan, plus and minus to zoom.",
   "maps.preview.zoomGroup": "Zoom",
   "maps.preview.zoomIn": "Zoom in",
@@ -2022,7 +2023,8 @@ export const en = {
   "maps.preview.resetZoom": "Whole map",
   "maps.preview.zoomHint": "Scroll to zoom, drag to pan, double-click to jump in or out.",
   "maps.preview.copyImage": "Copy image",
-  "maps.preview.imageCopied": "Copied",
+  "maps.preview.imageCopied": "Image copied",
+  "maps.preview.linkCopied": "Link copied",
   "maps.preview.copyFailed": "Could not copy",
   "maps.vault.installed": "Installed",
   "maps.vault.notInstalled": "Not installed",
