@@ -1349,8 +1349,29 @@
   box-shadow: inset 3px 0 var(--color-friend), inset 6px 0 var(--color-accent);
 }
 
+/* The tile is filled, not just outlined. A grid of tiles is scanned rather
+   than read line by line, so a 1 px edge is the wrong signal there: the whole
+   card has to be the thing that catches the eye. The row above keeps its edge,
+   because a list *is* read line by line and a hundred tinted rows would be a
+   colour chart.
+
+   Mixed into the surface rather than laid over it, so the tint follows every
+   theme's own background and the text on top keeps its contrast. The hover and
+   selected states are restated, otherwise this would swallow them. */
 .game-tile.has-friend {
+  background: color-mix(in srgb, var(--color-friend) 14%, var(--color-surface));
   border-color: var(--color-friend);
+}
+
+.game-tile.has-friend:hover,
+.game-tile.has-friend:focus-within {
+  background: color-mix(in srgb, var(--color-friend) 20%, var(--color-surface-hover));
+  border-color: var(--color-friend);
+}
+
+.game-tile.has-friend.active {
+  background: color-mix(in srgb, var(--color-friend) 22%, var(--color-surface-raised));
+  border-color: color-mix(in srgb, var(--color-friend) 60%, var(--color-text));
 }
 
 .game-browser-tags i.friend,
