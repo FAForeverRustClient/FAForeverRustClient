@@ -92,7 +92,11 @@ jobs:
       - name: Install Linux build dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          sudo apt-get update
+          # See the same step in ci.yml: a third-party apt source with a stale
+          # index must not be able to fail a release. The install below stays
+          # strict, so a package that really did not arrive still stops this.
+          sudo grep -rlE 'dl[.]google[.]com|packages[.]microsoft[.]com' /etc/apt/sources.list.d 2>/dev/null | xargs -r sudo rm -f
+          sudo apt-get update || true
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       # No version here: package.json's `packageManager` field is the single
