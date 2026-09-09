@@ -33,12 +33,15 @@ jobs:
           # nothing here installs from, and `apt-get update` fails the whole
           # step when one of them serves a stale index: on 2026-09-09 every
           # Rust job died in twelve seconds on a "Hash Sum mismatch" from
-          # dl.google.com. The Ubuntu archives are the only source these
-          # packages come from, so the rest are removed before the update
-          # rather than being allowed to decide whether CI runs.
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
-          sudo apt-get update
+          # dl.google.com. Those sources are dropped first, by content rather
+          # than by filename, since the image spells them differently from one
+          # release to the next.
+          sudo grep -rlE 'dl[.]google[.]com|packages[.]microsoft[.]com' /etc/apt/sources.list.d 2>/dev/null | xargs -r sudo rm -f
+          # And a refresh that still cannot reach something is not this build's
+          # problem to fail on: the install below is strict, so a package that
+          # genuinely did not arrive still stops the job, with a message that
+          # names it.
+          sudo apt-get update || true
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
