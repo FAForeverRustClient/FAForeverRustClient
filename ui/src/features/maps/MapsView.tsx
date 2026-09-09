@@ -36,6 +36,7 @@ import {
   ratingLabel,
   sizeLabel,
 } from "./MapVaultComponents";
+import { MapPreviewZoom } from "./MapPreviewZoom";
 import { GenerateMapModal, GeneratorProgress, stillRunning } from "./GenerateMapModal";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
@@ -562,7 +563,7 @@ function VaultView({ busy }: { busy: boolean }) {
         <Modal onClose={() => setPreviewMap(null)}>
           <div className="map-preview-dialog">
             <h2>{previewMap.displayName}</h2>
-            <MapPreview map={previewMap} large />
+            <MapPreviewZoom map={previewMap} />
             <p>
               {sizeLabel(previewMap)} · {previewMap.maxPlayers} players
               {typeof previewMap.ranked === "boolean" && (
