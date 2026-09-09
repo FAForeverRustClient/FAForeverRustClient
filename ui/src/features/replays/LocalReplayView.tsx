@@ -28,6 +28,7 @@ import {
 import {
   filterLocalReplays,
   localReplayTimestamp,
+  nextLocalDetailLimit,
   personalLocalReplayQuery,
   type LocalReplayQuery,
 } from "./localReplayQuery";
@@ -197,21 +198,31 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     [filtered, currentPage],
   );
 
-  // Reaching the end of what has been read asks for the next run.
+  // Reaching the end of what has been read asks for the next run, and so does
+  // landing on a page that is showing rows whose headers were never read.
   //
-  // Waiting until the user goes *past* the loaded set cannot work: the page
-  // count is derived from the replays that are actually listed, so the last
-  // loaded page is also the last page the pager offers, and there is no button
-  // to press to get any further. That deadlock is why the tab stopped at page
-  // 10 of an archive holding three thousand files. Triggering on arrival at the
-  // last page instead, while the folder still holds more, keeps it moving.
-  const moreOnDisk = detailLimit < local.length;
+  // Waiting until the user goes *past* the loaded set cannot work while a
+  // player filter is on: an unread replay has no roster, so it matches nobody
+  // and the pager ends where the read files end, with no page left to walk
+  // onto. Without that filter the unread rows are listed like any other, which
+  // puts page 11 of a large archive comfortably inside the pager and fills it
+  // with file names and nothing else. Asking for whatever the page on screen
+  // actually needs covers both.
+  const nextLimit = useMemo(
+    () => nextLocalDetailLimit({
+      all: local,
+      page: pageReplays,
+      detailLimit,
+      atLastPage: currentPage >= totalPages,
+      batch: INITIAL_DETAIL_LIMIT,
+    }),
+    [local, pageReplays, detailLimit, currentPage, totalPages],
+  );
   useEffect(() => {
-    if (!moreOnDisk || currentPage < totalPages) return;
-    const next = detailLimit + INITIAL_DETAIL_LIMIT;
-    setDetailLimit(next);
-    loadLocal(next);
-  }, [currentPage, detailLimit, moreOnDisk, totalPages]);
+    if (nextLimit === null) return;
+    setDetailLimit(nextLimit);
+    loadLocal(nextLimit);
+  }, [nextLimit]);
 
   const featuredMods = useMemo(
     () => [...new Set(local.map((replay) => replay.modName).filter(Boolean))].sort(),

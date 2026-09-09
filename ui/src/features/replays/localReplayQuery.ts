@@ -129,3 +129,46 @@ export function localReplayAdvancedFilterCount(query: LocalReplayQuery): number 
     query.onlyWatchable,
   ].filter(Boolean).length;
 }
+
+/// How far into the folder the details have to be read for the page on screen.
+///
+/// The backend lists every replay it finds but only reads the headers of the
+/// newest `limit` of them, and the rest arrive as `unread`: a file name, a date
+/// and a size, with no title, map or roster. Whether those rows reach the list
+/// depends on the query. A player filter drops them, because a replay with no
+/// roster matches nobody, so the pager ends where the read files end. With no
+/// player filter they are listed like any other, so page 11 of a large archive
+/// is reachable, sits well inside the pager, and shows nothing but file names
+/// until someone asks for those headers.
+///
+/// Returns the limit to ask for, or `null` when what is loaded already covers
+/// the page. `atLastPage` keeps the older behaviour for the filtered case:
+/// arriving at the end of the results asks for the next batch, since there
+/// would otherwise be no page to walk onto.
+export function nextLocalDetailLimit(options: {
+  /// Every replay the backend reported, newest first: that order is what the
+  /// read limit counts along.
+  all: LocalReplay[];
+  /// The replays the current page renders.
+  page: LocalReplay[];
+  /// How many headers have been asked for so far.
+  detailLimit: number;
+  atLastPage: boolean;
+  batch: number;
+}): number | null {
+  const { all, page, detailLimit, atLastPage, batch } = options;
+  if (detailLimit >= all.length) return null;
+
+  let depth = 0;
+  if (page.some((replay) => replay.status === "unread")) {
+    const positions = new Map(all.map((replay, index) => [replay.path, index]));
+    for (const replay of page) {
+      if (replay.status !== "unread") continue;
+      const index = positions.get(replay.path);
+      if (index !== undefined) depth = Math.max(depth, index + 1);
+    }
+  }
+
+  if (depth <= detailLimit && !atLastPage) return null;
+  return Math.min(all.length, Math.max(depth, detailLimit + batch));
+}
