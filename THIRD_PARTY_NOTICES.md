@@ -31,3 +31,12 @@ and legal notices.
 The experimental `faf-pioneer` executable comes from
 [FAForever/faf-pioneer](https://github.com/FAForever/faf-pioneer). It is
 distributed under the MIT License by its contributors.
+
+## FAF wiki rating figures
+
+The five diagrams in the leaderboard's "How rating works" tab
+(`ui/src/features/leaderboard/assets/`) are taken from the FAForever wiki's
+[rating system page](https://wiki.faforever.com/en/Infrastructure/Rating-System),
+which is that project's own documentation. The prose beside them is a summary
+of the same page written for this client. If the wiki states a licence for its
+media, name it here.

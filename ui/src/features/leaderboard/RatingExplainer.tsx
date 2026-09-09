@@ -3,56 +3,142 @@ import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useTranslation } from "../../i18n/useTranslation";
+import { type MessageKey } from "../../i18n";
+import newPlayerCurve from "./assets/distribution-new-player.png";
+import settledPlayerCurve from "./assets/distribution-settled-player.png";
+import afterThirtyGamesCurve from "./assets/distribution-after-30-games.png";
+import trajectories from "./assets/trueskill-trajectories.png";
+import skillChain from "./assets/skill-chain.png";
 
-/// The wiki's own page on the rating system, which is where the numbers this
-/// panel deliberately does not quote are kept up to date.
+/// The wiki's own page, which is where this text comes from and where it stays
+/// current. Linked rather than copied wholesale: the page also covers the API
+/// and the server, and a client tab that drifts from it is worse than no tab.
 const RATING_SYSTEM_WIKI = "https://wiki.faforever.com/en/Infrastructure/Rating-System";
 
+/// A figure from the wiki page, with the caption that says what to look at.
+///
+/// Loaded lazily and given fixed room by an aspect ratio, so opening the tab
+/// does not reflow as five PNGs arrive.
+function Figure({ src, alt, caption }: { src: string; alt: MessageKey; caption: MessageKey }) {
+  const { t } = useTranslation();
+  return (
+    <figure className="rating-explainer-figure">
+      <img src={src} alt={t(alt)} loading="lazy" decoding="async" />
+      <figcaption>{t(caption)}</figcaption>
+    </figure>
+  );
+}
+
+function Section({ title, children }: { title: MessageKey; children: React.ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <section className="rating-explainer-section">
+      <h3>{t(title)}</h3>
+      {children}
+    </section>
+  );
+}
+
 /**
- * What the number on a leaderboard actually is.
+ * How the number on a leaderboard is arrived at.
  *
- * Everything stated here is arithmetic this client can see for itself: a
- * player card lists a rating beside its mean and deviation, and
- * `1842 = 2260 - 3 x 139.3` is that card's own numbers. Nothing in it is a
- * claim about the server the client cannot check, which is why it names no
- * starting values and no thresholds. Those live on the wiki, and the link at
- * the bottom is how a reader who wants them gets there.
+ * Written from the FAF wiki's own rating page, which the maintainers pointed
+ * at, and kept in the client's voice rather than pasted: the wiki page is also
+ * about the server and the API, and half of it answers questions a leaderboard
+ * reader is not asking. What is here is what that reader asks, in the order
+ * they ask it, and the link at the bottom goes to the page itself.
  *
- * A third tab rather than a dialog: the issue asked for one, and prose that a
- * reader has to keep a modal open to consult is prose they will not consult.
- * It is not a `LeaderboardMode` though. That enum is a domain type mirrored
- * into the store and the conformance fixture, and this page fetches nothing,
- * has no status and cannot go stale.
+ * The one thing the client can check for itself is the formula: a player card
+ * lists a rating beside its mean and deviation, and `2260 - 3 x 139.3 = 1842`
+ * is that card's own arithmetic.
+ *
+ * A third tab rather than a dialog: prose a reader has to hold a modal open to
+ * consult is prose they will not consult. It is not a `LeaderboardMode` though.
+ * That enum is a domain type mirrored into the store and the conformance
+ * fixture, and this page fetches nothing, has no status and cannot go stale.
  */
 export function RatingExplainerPanel() {
   const { t } = useTranslation();
   return (
-    <section className="rating-explainer surface-panel">
-      <h2>{t("leaderboard.rating.explainTitle")}</h2>
+    <article className="rating-explainer surface-panel">
+      <header>
+        <h2>{t("leaderboard.rating.explainTitle")}</h2>
+        <p className="muted">{t("leaderboard.rating.lede")}</p>
+      </header>
 
-      <section>
-        <h3>{t("leaderboard.rating.twoNumbersTitle")}</h3>
+      <Section title="leaderboard.rating.twoNumbersTitle">
         <p>{t("leaderboard.rating.twoNumbersBody")}</p>
+        <p>{t("leaderboard.rating.meanAndDeviation")}</p>
         <p className="rating-explainer-formula">
           <code>{t("leaderboard.rating.formula")}</code>
         </p>
+        <p>{t("leaderboard.rating.formulaWhy")}</p>
         <p className="muted">{t("leaderboard.rating.formulaExample")}</p>
-      </section>
+      </Section>
 
-      <section>
-        <h3>{t("leaderboard.rating.newAccountTitle")}</h3>
+      <Section title="leaderboard.rating.newAccountTitle">
         <p>{t("leaderboard.rating.newAccountBody")}</p>
-      </section>
+        <Figure
+          src={newPlayerCurve}
+          alt="leaderboard.rating.newPlayerAlt"
+          caption="leaderboard.rating.newPlayerCaption"
+        />
+        <p>{t("leaderboard.rating.thirtyGames")}</p>
+        <div className="rating-explainer-figure-pair">
+          <Figure
+            src={afterThirtyGamesCurve}
+            alt="leaderboard.rating.afterThirtyAlt"
+            caption="leaderboard.rating.afterThirtyCaption"
+          />
+          <Figure
+            src={settledPlayerCurve}
+            alt="leaderboard.rating.settledAlt"
+            caption="leaderboard.rating.settledCaption"
+          />
+        </div>
+      </Section>
 
-      <section>
-        <h3>{t("leaderboard.rating.perQueueTitle")}</h3>
-        <p>{t("leaderboard.rating.perQueueBody")}</p>
-      </section>
+      <Section title="leaderboard.rating.nothingForAWinTitle">
+        <p>{t("leaderboard.rating.nothingForAWinBody")}</p>
+        <p>{t("leaderboard.rating.wentDownOnAWin")}</p>
+      </Section>
 
-      <section>
-        <h3>{t("leaderboard.rating.leaguesTitle")}</h3>
-        <p>{t("leaderboard.rating.leaguesBody")}</p>
-      </section>
+      <Section title="leaderboard.rating.teamsTitle">
+        <p>{t("leaderboard.rating.teamsBody")}</p>
+      </Section>
+
+      <Section title="leaderboard.rating.whichGamesTitle">
+        <p>{t("leaderboard.rating.whichGamesBody")}</p>
+        <p>{t("leaderboard.rating.unratedLead")}</p>
+        <ul className="rating-explainer-list">
+          <li>{t("leaderboard.rating.unratedSettings")}</li>
+          <li>{t("leaderboard.rating.unratedMap")}</li>
+          <li>{t("leaderboard.rating.unratedTeams")}</li>
+          <li>{t("leaderboard.rating.unratedShort")}</li>
+          <li>{t("leaderboard.rating.unratedSimMods")}</li>
+          <li>{t("leaderboard.rating.unratedDesyncs")}</li>
+        </ul>
+      </Section>
+
+      <Section title="leaderboard.rating.balanceTitle">
+        <p>{t("leaderboard.rating.balanceBody")}</p>
+        <p>{t("leaderboard.rating.balanceDeviation")}</p>
+        <Figure
+          src={skillChain}
+          alt="leaderboard.rating.skillChainAlt"
+          caption="leaderboard.rating.skillChainCaption"
+        />
+        <p className="muted">{t("leaderboard.rating.balanceCaveat")}</p>
+      </Section>
+
+      <Section title="leaderboard.rating.whyTrueskillTitle">
+        <p>{t("leaderboard.rating.whyTrueskillBody")}</p>
+        <Figure
+          src={trajectories}
+          alt="leaderboard.rating.trajectoriesAlt"
+          caption="leaderboard.rating.trajectoriesCaption"
+        />
+      </Section>
 
       <div className="rating-explainer-actions">
         <p className="muted rating-explainer-more">{t("leaderboard.rating.moreOnTheWiki")}</p>
@@ -60,6 +146,6 @@ export function RatingExplainerPanel() {
           <Icon name="external" size={15} /> {t("leaderboard.rating.openWiki")}
         </Button>
       </div>
-    </section>
+    </article>
   );
 }
