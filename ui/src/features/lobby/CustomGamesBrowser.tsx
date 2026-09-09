@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -19,6 +19,7 @@ import {
   mergeGeneratorRows,
 } from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
+import { friendsInGame } from "./friendPresence";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
@@ -474,6 +475,26 @@ function GameLineupTeam({
   );
 }
 
+/**
+ * The friends in a lobby, and the label that names them.
+ *
+ * `social.friends` is one array in state and is replaced only when the list
+ * changes, so every open game reading it costs a `Set` build and a walk of its
+ * own roster, and none of them re-render when an unrelated player logs in.
+ */
+function useFriendsInGame(game: Game): { friends: string[]; label: string } {
+  const friendLogins = useAppStore((state) => state.state.social.friends);
+  return useMemo(() => {
+    const friends = friendsInGame(game, friendLogins);
+    return {
+      friends,
+      label: friends.length === 1
+        ? friends[0]
+        : t("lobby.browser.friendCount", { count: friends.length }),
+    };
+  }, [game, friendLogins]);
+}
+
 export const GameTile = memo(function GameTile({
   game,
   vault,
@@ -498,11 +519,16 @@ export const GameTile = memo(function GameTile({
   const simModCount = Object.keys(game.simMods).length;
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
+  const { friends, label: friendLabel } = useFriendsInGame(game);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
 
   return (
     <article
-      className={selected ? "game-tile surface-panel active" : "game-tile surface-panel"}
+      className={[
+        "game-tile surface-panel",
+        friends.length > 0 && "has-friend",
+        selected && "active",
+      ].filter(Boolean).join(" ")}
       onContextMenu={(event) => {
         hideGlobalLineup();
         onContextMenu?.(event);
@@ -559,6 +585,11 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+          {friends.length > 0 && (
+            <i className="friend" title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}>
+              {friendLabel}
+            </i>
+          )}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
             <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
               {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
@@ -598,12 +629,17 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   const simModCount = Object.keys(game.simMods).length;
   const players = playingCount(game);
   const currentNow = now ?? Date.now();
+  const { friends, label: friendLabel } = useFriendsInGame(game);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
   return (
     <>
       <button
         type="button"
-        className={selected ? "game-browser-row active" : "game-browser-row"}
+        className={[
+          "game-browser-row",
+          friends.length > 0 && "has-friend",
+          selected && "active",
+        ].filter(Boolean).join(" ")}
         onClick={onSelect}
         onDoubleClick={onJoin}
         onContextMenu={(event) => {
@@ -654,6 +690,11 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                   </i>
                 )}
                 {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+                {friends.length > 0 && (
+                  <i className="friend" title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}>
+                    {friendLabel}
+                  </i>
+                )}
                 {(game.ratingMin !== null || game.ratingMax !== null) && (
                   <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
                     {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}

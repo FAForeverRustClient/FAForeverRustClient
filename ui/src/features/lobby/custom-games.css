@@ -1336,3 +1336,26 @@
     display: none;
   }
 }
+
+/* A lobby with a friend in it.
+   The edge rather than a filled background: the browser is a hundred rows on a
+   busy evening, and a tinted row that competes with the selected one turns the
+   list into a colour chart. The tag inside the row is what names them. */
+.game-browser-row.has-friend {
+  box-shadow: inset 3px 0 var(--color-friend);
+}
+
+.game-browser-row.has-friend.active {
+  box-shadow: inset 3px 0 var(--color-friend), inset 6px 0 var(--color-accent);
+}
+
+.game-tile.has-friend {
+  border-color: var(--color-friend);
+}
+
+.game-browser-tags i.friend,
+.game-tile-flags i.friend {
+  color: var(--color-friend);
+  border-color: color-mix(in srgb, var(--color-friend) 45%, transparent);
+  background: color-mix(in srgb, var(--color-friend) 12%, transparent);
+}
