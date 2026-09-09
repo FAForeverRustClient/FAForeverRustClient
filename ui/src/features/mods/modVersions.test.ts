@@ -4,7 +4,14 @@ import { modUpdateAvailable } from "./modVersions";
 describe("modUpdateAvailable", () => {
   it("reports a newer version in the vault", () => {
     expect(modUpdateAvailable("11", "12")).toBe(true);
-    expect(modUpdateAvailable("1.2", "1.10")).toBe(true);
+    expect(modUpdateAvailable("1.1", "1.2")).toBe(true);
+  });
+
+  it("reads a dotted version the way the file that wrote it did", () => {
+    // `version = 1.10` in `mod_info.lua` is a Lua number, and Lua reads it as
+    // 1.1. Two numbers are compared as numbers for exactly that reason.
+    expect(modUpdateAvailable("1.2", "1.10")).toBe(false);
+    expect(modUpdateAvailable("1.10", "1.2")).toBe(true);
   });
 
   it("does not report the same version written differently", () => {

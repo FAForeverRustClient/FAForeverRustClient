@@ -8,11 +8,15 @@
  * an update that does not exist. That is what made the "N updates available"
  * count disagree with the mods it then listed.
  *
- * Two versions that both parse as numbers are compared as numbers. Anything
- * else falls back to the text, trimmed and case-insensitive, and a difference
- * there is only reported as an update when the vault's spelling sorts after
- * the installed one: a hand-built copy that is ahead of the vault is not
- * something to offer to overwrite.
+ * Two versions that both parse as numbers are compared as numbers, which is
+ * how the files that wrote them read them too: `version = 1.10` in
+ * `mod_info.lua` is a Lua number, and Lua reads that as 1.1, not as a tenth
+ * minor release. Anything else falls back to the text with a numeric-aware
+ * collation, so `v1.9` still sorts before `v1.10`.
+ *
+ * Either way a difference is only an update when the vault's version is
+ * *ahead* of the installed one: a hand-built copy that runs in front of the
+ * vault is not something to offer to overwrite.
  *
  * An empty version on either side answers "no": the vault has not said, or the
  * folder has no readable `mod_info.lua`, and neither is evidence of anything.
