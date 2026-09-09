@@ -8,6 +8,7 @@ import { useAppStore } from "../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../shared/listboxNavigation";
 import { isGeneratedMap, OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
 import { GameMapImage } from "./GameMapImage";
+import { MapPreviewDialog } from "../maps/MapPreviewZoom";
 import { GenerateMapModal } from "../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../maps/generatedMapDescription";
 import { HostModsColumn } from "./host/HostModsColumn";
@@ -273,6 +274,10 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   const chosen = availableMaps.find((map) => map.folderName.toLowerCase() === selectedMap?.toLowerCase())
     ?? availableMaps.find((map) => map.folderName === selectedMap)
     ?? availableMaps[0];
+
+  // The picture in this column is the only look at the map anybody gets before
+  // hosting on it, and it is a 200 px square.
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Reset by itself, so the tick is feedback rather than a state the button
   // gets stuck in.
@@ -669,13 +674,21 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
           <div className="host-column-body host-preview-body">
             <div className="host-preview-thumb-wrap">
               {chosen ? (
-                <GameMapImage
-                  mapName={chosen.folderName}
-                  vault={maps.vault}
-                  className="host-preview-img"
-                  placeholderClassName="host-preview-placeholder"
-                  large
-                />
+                <button
+                  type="button"
+                  className="host-preview-button"
+                  onClick={() => setPreviewOpen(true)}
+                  title={t("maps.preview.enlarge", { name: chosen.displayName })}
+                  aria-label={t("maps.preview.enlarge", { name: chosen.displayName })}
+                >
+                  <GameMapImage
+                    mapName={chosen.folderName}
+                    vault={maps.vault}
+                    className="host-preview-img"
+                    placeholderClassName="host-preview-placeholder"
+                    large
+                  />
+                </button>
               ) : (
                 <div className="host-preview-placeholder">
                   <Icon name="maps" size={32} />
@@ -796,6 +809,25 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
             }
           }}
         />
+      )}
+
+      {/* The enlarged map, with the Maps tab's zoom. `GameMapImage` rather than
+          the vault's own art, because a map picked here can be one the
+          generator just made, which the vault has never heard of. */}
+      {previewOpen && chosen && (
+        <MapPreviewDialog
+          map={{ folderName: chosen.folderName, displayName: chosen.displayName }}
+          onClose={() => setPreviewOpen(false)}
+          meta={formatMapMeta(chosen) || t("lobby.host.playersUnstated")}
+        >
+          <GameMapImage
+            mapName={chosen.folderName}
+            vault={maps.vault}
+            className="host-preview-zoom-img"
+            placeholderClassName="host-preview-placeholder"
+            large
+          />
+        </MapPreviewDialog>
       )}
     </Modal>
   );

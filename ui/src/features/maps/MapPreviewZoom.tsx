@@ -265,34 +265,24 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
   );
 }
 
-/// The Maps tab's flavour: a vault or installed map, drawn by `MapPreview`
-/// with its own chain of fallbacks.
-export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
-  return (
-    <ZoomableImage label={map.displayName || map.folderName}>
-      <MapPreview map={map} large />
-    </ZoomableImage>
-  );
-}
-
-/**
- * The enlarged preview, wherever a map is shown too small to read.
- *
- * One dialog rather than one per tab: the Vault's detail panel opened this and
- * the Installed grid had no way to enlarge anything at all, which is half of
- * the maps a player looks at.
- */
-export function MapPreviewDialog({ map, meta, onClose }: {
+export function MapPreviewDialog({ map, meta, onClose, children }: {
   map: PreviewableMap;
   /// The line under the picture: size, player count, whatever the tab knows.
   meta?: ReactNode;
+  /// The image to zoom, for a caller that resolves map art its own way: the
+  /// lobby's `MapThumbnail` knows about generated previews the vault has never
+  /// heard of. Defaults to the vault's own `MapPreview`.
+  children?: ReactNode;
   onClose: () => void;
 }) {
+  const label = map.displayName || map.folderName;
   return (
     <Modal onClose={onClose}>
       <div className="map-preview-dialog">
-        <h2>{map.displayName || map.folderName}</h2>
-        <MapPreviewZoom map={map} />
+        <h2>{label}</h2>
+        <ZoomableImage label={label}>
+          {children ?? <MapPreview map={map} large />}
+        </ZoomableImage>
         {meta && <p>{meta}</p>}
       </div>
     </Modal>
