@@ -23,7 +23,7 @@ import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { isWithinNumberRange } from "../../shared/filterRanges";
-import { EMPTY_MAP_QUERY } from "../../shared/vaultQuery";
+import { EMPTY_MAP_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import {
   isOfficialMap,
@@ -146,6 +146,8 @@ function VaultView({ busy }: { busy: boolean }) {
   const browse = useAppStore((state) => state.state.maps.browse);
   const browseStatus = useAppStore((state) => state.state.maps.browseStatus);
   const browseTotalPages = useAppStore((state) => state.state.maps.browseTotalPages);
+  // The query the page count in state was reported for. See `sameVaultSearch`.
+  const browseQuery = useAppStore((state) => state.state.maps.browseQuery);
   const installed = useAppStore((state) => state.state.maps.installed);
   const installedStatus = useAppStore((state) => state.state.maps.installedStatus);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
@@ -361,9 +363,12 @@ function VaultView({ busy }: { busy: boolean }) {
     );
   }, [applied.installFilter, browse, favorites, installedFolders, localFavorites]);
 
+  // A page count belongs to the search that produced it. While a new filter's
+  // results are still on their way, the count in state still describes the old
+  // one, and a pager built from it offers pages this search does not have.
   const totalPages = localFavorites
     ? Math.max(1, Math.ceil(favorites.length / PAGE_SIZE))
-    : browseTotalPages ?? 1;
+    : (sameVaultSearch(browseQuery, query) ? browseTotalPages ?? 1 : 1);
   const currentPage = Math.min(page, totalPages);
   const pageMaps = localFavorites
     ? results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
