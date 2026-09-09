@@ -1704,6 +1704,11 @@ export const de: Partial<Record<MessageKey, Message>> = {
     one: "{shown} von {total} Replay",
     other: "{shown} von {total} Replays",
   },
+  "replays.local.watchedOnly": { one: "Angesehen ({count})", other: "Angesehen ({count})" },
+  "replays.local.watchedOnlyHint": "Nur Replays zeigen, die du als angesehen markiert hast",
+  "replays.local.noneWatched": "Nichts als angesehen markiert",
+  "replays.local.noneWatchedHint":
+    "Ein angesehenes Replay wird markiert, und das Auge in jeder Zeile markiert eines von Hand.",
   "replays.local.noneFound": "Keine lokalen Replays gefunden",
   "replays.local.noneMatch": "Keine passenden lokalen Replays",
   "replays.local.noneFoundHint": "Aufgenommene und geladene Replay-Dateien erscheinen hier.",
@@ -1724,6 +1729,11 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.local.confirmDeleteBody":
     "„{name}“ wird endgültig aus dem gemeinsamen FAF-Replay-Ordner entfernt.",
   "replays.local.cancel": "Abbrechen",
+
+  "replays.watched.mark": "Als angesehen markieren",
+  "replays.watched.unmark": "Markierung entfernen",
+  "replays.watched.markAria": "{name} als angesehen markieren",
+  "replays.watched.unmarkAria": "Markierung von {name} entfernen",
 
   "replays.live.startUnavailable": "Startzeit nicht verfügbar",
   "replays.live.notificationSet": "Benachrichtigung gesetzt",

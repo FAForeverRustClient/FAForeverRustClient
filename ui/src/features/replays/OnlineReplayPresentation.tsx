@@ -313,6 +313,7 @@ export function OnlineReplayList({
   onSelect,
   onOpen,
   onWatch,
+  onToggleWatched,
 }: {
   replays: VaultReplay[];
   groupByDate?: boolean;
@@ -321,6 +322,7 @@ export function OnlineReplayList({
   onSelect: (uid: number) => void;
   onOpen: (uid: number) => void;
   onWatch?: (uid: number) => void;
+  onToggleWatched?: (uid: number) => void;
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
@@ -380,6 +382,17 @@ export function OnlineReplayList({
           ariaLabel: t("replays.list.detailsAria", { uid: replay.uid }),
           onClick: () => onOpen(replay.uid),
         },
+        iconActions: onToggleWatched
+          ? [{
+            icon: "eye" as const,
+            pressed: watchedUids.has(replay.uid),
+            ariaLabel: t(watchedUids.has(replay.uid)
+              ? "replays.watched.unmarkAria"
+              : "replays.watched.markAria", { name: replay.title || map }),
+            title: t(watchedUids.has(replay.uid) ? "replays.watched.unmark" : "replays.watched.mark"),
+            onClick: () => onToggleWatched(replay.uid),
+          }]
+          : undefined,
       };
     }),
   }));
@@ -455,6 +468,8 @@ export function ReplayDetailPanel({
   downloadError = "",
   localPath: initialLocalPath,
   source = "online",
+  watched = false,
+  onToggleWatched,
 }: {
   replay: VaultReplay;
   busy: boolean;
@@ -472,6 +487,15 @@ export function ReplayDetailPanel({
    * said yet" or "a file on disk never carried it".
    */
   source?: "online" | "local";
+  /// Whether this replay carries the watched mark, and how to turn it off.
+  ///
+  /// Watching a replay sets the mark, which is the only way it was ever set,
+  /// and a mark that cannot be cleared is a mistake nobody can take back: a
+  /// double click that landed as two single clicks marked a game the reader
+  /// never watched. The panel is where a card can offer the switch at all,
+  /// since a card is itself a button and cannot hold one.
+  watched?: boolean;
+  onToggleWatched?: () => void;
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
@@ -788,6 +812,17 @@ export function ReplayDetailPanel({
             </Button>
           )}
           <div className="replay-detail-actions-secondary">
+            {onToggleWatched && (
+              <Button
+                className={watched ? "replay-secondary-btn is-on" : "replay-secondary-btn"}
+                aria-pressed={watched}
+                onClick={onToggleWatched}
+                title={t(watched ? "replays.watched.unmark" : "replays.watched.mark")}
+              >
+                <Icon name={watched ? "check" : "eye"} size={13} />
+                <span>{t(watched ? "replays.watched.unmark" : "replays.watched.mark")}</span>
+              </Button>
+            )}
             {onDownload && (
               <Button
                 className="replay-secondary-btn replay-download-button"

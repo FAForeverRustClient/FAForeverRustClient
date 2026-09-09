@@ -297,3 +297,11 @@
   font-size: 11px;
   background: var(--color-surface-raised);
 }
+
+/* An icon action that is a switch rather than a one-shot: the eye that marks a
+   replay watched stays lit while the mark is on, because the row's own dimming
+   is the thing the user is trying to undo and cannot be the only signal. */
+.replay-list-icon-action.is-on {
+  color: var(--color-text);
+  border-color: var(--color-text);
+}

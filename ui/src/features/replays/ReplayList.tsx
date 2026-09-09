@@ -29,6 +29,9 @@ export type ReplayListIconAction = {
   onClick: () => void;
   ariaLabel: string;
   title: string;
+  /// Set on a control that turns something on and off, so the button carries
+  /// its own state instead of only the row's appearance saying what happened.
+  pressed?: boolean;
 };
 
 export type ReplayListRow = {
@@ -47,7 +50,7 @@ export type ReplayListRow = {
   onSelect?: () => void;
   onActivate?: () => void;
   action?: ReplayListAction;
-  iconAction?: ReplayListIconAction;
+  iconActions?: ReplayListIconAction[];
 };
 
 export type ReplayListGroup = {
@@ -97,11 +100,11 @@ function ReplayListCellView({ cell, className = "" }: { cell: ReplayListCell; cl
 function ReplayListStatus({
   cell,
   action,
-  iconAction,
+  iconActions = [],
 }: {
   cell: ReplayListCell;
   action?: ReplayListAction;
-  iconAction?: ReplayListIconAction;
+  iconActions?: ReplayListIconAction[];
 }) {
   const { t } = useTranslation();
   const tone = cell.tone ? ` replay-list-status-${cell.tone}` : "";
@@ -111,7 +114,7 @@ function ReplayListStatus({
         <span className={`replay-list-status${tone}`}>{cell.primary || "N/A"}</span>
         {cell.secondary && <small>{cell.secondary}</small>}
       </div>
-      {(action || iconAction) && (
+      {(action || iconActions.length > 0) && (
         <div className="replay-list-actions" role="group" aria-label={t("replays.list.actionsAria")}>
           {action && (
             <button
@@ -127,11 +130,13 @@ function ReplayListStatus({
               {action.label}
             </button>
           )}
-          {iconAction && (
+          {iconActions.map((iconAction) => (
             <button
+              key={iconAction.icon + iconAction.ariaLabel}
               type="button"
-              className="replay-list-icon-action"
+              className={`replay-list-icon-action${iconAction.pressed ? " is-on" : ""}`}
               aria-label={iconAction.ariaLabel}
+              aria-pressed={iconAction.pressed}
               title={iconAction.title}
               onClick={(event) => {
                 event.stopPropagation();
@@ -140,7 +145,7 @@ function ReplayListStatus({
             >
               <Icon name={iconAction.icon} size={14} />
             </button>
-          )}
+          ))}
         </div>
       )}
     </div>
@@ -214,7 +219,7 @@ function ReplayListRowView({ row }: { row: ReplayListRow }) {
       <ReplayListCellView cell={row.players} className="replay-list-number-cell" />
       <ReplayListCellView cell={row.rating} className="replay-list-number-cell" />
       <ReplayListCellView cell={row.duration} className="replay-list-duration-cell" />
-      <ReplayListStatus cell={row.replay} action={row.action} iconAction={row.iconAction} />
+      <ReplayListStatus cell={row.replay} action={row.action} iconActions={row.iconActions} />
     </div>
   );
 }

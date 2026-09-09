@@ -663,6 +663,14 @@ button.vault-input {
   text-overflow: ellipsis;
 }
 
+/* On, meaning this replay carries the watched mark. The row in the list dims
+   itself when marked; a modal has no such neighbour to compare against, so the
+   button carries the state. */
+.replay-secondary-btn.is-on {
+  border-color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
 .replay-secondary-btn span {
   overflow: hidden;
   text-overflow: ellipsis;
