@@ -114,10 +114,17 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     if (downloadStatus.type === "failed") openDownloadError = downloadStatus.payload.reason;
   }
 
-  const markWatchedAndPlay = (uid: number) => {
-    const next = new Set(watchedUids).add(uid);
+  const setWatchedMark = (uid: number, marked: boolean) => {
+    if (watchedUids.has(uid) === marked) return;
+    const next = new Set(watchedUids);
+    if (marked) next.add(uid);
+    else next.delete(uid);
     setWatchedUids(next);
     saveStoredSet(WATCHED_STORAGE_KEY, next);
+  };
+
+  const markWatchedAndPlay = (uid: number) => {
+    setWatchedMark(uid, true);
     watchVault(uid);
   };
 
@@ -204,6 +211,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
             setSelectedUid(uid);
             if (!busy) markWatchedAndPlay(uid);
           }}
+          onToggleWatched={(uid) => setWatchedMark(uid, !watchedUids.has(uid))}
         />
       )}
       <div className="vault-pagination">
@@ -219,6 +227,8 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         <ReplayDetailPanel
           replay={openReplay}
           busy={busy}
+          watched={watchedUids.has(openReplay.uid)}
+          onToggleWatched={() => setWatchedMark(openReplay.uid, !watchedUids.has(openReplay.uid))}
           onClose={() => setOpenUid(null)}
           onDownload={() => downloadVault(openReplay.uid)}
           downloadState={openDownloadState}

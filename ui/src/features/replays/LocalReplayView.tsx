@@ -37,7 +37,11 @@ import "./online-replays.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const PAGE_SIZE = 36;
+/// A hundred rows a page, which is what the archive's owner asked for and what
+/// the Java client's local section offers. Nothing is fetched per row: the
+/// whole folder is already in memory by the time it is paged, so the cost of a
+/// larger page is the rows the browser lays out, not the disk.
+const PAGE_SIZE = 100;
 const LOCAL_WATCHED_STORAGE_KEY = "faf-watched-local-replays";
 
 function localReplayKey(replay: LocalReplay): string {
@@ -46,10 +50,12 @@ function localReplayKey(replay: LocalReplay): string {
 
 const openFile = (path: string) =>
   ipc.send({ kind: "Replays", command: { type: "openFile", payload: { path } } });
-/// How many of the newest replays have their headers read. Ten pages, the
-/// same default the backend uses; paging past it asks for more rather than
-/// making every session wait for an archive of thousands.
-const INITIAL_DETAIL_LIMIT = PAGE_SIZE * 10;
+/// How many of the newest replays have their headers read up front, and the
+/// size of every later run. Deliberately not tied to the page size: this is a
+/// wait the user pays on opening the tab, and reading a thousand headers to
+/// fill the first page of a hundred would be paying it ten times over. Paging
+/// past what is loaded asks for more.
+const INITIAL_DETAIL_LIMIT = 360;
 const loadLocal = (limit: number = INITIAL_DETAIL_LIMIT) =>
   ipc.send({ kind: "Replays", command: { type: "loadLocal", payload: { limit } } });
 const deleteLocal = (path: string) =>
@@ -158,6 +164,10 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   const [watched, setWatched] = useState<Set<string>>(() =>
     loadStoredSet(LOCAL_WATCHED_STORAGE_KEY, (value): value is string => typeof value === "string"),
   );
+  // "Where do I find the ones I marked?" The mark is per install and lives in
+  // this browser's storage, so no query can carry it; it narrows the result of
+  // one instead.
+  const [watchedOnly, setWatchedOnly] = useState(false);
   const [openReplay, setOpenReplay] = useState<LocalReplay | null>(null);
   const [pendingDelete, setPendingDelete] = useState<LocalReplay | null>(null);
   const note = loadStatusNote(localStatus, t("replays.local.scanning"), t("replays.local.scanFailed"));
@@ -176,20 +186,28 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
 
   useEffect(() => {
     setPage(1);
-  }, [query]);
+  }, [query, watchedOnly]);
 
   // Paging into the part of the archive whose headers were never read: ask for
   // enough to cover it, plus the same run again so the next few pages are
   // already there.
   const [detailLimit, setDetailLimit] = useState(INITIAL_DETAIL_LIMIT);
 
-  const filtered = useMemo(
+  const matching = useMemo(
     () => filterLocalReplays(
       local,
       query,
       (replay) => replay.map ? mapPresentation(mapVault, replay.map, missions).displayName : "",
     ),
     [local, mapVault, missions, query],
+  );
+  const filtered = useMemo(
+    () => watchedOnly ? matching.filter((replay) => watched.has(localReplayKey(replay))) : matching,
+    [matching, watched, watchedOnly],
+  );
+  const watchedCount = useMemo(
+    () => matching.filter((replay) => watched.has(localReplayKey(replay))).length,
+    [matching, watched],
   );
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -247,13 +265,18 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   // deciding to sign in should not have to go looking for that.
   const signIn = () => ipc.send({ kind: "Auth", command: { type: "logoutTest" } });
 
-  const markWatchedAndOpen = (replay: LocalReplay) => {
+  const setWatchedMark = (replay: LocalReplay, marked: boolean) => {
     const key = localReplayKey(replay);
-    if (!watched.has(key)) {
-      const next = new Set(watched).add(key);
-      setWatched(next);
-      saveStoredSet(LOCAL_WATCHED_STORAGE_KEY, next);
-    }
+    if (watched.has(key) === marked) return;
+    const next = new Set(watched);
+    if (marked) next.add(key);
+    else next.delete(key);
+    setWatched(next);
+    saveStoredSet(LOCAL_WATCHED_STORAGE_KEY, next);
+  };
+
+  const markWatchedAndOpen = (replay: LocalReplay) => {
+    setWatchedMark(replay, true);
     openFile(replay.path);
   };
 
@@ -283,13 +306,26 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
             <Icon name="users" size={14} /> {t("auth.signIn")}
           </Button>
         )}
+        <Button
+          className={watchedOnly ? "local-replay-watched-filter is-on" : "local-replay-watched-filter"}
+          aria-pressed={watchedOnly}
+          disabled={!watchedOnly && watchedCount === 0}
+          title={t("replays.local.watchedOnlyHint")}
+          onClick={() => setWatchedOnly((on) => !on)}
+        >
+          <Icon name="eye" size={14} /> {t("replays.local.watchedOnly", { count: watchedCount })}
+        </Button>
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
       {localStatus.type === "ready" && filtered.length === 0 ? (
         <div className="live-replay-empty surface-panel">
-          <Icon name={local.length === 0 ? "replays" : "search"} size={22} />
-          <h3>{t(local.length === 0 ? "replays.local.noneFound" : "replays.local.noneMatch")}</h3>
-          <p>{t(local.length === 0 ? "replays.local.noneFoundHint" : "replays.local.noneMatchHint")}</p>
+          <Icon name={watchedOnly ? "eye" : local.length === 0 ? "replays" : "search"} size={22} />
+          <h3>{t(watchedOnly
+            ? "replays.local.noneWatched"
+            : local.length === 0 ? "replays.local.noneFound" : "replays.local.noneMatch")}</h3>
+          <p>{t(watchedOnly
+            ? "replays.local.noneWatchedHint"
+            : local.length === 0 ? "replays.local.noneFoundHint" : "replays.local.noneMatchHint")}</p>
         </div>
       ) : pageReplays.length > 0 && viewMode === "tiles" ? (
         <>
@@ -364,12 +400,25 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                   watched: watched.has(localReplayKey(replay)),
                   onSelect: () => setOpenReplay(replay),
                   onActivate: replay.watchable && !busy ? () => markWatchedAndOpen(replay) : undefined,
-                  iconAction: {
-                    icon: "close",
-                    ariaLabel: t("replays.local.deleteAria", { name: replay.title || replay.fileName }),
-                    title: t("replays.local.delete"),
-                    onClick: () => setPendingDelete(replay),
-                  },
+                  iconActions: [
+                    {
+                      icon: "eye",
+                      pressed: watched.has(localReplayKey(replay)),
+                      ariaLabel: t(watched.has(localReplayKey(replay))
+                        ? "replays.watched.unmarkAria"
+                        : "replays.watched.markAria", { name: replay.title || replay.fileName }),
+                      title: t(watched.has(localReplayKey(replay))
+                        ? "replays.watched.unmark"
+                        : "replays.watched.mark"),
+                      onClick: () => setWatchedMark(replay, !watched.has(localReplayKey(replay))),
+                    },
+                    {
+                      icon: "close",
+                      ariaLabel: t("replays.local.deleteAria", { name: replay.title || replay.fileName }),
+                      title: t("replays.local.delete"),
+                      onClick: () => setPendingDelete(replay),
+                    },
+                  ],
                 };
               }),
             }))}
@@ -394,6 +443,8 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
           source="local"
           localPath={openReplay.path}
           downloadState="downloaded"
+          watched={watched.has(localReplayKey(openReplay))}
+          onToggleWatched={() => setWatchedMark(openReplay, !watched.has(localReplayKey(openReplay)))}
           onClose={() => setOpenReplay(null)}
           onWatch={() => {
             markWatchedAndOpen(openReplay);

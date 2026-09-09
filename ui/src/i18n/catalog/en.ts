@@ -1834,6 +1834,14 @@ export const en = {
     one: "{shown} of {total} replay",
     other: "{shown} of {total} replays",
   },
+  // The watched mark, and the one filter that can find it again. `count` is
+  // how many of the current results carry it, which is what makes the button
+  // worth pressing or not.
+  "replays.local.watchedOnly": { one: "Watched ({count})", other: "Watched ({count})" },
+  "replays.local.watchedOnlyHint": "Show only the replays you marked as watched",
+  "replays.local.noneWatched": "Nothing marked as watched",
+  "replays.local.noneWatchedHint":
+    "Watching a replay marks it, and the eye on any row marks one by hand.",
   "replays.local.noneFound": "No local replays found",
   "replays.local.noneMatch": "No local replays match",
   "replays.local.noneFoundHint": "Recorded and downloaded replay files will appear here.",
@@ -1851,6 +1859,12 @@ export const en = {
   "replays.local.confirmDeleteBody":
     "“{name}” will be permanently removed from the shared FAF replay folder.",
   "replays.local.cancel": "Cancel",
+
+  // The watched mark itself, shared by the local library and the vault.
+  "replays.watched.mark": "Mark as watched",
+  "replays.watched.unmark": "Remove watched mark",
+  "replays.watched.markAria": "Mark {name} as watched",
+  "replays.watched.unmarkAria": "Remove the watched mark from {name}",
 
   // Live replay rows.
   "replays.live.startUnavailable": "Start time unavailable",
