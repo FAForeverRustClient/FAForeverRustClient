@@ -2135,6 +2135,26 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.player.removeFoe": "Feindmarkierung entfernen",
   "leaderboard.player.markFoe": "Als Feind markieren",
   "leaderboard.view.myProfile": "Mein Profil",
+  "leaderboard.rating.explainShort": "Wie Rating funktioniert",
+  "leaderboard.rating.explainTitle": "Wie dein Rating berechnet wird",
+  "leaderboard.rating.close": "Verstanden",
+  "leaderboard.rating.twoNumbersTitle": "Eine Zahl siehst du, zwei speichert der Server",
+  "leaderboard.rating.twoNumbersBody":
+    "FAF speichert dein Rating nicht als einzelnen Wert. Der Server hält eine Schätzung deiner Spielstärke, den Mittelwert, und wie unsicher er sich dabei ist, die Abweichung. Beide stehen in deinem Profil neben jeder Queue. Die Zahl in dieser Bestenliste ist die vorsichtige Lesart der beiden:",
+  "leaderboard.rating.formula": "Rating = Mittelwert - 3 x Abweichung",
+  "leaderboard.rating.formulaExample":
+    "Ein Spieler mit Mittelwert 2260 und Abweichung 139 steht mit 1842 in der Liste. Das Rating ist absichtlich das untere Ende dessen, was der Server über dich annimmt: Sicherheit zählt genauso viel wie Stärke.",
+  "leaderboard.rating.newAccountTitle": "Warum ein neuer Account so schnell steigt",
+  "leaderboard.rating.newAccountBody":
+    "Ein frischer Account startet mit einer großen Abweichung, weil noch nichts über ihn bekannt ist. Jedes gewertete Spiel verkleinert sie, und da sie dreifach abgezogen wird, steigt das angezeigte Rating am Anfang schnell, auch wenn sich der Mittelwert kaum bewegt. Sobald die Abweichung klein bleibt, bewegt sich das Rating nur noch mit dem Mittelwert.",
+  "leaderboard.rating.perQueueTitle": "Jede Queue zählt für sich",
+  "leaderboard.rating.perQueueBody":
+    "Global, 1v1 und jede Team-Queue führen eigenen Mittelwert und eigene Abweichung, ein Spiel ändert also genau eine davon. Nur gewertete Spiele zählen: eine Custom-Lobby mit ungewerteter Karte oder ungewertetem Simulationsmod ändert nichts.",
+  "leaderboard.rating.leaguesTitle": "Ligen sind kein Rating",
+  "leaderboard.rating.leaguesBody":
+    "Der Ligen-Tab ist eine saisonale Rangliste mit eigenem Punktestand, eigenen Divisionen und Platzierungsspielen. Sie liest deine Matchmaker-Ergebnisse, ist aber eine eigene Zahl, die mit jeder Saison zurückgesetzt wird. Deshalb können Division und Rating auseinandergehen.",
+  "leaderboard.rating.moreOnTheWiki":
+    "Das ganze Modell und die Überlegungen dahinter stehen im FAF-Wiki und im Forum. Beide findest du im Links-Tab.",
   "leaderboard.view.ratings": "Ratings",
   "leaderboard.view.leagues": "Ligen",
   "leaderboard.view.retry": "Erneut versuchen",

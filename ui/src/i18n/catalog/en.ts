@@ -2254,6 +2254,30 @@ export const en = {
   "leaderboard.player.removeFoe": "Remove foe",
   "leaderboard.player.markFoe": "Mark as foe",
   "leaderboard.view.myProfile": "My profile",
+  // "How rating works". Everything in this panel is arithmetic the client can
+  // already see: a player card shows a rating beside its mean and deviation,
+  // and 2260 - 3 x 139.3 = 1842 is that card's own numbers. No thresholds and
+  // no constants, because those are the server's and this cannot check them.
+  "leaderboard.rating.explainShort": "How rating works",
+  "leaderboard.rating.explainTitle": "How your rating is calculated",
+  "leaderboard.rating.close": "Got it",
+  "leaderboard.rating.twoNumbersTitle": "One number you see, two the server keeps",
+  "leaderboard.rating.twoNumbersBody":
+    "FAF does not store your rating as a single score. It keeps an estimate of your skill, the mean, and how unsure it is of that estimate, the deviation. Both are on your profile beside every queue. The number on this leaderboard is the cautious reading of the two:",
+  "leaderboard.rating.formula": "rating = mean - 3 x deviation",
+  "leaderboard.rating.formulaExample":
+    "A player with a mean of 2260 and a deviation of 139 is listed at 1842. The rating is deliberately the low end of what the server believes about you, so being certain of a score counts for as much as reaching it.",
+  "leaderboard.rating.newAccountTitle": "Why a new account climbs so fast",
+  "leaderboard.rating.newAccountBody":
+    "A fresh account starts with a large deviation, because nothing is known about it yet. Every rated game shrinks that number, and since it is subtracted three times over, the listed rating rises quickly at first even when the mean barely moves. Once the deviation settles, the rating only moves when the mean does.",
+  "leaderboard.rating.perQueueTitle": "Every queue counts separately",
+  "leaderboard.rating.perQueueBody":
+    "Global, 1v1 and each team queue keep their own mean and deviation, so a game changes exactly one of them. Only rated games count: a custom lobby with an unranked map or an unranked simulation mod changes nothing.",
+  "leaderboard.rating.leaguesTitle": "Leagues are not ratings",
+  "leaderboard.rating.leaguesBody":
+    "The Leagues tab is a seasonal ladder with its own score, divisions and placement games. It reads your matchmaker results, but it is a separate number that resets when a season does, which is why a division and a rating can disagree.",
+  "leaderboard.rating.moreOnTheWiki":
+    "The full model, and the reasoning behind it, is on the FAF wiki and the forum. Both are in the Links tab.",
   "leaderboard.view.ratings": "Ratings",
   "leaderboard.view.leagues": "Leagues",
   "leaderboard.view.retry": "Retry",

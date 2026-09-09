@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
@@ -6,6 +6,7 @@ import type { LeaderboardMode } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { LeagueLeaderboardPanel, LeagueSeasonToolbar } from "./LeagueLeaderboardPanel";
 import { RatingLeaderboardPanel } from "./RatingLeaderboardPanel";
+import { RatingExplainerButton, RatingExplainerDialog } from "./RatingExplainer";
 import "./leaderboard.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -22,6 +23,7 @@ const loadCatalog = () => ipc.send({ kind: "Leaderboard", command: { type: "load
 export function LeaderboardView() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
+  const [explaining, setExplaining] = useState(false);
   const currentSeason = state.seasons.find((season) => season.id === state.selectedSeasonId) ?? null;
 
   useEffect(() => {
@@ -40,6 +42,10 @@ export function LeaderboardView() {
               <Icon name="leaderboard" size={16} /> {t("leaderboard.view.leagues")}
             </Button>
           </div>
+          {/* Beside the two modes rather than as a third one: what a rating is
+              made of is the same answer on both of these tables, and it is
+              prose rather than something the backend has an opinion about. */}
+          <RatingExplainerButton onOpen={() => setExplaining(true)} />
         </div>
         {state.mode === "leagues" && currentSeason && (
           <LeagueSeasonToolbar
@@ -61,6 +67,7 @@ export function LeaderboardView() {
       )}
       {state.catalogStatus.type === "ready" && state.mode === "ratings" && <RatingLeaderboardPanel />}
       {state.catalogStatus.type === "ready" && state.mode === "leagues" && <LeagueLeaderboardPanel />}
+      {explaining && <RatingExplainerDialog onClose={() => setExplaining(false)} />}
     </div>
   );
 }

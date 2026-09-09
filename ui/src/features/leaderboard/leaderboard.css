@@ -991,3 +991,54 @@
   }
 
 }
+
+/* "How rating works": a page of prose, so it reads like one. */
+.rating-explainer-modal {
+  width: min(620px, calc(100vw - 64px));
+}
+
+.rating-explainer h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 18px;
+}
+
+.rating-explainer section {
+  margin-bottom: var(--space-4);
+}
+
+.rating-explainer h3 {
+  margin: 0 0 var(--space-1);
+  font-size: 13px;
+}
+
+.rating-explainer p {
+  margin: 0 0 var(--space-2);
+  max-width: 62ch;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.rating-explainer .muted {
+  color: var(--color-muted);
+}
+
+.rating-explainer-formula code {
+  display: inline-block;
+  padding: 4px 8px;
+  color: var(--color-rating);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.rating-explainer-more {
+  margin-top: var(--space-3);
+}
+
+.rating-explainer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
