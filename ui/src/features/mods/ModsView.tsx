@@ -17,7 +17,7 @@ import {
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMod, ModVaultQuery, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { EMPTY_MOD_QUERY } from "../../shared/vaultQuery";
+import { EMPTY_MOD_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
 import {
@@ -124,6 +124,8 @@ function VaultView({ busy }: { busy: boolean }) {
   const browse = useAppStore((state) => state.state.mods.browse);
   const browseStatus = useAppStore((state) => state.state.mods.browseStatus);
   const browseTotalPages = useAppStore((state) => state.state.mods.browseTotalPages);
+  // The query the page count in state was reported for. See `sameVaultSearch`.
+  const browseQuery = useAppStore((state) => state.state.mods.browseQuery);
   const installed = useAppStore((state) => state.state.mods.installed);
   const installedStatus = useAppStore((state) => state.state.mods.installedStatus);
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
@@ -336,9 +338,11 @@ function VaultView({ busy }: { busy: boolean }) {
     });
   }, [applied.installFilter, browse, favorites, installedByUid, localFavorites]);
 
+  // Same rule as the Maps tab: the count in state describes the search it came
+  // back with, not the one whose results are still on their way.
   const totalPages = localFavorites
     ? Math.max(1, Math.ceil(favorites.length / PAGE_SIZE))
-    : browseTotalPages ?? 1;
+    : (sameVaultSearch(browseQuery, query) ? browseTotalPages ?? 1 : 1);
   const currentPage = Math.min(page, totalPages);
   const pageMods = localFavorites
     ? results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
