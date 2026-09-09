@@ -32,6 +32,7 @@ import { InstalledModsView } from "./InstalledModsView";
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
 import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
+import { modUpdateAvailable } from "./modVersions";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
@@ -59,6 +60,7 @@ const MOD_PRESETS: Array<[ModPreset, MessageKey]> = [
 const loadVault = () => ipc.send({ kind: "Mods", command: { type: "loadVault" } });
 const loadInstalled = () => ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
 const installMod = (uid: string, downloadUrl: string) => ipc.send({ kind: "Mods", command: { type: "installMod", payload: { uid, downloadUrl } } });
+const updateMod = (uid: string, folderName: string, downloadUrl: string) => ipc.send({ kind: "Mods", command: { type: "updateMod", payload: { uid, folderName, downloadUrl } } });
 const uninstallMod = (folderName: string, uid: string) => ipc.send({ kind: "Mods", command: { type: "uninstallMod", payload: { folderName, uid } } });
 const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
 
@@ -330,7 +332,7 @@ function VaultView({ busy }: { busy: boolean }) {
       const installedMod = installedByUid.get(mod.uid);
       if (applied.installFilter === "installed") return Boolean(installedMod);
       if (applied.installFilter === "updates") {
-        return Boolean(installedMod && installedMod.version !== mod.version);
+        return Boolean(installedMod && modUpdateAvailable(installedMod.version, mod.version));
       }
       return !installedMod;
     });
@@ -500,6 +502,7 @@ function VaultView({ busy }: { busy: boolean }) {
                       working={isBusy}
                       onSelect={() => setSelectedUid(mod.uid)}
                       onInstall={() => installMod(mod.uid, mod.downloadUrl)}
+                      onUpdate={() => installedMod && updateMod(mod.uid, installedMod.folderName, mod.downloadUrl)}
                       onUninstall={() => installedMod && setPendingUninstall(installedMod)}
                       onToggleFavorite={() => toggleFavorite(mod.uid)}
                     />
@@ -526,6 +529,7 @@ function VaultView({ busy }: { busy: boolean }) {
                   toggling={toggling}
                   mine={playerId !== null && selected.uploaderId === playerId}
                   onInstall={() => installMod(selected.uid, selected.downloadUrl)}
+                  onUpdate={() => installedMod && updateMod(selected.uid, installedMod.folderName, selected.downloadUrl)}
                   onToggle={() => installedMod && toggleMod(installedMod.uid, !installedMod.enabled)}
                   onUninstall={() => installedMod && setPendingUninstall(installedMod)}
                   onToggleFavorite={() => toggleFavorite(selected.uid)}

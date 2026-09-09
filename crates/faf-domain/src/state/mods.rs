@@ -272,6 +272,23 @@ pub enum ModsCommand {
     /// `MapsCommand::InstallMap`).
     #[serde(rename_all = "camelCase")]
     InstallMod { uid: String, download_url: String },
+    /// Replace an installed mod with the vault's current version.
+    ///
+    /// Not a client-side `uninstall` followed by an `install`, which is what
+    /// the user had to do by hand: an install refuses a folder that already
+    /// exists, so the two have to happen in that order, and doing it from the
+    /// UI means a failed download leaves the mod gone. The port downloads
+    /// first, removes the old folder second, and puts the mod back into
+    /// `game.prefs` if the version it replaced was enabled.
+    ///
+    /// `folder_name` is the installed copy's folder, which is what has to be
+    /// removed; `uid` and `download_url` name the version to put in its place.
+    #[serde(rename_all = "camelCase")]
+    UpdateMod {
+        uid: String,
+        folder_name: String,
+        download_url: String,
+    },
     /// Delete a mod folder (mirrors `MapsCommand::UninstallMap`).
     #[serde(rename_all = "camelCase")]
     UninstallMod { folder_name: String, uid: String },

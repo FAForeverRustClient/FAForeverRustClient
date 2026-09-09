@@ -16,6 +16,7 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
 import { Modal } from "../../design-system/Modal";
 import { ModPreview, UninstallDialog, cleanDescription } from "./ModVaultComponents";
+import { modUpdateAvailable } from "./modVersions";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type ModTypeFilter = "all" | "ui" | "sim";
@@ -33,6 +34,11 @@ const uninstallMod = (folderName: string, uid: string) =>
     kind: "Mods",
     command: { type: "uninstallMod", payload: { folderName, uid } },
   });
+const updateMod = (uid: string, folderName: string, downloadUrl: string) =>
+  ipc.send({
+    kind: "Mods",
+    command: { type: "updateMod", payload: { uid, folderName, downloadUrl } },
+  });
 const toggleMod = (uid: string, enabled: boolean) =>
   ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
 
@@ -44,6 +50,8 @@ interface InstalledModCardProps {
   toggling: boolean;
   onOpen: () => void;
   onToggle: () => void;
+  /// Present only while the vault has a newer version than this folder.
+  onUpdate?: () => void;
   onUninstall: () => void;
 }
 
@@ -55,6 +63,7 @@ function InstalledModCard({
   toggling,
   onOpen,
   onToggle,
+  onUpdate,
   onUninstall,
 }: InstalledModCardProps) {
   const { t } = useTranslation();
@@ -89,6 +98,11 @@ function InstalledModCard({
         <Button disabled={busy} onClick={onToggle}>
           {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
         </Button>
+        {onUpdate && metadata && (
+          <Button variant="primary" disabled={busy || !metadata.downloadUrl} onClick={onUpdate}>
+            {t(installing ? "mods.installed.working" : "mods.vault.update")}
+          </Button>
+        )}
         <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
           {t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
         </Button>
@@ -110,6 +124,7 @@ function InstalledModDetail({
   toggling,
   onClose,
   onToggle,
+  onUpdate,
   onUninstall,
   onOpenInVault,
 }: {
@@ -119,6 +134,8 @@ function InstalledModDetail({
   toggling: boolean;
   onClose: () => void;
   onToggle: () => void;
+  /// Present only while the vault has a newer version than this folder.
+  onUpdate?: () => void;
   onUninstall: () => void;
   onOpenInVault: () => void;
 }) {
@@ -126,7 +143,7 @@ function InstalledModDetail({
   // The vault copy is the maintained one; `mod_info.lua` is what a mod that
   // was never published, or was taken down, still has.
   const description = cleanDescription(metadata?.description || mod.description);
-  const updateAvailable = Boolean(metadata && metadata.version !== mod.version);
+  const updateAvailable = Boolean(metadata && modUpdateAvailable(mod.version, metadata.version));
   return (
     <Modal className="installed-mod-modal" onClose={onClose} ariaLabel={mod.displayName}>
       <div className="installed-mod-detail">
@@ -181,6 +198,11 @@ function InstalledModDetail({
 
           <div className="vault-detail-actions mod-vault-detail-actions">
             <div className="vault-detail-actions-left">
+              {updateAvailable && onUpdate && (
+                <Button variant="primary" disabled={busy || !metadata?.downloadUrl} onClick={onUpdate}>
+                  {t("mods.vault.installUpdate")}
+                </Button>
+              )}
               <Button disabled={busy} onClick={onToggle}>
                 {t(toggling ? "mods.vault.toggling" : mod.enabled ? "mods.vault.disable" : "mods.vault.enable")}
               </Button>
@@ -270,14 +292,20 @@ export function InstalledModsView({
     setPage(1);
   };
 
-  const updatesCount = useMemo(
-    () =>
-      installed.filter((m) => {
-        const meta = vaultByUid.get(m.uid);
-        return meta && meta.version !== m.version;
-      }).length,
+  // One pass for both the count on the filter chip and the per-card question
+  // of whether to offer the button, so the two can never disagree.
+  const updatableFolders = useMemo(
+    () => new Set(
+      installed
+        .filter((mod) => {
+          const meta = vaultByUid.get(mod.uid);
+          return meta && modUpdateAvailable(mod.version, meta.version);
+        })
+        .map((mod) => mod.folderName),
+    ),
     [installed, vaultByUid],
   );
+  const updatesCount = updatableFolders.size;
 
   const hiddenFilterCount = Number(ranked !== "all")
     + Number(minimumRating !== null || maximumRating !== null);
@@ -290,7 +318,7 @@ export function InstalledModsView({
       .filter((mod) => {
         const meta = vaultByUid.get(mod.uid);
         const isRankedMod = meta?.ranked ?? false;
-        const hasUpdate = meta && meta.version !== mod.version;
+        const hasUpdate = meta && modUpdateAvailable(mod.version, meta.version);
 
         if (preset === "enabled" && !mod.enabled) return false;
         if (preset === "disabled" && mod.enabled) return false;
@@ -521,6 +549,12 @@ export function InstalledModsView({
                 toggling={toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid}
                 onOpen={() => setOpenFolder(mod.folderName)}
                 onToggle={() => toggleMod(mod.uid, !mod.enabled)}
+                onUpdate={updatableFolders.has(mod.folderName)
+                  ? () => {
+                    const meta = vaultByUid.get(mod.uid);
+                    if (meta) updateMod(meta.uid, mod.folderName, meta.downloadUrl);
+                  }
+                  : undefined}
                 onUninstall={() => setPendingUninstall(mod)}
               />
             ))}
@@ -545,6 +579,10 @@ export function InstalledModsView({
           toggling={toggleStatus.type === "toggling" && toggleStatus.payload.uid === opened.uid}
           onClose={() => setOpenFolder(null)}
           onToggle={() => toggleMod(opened.uid, !opened.enabled)}
+          onUpdate={() => {
+            const meta = vaultByUid.get(opened.uid);
+            if (meta) updateMod(meta.uid, opened.folderName, meta.downloadUrl);
+          }}
           onUninstall={() => {
             setOpenFolder(null);
             setPendingUninstall(opened);
