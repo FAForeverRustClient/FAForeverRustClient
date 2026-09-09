@@ -29,6 +29,15 @@ jobs:
       # so the workspace build needs these even though the logic crates are pure.
       - name: Install Tauri system dependencies
         run: |
+          # The runner image ships apt sources for Chrome and Microsoft that
+          # nothing here installs from, and `apt-get update` fails the whole
+          # step when one of them serves a stale index: on 2026-09-09 every
+          # Rust job died in twelve seconds on a "Hash Sum mismatch" from
+          # dl.google.com. The Ubuntu archives are the only source these
+          # packages come from, so the rest are removed before the update
+          # rather than being allowed to decide whether CI runs.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
