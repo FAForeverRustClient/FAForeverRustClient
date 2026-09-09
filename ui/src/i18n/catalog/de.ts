@@ -2137,7 +2137,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.view.myProfile": "Mein Profil",
   "leaderboard.rating.explainShort": "Wie Rating funktioniert",
   "leaderboard.rating.explainTitle": "Wie dein Rating berechnet wird",
-  "leaderboard.rating.close": "Verstanden",
+  "leaderboard.rating.openWiki": "Im Wiki nachlesen",
   "leaderboard.rating.twoNumbersTitle": "Eine Zahl siehst du, zwei speichert der Server",
   "leaderboard.rating.twoNumbersBody":
     "FAF speichert dein Rating nicht als einzelnen Wert. Der Server hält eine Schätzung deiner Spielstärke, den Mittelwert, und wie unsicher er sich dabei ist, die Abweichung. Beide stehen in deinem Profil neben jeder Queue. Die Zahl in dieser Bestenliste ist die vorsichtige Lesart der beiden:",
@@ -2154,7 +2154,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.rating.leaguesBody":
     "Der Ligen-Tab ist eine saisonale Rangliste mit eigenem Punktestand, eigenen Divisionen und Platzierungsspielen. Sie liest deine Matchmaker-Ergebnisse, ist aber eine eigene Zahl, die mit jeder Saison zurückgesetzt wird. Deshalb können Division und Rating auseinandergehen.",
   "leaderboard.rating.moreOnTheWiki":
-    "Das ganze Modell und die Überlegungen dahinter stehen im FAF-Wiki und im Forum. Beide findest du im Links-Tab.",
+    "Startwerte, Schwellen und die Überlegungen dahinter stehen im FAF-Wiki, wo sie auch aktuell gehalten werden.",
   "leaderboard.view.ratings": "Ratings",
   "leaderboard.view.leagues": "Ligen",
   "leaderboard.view.retry": "Erneut versuchen",

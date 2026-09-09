@@ -992,9 +992,12 @@
 
 }
 
-/* "How rating works": a page of prose, so it reads like one. */
-.rating-explainer-modal {
-  width: min(620px, calc(100vw - 64px));
+/* "How rating works": a page of prose, so it reads like one. A tab rather than
+   a dialog, so it gets the panel padding the tables get and a measure that
+   does not run the width of a leaderboard. */
+.rating-explainer {
+  max-width: 72ch;
+  padding: var(--space-4);
 }
 
 .rating-explainer h2 {
@@ -1034,11 +1037,16 @@
 }
 
 .rating-explainer-more {
-  margin-top: var(--space-3);
+  margin: 0;
 }
 
 .rating-explainer-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
 }

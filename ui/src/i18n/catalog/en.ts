@@ -2260,7 +2260,7 @@ export const en = {
   // no constants, because those are the server's and this cannot check them.
   "leaderboard.rating.explainShort": "How rating works",
   "leaderboard.rating.explainTitle": "How your rating is calculated",
-  "leaderboard.rating.close": "Got it",
+  "leaderboard.rating.openWiki": "Read it on the wiki",
   "leaderboard.rating.twoNumbersTitle": "One number you see, two the server keeps",
   "leaderboard.rating.twoNumbersBody":
     "FAF does not store your rating as a single score. It keeps an estimate of your skill, the mean, and how unsure it is of that estimate, the deviation. Both are on your profile beside every queue. The number on this leaderboard is the cautious reading of the two:",
@@ -2277,7 +2277,7 @@ export const en = {
   "leaderboard.rating.leaguesBody":
     "The Leagues tab is a seasonal ladder with its own score, divisions and placement games. It reads your matchmaker results, but it is a separate number that resets when a season does, which is why a division and a rating can disagree.",
   "leaderboard.rating.moreOnTheWiki":
-    "The full model, and the reasoning behind it, is on the FAF wiki and the forum. Both are in the Links tab.",
+    "The starting values, the thresholds and the reasoning behind them are kept on the FAF wiki, which is where they stay current.",
   "leaderboard.view.ratings": "Ratings",
   "leaderboard.view.leagues": "Leagues",
   "leaderboard.view.retry": "Retry",
