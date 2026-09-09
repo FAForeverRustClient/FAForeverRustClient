@@ -13,6 +13,7 @@ import { flagSrc } from "../../shared/countryFlags";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
+import { ZoomableImage } from "../maps/MapPreviewZoom";
 import { generatorParameters } from "../maps/generatorPresentation";
 import {
   generatedMapDescriptionRows,
@@ -794,14 +795,21 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           <p>{game.title}</p>
         </div>
       </header>
+      {/* The same zoom the Maps tab has. This is the dialog somebody opens
+          *because* the tile was too small to read a spawn off, so it is the one
+          place a fixed picture helps least. The overlays stay in a wrapper of
+          their own: the zoom's viewport clips whatever is inside it, which is
+          the point of it, and a lock badge is not part of the map. */}
       <div className="game-preview-dialog-map">
-        <GameMapImage
-          mapName={game.map}
-          vault={vault}
-          className="game-preview-dialog-image"
-          placeholderClassName="game-preview-dialog-placeholder"
-          large
-        />
+        <ZoomableImage label={presentation.displayName || game.map}>
+          <GameMapImage
+            mapName={game.map}
+            vault={vault}
+            className="game-preview-dialog-image"
+            placeholderClassName="game-preview-dialog-placeholder"
+            large
+          />
+        </ZoomableImage>
         {game.passwordProtected && (
           <span className="game-preview-dialog-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
             <Icon name="lock" size={13} />

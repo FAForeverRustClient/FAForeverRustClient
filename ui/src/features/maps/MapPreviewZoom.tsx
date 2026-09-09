@@ -5,6 +5,7 @@ import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreview, type PreviewableMap } from "./MapVaultComponents";
+import "./map-preview-zoom.css";
 import {
   MAX_SCALE,
   MIN_SCALE,
@@ -62,14 +63,21 @@ async function copyImageToClipboard(url: string): Promise<void> {
 }
 
 /**
- * The map preview, zoomable and copyable.
+ * A map image, zoomable and copyable.
  *
- * A client that is not run full screen shows this dialog at whatever size the
- * window allows, which for a 1024 px preview of a twenty kilometre map is not
+ * A client that is not run full screen shows a preview at whatever size the
+ * window allows, which for a 1024 px picture of a twenty kilometre map is not
  * enough to read a mex layout. Wheel to zoom, drag to pan, double-click to
  * jump in and back out, and the same through buttons and the keyboard.
+ *
+ * Takes the image as a child rather than drawing one, because the two places
+ * that need this resolve their art differently: the Maps tab has a `VaultMap`
+ * and its fallbacks, the Play tab has a game's map name and the generated
+ * previews that go with it. Everything here works on whatever `<img>` ends up
+ * inside, including the copy, which reads the `currentSrc` the browser settled
+ * on rather than a URL guessed up front.
  */
-export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
+export function ZoomableImage({ label, children }: { label: string; children: ReactNode }) {
   const { t } = useTranslation();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState<ZoomTransform>(NO_ZOOM);
@@ -94,7 +102,7 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
   useEffect(() => {
     setTransform(NO_ZOOM);
     setCopied("idle");
-  }, [map.folderName]);
+  }, [label]);
 
   // Registered by hand, because React's `onWheel` is passive and a passive
   // listener may not call `preventDefault`. Without that the wheel scrolls the
@@ -150,7 +158,7 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
         ref={viewportRef}
         className={zoomed ? "map-preview-viewport is-zoomed" : "map-preview-viewport"}
         role="img"
-        aria-label={t("maps.preview.zoomAria", { name: map.displayName || map.folderName })}
+        aria-label={t("maps.preview.zoomAria", { name: label })}
         tabIndex={0}
         onPointerDown={(event) => {
           if (!zoomed) return;
@@ -211,7 +219,7 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
             transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
           }}
         >
-          <MapPreview map={map} large />
+          {children}
         </div>
       </div>
       <div className="map-preview-controls">
@@ -254,6 +262,16 @@ export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
       </div>
       <p className="map-preview-hint muted">{t("maps.preview.zoomHint")}</p>
     </div>
+  );
+}
+
+/// The Maps tab's flavour: a vault or installed map, drawn by `MapPreview`
+/// with its own chain of fallbacks.
+export function MapPreviewZoom({ map }: { map: PreviewableMap }) {
+  return (
+    <ZoomableImage label={map.displayName || map.folderName}>
+      <MapPreview map={map} large />
+    </ZoomableImage>
   );
 }
 
