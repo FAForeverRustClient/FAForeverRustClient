@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    LeaderboardEntry, LeaderboardTier, League, LeagueSeason, RatingLeaderboard, RatingPage,
-    RatingQuery, SeasonLeaderboard,
+    leaderboard_display_name, leaderboard_display_rank, LeaderboardEntry, LeaderboardTier, League,
+    LeagueSeason, RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
 };
 use serde_json::Value;
 
@@ -404,36 +404,38 @@ fn display_key(value: &str) -> String {
 }
 
 fn pretty_mode_name(technical_name: &str, fallback: &str) -> String {
-    match technical_name {
-        "global" => "Global".into(),
-        "ladder_1v1" | "ladder1v1" => "1v1 Ladder".into(),
-        "tmm_2v2" | "ladder2v2" => "2v2".into(),
-        "tmm_3v3" | "ladder3v3" => "3v3".into(),
-        "tmm_4v4_full_share" | "ladder4v4" => "4v4 Full Share".into(),
-        "tmm_4v4_share_until_death" => "4v4 No Share".into(),
-        // League resources use names such as `1v1_league` and often carry a
-        // localization key ending in `.name`. The latter is not a display
-        // label, and displaying its last segment produced "Name" in the
-        // league tabs.
-        "1v1_league" => "1v1 League".into(),
-        "2v2_league" => "2v2 League".into(),
-        "3v3_league" => "3v3 League".into(),
-        "4v4_full_share_league" => "4v4 Full Share League".into(),
-        "4v4_share_until_death_league" => "4v4 No Share League".into(),
-        _ if !fallback.is_empty()
-            && !fallback
-                .rsplit('.')
-                .next()
-                .is_some_and(|part| part.eq_ignore_ascii_case("name")) =>
-        {
-            display_key(fallback)
-        }
-        _ => display_key(technical_name),
+    // The queues and the leagues both, from the table in the domain that the
+    // profile reads too. League resources are in it for the same reason they
+    // were in the `match` this replaces: they carry a localization key ending
+    // in `.name`, which is a lookup rather than a label, and rendering its last
+    // segment put "Name" in the league tabs.
+    if let Some(name) = leaderboard_display_name(technical_name) {
+        return name.to_string();
     }
+    if !fallback.is_empty()
+        && !fallback
+            .rsplit('.')
+            .next()
+            .is_some_and(|part| part.eq_ignore_ascii_case("name"))
+    {
+        return display_key(fallback);
+    }
+    display_key(technical_name)
+}
+
+/// Put a list of boards in the order the client presents them.
+///
+/// The API sorts leaderboards by id and leagues by technical name, neither of
+/// which is an order a reader recognises. Everything this client can name goes
+/// first, solo before team, and the rest keep the order the server sent, which
+/// is the only one they have.
+fn sort_by_display_order<T>(items: &mut [T], technical_name: impl Fn(&T) -> &str) {
+    items.sort_by_key(|item| leaderboard_display_rank(technical_name(item)).unwrap_or(usize::MAX));
 }
 
 fn parse_rating_leaderboards(doc: &JsonApiDoc) -> Vec<RatingLeaderboard> {
-    doc.data
+    let mut boards: Vec<RatingLeaderboard> = doc
+        .data
         .iter()
         .filter_map(|resource| {
             let id = resource.id.parse().ok()?;
@@ -451,11 +453,14 @@ fn parse_rating_leaderboards(doc: &JsonApiDoc) -> Vec<RatingLeaderboard> {
                     .to_string(),
             })
         })
-        .collect()
+        .collect();
+    sort_by_display_order(&mut boards, |board| board.technical_name.as_str());
+    boards
 }
 
 fn parse_leagues(doc: &JsonApiDoc) -> Vec<League> {
-    doc.data
+    let mut leagues: Vec<League> = doc
+        .data
         .iter()
         .filter_map(|resource| {
             let id = resource.id.parse().ok()?;
@@ -470,7 +475,9 @@ fn parse_leagues(doc: &JsonApiDoc) -> Vec<League> {
                     .to_string(),
             })
         })
-        .collect()
+        .collect();
+    sort_by_display_order(&mut leagues, |league| league.technical_name.as_str());
+    leagues
 }
 
 fn parse_seasons(doc: &JsonApiDoc) -> Vec<LeagueSeason> {
@@ -777,7 +784,7 @@ impl LeaderboardPort for FakeLeaderboard {
             RatingLeaderboard {
                 id: 2,
                 technical_name: "ladder_1v1".into(),
-                name: "1v1 Ladder".into(),
+                name: "1v1".into(),
                 description: "Ranked one versus one".into(),
             },
             RatingLeaderboard {
@@ -793,7 +800,7 @@ impl LeaderboardPort for FakeLeaderboard {
         Ok(vec![League {
             id: 1,
             technical_name: "ladder_1v1".into(),
-            name: "1v1 Ladder".into(),
+            name: "1v1".into(),
             description: "Seasonal competitive ladder".into(),
         }])
     }
@@ -1017,7 +1024,7 @@ mod tests {
             [
                 "1v1 League",
                 "2v2 League",
-                "4v4 Full Share League",
+                "4v4 League",
                 "4v4 No Share League"
             ]
         );

@@ -104,11 +104,12 @@ pub use notifications::{
     NotificationKind, NotificationState,
 };
 pub use player_card::{
-    aggregate_map_stats, sort_rating_summaries, ClanMember, MatchmakerPlayerProfile, PlayedGame,
-    PlayerAchievement, PlayerAchievementState, PlayerAvatar, PlayerCardCommand, PlayerCardEvent,
-    PlayerCardProfile, PlayerCardState, PlayerCardStatus, PlayerClan, PlayerEventCount,
-    PlayerLeaguePlacement, PlayerMapStat, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary,
-    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, leaderboard_display_name, leaderboard_display_rank, sort_rating_summaries,
+    ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState,
+    PlayerAvatar, PlayerCardCommand, PlayerCardEvent, PlayerCardProfile, PlayerCardState,
+    PlayerCardStatus, PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerMapStat,
+    PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage,
+    RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
