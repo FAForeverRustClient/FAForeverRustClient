@@ -1161,7 +1161,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.game.autoGenerateMaps": "Fehlende Karten automatisch erzeugen",
   "settings.game.autoGenerateMapsHint": "Lädt den Neroxis-Generator und erzeugt benötigte generierte Karten beim Betreten einer Lobby automatisch.",
   "settings.game.keepGeneratedMaps": "Generierte Karten behalten",
-  "settings.game.keepGeneratedMapsHint": "Behält die Karten, die du generierst, wenn du im Karten-Tab auf \"Erzeugte entfernen\" drückst. Aus werden sie mit den anderen entfernt.",
+  "settings.game.keepGeneratedMapsHint": "Generierte Karten werden nie von selbst entfernt, auch nicht beim Beenden. Das hier behält die, die du generierst, wenn du im Karten-Tab auf \"Erzeugte entfernen\" drückst; aus werden sie mit den anderen entfernt.",
   "settings.game.cacheLifetime": "Spiel-Cache-Aufbewahrung",
   "settings.game.cacheLifetimeHint": "Maximales Alter zwischengespeicherter Spieldateien und Replays vor der automatischen Bereinigung.",
   "settings.game.cacheLifetime.days": "{days} Tage",
