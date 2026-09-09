@@ -57,6 +57,7 @@ import {
   spawnCountsFor,
   summariseDecodedName,
 } from "./generatorPresentation";
+import { ZoomableImage } from "./MapPreviewZoom";
 import "./generate-map.css";
 import { NumberInput } from "../../design-system/NumberInput";
 
@@ -983,12 +984,19 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
           aria-label={t("maps.generate.enlargePreview")}
           onClick={() => setZoomed(false)}
         >
-          <img
-            className="generate-map-zoom-img"
-            src={currentPreviewUrl}
-            alt={currentMap ?? ""}
-            decoding="async"
-          />
+          {/* The stage swallows the click that closes the overlay. Dragging to
+              pan starts with a press on the picture, and an overlay that closes
+              on any click inside it would take the map away mid-drag. */}
+          <div className="generate-map-zoom-stage" onClick={(event) => event.stopPropagation()}>
+            <ZoomableImage label={currentMap ?? ""}>
+              <img
+                className="generate-map-zoom-img"
+                src={currentPreviewUrl}
+                alt={currentMap ?? ""}
+                decoding="async"
+              />
+            </ZoomableImage>
+          </div>
           <span className="generate-map-zoom-hint muted">{t("maps.generate.closePreview")}</span>
         </div>
       )}

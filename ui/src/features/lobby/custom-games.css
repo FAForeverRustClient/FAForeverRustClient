@@ -1100,16 +1100,18 @@
   font-size: 12px;
 }
 
+/* The frame around the zoomable preview. It used to be the frame around a
+   fixed image, so it carried the square, the border and the clipping; the
+   zoom's own viewport carries all three now. What is left is the positioning
+   context for the lock badge and the generate button, which sit over the
+   picture and must not be clipped away with it. */
 .game-preview-dialog-map {
   position: relative;
-  display: grid;
   width: 100%;
-  aspect-ratio: 1;
-  place-items: center;
-  overflow: hidden;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+}
+
+.game-preview-dialog-map .map-preview-viewport {
+  border-color: var(--color-border-strong);
 }
 
 /* The name row. It wraps rather than truncating: a generator name is 50-odd
