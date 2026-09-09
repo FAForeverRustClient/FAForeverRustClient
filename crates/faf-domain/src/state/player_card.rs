@@ -122,7 +122,8 @@ pub struct PlayerLeaguePlacement {
     ///
     /// Kept beside the display name because the two are joined on: the
     /// matchmaker shows a division per queue, and matching a queue against
-    /// "4v4 Full Share" would tie that join to a string written for humans.
+    /// "4v4 League" would tie that join to a string written for humans, which
+    /// [`leaderboard_display_name`] has now changed once already.
     pub technical_name: String,
     pub leaderboard: String,
     pub season: String,
@@ -547,6 +548,94 @@ pub fn reduce(state: &mut PlayerCardState, event: &PlayerCardEvent) {
             state.matchmaker_profile_error = reason.clone();
         }
     }
+}
+
+/// Every leaderboard this client can name, in the order it presents them.
+///
+/// One table for a question that used to be answered twice: `infra::player_card`
+/// named a queue for the profile and `infra::leaderboard` named the same queue
+/// again for the leaderboard tab, from two `match` arms that had already
+/// drifted apart. A label here reaches both.
+///
+/// The names are the queues' own. "1v1 Ladder" and "4v4 Full Share" were the
+/// two that said more than the queue does: every queue is ranked, so "Ladder"
+/// only implied the others were not, and full share stopped being a
+/// distinction when the queue it was distinguished from was retired.
+///
+/// The order is the matchmaker's: solo first, then by team size. Sorting by
+/// games played, which the profile used to do, reorders the same account from
+/// one visit to the next and puts a queue somebody tried twice above the one
+/// they play.
+const KNOWN_LEADERBOARDS: &[(&str, &str)] = &[
+    ("global", "Global"),
+    ("ladder_1v1", "1v1"),
+    ("ladder1v1", "1v1"),
+    ("tmm_2v2", "2v2"),
+    ("ladder2v2", "2v2"),
+    ("tmm_3v3", "3v3"),
+    ("ladder3v3", "3v3"),
+    ("tmm_4v4_full_share", "4v4"),
+    ("ladder4v4", "4v4"),
+    ("tmm_4v4_share_until_death", "4v4 No Share"),
+    ("1v1_league", "1v1 League"),
+    ("2v2_league", "2v2 League"),
+    ("3v3_league", "3v3 League"),
+    ("4v4_full_share_league", "4v4 League"),
+    ("4v4_share_until_death_league", "4v4 No Share League"),
+];
+
+/// The 4v4 queue that was retired weeks after it appeared, and its league.
+///
+/// The rows still exist for everyone who played it, so the API still returns
+/// them, and they took a card in the profile and a page on the leaderboard for
+/// a mode nobody can queue for. Hidden rather than deleted: the rows are the
+/// players', and hiding them is a display decision these two lines state.
+const RETIRED_LEADERBOARDS: [&str; 2] =
+    ["tmm_4v4_share_until_death", "4v4_share_until_death_league"];
+
+/// Whether a board is one nobody can play any more, and so one this client
+/// does not offer.
+pub fn is_retired_leaderboard(technical_name: &str) -> bool {
+    RETIRED_LEADERBOARDS.contains(&technical_name)
+}
+
+/// What to call a leaderboard, or `None` for one this client has never heard
+/// of, which every caller names from the API's own fields instead.
+pub fn leaderboard_display_name(technical_name: &str) -> Option<&'static str> {
+    KNOWN_LEADERBOARDS
+        .iter()
+        .find(|(known, _)| *known == technical_name)
+        .map(|(_, name)| *name)
+}
+
+/// Where a leaderboard sits in the fixed run, if it is in it at all.
+pub fn leaderboard_display_rank(technical_name: &str) -> Option<usize> {
+    KNOWN_LEADERBOARDS
+        .iter()
+        .position(|(known, _)| *known == technical_name)
+}
+
+/// Put a player's ratings in the order a profile shows them.
+///
+/// The named queues first, in [`KNOWN_LEADERBOARDS`] order; every other board
+/// after them, most played first, which is the only ranking a board this code
+/// has never heard of comes with. The retired 4v4 queue is dropped.
+pub fn sort_rating_summaries(ratings: &mut Vec<PlayerRatingSummary>) {
+    ratings.retain(|rating| !is_retired_leaderboard(&rating.technical_name));
+    ratings.sort_by(|left, right| {
+        match (
+            leaderboard_display_rank(&left.technical_name),
+            leaderboard_display_rank(&right.technical_name),
+        ) {
+            (Some(left_rank), Some(right_rank)) => left_rank.cmp(&right_rank),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => right
+                .games_played
+                .cmp(&left.games_played)
+                .then_with(|| left.name.cmp(&right.name)),
+        }
+    });
 }
 
 #[cfg(test)]
@@ -1072,6 +1161,133 @@ mod generated_map_tests {
         let setons = stats.maps.iter().find(|entry| !entry.generated).unwrap();
         assert_eq!(setons.map, "Setons Clutch");
         assert_eq!(setons.games, 1);
+    }
+
+    fn rating(technical_name: &str, games_played: i32) -> PlayerRatingSummary {
+        PlayerRatingSummary {
+            leaderboard_id: 0,
+            technical_name: technical_name.into(),
+            name: technical_name.into(),
+            rating: 1000,
+            mean: 1500.0,
+            deviation: 100.0,
+            games_played,
+            won_games: 0,
+            update_time: String::new(),
+        }
+    }
+
+    #[test]
+    fn ratings_are_listed_solo_first_then_by_team_size() {
+        // Arrived in the order the API happened to return them, and with the
+        // most played queue last, which is what the old sort read.
+        let mut ratings = vec![
+            rating("tmm_4v4_full_share", 12),
+            rating("tmm_2v2", 40),
+            rating("global", 900),
+            rating("ladder_1v1", 300),
+            rating("tmm_3v3", 5),
+        ];
+        sort_rating_summaries(&mut ratings);
+
+        let order: Vec<_> = ratings
+            .iter()
+            .map(|rating| rating.technical_name.as_str())
+            .collect();
+        assert_eq!(
+            order,
+            [
+                "global",
+                "ladder_1v1",
+                "tmm_2v2",
+                "tmm_3v3",
+                "tmm_4v4_full_share"
+            ]
+        );
+    }
+
+    #[test]
+    fn the_two_queues_that_said_more_than_the_queue_does_are_renamed() {
+        // Every queue is ranked, so "1v1 Ladder" only implied the others were
+        // not, and "4v4 Full Share" was a distinction from a queue that no
+        // longer exists.
+        assert_eq!(leaderboard_display_name("ladder_1v1"), Some("1v1"));
+        assert_eq!(leaderboard_display_name("tmm_4v4_full_share"), Some("4v4"));
+        assert_eq!(
+            leaderboard_display_name("4v4_full_share_league"),
+            Some("4v4 League")
+        );
+        assert_eq!(leaderboard_display_name("global"), Some("Global"));
+        assert_eq!(leaderboard_display_name("seasonal_experiment"), None);
+    }
+
+    #[test]
+    fn the_leaderboard_tab_and_the_profile_read_the_same_order() {
+        fn order(names: &[&str]) -> Vec<String> {
+            let mut ranked: Vec<String> = names.iter().map(|name| (*name).to_owned()).collect();
+            ranked.sort_by_key(|name| leaderboard_display_rank(name).unwrap_or(usize::MAX));
+            ranked
+        }
+        assert_eq!(
+            order(&[
+                "tmm_3v3",
+                "global",
+                "tmm_4v4_full_share",
+                "ladder_1v1",
+                "tmm_2v2"
+            ]),
+            [
+                "global",
+                "ladder_1v1",
+                "tmm_2v2",
+                "tmm_3v3",
+                "tmm_4v4_full_share"
+            ]
+        );
+        assert_eq!(
+            order(&["4v4_full_share_league", "1v1_league", "2v2_league"]),
+            ["1v1_league", "2v2_league", "4v4_full_share_league"]
+        );
+    }
+
+    #[test]
+    fn the_retired_4v4_league_is_recognised_too() {
+        assert!(is_retired_leaderboard("tmm_4v4_share_until_death"));
+        assert!(is_retired_leaderboard("4v4_share_until_death_league"));
+        assert!(!is_retired_leaderboard("tmm_4v4_full_share"));
+        assert!(!is_retired_leaderboard("global"));
+    }
+
+    #[test]
+    fn the_retired_4v4_queue_is_not_listed() {
+        let mut ratings = vec![
+            rating("tmm_4v4_share_until_death", 30),
+            rating("global", 10),
+        ];
+        sort_rating_summaries(&mut ratings);
+
+        assert_eq!(ratings.len(), 1);
+        assert_eq!(ratings[0].technical_name, "global");
+    }
+
+    #[test]
+    fn a_board_this_client_has_never_heard_of_keeps_the_games_played_order() {
+        let mut ratings = vec![
+            rating("seasonal_something", 3),
+            rating("tmm_2v2", 1),
+            rating("another_experiment", 60),
+        ];
+        sort_rating_summaries(&mut ratings);
+
+        let order: Vec<_> = ratings
+            .iter()
+            .map(|rating| rating.technical_name.as_str())
+            .collect();
+        assert_eq!(
+            order,
+            ["tmm_2v2", "another_experiment", "seasonal_something"],
+            "the named queues lead; the rest follow, most played first"
+        );
     }
 
     #[test]

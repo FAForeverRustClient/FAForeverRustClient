@@ -15,7 +15,7 @@ export function ratingForQueue(ratings: PlayerRatingSummary[], queueName: string
  * The league placement for a queue, matched the same way as the rating.
  *
  * On `technicalName`, never on `leaderboard`: that one is a display string the
- * backend rewrites for humans ("4v4 Full Share"), and joining on it would tie
+ * backend rewrites for humans ("4v4 League"), and joining on it would tie
  * the division a player sees to the wording of a label.
  */
 export function placementForQueue(

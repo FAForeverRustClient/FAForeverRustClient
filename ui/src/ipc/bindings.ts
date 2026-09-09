@@ -4399,7 +4399,8 @@ export type PlayerLeaguePlacement = {
 	 *
 	 *  Kept beside the display name because the two are joined on: the
 	 *  matchmaker shows a division per queue, and matching a queue against
-	 *  "4v4 Full Share" would tie that join to a string written for humans.
+	 *  "4v4 League" would tie that join to a string written for humans, which
+	 *  [`leaderboard_display_name`] has now changed once already.
 	 */
 	technicalName: string,
 	leaderboard: string,

@@ -4,10 +4,11 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    aggregate_map_stats, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
-    PlayerAchievementState, PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount,
-    PlayerLeaguePlacement, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
-    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, leaderboard_display_name, sort_rating_summaries, ClanMember,
+    MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
+    PlayerCardProfile, PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerMapStats,
+    PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod,
+    RatingHistoryPoint, RatingHistoryQuery,
 };
 use serde_json::Value;
 
@@ -651,16 +652,15 @@ fn display_key(value: &str) -> String {
 }
 
 fn pretty_board(technical_name: &str, fallback: &str) -> String {
-    match technical_name {
-        "global" => "Global".into(),
-        "ladder_1v1" | "ladder1v1" => "1v1 Ladder".into(),
-        "tmm_2v2" | "ladder2v2" => "2v2".into(),
-        "tmm_3v3" | "ladder3v3" => "3v3".into(),
-        "tmm_4v4_full_share" | "ladder4v4" => "4v4 Full Share".into(),
-        "tmm_4v4_share_until_death" => "4v4 No Share".into(),
-        _ if !fallback.is_empty() => display_key(fallback),
-        _ => display_key(technical_name),
+    // One table, in the domain, shared with the leaderboard tab: these two
+    // used to name the same queue from two `match` arms, and had drifted.
+    if let Some(name) = leaderboard_display_name(technical_name) {
+        return name.to_string();
     }
+    if !fallback.is_empty() {
+        return display_key(fallback);
+    }
+    display_key(technical_name)
 }
 
 fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfile, String> {
@@ -786,7 +786,9 @@ fn parse_ratings(doc: &JsonApiDoc) -> Vec<PlayerRatingSummary> {
             })
         })
         .collect();
-    ratings.sort_by_key(|rating| std::cmp::Reverse(rating.games_played));
+    // Solo first, then by team size, and without the retired 4v4 queue: the
+    // profile shows the same queues in the same places on every visit.
+    sort_rating_summaries(&mut ratings);
     ratings
 }
 
@@ -1196,7 +1198,7 @@ impl PlayerCardPort for FakePlayerCard {
                 PlayerRatingSummary {
                     leaderboard_id: 2,
                     technical_name: "ladder_1v1".into(),
-                    name: "1v1 Ladder".into(),
+                    name: "1v1".into(),
                     rating: 1710,
                     mean: 2120.0,
                     deviation: 136.7,
@@ -1207,7 +1209,7 @@ impl PlayerCardPort for FakePlayerCard {
             ],
             league_placements: vec![PlayerLeaguePlacement {
                 technical_name: "ladder_1v1".into(),
-                leaderboard: "1v1 Ladder".into(),
+                leaderboard: "1v1".into(),
                 season: "Season 12".into(),
                 division: "Diamond II".into(),
                 score: 1470,
