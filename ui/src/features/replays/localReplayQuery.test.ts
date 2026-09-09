@@ -3,6 +3,7 @@ import type { LocalReplay } from "../../ipc/bindings";
 import {
   EMPTY_LOCAL_REPLAY_QUERY,
   filterLocalReplays,
+  nextLocalDetailLimit,
   personalLocalReplayQuery,
 } from "./localReplayQuery";
 
@@ -102,5 +103,81 @@ describe("local replay query", () => {
       player: "TestPlayer",
       exactPlayer: true,
     });
+  });
+});
+
+describe("local replay detail window", () => {
+  // The shape the backend returns: every file listed, the newest `read` of
+  // them with their headers parsed and the rest carrying nothing but a name.
+  const archive = (count: number, read: number) =>
+    Array.from({ length: count }, (_, index) => index < read
+      ? replay({ path: `C:/replays/${index}.fafreplay` })
+      : replay({
+        path: `C:/replays/${index}.fafreplay`,
+        status: "unread",
+        title: "",
+        map: "",
+        uid: null,
+        teams: [],
+      }));
+
+  it("asks for enough headers to cover a page the reader jumped to", () => {
+    const all = archive(3000, 360);
+    // Page 11 with a page size of 36 starts at entry 360: the first row the
+    // last run stopped short of.
+    const page = all.slice(360, 396);
+    expect(nextLocalDetailLimit({ all, page, detailLimit: 360, atLastPage: false, batch: 360 }))
+      .toBe(720);
+  });
+
+  it("covers a page far past the loaded window in one request", () => {
+    const all = archive(3000, 360);
+    const page = all.slice(2160, 2196);
+    expect(nextLocalDetailLimit({ all, page, detailLimit: 360, atLastPage: false, batch: 360 }))
+      .toBe(2196);
+  });
+
+  it("leaves a fully read page alone", () => {
+    const all = archive(3000, 360);
+    expect(nextLocalDetailLimit({
+      all,
+      page: all.slice(0, 36),
+      detailLimit: 360,
+      atLastPage: false,
+      batch: 360,
+    })).toBeNull();
+  });
+
+  it("still fetches ahead on the last page, where a filter hides the unread rows", () => {
+    const all = archive(3000, 360);
+    expect(nextLocalDetailLimit({
+      all,
+      page: all.slice(324, 360),
+      detailLimit: 360,
+      atLastPage: true,
+      batch: 360,
+    })).toBe(720);
+  });
+
+  it("stops once every header in the folder has been read", () => {
+    const all = archive(300, 300);
+    expect(nextLocalDetailLimit({
+      all,
+      page: all.slice(0, 36),
+      detailLimit: 360,
+      atLastPage: true,
+      batch: 360,
+    })).toBeNull();
+  });
+
+  it("never asks for more than the folder holds", () => {
+    const all = archive(500, 360);
+    expect(nextLocalDetailLimit({
+      all,
+      page: all.slice(464, 500),
+      detailLimit: 360,
+      atLastPage: true,
+      batch: 360,
+    })).toBe(500);
   });
 });
