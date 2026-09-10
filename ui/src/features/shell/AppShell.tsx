@@ -92,6 +92,15 @@ export function AppShell() {
     contentRef.current?.scrollTo({ top: 0 });
   }, [openTab]);
 
+  // Changed in Settings rather than by dragging: the state below is seeded
+  // once, so without this the segmented control in Appearance would write a
+  // width the shell never read back.
+  useEffect(() => {
+    setSidebarWidth((current) =>
+      current === appearance.sidebarWidth ? current : clampSidebarWidth(appearance.sidebarWidth),
+    );
+  }, [appearance.sidebarWidth]);
+
   useEffect(() => {
     if (!isResizingSidebar) return;
 
