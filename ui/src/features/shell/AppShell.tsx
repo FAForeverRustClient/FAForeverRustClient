@@ -30,12 +30,32 @@ import { partyChatChannel } from "../lobby/partyChat";
 import { PlayerName } from "../../shared/nameColors";
 import "./shell.css";
 
-const SIDEBAR_DEFAULT_WIDTH = 224;
-const SIDEBAR_MIN_WIDTH = 176;
+// Mirrors `MIN_SIDEBAR_WIDTH` / `MAX_SIDEBAR_WIDTH` / `SIDEBAR_RAIL_BELOW` in
+// faf-domain, which clamps the same value on the way in from the settings file.
+const SIDEBAR_MIN_WIDTH = 64;
 const SIDEBAR_MAX_WIDTH = 400;
+/// Narrower than this and the labels come off, leaving the icon rail the shell
+/// already draws for a narrow window.
+const SIDEBAR_RAIL_BELOW = 150;
 
 const clampSidebarWidth = (width: number) =>
   Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
+
+/**
+ * Write the width back, once a drag has stopped rather than on every frame.
+ *
+ * Reads the newest copy of the block because `setAppearance` replaces the whole
+ * thing, and a drag that started before some other setting changed would
+ * otherwise write that other setting back to its old value.
+ */
+function persistSidebarWidth(width: number) {
+  const current = useAppStore.getState().state.settings.appearance;
+  if (current.sidebarWidth === width) return;
+  ipc.send({
+    kind: "Settings",
+    command: { type: "setAppearance", payload: { preferences: { ...current, sidebarWidth: width } } },
+  });
+}
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -50,7 +70,11 @@ export function AppShell() {
   // The signed-in account's own entry in the live player directory, which is
   // where the avatar the lobby knows about lives.
   const ownProfile = player ? findPlayer(social, player.name) : null;
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  // Seeded from the persisted value and written back when a drag ends: the
+  // window's own geometry has been remembered for a while, and the panel inside
+  // it going back to 224 px on every start was the odd one out.
+  const appearance = useAppStore((s) => s.state.settings.appearance);
+  const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebarWidth(appearance.sidebarWidth));
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const joinedPartyChannelRef = useRef<string | null>(null);
@@ -79,6 +103,12 @@ export function AppShell() {
     const stopResize = () => {
       resizeRef.current = null;
       setIsResizingSidebar(false);
+      // At the end of the drag, not on every mousemove: a drag is a hundred
+      // widths and one decision.
+      setSidebarWidth((width) => {
+        persistSidebarWidth(width);
+        return width;
+      });
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -121,15 +151,24 @@ export function AppShell() {
   const handleSidebarKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
-    setSidebarWidth((width) =>
-      clampSidebarWidth(width + (event.key === "ArrowRight" ? 8 : -8)),
-    );
+    setSidebarWidth((width) => {
+      const next = clampSidebarWidth(width + (event.key === "ArrowRight" ? 8 : -8));
+      persistSidebarWidth(next);
+      return next;
+    });
   };
 
   const shellStyle = { "--sidebar-width": `${sidebarWidth}px` } as CSSProperties;
 
   return (
-    <div className={`app-shell${isResizingSidebar ? " is-resizing-sidebar" : ""}`} style={shellStyle}>
+    <div
+      className={[
+        "app-shell",
+        isResizingSidebar && "is-resizing-sidebar",
+        sidebarWidth < SIDEBAR_RAIL_BELOW && "is-sidebar-rail",
+      ].filter(Boolean).join(" ")}
+      style={shellStyle}
+    >
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark"><BrandMark size={38} /></span>

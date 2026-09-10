@@ -136,7 +136,8 @@ pub use settings::{
     GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
     PlayerNote, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme,
-    ToastPosition, UiDensity, UpdatePreferences, WeekStart,
+    ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH,
+    SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,

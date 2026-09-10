@@ -412,7 +412,7 @@ const INITIAL: AppState = {
     keptGeneratedMaps: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true },
-    appearance: { density: "comfortable", reduceMotion: false, uiScale: 100, gameTileColumns: 0 },
+    appearance: { density: "comfortable", reduceMotion: false, uiScale: 100, gameTileColumns: 0, sidebarWidth: 224 },
     social: { playerNotes: [] },
     notifications: {
       enabled: true,

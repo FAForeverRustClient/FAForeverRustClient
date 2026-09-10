@@ -277,6 +277,12 @@ pub struct AppearancePreferences {
     /// `0` means automatic / responsive (adapting dynamically to window width).
     /// `1..=6` specifies a fixed column count.
     pub game_tile_columns: u8,
+    /// Width of the sidebar in pixels, remembered across restarts.
+    ///
+    /// The window's own geometry has been persisted for a while; the panel
+    /// inside it was not, so every start put it back at 224 px. Clamped on the
+    /// way in, because a settings file is a file somebody can edit.
+    pub sidebar_width: u16,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -295,6 +301,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             reduce_motion: bool,
             ui_scale: u16,
             game_tile_columns: u8,
+            sidebar_width: u16,
         }
 
         impl Default for Wire {
@@ -305,6 +312,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     reduce_motion: defaults.reduce_motion,
                     ui_scale: defaults.ui_scale,
                     game_tile_columns: defaults.game_tile_columns,
+                    sidebar_width: defaults.sidebar_width,
                 }
             }
         }
@@ -315,6 +323,9 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             reduce_motion: wire.reduce_motion,
             ui_scale: wire.ui_scale,
             game_tile_columns: wire.game_tile_columns.min(6),
+            sidebar_width: wire
+                .sidebar_width
+                .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH),
         })
     }
 }
@@ -331,6 +342,18 @@ fn default_ui_scale() -> u16 {
 pub const MIN_UI_SCALE: u16 = 80;
 pub const MAX_UI_SCALE: u16 = 200;
 
+/// How narrow the sidebar may be dragged, and how wide.
+///
+/// The floor used to be 176 px, which is a sidebar with the labels still in it
+/// and a lot of empty space to their right: shrinking it did not buy anything.
+/// 64 px is the icon rail the client already draws when the *window* is narrow,
+/// so the two ways of arriving at it look the same.
+pub const MIN_SIDEBAR_WIDTH: u16 = 64;
+pub const MAX_SIDEBAR_WIDTH: u16 = 400;
+/// Below this the labels come off. Well clear of both ends, so neither dragging
+/// slightly off the default nor pulling all the way in is ambiguous.
+pub const SIDEBAR_RAIL_BELOW: u16 = 150;
+
 impl Default for AppearancePreferences {
     fn default() -> Self {
         Self {
@@ -338,6 +361,7 @@ impl Default for AppearancePreferences {
             reduce_motion: false,
             ui_scale: default_ui_scale(),
             game_tile_columns: 0,
+            sidebar_width: 224,
         }
     }
 }
@@ -346,6 +370,9 @@ impl AppearancePreferences {
     pub fn normalized(mut self) -> Self {
         self.ui_scale = self.ui_scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE);
         self.game_tile_columns = self.game_tile_columns.min(6);
+        self.sidebar_width = self
+            .sidebar_width
+            .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
         self
     }
 }

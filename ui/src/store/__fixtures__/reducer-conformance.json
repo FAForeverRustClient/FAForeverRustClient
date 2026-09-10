@@ -675,7 +675,8 @@
         "density": "comfortable",
         "reduceMotion": false,
         "uiScale": 100,
-        "gameTileColumns": 0
+        "gameTileColumns": 0,
+        "sidebarWidth": 224
       },
       "social": {
         "playerNotes": []
@@ -1727,6 +1728,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -28581,6 +28583,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -28815,6 +28818,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29057,6 +29061,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29295,6 +29300,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29533,6 +29539,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29793,6 +29800,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -30044,6 +30052,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -30297,6 +30306,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -30625,6 +30635,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {

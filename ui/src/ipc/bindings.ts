@@ -73,6 +73,14 @@ export type AppearancePreferences = {
 	 *  `1..=6` specifies a fixed column count.
 	 */
 	gameTileColumns: number,
+	/**
+	 *  Width of the sidebar in pixels, remembered across restarts.
+	 *
+	 *  The window's own geometry has been persisted for a while; the panel
+	 *  inside it was not, so every start put it back at 224 px. Clamped on the
+	 *  way in, because a settings file is a file somebody can edit.
+	 */
+	sidebarWidth: number,
 };
 
 /**
