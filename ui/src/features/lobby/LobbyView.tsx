@@ -257,7 +257,7 @@ function GameDetails({
           <div><dt>{t("lobby.details.map")}</dt><dd>{presentation.displayName}</dd></div>
           <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
           <div><dt>{t("lobby.details.averageRating")}</dt><dd>{game.averageRating || t("lobby.details.unrated")}</dd></div>
-          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? `${game.ratingMin ?? t("lobby.details.any")} - ${game.ratingMax ?? t("lobby.details.any")}` : t("lobby.details.open")}</dd></div>
+          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? t("lobby.details.ratingRangeValue", { from: game.ratingMin ?? t("lobby.details.any"), to: game.ratingMax ?? t("lobby.details.any") }) : t("lobby.details.open")}</dd></div>
         </dl>
         {simMods.length > 0 && (
           <div className="game-detail-section">
