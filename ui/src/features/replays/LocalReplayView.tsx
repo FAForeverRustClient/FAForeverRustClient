@@ -306,21 +306,27 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
           })}</span>
           {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
-        {offline && (
-          <Button className="local-replay-sign-in" onClick={signIn}>
-            <Icon name="users" size={14} /> {t("auth.signIn")}
+        {/* Grouped, because the bar is `space-between` and three children in
+            it put the middle one in the middle of the window: a lone "Watched"
+            button floating over the list with nothing either side of it. Both
+            of these act on the view, so both sit at the end of the row. */}
+        <div className="online-replay-view-bar-right">
+          {offline && (
+            <Button className="local-replay-sign-in" onClick={signIn}>
+              <Icon name="users" size={14} /> {t("auth.signIn")}
+            </Button>
+          )}
+          <Button
+            className={watchedOnly ? "local-replay-watched-filter is-on" : "local-replay-watched-filter"}
+            aria-pressed={watchedOnly}
+            disabled={!watchedOnly && watchedCount === 0}
+            title={t("replays.local.watchedOnlyHint")}
+            onClick={() => setWatchedOnly((on) => !on)}
+          >
+            <Icon name="eye" size={14} /> {t("replays.local.watchedOnly", { count: watchedCount })}
           </Button>
-        )}
-        <Button
-          className={watchedOnly ? "local-replay-watched-filter is-on" : "local-replay-watched-filter"}
-          aria-pressed={watchedOnly}
-          disabled={!watchedOnly && watchedCount === 0}
-          title={t("replays.local.watchedOnlyHint")}
-          onClick={() => setWatchedOnly((on) => !on)}
-        >
-          <Icon name="eye" size={14} /> {t("replays.local.watchedOnly", { count: watchedCount })}
-        </Button>
-        <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+          <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
       {localStatus.type === "ready" && filtered.length === 0 ? (
         <div className="live-replay-empty surface-panel">

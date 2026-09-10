@@ -135,8 +135,16 @@
   box-shadow: inset 2px 0 var(--color-text);
 }
 
-.replay-list-row.watched:not(:hover):not(.selected) {
-  opacity: 0.55;
+/* A row has no border of its own, so the outline is drawn inside it: an
+   `outline` would be clipped by the scrolling container at the top and bottom
+   of the list. `-1px` keeps it on the row's own edge rather than over the
+   separator below. */
+.replay-list-row.watched {
+  box-shadow: inset 0 0 0 1px var(--color-text);
+}
+
+.replay-list-row.watched.selected {
+  box-shadow: inset 0 0 0 1px var(--color-text), inset 2px 0 var(--color-text);
 }
 
 .replay-list-row:focus-visible {
