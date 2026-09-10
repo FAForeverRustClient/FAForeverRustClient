@@ -1,8 +1,19 @@
-import type { NotificationPreferences } from "../../ipc/bindings";
+import type { NotificationPreferences, ToastPosition } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { recordEntries } from "../../shared/records";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+
+/* In reading order rather than enum order: the corner the bell is in comes
+   first, because it is the default and the one most people will keep. */
+const TOAST_POSITIONS: Record<ToastPosition, MessageKey> = {
+  bottomLeft: "settings.notifications.toastPosition.bottomLeft",
+  bottomRight: "settings.notifications.toastPosition.bottomRight",
+  topLeft: "settings.notifications.toastPosition.topLeft",
+  topRight: "settings.notifications.toastPosition.topRight",
+};
 
 const save = (preferences: NotificationPreferences) =>
   ipc.send({
@@ -65,6 +76,21 @@ export function NotificationsSettingsSection() {
           />
           <span>{preferences.volume}%</span>
         </label>
+      </SettingRow>
+      <SettingRow label={t("settings.notifications.toastPositionLabel")} hint={t("settings.notifications.toastPositionHint")}>
+        <select
+          className="settings-select"
+          value={preferences.toastPosition}
+          disabled={!preferences.enabled}
+          onChange={(event) => update({ toastPosition: event.target.value as ToastPosition })}
+          aria-label={t("settings.notifications.toastPositionLabel")}
+        >
+          {recordEntries(TOAST_POSITIONS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {t(label)}
+            </option>
+          ))}
+        </select>
       </SettingRow>
       <SettingRow label={t("settings.notifications.whenFocused")} hint={t("settings.notifications.whenFocusedHint")}>
         <SettingsSwitch

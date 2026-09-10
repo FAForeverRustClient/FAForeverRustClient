@@ -135,7 +135,8 @@ pub use settings::{
     DiscordPreferences, EventReminder, EventsPreferences, GameCacheInfo, GamePreferences,
     GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, PathPreferences, PlayerNote, SettingsCommand, SettingsEvent,
-    SettingsState, SocialPreferences, Theme, UiDensity, UpdatePreferences, WeekStart,
+    SettingsState, SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences,
+    WeekStart,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,

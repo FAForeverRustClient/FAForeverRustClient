@@ -350,6 +350,24 @@ impl AppearancePreferences {
     }
 }
 
+/// Which corner of the window a toast appears in.
+///
+/// Defaults to the corner the bell is in. The client drew its toasts top right
+/// while the notification centre they belong to opens from the bottom left,
+/// so the arrival and the place it is kept were at opposite ends of the
+/// screen: a toast that slid away left nothing where the eye had learned to
+/// look. The other three corners are here because the Java client offers the
+/// choice and people are used to picking one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ToastPosition {
+    TopLeft,
+    TopRight,
+    #[default]
+    BottomLeft,
+    BottomRight,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationPreferences {
@@ -365,6 +383,8 @@ pub struct NotificationPreferences {
     pub desktop_all_kinds: bool,
     pub sound: bool,
     pub notify_when_focused: bool,
+    /// Which corner a toast appears in. See [`ToastPosition`].
+    pub toast_position: ToastPosition,
     pub match_found: bool,
     pub private_messages: bool,
     pub mentions: bool,
@@ -389,6 +409,7 @@ impl Default for NotificationPreferences {
             desktop_all_kinds: false,
             sound: true,
             notify_when_focused: false,
+            toast_position: ToastPosition::BottomLeft,
             match_found: true,
             private_messages: true,
             mentions: true,
@@ -422,6 +443,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop_all_kinds: bool,
             sound: bool,
             notify_when_focused: bool,
+            toast_position: ToastPosition,
             match_found: bool,
             private_messages: bool,
             mentions: bool,
@@ -446,6 +468,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     desktop_all_kinds: defaults.desktop_all_kinds,
                     sound: defaults.sound,
                     notify_when_focused: defaults.notify_when_focused,
+                    toast_position: defaults.toast_position,
                     match_found: defaults.match_found,
                     private_messages: defaults.private_messages,
                     mentions: defaults.mentions,
@@ -470,6 +493,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop_all_kinds: wire.desktop_all_kinds,
             sound: wire.sound,
             notify_when_focused: wire.notify_when_focused,
+            toast_position: wire.toast_position,
             match_found: wire.match_found,
             private_messages: wire.private_messages,
             mentions: wire.mentions,

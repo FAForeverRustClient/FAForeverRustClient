@@ -260,7 +260,15 @@ export function NotificationCenter() {
         </section>
       )}
 
-      <div className="notification-toasts" aria-live="polite" aria-atomic="false">
+      {/* The corner is a preference, and its default is the corner the bell is
+          in. Toasts used to arrive top right while the centre they are kept in
+          opens from the bottom left, so a toast that slid away left nothing
+          where the eye had just learned to look. */}
+      <div
+        className={`notification-toasts is-${preferences.toastPosition}`}
+        aria-live="polite"
+        aria-atomic="false"
+      >
         {toasts.map((item) => (
           <article className={`notification-toast${notificationTone(item)}`} key={item.id}>
             <button type="button" onClick={() => handleAction(item)}>

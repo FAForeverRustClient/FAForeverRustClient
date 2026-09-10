@@ -4120,6 +4120,8 @@ export type NotificationPreferences = {
 	desktopAllKinds: boolean,
 	sound: boolean,
 	notifyWhenFocused: boolean,
+	/**  Which corner a toast appears in. See [`ToastPosition`]. */
+	toastPosition: ToastPosition,
 	matchFound: boolean,
 	privateMessages: boolean,
 	mentions: boolean,
@@ -5903,6 +5905,18 @@ export type TeamRequest = {
 };
 
 export type Theme = "forgeDark" | "forgeLight" | "javaClient" | "pythonClient";
+
+/**
+ *  Which corner of the window a toast appears in.
+ *
+ *  Defaults to the corner the bell is in. The client drew its toasts top right
+ *  while the notification centre they belong to opens from the bottom left,
+ *  so the arrival and the place it is kept were at opposite ends of the
+ *  screen: a toast that slid away left nothing where the eye had learned to
+ *  look. The other three corners are here because the Java client offers the
+ *  choice and people are used to picking one.
+ */
+export type ToastPosition = "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
 
 /**  A complete tournament, as `GET /api/t/{id}` returns it. */
 export type Tourney = {

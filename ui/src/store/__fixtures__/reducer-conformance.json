@@ -683,6 +683,7 @@
         "desktopAllKinds": false,
         "sound": true,
         "notifyWhenFocused": false,
+        "toastPosition": "bottomLeft",
         "matchFound": true,
         "privateMessages": true,
         "mentions": true,
@@ -1897,6 +1898,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -28658,6 +28660,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -28876,6 +28879,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29102,6 +29106,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29326,6 +29331,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29549,6 +29555,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29793,6 +29800,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -30028,6 +30036,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -30265,6 +30274,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -30586,6 +30596,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {

@@ -420,6 +420,7 @@ const INITIAL: AppState = {
       desktopAllKinds: false,
       sound: true,
       notifyWhenFocused: false,
+      toastPosition: "bottomLeft",
       matchFound: true,
       privateMessages: true,
       mentions: true,
