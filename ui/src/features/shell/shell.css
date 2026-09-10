@@ -470,6 +470,17 @@
     padding: 22px;
   }
 
+  /* Stacked, so the tab is taller than the window and the window is what has
+     to scroll. The inner was already released to its content height here; the
+     container it sits in was not, and `.content` is `overflow: hidden` on this
+     tab because the wide layout scrolls its own panels. So the tab grew, the
+     container clipped it, and there was nothing anywhere to scroll: which is
+     the report, and it is a width rule rather than a height one, because
+     narrowing the window is what stacks the panels in the first place. */
+  .content.content-tab-play {
+    overflow-y: auto;
+  }
+
   .content-inner.content-play {
     height: auto;
     overflow: visible;
@@ -496,6 +507,11 @@
 }
 
 @media (max-width: 700px) {
+  /* Same pair as the Play tab above, and it was missing the same half. */
+  .content.content-tab-leaderboard {
+    overflow-y: auto;
+  }
+
   .content-inner.content-leaderboard {
     height: auto;
     overflow: visible;
