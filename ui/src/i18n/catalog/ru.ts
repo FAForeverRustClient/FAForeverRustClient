@@ -1893,4 +1893,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.generate.closePreview": "Нажмите в любом месте, чтобы закрыть",
   "replays.detail.simMods": "Моды симуляции",
   "replays.roster.ratingChange": "Изменение рейтинга за эту игру",
+  "replays.vault.resultCountUnknown": "Показано {shown} · страниц: {pages} · общее число с этим фильтром неизвестно",
+  "replays.search.ratingAverageNote": "В API нет поля со средним рейтингом, поэтому он считается по приходящим реплеям: поиск читает окно самых свежих игр и показывает подходящие. Смена сортировки меняет порядок этих совпадений, а не то, какие реплеи совпадают.",
 };

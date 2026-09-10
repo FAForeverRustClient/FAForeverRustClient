@@ -27672,6 +27672,7 @@
                   "mapThumbnailUrl": "",
                   "modName": "faf",
                   "startTime": "2026-01-01T00:00:00Z",
+                  "endTime": "2026-01-01T00:30:00Z",
                   "replayAvailable": true,
                   "durationSeconds": null,
                   "gameDurationSeconds": null,
@@ -27681,7 +27682,8 @@
                   "reviewsAverage": null,
                   "reviewsCount": null,
                   "gameVersion": null,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 }
               }
             }
@@ -27704,6 +27706,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27717,7 +27720,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               }
@@ -27798,6 +27802,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27811,7 +27816,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },
@@ -27896,6 +27902,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27909,7 +27916,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },
@@ -27993,6 +28001,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -28006,7 +28015,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },
@@ -28094,6 +28104,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -28107,7 +28118,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },

@@ -75,9 +75,9 @@ use async_trait::async_trait;
 use faf_domain::protocol::map_generator::is_generated_map;
 use faf_domain::protocol::replay_query;
 use faf_domain::state::{
-    LiveReplayTarget, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam, ModType,
-    ReplayChatMessage, ReplayDetails, ReplayGameOption, ReplayPlayer, ReplayQuery, ReplayTeam,
-    VaultReplay,
+    sort_vault_replays, LiveReplayTarget, LocalReplay, LocalReplayPlayer, LocalReplayStatus,
+    LocalReplayTeam, ModType, ReplayChatMessage, ReplayDetails, ReplayGameOption, ReplayPlayer,
+    ReplayQuery, ReplaySortField, ReplayTeam, VaultReplay,
 };
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -156,6 +156,17 @@ const VAULT_INCLUDE: &str = "mapVersion,mapVersion.map,featuredMod,playerStats.p
 /// and it had already happened once elsewhere in the client: see the same note
 /// in `infra::player_card`.
 const API_PAGE_SIZE: u32 = 100;
+
+/// The order a locally filtered scan reads the vault in.
+///
+/// Fixed, and deliberately not the order the results are displayed in. These
+/// scans decide *which* games are examined at all, so taking the display order
+/// from the user made the sort pick the answer: ordered by date it examined the
+/// newest games and matched some, ordered by review score it examined the
+/// best-reviewed ones and matched others. Newest-first is the vault's own
+/// order, the one the unfiltered feed already uses, and the only one that means
+/// the same thing for every search.
+const SCAN_ORDER: &str = "-startTime";
 
 /// How far a locally filtered search reads ahead.
 ///
@@ -401,6 +412,22 @@ fn shared_games_key(query: &ReplayQuery) -> ReplayQuery {
         page: 1,
         page_size: 0,
         ..query.clone()
+    }
+}
+
+/// The cache key for a locally filtered scan: everything except which slice of
+/// the answer is being displayed **and in what order**.
+///
+/// The sort is not part of it, because the scan no longer depends on the sort:
+/// it always reads the vault newest-first and the chosen order is applied to
+/// the rows that matched (`sort_vault_replays`). So changing the sort reuses
+/// the scan that is already in hand, which is both instant and the proof that
+/// it really is the same set of replays being read two ways.
+fn local_filter_key(query: &ReplayQuery) -> ReplayQuery {
+    ReplayQuery {
+        sort_by: ReplaySortField::default(),
+        sort_descending: true,
+        ..shared_games_key(query)
     }
 }
 
@@ -761,7 +788,7 @@ impl ReplayClient {
         let page = query.page.max(1) as usize;
         let needed = page * page_size;
 
-        let key = shared_games_key(query);
+        let key = local_filter_key(query);
         let cached = self
             .local_filtered
             .lock()
@@ -790,8 +817,11 @@ impl ReplayClient {
         let total = i32::try_from(scan.matched.len()).unwrap_or(i32::MAX);
         let total_pages = local_filter_total_pages(&scan, page, page_size);
         let start = (page - 1) * page_size;
-        let replays = scan
-            .matched
+        // The scan read them newest-first; this is where the user's own order
+        // is applied, to the matches rather than to the vault.
+        let mut matched = scan.matched;
+        sort_vault_replays(&mut matched, query.sort_by, query.sort_descending);
+        let replays = matched
             .into_iter()
             .skip(start)
             .take(page_size)
@@ -827,7 +857,12 @@ impl ReplayClient {
             {
                 let mut pairs = url.query_pairs_mut();
                 pairs
-                    .append_pair("sort", &query.sort_param())
+                    // Newest first, whatever the results are to be *shown*
+                    // in. The scan decides which games are examined, and
+                    // letting the display order decide that made the sort
+                    // change the answer instead of the arrangement: see
+                    // `sort_vault_replays`.
+                    .append_pair("sort", SCAN_ORDER)
                     .append_pair("page[size]", &API_PAGE_SIZE.to_string())
                     .append_pair("page[number]", &scan_page.to_string())
                     .append_pair("include", VAULT_INCLUDE);
@@ -3168,6 +3203,7 @@ fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                 game_duration_seconds: value_i32(&game.attributes, "replayTicks")
                     .and_then(|ticks| (ticks >= 0).then_some(ticks / 10)),
                 start_time,
+                end_time: end_time.unwrap_or_default().to_string(),
                 // Missing/non-bool defaults to "not available": safer than
                 // assuming a replay exists when we can't tell.
                 replay_available: game
@@ -3184,6 +3220,12 @@ fn parse_vault_replays(doc: &JsonApiDoc) -> Vec<VaultReplay> {
                 validity: game
                     .attributes
                     .get("validity")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                victory_condition: game
+                    .attributes
+                    .get("victoryCondition")
                     .and_then(Value::as_str)
                     .unwrap_or_default()
                     .to_string(),
@@ -3729,6 +3771,7 @@ mod tests {
                     map_thumbnail_url: String::new(),
                     mod_name: String::new(),
                     start_time: String::new(),
+                    end_time: String::new(),
                     replay_available: true,
                     duration_seconds: None,
                     game_duration_seconds: None,
@@ -3739,6 +3782,7 @@ mod tests {
                     reviews_count: None,
                     game_version: None,
                     validity: String::new(),
+                    victory_condition: String::new(),
                 };
                 matched
             ],

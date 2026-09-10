@@ -8242,6 +8242,14 @@ export type VaultReplay = {
 	/**  ISO 8601, straight from the API: rendering/formatting is a UI concern. */
 	startTime: string,
 	/**
+	 *  When the game ended, same format, empty while it is still running.
+	 *
+	 *  Carried rather than only folded into [`Self::duration_seconds`] because
+	 *  the vault can be ordered by it, and that ordering is applied to rows
+	 *  that have already arrived: see [`sort_vault_replays`].
+	 */
+	endTime?: string,
+	/**
 	 *  Whether the file has actually finished uploading to content storage.
 	 *  A "newest replays" listing includes very recent/still-processing
 	 *  games too; both reference clients disable the Watch button until this
@@ -8285,6 +8293,16 @@ export type VaultReplay = {
 	 *  `ReplayDetailRoster`).
 	 */
 	validity?: string,
+	/**
+	 *  `game.attributes.victoryCondition`, raw: `DEMORALIZATION`,
+	 *  `DOMINATION`, `ERADICATION`, `SANDBOX`, or empty when the listing did
+	 *  not carry one. Same posture as [`Self::validity`]: the set grows on the
+	 *  server, so an unrecognised value still has to survive the trip.
+	 *
+	 *  Here for the same reason [`Self::end_time`] is: the vault can be
+	 *  ordered by it.
+	 */
+	victoryCondition?: string,
 };
 
 /**

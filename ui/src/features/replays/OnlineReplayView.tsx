@@ -164,12 +164,23 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
               reference clients show the size of the result set, and it is the
               only way to tell a genuinely small match from a pager that is
               misreading the page count. */}
+          {/* `null` is the backend saying it does not know the total, which
+              happens whenever a filter it cannot express made this a bounded
+              scan. Printing the length of the current page as the total, which
+              is what this used to do, turns that into a wrong number: "50
+              shown, 50 found, 3 pages" contradicts itself, and the care taken
+              on the other side to send no total at all was thrown away here. */}
           <span className="muted">
-            {t("replays.vault.resultCount", {
-              shown: vault.length,
-              total: totalRecords ?? vault.length,
-              pages: totalPages ?? 1,
-            })}
+            {totalRecords === null
+              ? t("replays.vault.resultCountUnknown", {
+                  shown: vault.length,
+                  pages: totalPages ?? 1,
+                })
+              : t("replays.vault.resultCount", {
+                  shown: vault.length,
+                  total: totalRecords,
+                  pages: totalPages ?? 1,
+                })}
           </span>
           {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
