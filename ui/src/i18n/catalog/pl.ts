@@ -1071,7 +1071,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.paths.java": "Środowisko Java",
   "settings.paths.javaHint": "Uruchamia generator map i adapter łączności w Javie.",
   "settings.paths.winePrefix": "Prefiks Wine",
-  "settings.paths.winePrefixHint": "Årodowisko Windows, w ktÃ³rym dziaÅa Forged Alliance. Gra zapisuje w nim wÅasne ustawienia, wiÄc klient teÅ¼ musi tam zaglÄdaÄ.",
+  "settings.paths.winePrefixHint": "Środowisko Windows, w którym działa Forged Alliance. Gra zapisuje w nim własne ustawienia, więc klient też musi tam zaglądać.",
   "settings.paths.browse": "Przeglądaj…",
   "settings.paths.reset": "Zresetuj",
   "settings.paths.resetHint": "Wróć do lokalizacji automatycznej",
@@ -1183,9 +1183,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.game.argumentsLabel": "Dodatkowe argumenty uruchamiania",
   "settings.game.argumentsHint": "Jeden dosłowny argument procesu na wiersz. Stosowany do gier i odtwarzania powtórek bez udziału powłoki.",
   "settings.game.argumentsNote": "Argumentami wymaganymi przez protokół zarządza klient.",
-  "settings.game.launchWrapperLabel": "Polecenie uruchamiajÄce",
-  "settings.game.launchWrapperHint": "Uruchamia grÄ, plik wykonywalny trafia za nie. Forged Alliance jest programem Windows i w tym systemie potrzebuje Wine albo Protona: zwykle wystarczy âwineâ.",
-  "settings.game.launchWrapperNote": "To nie powÅoka: cudzysÅowy ÅÄczÄ sÅowa, nic wiÄcej nie jest interpretowane. Puste pole uruchamia grÄ bezpoÅrednio.",
+  "settings.game.launchWrapperLabel": "Polecenie uruchamiające",
+  "settings.game.launchWrapperHint": "Uruchamia grę, plik wykonywalny trafia za nie. Forged Alliance jest programem Windows i w tym systemie potrzebuje Wine albo Protona: zwykle wystarczy \"wine\".",
+  "settings.game.launchWrapperNote": "To nie powłoka: cudzysłowy łączą słowa, nic więcej nie jest interpretowane. Puste pole uruchamia grę bezpośrednio.",
   "settings.game.saveArguments": "Zapisz argumenty",
   "settings.paths.unset": "Nie ustawiono",
   "settings.paths.missing": "Nie do użycia",
