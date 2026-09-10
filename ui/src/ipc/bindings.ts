@@ -73,6 +73,14 @@ export type AppearancePreferences = {
 	 *  `1..=6` specifies a fixed column count.
 	 */
 	gameTileColumns: number,
+	/**
+	 *  Width of the sidebar in pixels, remembered across restarts.
+	 *
+	 *  The window's own geometry has been persisted for a while; the panel
+	 *  inside it was not, so every start put it back at 224 px. Clamped on the
+	 *  way in, because a settings file is a file somebody can edit.
+	 */
+	sidebarWidth: number,
 };
 
 /**
@@ -2112,6 +2120,18 @@ export type GamePreferences = {
 	/**  Automatically generate missing Neroxis maps when joining a lobby. */
 	autoGenerateMaps?: boolean,
 	/**
+	 *  Ask before a join or a replay downloads simulation mods you do not have.
+	 *
+	 *  On by default, which is a deliberate change of behaviour: the client
+	 *  used to fetch whatever a lobby required the moment you double-clicked
+	 *  it, so joining the wrong game could leave twenty mods on disk. The
+	 *  request was to be in the driver's seat, and the dialog carries its own
+	 *  "do not ask again", which is what turns this off. It is a prompt about
+	 *  *new* downloads only: a lobby whose mods you already have never raises
+	 *  it, whatever this is set to.
+	 */
+	confirmDownloadsBeforeJoining?: boolean,
+	/**
 	 *  Maximum lifetime in days for cached game data and replay binaries.
 	 *  `None` or `0` means cache retention is indefinite / automatic purging is disabled.
 	 */
@@ -3779,6 +3799,34 @@ export type MessageReactions = {
 	entries: Reaction[],
 };
 
+/**  What a HEAD request said about one of those archives. */
+export type ModDownloadSize = {
+	uid: string,
+	/**
+	 *  Bytes, or `None` when the server answered without a length.
+	 *
+	 *  Not zero: a mod whose size is unknown and a mod that is somehow empty
+	 *  are different facts, and only one of them is worth printing.
+	 *
+	 *  `u32`, so four gigabytes, which is two orders of magnitude above the
+	 *  largest mod on the vault. It is also what crosses the IPC boundary
+	 *  without a `BigInt`, which specta refuses to generate.
+	 */
+	bytes: number | null,
+};
+
+/**
+ *  One mod's archive, as the join dialog needs to ask about it.
+ *
+ *  The URL comes from the caller rather than being looked up here, the same way
+ *  [`ModsCommand::InstallMod`] takes one: the vault catalogue is already
+ *  mirrored in the frontend store, and a service is not allowed to read state.
+ */
+export type ModDownloadTarget = {
+	uid: string,
+	downloadUrl: string,
+};
+
 /**
  *  Status of an install/uninstall action for one mod. Mirrors
  *  [`crate::state::MapInstallStatus`].
@@ -3939,6 +3987,18 @@ export type ModsCommand =
 	downloadUrl: string,
 } } |
 /**
+ *  Ask how big these archives are, without downloading them.
+ *
+ *  Exists for the dialog that asks whether a join may download mods: the
+ *  vault's `mod` resource carries a download URL and no file length, so the
+ *  only way to answer "how much is this going to cost me" is to ask the
+ *  storage server. One HEAD per mod, and the answer is cached in
+ *  [`ModsState::download_sizes`] for the session.
+ */
+{ type: "queryDownloadSizes"; payload: {
+	targets: ModDownloadTarget[],
+} } |
+/**
  *  Replace an installed mod with the vault's current version.
  *
  *  Not a client-side `uninstall` followed by an `install`, which is what
@@ -4018,6 +4078,17 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | 
 	installed: InstalledMod[],
 } } | { type: "toggleFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  The answers to a [`ModsCommand::QueryDownloadSizes`].
+ *
+ *  Every target gets an entry, including the ones the server answered
+ *  without a length, so a caller can tell "asked and did not find out" from
+ *  "not asked yet". Only the ones that did produce a number reach the
+ *  state.
+ */
+{ type: "downloadSizesResolved"; payload: {
+	sizes: ModDownloadSize[],
 } };
 
 export type ModsState = {
@@ -4040,6 +4111,16 @@ export type ModsState = {
 	installedStatus: ModListStatus,
 	installStatus: ModInstallStatus,
 	toggleStatus: ModToggleStatus,
+	/**
+	 *  Archive sizes in bytes, by mod uid, for the ones anybody has asked
+	 *  about.
+	 *
+	 *  Only ever grows within a session, and only holds answers: a uid that is
+	 *  absent has not been asked about or came back without a length, and both
+	 *  mean "do not print a size". Small by construction, because the only
+	 *  caller asks about the handful of mods one lobby is missing.
+	 */
+	downloadSizes: { [key in string]: number },
 };
 
 export type NavCommand = { type: "select"; payload: {
@@ -4135,7 +4216,11 @@ export type NotificationPreferences = {
 	 */
 	desktopAllKinds: boolean,
 	sound: boolean,
+	/**  Which tone each kind plays, when [`Self::sound`] is on. */
+	sounds: NotificationSoundChoices,
 	notifyWhenFocused: boolean,
+	/**  Which corner a toast appears in. See [`ToastPosition`]. */
+	toastPosition: ToastPosition,
 	matchFound: boolean,
 	privateMessages: boolean,
 	mentions: boolean,
@@ -4150,6 +4235,70 @@ export type NotificationPreferences = {
 	partyInvites: boolean,
 	/**  Sound volume from 0 to 100. */
 	volume: number,
+};
+
+/**
+ *  One of the tones the client ships with.
+ *
+ *  Synthesised rather than sampled: every one of these is a couple of sine
+ *  partials and an envelope, which is why "shipped with the client" costs no
+ *  files and no decoder. See `ui/src/features/notifications/notificationSound.ts`
+ *  for the plans themselves.
+ *
+ *  The set is deliberately small and ordered by how much attention it asks
+ *  for. [`Self::Silent`] is part of the set rather than a separate switch: the
+ *  request that started this was "visual notifications only for friend
+ *  connected, but a strong sound for game full", and a sound picker that can
+ *  say *nothing* answers the first half without a second control per row.
+ */
+export type NotificationSound =
+/**  No tone. The notification still appears and still counts as unread. */
+"silent" |
+/**
+ *  One quiet low note. For things worth knowing and not worth looking up
+ *  for.
+ */
+"soft" |
+/**  The tone the client played for everything before this existed. */
+"chime" |
+/**  Short and bright, for something addressed to you personally. */
+"ping" |
+/**  Two rising notes. The loudest thing here, for something that expires. */
+"alert";
+
+/**
+ *  Which tone each kind of notification plays.
+ *
+ *  One field per switch in the notification settings, so the dropdown sits
+ *  next to the switch it belongs to and no mapping has to be explained in the
+ *  UI. Everything without a switch of its own (server notices, errors, a
+ *  finished map, a new client version) shares [`Self::other`].
+ *
+ *  **Every default is [`NotificationSound::Chime`]**, which is the tone the
+ *  client played for everything before this existed. Installing an update
+ *  therefore changes nothing anybody hears; a player who wants a match to sound
+ *  different from a friend coming online says so, per row, and that is the
+ *  feature. Graded defaults were tried first and rejected: shipping a set of
+ *  choices somebody did not make is a worse answer to "all notifications sound
+ *  the same" than letting them make it.
+ *
+ *  [`NotificationSound::Silent`] is available on every row, which is how a kind
+ *  is seen and not heard.
+ */
+export type NotificationSoundChoices = {
+	matchFound: NotificationSound,
+	privateMessage: NotificationSound,
+	mention: NotificationSound,
+	friendOnline: NotificationSound,
+	friendOffline: NotificationSound,
+	friendPlaying: NotificationSound,
+	newCustomGame: NotificationSound,
+	gameFull: NotificationSound,
+	gameLaunched: NotificationSound,
+	reviewReminder: NotificationSound,
+	partyInvite: NotificationSound,
+	/**  Every kind without a switch of its own. */
+	other: NotificationSound,
 };
 
 export type NotificationState = {
@@ -5179,7 +5328,21 @@ export type ReplayQuery = {
 	factions: number[],
 	/**  Victory conditions, from [`VICTORY_CONDITIONS`]. Empty = any. */
 	victoryConditions: string[],
-	/**  Displayed rating bounds, inclusive. */
+	/**
+	 *  Displayed rating bounds, inclusive. Matched against **any one player's**
+	 *  rating, which is how both reference clients read the same slider.
+	 *
+	 *  It is a clause the API answers
+	 *  (`playerStats.ratingChanges.meanBefore`), so the bounds narrow the
+	 *  search itself rather than the page it returns. The known consequence is
+	 *  that a 500 against a 2500 comes back from a search for either number:
+	 *  the game's *average* would be the better question, and for a while this
+	 *  asked it, computed from each page as it arrived. That was withdrawn.
+	 *  The API has no average field, so the answer could only ever cover the
+	 *  window the client had read, which made the result depend on how far it
+	 *  had got: a filter that quietly answers a smaller question than the one
+	 *  asked is worse than one that answers a blunter question honestly.
+	 */
 	minRating: number | null,
 	maxRating: number | null,
 	/**  Average review score bounds, 0–5. */
@@ -5191,6 +5354,21 @@ export type ReplayQuery = {
 	/**  The map's player-slot count. */
 	mapMinPlayers: number | null,
 	mapMaxPlayers: number | null,
+	/**
+	 *  How many players actually took part, inclusive.
+	 *
+	 *  Distinct from the two above, and that distinction is the request: a
+	 *  search for a map comes back full of two-player test lobbies hosted on a
+	 *  sixteen-slot map, and the slot count cannot tell those apart from the
+	 *  sixteen-player game somebody was looking for.
+	 *
+	 *  Applied to the page the API returns rather than sent as a filter. The
+	 *  game resource exposes `playerStats` as a to-many relation and RSQL
+	 *  cannot count one, so there is no clause to send: see
+	 *  [`Self::accepts_locally`].
+	 */
+	minPlayers: number | null,
+	maxPlayers: number | null,
 	/**  Map edge length in km (the API stores pixels; see [`MAP_PIXELS_PER_KM`]). */
 	mapMinSizeKm: number | null,
 	mapMaxSizeKm: number | null,
@@ -5940,6 +6118,18 @@ export type TeamRequest = {
 };
 
 export type Theme = "forgeDark" | "forgeLight" | "javaClient" | "pythonClient";
+
+/**
+ *  Which corner of the window a toast appears in.
+ *
+ *  Defaults to the corner the bell is in. The client drew its toasts top right
+ *  while the notification centre they belong to opens from the bottom left,
+ *  so the arrival and the place it is kept were at opposite ends of the
+ *  screen: a toast that slid away left nothing where the eye had learned to
+ *  look. The other three corners are here because the Java client offers the
+ *  choice and people are used to picking one.
+ */
+export type ToastPosition = "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
 
 /**  A complete tournament, as `GET /api/t/{id}` returns it. */
 export type Tourney = {
@@ -8088,6 +8278,14 @@ export type VaultReplay = {
 	/**  ISO 8601, straight from the API: rendering/formatting is a UI concern. */
 	startTime: string,
 	/**
+	 *  When the game ended, same format, empty while it is still running.
+	 *
+	 *  Carried rather than only folded into [`Self::duration_seconds`] because
+	 *  the vault can be ordered by it, and that ordering is applied to rows
+	 *  that have already arrived: see [`sort_vault_replays`].
+	 */
+	endTime?: string,
+	/**
 	 *  Whether the file has actually finished uploading to content storage.
 	 *  A "newest replays" listing includes very recent/still-processing
 	 *  games too; both reference clients disable the Watch button until this
@@ -8131,6 +8329,16 @@ export type VaultReplay = {
 	 *  `ReplayDetailRoster`).
 	 */
 	validity?: string,
+	/**
+	 *  `game.attributes.victoryCondition`, raw: `DEMORALIZATION`,
+	 *  `DOMINATION`, `ERADICATION`, `SANDBOX`, or empty when the listing did
+	 *  not carry one. Same posture as [`Self::validity`]: the set grows on the
+	 *  server, so an unrecognised value still has to survive the trip.
+	 *
+	 *  Here for the same reason [`Self::end_time`] is: the vault can be
+	 *  ordered by it.
+	 */
+	victoryCondition?: string,
 };
 
 /**

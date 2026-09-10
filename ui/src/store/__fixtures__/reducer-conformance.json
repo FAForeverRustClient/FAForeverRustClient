@@ -144,6 +144,8 @@
         "maxDurationMinutes": null,
         "mapMinPlayers": null,
         "mapMaxPlayers": null,
+        "minPlayers": null,
+        "maxPlayers": null,
         "mapMinSizeKm": null,
         "mapMaxSizeKm": null,
         "rankedMapOnly": false,
@@ -407,7 +409,8 @@
       },
       "toggleStatus": {
         "type": "idle"
-      }
+      },
+      "downloadSizes": {}
     },
     "leaderboard": {
       "mode": "ratings",
@@ -674,7 +677,8 @@
         "density": "comfortable",
         "reduceMotion": false,
         "uiScale": 100,
-        "gameTileColumns": 0
+        "gameTileColumns": 0,
+        "sidebarWidth": 224
       },
       "social": {
         "playerNotes": []
@@ -684,7 +688,22 @@
         "desktop": true,
         "desktopAllKinds": false,
         "sound": true,
+        "sounds": {
+          "matchFound": "chime",
+          "privateMessage": "chime",
+          "mention": "chime",
+          "friendOnline": "chime",
+          "friendOffline": "chime",
+          "friendPlaying": "chime",
+          "newCustomGame": "chime",
+          "gameFull": "chime",
+          "gameLaunched": "chime",
+          "reviewReminder": "chime",
+          "partyInvite": "chime",
+          "other": "chime"
+        },
         "notifyWhenFocused": false,
+        "toastPosition": "bottomLeft",
         "matchFound": true,
         "privateMessages": true,
         "mentions": true,
@@ -729,6 +748,7 @@
         "additionalArguments": [],
         "launchWrapper": "",
         "autoGenerateMaps": true,
+        "confirmDownloadsBeforeJoining": true,
         "cacheLifetimeDays": 30,
         "cacheSizeAlertGb": 10,
         "cacheRollingBranches": false,
@@ -1711,6 +1731,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -1841,6 +1862,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -1901,6 +1923,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -23035,6 +23072,7 @@
             },
             "browseTotalPages": null,
             "browseTotalRecords": null,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23106,6 +23144,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23160,6 +23199,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23211,6 +23251,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23265,6 +23306,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23274,6 +23316,133 @@
                 "reason": "no mods folder"
               },
               "type": "failed"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mod download sizes keep only the answers that carried a number",
+      "steps": [
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "downloadSizesResolved",
+              "payload": {
+                "sizes": [
+                  {
+                    "uid": "AAA",
+                    "bytes": 4194304
+                  },
+                  {
+                    "uid": "BBB",
+                    "bytes": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {
+              "AAA": 4194304
+            },
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "downloadSizesResolved",
+              "payload": {
+                "sizes": [
+                  {
+                    "uid": "AAA",
+                    "bytes": 5242880
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {
+              "AAA": 5242880
+            },
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
             },
             "toggleStatus": {
               "type": "idle"
@@ -26033,9 +26202,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26105,9 +26276,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26171,9 +26344,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26258,9 +26433,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26324,9 +26501,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26390,9 +26569,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26440,6 +26621,8 @@
                   "maxDurationMinutes": null,
                   "mapMinPlayers": null,
                   "mapMaxPlayers": null,
+                  "minPlayers": null,
+                  "maxPlayers": null,
                   "mapMinSizeKm": null,
                   "mapMaxSizeKm": null,
                   "rankedMapOnly": false,
@@ -26493,9 +26676,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26574,9 +26759,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26649,9 +26836,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26764,9 +26953,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26859,9 +27050,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -26956,9 +27149,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27051,9 +27246,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27147,9 +27344,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27245,9 +27444,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27340,9 +27541,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27418,9 +27621,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27455,6 +27660,7 @@
                   "mapThumbnailUrl": "",
                   "modName": "faf",
                   "startTime": "2026-01-01T00:00:00Z",
+                  "endTime": "2026-01-01T00:30:00Z",
                   "replayAvailable": true,
                   "durationSeconds": null,
                   "gameDurationSeconds": null,
@@ -27464,7 +27670,8 @@
                   "reviewsAverage": null,
                   "reviewsCount": null,
                   "gameVersion": null,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 }
               }
             }
@@ -27487,6 +27694,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27500,7 +27708,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               }
@@ -27527,9 +27736,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27578,6 +27789,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27591,7 +27803,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },
@@ -27621,9 +27834,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27673,6 +27888,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27686,7 +27902,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },
@@ -27716,9 +27933,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27767,6 +27986,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27780,7 +28000,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },
@@ -27813,9 +28034,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -27865,6 +28088,7 @@
                 "payload": {
                   "averageRating": null,
                   "durationSeconds": null,
+                  "endTime": "2026-01-01T00:30:00Z",
                   "gameDurationSeconds": null,
                   "gameVersion": null,
                   "map": "scmp_009",
@@ -27878,7 +28102,8 @@
                   "teams": [],
                   "title": "Looked-up game",
                   "uid": 51,
-                  "validity": "VALID"
+                  "validity": "VALID",
+                  "victoryCondition": "DEMORALIZATION"
                 },
                 "type": "found"
               },
@@ -27914,9 +28139,11 @@
               "mapMinPlayers": null,
               "mapMinSizeKm": null,
               "maxDurationMinutes": null,
+              "maxPlayers": null,
               "maxRating": null,
               "maxReviewScore": null,
               "minDurationMinutes": null,
+              "minPlayers": null,
               "minRating": null,
               "minReviewScore": null,
               "onlyRanked": false,
@@ -28484,6 +28711,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -28606,6 +28834,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -28666,6 +28895,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -28704,6 +28948,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -28826,6 +29071,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -28886,6 +29132,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -28933,6 +29194,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29055,6 +29317,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -29115,6 +29378,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29157,6 +29435,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29279,6 +29558,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -29341,6 +29621,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29381,6 +29676,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29503,6 +29799,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -29566,6 +29863,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29627,6 +29939,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29749,6 +30062,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -29812,6 +30126,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -29864,6 +30193,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -29986,6 +30316,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -30049,6 +30380,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -30103,6 +30449,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -30225,6 +30572,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -30288,6 +30636,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {
@@ -30417,6 +30780,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "reduceMotion": false,
+              "sidebarWidth": 224,
               "uiScale": 100
             },
             "browsing": {
@@ -30548,6 +30912,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "launchWrapper": "",
               "pipeLiveReplay": false
@@ -30611,6 +30976,21 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
+                "gameLaunched": "chime",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "toastPosition": "bottomLeft",
               "volume": 70
             },
             "paths": {

@@ -70,5 +70,15 @@ export function reduceMods(state: ModsState, event: ModsEvent): ModsState {
       };
     case "toggleFailed":
       return { ...state, toggleStatus: { type: "failed", payload: { reason: event.payload.reason } } };
+    case "downloadSizesResolved": {
+      // Only the answers that carried a number. A uid that is absent has not
+      // been asked about or came back without a length, and both mean "do not
+      // print a size", which is the same rule the Rust reducer applies.
+      const sizes = { ...state.downloadSizes };
+      for (const size of event.payload.sizes) {
+        if (size.bytes !== null) sizes[size.uid] = size.bytes;
+      }
+      return { ...state, downloadSizes: sizes };
+    }
   }
 }

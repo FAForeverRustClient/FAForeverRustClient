@@ -24,7 +24,7 @@
 // *executed* lives in `state.replays.vaultQuery`, so the results and their
 // description can't drift.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { League, ReplayQuery, ReplaySortField } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -80,7 +80,17 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
   // precisely the contradiction that made the two controls unreadable.
   const [recentOnly, setRecentOnly] = useState(() => isRecentBound(initialQuery.after));
 
+  // Only when the executed query really changed, not every time the parent
+  // hands over a fresh object with the same contents in it. The memo upstream
+  // rebuilds `initialQuery` whenever anything it depends on moves, and this
+  // effect used to answer that by throwing away whatever was half typed into
+  // the form: set a rating range, have the store update for an unrelated
+  // reason, watch the slider snap back.
+  const appliedQuery = useRef(JSON.stringify(initialQuery));
   useEffect(() => {
+    const incoming = JSON.stringify(initialQuery);
+    if (incoming === appliedQuery.current) return;
+    appliedQuery.current = incoming;
     setForm(initialQuery);
     setRecentOnly(isRecentBound(initialQuery.after));
   }, [initialQuery]);
@@ -113,8 +123,27 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
     onSearch(EMPTY_REPLAY_QUERY);
   };
 
+  /**
+   * A preset changes what it is about and leaves everything else alone.
+   *
+   * It used to rebuild the whole query from `EMPTY_REPLAY_QUERY`, so pressing
+   * "All replays" after setting a rating range, a map and three factions threw
+   * all of it away. The five fields below are the ones the presets disagree
+   * about; each preset sets its own and returns the others to their default,
+   * so switching between them is still clean, and a map filter set beforehand
+   * survives.
+   */
   const applyPreset = (preset: Preset) => {
-    const base: ReplayQuery = { ...EMPTY_REPLAY_QUERY };
+    const base: ReplayQuery = {
+      ...form,
+      player: EMPTY_REPLAY_QUERY.player,
+      exactPlayer: EMPTY_REPLAY_QUERY.exactPlayer,
+      sortBy: EMPTY_REPLAY_QUERY.sortBy,
+      sortDescending: EMPTY_REPLAY_QUERY.sortDescending,
+      minReviewScore: EMPTY_REPLAY_QUERY.minReviewScore,
+      after: EMPTY_REPLAY_QUERY.after,
+      page: 1,
+    };
     const query: ReplayQuery =
       preset === "own"
         ? {
@@ -211,9 +240,21 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
           />
         </div>
 
+        {/* The label says "any player's", because that is what the API can
+            answer and therefore what this does: a 500 against a 2500 comes
+            back from a search for either number. It is a different question
+            from the one the *local* replay search asks with the same slider,
+            which is the game's average and is exact there, because a folder
+            scan has every replay in hand and no window to be partial about. */}
+        {/* The average was offered here too for a while, computed from each
+            page as it arrived, but the API has no average field, so the answer
+            could only ever cover the window the client had read. A filter that
+            quietly answers a smaller question than the one asked is worse than
+            one that answers a blunter question honestly, so it was withdrawn
+            rather than explained. */}
         <div className="vault-search-rating">
           <RangeSlider
-            label={t("replays.search.rating")}
+            label={t("replays.search.ratingPerPlayer")}
             min={MIN_RATING}
             max={MAX_RATING}
             step={50}

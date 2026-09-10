@@ -127,7 +127,19 @@ pub struct ReplayQuery {
     pub factions: Vec<i32>,
     /// Victory conditions, from [`VICTORY_CONDITIONS`]. Empty = any.
     pub victory_conditions: Vec<String>,
-    /// Displayed rating bounds, inclusive.
+    /// Displayed rating bounds, inclusive. Matched against **any one player's**
+    /// rating, which is how both reference clients read the same slider.
+    ///
+    /// It is a clause the API answers
+    /// (`playerStats.ratingChanges.meanBefore`), so the bounds narrow the
+    /// search itself rather than the page it returns. The known consequence is
+    /// that a 500 against a 2500 comes back from a search for either number:
+    /// the game's *average* would be the better question, and for a while this
+    /// asked it, computed from each page as it arrived. That was withdrawn.
+    /// The API has no average field, so the answer could only ever cover the
+    /// window the client had read, which made the result depend on how far it
+    /// had got: a filter that quietly answers a smaller question than the one
+    /// asked is worse than one that answers a blunter question honestly.
     pub min_rating: Option<i32>,
     pub max_rating: Option<i32>,
     /// Average review score bounds, 0–5.
@@ -139,6 +151,19 @@ pub struct ReplayQuery {
     /// The map's player-slot count.
     pub map_min_players: Option<i32>,
     pub map_max_players: Option<i32>,
+    /// How many players actually took part, inclusive.
+    ///
+    /// Distinct from the two above, and that distinction is the request: a
+    /// search for a map comes back full of two-player test lobbies hosted on a
+    /// sixteen-slot map, and the slot count cannot tell those apart from the
+    /// sixteen-player game somebody was looking for.
+    ///
+    /// Applied to the page the API returns rather than sent as a filter. The
+    /// game resource exposes `playerStats` as a to-many relation and RSQL
+    /// cannot count one, so there is no clause to send: see
+    /// [`Self::accepts_locally`].
+    pub min_players: Option<i32>,
+    pub max_players: Option<i32>,
     /// Map edge length in km (the API stores pixels; see [`MAP_PIXELS_PER_KM`]).
     pub map_min_size_km: Option<i32>,
     pub map_max_size_km: Option<i32>,
@@ -179,6 +204,8 @@ impl Default for ReplayQuery {
             max_duration_minutes: None,
             map_min_players: None,
             map_max_players: None,
+            min_players: None,
+            max_players: None,
             map_min_size_km: None,
             map_max_size_km: None,
             ranked_map_only: false,
@@ -214,6 +241,8 @@ impl ReplayQuery {
             || self.max_duration_minutes.is_some()
             || self.map_min_players.is_some()
             || self.map_max_players.is_some()
+            || self.min_players.is_some()
+            || self.max_players.is_some()
             || self.map_min_size_km.is_some()
             || self.map_max_size_km.is_some()
             || self.ranked_map_only
@@ -242,6 +271,39 @@ impl ReplayQuery {
         } else {
             property.to_string()
         }
+    }
+
+    /// Whether a replay the API returned survives the one filter the API
+    /// cannot express.
+    ///
+    /// Only one is left: the number of players who actually took part.
+    /// `playerStats` is a to-many relation and RSQL cannot count one, so there
+    /// is no clause to send and the rule is applied to the page after it
+    /// arrives.
+    ///
+    /// That has a visible consequence and it is worth stating plainly: a page
+    /// of fifty can come back with six rows on it, and the client has to read
+    /// further pages to fill one. The alternative was to leave the request
+    /// unimplemented, and paging that thins out is the smaller surprise.
+    ///
+    /// An average-rating bound used to be decided here too, and is not any
+    /// more: see [`Self::min_rating`] for why it was withdrawn.
+    pub fn accepts_locally(&self, player_count: i32) -> bool {
+        if self.min_players.is_some_and(|min| player_count < min) {
+            return false;
+        }
+        if self.max_players.is_some_and(|max| player_count > max) {
+            return false;
+        }
+        true
+    }
+
+    /// Whether anything on this query has to be applied after the fact.
+    ///
+    /// The view says so, because a page that comes back shorter than the page
+    /// size otherwise looks like a bug.
+    pub fn has_local_filter(&self) -> bool {
+        self.min_players.is_some() || self.max_players.is_some()
     }
 
     /// How far back an otherwise unbounded search should reach, in months.
@@ -413,6 +475,8 @@ fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<Stri
     if let Some(clause) = in_clause("victoryCondition", &query.victory_conditions) {
         clauses.push(clause);
     }
+    // Per player, which is the only form the API can answer: there is no
+    // average-rating field on the resource. See [`ReplayQuery::min_rating`].
     if let Some(min) = query.min_rating {
         clauses.push(format!(
             r#"playerStats.ratingChanges.meanBefore=ge="{}""#,
@@ -827,6 +891,54 @@ mod tests {
         let filter = build_filter(&q, None, None).unwrap();
         assert!(filter.contains(r#"meanBefore=ge="1800""#), "{filter}");
         assert!(filter.contains(r#"meanBefore=le="2300""#), "{filter}");
+    }
+
+    #[test]
+    fn a_rating_search_leaves_the_page_alone() {
+        // The whole bound is an API clause now. Nothing is decided after the
+        // rows arrive, which is what makes the result a real result rather
+        // than whatever the client happened to have read: the average form
+        // could only ever answer for the window it had scanned, and was
+        // withdrawn for it.
+        let q = ReplayQuery {
+            min_rating: Some(1500),
+            max_rating: Some(2000),
+            ..query()
+        };
+        assert!(!q.has_local_filter());
+        assert!(q.accepts_locally(8));
+        assert!(q.accepts_locally(2));
+    }
+
+    #[test]
+    fn player_count_bounds_are_inclusive_and_local() {
+        let q = ReplayQuery {
+            min_players: Some(4),
+            max_players: Some(8),
+            ..query()
+        };
+        // Nothing about the count reaches the API: RSQL cannot count a
+        // to-many relation, which is why this filter exists at all.
+        let filter = build_filter(&q, None, None).unwrap_or_default();
+        assert!(!filter.contains("playerStats"), "{filter}");
+        assert!(q.has_local_filter());
+
+        assert!(q.accepts_locally(4));
+        assert!(q.accepts_locally(8));
+        assert!(!q.accepts_locally(3));
+        assert!(!q.accepts_locally(9));
+    }
+
+    #[test]
+    fn a_two_player_test_lobby_on_a_big_map_is_the_case_this_answers() {
+        // The map has sixteen slots either way; only the count tells them
+        // apart, which is the whole request on the issue.
+        let q = ReplayQuery {
+            min_players: Some(10),
+            ..query()
+        };
+        assert!(!q.accepts_locally(2));
+        assert!(q.accepts_locally(16));
     }
 
     #[test]

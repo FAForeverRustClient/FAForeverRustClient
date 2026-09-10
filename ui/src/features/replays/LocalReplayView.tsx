@@ -7,6 +7,7 @@ import type { CoopMission, LocalReplay, ReplayTeam, VaultMap } from "../../ipc/b
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
+import { formatBytes } from "../../shared/formatBytes";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { mapPresentation } from "../../shared/mapPresentation";
@@ -56,7 +57,15 @@ const openFile = (path: string) =>
 /// fill the first page of a hundred would be paying it ten times over. Paging
 /// past what is loaded asks for more.
 const INITIAL_DETAIL_LIMIT = 360;
-const loadLocal = (limit: number = INITIAL_DETAIL_LIMIT) =>
+/// The limit is required, and that is the fix rather than a style choice.
+///
+/// It used to default, and `onRefresh={loadLocal}` therefore handed the click's
+/// own `MouseEvent` to a parameter typed `number`: the payload went to
+/// `JSON.stringify`, hit React's synthetic event pointing back at the button it
+/// came from, and every press of Refresh raised "Converting circular structure
+/// to JSON" over the replay list. `onRefresh` is typed `() => void`, which a
+/// function with a defaulted parameter satisfies, so nothing caught it.
+const loadLocal = (limit: number) =>
   ipc.send({ kind: "Replays", command: { type: "loadLocal", payload: { limit } } });
 const deleteLocal = (path: string) =>
   ipc.send({ kind: "Replays", command: { type: "deleteLocal", payload: { path } } });
@@ -67,12 +76,6 @@ function pickReplayFile(): void {
   }).then((path) => {
     if (path) openFile(path);
   }));
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 const LOCAL_STATUS_LABELS: Record<LocalReplay["status"], MessageKey> = {
@@ -174,7 +177,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
 
   useEffect(() => {
     if (useAppStore.getState().state.replays.localStatus.type === "idle") {
-      loadLocal();
+      loadLocal(INITIAL_DETAIL_LIMIT);
     }
     // The archive itself is a folder on this disk, but the vault is what turns
     // a folder name into a map's title, and asking for it needs an account.
@@ -289,7 +292,9 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
         loading={localStatus.type === "loading"}
         busy={busy}
         onSearch={setQuery}
-        onRefresh={loadLocal}
+        // Reloads what is on screen, not the first page: somebody who has
+        // paged deep and presses Refresh is asking for the same view again.
+        onRefresh={() => loadLocal(detailLimit)}
         onOpenFile={pickReplayFile}
       />
       <div className="online-replay-view-bar">
@@ -301,21 +306,27 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
           })}</span>
           {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
-        {offline && (
-          <Button className="local-replay-sign-in" onClick={signIn}>
-            <Icon name="users" size={14} /> {t("auth.signIn")}
+        {/* Grouped, because the bar is `space-between` and three children in
+            it put the middle one in the middle of the window: a lone "Watched"
+            button floating over the list with nothing either side of it. Both
+            of these act on the view, so both sit at the end of the row. */}
+        <div className="online-replay-view-bar-right">
+          {offline && (
+            <Button className="local-replay-sign-in" onClick={signIn}>
+              <Icon name="users" size={14} /> {t("auth.signIn")}
+            </Button>
+          )}
+          <Button
+            className={watchedOnly ? "local-replay-watched-filter is-on" : "local-replay-watched-filter"}
+            aria-pressed={watchedOnly}
+            disabled={!watchedOnly && watchedCount === 0}
+            title={t("replays.local.watchedOnlyHint")}
+            onClick={() => setWatchedOnly((on) => !on)}
+          >
+            <Icon name="eye" size={14} /> {t("replays.local.watchedOnly", { count: watchedCount })}
           </Button>
-        )}
-        <Button
-          className={watchedOnly ? "local-replay-watched-filter is-on" : "local-replay-watched-filter"}
-          aria-pressed={watchedOnly}
-          disabled={!watchedOnly && watchedCount === 0}
-          title={t("replays.local.watchedOnlyHint")}
-          onClick={() => setWatchedOnly((on) => !on)}
-        >
-          <Icon name="eye" size={14} /> {t("replays.local.watchedOnly", { count: watchedCount })}
-        </Button>
-        <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+          <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
       {localStatus.type === "ready" && filtered.length === 0 ? (
         <div className="live-replay-empty surface-panel">
@@ -363,7 +374,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 const mapName = presentation?.displayName || replay.map || replay.fileName;
                 const replayDetails = [
                   replay.recorder || t("replays.local.noRecorder"),
-                  formatFileSize(replay.fileSizeBytes),
+                  formatBytes(replay.fileSizeBytes),
                   replay.uid === null ? t("replays.local.noReplayId") : `#${replay.uid}`,
                 ].join(" · ");
                 const simModLabel = replay.simMods.length === 0

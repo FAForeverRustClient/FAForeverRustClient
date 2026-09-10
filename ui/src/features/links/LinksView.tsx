@@ -69,11 +69,19 @@ const ACKNOWLEDGMENTS = [
 ] as const;
 
 /** One row of the directory. The chip is the whole point of the page. */
-function LinkCard({ link, originLabel }: { link: DirectoryLink; originLabel: string }) {
+function LinkCard({
+  link,
+  originLabel,
+  originTitle,
+}: {
+  link: DirectoryLink;
+  originLabel: string;
+  originTitle: string;
+}) {
   const { t } = useTranslation();
   return (
     <a
-      className="links-link surface surface-interactive"
+      className={`links-link links-link-${link.origin} surface surface-interactive`}
       href={link.href}
       rel="noreferrer"
       target="_blank"
@@ -86,7 +94,9 @@ function LinkCard({ link, originLabel }: { link: DirectoryLink; originLabel: str
         <strong>{t(link.name)}</strong>
         <small>{t(link.hint)}</small>
       </span>
-      <span className={`links-origin links-origin-${link.origin}`}>{originLabel}</span>
+      <span className={`links-origin links-origin-${link.origin}`} title={originTitle}>
+        {originLabel}
+      </span>
       <Icon name="external" size={16} />
     </a>
   );
@@ -99,11 +109,19 @@ export function LinksView() {
   const [filter, setFilter] = useState<OriginFilter>(null);
 
   const originLabel = (origin: LinkOrigin) => t(`links.origin.${origin}`);
+  const originTitle = (origin: LinkOrigin) =>
+    origin === "official" ? t("links.origin.officialTitle") : t("links.origin.communityTitle");
+  // The chip carries the origin it filters to, so the pressed state can be that
+  // origin's colour rather than the one accent every pressed control shares.
   const chip = (value: OriginFilter, label: string) => (
     <button
       type="button"
       key={label}
-      className={filter === value ? "links-filter-chip is-on" : "links-filter-chip"}
+      className={
+        filter === value
+          ? `links-filter-chip links-filter-${value ?? "all"} is-on`
+          : `links-filter-chip links-filter-${value ?? "all"}`
+      }
       aria-pressed={filter === value}
       onClick={() => setFilter(value)}
     >
@@ -139,7 +157,12 @@ export function LinksView() {
             </h3>
             <div className="links-list">
               {links.map((link) => (
-                <LinkCard key={link.id} link={link} originLabel={originLabel(link.origin)} />
+                <LinkCard
+                  key={link.id}
+                  link={link}
+                  originLabel={originLabel(link.origin)}
+                  originTitle={originTitle(link.origin)}
+                />
               ))}
             </div>
           </section>

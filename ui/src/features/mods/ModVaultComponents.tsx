@@ -146,7 +146,15 @@ export function ModCard({
   const updateAvailable = Boolean(installed && modUpdateAvailable(installed.version, mod.version));
 
   return (
-    <article className={active ? "mod-vault-card surface-panel active" : "mod-vault-card surface-panel"}>
+    <article
+      className={[
+        "mod-vault-card surface-panel",
+        // The tag alone was easy to miss in a grid of cards; the tint is what
+        // makes "I am playing with this" visible without reading.
+        installed?.enabled && "is-in-use",
+        active && "active",
+      ].filter(Boolean).join(" ")}
+    >
       <button className="mod-vault-card-main" onClick={onSelect} aria-label={t("mods.vault.view", { name: mod.displayName })}>
         <span className="mod-vault-image-wrap">
           <ModPreview mod={mod} />

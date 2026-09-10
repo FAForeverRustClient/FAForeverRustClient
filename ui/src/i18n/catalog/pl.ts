@@ -1285,6 +1285,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.search.anyMod": "Dowolny",
   "replays.search.leaderboard": "Ranking",
   "replays.search.rating": "Punktacja",
+  "replays.search.ratingPerPlayer": "Punktacja gracza",
   "replays.search.sortBy": "Sortuj według",
   "replays.search.submit": "Szukaj",
   "replays.search.descendingAria": "Malejąco; kliknij, aby sortować rosnąco",
@@ -1867,4 +1868,5 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.generate.closePreview": "Kliknij gdziekolwiek, aby zamknąć",
   "replays.detail.simMods": "Mody symulacji",
   "replays.roster.ratingChange": "Zmiana rankingu po tej grze",
+  "replays.vault.resultCountUnknown": "{shown} pokazanych · {pages} stron · przy tym filtrze suma nie jest znana",
 };

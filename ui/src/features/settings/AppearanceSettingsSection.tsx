@@ -11,6 +11,24 @@ const save = (preferences: AppearancePreferences) =>
 /** Within `MIN_UI_SCALE`/`MAX_UI_SCALE` in the domain, which clamps anything else. */
 const UI_SCALES = [100, 125, 150, 175] as const;
 
+/**
+ * The named sidebar widths.
+ *
+ * The panel has been draggable for a while and the width is remembered, which
+ * left no way back to the default once it had been dragged: a setting is where
+ * people look for that. 224 is the width the client has always opened at and
+ * stays the default; 64 is the icon rail, the same layout the shell draws for
+ * a narrow window.
+ *
+ * Dragging still works and is not restricted to these three. A width in
+ * between simply lights none of them up, which is the truth.
+ */
+const SIDEBAR_WIDTH_OPTIONS = [
+  { value: 64, labelKey: "settings.appearance.sidebarIcons" as const },
+  { value: 224, labelKey: "settings.appearance.sidebarNormal" as const },
+  { value: 300, labelKey: "settings.appearance.sidebarWide" as const },
+] as const;
+
 const TILE_COLUMN_OPTIONS = [
   { value: 0, labelKey: "settings.appearance.tileColumnsAuto" as const },
   { value: 1, label: "1" },
@@ -81,6 +99,27 @@ export function AppearanceSettingsSection() {
                 onClick={() => void save({ ...preferences, gameTileColumns: option.value })}
               >
                 {"labelKey" in option ? t(option.labelKey) : option.label}
+              </button>
+            );
+          })}
+        </div>
+      </SettingRow>
+      <SettingRow
+        label={t("settings.appearance.sidebarWidth")}
+        hint={t("settings.appearance.sidebarWidthHint")}
+      >
+        <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.sidebarWidth")}>
+          {SIDEBAR_WIDTH_OPTIONS.map((option) => {
+            const isActive = preferences.sidebarWidth === option.value;
+            return (
+              <button
+                type="button"
+                key={option.value}
+                className={isActive ? "is-active" : ""}
+                aria-pressed={isActive}
+                onClick={() => void save({ ...preferences, sidebarWidth: option.value })}
+              >
+                {t(option.labelKey)}
               </button>
             );
           })}

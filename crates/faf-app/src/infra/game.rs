@@ -72,12 +72,59 @@ impl GameConfig {
     }
 }
 
+/// A running Forged Alliance, and which executable it is running.
+///
+/// The path is kept because two instances of the *same* install fight over
+/// that install's shader cache and lock files: see [`GameProcess::spawn`]. It
+/// is kept in [`install_key`] form, because "same install" is a question about
+/// the file, not about how the setting spells its path.
+struct Running {
+    child: Child,
+    exe: PathBuf,
+}
+
+/// A path in a form two spellings of the same file agree on.
+///
+/// A live game and a replay are two different executables in a normal FAF
+/// install: `FAForever\bin\ForgedAlliance.exe` and
+/// `FAForever\replaydata\bin\ForgedAlliance.exe`, which share a filename and
+/// nothing else. So the comparison has to be on the full path, and on Windows
+/// a full path typed into a settings field differs from the same path picked
+/// from a dialog in case and in separators. `canonicalize` resolves both, plus
+/// any junction or symlink between them.
+///
+/// Falls back to the path as given when it cannot be resolved, which is the
+/// safe direction: the caller has already established the file exists, so this
+/// only fires on something exotic, and an unresolved path compares equal to
+/// itself.
+fn install_key(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// Which of the two installs a launch belongs to.
+///
+/// Separate slots, because a live game and a replay are separate installs by
+/// design ([`GameConfig::replay_game_path`] never falls back to
+/// [`GameConfig::game_path`]) and there is no reason one should end the other.
+/// They shared a slot until now, which is exactly the reported bug: starting a
+/// replay while in a lobby closed the game first.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Slot {
+    Game,
+    Replay,
+}
+
 pub struct GameProcess {
     /// Behind a lock because Settings can repoint the installs at runtime
     /// (`ProcessPort::set_paths`): the paths are no longer startup-only.
     config: Mutex<GameConfig>,
-    child: Arc<Mutex<Option<Child>>>,
-    /// Woken when the tracked child exits; see [`GameProcess::watch_for_exit`].
+    game_child: Arc<Mutex<Option<Running>>>,
+    replay_child: Arc<Mutex<Option<Running>>>,
+    /// Woken when the *game* exits; see [`GameProcess::watch_for_exit`].
+    ///
+    /// Only the game slot notifies. This is what releases the launch, tells
+    /// the server the game ended and stops the ICE adapter, and a replay
+    /// window closing is none of those things.
     exited: Arc<Notify>,
     /// Kept alive for the duration of a live game so FA has somewhere to stream
     /// its replay. Replaced on the next launch, which drops and stops the
@@ -89,7 +136,8 @@ impl GameProcess {
     pub fn new(config: GameConfig) -> Self {
         Self {
             config: Mutex::new(config),
-            child: Arc::new(Mutex::new(None)),
+            game_child: Arc::new(Mutex::new(None)),
+            replay_child: Arc::new(Mutex::new(None)),
             exited: Arc::new(Notify::new()),
             replay_recorder: Mutex::new(None),
         }
@@ -109,7 +157,43 @@ impl GameProcess {
     /// misconfigured live-game vs. replay path is easy to tell apart. The
     /// message points at Settings rather than at the env var, because that is
     /// now the primary way to configure it.
-    fn spawn(&self, game_path: &str, args: &[String], what: &str) -> Result<(), String> {
+    fn slot(&self, slot: Slot) -> &Arc<Mutex<Option<Running>>> {
+        match slot {
+            Slot::Game => &self.game_child,
+            Slot::Replay => &self.replay_child,
+        }
+    }
+
+    /// Is the other slot running this same executable right now?
+    ///
+    /// `try_wait` rather than "is the slot occupied": the watcher clears a slot
+    /// within half a second of the process ending, and half a second is exactly
+    /// the window in which somebody closes a replay and immediately joins.
+    fn other_slot_holds(&self, slot: Slot, exe: &Path) -> bool {
+        let other = match slot {
+            Slot::Game => &self.replay_child,
+            Slot::Replay => &self.game_child,
+        };
+        let mut guard = other.lock().unwrap();
+        let Some(running) = guard.as_mut() else {
+            return false;
+        };
+        match running.child.try_wait() {
+            Ok(None) => running.exe == install_key(exe),
+            _ => {
+                *guard = None;
+                false
+            }
+        }
+    }
+
+    fn spawn(
+        &self,
+        slot: Slot,
+        game_path: &str,
+        args: &[String],
+        what: &str,
+    ) -> Result<(), String> {
         if game_path.is_empty() {
             return Err(format!(
                 "no {what} install configured: set it in Settings → Paths"
@@ -126,6 +210,20 @@ impl GameProcess {
                 "the configured {what} path is the original Steam/retail game, not a FAF-managed executable: select the ForgedAlliance.exe under FAForever\\bin"
             ));
         }
+        // Two instances of one install do not coexist: they fight over that
+        // install's shader cache and lock files, and the older one freezes on a
+        // blank post-shader-compile screen with no crash and no error. Refusing
+        // is the change here. The previous code killed whatever was running,
+        // which is how starting a replay ended the game somebody was in the
+        // middle of joining, and that is what was reported. A second install
+        // (Settings, Paths, replay install) makes both run side by side.
+        if self.other_slot_holds(slot, &exe) {
+            return Err(match slot {
+                Slot::Game => "a replay is already running from this install, and two copies of one install cannot run at once: close the replay window, or point Settings → Paths at a separate replay install".to_string(),
+                Slot::Replay => "the game is already running from this install, and two copies of one install cannot run at once: set a separate replay install in Settings → Paths to watch a replay while playing".to_string(),
+            });
+        }
+
         let work_dir = exe
             .parent()
             .map(PathBuf::from)
@@ -173,19 +271,24 @@ impl GameProcess {
             None => format!("could not start '{}': {e}", exe.display()),
         })?;
 
-        // `drop(prev)` here (the bug this replaces) only discards *our*
-        // handle to the previous child: it does not send any signal, so
-        // the old FA process kept running as an orphan. Confirmed live:
-        // relaunching a replay left two `ForgedAlliance.exe` processes
-        // alive simultaneously, apparently fighting over the same install's
-        // shader cache/lock files: the previous process froze on a blank
-        // post-shader-compile screen with zero further disk activity, no
-        // crash, no error, exactly the reported hang. `start_kill()`
-        // mirrors `ProcessPort::kill`'s own termination call.
-        if let Some(mut prev) = self.child.lock().unwrap().replace(child) {
-            let _ = prev.start_kill();
+        // Only ever the previous occupant of *this* slot, which is a relaunch
+        // of the same kind: a second replay replaces the first, a second game
+        // replaces the first. `drop(prev)` here (the bug this replaces) only
+        // discarded our handle: it sends no signal, so the old FA process kept
+        // running as an orphan. Confirmed live: relaunching a replay left two
+        // `ForgedAlliance.exe` processes alive simultaneously, fighting over
+        // the same install's shader cache/lock files, and the previous process
+        // froze on a blank post-shader-compile screen with zero further disk
+        // activity, no crash, no error. `start_kill()` mirrors
+        // `ProcessPort::kill`'s own termination call.
+        let running = Running {
+            child,
+            exe: install_key(&exe),
+        };
+        if let Some(mut prev) = self.slot(slot).lock().unwrap().replace(running) {
+            let _ = prev.child.start_kill();
         }
-        self.watch_for_exit();
+        self.watch_for_exit(slot);
         Ok(())
     }
 
@@ -195,9 +298,13 @@ impl GameProcess {
     /// and the handle has to stay in the shared slot for [`ProcessPort::kill`]
     /// to reach it. A game session lasts minutes, so a second of latency on
     /// noticing the exit costs nothing.
-    fn watch_for_exit(&self) {
-        let child = self.child.clone();
-        let exited = self.exited.clone();
+    fn watch_for_exit(&self, slot: Slot) {
+        let child = self.slot(slot).clone();
+        // Only the game slot wakes the launcher. A replay window closing is
+        // not the end of a game session, and telling the server "GameState
+        // Ended" because somebody finished watching a replay is how a live
+        // game would lose its launch out from under it.
+        let exited = (slot == Slot::Game).then(|| self.exited.clone());
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(500)).await;
@@ -207,7 +314,7 @@ impl GameProcess {
                         // Taken by a newer launch or by `kill`: that launch owns
                         // its own watcher, so this one is done.
                         None => true,
-                        Some(process) => match process.try_wait() {
+                        Some(process) => match process.child.try_wait() {
                             Ok(Some(_status)) => {
                                 *guard = None;
                                 true
@@ -223,7 +330,9 @@ impl GameProcess {
                     }
                 };
                 if finished {
-                    exited.notify_waiters();
+                    if let Some(exited) = &exited {
+                        exited.notify_waiters();
+                    }
                     return;
                 }
             }
@@ -262,6 +371,7 @@ impl ProcessPort for GameProcess {
             .map(|recorder| recorder.savereplay_url(params.game_id, &params.player_login));
 
         let result = self.spawn(
+            Slot::Game,
             &path,
             &build_arguments(
                 &params,
@@ -283,6 +393,7 @@ impl ProcessPort for GameProcess {
         let path = self.config.lock().unwrap().game_path.clone();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
         self.spawn(
+            Slot::Game,
             &path,
             &offline_arguments(&featured_mod, &map, &self.game_argument_path(&log_path)),
             "game",
@@ -291,12 +402,16 @@ impl ProcessPort for GameProcess {
 
     async fn launch_replay(&self, args: Vec<String>) -> Result<(), String> {
         let path = self.config.lock().unwrap().replay_game_path.clone();
-        self.spawn(&path, &args, "replay")
+        self.spawn(Slot::Replay, &path, &args, "replay")
     }
 
+    /// End the *game*, not whatever Forged Alliance happens to be running.
+    ///
+    /// This is the lobby service tearing a game session down, and a replay the
+    /// user is watching in a second window is no part of that session.
     fn kill(&self) {
-        if let Some(mut child) = self.child.lock().unwrap().take() {
-            let _ = child.start_kill();
+        if let Some(mut running) = self.game_child.lock().unwrap().take() {
+            let _ = running.child.start_kill();
         }
     }
 
@@ -939,6 +1054,43 @@ mod tests {
             ..GameConfig::default()
         });
         assert!(!process.installs_present().game);
+    }
+
+    #[test]
+    fn a_replay_and_a_game_are_tracked_separately() {
+        // The reported bug: joining a lobby and then starting a replay closed
+        // the game first, because both launches shared one child slot. Nothing
+        // is spawned here; what is asserted is that the two slots exist and are
+        // not the same cell.
+        let process = GameProcess::faf();
+        assert!(process.game_child.lock().unwrap().is_none());
+        assert!(process.replay_child.lock().unwrap().is_none());
+        assert!(!Arc::ptr_eq(&process.game_child, &process.replay_child));
+    }
+
+    #[test]
+    fn the_game_and_the_replay_install_are_different_files() {
+        // A normal FAF install, as the maintainer has it: the two executables
+        // share a filename and differ only in the directory, so anything
+        // comparing filenames would call them the same install and refuse the
+        // second launch. `install_key` compares the whole path.
+        // Forward slashes, so `file_name` means the same thing on the Linux
+        // box that runs CI as it does on the Windows box this describes.
+        let game = PathBuf::from("C:/ProgramData/FAForever/bin/ForgedAlliance.exe");
+        let replay = PathBuf::from("C:/ProgramData/FAForever/replaydata/bin/ForgedAlliance.exe");
+        assert_eq!(game.file_name(), replay.file_name());
+        assert_ne!(super::install_key(&game), super::install_key(&replay));
+    }
+
+    #[test]
+    fn an_empty_slot_never_blocks_a_launch() {
+        // The guard has to answer "no" for a slot nothing has run in, or the
+        // first replay of a session would be refused on the strength of a
+        // process that does not exist.
+        let process = GameProcess::faf();
+        let exe = PathBuf::from("C:/games/FAForever/bin/ForgedAlliance.exe");
+        assert!(!process.other_slot_holds(Slot::Game, &exe));
+        assert!(!process.other_slot_holds(Slot::Replay, &exe));
     }
 
     #[test]

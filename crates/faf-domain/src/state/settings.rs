@@ -277,6 +277,12 @@ pub struct AppearancePreferences {
     /// `0` means automatic / responsive (adapting dynamically to window width).
     /// `1..=6` specifies a fixed column count.
     pub game_tile_columns: u8,
+    /// Width of the sidebar in pixels, remembered across restarts.
+    ///
+    /// The window's own geometry has been persisted for a while; the panel
+    /// inside it was not, so every start put it back at 224 px. Clamped on the
+    /// way in, because a settings file is a file somebody can edit.
+    pub sidebar_width: u16,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -295,6 +301,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             reduce_motion: bool,
             ui_scale: u16,
             game_tile_columns: u8,
+            sidebar_width: u16,
         }
 
         impl Default for Wire {
@@ -305,6 +312,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     reduce_motion: defaults.reduce_motion,
                     ui_scale: defaults.ui_scale,
                     game_tile_columns: defaults.game_tile_columns,
+                    sidebar_width: defaults.sidebar_width,
                 }
             }
         }
@@ -315,6 +323,9 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             reduce_motion: wire.reduce_motion,
             ui_scale: wire.ui_scale,
             game_tile_columns: wire.game_tile_columns.min(6),
+            sidebar_width: wire
+                .sidebar_width
+                .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH),
         })
     }
 }
@@ -331,6 +342,18 @@ fn default_ui_scale() -> u16 {
 pub const MIN_UI_SCALE: u16 = 80;
 pub const MAX_UI_SCALE: u16 = 200;
 
+/// How narrow the sidebar may be dragged, and how wide.
+///
+/// The floor used to be 176 px, which is a sidebar with the labels still in it
+/// and a lot of empty space to their right: shrinking it did not buy anything.
+/// 64 px is the icon rail the client already draws when the *window* is narrow,
+/// so the two ways of arriving at it look the same.
+pub const MIN_SIDEBAR_WIDTH: u16 = 64;
+pub const MAX_SIDEBAR_WIDTH: u16 = 400;
+/// Below this the labels come off. Well clear of both ends, so neither dragging
+/// slightly off the default nor pulling all the way in is ambiguous.
+pub const SIDEBAR_RAIL_BELOW: u16 = 150;
+
 impl Default for AppearancePreferences {
     fn default() -> Self {
         Self {
@@ -338,6 +361,7 @@ impl Default for AppearancePreferences {
             reduce_motion: false,
             ui_scale: default_ui_scale(),
             game_tile_columns: 0,
+            sidebar_width: 224,
         }
     }
 }
@@ -346,7 +370,159 @@ impl AppearancePreferences {
     pub fn normalized(mut self) -> Self {
         self.ui_scale = self.ui_scale.clamp(MIN_UI_SCALE, MAX_UI_SCALE);
         self.game_tile_columns = self.game_tile_columns.min(6);
+        self.sidebar_width = self
+            .sidebar_width
+            .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
         self
+    }
+}
+
+/// Which corner of the window a toast appears in.
+///
+/// Defaults to the corner the bell is in. The client drew its toasts top right
+/// while the notification centre they belong to opens from the bottom left,
+/// so the arrival and the place it is kept were at opposite ends of the
+/// screen: a toast that slid away left nothing where the eye had learned to
+/// look. The other three corners are here because the Java client offers the
+/// choice and people are used to picking one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ToastPosition {
+    TopLeft,
+    TopRight,
+    #[default]
+    BottomLeft,
+    BottomRight,
+}
+
+/// One of the tones the client ships with.
+///
+/// Synthesised rather than sampled: every one of these is a couple of sine
+/// partials and an envelope, which is why "shipped with the client" costs no
+/// files and no decoder. See `ui/src/features/notifications/notificationSound.ts`
+/// for the plans themselves.
+///
+/// The set is deliberately small and ordered by how much attention it asks
+/// for. [`Self::Silent`] is part of the set rather than a separate switch: the
+/// request that started this was "visual notifications only for friend
+/// connected, but a strong sound for game full", and a sound picker that can
+/// say *nothing* answers the first half without a second control per row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NotificationSound {
+    /// No tone. The notification still appears and still counts as unread.
+    Silent,
+    /// One quiet low note. For things worth knowing and not worth looking up
+    /// for.
+    Soft,
+    /// The tone the client played for everything before this existed.
+    #[default]
+    Chime,
+    /// Short and bright, for something addressed to you personally.
+    Ping,
+    /// Two rising notes. The loudest thing here, for something that expires.
+    Alert,
+}
+
+/// Which tone each kind of notification plays.
+///
+/// One field per switch in the notification settings, so the dropdown sits
+/// next to the switch it belongs to and no mapping has to be explained in the
+/// UI. Everything without a switch of its own (server notices, errors, a
+/// finished map, a new client version) shares [`Self::other`].
+///
+/// **Every default is [`NotificationSound::Chime`]**, which is the tone the
+/// client played for everything before this existed. Installing an update
+/// therefore changes nothing anybody hears; a player who wants a match to sound
+/// different from a friend coming online says so, per row, and that is the
+/// feature. Graded defaults were tried first and rejected: shipping a set of
+/// choices somebody did not make is a worse answer to "all notifications sound
+/// the same" than letting them make it.
+///
+/// [`NotificationSound::Silent`] is available on every row, which is how a kind
+/// is seen and not heard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationSoundChoices {
+    pub match_found: NotificationSound,
+    pub private_message: NotificationSound,
+    pub mention: NotificationSound,
+    pub friend_online: NotificationSound,
+    pub friend_offline: NotificationSound,
+    pub friend_playing: NotificationSound,
+    pub new_custom_game: NotificationSound,
+    pub game_full: NotificationSound,
+    pub game_launched: NotificationSound,
+    pub review_reminder: NotificationSound,
+    pub party_invite: NotificationSound,
+    /// Every kind without a switch of its own.
+    pub other: NotificationSound,
+}
+
+impl Default for NotificationSoundChoices {
+    fn default() -> Self {
+        // One value, deliberately: see the note on the struct.
+        Self {
+            match_found: NotificationSound::Chime,
+            private_message: NotificationSound::Chime,
+            mention: NotificationSound::Chime,
+            friend_online: NotificationSound::Chime,
+            friend_offline: NotificationSound::Chime,
+            friend_playing: NotificationSound::Chime,
+            new_custom_game: NotificationSound::Chime,
+            game_full: NotificationSound::Chime,
+            game_launched: NotificationSound::Chime,
+            review_reminder: NotificationSound::Chime,
+            party_invite: NotificationSound::Chime,
+            other: NotificationSound::Chime,
+        }
+    }
+}
+
+// Deserialised through a `default`-ing twin for the same reason
+// `NotificationPreferences` below is: a settings file written by an older
+// build gains the new field's default rather than failing to load, and the
+// generated TypeScript still sees a required field rather than an optional
+// one. `#[serde(default)]` on the struct itself would achieve the first and
+// lose the second, because specta renders a defaulted field as `field?:`.
+impl<'de> Deserialize<'de> for NotificationSoundChoices {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Fields {
+            match_found: Option<NotificationSound>,
+            private_message: Option<NotificationSound>,
+            mention: Option<NotificationSound>,
+            friend_online: Option<NotificationSound>,
+            friend_offline: Option<NotificationSound>,
+            friend_playing: Option<NotificationSound>,
+            new_custom_game: Option<NotificationSound>,
+            game_full: Option<NotificationSound>,
+            game_launched: Option<NotificationSound>,
+            review_reminder: Option<NotificationSound>,
+            party_invite: Option<NotificationSound>,
+            other: Option<NotificationSound>,
+        }
+
+        let fields = Fields::deserialize(deserializer)?;
+        let defaults = Self::default();
+        Ok(Self {
+            match_found: fields.match_found.unwrap_or(defaults.match_found),
+            private_message: fields.private_message.unwrap_or(defaults.private_message),
+            mention: fields.mention.unwrap_or(defaults.mention),
+            friend_online: fields.friend_online.unwrap_or(defaults.friend_online),
+            friend_offline: fields.friend_offline.unwrap_or(defaults.friend_offline),
+            friend_playing: fields.friend_playing.unwrap_or(defaults.friend_playing),
+            new_custom_game: fields.new_custom_game.unwrap_or(defaults.new_custom_game),
+            game_full: fields.game_full.unwrap_or(defaults.game_full),
+            game_launched: fields.game_launched.unwrap_or(defaults.game_launched),
+            review_reminder: fields.review_reminder.unwrap_or(defaults.review_reminder),
+            party_invite: fields.party_invite.unwrap_or(defaults.party_invite),
+            other: fields.other.unwrap_or(defaults.other),
+        })
     }
 }
 
@@ -364,7 +540,11 @@ pub struct NotificationPreferences {
     /// reasoning. On restores the old behaviour for anyone who wants it.
     pub desktop_all_kinds: bool,
     pub sound: bool,
+    /// Which tone each kind plays, when [`Self::sound`] is on.
+    pub sounds: NotificationSoundChoices,
     pub notify_when_focused: bool,
+    /// Which corner a toast appears in. See [`ToastPosition`].
+    pub toast_position: ToastPosition,
     pub match_found: bool,
     pub private_messages: bool,
     pub mentions: bool,
@@ -388,7 +568,9 @@ impl Default for NotificationPreferences {
             desktop: true,
             desktop_all_kinds: false,
             sound: true,
+            sounds: NotificationSoundChoices::default(),
             notify_when_focused: false,
+            toast_position: ToastPosition::BottomLeft,
             match_found: true,
             private_messages: true,
             mentions: true,
@@ -421,7 +603,9 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop: bool,
             desktop_all_kinds: bool,
             sound: bool,
+            sounds: NotificationSoundChoices,
             notify_when_focused: bool,
+            toast_position: ToastPosition,
             match_found: bool,
             private_messages: bool,
             mentions: bool,
@@ -445,7 +629,9 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     desktop: defaults.desktop,
                     desktop_all_kinds: defaults.desktop_all_kinds,
                     sound: defaults.sound,
+                    sounds: defaults.sounds,
                     notify_when_focused: defaults.notify_when_focused,
+                    toast_position: defaults.toast_position,
                     match_found: defaults.match_found,
                     private_messages: defaults.private_messages,
                     mentions: defaults.mentions,
@@ -469,7 +655,9 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop: wire.desktop,
             desktop_all_kinds: wire.desktop_all_kinds,
             sound: wire.sound,
+            sounds: wire.sounds,
             notify_when_focused: wire.notify_when_focused,
+            toast_position: wire.toast_position,
             match_found: wire.match_found,
             private_messages: wire.private_messages,
             mentions: wire.mentions,
@@ -966,6 +1154,17 @@ pub struct GamePreferences {
     /// Automatically generate missing Neroxis maps when joining a lobby.
     #[serde(default = "default_true")]
     pub auto_generate_maps: bool,
+    /// Ask before a join or a replay downloads simulation mods you do not have.
+    ///
+    /// On by default, which is a deliberate change of behaviour: the client
+    /// used to fetch whatever a lobby required the moment you double-clicked
+    /// it, so joining the wrong game could leave twenty mods on disk. The
+    /// request was to be in the driver's seat, and the dialog carries its own
+    /// "do not ask again", which is what turns this off. It is a prompt about
+    /// *new* downloads only: a lobby whose mods you already have never raises
+    /// it, whatever this is set to.
+    #[serde(default = "default_true")]
+    pub confirm_downloads_before_joining: bool,
     /// Maximum lifetime in days for cached game data and replay binaries.
     /// `None` or `0` means cache retention is indefinite / automatic purging is disabled.
     #[serde(default = "default_cache_lifetime_days")]
@@ -1028,6 +1227,7 @@ impl Default for GamePreferences {
             additional_arguments: Vec::new(),
             launch_wrapper: String::new(),
             auto_generate_maps: true,
+            confirm_downloads_before_joining: true,
             cache_lifetime_days: default_cache_lifetime_days(),
             cache_size_alert_gb: default_cache_size_alert_gb(),
             cache_rolling_branches: false,

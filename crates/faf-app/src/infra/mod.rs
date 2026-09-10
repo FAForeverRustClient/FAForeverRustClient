@@ -515,8 +515,9 @@ pub fn real_ports() -> Ports {
     // Playback still needs an install, and that is enforced where it belongs:
     // `GameProcess::launch_replay` fails with a message pointing at
     // Settings → Paths when `replay_game_path` is unset or gone. So the replay
-    // client always shares the real process port (one child-tracking slot, so
-    // relaunching kills the previous FA).
+    // client always shares the real process port, which tracks the game and the
+    // replay in separate slots: relaunching a replay replaces the previous
+    // replay and leaves a running game alone.
     //
     // It shares the map generator for the same reason the launcher holds one: a
     // replay recorded on a generated map has no vault archive to stage, so the

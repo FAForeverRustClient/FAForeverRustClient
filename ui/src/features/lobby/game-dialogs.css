@@ -667,35 +667,98 @@
   flex-shrink: 0;
 }
 
+/* The row is two controls now: pick the map, and star it. The wrapper carries
+   the separator and the hover, so the two read as one row rather than as a
+   button with something stuck to its side. */
+.host-map-row-wrap {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.host-map-row-wrap:last-child {
+  border-bottom: 0;
+}
+
+.host-map-row-wrap:hover {
+  background: var(--color-surface-hover);
+}
+
+.host-map-favorite {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+  padding: 0;
+  color: var(--color-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.host-map-favorite:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.host-map-favorite:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.host-map-favorite.is-on {
+  color: var(--color-rating);
+}
+
+/* The two tabs above the list.
+   `flex-shrink: 0` is the whole fix for the report: the host column is a flex
+   column with a scrolling body, and a tab strip that can shrink gets squeezed
+   to a sliver whose labels then overlap the heading above it. The shared strip
+   is also built for a page header, so its 42 px rows are cut down to something
+   a 260 px column can carry. */
+.host-map-tabs {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.host-map-tabs button {
+  flex: 1;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
 .host-map-row {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-width: 0;
   min-height: 34px;
-  padding: 6px 10px;
+  padding: 6px 4px 6px 10px;
   color: var(--color-text);
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--color-border);
   text-align: left;
   cursor: pointer;
   transition: background-color 120ms ease;
   gap: 8px;
 }
 
-.host-map-row:last-child {
-  border-bottom: 0;
-}
-
-.host-map-row:hover {
-  background: var(--color-surface-hover);
-}
-
 .host-map-row.active {
   background: var(--color-surface-raised);
   box-shadow: inset 3px 0 var(--color-accent);
+}
+
+/* The selected row's fill has to reach under the star as well, or the
+   selection looks like it stops short of the end of the row. */
+.host-map-row-wrap:has(.host-map-row.active) {
+  background: var(--color-surface-raised);
 }
 
 .host-map-name {
@@ -1501,4 +1564,131 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* ── joining: what will be downloaded, and then what is ──────────────── */
+
+.join-download-modal,
+.join-preparing-modal {
+  width: min(480px, 92vw);
+}
+
+.join-download-list {
+  max-height: 220px;
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-4);
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Name on the left, size on the right when it has arrived. The row keeps its
+   height either way, so the list does not jump as the answers land. */
+.join-download-list > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.join-download-list > li > small {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The checkbox sits opposite the buttons rather than above them: it is a
+   qualifier on the button next to it, not a step of its own. */
+.join-download-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.join-download-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.join-download-remember {
+  font-size: 12px;
+}
+
+.join-preparing-detail {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.join-preparing-bar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border-radius: 999px;
+}
+
+.join-preparing-bar > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 200ms ease;
+}
+
+/* No percentage to show: a sweep says "running" without implying a position. */
+.join-preparing-bar[data-indeterminate="true"] > span {
+  width: 35%;
+  animation: join-preparing-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes join-preparing-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .join-preparing-bar[data-indeterminate="true"] > span {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}
+
+.join-preparing-percent {
+  margin: var(--space-1) 0 var(--space-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.join-preparing-steps-toggle {
+  padding: 0;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.join-preparing-steps-toggle:hover {
+  color: var(--color-text);
+}
+
+.join-preparing-steps {
+  max-height: 180px;
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  overflow-y: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.join-preparing-steps > li.is-current {
+  color: var(--color-text);
+}
+
+.join-preparing-note {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
 }

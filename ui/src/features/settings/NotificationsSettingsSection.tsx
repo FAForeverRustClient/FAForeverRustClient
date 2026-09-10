@@ -1,8 +1,25 @@
-import type { NotificationPreferences } from "../../ipc/bindings";
+import type {
+  NotificationPreferences,
+  NotificationSound,
+  NotificationSoundChoices,
+  ToastPosition,
+} from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { recordEntries } from "../../shared/records";
+import { playNotificationSound } from "../notifications/notificationSound";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+
+/* In reading order rather than enum order: the corner the bell is in comes
+   first, because it is the default and the one most people will keep. */
+const TOAST_POSITIONS: Record<ToastPosition, MessageKey> = {
+  bottomLeft: "settings.notifications.toastPosition.bottomLeft",
+  bottomRight: "settings.notifications.toastPosition.bottomRight",
+  topLeft: "settings.notifications.toastPosition.topLeft",
+  topRight: "settings.notifications.toastPosition.topRight",
+};
 
 const save = (preferences: NotificationPreferences) =>
   ipc.send({
@@ -10,11 +27,63 @@ const save = (preferences: NotificationPreferences) =>
     command: { type: "setNotifications", payload: { preferences } },
   });
 
+/* Quietest first, so the list itself says what the choice is about. */
+const SOUNDS: Record<NotificationSound, MessageKey> = {
+  silent: "settings.notifications.sound.silent",
+  soft: "settings.notifications.sound.soft",
+  chime: "settings.notifications.sound.chime",
+  ping: "settings.notifications.sound.ping",
+  alert: "settings.notifications.sound.alert",
+};
+
+/**
+ * The tone one kind of notification plays, next to the switch that turns that
+ * notification on. Picking one plays it: a list of five words is not something
+ * anybody can choose from without hearing them.
+ */
+function SoundChoice({
+  value,
+  disabled,
+  what,
+  onChange,
+}: {
+  value: NotificationSound;
+  disabled: boolean;
+  what: string;
+  onChange: (sound: NotificationSound) => void;
+}) {
+  const { t } = useTranslation();
+  const volume = useAppStore((state) => state.state.settings.notifications.volume);
+  return (
+    <select
+      className="settings-select settings-sound-select"
+      value={value}
+      disabled={disabled}
+      aria-label={t("settings.notifications.soundFor", { what })}
+      onChange={(event) => {
+        const sound = event.target.value as NotificationSound;
+        onChange(sound);
+        playNotificationSound(sound, volume);
+      }}
+    >
+      {recordEntries(SOUNDS).map(([sound, label]) => (
+        <option key={sound} value={sound}>
+          {t(label)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function NotificationsSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.notifications);
   const update = (patch: Partial<NotificationPreferences>) =>
     void save({ ...preferences, ...patch });
+  const setSound = (patch: Partial<NotificationSoundChoices>) =>
+    update({ sounds: { ...preferences.sounds, ...patch } });
+  // A tone is only reachable when notifications and sound are both on.
+  const mute = !preferences.enabled || !preferences.sound;
 
   return (
     <>
@@ -61,10 +130,30 @@ export function NotificationsSettingsSection() {
             value={preferences.volume}
             disabled={!preferences.enabled || !preferences.sound}
             onChange={(event) => update({ volume: Number(event.target.value) })}
+            // A sample when the slider is let go, not on every step of the
+            // drag: a percentage is not something anybody can set by eye, and
+            // a tone per pixel of travel would be unusable.
+            onPointerUp={(event) => playNotificationSound("chime", Number(event.currentTarget.value))}
+            onKeyUp={(event) => playNotificationSound("chime", Number(event.currentTarget.value))}
             aria-label={t("settings.notifications.volumeAria")}
           />
           <span>{preferences.volume}%</span>
         </label>
+      </SettingRow>
+      <SettingRow label={t("settings.notifications.toastPositionLabel")} hint={t("settings.notifications.toastPositionHint")}>
+        <select
+          className="settings-select"
+          value={preferences.toastPosition}
+          disabled={!preferences.enabled}
+          onChange={(event) => update({ toastPosition: event.target.value as ToastPosition })}
+          aria-label={t("settings.notifications.toastPositionLabel")}
+        >
+          {recordEntries(TOAST_POSITIONS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {t(label)}
+            </option>
+          ))}
+        </select>
       </SettingRow>
       <SettingRow label={t("settings.notifications.whenFocused")} hint={t("settings.notifications.whenFocusedHint")}>
         <SettingsSwitch
@@ -75,40 +164,57 @@ export function NotificationsSettingsSection() {
         />
       </SettingRow>
       <SettingRow label={t("settings.notifications.matchFound")} hint={t("settings.notifications.matchFoundHint")}>
+        <SoundChoice value={preferences.sounds.matchFound} disabled={mute || !preferences.matchFound} what={t("settings.notifications.matchFound")} onChange={(matchFound) => setSound({ matchFound })} />
         <SettingsSwitch checked={preferences.matchFound} disabled={!preferences.enabled} onChange={(matchFound) => update({ matchFound })} label={t("settings.notifications.matchFound")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.privateMessages")} hint={t("settings.notifications.privateMessagesHint")}>
+        <SoundChoice value={preferences.sounds.privateMessage} disabled={mute || !preferences.privateMessages} what={t("settings.notifications.privateMessages")} onChange={(privateMessage) => setSound({ privateMessage })} />
         <SettingsSwitch checked={preferences.privateMessages} disabled={!preferences.enabled} onChange={(privateMessages) => update({ privateMessages })} label={t("settings.notifications.privateMessages")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.mentions")} hint={t("settings.notifications.mentionsHint")}>
+        <SoundChoice value={preferences.sounds.mention} disabled={mute || !preferences.mentions} what={t("settings.notifications.mentions")} onChange={(mention) => setSound({ mention })} />
         <SettingsSwitch checked={preferences.mentions} disabled={!preferences.enabled} onChange={(mentions) => update({ mentions })} label={t("settings.notifications.mentions")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendOnline")} hint={t("settings.notifications.friendOnlineHint")}>
+        <SoundChoice value={preferences.sounds.friendOnline} disabled={mute || !preferences.friendOnline} what={t("settings.notifications.friendOnline")} onChange={(friendOnline) => setSound({ friendOnline })} />
         <SettingsSwitch checked={preferences.friendOnline} disabled={!preferences.enabled} onChange={(friendOnline) => update({ friendOnline })} label={t("settings.notifications.friendOnline")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendOffline")} hint={t("settings.notifications.friendOfflineHint")}>
+        <SoundChoice value={preferences.sounds.friendOffline} disabled={mute || !preferences.friendOffline} what={t("settings.notifications.friendOffline")} onChange={(friendOffline) => setSound({ friendOffline })} />
         <SettingsSwitch checked={preferences.friendOffline} disabled={!preferences.enabled} onChange={(friendOffline) => update({ friendOffline })} label={t("settings.notifications.friendOffline")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendPlaying")} hint={t("settings.notifications.friendPlayingHint")}>
+        <SoundChoice value={preferences.sounds.friendPlaying} disabled={mute || !preferences.friendPlaying} what={t("settings.notifications.friendPlaying")} onChange={(friendPlaying) => setSound({ friendPlaying })} />
         <SettingsSwitch checked={preferences.friendPlaying} disabled={!preferences.enabled} onChange={(friendPlaying) => update({ friendPlaying })} label={t("settings.notifications.friendPlaying")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.newGames")} hint={t("settings.notifications.newGamesHint")}>
+        <SoundChoice value={preferences.sounds.newCustomGame} disabled={mute || !preferences.newCustomGames} what={t("settings.notifications.newGames")} onChange={(newCustomGame) => setSound({ newCustomGame })} />
         <SettingsSwitch checked={preferences.newCustomGames} disabled={!preferences.enabled} onChange={(newCustomGames) => update({ newCustomGames })} label={t("settings.notifications.newGames")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.friendsGamesOnly")} hint={t("settings.notifications.friendsGamesOnlyHint")}>
         <SettingsSwitch checked={preferences.newCustomGamesFriendsOnly} disabled={!preferences.enabled || !preferences.newCustomGames} onChange={(newCustomGamesFriendsOnly) => update({ newCustomGamesFriendsOnly })} label={t("settings.notifications.friendsGamesOnly")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.gameFull")} hint={t("settings.notifications.gameFullHint")}>
+        <SoundChoice value={preferences.sounds.gameFull} disabled={mute || !preferences.gameFull} what={t("settings.notifications.gameFull")} onChange={(gameFull) => setSound({ gameFull })} />
         <SettingsSwitch checked={preferences.gameFull} disabled={!preferences.enabled} onChange={(gameFull) => update({ gameFull })} label={t("settings.notifications.gameFull")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.gameLaunched")} hint={t("settings.notifications.gameLaunchedHint")}>
+        <SoundChoice value={preferences.sounds.gameLaunched} disabled={mute || !preferences.gameLaunched} what={t("settings.notifications.gameLaunched")} onChange={(gameLaunched) => setSound({ gameLaunched })} />
         <SettingsSwitch checked={preferences.gameLaunched} disabled={!preferences.enabled} onChange={(gameLaunched) => update({ gameLaunched })} label={t("settings.notifications.gameLaunched")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.reviewReminder")} hint={t("settings.notifications.reviewReminderHint")}>
+        <SoundChoice value={preferences.sounds.reviewReminder} disabled={mute || !preferences.reviewReminder} what={t("settings.notifications.reviewReminder")} onChange={(reviewReminder) => setSound({ reviewReminder })} />
         <SettingsSwitch checked={preferences.reviewReminder} disabled={!preferences.enabled} onChange={(reviewReminder) => update({ reviewReminder })} label={t("settings.notifications.reviewReminder")} />
       </SettingRow>
       <SettingRow label={t("settings.notifications.partyInvites")} hint={t("settings.notifications.partyInvitesHint")}>
+        <SoundChoice value={preferences.sounds.partyInvite} disabled={mute || !preferences.partyInvites} what={t("settings.notifications.partyInvites")} onChange={(partyInvite) => setSound({ partyInvite })} />
         <SettingsSwitch checked={preferences.partyInvites} disabled={!preferences.enabled} onChange={(partyInvites) => update({ partyInvites })} label={t("settings.notifications.partyInvites")} />
+      </SettingRow>
+      {/* The kinds with no switch of their own: server notices, errors, a
+          finished map, a new client version. One row rather than nine, because
+          nobody is going to want a different tone for each of them. */}
+      <SettingRow label={t("settings.notifications.otherSounds")} hint={t("settings.notifications.otherSoundsHint")}>
+        <SoundChoice value={preferences.sounds.other} disabled={mute} what={t("settings.notifications.otherSounds")} onChange={(other) => setSound({ other })} />
       </SettingRow>
     </>
   );

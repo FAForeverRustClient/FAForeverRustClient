@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
+import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import type { MatchmakerQueue, MatchmakingState, PartyState } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -8,6 +9,7 @@ import { MatchmakerMapPoolModal } from "./MatchmakerMapPoolModal";
 import { MatchmakerPartyChat } from "./MatchmakerPartyChat";
 import { MatchmakerPartyPanel } from "./MatchmakerPartyPanel";
 import { MatchmakerPlayerCard } from "./MatchmakerPlayerCard";
+import { MatchmakerExplainer } from "./MatchmakerExplainer";
 import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./MatchmakerQueueCard";
 import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
 import { playersInRatingRange } from "./queueRatingRange";
@@ -60,6 +62,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   const [unselectedQueues, setUnselectedQueues] = useState<string[]>(browsing.matchmakerUnselectedQueues);
   const [selectedFactions, setSelectedFactions] = useState<string[]>(browsing.matchmakerFactions);
   const [mapPoolQueueName, setMapPoolQueueName] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
   const [queueClocks, setQueueClocks] = useState<Record<string, { seconds: number; receivedAt: number }>>({});
   const requestedProfileId = useRef<number | null>(null);
@@ -206,6 +209,13 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
               <span className="matchmaker-kicker">{t("lobby.matchmaker.gameModes")}</span>
               <h2 id="matchmaker-queues-title">{t("lobby.matchmaker.selectQueues")}</h2>
             </div>
+            {/* Everything a queue does to your game is invisible until it has
+                already done it: the settings, the map pool, and how far apart
+                two ratings in one match can be. One button, next to the
+                queues it explains. */}
+            <Button onClick={() => setExplaining(true)}>
+              <Icon name="info" size={14} /> {t("lobby.matchmaker.explain.open")}
+            </Button>
           </div>
           <div className="matchmaker-queue-grid">
             {sortedQueues.map((queue) => {
@@ -285,6 +295,10 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           playerRating={ratingForQueue(matchmakerProfile?.ratings ?? [], mapPoolQueue.queueName)?.rating ?? null}
           onClose={() => setMapPoolQueueName(null)}
         />
+      )}
+
+      {explaining && (
+        <MatchmakerExplainer queues={sortedQueues} onClose={() => setExplaining(false)} />
       )}
     </div>
   );

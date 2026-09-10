@@ -15,13 +15,22 @@
 // tab of this client already, and the wiki's beginner guide is a page of the
 // wiki, which is the second entry below.
 //
-// Every entry says who made it. That is the one thing the issue asked for
-// explicitly: a player following a link out of the client should know whether
-// they are going somewhere FAF runs or somewhere a player runs.
+// Every entry says whether FAF runs it or somebody else does, and that is all
+// it says. The hints used to end in "by Vindex", "by Sheppy", "by Nuggets":
+// naming the person who runs a site reads as an endorsement of that person,
+// and it is not what the reader of this page needs. What they need before
+// clicking is whether they are leaving FAF, so the chip says exactly that and
+// nothing more. The people are thanked at the bottom of the page instead.
 
 import type { MessageKey } from "../../i18n";
 
-/** Who stands behind a destination. Drawn as a chip on every card. */
+/**
+ * Who runs a destination. Drawn as a chip on every card.
+ *
+ * `community` is deliberately not "a name we know": see the note above. The
+ * variant keeps its name because it is what the section it feeds is about, but
+ * the chip it draws reads "External".
+ */
 export type LinkOrigin = "official" | "community";
 
 /**

@@ -6,6 +6,7 @@ import {
   setGlobalLineup,
   getActiveLineupSnapshot,
   showsUnrankedTag,
+  simModsKeepGameRanked,
 } from "./CustomGamesBrowser";
 
 function game(overrides: Partial<Game> = {}): Game {
@@ -75,5 +76,45 @@ describe("the unranked tag", () => {
     expect(isCoopGame(custom)).toBe(false);
     expect(showsUnrankedTag(custom, [unrankedMap], noMods)).toBe(true);
     expect(showsUnrankedTag(custom, [rankedMap], noMods)).toBe(false);
+  });
+});
+
+describe("the sim mod tag's colour", () => {
+  // Only two of the eighteen fields matter to the function under test, and
+  // spelling out the other sixteen would say nothing about the behaviour.
+  const rankedMod = { uid: "AAA", ranked: true } as unknown as VaultMod;
+  const unrankedMod = { uid: "BBB", ranked: false } as unknown as VaultMod;
+
+  it("is the ranked colour when every sim mod is ranked", () => {
+    const modded = game({ simMods: { AAA: "Ranked mod" } });
+    expect(simModsKeepGameRanked(modded, [rankedMod, unrankedMod])).toBe(true);
+  });
+
+  it("matches uids case-insensitively, the way the lobby sends them", () => {
+    const modded = game({ simMods: { aaa: "Ranked mod" } });
+    expect(simModsKeepGameRanked(modded, [rankedMod])).toBe(true);
+  });
+
+  it("is the warning colour as soon as one sim mod is not ranked", () => {
+    const modded = game({ simMods: { AAA: "Ranked mod", BBB: "Slop" } });
+    expect(simModsKeepGameRanked(modded, [rankedMod, unrankedMod])).toBe(false);
+  });
+
+  it("treats a mod the vault has never heard of as unranked", () => {
+    const modded = game({ simMods: { ZZZ: "Who knows" } });
+    expect(simModsKeepGameRanked(modded, [rankedMod])).toBe(false);
+  });
+
+  it("says false for a game with no sim mods, which never draws the tag", () => {
+    expect(simModsKeepGameRanked(game(), [rankedMod])).toBe(false);
+  });
+
+  it("is independent of what the map or the game type do to the rating", () => {
+    // A co-op mission is unrated whatever it loads, and an unranked map takes
+    // the rating on its own. Neither is the mods' doing, so neither changes
+    // what this tag says.
+    const coopWithRankedMods = game({ modName: "coop", map: "scmp_009", simMods: { AAA: "Ranked mod" } });
+    expect(showsUnrankedTag(coopWithRankedMods, [unrankedMap], [rankedMod])).toBe(false);
+    expect(simModsKeepGameRanked(coopWithRankedMods, [rankedMod])).toBe(true);
   });
 });

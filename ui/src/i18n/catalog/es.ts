@@ -1320,6 +1320,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.search.anyMod": "Cualquiera",
   "replays.search.leaderboard": "Clasificación",
   "replays.search.rating": "Puntuación",
+  "replays.search.ratingPerPlayer": "Puntuación de un jugador",
   "replays.search.sortBy": "Ordenar por",
   "replays.search.submit": "Buscar",
   "replays.search.descendingAria": "Descendente; pulsa para ascendente",
@@ -1840,4 +1841,5 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "maps.generate.closePreview": "Haz clic en cualquier sitio para cerrar",
   "replays.detail.simMods": "Mods de simulación",
   "replays.roster.ratingChange": "Cambio de puntuación por esta partida",
+  "replays.vault.resultCountUnknown": "{shown} mostradas · {pages} páginas · el total no se conoce con este filtro",
 };
