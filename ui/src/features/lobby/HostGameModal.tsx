@@ -16,6 +16,9 @@ import { FeaturedModIcon } from "./FeaturedModIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n/catalog/en";
 import { NumberInput } from "../../design-system/NumberInput";
+// The map column's two tabs borrow the shared tab strip. Imported here rather
+// than relied on: this dialog is reachable from screens that never load it.
+import "../../design-system/section-tabs.css";
 
 interface Props {
   onClose: () => void;
@@ -125,6 +128,9 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   const modListRef = useRef<HTMLDivElement>(null);
   const [selectedMap, setSelectedMap] = useState(remembered.map);
   const [generating, setGenerating] = useState(false);
+  // Which half of the list is on screen. Not persisted: a dialog that opened on
+  // an empty Favourites tab would look like a client with no maps installed.
+  const [mapTab, setMapTab] = useState<"all" | "favorites">("all");
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -271,8 +277,40 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
     widthKm,
   ]);
 
+  // Favourites are already a thing in the map vault, kept as folder names in
+  // the browsing preferences. This reuses that list rather than starting a
+  // second one: a map starred here is starred there and the other way round.
+  const favoriteFolders = useMemo(
+    () => new Set(browsing.favoriteMaps.map((folder) => folder.toLocaleLowerCase())),
+    [browsing.favoriteMaps],
+  );
+  const isFavorite = (folderName: string) =>
+    favoriteFolders.has(folderName.toLocaleLowerCase());
+  const toggleFavorite = (folderName: string) => {
+    const key = folderName.toLocaleLowerCase();
+    const current = currentBrowsing();
+    const favoriteMaps = favoriteFolders.has(key)
+      ? current.favoriteMaps.filter((folder) => folder.toLocaleLowerCase() !== key)
+      : [...current.favoriteMaps, key];
+    ipc.send({
+      kind: "Settings",
+      command: { type: "setBrowsing", payload: { preferences: { ...current, favoriteMaps } } },
+    });
+  };
+
+  const visibleMaps = useMemo(
+    () => (mapTab === "favorites"
+      ? availableMaps.filter((map) => favoriteFolders.has(map.folderName.toLocaleLowerCase()))
+      : availableMaps),
+    [availableMaps, favoriteFolders, mapTab],
+  );
+
+  // Resolved against every map rather than the visible half, so switching to
+  // Favourites with an unstarred map selected does not quietly change the map
+  // you were about to host. The fallbacks only matter when nothing is chosen.
   const chosen = availableMaps.find((map) => map.folderName.toLowerCase() === selectedMap?.toLowerCase())
     ?? availableMaps.find((map) => map.folderName === selectedMap)
+    ?? visibleMaps[0]
     ?? availableMaps[0];
 
   // The picture in this column is the only look at the map anybody gets before
@@ -313,9 +351,11 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   const formError = titleError || passwordError || ratingError || (!chosen ? t("lobby.host.error.selectMap") : "");
 
   const chooseRandom = () => {
-    if (availableMaps.length === 0) return;
-    const index = Math.floor(Math.random() * availableMaps.length);
-    setSelectedMap(availableMaps[index].folderName);
+    // Out of what is on screen, so a random pick from the Favourites tab is a
+    // random favourite rather than a random map.
+    if (visibleMaps.length === 0) return;
+    const index = Math.floor(Math.random() * visibleMaps.length);
+    setSelectedMap(visibleMaps[index].folderName);
   };
 
   /// The same for the game-type column beside it. A column that ignores the
@@ -333,13 +373,13 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   /// the size and the player count all hang off the selection, so moving only
   /// focus - which is all the browser did - showed none of them.
   const onMapListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const current = availableMaps.findIndex((map) => map.folderName === chosen?.folderName);
-    const next = nextListboxIndex(event.key, current, availableMaps.length);
+    const current = visibleMaps.findIndex((map) => map.folderName === chosen?.folderName);
+    const next = nextListboxIndex(event.key, current, visibleMaps.length);
     if (next === null) return;
     // Otherwise the arrow key also scrolls the column, away from the row it
     // just moved to.
     event.preventDefault();
-    setSelectedMap(availableMaps[next].folderName);
+    setSelectedMap(visibleMaps[next].folderName);
     focusListboxOption(mapListRef.current, next);
   };
 
@@ -542,7 +582,32 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
         <section className="host-column host-column-maps surface-panel">
           <div className="host-column-header">
             <h3>{t("lobby.host.map")}</h3>
-            <span className="host-count-badge">{availableMaps.length} maps</span>
+            <span className="host-count-badge">{visibleMaps.length} maps</span>
+          </div>
+
+          {/* Two tabs rather than one long list. The thread that asked for this
+              started from wanting generated maps grouped, and landed on
+              favourites instead: nobody browses every mapgen map, but everybody
+              has five maps they host on. */}
+          <div className="host-map-tabs section-tabs" role="tablist" aria-label={t("lobby.host.map")}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mapTab === "all"}
+              className={mapTab === "all" ? "active" : ""}
+              onClick={() => setMapTab("all")}
+            >
+              {t("lobby.host.mapTab.all", { count: availableMaps.length })}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mapTab === "favorites"}
+              className={mapTab === "favorites" ? "active" : ""}
+              onClick={() => setMapTab("favorites")}
+            >
+              {t("lobby.host.mapTab.favorites", { count: favoriteFolders.size })}
+            </button>
           </div>
 
           <div className="host-map-search-row">
@@ -623,26 +688,46 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
             aria-label={t("lobby.host.availableMaps")}
             onKeyDown={onMapListKeyDown}
           >
-            {availableMaps.length === 0 ? (
-              <p className="play-empty">{t("lobby.host.noMaps")}</p>
+            {visibleMaps.length === 0 ? (
+              <p className="play-empty">
+                {t(mapTab === "favorites" ? "lobby.host.noFavoriteMaps" : "lobby.host.noMaps")}
+              </p>
             ) : (
-              availableMaps.map((map) => (
-                <button
-                  key={map.folderName}
-                  type="button"
-                  role="option"
-                  aria-selected={chosen?.folderName === map.folderName}
-                  className={`host-map-row${chosen?.folderName === map.folderName ? " active" : ""}`}
-                  onClick={() => setSelectedMap(map.folderName)}
-                >
-                  <span className="host-map-name" title={map.displayName}>
-                    {map.displayName}
-                  </span>
-                  <span className="host-map-meta">
-                    {formatMapMeta(map) || t("lobby.host.playersUnstated")}
-                  </span>
-                </button>
-              ))
+              visibleMaps.map((map) => {
+                const starred = isFavorite(map.folderName);
+                return (
+                  // A wrapper, because the star is a second action on the row
+                  // and a button inside a button is neither valid nor
+                  // clickable. `presentation` keeps the listbox owning its
+                  // options across it.
+                  <div className="host-map-row-wrap" key={map.folderName} role="presentation">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={chosen?.folderName === map.folderName}
+                      className={`host-map-row${chosen?.folderName === map.folderName ? " active" : ""}`}
+                      onClick={() => setSelectedMap(map.folderName)}
+                    >
+                      <span className="host-map-name" title={map.displayName}>
+                        {map.displayName}
+                      </span>
+                      <span className="host-map-meta">
+                        {formatMapMeta(map) || t("lobby.host.playersUnstated")}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={starred ? "host-map-favorite is-on" : "host-map-favorite"}
+                      aria-pressed={starred}
+                      title={t(starred ? "lobby.host.unfavorite" : "lobby.host.favorite", { name: map.displayName })}
+                      aria-label={t(starred ? "lobby.host.unfavorite" : "lobby.host.favorite", { name: map.displayName })}
+                      onClick={() => toggleFavorite(map.folderName)}
+                    >
+                      <Icon name="star" size={13} />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 

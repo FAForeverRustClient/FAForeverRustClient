@@ -667,35 +667,89 @@
   flex-shrink: 0;
 }
 
+/* The row is two controls now: pick the map, and star it. The wrapper carries
+   the separator and the hover, so the two read as one row rather than as a
+   button with something stuck to its side. */
+.host-map-row-wrap {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.host-map-row-wrap:last-child {
+  border-bottom: 0;
+}
+
+.host-map-row-wrap:hover {
+  background: var(--color-surface-hover);
+}
+
+.host-map-favorite {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+  padding: 0;
+  color: var(--color-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.host-map-favorite:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.host-map-favorite:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.host-map-favorite.is-on {
+  color: var(--color-rating);
+}
+
+/* The two tabs above the list. Narrow column, so they share its width rather
+   than sitting at their natural size. */
+.host-map-tabs {
+  margin: 0 var(--space-3) var(--space-2);
+}
+
+.host-map-tabs button {
+  flex: 1;
+}
+
 .host-map-row {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-width: 0;
   min-height: 34px;
-  padding: 6px 10px;
+  padding: 6px 4px 6px 10px;
   color: var(--color-text);
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--color-border);
   text-align: left;
   cursor: pointer;
   transition: background-color 120ms ease;
   gap: 8px;
 }
 
-.host-map-row:last-child {
-  border-bottom: 0;
-}
-
-.host-map-row:hover {
-  background: var(--color-surface-hover);
-}
-
 .host-map-row.active {
   background: var(--color-surface-raised);
   box-shadow: inset 3px 0 var(--color-accent);
+}
+
+/* The selected row's fill has to reach under the star as well, or the
+   selection looks like it stops short of the end of the row. */
+.host-map-row-wrap:has(.host-map-row.active) {
+  background: var(--color-surface-raised);
 }
 
 .host-map-name {
