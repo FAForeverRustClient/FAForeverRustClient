@@ -162,7 +162,7 @@ const ID_SCAN_PAGE_SIZE: u32 = 5000;
 /// requests when it is reached: a search whose matches turn up early stops at
 /// the first page.
 const LOCAL_SCAN_PAGES: u32 = 8;
-const LOCAL_SCAN_PAGE_SIZE: u32 = 100;
+const LOCAL_SCAN_PAGE_SIZE: u32 = 200;
 
 /// The point at which a shared-games scan stops and says so. Roughly twice the
 /// game count of the busiest account on the server, so it exists to bound a
@@ -319,6 +319,15 @@ pub struct ReplayClient {
     /// It is a snapshot, deliberately: a game played while the user pages
     /// through the results appears on their next search, not underneath them.
     shared_games: std::sync::Mutex<Option<(ReplayQuery, Vec<i32>)>>,
+    /// The rows a locally filtered search matched, and the search that produced
+    /// them. Keyed the same way as `shared_games`, and there for the same
+    /// reason: that scan reads up to `LOCAL_SCAN_PAGES` pages of vault, and
+    /// paying for that again on every page turn is what makes paging feel
+    /// broken.
+    ///
+    /// `scanned` is how far into the vault the rows came from, so a later page
+    /// that needs more of them knows whether scanning again could produce any.
+    local_filtered: std::sync::Mutex<Option<(ReplayQuery, LocalScan)>>,
     /// Whether a live replay stream is handed to FA over a named pipe instead
     /// of the local TCP proxy: the "Live Replays Workaround" setting, pushed in
     /// by the settings service (`ReplayPort::set_live_replay_pipe`).
@@ -335,6 +344,43 @@ pub struct ReplayClient {
 
 /// The cache key for a shared-games search: everything except which slice of
 /// the answer is being displayed.
+/// One locally filtered scan: what it matched and how far it got.
+#[derive(Clone)]
+struct LocalScan {
+    matched: Vec<VaultReplay>,
+    /// How many API pages were read. Equal to [`LOCAL_SCAN_PAGES`] means there
+    /// is no more to be had without raising the ceiling.
+    scanned: u32,
+    /// The vault ran out before the ceiling did, so `matched` is every match
+    /// there is and the totals derived from it are exact.
+    exhausted: bool,
+}
+
+/// How many pages a locally filtered scan may promise.
+///
+/// This is the bug that was reported as "many empty pages". The count used to
+/// be `max(pages we have, current page + 1)`, on the theory that more matches
+/// might be waiting further into the vault. For a filter that matches sparsely
+/// they are not: every click added one more page, every one of them empty, and
+/// the pager grew for as long as somebody kept clicking.
+///
+/// A further page is now promised only when the scan stopped **because it had
+/// enough**, which is the one case where more is known to be there. Having run
+/// into the scan ceiling is not that case: nothing more will be fetched, so
+/// nothing more may be offered. Neither is having read the vault to the end.
+fn local_filter_total_pages(scan: &LocalScan, page: usize, page_size: usize) -> i32 {
+    let full_pages =
+        i32::try_from(scan.matched.len().div_ceil(page_size.max(1))).unwrap_or(i32::MAX);
+    let stopped_because_it_had_enough = !scan.exhausted
+        && scan.scanned < LOCAL_SCAN_PAGES
+        && scan.matched.len() >= page * page_size;
+    if stopped_because_it_had_enough {
+        full_pages.max(i32::try_from(page + 1).unwrap_or(i32::MAX))
+    } else {
+        full_pages.max(1)
+    }
+}
+
 fn shared_games_key(query: &ReplayQuery) -> ReplayQuery {
     ReplayQuery {
         page: 1,
@@ -353,6 +399,7 @@ impl ReplayClient {
         Self {
             install_dir: std::sync::Mutex::new(config.replay_target_dir.clone()),
             shared_games: std::sync::Mutex::new(None),
+            local_filtered: std::sync::Mutex::new(None),
             config,
             tokens,
             http: super::http::shared_http_client(),
@@ -675,15 +722,21 @@ impl ReplayClient {
     ///
     /// Reads API pages from the first one, keeping the rows that survive
     /// `accepts_locally`, until it has enough of them for the page that was
-    /// asked for or it runs out of vault or of patience (`LOCAL_SCAN_PAGES`).
-    /// The counts it reports are therefore counts of *matches*, which is the
-    /// number the reader cares about, and they are exact whenever the scan
-    /// reached the end of the results.
+    /// asked for or it runs out of vault or of ceiling
+    /// (`LOCAL_SCAN_PAGES` x `LOCAL_SCAN_PAGE_SIZE` games).
     ///
-    /// Scanning from page one for every page is deliberate: the API knows
-    /// nothing about these filters, so there is no cursor it could be asked to
-    /// resume from. It is the same shape as the shared-games scan above and
-    /// costs the same kind of request.
+    /// **The page count is the part worth reading twice.** It may only promise
+    /// a page this can actually fill. Advertising one more page than there are
+    /// matches, on the grounds that more might exist further into the vault,
+    /// produces exactly what was reported: a pager that grows by one empty page
+    /// every time it is clicked. So a further page is offered only when this
+    /// scan stopped because it had enough, which is the one case where more is
+    /// known to be waiting.
+    ///
+    /// Scanning from page one is unavoidable, because the API knows nothing
+    /// about these filters and there is no cursor it could resume from. It is
+    /// therefore done once per search and cached, the same way the shared-games
+    /// intersection next to it is.
     async fn search_locally_filtered(
         &self,
         query: &ReplayQuery,
@@ -692,10 +745,67 @@ impl ReplayClient {
         let page_size = query.page_size.max(1) as usize;
         let page = query.page.max(1) as usize;
         let needed = page * page_size;
-        let fallback = query.fallback_months().map(months_ago);
 
+        let key = shared_games_key(query);
+        let cached = self
+            .local_filtered
+            .lock()
+            .expect("local filter cache poisoned")
+            .as_ref()
+            .filter(|(cached_key, _)| *cached_key == key)
+            // Usable when it already holds enough for this page, or when
+            // scanning again could not add to it.
+            .filter(|(_, scan)| {
+                scan.exhausted || scan.scanned >= LOCAL_SCAN_PAGES || scan.matched.len() >= needed
+            })
+            .map(|(_, scan)| scan.clone());
+
+        let scan = match cached {
+            Some(scan) => scan,
+            None => {
+                let scan = self.scan_locally_filtered(query, token, needed).await?;
+                *self
+                    .local_filtered
+                    .lock()
+                    .expect("local filter cache poisoned") = Some((key, scan.clone()));
+                scan
+            }
+        };
+
+        let total = i32::try_from(scan.matched.len()).unwrap_or(i32::MAX);
+        let total_pages = local_filter_total_pages(&scan, page, page_size);
+        let start = (page - 1) * page_size;
+        let replays = scan
+            .matched
+            .into_iter()
+            .skip(start)
+            .take(page_size)
+            .collect::<Vec<_>>();
+
+        Ok(VaultSearchResult {
+            replays,
+            total_pages: Some(total_pages),
+            // Only when it is a real total. A count that means "at least this
+            // many" printed as "N replays" is a wrong number, and the view has
+            // a shape for not knowing.
+            total_records: scan.exhausted.then_some(total),
+        })
+    }
+
+    /// Read the vault until `needed` rows have matched, or there is no more to
+    /// read. See [`Self::search_locally_filtered`] for what the result means.
+    async fn scan_locally_filtered(
+        &self,
+        query: &ReplayQuery,
+        token: &str,
+        needed: usize,
+    ) -> Result<LocalScan, String> {
+        let fallback = query.fallback_months().map(months_ago);
+        let started = std::time::Instant::now();
         let mut matched: Vec<VaultReplay> = Vec::new();
+        let mut scanned = 0;
         let mut exhausted = false;
+
         for scan_page in 1..=LOCAL_SCAN_PAGES {
             let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
                 .map_err(|e| format!("invalid API base: {e}"))?;
@@ -715,6 +825,7 @@ impl ReplayClient {
             let rows = parse_vault_replays(&doc);
             let received = rows.len();
             matched.extend(retain_locally_matching(query, rows));
+            scanned = scan_page;
 
             // A short page is the end of the results, whatever the meta says.
             if received < LOCAL_SCAN_PAGE_SIZE as usize {
@@ -726,31 +837,23 @@ impl ReplayClient {
             }
         }
 
-        let total = i32::try_from(matched.len()).unwrap_or(i32::MAX);
-        let full_pages = i32::try_from(matched.len().div_ceil(page_size)).unwrap_or(i32::MAX);
-        // Stopped early: there may well be more behind the ceiling, so the last
-        // page must not look like the last page. One page beyond the current
-        // one keeps paging available without inventing a total.
-        let total_pages = if exhausted {
-            full_pages.max(1)
-        } else {
-            full_pages.max(i32::try_from(page + 1).unwrap_or(i32::MAX))
-        };
+        // At info level for the same reason the shared-games scan is: this is
+        // one of the two searches in the client that can legitimately take
+        // seconds, and "how much vault for how many rows" is otherwise
+        // unanswerable from a bug report.
+        tracing::info!(
+            pages = scanned,
+            games = scanned as usize * LOCAL_SCAN_PAGE_SIZE as usize,
+            matched = matched.len(),
+            exhausted,
+            elapsed_ms = started.elapsed().as_millis() as u64,
+            "locally filtered vault scan"
+        );
 
-        let start = (page - 1) * page_size;
-        let replays = matched
-            .into_iter()
-            .skip(start)
-            .take(page_size)
-            .collect::<Vec<_>>();
-
-        Ok(VaultSearchResult {
-            replays,
-            total_pages: Some(total_pages),
-            // Only when it is a real total. A count that means "at least this
-            // many" printed as "N replays" is a wrong number, and the view has
-            // a shape for not knowing.
-            total_records: exhausted.then_some(total),
+        Ok(LocalScan {
+            matched,
+            scanned,
+            exhausted,
         })
     }
 
@@ -3585,6 +3688,74 @@ mod tests {
         GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
     };
     use serde_json::json;
+
+    fn scan(matched: usize, scanned: u32, exhausted: bool) -> LocalScan {
+        LocalScan {
+            matched: vec![
+                VaultReplay {
+                    uid: 1,
+                    title: String::new(),
+                    map: String::new(),
+                    map_thumbnail_url: String::new(),
+                    mod_name: String::new(),
+                    start_time: String::new(),
+                    replay_available: true,
+                    duration_seconds: None,
+                    game_duration_seconds: None,
+                    teams: Vec::new(),
+                    average_rating: None,
+                    quality: None,
+                    reviews_average: None,
+                    reviews_count: None,
+                    game_version: None,
+                    validity: String::new(),
+                };
+                matched
+            ],
+            scanned,
+            exhausted,
+        }
+    }
+
+    #[test]
+    fn a_sparse_filter_never_promises_a_page_it_cannot_fill() {
+        // The reported bug. Thirty matches in a scan that hit the ceiling: one
+        // page, and clicking it must not conjure a second. The old rule
+        // promised `page + 1` unconditionally, so the pager grew by one empty
+        // page for as long as somebody kept clicking.
+        for page in 1..=3 {
+            assert_eq!(
+                local_filter_total_pages(&scan(30, LOCAL_SCAN_PAGES, false), page, 50),
+                1,
+                "page {page}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_scan_that_had_enough_offers_the_next_page() {
+        // Stopped early because it filled page one, and well short of the
+        // ceiling: there is demonstrably more vault to read, so the pager may
+        // say so even though only one page of matches is in hand.
+        assert_eq!(local_filter_total_pages(&scan(60, 1, false), 1, 50), 2);
+        // And once it holds three pages' worth it says three, not two.
+        assert_eq!(local_filter_total_pages(&scan(160, 2, false), 1, 50), 4);
+    }
+
+    #[test]
+    fn an_exhausted_scan_reports_exactly_what_it_found() {
+        // The vault ran out, so the count is exact and there is no next page
+        // whatever the current one is.
+        assert_eq!(local_filter_total_pages(&scan(120, 3, true), 1, 50), 3);
+        assert_eq!(local_filter_total_pages(&scan(120, 3, true), 3, 50), 3);
+    }
+
+    #[test]
+    fn no_matches_at_all_is_still_one_page() {
+        // An empty result is one empty page, not zero pages: the pager has to
+        // have something to be on.
+        assert_eq!(local_filter_total_pages(&scan(0, 4, true), 1, 50), 1);
+    }
 
     /// A real generated-map folder name, as it appears in a replay header.
     const GENERATED_MAP: &str = "neroxis_map_generator_1.21.0_ualhhyfgnqw4u_cagaeaakbyaaaqd2";
