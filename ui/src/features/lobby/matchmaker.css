@@ -1083,7 +1083,7 @@
 /* A dialog, read once by somebody who has just arrived. Wide enough for a
    paragraph to be a paragraph, capped so it never becomes a wall. */
 .matchmaker-explainer-modal {
-  width: min(660px, 92vw);
+  width: min(1320px, 94vw);
   max-height: 86vh;
   display: flex;
   flex-direction: column;
@@ -1138,9 +1138,11 @@
 
 /* One queue per row: its name, then the facts read off the server's own data
    rather than typed into the prose above. */
+/* At this width the queue rows are a column of mostly empty space, so they
+   sit side by side instead: four queues, four cards. */
 .matchmaker-explainer-queues {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--space-2);
   margin: 0 0 var(--space-3);
   padding: 0;
