@@ -68,7 +68,7 @@ function InstalledModCard({
 }: InstalledModCardProps) {
   const { t } = useTranslation();
   return (
-    <article className={mod.enabled ? "installed-mod-card surface-panel is-enabled" : "installed-mod-card surface-panel"}>
+    <article className={mod.enabled ? "installed-mod-card surface-panel is-enabled" : "installed-mod-card surface-panel is-disabled"}>
       {/* The description lives in the vault, and looking it up there was the
           only way to read it from this list. The card body is the link: the
           buttons stay outside it so enabling a mod is still one click. */}
@@ -86,7 +86,16 @@ function InstalledModCard({
           </span>
         )}
         <span className="installed-mod-copy">
-          <strong>{mod.displayName}</strong>
+          {/* The state, as a word and as a colour, on the row itself. Whether a
+              mod is on was previously only readable from the verb on the
+              button beside it, which means reading every row in turn to find
+              the four that are on out of forty-four. */}
+          <span className="installed-mod-name">
+            <strong>{mod.displayName}</strong>
+            <em className={mod.enabled ? "installed-mod-state is-on" : "installed-mod-state is-off"}>
+              {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
+            </em>
+          </span>
           <small>
             {mod.modType === "ui" ? "UI mod" : "Simulation mod"} · v{mod.version}
             {mod.author ? ` · ${mod.author}` : ""}
@@ -412,7 +421,7 @@ export function InstalledModsView({
             ] as Array<[InstalledModPreset, string]>).map(([key, label]) => (
               <Button
                 key={key}
-                className={preset === key ? "active" : ""}
+                className={`installed-mod-preset-${key}${preset === key ? " active" : ""}`}
                 onClick={() => choosePreset(key)}
               >
                 {label}
