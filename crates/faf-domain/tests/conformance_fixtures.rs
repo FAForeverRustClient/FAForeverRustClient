@@ -3085,6 +3085,9 @@ fn cases() -> Vec<Case> {
                     game_prefs_path: "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs".into(),
                     map_generator_dir: "C:/Users/ada/AppData/Roaming/faf/map_generator".into(),
                     java_path: "java".into(),
+                    // Empty is the Windows answer, and these fixtures describe
+                    // a Windows install.
+                    wine_prefix: String::new(),
                 },
             }
             .into()],
@@ -5048,6 +5051,7 @@ fn cases() -> Vec<Case> {
                         game_prefs_path: String::new(),
                         map_generator_dir: String::new(),
                         java_path: String::new(),
+                        wine_prefix: " /home/player/.wine ".into(),
                     },
                 }
                 .into(),

@@ -5,6 +5,7 @@ import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { gameNeedsALaunchWrapper } from "../../shared/platform";
 
 const save = (preferences: GamePreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
@@ -32,6 +33,14 @@ export function GameSettingsSection() {
 
   const setConfirmDownloads = (confirmDownloadsBeforeJoining: boolean) => {
     void save({ ...preferences, confirmDownloadsBeforeJoining });
+  };
+
+  const [wrapperText, setWrapperText] = useState(preferences.launchWrapper ?? "");
+  const persistedWrapper = preferences.launchWrapper ?? "";
+  useEffect(() => setWrapperText(persistedWrapper), [persistedWrapper]);
+  const commitWrapper = () => {
+    if (wrapperText.trim() === persistedWrapper) return;
+    void save({ ...preferences, launchWrapper: wrapperText.trim() });
   };
 
   const setPipeLiveReplay = (pipeLiveReplay: boolean) => {
@@ -95,6 +104,32 @@ export function GameSettingsSection() {
           label={t("settings.game.pipeLiveReplay")}
         />
       </SettingRow>
+
+      {/* Above the arguments, because it decides what runs them. Only where
+          the game is not a native binary: on Windows there is nothing to wrap
+          and an empty field labelled "launch command" invites somebody to
+          fill it in. */}
+      {gameNeedsALaunchWrapper() && (
+        <div className="setting-block">
+          <span className="setting-label">{t("settings.game.launchWrapperLabel")}</span>
+          <span className="muted">{t("settings.game.launchWrapperHint")}</span>
+          <input
+            className="settings-input"
+            type="text"
+            value={wrapperText}
+            onChange={(event) => setWrapperText(event.target.value)}
+            onBlur={commitWrapper}
+            placeholder="wine"
+            aria-label={t("settings.game.launchWrapperLabel")}
+          />
+          <div className="settings-save-line">
+            <span className="muted">{t("settings.game.launchWrapperNote")}</span>
+            <Button onClick={commitWrapper} disabled={wrapperText.trim() === persistedWrapper}>
+              {t("settings.game.saveArguments")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="setting-block">
         <span className="setting-label">{t("settings.game.argumentsLabel")}</span>

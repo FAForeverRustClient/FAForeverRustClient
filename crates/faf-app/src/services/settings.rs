@@ -127,6 +127,11 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // Re-reports the resolved locations, which the overrides just
             // moved: the tab shows those beside every field.
             sync_installs(ctx, out);
+            // The Wine prefix is one of these paths and the launcher holds a
+            // copy of it, so changing it here has to reach the launcher too,
+            // or the next game runs in the prefix that was configured when the
+            // client started.
+            sync_launch_preferences(ctx, out);
             refresh_content_after_path_change(ctx, out).await;
         }
         SettingsCommand::SetGeneral { preferences } => {
@@ -315,14 +320,22 @@ fn sync_connectivity(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
-    let (arguments, pipe_live_replay, auto_generate_maps) = out.with_state(|state| {
-        (
-            state.settings.game.additional_arguments.clone(),
-            state.settings.game.pipe_live_replay,
-            state.settings.game.auto_generate_maps,
-        )
-    });
+    let (arguments, wrapper, wine_prefix, pipe_live_replay, auto_generate_maps) =
+        out.with_state(|state| {
+            (
+                state.settings.game.additional_arguments.clone(),
+                state.settings.game.launch_wrapper.clone(),
+                state.settings.paths.wine_prefix.clone(),
+                state.settings.game.pipe_live_replay,
+                state.settings.game.auto_generate_maps,
+            )
+        });
     ctx.ports.process.set_additional_arguments(arguments);
+    // The two halves of "run a Windows game on Linux" arrive from two
+    // different preference groups, because that is where each one belongs: the
+    // wrapper is about launching, the prefix is a path. The launcher needs
+    // them together.
+    ctx.ports.process.set_launch_wrapper(wrapper, wine_prefix);
     ctx.ports.replay.set_live_replay_pipe(pipe_live_replay);
     // The replay port rebuilds a generated map before playback, and has to
     // honour the same preference the live launcher does.

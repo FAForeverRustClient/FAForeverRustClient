@@ -6,7 +6,7 @@
 //! spawns the game; the fake is inert.
 
 use async_trait::async_trait;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Parameters for one game launch.
 #[derive(Debug, Clone)]
@@ -143,6 +143,32 @@ pub trait ProcessPort: Send + Sync {
     /// Replace the literal user-supplied arguments prepended to launches.
     /// Implementations pass these directly to the process API, never a shell.
     fn set_additional_arguments(&self, arguments: Vec<String>);
+
+    /// Replace the command the game is launched *through*, and the Wine prefix
+    /// it runs in.
+    ///
+    /// Both are how a Windows game starts on a machine that is not running
+    /// Windows: the wrapper is `wine` or whatever else reaches a working
+    /// prefix, and the prefix is what decides where the game's own
+    /// `%LOCALAPPDATA%` is. Empty strings mean "launch it directly", which is
+    /// the Windows answer and the default everywhere.
+    ///
+    /// Defaulted to nothing, because a launcher that cannot run a Windows
+    /// binary through a wrapper has nothing to record.
+    fn set_launch_wrapper(&self, _wrapper: String, _wine_prefix: String) {}
+
+    /// Spell a path the way the game this launcher starts will be able to open
+    /// it.
+    ///
+    /// Asked of the launcher rather than worked out by the caller, because it
+    /// depends on *how* the game is started: run through Wine, an absolute
+    /// Linux path is not something a Windows executable can open, and the same
+    /// file has a different name from inside the prefix. Every path the client
+    /// puts on FA's command line (the log file, a replay to play back) goes
+    /// through this; the switches next to them are not paths and must not.
+    fn game_argument_path(&self, path: &Path) -> String {
+        path.display().to_string()
+    }
 
     /// The directory the live install's patched files live under: the parent
     /// of `bin/`, derived from the configured executable. `None` when no live
