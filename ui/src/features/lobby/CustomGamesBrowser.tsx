@@ -224,7 +224,35 @@ export function hideGlobalLineup() {
   }
 }
 
+/**
+ * Ways the tooltip can be left standing that no `onMouseLeave` covers.
+ *
+ * It is `position: fixed`, up to 430 by 420 pixels, and its contents are
+ * clickable (a player name opens a card), so it cannot simply be made
+ * `pointer-events: none`. Left up over the workspace it therefore swallows
+ * clicks in that rectangle, which is a candidate for the "unable to click
+ * anything" report: rare, cured by a restart, and no error anywhere.
+ *
+ * Three events that leave it up today: alt-tabbing away, the list scrolling
+ * under a stationary pointer, and Escape, which everything else in this client
+ * answers. Installed once, on first use, so the listeners cost nothing in a
+ * session that never hovers a game.
+ */
+let lineupGuardsInstalled = false;
+
+function installLineupGuards() {
+  if (lineupGuardsInstalled || typeof window === "undefined") return;
+  lineupGuardsInstalled = true;
+  window.addEventListener("blur", hideGlobalLineup);
+  // Capture, because the scroll happens on a container rather than on window.
+  window.addEventListener("scroll", hideGlobalLineup, true);
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideGlobalLineup();
+  });
+}
+
 export function setGlobalLineup(gameId: number, position: TooltipPosition) {
+  installLineupGuards();
   activeLineup = { gameId, position };
   for (const listener of lineupListeners) {
     listener();
