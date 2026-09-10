@@ -210,16 +210,27 @@
   white-space: nowrap;
 }
 
+/* Sim mods, in two colours, because the count alone never said the thing
+   people actually want off this row: amber when at least one of them costs the
+   game its rating, green when none of them do. `--color-focus` is not a token
+   this design system defines, so the rule that used to stand here computed to
+   an inherited colour and the tag was neither. */
 .game-browser-tags i.modded {
-  color: var(--color-focus);
-  border-color: rgba(75, 157, 232, 0.3);
-  background: rgba(75, 157, 232, 0.1);
+  color: var(--color-warn);
+  border-color: color-mix(in srgb, var(--color-warn) 30%, transparent);
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+}
+
+.game-browser-tags i.modded.is-ranked {
+  color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 30%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 10%, transparent);
 }
 
 .game-browser-tags i.unranked {
-  color: var(--color-warn);
-  border-color: rgba(251, 191, 36, 0.3);
-  background: rgba(251, 191, 36, 0.1);
+  color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
 }
 
 .game-browser-map-col {
@@ -551,7 +562,7 @@
 }
 
 .game-team-player:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -797,6 +808,12 @@
   color: var(--color-warn);
   border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
   background: color-mix(in srgb, var(--color-warn) 12%, var(--color-surface));
+}
+
+.game-tile-flags i.modded.is-ranked {
+  color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface));
 }
 
 .game-tile-flags i.unranked {
