@@ -1,12 +1,11 @@
 import { Modal } from "../../design-system/Modal";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import type { MatchmakerQueue, PlayerRatingSummary } from "../../ipc/bindings";
+import type { MatchmakerQueue } from "../../ipc/bindings";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { formatClockDuration } from "../../shared/durations";
-import { ratingForQueue } from "./matchmakerRatings";
 import { queueTitle } from "./MatchmakerQueueCard";
-import { queuedRatingBands, shareConditionFor } from "./queueExplainer";
+import { playersPerMatch, queuedRatingBands } from "./queueExplainer";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
 
@@ -28,27 +27,29 @@ function Section({ title, children }: { title: MessageKey; children: React.React
 /**
  * What a queue is, and what it will do to you.
  *
- * Asked for by somebody who plays custom games and has never queued: the
- * settings a matchmaker game runs under are not written anywhere in the
- * client, and neither is the answer to "how far apart can my opponent and I
- * be". Both are the sort of thing an experienced player forgets is invisible.
+ * Asked for by somebody who plays custom games and has never queued. The
+ * questions it is written to answer are about *matching*, not about settings:
  *
- * The prose is prose. The two things that would go stale, the share condition
- * and the rating bands, are read off the server's own data instead: see
- * `queueExplainer.ts` for why a band is reported as a width and not as two
- * ratings, and why a queue whose name says nothing about sharing gets no line
- * rather than a guess.
+ * - how does the server decide who I play?
+ * - how far apart can two ratings be and still be one game?
+ * - eight people are queued for 3v3, so why has nothing started?
+ *
+ * The settings section is short because there is little to say: every
+ * matchmaker game is full share and rated, and nothing else about the lobby is
+ * yours to change. The rest of the dialog is the matching.
+ *
+ * The prose is prose. The one thing that would go stale, the rating bands, is
+ * read off the server's own data instead: see `queueExplainer.ts` for why a
+ * band is reported as a width and not as two ratings.
  *
  * A dialog rather than a fourth panel on a screen that already has three: this
  * is read once, by somebody who has just arrived, and then never again.
  */
 export function MatchmakerExplainer({
   queues,
-  ratings,
   onClose,
 }: {
   queues: MatchmakerQueue[];
-  ratings: PlayerRatingSummary[];
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -62,7 +63,23 @@ export function MatchmakerExplainer({
       <div className="matchmaker-explainer-body">
         <Section title="lobby.matchmaker.explain.howTitle">
           <p>{t("lobby.matchmaker.explain.howBody")}</p>
-          <p>{t("lobby.matchmaker.explain.howWidening")}</p>
+          <p>{t("lobby.matchmaker.explain.howQuality")}</p>
+        </Section>
+
+        {/* The question people actually ask, and the one the client is in the
+            best position to answer, because it can show the numbers. */}
+        <Section title="lobby.matchmaker.explain.stuckTitle">
+          <p>{t("lobby.matchmaker.explain.stuckBody")}</p>
+          <ul>
+            <li>{t("lobby.matchmaker.explain.stuckCount")}</li>
+            <li>{t("lobby.matchmaker.explain.stuckBalance")}</li>
+            <li>{t("lobby.matchmaker.explain.stuckParty")}</li>
+          </ul>
+          <p>{t("lobby.matchmaker.explain.stuckWait")}</p>
+        </Section>
+
+        <Section title="lobby.matchmaker.explain.gapTitle">
+          <p>{t("lobby.matchmaker.explain.gapBody")}</p>
         </Section>
 
         <Section title="lobby.matchmaker.explain.queuesTitle">
@@ -71,28 +88,26 @@ export function MatchmakerExplainer({
           ) : (
             <ul className="matchmaker-explainer-queues">
               {queues.map((queue) => {
-                const rating = ratingForQueue(ratings, queue.queueName);
-                const share = shareConditionFor(rating);
                 const bands = queuedRatingBands(queue);
                 return (
                   <li key={queue.queueName}>
                     <strong>{queueTitle(queue)}</strong>
                     <span className="matchmaker-explainer-facts">
-                      <span>{t("lobby.matchmaker.explain.teamSize", { count: queue.teamSize })}</span>
-                      {share && (
-                        <span>
-                          {t(share === "fullShare"
-                            ? "lobby.matchmaker.explain.fullShare"
-                            : "lobby.matchmaker.explain.shareUntilDeath")}
-                        </span>
-                      )}
+                      {/* How many it takes and how many are there: half the
+                          answer to "why has nothing started" is arithmetic. */}
+                      <span>
+                        {t("lobby.matchmaker.explain.needs", {
+                          players: playersPerMatch(queue),
+                          waiting: queue.numPlayers,
+                        })}
+                      </span>
                       <span>
                         {t("lobby.matchmaker.explain.popEvery", {
                           duration: formatClockDuration(queue.queuePopTimeSeconds),
                         })}
                       </span>
-                      {/* The concrete answer to the question that started this:
-                          how far apart two ratings in one game can be. */}
+                      {/* And the other half: how far apart the people waiting
+                          are willing to be matched. */}
                       <span>
                         {bands
                           ? t("lobby.matchmaker.explain.bands", {
@@ -114,6 +129,7 @@ export function MatchmakerExplainer({
         <Section title="lobby.matchmaker.explain.settingsTitle">
           <p>{t("lobby.matchmaker.explain.settingsBody")}</p>
           <ul>
+            <li>{t("lobby.matchmaker.explain.settingShare")}</li>
             <li>{t("lobby.matchmaker.explain.settingRated")}</li>
             <li>{t("lobby.matchmaker.explain.settingMapPool")}</li>
             <li>{t("lobby.matchmaker.explain.settingTeams")}</li>

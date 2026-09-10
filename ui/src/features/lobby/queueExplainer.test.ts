@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { MatchmakerQueue, PlayerRatingSummary } from "../../ipc/bindings";
-import { queuedRatingBands, shareConditionFor } from "./queueExplainer";
+import type { MatchmakerQueue } from "../../ipc/bindings";
+import { playersPerMatch, queuedRatingBands } from "./queueExplainer";
 
 function queue(overrides: Partial<MatchmakerQueue> = {}): MatchmakerQueue {
   return {
@@ -13,8 +13,6 @@ function queue(overrides: Partial<MatchmakerQueue> = {}): MatchmakerQueue {
     ...overrides,
   };
 }
-
-const rating = (technicalName: string) => ({ technicalName } as PlayerRatingSummary);
 
 describe("the rating bands a queue is searching with", () => {
   it("reports the tightest and the widest, in points of width", () => {
@@ -47,14 +45,14 @@ describe("the rating bands a queue is searching with", () => {
   });
 });
 
-describe("the share condition a queue plays under", () => {
-  it("reads it off the leaderboard name the server chose", () => {
-    expect(shareConditionFor(rating("tmm_4v4_full_share"))).toBe("fullShare");
-    expect(shareConditionFor(rating("4v4_share_until_death_league"))).toBe("shareUntilDeath");
-  });
-
-  it("stays quiet for a name that says nothing about sharing", () => {
-    expect(shareConditionFor(rating("ladder_1v1"))).toBeNull();
-    expect(shareConditionFor(null)).toBeNull();
+describe("how many players a queue needs", () => {
+  it("is twice the team size", () => {
+    // Half the answer to "eight people are queued for 3v3, why is nothing
+    // happening": six of the eight would be a game, and eight is two short of
+    // two games. The other half is whether those six split evenly, which no
+    // count can show.
+    expect(playersPerMatch(queue({ teamSize: 1 }))).toBe(2);
+    expect(playersPerMatch(queue({ teamSize: 3 }))).toBe(6);
+    expect(playersPerMatch(queue({ teamSize: 4 }))).toBe(8);
   });
 });

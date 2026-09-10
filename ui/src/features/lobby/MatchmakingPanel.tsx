@@ -298,11 +298,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
       )}
 
       {explaining && (
-        <MatchmakerExplainer
-          queues={sortedQueues}
-          ratings={matchmakerProfile?.ratings ?? []}
-          onClose={() => setExplaining(false)}
-        />
+        <MatchmakerExplainer queues={sortedQueues} onClose={() => setExplaining(false)} />
       )}
     </div>
   );

@@ -5,7 +5,7 @@
 // them is the only way they stay true: a number typed into a paragraph is
 // wrong the first time the server changes it.
 
-import type { MatchmakerQueue, PlayerRatingSummary } from "../../ipc/bindings";
+import type { MatchmakerQueue } from "../../ipc/bindings";
 
 /**
  * How wide the rating bands of the searches queued right now are.
@@ -45,19 +45,14 @@ export function queuedRatingBands(queue: MatchmakerQueue): QueueBands | null {
 }
 
 /**
- * Which share condition a queue plays under, when its own name says so.
+ * How many players a queue needs before it can start anything.
  *
- * Read from the leaderboard technical name rather than written down, because
- * that name is the server's: the 4v4 queue's board is `tmm_4v4_full_share`,
- * and the client already keys its ratings off exactly that string. A queue
- * whose name says nothing about sharing returns `null` and the explanation
- * stays quiet rather than guessing.
+ * Twice the team size, and it is worth stating because it is half the answer
+ * to the question people actually ask: eight people are queued for 3v3 and no
+ * game starts. Six of the eight would be a game; the other half of the answer
+ * is that those six have to split into two sides the server calls balanced,
+ * which is not something a count can show.
  */
-export type ShareCondition = "fullShare" | "shareUntilDeath";
-
-export function shareConditionFor(rating: PlayerRatingSummary | null): ShareCondition | null {
-  const name = rating?.technicalName.toLocaleLowerCase().replace(/[^a-z]/g, "") ?? "";
-  if (name.includes("fullshare")) return "fullShare";
-  if (name.includes("shareuntildeath")) return "shareUntilDeath";
-  return null;
+export function playersPerMatch(queue: MatchmakerQueue): number {
+  return queue.teamSize * 2;
 }
