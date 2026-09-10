@@ -5223,6 +5223,21 @@ export type ReplayQuery = {
 	/**  Displayed rating bounds, inclusive. */
 	minRating: number | null,
 	maxRating: number | null,
+	/**
+	 *  What the rating bounds are measured against.
+	 *
+	 *  `false`, the default, means the game's **average** rating, which is
+	 *  what somebody looking for "a 1500 game" means. `true` restores the
+	 *  older behaviour: any single player inside the range is a match, which
+	 *  is how both reference clients read the same slider and why a 500 vs
+	 *  2500 stomp used to come back from a search for either number.
+	 *
+	 *  The two are not the same request in a second way: the per-player form
+	 *  is an API clause on `playerStats.ratingChanges.meanBefore`, while an
+	 *  average is computed from the page the API returns, because the resource
+	 *  has no average field. See [`Self::accepts_locally`].
+	 */
+	ratingPerPlayer: boolean,
 	/**  Average review score bounds, 0–5. */
 	minReviewScore: number | null,
 	maxReviewScore: number | null,
@@ -5232,6 +5247,21 @@ export type ReplayQuery = {
 	/**  The map's player-slot count. */
 	mapMinPlayers: number | null,
 	mapMaxPlayers: number | null,
+	/**
+	 *  How many players actually took part, inclusive.
+	 *
+	 *  Distinct from the two above, and that distinction is the request: a
+	 *  search for a map comes back full of two-player test lobbies hosted on a
+	 *  sixteen-slot map, and the slot count cannot tell those apart from the
+	 *  sixteen-player game somebody was looking for.
+	 *
+	 *  Applied to the page the API returns rather than sent as a filter. The
+	 *  game resource exposes `playerStats` as a to-many relation and RSQL
+	 *  cannot count one, so there is no clause to send: see
+	 *  [`Self::accepts_locally`].
+	 */
+	minPlayers: number | null,
+	maxPlayers: number | null,
 	/**  Map edge length in km (the API stores pixels; see [`MAP_PIXELS_PER_KM`]). */
 	mapMinSizeKm: number | null,
 	mapMaxSizeKm: number | null,

@@ -213,7 +213,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
 
         <div className="vault-search-rating">
           <RangeSlider
-            label={t("replays.search.rating")}
+            label={t(form.ratingPerPlayer ? "replays.search.ratingPerPlayer" : "replays.search.ratingAverage")}
             min={MIN_RATING}
             max={MAX_RATING}
             step={50}
@@ -221,6 +221,19 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
             high={form.maxRating}
             onChange={(lo, hi) => setRange("minRating", "maxRating", lo, hi)}
           />
+          {/* What the slider is measuring. Unchecked, and therefore the
+              default, is the game's average: "a 1500 game" is what somebody
+              means by the number, not "a game one of whose players was 1500",
+              which is what the slider used to do and why a 500 against 2500
+              came back from a search for either. */}
+          <label className="option-check vault-search-rating-scope">
+            <input
+              type="checkbox"
+              checked={form.ratingPerPlayer}
+              onChange={(e) => set("ratingPerPlayer", e.target.checked)}
+            />
+            {t("replays.search.ratingScopePerPlayer")}
+          </label>
         </div>
 
         <label className="vault-field search-panel-field">

@@ -647,7 +647,7 @@ impl ReplayClient {
 
         let doc = fetch_document(&self.http, url, token).await?;
         Ok(VaultSearchResult {
-            replays: parse_vault_replays(&doc),
+            replays: retain_locally_matching(query, parse_vault_replays(&doc)),
             total_pages: Some(total_pages),
             total_records: Some(total_records),
         })
@@ -1210,7 +1210,7 @@ impl ReplayPort for ReplayClient {
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
-        let replays = parse_vault_replays(&doc);
+        let replays = retain_locally_matching(&query, parse_vault_replays(&doc));
         let total_pages = total_pages(&doc.meta, query.page_size);
         let total_records = meta_page_i32(&doc.meta, "totalRecords");
         Ok(VaultSearchResult {
@@ -2840,6 +2840,32 @@ fn parse_featured_mods(doc: &JsonApiDoc) -> Vec<String> {
                 .and_then(Value::as_str)
                 .filter(|name| !name.is_empty())
                 .map(str::to_string)
+        })
+        .collect()
+}
+
+/// Drop the rows the API was never asked to exclude.
+///
+/// Two of the vault's filters have no clause the game resource can answer: the
+/// number of players who actually took part, and rating bounds read as the
+/// game's average. Both are decided here, on the page that came back, and the
+/// rule itself lives in the domain so it is testable without a network.
+///
+/// This makes a page shorter than the page size, and the view says so. See
+/// `ReplayQuery::accepts_locally`.
+fn retain_locally_matching(query: &ReplayQuery, replays: Vec<VaultReplay>) -> Vec<VaultReplay> {
+    if !query.has_local_filter() {
+        return replays;
+    }
+    replays
+        .into_iter()
+        .filter(|replay| {
+            let players: i32 = replay
+                .teams
+                .iter()
+                .map(|team| i32::try_from(team.players.len()).unwrap_or(i32::MAX))
+                .sum();
+            query.accepts_locally(players, replay.average_rating)
         })
         .collect()
 }
