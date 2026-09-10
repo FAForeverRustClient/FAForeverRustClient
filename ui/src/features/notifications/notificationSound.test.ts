@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { NotificationKind, NotificationSound, NotificationSoundChoices } from "../../ipc/bindings";
-import { notificationTonePlan, soundForKind, tonePlanDuration } from "./notificationSound";
+import {
+  notificationTonePlan,
+  soundForKind,
+  tonePeakGain,
+  tonePlanDuration,
+} from "./notificationSound";
 
 const AUDIBLE: NotificationSound[] = ["soft", "chime", "ping", "alert"];
 
@@ -33,21 +38,46 @@ describe("the shipped tones", () => {
       if (!plan) continue;
       expect(plan.attackSeconds, sound).toBeGreaterThan(0);
       expect(plan.attackSeconds, sound).toBeLessThan(0.03);
-      expect(plan.peakGain, sound).toBeGreaterThan(0);
-      expect(plan.peakGain, sound).toBeLessThanOrEqual(0.08);
+      // Loud enough to be heard at all, which is the bug these numbers fix,
+      // and far enough from full scale that nothing can clip.
+      expect(plan.peakGain, sound).toBeGreaterThanOrEqual(0.1);
+      expect(plan.peakGain, sound).toBeLessThanOrEqual(0.35);
       // Long enough to be heard, short enough not to talk over the game.
       expect(tonePlanDuration(plan), sound).toBeLessThanOrEqual(0.4);
       expect(plan.notes.length, sound).toBeGreaterThan(0);
     }
   });
 
-  it("leaves chime exactly the tone the client played before", () => {
-    // Anybody who liked one sound for everything sets every row to chime, and
-    // this is the assertion that keeps that promise honest.
+  it("keeps chime the pitch and timbre it has always been", () => {
+    // Anybody who liked one sound for everything sets every row to chime, so
+    // the tone itself is fixed. Its *level* is not: it was 0.06, which nobody
+    // could hear, and the report behind that change is the whole reason this
+    // module was revisited.
     const chime = notificationTonePlan("chime");
     expect(chime?.notes).toEqual([{ frequency: 523.25, startSeconds: 0, durationSeconds: 0.2 }]);
-    expect(chime?.peakGain).toBe(0.06);
     expect(chime?.partials.map((partial) => partial.gain)).toEqual([1, 0.2, 0.06]);
+  });
+
+  it("keeps the four graded by how much attention they ask for", () => {
+    const gains = AUDIBLE.map((sound) => notificationTonePlan(sound)?.peakGain ?? 0);
+    // `soft` is the quietest and `alert` the loudest; `ping` sits under `chime`
+    // because 880 Hz already carries further than 523 at the same amplitude.
+    expect(gains[0]).toBeLessThan(gains[2]);
+    expect(gains[2]).toBeLessThan(gains[3]);
+    expect(gains[1]).toBeLessThan(gains[3]);
+  });
+
+  it("scales a tone by the volume setting and stops at zero", () => {
+    const chime = notificationTonePlan("chime");
+    if (!chime) throw new Error("chime has no plan");
+    expect(tonePeakGain(chime, 100)).toBeCloseTo(chime.peakGain);
+    expect(tonePeakGain(chime, 50)).toBeCloseTo(chime.peakGain / 2);
+    // Zero is the setting that means no sound, and out-of-range values are
+    // clamped rather than trusted: `playNotificationSound` plays nothing for a
+    // peak of zero, which is how the slider's bottom end stays silent.
+    expect(tonePeakGain(chime, 0)).toBe(0);
+    expect(tonePeakGain(chime, -20)).toBe(0);
+    expect(tonePeakGain(chime, 400)).toBeCloseTo(chime.peakGain);
   });
 
   it("separates the tones by pitch, not only by volume", () => {
