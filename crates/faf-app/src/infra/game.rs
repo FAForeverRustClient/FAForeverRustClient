@@ -62,10 +62,30 @@ impl GameConfig {
 /// A running Forged Alliance, and which executable it is running.
 ///
 /// The path is kept because two instances of the *same* install fight over
-/// that install's shader cache and lock files: see [`GameProcess::spawn`].
+/// that install's shader cache and lock files: see [`GameProcess::spawn`]. It
+/// is kept in [`install_key`] form, because "same install" is a question about
+/// the file, not about how the setting spells its path.
 struct Running {
     child: Child,
     exe: PathBuf,
+}
+
+/// A path in a form two spellings of the same file agree on.
+///
+/// A live game and a replay are two different executables in a normal FAF
+/// install: `FAForever\bin\ForgedAlliance.exe` and
+/// `FAForever\replaydata\bin\ForgedAlliance.exe`, which share a filename and
+/// nothing else. So the comparison has to be on the full path, and on Windows
+/// a full path typed into a settings field differs from the same path picked
+/// from a dialog in case and in separators. `canonicalize` resolves both, plus
+/// any junction or symlink between them.
+///
+/// Falls back to the path as given when it cannot be resolved, which is the
+/// safe direction: the caller has already established the file exists, so this
+/// only fires on something exotic, and an unresolved path compares equal to
+/// itself.
+fn install_key(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
 /// Which of the two installs a launch belongs to.
@@ -146,7 +166,7 @@ impl GameProcess {
             return false;
         };
         match running.child.try_wait() {
-            Ok(None) => running.exe == exe,
+            Ok(None) => running.exe == install_key(exe),
             _ => {
                 *guard = None;
                 false
@@ -222,7 +242,7 @@ impl GameProcess {
         // `ProcessPort::kill`'s own termination call.
         let running = Running {
             child,
-            exe: exe.clone(),
+            exe: install_key(&exe),
         };
         if let Some(mut prev) = self.slot(slot).lock().unwrap().replace(running) {
             let _ = prev.child.start_kill();
@@ -786,6 +806,18 @@ mod tests {
         assert!(process.game_child.lock().unwrap().is_none());
         assert!(process.replay_child.lock().unwrap().is_none());
         assert!(!Arc::ptr_eq(&process.game_child, &process.replay_child));
+    }
+
+    #[test]
+    fn the_game_and_the_replay_install_are_different_files() {
+        // A normal FAF install, as the maintainer has it: the two executables
+        // share a filename and differ only in the directory, so anything
+        // comparing filenames would call them the same install and refuse the
+        // second launch. `install_key` compares the whole path.
+        let game = PathBuf::from(r"C:\ProgramData\FAForever\bin\ForgedAlliance.exe");
+        let replay = PathBuf::from(r"C:\ProgramData\FAForever\replaydata\bin\ForgedAlliance.exe");
+        assert_eq!(game.file_name(), replay.file_name());
+        assert_ne!(super::install_key(&game), super::install_key(&replay));
     }
 
     #[test]
