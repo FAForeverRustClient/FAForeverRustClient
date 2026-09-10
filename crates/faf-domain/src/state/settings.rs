@@ -431,21 +431,16 @@ pub enum NotificationSound {
 /// UI. Everything without a switch of its own (server notices, errors, a
 /// finished map, a new client version) shares [`Self::other`].
 ///
-/// The defaults are not all the same value, and that is the point of the
-/// feature: every notification sounding identical is what was reported. They
-/// are graded by whether something is waiting on an answer:
+/// **Every default is [`NotificationSound::Chime`]**, which is the tone the
+/// client played for everything before this existed. Installing an update
+/// therefore changes nothing anybody hears; a player who wants a match to sound
+/// different from a friend coming online says so, per row, and that is the
+/// feature. Graded defaults were tried first and rejected: shipping a set of
+/// choices somebody did not make is a worse answer to "all notifications sound
+/// the same" than letting them make it.
 ///
-/// - **Alert** for a match, a party invite and a lobby filling up: all three
-///   expire, and the last one was asked for by name on the issue.
-/// - **Ping** for a private message and a mention: addressed to you.
-/// - **Chime**, the client's existing tone, for a game launching and for
-///   everything without a switch.
-/// - **Soft** for the ambient stream: a friend's presence, a new lobby, a
-///   review reminder. These are the ones a player hears twenty times an
-///   evening.
-///
-/// Anybody who preferred one sound for everything sets every row to Chime, and
-/// anybody who wants a kind seen but not heard sets it to Silent.
+/// [`NotificationSound::Silent`] is available on every row, which is how a kind
+/// is seen and not heard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationSoundChoices {
@@ -466,18 +461,19 @@ pub struct NotificationSoundChoices {
 
 impl Default for NotificationSoundChoices {
     fn default() -> Self {
+        // One value, deliberately: see the note on the struct.
         Self {
-            match_found: NotificationSound::Alert,
-            private_message: NotificationSound::Ping,
-            mention: NotificationSound::Ping,
-            friend_online: NotificationSound::Soft,
-            friend_offline: NotificationSound::Soft,
-            friend_playing: NotificationSound::Soft,
-            new_custom_game: NotificationSound::Soft,
-            game_full: NotificationSound::Alert,
+            match_found: NotificationSound::Chime,
+            private_message: NotificationSound::Chime,
+            mention: NotificationSound::Chime,
+            friend_online: NotificationSound::Chime,
+            friend_offline: NotificationSound::Chime,
+            friend_playing: NotificationSound::Chime,
+            new_custom_game: NotificationSound::Chime,
+            game_full: NotificationSound::Chime,
             game_launched: NotificationSound::Chime,
-            review_reminder: NotificationSound::Soft,
-            party_invite: NotificationSound::Alert,
+            review_reminder: NotificationSound::Chime,
+            party_invite: NotificationSound::Chime,
             other: NotificationSound::Chime,
         }
     }

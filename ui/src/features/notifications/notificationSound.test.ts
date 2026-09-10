@@ -4,6 +4,8 @@ import { notificationTonePlan, soundForKind, tonePlanDuration } from "./notifica
 
 const AUDIBLE: NotificationSound[] = ["soft", "chime", "ping", "alert"];
 
+// Not the defaults, which are all chime: a mapping test needs the twelve
+// fields to be distinguishable, which is exactly what the defaults are not.
 const CHOICES: NotificationSoundChoices = {
   matchFound: "alert",
   privateMessage: "ping",
@@ -16,7 +18,7 @@ const CHOICES: NotificationSoundChoices = {
   gameLaunched: "chime",
   reviewReminder: "soft",
   partyInvite: "alert",
-  other: "chime",
+  other: "silent",
 };
 
 describe("the shipped tones", () => {
