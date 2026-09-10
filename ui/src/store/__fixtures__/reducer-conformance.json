@@ -16,7 +16,8 @@
         "replaysDir": "",
         "gamePrefsPath": "",
         "mapGeneratorDir": "",
-        "javaPath": ""
+        "javaPath": "",
+        "winePrefix": ""
       }
     },
     "auth": {
@@ -665,7 +666,8 @@
         "replaysDir": "",
         "gamePrefsPath": "",
         "mapGeneratorDir": "",
-        "javaPath": ""
+        "javaPath": "",
+        "winePrefix": ""
       },
       "general": {
         "startPage": "news",
@@ -744,6 +746,7 @@
       },
       "game": {
         "additionalArguments": [],
+        "launchWrapper": "",
         "autoGenerateMaps": true,
         "confirmDownloadsBeforeJoining": true,
         "cacheLifetimeDays": 30,
@@ -1861,6 +1864,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "",
@@ -1943,7 +1947,8 @@
               "mapsDir": "",
               "modsDir": "",
               "replaysDir": "",
-              "vaultDir": ""
+              "vaultDir": "",
+              "winePrefix": ""
             },
             "replayGamePath": "",
             "social": {
@@ -2250,7 +2255,8 @@
                   "replaysDir": "C:/ProgramData/FAForever/replays",
                   "gamePrefsPath": "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs",
                   "mapGeneratorDir": "C:/Users/ada/AppData/Roaming/faf/map_generator",
-                  "javaPath": "java"
+                  "javaPath": "java",
+                  "winePrefix": ""
                 }
               }
             }
@@ -2266,7 +2272,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "D:/faf/vault/mods",
               "replaysDir": "C:/ProgramData/FAForever/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": ""
             }
           }
         }
@@ -28829,6 +28836,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "",
@@ -28911,7 +28919,8 @@
               "mapsDir": "",
               "modsDir": "",
               "replaysDir": "",
-              "vaultDir": ""
+              "vaultDir": "",
+              "winePrefix": ""
             },
             "replayGamePath": "",
             "social": {
@@ -29064,6 +29073,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -29146,7 +29156,8 @@
               "mapsDir": "",
               "modsDir": "",
               "replaysDir": "",
-              "vaultDir": ""
+              "vaultDir": "",
+              "winePrefix": ""
             },
             "replayGamePath": "",
             "social": {
@@ -29172,7 +29183,8 @@
                   "replaysDir": " D:/faf/replays ",
                   "gamePrefsPath": "",
                   "mapGeneratorDir": "",
-                  "javaPath": ""
+                  "javaPath": "",
+                  "winePrefix": " /home/player/.wine "
                 }
               }
             }
@@ -29307,6 +29319,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -29389,7 +29402,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
               "replaysDir": "D:/faf/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
             },
             "replayGamePath": "",
             "social": {
@@ -29546,6 +29560,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -29630,7 +29645,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
               "replaysDir": "D:/faf/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
             },
             "replayGamePath": "",
             "social": {
@@ -29785,6 +29801,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -29870,7 +29887,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
               "replaysDir": "D:/faf/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
             },
             "replayGamePath": "",
             "social": {
@@ -30046,6 +30064,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -30131,7 +30150,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
               "replaysDir": "D:/faf/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
             },
             "replayGamePath": "",
             "social": {
@@ -30298,6 +30318,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -30383,7 +30404,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
               "replaysDir": "D:/faf/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
             },
             "replayGamePath": "",
             "social": {
@@ -30552,6 +30574,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -30637,7 +30660,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
               "replaysDir": "D:/faf/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
             },
             "replayGamePath": "",
             "social": {
@@ -30890,6 +30914,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "launchWrapper": "",
               "pipeLiveReplay": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
@@ -30975,7 +31000,8 @@
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "",
               "replaysDir": "D:/faf/replays",
-              "vaultDir": "D:/faf/vault"
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
             },
             "replayGamePath": "",
             "social": {

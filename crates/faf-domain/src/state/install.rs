@@ -31,6 +31,9 @@ pub struct ResolvedPaths {
     pub game_prefs_path: String,
     pub map_generator_dir: String,
     pub java_path: String,
+    /// The Wine prefix a launch would use, or empty on Windows, where the game
+    /// runs without one.
+    pub wine_prefix: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]

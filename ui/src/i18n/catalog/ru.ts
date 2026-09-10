@@ -1136,6 +1136,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gamePrefsHint": "Файл настроек Forged Alliance, читается для включения модов.",
   "settings.paths.java": "Среда Java",
   "settings.paths.javaHint": "Запускает генератор карт и Java-адаптер связи.",
+  "settings.paths.winePrefix": "Префикс Wine",
+  "settings.paths.winePrefixHint": "Окружение Windows, в котором работает Forged Alliance. Игра хранит там свои настройки, поэтому клиент тоже должен искать их там.",
   "settings.paths.browse": "Обзор…",
   "settings.paths.reset": "Сбросить",
   "settings.paths.resetHint": "Вернуться к автоматическому расположению",
@@ -1195,6 +1197,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.argumentsLabel": "Дополнительные аргументы запуска",
   "settings.game.argumentsHint": "По одному буквальному аргументу процесса в строке. Применяются к играм и воспроизведению реплеев без вызова оболочки.",
   "settings.game.argumentsNote": "Аргументы, требуемые протоколом, клиент задаёт сам.",
+  "settings.game.launchWrapperLabel": "Команда запуска",
+  "settings.game.launchWrapperHint": "Запускает игру, исполняемый файл идёт следом. Forged Alliance: программа для Windows, и в этой системе ей нужен Wine или Proton: обычно достаточно \"wine\".",
+  "settings.game.launchWrapperNote": "Это не оболочка: кавычки объединяют слова, больше ничего не разбирается. Пустое поле запускает игру напрямую.",
   "settings.game.saveArguments": "Сохранить аргументы",
 
   "settings.connectivity.connectivityAdapter": "Адаптер подключения",

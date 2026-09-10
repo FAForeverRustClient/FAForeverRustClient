@@ -1120,6 +1120,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gamePrefsHint": "Le fichier de préférences de Forged Alliance, lu pour appliquer les mods.",
   "settings.paths.java": "Environnement Java",
   "settings.paths.javaHint": "Exécute le générateur de cartes et l'adaptateur de connectivité Java.",
+  "settings.paths.winePrefix": "Préfixe Wine",
+  "settings.paths.winePrefixHint": "L'environnement Windows dans lequel Forged Alliance s'exécute. Le jeu y écrit ses propres réglages, le client doit donc les y chercher aussi.",
   "settings.paths.browse": "Parcourir…",
   "settings.paths.reset": "Réinitialiser",
   "settings.paths.resetHint": "Revenir à l'emplacement automatique",
@@ -1179,6 +1181,9 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.game.argumentsLabel": "Arguments de lancement supplémentaires",
   "settings.game.argumentsHint": "Un argument de processus littéral par ligne. Appliqué aux parties en direct et à la lecture des replays, sans passer par un shell.",
   "settings.game.argumentsNote": "Les arguments requis par le protocole sont gérés par le client.",
+  "settings.game.launchWrapperLabel": "Commande de lancement",
+  "settings.game.launchWrapperHint": "Lance le jeu, l'exécutable venant après. Forged Alliance est un programme Windows et nécessite Wine ou Proton sur ce système : \"wine\" suffit le plus souvent.",
+  "settings.game.launchWrapperNote": "Pas un interpréteur de commandes : les guillemets regroupent des mots, rien d'autre n'est interprété. Vide, le jeu est lancé directement.",
   "settings.game.saveArguments": "Enregistrer les arguments",
 
   "settings.connectivity.connectivityAdapter": "Adaptateur de connexion",

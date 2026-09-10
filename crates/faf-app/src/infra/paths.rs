@@ -56,6 +56,15 @@ pub(crate) fn map_generator_dir() -> Option<PathBuf> {
     configured(|paths| &paths.map_generator_dir)
 }
 
+/// The Wine prefix the game runs in, when one is configured.
+///
+/// Read by the launcher, which passes it to the game as `WINEPREFIX`, and by
+/// [`crate::infra::mods`], which has to find the `game.prefs` *inside* it.
+/// Both have to agree or enabling a mod writes to a file the game never reads.
+pub(crate) fn wine_prefix() -> Option<PathBuf> {
+    configured(|paths| &paths.wine_prefix)
+}
+
 pub(crate) fn java_path() -> Option<PathBuf> {
     configured(|paths| &paths.java_path)
 }
@@ -85,6 +94,12 @@ impl PathsPort for ConfiguredPaths {
             game_prefs_path: display(crate::infra::mods::game_prefs_path()),
             map_generator_dir: display(crate::infra::map_generator::generator_dir()),
             java_path: crate::infra::java_runtime::preferred_java_path(),
+            // Empty on Windows rather than a path nothing would use: the row
+            // is not shown there, and reporting a `.wine` directory as the
+            // prefix "a launch would use" would be a lie.
+            wine_prefix: crate::infra::mods::resolved_wine_prefix()
+                .map(display)
+                .unwrap_or_default(),
         }
     }
 }
