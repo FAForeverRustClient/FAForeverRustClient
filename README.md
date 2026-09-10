@@ -14,7 +14,7 @@ The unidirectional state loop is wired end-to-end and proven:
 UI dispatch ─▶ Tauri command ─▶ service ─▶ event ─▶ reduce(AppState) ─▶ emit ─▶ store ─▶ UI
 ```
 
-Features so far:
+The vertical slices that established the loop, each still the reference for its pattern:
 
 - **session**: connection-status handshake.
 - **auth**: login/logout via the **Port pattern** (`AuthPort`). Real provider `OAuthAuth`
@@ -35,6 +35,24 @@ Features so far:
   `GET user.faforever.com/lobby/access` → verified `wss://…/?verify=…` URL →
   `ask_session` → `auth` (token + `faf-uid` fingerprint) → `game_info`. The OAuth access
   token reaches the lobby via an in-memory `TokenStore`, never through `AppState`.
+
+Everything since is the same shape, one slice plus service plus port each. 28 slices and 14
+tabs today; `ls ui/src/features` and `crates/faf-domain/src/state/mod.rs` are the current
+answer, and `docs/PROJECT_GUIDE.md` maps them:
+
+- **play**: custom game browser and hosting, matchmaker with party and map pool vetoes,
+  co-op, and Galactic War (a separate application this client only installs and starts).
+- **chat**: IRC over a binary WebSocket, with reconnect after a suspend.
+- **vault**: maps, mods, replays (vault, local and live spectate), uploads, and the Neroxis
+  map generator.
+- **community**: tournaments against FAF's own `faf-tournaments` service, leaderboards and
+  player cards, clan management, moderation reports and reviews.
+- **content**: a training hub over a community catalogue kept in a Git repository, an events
+  calendar built the same way, and FAForever/fa's patch notes read in the client.
+- **client**: settings with configurable game paths, notifications, diagnostics, and client
+  self-update from GitHub releases.
+- **six languages** (`en`, `de`, `fr`, `ru`, `es`, `pl`): a missing translation falls back to
+  English, and a missing key is a compile error. See `ui/src/i18n/`.
 
 **CI** (`.github/workflows/ci.yml`) runs tests, clippy, frontend linting,
 typecheck, build, a bindings-drift check (fails if `ui/src/ipc/bindings.ts` is
