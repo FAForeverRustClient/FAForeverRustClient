@@ -141,13 +141,23 @@ const PIPE_TERMINATOR: [u8; 2048] = [0u8; 2048];
 /// avatars, the rating changes and the review summary.
 const VAULT_INCLUDE: &str = "mapVersion,mapVersion.map,featuredMod,playerStats.player,playerStats.player.avatarAssignments.avatar,playerStats.ratingChanges,reviewsSummary";
 
-/// How many ids one page of a shared-games scan asks for. Half the API's 10 000
-/// ceiling (`elide.max-page-size`): every page is now a bounded index range, so
-/// the cost is in the round trips, and a decade of games is four requests
-/// instead of twenty.
-const ID_SCAN_PAGE_SIZE: u32 = 5000;
+/// The largest page the API will actually give an ordinary client.
+///
+/// `elide.max-page-size` is 10 000 and that is the number the docs show, but
+/// the API only lets the scraper role near it: every other request is passed
+/// through `ElidePageSizeUtil`, which **rewrites** a larger `page[size]` down
+/// to `elide.default-page-size`, currently 100. It is rewritten silently: the
+/// response carries no hint that it was, and a page that came back with 100
+/// rows on it looks exactly like a page that ran out of vault after 100 rows.
+///
+/// So this is not a tuning knob. Asking for more than 100 is asking for 100,
+/// and any scan that reads "fewer rows than I asked for" as "the end" stops
+/// after its first request. That is the bug this constant exists to prevent,
+/// and it had already happened once elsewhere in the client: see the same note
+/// in `infra::player_card`.
+const API_PAGE_SIZE: u32 = 100;
 
-/// How far a locally filtered search reads ahead, and how much per request.
+/// How far a locally filtered search reads ahead.
 ///
 /// Two of the vault's filters have no clause the API can answer (see
 /// `ReplayQuery::accepts_locally`), so rows are dropped after they arrive. One
@@ -157,28 +167,33 @@ const ID_SCAN_PAGE_SIZE: u32 = 5000;
 /// expects a page size to mean.
 ///
 /// Bounded, because a filter almost nothing matches would otherwise walk the
-/// whole vault one request at a time. Eight hundred games is more than enough
+/// whole vault one request at a time. Sixteen hundred games is more than enough
 /// for a filtered search anybody actually runs, and the ceiling only costs
 /// requests when it is reached: a search whose matches turn up early stops at
 /// the first page.
-const LOCAL_SCAN_PAGES: u32 = 8;
-const LOCAL_SCAN_PAGE_SIZE: u32 = 200;
+const LOCAL_SCAN_PAGES: u32 = 16;
 
-/// The point at which a shared-games scan stops and says so. Roughly twice the
-/// game count of the busiest account on the server, so it exists to bound a
-/// filter that went wrong (a one-letter substring matching thousands of
-/// players), not to trim a real search.
-const ID_SCAN_CAP: usize = 100_000;
+/// The point at which a shared-games scan stops and says so.
+///
+/// A page budget, because a page is what a request costs and [`API_PAGE_SIZE`]
+/// is all the API will put on one: 200 requests, so 20 000 games per account,
+/// which is above the busiest account on the server. It bounds a filter that
+/// went wrong (a one-letter substring matching thousands of players) rather
+/// than trimming a real search, and when it is reached the result says so.
+const ID_SCAN_PAGES: usize = 200;
 
 /// How many accounts one shared-games search will look up. A substring name can
 /// legitimately match a handful of logins; a two-letter one matches thousands,
 /// and scanning all of their histories is not what the user meant.
-const MAX_RESOLVED_PLAYERS: u32 = 200;
+///
+/// One API page, because [`API_PAGE_SIZE`] is as many as one request can return
+/// however many are asked for.
+const MAX_RESOLVED_PLAYERS: u32 = API_PAGE_SIZE;
 
 /// How large an intersection can be and still be reordered by a sort the scans
-/// did not fetch. One request's worth: beyond it the result stays newest-first,
-/// which is what the scans produce anyway.
-const MAX_SORTABLE_SHARED_GAMES: usize = 1000;
+/// did not fetch. One request's worth ([`API_PAGE_SIZE`]): beyond it the result
+/// stays newest-first, which is what the scans produce anyway.
+const MAX_SORTABLE_SHARED_GAMES: usize = API_PAGE_SIZE as usize;
 
 #[derive(Debug, Clone)]
 pub struct ReplayConfig {
@@ -723,7 +738,7 @@ impl ReplayClient {
     /// Reads API pages from the first one, keeping the rows that survive
     /// `accepts_locally`, until it has enough of them for the page that was
     /// asked for or it runs out of vault or of ceiling
-    /// (`LOCAL_SCAN_PAGES` x `LOCAL_SCAN_PAGE_SIZE` games).
+    /// (`LOCAL_SCAN_PAGES` x `API_PAGE_SIZE` games).
     ///
     /// **The page count is the part worth reading twice.** It may only promise
     /// a page this can actually fill. Advertising one more page than there are
@@ -813,7 +828,7 @@ impl ReplayClient {
                 let mut pairs = url.query_pairs_mut();
                 pairs
                     .append_pair("sort", &query.sort_param())
-                    .append_pair("page[size]", &LOCAL_SCAN_PAGE_SIZE.to_string())
+                    .append_pair("page[size]", &API_PAGE_SIZE.to_string())
                     .append_pair("page[number]", &scan_page.to_string())
                     .append_pair("include", VAULT_INCLUDE);
                 if let Some(filter) = replay_query::build_filter(query, fallback.as_deref(), None) {
@@ -827,8 +842,11 @@ impl ReplayClient {
             matched.extend(retain_locally_matching(query, rows));
             scanned = scan_page;
 
-            // A short page is the end of the results, whatever the meta says.
-            if received < LOCAL_SCAN_PAGE_SIZE as usize {
+            // Only an *empty* page is the end of the results. A short one is
+            // not: the API clamps `page[size]` to its own limit without saying
+            // so, so "fewer than I asked for" is what every full page looks
+            // like. See `API_PAGE_SIZE`.
+            if received == 0 {
                 exhausted = true;
                 break;
             }
@@ -843,7 +861,7 @@ impl ReplayClient {
         // unanswerable from a bug report.
         tracing::info!(
             pages = scanned,
-            games = scanned as usize * LOCAL_SCAN_PAGE_SIZE as usize,
+            games = scanned as usize * API_PAGE_SIZE as usize,
             matched = matched.len(),
             exhausted,
             elapsed_ms = started.elapsed().as_millis() as u64,
@@ -927,8 +945,8 @@ impl ReplayClient {
     /// because a fieldset wants a field, and `infra::player_card` narrows the
     /// same type the same way.
     ///
-    /// [`ID_SCAN_CAP`] is a runaway guard, not a page budget: it sits well above
-    /// the busiest account on the server, so a real scan ends on a short page.
+    /// [`ID_SCAN_PAGES`] is a runaway guard: it sits well above the busiest
+    /// account on the server, so a real scan ends when a page comes back empty.
     async fn collect_game_ids(
         &self,
         query: &ReplayQuery,
@@ -937,14 +955,14 @@ impl ReplayClient {
     ) -> Result<Vec<i32>, String> {
         let mut ids: Vec<i32> = Vec::new();
         let mut before_id: Option<i32> = None;
-        loop {
+        for page_number in 1..=ID_SCAN_PAGES {
             let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
                 .map_err(|e| format!("invalid API base: {e}"))?;
             {
                 let mut pairs = url.query_pairs_mut();
                 pairs
                     .append_pair("sort", "-id")
-                    .append_pair("page[size]", &ID_SCAN_PAGE_SIZE.to_string())
+                    .append_pair("page[size]", &API_PAGE_SIZE.to_string())
                     .append_pair("fields[game]", "startTime");
                 if let Some(filter) = replay_query::build_scan_filter(query, player_ids, before_id)
                 {
@@ -953,7 +971,6 @@ impl ReplayClient {
             }
 
             let doc = fetch_document(&self.http, url, token).await?;
-            let received = doc.data.len();
             let page: Vec<i32> = doc
                 .data
                 .iter()
@@ -962,22 +979,25 @@ impl ReplayClient {
             let lowest = page.iter().copied().min();
             ids.extend(page);
             match lowest {
-                // A short page is the end; so is a page whose ids cannot be
+                // An empty page is the end; so is a page whose ids cannot be
                 // parsed, which would otherwise seek from the same place
-                // forever.
-                Some(lowest) if received >= ID_SCAN_PAGE_SIZE as usize => {
-                    if ids.len() >= ID_SCAN_CAP {
+                // forever. A *short* page is neither: the API clamps
+                // `page[size]` to its own limit and never says it did, so this
+                // scan used to stop after one request and hand back the newest
+                // hundred games as if they were the player's whole history.
+                Some(lowest) => {
+                    if page_number == ID_SCAN_PAGES {
                         tracing::warn!(
                             collected = ids.len(),
                             "replay id scan hit its cap; the shared-games result may be incomplete"
                         );
-                        return Ok(ids);
                     }
                     before_id = Some(lowest);
                 }
                 _ => return Ok(ids),
             }
         }
+        Ok(ids)
     }
 
     /// The intersection in the order the user asked for.
@@ -1388,6 +1408,16 @@ impl ReplayPort for ReplayClient {
             .tokens
             .get()
             .ok_or_else(|| "not logged in".to_string())?;
+
+        // Clamped once, here, so the page arithmetic below and in both scans
+        // agrees with what the API will actually send. A larger page size is
+        // rewritten server side (see `API_PAGE_SIZE`), so a request for 200
+        // returns 100 while the pager still counts in 200s, and half of every
+        // result set becomes unreachable.
+        let query = ReplayQuery {
+            page_size: query.page_size.clamp(1, API_PAGE_SIZE),
+            ..query
+        };
 
         // Two or more names is a different question ("games they shared") and
         // needs a different shape of request: see `search_shared_games`.

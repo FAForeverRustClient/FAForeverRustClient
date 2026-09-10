@@ -168,7 +168,12 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
             value={form.pageSize}
             onChange={(e) => set("pageSize", Number(e.target.value))}
           >
-            {[25, 50, 100, 200].map((size) => (
+            {/* 100 is the ceiling because it is the API's: a larger
+                `page[size]` is rewritten server side without a word about it,
+                so "200 per page" returned 100 rows and made the second half of
+                every result set unreachable, the pager still counting in
+                200s. */}
+            {[25, 50, 100].map((size) => (
               <option key={size} value={size}>
                 {size}
               </option>
