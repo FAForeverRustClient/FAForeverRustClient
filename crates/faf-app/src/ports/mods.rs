@@ -11,7 +11,9 @@ use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 use faf_domain::protocol::vault_query::ModVaultQuery;
-use faf_domain::state::{InstalledMod, ModVersionConflict, VaultMod};
+use faf_domain::state::{
+    InstalledMod, ModDownloadSize, ModDownloadTarget, ModVersionConflict, VaultMod,
+};
 
 /// One page of a mod vault search. Mirrors `MapSearchPage`.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -34,6 +36,19 @@ pub trait ModsPort: Send + Sync {
     /// Scan the user's mods folder, cross-referenced against `game.prefs`'s
     /// `active_mods` table for each mod's `enabled` state.
     async fn list_installed(&self) -> Result<Vec<InstalledMod>, String>;
+
+    /// How big these archives are, without fetching them.
+    ///
+    /// A HEAD per target, because the API's `mod` resource carries a download
+    /// URL and no file length: asking the storage server is the only way to
+    /// answer "how much is this join going to download". One entry back per
+    /// target, with `bytes: None` for the ones that did not say, so a caller
+    /// can tell an answer of "unknown" from no answer at all.
+    ///
+    /// Never fails as a whole. A size is a courtesy on a dialog that works
+    /// without it, and a mod vault that is slow to answer must not be able to
+    /// hold up a join.
+    async fn download_sizes(&self, targets: Vec<ModDownloadTarget>) -> Vec<ModDownloadSize>;
 
     /// Download and extract a mod version's zip. Returns the refreshed
     /// installed list so the caller doesn't need a separate rescan.

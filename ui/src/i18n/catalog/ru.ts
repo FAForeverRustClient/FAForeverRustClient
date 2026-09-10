@@ -1332,6 +1332,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.search.anyMod": "Любой",
   "replays.search.leaderboard": "Рейтинг",
   "replays.search.rating": "Рейтинг",
+  "replays.search.ratingPerPlayer": "Рейтинг игрока",
   "replays.search.sortBy": "Сортировка",
   "replays.search.submit": "Найти",
   "replays.search.descendingAria": "По убыванию; нажмите для возрастания",
@@ -1893,4 +1894,5 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.generate.closePreview": "Нажмите в любом месте, чтобы закрыть",
   "replays.detail.simMods": "Моды симуляции",
   "replays.roster.ratingChange": "Изменение рейтинга за эту игру",
+  "replays.vault.resultCountUnknown": "Показано {shown} · страниц: {pages} · общее число с этим фильтром неизвестно",
 };

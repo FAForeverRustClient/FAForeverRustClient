@@ -67,6 +67,19 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
           high={form.mapMaxPlayers}
           onChange={(lo, hi) => setRange("mapMinPlayers", "mapMaxPlayers", lo, hi)}
         />
+        {/* Not the same filter as the one above, and the difference is the
+            request: a search for a map comes back full of two-player test
+            lobbies hosted on a sixteen-slot map, and the slot count cannot
+            tell those from the sixteen-player game somebody wanted. */}
+        <RangeSlider
+          label={t("replays.filters.playerCount")}
+          min={1}
+          max={MAX_MAP_PLAYERS}
+          step={1}
+          low={form.minPlayers}
+          high={form.maxPlayers}
+          onChange={(lo, hi) => setRange("minPlayers", "maxPlayers", lo, hi)}
+        />
         <RangeSlider
           label={t("replays.filters.mapSize")}
           min={0}
@@ -155,7 +168,12 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
             value={form.pageSize}
             onChange={(e) => set("pageSize", Number(e.target.value))}
           >
-            {[25, 50, 100, 200].map((size) => (
+            {/* 100 is the ceiling because it is the API's: a larger
+                `page[size]` is rewritten server side without a word about it,
+                so "200 per page" returned 100 rows and made the second half of
+                every result set unreachable, the pager still counting in
+                200s. */}
+            {[25, 50, 100].map((size) => (
               <option key={size} value={size}>
                 {size}
               </option>
@@ -190,6 +208,13 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
           {t("replays.filters.rankedMapsOnly")}
         </label>
       </div>
+
+      {/* One filter the API cannot answer, so the client applies it to the
+          page it got back. That makes a page shorter than the page size, which
+          looks like a bug unless the form says otherwise. */}
+      {hasLocalFilter(form) && (
+        <p className="muted vault-search-note">{t("replays.filters.localFilterNote")}</p>
+      )}
 
       {/* The one piece of behaviour that is invisible but load-bearing:
           both reference clients cap an otherwise unbounded filtered search
@@ -227,9 +252,17 @@ function hasNarrowingFilter(q: ReplayQuery): boolean {
     q.maxDurationMinutes !== null ||
     q.mapMinPlayers !== null ||
     q.mapMaxPlayers !== null ||
+    q.minPlayers !== null ||
+    q.maxPlayers !== null ||
     q.mapMinSizeKm !== null ||
     q.mapMaxSizeKm !== null ||
     q.rankedMapOnly ||
     q.onlyRanked
   );
+}
+
+/** Mirrors `ReplayQuery::has_local_filter` in faf-domain. */
+/** Mirrors `ReplayQuery::has_local_filter`: the one filter the API cannot do. */
+function hasLocalFilter(q: ReplayQuery): boolean {
+  return q.minPlayers !== null || q.maxPlayers !== null;
 }

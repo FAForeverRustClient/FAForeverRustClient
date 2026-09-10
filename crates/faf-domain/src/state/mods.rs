@@ -13,6 +13,8 @@
 //! `active_mods = { ['uid'] = true, ... }` table (see
 //! `context/python_client/src/vaults/modvault/utils.py::setActiveMods`).
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::protocol::vault_query::ModVaultQuery;
@@ -176,6 +178,34 @@ pub enum ModToggleStatus {
     },
 }
 
+/// One mod's archive, as the join dialog needs to ask about it.
+///
+/// The URL comes from the caller rather than being looked up here, the same way
+/// [`ModsCommand::InstallMod`] takes one: the vault catalogue is already
+/// mirrored in the frontend store, and a service is not allowed to read state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ModDownloadTarget {
+    pub uid: String,
+    pub download_url: String,
+}
+
+/// What a HEAD request said about one of those archives.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ModDownloadSize {
+    pub uid: String,
+    /// Bytes, or `None` when the server answered without a length.
+    ///
+    /// Not zero: a mod whose size is unknown and a mod that is somehow empty
+    /// are different facts, and only one of them is worth printing.
+    ///
+    /// `u32`, so four gigabytes, which is two orders of magnitude above the
+    /// largest mod on the vault. It is also what crosses the IPC boundary
+    /// without a `BigInt`, which specta refuses to generate.
+    pub bytes: Option<u32>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ModsState {
@@ -194,6 +224,14 @@ pub struct ModsState {
     pub installed_status: ModListStatus,
     pub install_status: ModInstallStatus,
     pub toggle_status: ModToggleStatus,
+    /// Archive sizes in bytes, by mod uid, for the ones anybody has asked
+    /// about.
+    ///
+    /// Only ever grows within a session, and only holds answers: a uid that is
+    /// absent has not been asked about or came back without a length, and both
+    /// mean "do not print a size". Small by construction, because the only
+    /// caller asks about the handful of mods one lobby is missing.
+    pub download_sizes: BTreeMap<String, u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -256,6 +294,15 @@ pub enum ModsEvent {
     ToggleFailed {
         reason: String,
     },
+    /// The answers to a [`ModsCommand::QueryDownloadSizes`].
+    ///
+    /// Every target gets an entry, including the ones the server answered
+    /// without a length, so a caller can tell "asked and did not find out" from
+    /// "not asked yet". Only the ones that did produce a number reach the
+    /// state.
+    DownloadSizesResolved {
+        sizes: Vec<ModDownloadSize>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -272,6 +319,15 @@ pub enum ModsCommand {
     /// `MapsCommand::InstallMap`).
     #[serde(rename_all = "camelCase")]
     InstallMod { uid: String, download_url: String },
+    /// Ask how big these archives are, without downloading them.
+    ///
+    /// Exists for the dialog that asks whether a join may download mods: the
+    /// vault's `mod` resource carries a download URL and no file length, so the
+    /// only way to answer "how much is this going to cost me" is to ask the
+    /// storage server. One HEAD per mod, and the answer is cached in
+    /// [`ModsState::download_sizes`] for the session.
+    #[serde(rename_all = "camelCase")]
+    QueryDownloadSizes { targets: Vec<ModDownloadTarget> },
     /// Replace an installed mod with the vault's current version.
     ///
     /// Not a client-side `uninstall` followed by an `install`, which is what
@@ -379,6 +435,13 @@ pub fn reduce(state: &mut ModsState, event: &ModsEvent) {
         ModsEvent::ToggleFailed { reason } => {
             state.toggle_status = ModToggleStatus::Failed {
                 reason: reason.clone(),
+            }
+        }
+        ModsEvent::DownloadSizesResolved { sizes } => {
+            for size in sizes {
+                if let Some(bytes) = size.bytes {
+                    state.download_sizes.insert(size.uid.clone(), bytes);
+                }
             }
         }
     }

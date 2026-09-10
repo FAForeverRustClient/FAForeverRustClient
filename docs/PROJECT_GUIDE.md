@@ -119,9 +119,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/services/nav.rs` | Service **nav**: pure UI state transition (command → event). |
 | `src/services/lobby.rs` | Service **lobby**: subscribes to the stream, forwards each snapshot as an event. |
 | `src/services/settings.rs` | Service **settings**: `Load` → emit `Loaded`; `SetTheme` → emit + persist post-reduce slice. |
-| `tests/loop.rs` | End-to-end test of the loop (session). |
-| `tests/auth.rs` | Auth service with a swapped port (success + failure). |
-| `tests/lobby.rs` | Lobby streaming end-to-end, plus connect→disconnect teardown. |
+| `tests/` | 26 integration tests, each driving the real runtime with fake ports: `loop.rs` (the loop end to end), `auth.rs` (a swapped port, success + failure), `lobby.rs` (streaming, plus connect/disconnect teardown), and one per feature area since. `ls crates/faf-app/tests` is the current list. |
 
 > **Service structure:** A single `handle(cmd, ctx, out)` function. Reads ports via `ctx.ports`,
 > calls `out.emit(event)`. **Never touches `AppState`.**
@@ -163,8 +161,8 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/shared/` | Helpers a feature folder should not own alone: query shapes, formatting, storage. Pure, and unit tested next to the code. |
 | `src/i18n/` | The message catalogues. `catalog/en.ts` is the source of truth: a missing **key** is a compile error, a missing translation falls back to English. |
 | `src/features/shell/AppShell.tsx` | The logged-in shell: sidebar, tab bar, status bar, and the active tab's view. Routing is a lookup in the tab registry, not a router. |
-| `src/features/nav/tabs.ts` | The tab registry: the one place a new tab is added. |
-| `src/features/<tab>/` | One folder per tab. 24 of them today (auth, chat, lobby, replays, maps, mods, leaderboard, tournaments, settings, …). Listing them here would go stale faster than it would help: `ls ui/src/features` is the current answer. |
+| `src/features/nav/tabs.tsx` | The tab registry: the one place a new tab is added. `TAB_ORDER` fixes the left-to-right order; labels are message keys, not text. |
+| `src/features/<tab>/` | One folder per tab. 27 of them today (auth, chat, lobby, replays, maps, mods, leaderboard, tournaments, settings, …). Listing them here would go stale faster than it would help: `ls ui/src/features` is the current answer. |
 
 > **Feature structure:** A folder `features/<name>/`. Components **select state +
 > dispatch commands**, nothing else. No business logic, no direct IPC calls.
@@ -260,10 +258,15 @@ changing a state type or a default.
 
 ## 9. Current Status
 
-- **Implemented:** 23 state slices (session, auth, nav, lobby, chat, social, maps, mods,
-  replays, settings, notifications, player card, coop, tournaments, events, tutorials,
-  reviews, reporting, uploads, leaderboard, install, map generator, client update), complete loop,
-  type generation, multi-tab shell, CI + bindings-drift and reducer-conformance checks.
+- **Implemented:** 28 state slices (session, install, auth, nav, notifications, chat, clan,
+  coop, events, lobby, replays, maps, map generator, mods, leaderboard, player card,
+  reporting, reviews, social, tourney, training, tutorials, uploads, galactic war, guides,
+  client update, settings, changelog), 28 ports, 31 services, the complete loop, type
+  generation, a 14-tab shell, six shipped languages, and CI with bindings-drift and
+  reducer-conformance checks.
+
+  The authoritative list is `crates/faf-domain/src/state/mod.rs`: this count has gone stale
+  twice, so check it there rather than trusting the sentence above.
 - **Real auth:** `OAuthAuth`: FAF Ory Hydra, Authorization Code + PKCE. `FakeAuth` remains
   for tests and offline dev (`FAF_FAKE_AUTH=1`).
 - **Real lobby:** `LobbyClient`: FAF lobby WebSocket protocol behind `LobbyPort`, with

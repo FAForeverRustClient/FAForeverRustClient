@@ -47,7 +47,9 @@ use std::path::{Component, Path, PathBuf};
 
 use async_trait::async_trait;
 use faf_domain::protocol::vault_query::ModVaultQuery;
-use faf_domain::state::{InstalledMod, ModType, ModVersionConflict, VaultMod};
+use faf_domain::state::{
+    InstalledMod, ModDownloadSize, ModDownloadTarget, ModType, ModVersionConflict, VaultMod,
+};
 use serde_json::Value;
 
 use crate::infra::env_or;
@@ -182,6 +184,71 @@ impl ModsClient {
     }
 }
 
+/// How big the file behind a URL is, asked two ways.
+///
+/// A HEAD first, because it is the cheap question. That was the whole
+/// implementation and it reported every mod as `0 B`: the vault's content
+/// storage answers HEAD with `200` and `Content-Length: 0`, which is what a
+/// server that does not really implement HEAD does, and zero is a length as
+/// far as `reqwest` is concerned.
+///
+/// So a zero is treated as no answer, and the fallback is a one-byte ranged
+/// GET: `Range: bytes=0-0` comes back `206` with
+/// `Content-Range: bytes 0-0/12345`, where the number after the slash is the
+/// size of the whole file. One byte of body for an exact answer.
+///
+/// `None` covers every remaining way this can fail, and they are all the same
+/// to the caller: a URL that is not https (the client fetches nothing else), a
+/// server that refuses both requests, a redirect chain that drops the headers,
+/// a response with no length in either form, or a timeout. No token: the mod
+/// archives live on content storage rather than behind the API.
+async fn head_content_length(http: &reqwest::Client, url: &str) -> Option<u32> {
+    if !url.starts_with("https://") {
+        return None;
+    }
+
+    let head = http
+        .head(url)
+        .timeout(std::time::Duration::from_secs(6))
+        .send()
+        .await
+        .ok()
+        .filter(|response| response.status().is_success())
+        .and_then(|response| response.content_length())
+        .filter(|length| *length > 0);
+    if let Some(length) = head {
+        return u32::try_from(length).ok();
+    }
+
+    let ranged = http
+        .get(url)
+        .header(reqwest::header::RANGE, "bytes=0-0")
+        .timeout(std::time::Duration::from_secs(6))
+        .send()
+        .await
+        .ok()?;
+    if !ranged.status().is_success() {
+        return None;
+    }
+    let total = content_range_total(
+        ranged
+            .headers()
+            .get(reqwest::header::CONTENT_RANGE)?
+            .to_str()
+            .ok()?,
+    )?;
+    u32::try_from(total).ok()
+}
+
+/// The total out of a `Content-Range: bytes 0-0/12345`.
+///
+/// `None` for the two forms that carry no total: a header shaped differently
+/// from the one in RFC 9110, and the `*/` a server sends when it will not say
+/// how long the whole thing is.
+fn content_range_total(header: &str) -> Option<u64> {
+    header.rsplit_once('/')?.1.trim().parse().ok()
+}
+
 #[async_trait]
 impl ModsPort for ModsClient {
     async fn list_vault(&self) -> Result<Vec<VaultMod>, String> {
@@ -218,6 +285,17 @@ impl ModsPort for ModsClient {
             all_mods.extend(parse_vault_mods(doc));
         }
         Ok(all_mods)
+    }
+
+    async fn download_sizes(&self, targets: Vec<ModDownloadTarget>) -> Vec<ModDownloadSize> {
+        let mut sizes = Vec::with_capacity(targets.len());
+        for target in targets {
+            sizes.push(ModDownloadSize {
+                bytes: head_content_length(&self.http, &target.download_url).await,
+                uid: target.uid,
+            });
+        }
+        sizes
     }
 
     async fn search_vault(&self, query: ModVaultQuery) -> Result<ModSearchPage, String> {
@@ -954,6 +1032,17 @@ impl ModsPort for FakeMods {
         Err("mod install listing is unavailable in offline mode".to_string())
     }
 
+    async fn download_sizes(&self, targets: Vec<ModDownloadTarget>) -> Vec<ModDownloadSize> {
+        // Offline: every answer is "no idea", which the dialog already draws.
+        targets
+            .into_iter()
+            .map(|target| ModDownloadSize {
+                uid: target.uid,
+                bytes: None,
+            })
+            .collect()
+    }
+
     async fn install_mod(
         &self,
         _uid: String,
@@ -995,6 +1084,25 @@ impl ModsPort for FakeMods {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_content_range_header_yields_the_whole_size() {
+        // What a one-byte ranged GET answers with, and the reason it is asked:
+        // the vault's storage answers HEAD with `Content-Length: 0`, so this is
+        // the header the size actually comes from.
+        assert_eq!(content_range_total("bytes 0-0/12345"), Some(12_345));
+        assert_eq!(content_range_total("bytes 0-0/1"), Some(1));
+    }
+
+    #[test]
+    fn a_header_with_no_total_in_it_is_no_answer() {
+        // `*` is a server saying it will not tell you, and the other two are
+        // not this header at all. None of them may be reported as a size.
+        assert_eq!(content_range_total("bytes 0-0/*"), None);
+        assert_eq!(content_range_total("bytes */*"), None);
+        assert_eq!(content_range_total("12345"), None);
+        assert_eq!(content_range_total(""), None);
+    }
     use serde_json::json;
 
     const SAMPLE_MOD_INFO: &str = r#"

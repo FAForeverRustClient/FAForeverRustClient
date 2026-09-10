@@ -99,6 +99,30 @@ export function isCoopGame(game: Game): boolean {
 }
 
 /**
+ * Do this game's sim mods leave it rated?
+ *
+ * Not the same question as `isCustomGameRanked`, and that is the point. A game
+ * can be unranked because of its map, or because it is a co-op mission, with
+ * mods that are all on the ranked list; and a co-op mission is unrated whatever
+ * it loads. The "N SIM" tag is about the mods, so it answers only about the
+ * mods: every uid resolves to a known mod, and every one of them is ranked.
+ *
+ * An unknown uid counts as unranked, the same way `isCustomGameRanked` treats
+ * it: a mod the vault has never heard of is not one we can vouch for.
+ *
+ * Returns `false` for a game with no sim mods at all, which never reaches the
+ * tag: callers only ask once they have decided to draw it.
+ */
+export function simModsKeepGameRanked(game: Game, vaultMods: VaultMod[]): boolean {
+  const uids = Object.keys(game.simMods);
+  if (uids.length === 0) {
+    return false;
+  }
+  const byUid = modsByUid(vaultMods);
+  return uids.every((uid) => byUid.get(uid.toLowerCase())?.ranked === true);
+}
+
+/**
  * Whether a game's tag row should carry the "unranked" marker.
  *
  * Co-op is never rated: no mission has ever moved a rating, so the tag sat on
@@ -112,6 +136,49 @@ export function showsUnrankedTag(
   vaultMods: VaultMod[],
 ): boolean {
   return !isCoopGame(game) && !isCustomGameRanked(game, vaultMaps, vaultMods);
+}
+
+/**
+ * A lobby's rating range, as a tag.
+ *
+ * Drawn as three pieces rather than one string because of what a negative
+ * bound does to the one-string version: `-1000-700` reads as one number and a
+ * hyphen, and the eye has no way to tell which of the two hyphens is a minus
+ * sign. Spacing the separator apart from both numbers is the whole fix, and it
+ * only works if the separator is its own element.
+ *
+ * The separator is hidden from assistive technology: the tooltip already says
+ * "Rating range: {min} to {max}" in words, and a screen reader announcing a
+ * lone hyphen between two numbers is noise.
+ */
+function RatingRangeTag({ min, max }: { min: number | null; max: number | null }) {
+  const any = t("lobby.browser.any");
+  const from = min === null ? any : minusSign(min);
+  const to = max === null ? any : minusSign(max);
+  return (
+    <i className="game-rating-range" title={t("lobby.browser.ratingRangeTooltip", { from, to })}>
+      <span>{from}</span>
+      <span className="game-rating-range-separator" aria-hidden="true">-</span>
+      <span>{to}</span>
+    </i>
+  );
+}
+
+/**
+ * A number whose sign sits where the eye expects it.
+ *
+ * `-` is HYPHEN-MINUS, and in this interface's font it is drawn low: against
+ * four digits it lands in the bottom half of them, which is what the report
+ * noticed. U+2212 MINUS SIGN is the one designed to sit on the same axis as
+ * the digits, and it is the same width as them, so a column of ratings still
+ * lines up.
+ *
+ * Only the sign. The separator between the two bounds stays a hyphen, because
+ * it is a range dash rather than an operator and the spacing around it is what
+ * distinguishes the two.
+ */
+function minusSign(value: number): string {
+  return value < 0 ? `\u2212${Math.abs(value)}` : String(value);
 }
 
 interface Props {
@@ -174,7 +241,35 @@ export function hideGlobalLineup() {
   }
 }
 
+/**
+ * Ways the tooltip can be left standing that no `onMouseLeave` covers.
+ *
+ * It is `position: fixed`, up to 430 by 420 pixels, and its contents are
+ * clickable (a player name opens a card), so it cannot simply be made
+ * `pointer-events: none`. Left up over the workspace it therefore swallows
+ * clicks in that rectangle, which is a candidate for the "unable to click
+ * anything" report: rare, cured by a restart, and no error anywhere.
+ *
+ * Three events that leave it up today: alt-tabbing away, the list scrolling
+ * under a stationary pointer, and Escape, which everything else in this client
+ * answers. Installed once, on first use, so the listeners cost nothing in a
+ * session that never hovers a game.
+ */
+let lineupGuardsInstalled = false;
+
+function installLineupGuards() {
+  if (lineupGuardsInstalled || typeof window === "undefined") return;
+  lineupGuardsInstalled = true;
+  window.addEventListener("blur", hideGlobalLineup);
+  // Capture, because the scroll happens on a container rather than on window.
+  window.addEventListener("scroll", hideGlobalLineup, true);
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideGlobalLineup();
+  });
+}
+
 export function setGlobalLineup(gameId: number, position: TooltipPosition) {
+  installLineupGuards();
   activeLineup = { gameId, position };
   for (const listener of lineupListeners) {
     listener();
@@ -518,6 +613,7 @@ export const GameTile = memo(function GameTile({
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const simModCount = Object.keys(game.simMods).length;
+  const simModsRanked = simModsKeepGameRanked(game, vaultMods);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
   const { friends, label: friendLabel } = useFriendsInGame(game);
@@ -581,7 +677,10 @@ export const GameTile = memo(function GameTile({
         <span className="game-tile-flags">
           <i>{game.modName || "faf"}</i>
           {simModCount > 0 && (
-            <i className="modded" title={`${simModCount} SIM mod${simModCount === 1 ? "" : "s"}`}>
+            <i
+              className={simModsRanked ? "modded is-ranked" : "modded"}
+              title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
+            >
               {simModCount} SIM
             </i>
           )}
@@ -592,9 +691,7 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
-              {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
-            </i>
+            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} />
           )}
         </span>
         <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
@@ -628,6 +725,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   const presentation = mapPresentation(vault, game.map);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const simModCount = Object.keys(game.simMods).length;
+  const simModsRanked = simModsKeepGameRanked(game, vaultMods);
   const players = playingCount(game);
   const currentNow = now ?? Date.now();
   const { friends, label: friendLabel } = useFriendsInGame(game);
@@ -686,7 +784,10 @@ export const GameBrowserRow = memo(function GameBrowserRow({
               <span className="game-browser-tags">
                 <i>{game.modName || "faf"}</i>
                 {simModCount > 0 && (
-                  <i className="modded" title={`${simModCount} SIM mod${simModCount === 1 ? "" : "s"}`}>
+                  <i
+                    className={simModsRanked ? "modded is-ranked" : "modded"}
+                    title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
+                  >
                     {simModCount} SIM
                   </i>
                 )}
@@ -697,9 +798,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                   </i>
                 )}
                 {(game.ratingMin !== null || game.ratingMax !== null) && (
-                  <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
-                    {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
-                  </i>
+                  <RatingRangeTag min={game.ratingMin} max={game.ratingMax} />
                 )}
               </span>
             </div>

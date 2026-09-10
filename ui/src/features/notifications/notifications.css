@@ -220,16 +220,43 @@
   text-align: center;
 }
 
+/* Where a toast appears.
+   Four corners, one per `ToastPosition`, and the default is the bottom left:
+   that is where the bell and the notification centre are, so an arriving toast
+   and the place it is kept afterwards are the same corner of the screen. The
+   two bottom variants stack upwards (`column-reverse`) so the newest toast is
+   always the one nearest the bell, and the left variants clear the sidebar the
+   same way the panel does. */
 .notification-toasts {
   position: fixed;
   z-index: 80;
-  top: var(--space-3);
-  right: var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   width: min(360px, calc(100vw - 24px));
   pointer-events: none;
+}
+
+.notification-toasts.is-topRight {
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+.notification-toasts.is-topLeft {
+  top: var(--space-3);
+  left: max(12px, calc(var(--sidebar-width) - 10px));
+}
+
+.notification-toasts.is-bottomRight {
+  right: var(--space-3);
+  bottom: 46px;
+  flex-direction: column-reverse;
+}
+
+.notification-toasts.is-bottomLeft {
+  bottom: 46px;
+  left: max(12px, calc(var(--sidebar-width) - 10px));
+  flex-direction: column-reverse;
 }
 
 .notification-toast {

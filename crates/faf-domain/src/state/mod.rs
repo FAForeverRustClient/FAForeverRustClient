@@ -95,8 +95,8 @@ pub use maps::{
     MapsCommand, MapsEvent, MapsState, MatchmakerMapPool, MatchmakerPoolMap, VaultMap,
 };
 pub use mods::{
-    InstalledMod, ModInstallStatus, ModListStatus, ModToggleStatus, ModType, ModVersionConflict,
-    ModsCommand, ModsEvent, ModsState, VaultMod,
+    InstalledMod, ModDownloadSize, ModDownloadTarget, ModInstallStatus, ModListStatus,
+    ModToggleStatus, ModType, ModVersionConflict, ModsCommand, ModsEvent, ModsState, VaultMod,
 };
 pub use nav::{NavCommand, NavEvent, NavState, Tab};
 pub use notifications::{
@@ -113,11 +113,11 @@ pub use player_card::{
     RatingHistoryQuery,
 };
 pub use replays::{
-    live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
-    LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam, ReplayChatMessage,
-    ReplayCommand, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayPlayer, ReplayQuery,
-    ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, ResolvedReplayMap, VaultReplay,
-    VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
+    live_replay_delay_remaining, sort_vault_replays, LiveReplayTarget, LiveReplayTracking,
+    LiveReplayTrackingAction, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
+    ReplayChatMessage, ReplayCommand, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayPlayer,
+    ReplayQuery, ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, ResolvedReplayMap,
+    VaultReplay, VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
 };
 pub use reporting::{
     ModerationReportSummary, ReportHistoryStatus, ReportStatus, ReportingCommand, ReportingEvent,
@@ -134,8 +134,10 @@ pub use settings::{
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, DebugPreferences,
     DiscordPreferences, EventReminder, EventsPreferences, GameCacheInfo, GamePreferences,
     GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
-    NotificationPreferences, PathPreferences, PlayerNote, SettingsCommand, SettingsEvent,
-    SettingsState, SocialPreferences, Theme, UiDensity, UpdatePreferences, WeekStart,
+    NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
+    PlayerNote, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme,
+    ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH,
+    SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,

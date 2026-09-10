@@ -33,6 +33,7 @@ as a description of the client as it stands today.
 | [`notes/tourney-features.md`](notes/tourney-features.md) | 2026-08-19 | What the tournament tab does and what was deliberately left out. |
 | [`notes/tourney-migration.md`](notes/tourney-migration.md) | 2026-08-18 | Migration plan for the tournament backend. |
 | [`notes/play-tab-showcase-draft.html`](notes/play-tab-showcase-draft.html) | 2026-08-14 | An early visual draft of the play tab. Never implemented as drawn. |
+| [`notes/linux-support.md`](notes/linux-support.md) | 2026-09-10 | What already works on Linux, what does not, and the order the rest is worth doing in. |
 
 ## Repository guardrails
 

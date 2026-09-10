@@ -179,6 +179,13 @@ button.vault-input {
   flex-wrap: wrap;
 }
 
+.online-replay-view-bar-right {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .online-replay-status-note {
   font-size: 12px;
 }
@@ -206,8 +213,13 @@ button.vault-input {
   border-color: var(--color-border-strong);
 }
 
-.replay-card-watched {
-  opacity: 0.55;
+/* Already seen, and said with an outline rather than by fading the card out.
+   Dimming reads as "disabled" and takes the thumbnail and the lineup down with
+   it, which is the half of the card somebody is scanning; the border says the
+   same thing and costs the contents nothing. */
+.replay-card.replay-card-watched,
+.replay-card.replay-card-watched:hover {
+  border-color: var(--color-text);
 }
 
 .replay-card-selected {

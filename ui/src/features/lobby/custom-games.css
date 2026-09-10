@@ -198,6 +198,11 @@
 }
 
 .game-browser-tags i {
+  /* Centred rather than left to the baseline: the tags carry digits, uppercase
+     words and a lone hyphen next to each other, and on a baseline they sit at
+     three different heights inside the same row. */
+  display: inline-flex;
+  align-items: center;
   font-style: normal;
   font-size: 11px;
   font-weight: 600;
@@ -210,16 +215,27 @@
   white-space: nowrap;
 }
 
+/* Sim mods, in two colours, because the count alone never said the thing
+   people actually want off this row: amber when at least one of them costs the
+   game its rating, green when none of them do. `--color-focus` is not a token
+   this design system defines, so the rule that used to stand here computed to
+   an inherited colour and the tag was neither. */
 .game-browser-tags i.modded {
-  color: var(--color-focus);
-  border-color: rgba(75, 157, 232, 0.3);
-  background: rgba(75, 157, 232, 0.1);
+  color: var(--color-warn);
+  border-color: color-mix(in srgb, var(--color-warn) 30%, transparent);
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+}
+
+.game-browser-tags i.modded.is-ranked {
+  color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 30%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 10%, transparent);
 }
 
 .game-browser-tags i.unranked {
-  color: var(--color-warn);
-  border-color: rgba(251, 191, 36, 0.3);
-  background: rgba(251, 191, 36, 0.1);
+  color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
 }
 
 .game-browser-map-col {
@@ -551,7 +567,7 @@
 }
 
 .game-team-player:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -777,7 +793,9 @@
 }
 
 .game-tile-flags i {
+  display: inline-flex;
   flex-shrink: 0;
+  align-items: center;
   max-width: 120px;
   padding: 2px 6px;
   overflow: hidden;
@@ -797,6 +815,12 @@
   color: var(--color-warn);
   border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
   background: color-mix(in srgb, var(--color-warn) 12%, var(--color-surface));
+}
+
+.game-tile-flags i.modded.is-ranked {
+  color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-surface));
 }
 
 .game-tile-flags i.unranked {
@@ -1381,4 +1405,14 @@
   color: var(--color-friend);
   border-color: color-mix(in srgb, var(--color-friend) 45%, transparent);
   background: color-mix(in srgb, var(--color-friend) 12%, transparent);
+}
+
+/* The rating range tag.
+   `-1000-700` was a real lobby's range and reads as a single number: the two
+   hyphens are the same glyph, so nothing in the string says which one is the
+   minus sign. Pulling the separator away from both numbers is the fix, and it
+   costs nothing on a range with no negative bound. */
+.game-rating-range-separator {
+  margin: 0 5px;
+  color: var(--color-subtle);
 }

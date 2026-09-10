@@ -398,6 +398,41 @@
   color: var(--color-muted);
 }
 
+/* The rail: the sidebar dragged narrow enough that the labels no longer fit.
+   The client already had this layout, but only as a response to a narrow
+   *window*. The request was to be able to shrink the panel itself, and a panel
+   that stops at 176 px of mostly empty space is not shrunk. Below the
+   threshold in `AppShell` the same rules apply, driven by a class instead of a
+   media query, so the two ways of getting here look identical. */
+.app-shell.is-sidebar-rail .sidebar {
+  padding-inline: 8px;
+}
+
+.app-shell.is-sidebar-rail .brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.app-shell.is-sidebar-rail .brand-copy,
+.app-shell.is-sidebar-rail .profile-copy {
+  display: none;
+}
+
+.app-shell.is-sidebar-rail .sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-shell.is-sidebar-rail .tab span {
+  display: none;
+}
+
+.app-shell.is-sidebar-rail .tab {
+  justify-content: center;
+  padding-inline: 0;
+}
+
 @media (max-width: 900px) {
 .app-shell {
     grid-template-columns: 64px minmax(0, 1fr);
@@ -435,13 +470,48 @@
     padding: 22px;
   }
 
+  /* Stacked, so the tab is taller than the window and the window is what has
+     to scroll. The inner was already released to its content height here; the
+     container it sits in was not, and `.content` is `overflow: hidden` on this
+     tab because the wide layout scrolls its own panels. So the tab grew, the
+     container clipped it, and there was nothing anywhere to scroll: which is
+     the report, and it is a width rule rather than a height one, because
+     narrowing the window is what stacks the panels in the first place. */
+  .content.content-tab-play {
+    overflow-y: auto;
+  }
+
   .content-inner.content-play {
     height: auto;
     overflow: visible;
   }
 }
 
+/* A short window, not a narrow one.
+   The Play tab is laid out to fill the height exactly: `.content` does not
+   scroll and every panel inside it owns its own scrolling. That works until
+   the window is shorter than the panels' own minimums, at which point the
+   bottom of the tab is simply cut off with nothing to scroll, which is what
+   the resize videos on the report show. The narrow case already had this
+   fallback; the short case had none. */
+@media (max-height: 700px) {
+  .content.content-tab-play {
+    overflow-y: auto;
+  }
+
+  .content-inner.content-play {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+}
+
 @media (max-width: 700px) {
+  /* Same pair as the Play tab above, and it was missing the same half. */
+  .content.content-tab-leaderboard {
+    overflow-y: auto;
+  }
+
   .content-inner.content-leaderboard {
     height: auto;
     overflow: visible;

@@ -46,31 +46,6 @@
   scrollbar-width: auto;
 }
 
-.changelog-releases::-webkit-scrollbar {
-  width: 11px;
-}
-
-.changelog-releases::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.changelog-releases::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
-}
-
-.changelog-releases::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted);
-  background-clip: padding-box;
-}
-
-.changelog-releases::-webkit-scrollbar-button {
-  display: none;
-  height: 0;
-}
-
 .changelog-year + .changelog-year {
   margin-top: 10px;
 }

@@ -92,11 +92,25 @@
   justify-content: space-between;
   gap: var(--space-3);
   min-height: 54px;
-  padding: 10px 14px;
+  padding: 10px 14px 10px 11px;
   color: var(--color-text);
   text-decoration: none;
   border-radius: var(--radius-md);
+  border-left: 3px solid transparent;
   transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+/* The page was black and white end to end, which made a list of sixteen rows
+   read as one block. The origin is the only axis worth a colour here, so it
+   gets the edge of the row as well as the chip: green for what FAF runs, amber
+   for what it does not. Same two tokens the vault already uses for the same
+   distinction, rather than a third green invented for this page. */
+.links-link-official {
+  border-left-color: var(--color-ok);
+}
+
+.links-link-community {
+  border-left-color: var(--color-warn);
 }
 
 .links-link > svg {
@@ -185,12 +199,27 @@
 }
 
 .links-origin-official {
-  color: var(--color-text);
-  background: var(--color-accent-glow);
-  border-color: var(--color-accent);
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
 }
 
 .links-origin-community {
-  color: var(--color-muted);
-  background: var(--color-surface-raised);
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
+}
+
+/* A pressed filter chip takes the colour of what it filters to, so the page
+   answers "what am I looking at" without reading the label. */
+.links-filter-official.is-on {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
+}
+
+.links-filter-community.is-on {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 40%, transparent);
 }

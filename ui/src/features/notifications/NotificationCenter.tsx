@@ -5,7 +5,7 @@ import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/chatFormat";
-import { playNotificationAlert } from "./notificationSound";
+import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
 import "./notifications.css";
 import { t } from "../../i18n";
@@ -170,11 +170,11 @@ export function NotificationCenter() {
     setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
 
     fresh.forEach((item) => {
+      // Per kind now, not one tone for everything with a louder variant for two
+      // of them: which tone a kind plays is the player's choice, and "silent"
+      // is one of the choices, so a kind can be seen and not heard.
       if (preferences.sound) {
-        playNotificationAlert(
-          preferences.volume,
-          item.kind === "matchFound" || item.kind === "partyInvite",
-        );
+        playNotificationSound(soundForKind(item.kind, preferences.sounds), preferences.volume);
       }
     });
     if (preferences.desktop) {
@@ -260,7 +260,15 @@ export function NotificationCenter() {
         </section>
       )}
 
-      <div className="notification-toasts" aria-live="polite" aria-atomic="false">
+      {/* The corner is a preference, and its default is the corner the bell is
+          in. Toasts used to arrive top right while the centre they are kept in
+          opens from the bottom left, so a toast that slid away left nothing
+          where the eye had just learned to look. */}
+      <div
+        className={`notification-toasts is-${preferences.toastPosition}`}
+        aria-live="polite"
+        aria-atomic="false"
+      >
         {toasts.map((item) => (
           <article className={`notification-toast${notificationTone(item)}`} key={item.id}>
             <button type="button" onClick={() => handleAction(item)}>

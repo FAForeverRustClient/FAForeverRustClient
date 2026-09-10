@@ -30,6 +30,10 @@ export function GameSettingsSection() {
     void save({ ...preferences, autoGenerateMaps });
   };
 
+  const setConfirmDownloads = (confirmDownloadsBeforeJoining: boolean) => {
+    void save({ ...preferences, confirmDownloadsBeforeJoining });
+  };
+
   const setPipeLiveReplay = (pipeLiveReplay: boolean) => {
     void save({ ...preferences, pipeLiveReplay });
   };
@@ -40,6 +44,21 @@ export function GameSettingsSection() {
 
   return (
     <>
+      {/* First, because it is the one switch here that changes what a
+          double-click does. The dialog it controls carries its own "do not ask
+          again", which is what most people will use to turn it off; this row
+          is how they turn it back on. */}
+      <SettingRow
+        label={t("settings.game.confirmDownloads")}
+        hint={t("settings.game.confirmDownloadsHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.confirmDownloadsBeforeJoining ?? true}
+          onChange={setConfirmDownloads}
+          label={t("settings.game.confirmDownloads")}
+        />
+      </SettingRow>
+
       <SettingRow
         label={t("settings.game.autoGenerateMaps")}
         hint={t("settings.game.autoGenerateMapsHint")}

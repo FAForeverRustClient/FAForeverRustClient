@@ -163,6 +163,7 @@ const INITIAL: AppState = {
     installedStatus: { type: "idle" },
     installStatus: { type: "idle" },
     toggleStatus: { type: "idle" },
+    downloadSizes: {},
   },
   leaderboard: {
     mode: "ratings",
@@ -412,14 +413,31 @@ const INITIAL: AppState = {
     keptGeneratedMaps: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true },
-    appearance: { density: "comfortable", reduceMotion: false, uiScale: 100, gameTileColumns: 0 },
+    appearance: { density: "comfortable", reduceMotion: false, uiScale: 100, gameTileColumns: 0, sidebarWidth: 224 },
     social: { playerNotes: [] },
     notifications: {
       enabled: true,
       desktop: true,
       desktopAllKinds: false,
       sound: true,
+      // All chime, which is the tone the client played before the picker
+      // existed: an update changes nothing anybody hears until they say so.
+      sounds: {
+        matchFound: "chime",
+        privateMessage: "chime",
+        mention: "chime",
+        friendOnline: "chime",
+        friendOffline: "chime",
+        friendPlaying: "chime",
+        newCustomGame: "chime",
+        gameFull: "chime",
+        gameLaunched: "chime",
+        reviewReminder: "chime",
+        partyInvite: "chime",
+        other: "chime",
+      },
       notifyWhenFocused: false,
+      toastPosition: "bottomLeft",
       matchFound: true,
       privateMessages: true,
       mentions: true,
@@ -463,6 +481,7 @@ const INITIAL: AppState = {
     game: {
       additionalArguments: [],
       autoGenerateMaps: true,
+      confirmDownloadsBeforeJoining: true,
       cacheLifetimeDays: 30,
       cacheSizeAlertGb: 10,
       cacheRollingBranches: false,

@@ -39,6 +39,16 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ModsEvent::VaultSearchFailed { reason }),
             }
         }
+        ModsCommand::QueryDownloadSizes { targets } => {
+            // No "loading" event: the dialog that asks is drawn and usable
+            // before the answer arrives, and a spinner on a courtesy number
+            // would be more noise than the number is worth.
+            if targets.is_empty() {
+                return;
+            }
+            let sizes = ctx.ports.mods.download_sizes(targets).await;
+            out.emit(ModsEvent::DownloadSizesResolved { sizes });
+        }
         ModsCommand::LoadInstalled => {
             out.emit(ModsEvent::InstalledLoading);
             match ctx.ports.mods.list_installed().await {

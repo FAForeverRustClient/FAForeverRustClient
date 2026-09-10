@@ -69,6 +69,24 @@ export function LocalReplaySearch({
     onSearch(query);
   };
 
+  /**
+   * A preset changes what it is about and leaves the rest of the form alone.
+   *
+   * The three of them used to be built from `EMPTY_LOCAL_REPLAY_QUERY`, so
+   * pressing one after setting a map, a rating range and a status threw all of
+   * it away. `player`, `exactPlayer` and `after` are the fields they disagree
+   * about; each returns the ones it does not set to their default, so
+   * switching between presets is still clean.
+   */
+  const applyPreset = (fields: Partial<LocalReplayQuery>) =>
+    apply({
+      ...form,
+      player: EMPTY_LOCAL_REPLAY_QUERY.player,
+      exactPlayer: EMPTY_LOCAL_REPLAY_QUERY.exactPlayer,
+      after: EMPTY_LOCAL_REPLAY_QUERY.after,
+      ...fields,
+    });
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     onSearch(form);
@@ -187,12 +205,12 @@ export function LocalReplaySearch({
       </div>
 
       <div className="vault-search-presets search-panel-secondary">
-        <Button type="button" onClick={() => apply(EMPTY_LOCAL_REPLAY_QUERY)}>{t("replays.search.preset.newest")}</Button>
-        <Button type="button" onClick={() => apply({ ...EMPTY_LOCAL_REPLAY_QUERY, after: isoDaysAgo(365) })}>{t("replays.search.preset.lastYear")}</Button>
+        <Button type="button" onClick={() => applyPreset({})}>{t("replays.search.preset.newest")}</Button>
+        <Button type="button" onClick={() => applyPreset({ after: isoDaysAgo(365) })}>{t("replays.search.preset.lastYear")}</Button>
         <Button
           type="button"
           disabled={!self}
-          onClick={() => apply({ ...EMPTY_LOCAL_REPLAY_QUERY, player: self, exactPlayer: true })}
+          onClick={() => applyPreset({ player: self, exactPlayer: true })}
         >
           {t("replays.search.preset.myReplays")}
         </Button>

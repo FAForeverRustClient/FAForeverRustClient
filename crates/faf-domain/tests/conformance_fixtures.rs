@@ -2841,6 +2841,7 @@ fn vault_replay(uid: i32) -> VaultReplay {
         map_thumbnail_url: String::new(),
         mod_name: "faf".into(),
         start_time: "2026-01-01T00:00:00Z".into(),
+        end_time: "2026-01-01T00:30:00Z".into(),
         replay_available: true,
         duration_seconds: None,
         game_duration_seconds: None,
@@ -2851,6 +2852,7 @@ fn vault_replay(uid: i32) -> VaultReplay {
         reviews_count: None,
         game_version: None,
         validity: "VALID".into(),
+        victory_condition: "DEMORALIZATION".into(),
     }
 }
 
@@ -4585,6 +4587,37 @@ fn cases() -> Vec<Case> {
                 ModsEvent::InstalledLoading.into(),
                 ModsEvent::InstalledLoadFailed {
                     reason: "no mods folder".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "mod download sizes keep only the answers that carried a number",
+            vec![
+                ModsEvent::DownloadSizesResolved {
+                    sizes: vec![
+                        faf_domain::state::ModDownloadSize {
+                            uid: "AAA".into(),
+                            bytes: Some(4_194_304),
+                        },
+                        // No length in the response. Absent from the state
+                        // rather than stored as a zero, because "unknown" and
+                        // "empty" are different answers and only one of them is
+                        // worth printing next to a mod.
+                        faf_domain::state::ModDownloadSize {
+                            uid: "BBB".into(),
+                            bytes: None,
+                        },
+                    ],
+                }
+                .into(),
+                // A second answer for a uid already known replaces it, which is
+                // what makes re-asking after a vault refresh harmless.
+                ModsEvent::DownloadSizesResolved {
+                    sizes: vec![faf_domain::state::ModDownloadSize {
+                        uid: "AAA".into(),
+                        bytes: Some(5_242_880),
+                    }],
                 }
                 .into(),
             ],
