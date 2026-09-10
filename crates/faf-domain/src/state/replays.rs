@@ -6,6 +6,8 @@
 //! launch; this slice only tracks the resulting status, the actual IO lives
 //! behind [`crate`]'s port boundary (`ReplayPort` in `faf-app`).
 
+use std::cmp::Ordering;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -95,6 +97,13 @@ pub struct VaultReplay {
     pub mod_name: String,
     /// ISO 8601, straight from the API: rendering/formatting is a UI concern.
     pub start_time: String,
+    /// When the game ended, same format, empty while it is still running.
+    ///
+    /// Carried rather than only folded into [`Self::duration_seconds`] because
+    /// the vault can be ordered by it, and that ordering is applied to rows
+    /// that have already arrived: see [`sort_vault_replays`].
+    #[serde(default)]
+    pub end_time: String,
     /// Whether the file has actually finished uploading to content storage.
     /// A "newest replays" listing includes very recent/still-processing
     /// games too; both reference clients disable the Watch button until this
@@ -128,6 +137,116 @@ pub struct VaultReplay {
     /// `ReplayDetailRoster`).
     #[serde(default)]
     pub validity: String,
+    /// `game.attributes.victoryCondition`, raw: `DEMORALIZATION`,
+    /// `DOMINATION`, `ERADICATION`, `SANDBOX`, or empty when the listing did
+    /// not carry one. Same posture as [`Self::validity`]: the set grows on the
+    /// server, so an unrecognised value still has to survive the trip.
+    ///
+    /// Here for the same reason [`Self::end_time`] is: the vault can be
+    /// ordered by it.
+    #[serde(default)]
+    pub victory_condition: String,
+}
+
+/// Order vault rows the way the API would have ordered them.
+///
+/// Exists because two of the vault's filters have no clause the API can answer
+/// (see [`ReplayQuery::accepts_locally`]), so a search using either of them is
+/// a scan the client filters itself. That scan has to read the vault in *some*
+/// order, and it used to read it in the order the user had asked to see the
+/// results in. Which meant the sort silently decided **which** games were
+/// examined: sorted by date it scanned the newest games and matched some,
+/// sorted by review score it scanned the best-reviewed games and matched
+/// others, and switching between them changed the answer rather than the
+/// arrangement. That is not what a sort is, and it was reported as exactly
+/// that.
+///
+/// The scan reads newest-first now, always, and the order the user chose is
+/// applied here, to the rows that matched. The set stops depending on how it
+/// is displayed.
+///
+/// Two rules worth stating, because neither is obvious:
+///
+/// - **A missing value sorts last in both directions.** Almost no replay has a
+///   review, and a descending sort by review score that opened with three
+///   hundred unreviewed games would be useless. Absent is not "worst", it is
+///   "not applicable", and it belongs at the end either way.
+/// - **Ties keep the order they arrived in**, which is newest-first, because
+///   the sort is stable. So ordering by title, among a thousand games all
+///   called "Custom Game", still reads newest-first inside that group.
+pub fn sort_vault_replays(replays: &mut [VaultReplay], sort_by: ReplaySortField, descending: bool) {
+    replays.sort_by(|a, b| {
+        match (
+            sort_value_missing(a, sort_by),
+            sort_value_missing(b, sort_by),
+        ) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            (false, false) => {
+                let ordering = compare_on(a, b, sort_by);
+                if descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                }
+            }
+        }
+    });
+}
+
+/// Compare two rows on one field, ascending. Only ever called for two rows
+/// that both have a value: [`sort_value_missing`] has already dealt with the
+/// ones that do not.
+fn compare_on(a: &VaultReplay, b: &VaultReplay, sort_by: ReplaySortField) -> Ordering {
+    match sort_by {
+        // RFC 3339 in a fixed zone, which the API returns and which compares
+        // correctly as text: same length, most significant field first.
+        ReplaySortField::StartTime => a.start_time.cmp(&b.start_time),
+        ReplaySortField::EndTime => a.end_time.cmp(&b.end_time),
+        // `replayTicks` is what the API orders by, and `game_duration_seconds`
+        // is that number in seconds. The wall clock duration is a different
+        // measure and would disagree with the server about any game that was
+        // paused, so it is only the fallback.
+        ReplaySortField::Duration => sort_duration(a).cmp(&sort_duration(b)),
+        ReplaySortField::ReviewScore => review_key(a).cmp(&review_key(b)),
+        // Case-insensitive, because a list where "zerg rush" sorts before
+        // "All welcome" is not alphabetical to anybody reading it.
+        ReplaySortField::Title => a.title.to_lowercase().cmp(&b.title.to_lowercase()),
+        ReplaySortField::Id => a.uid.cmp(&b.uid),
+        ReplaySortField::VictoryCondition => a.victory_condition.cmp(&b.victory_condition),
+    }
+}
+
+/// Whether this row has nothing to be sorted by on that field.
+///
+/// An empty string counts: a game with no recorded end time has not ended
+/// before every other game, it has no end time.
+fn sort_value_missing(replay: &VaultReplay, sort_by: ReplaySortField) -> bool {
+    match sort_by {
+        ReplaySortField::StartTime => replay.start_time.is_empty(),
+        ReplaySortField::EndTime => replay.end_time.is_empty(),
+        ReplaySortField::Duration => sort_duration(replay).is_none(),
+        ReplaySortField::ReviewScore => review_key(replay).is_none(),
+        ReplaySortField::Title => replay.title.is_empty(),
+        // Every row has one: it is the vault key.
+        ReplaySortField::Id => false,
+        ReplaySortField::VictoryCondition => replay.victory_condition.is_empty(),
+    }
+}
+
+fn sort_duration(replay: &VaultReplay) -> Option<i32> {
+    replay.game_duration_seconds.or(replay.duration_seconds)
+}
+
+/// Review scores are `f32`, which is not `Ord`. Hundredths as an integer keeps
+/// the ordering exact for the one decimal place a five-point scale carries,
+/// and drops a `NaN` into the "no value" bucket where it belongs.
+fn review_key(replay: &VaultReplay) -> Option<i32> {
+    replay
+        .reviews_average
+        .filter(|score| score.is_finite())
+        .map(|score| (score * 100.0).round() as i32)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -720,6 +839,156 @@ mod tests {
 
     const STARTED: u32 = 1_800_000_000;
 
+    /// One vault row, identified by its uid, with only the field under test
+    /// filled in. Everything else is what an empty listing would give.
+    fn row(uid: i32) -> VaultReplay {
+        VaultReplay {
+            uid,
+            title: String::new(),
+            map: String::new(),
+            map_thumbnail_url: String::new(),
+            mod_name: String::new(),
+            start_time: String::new(),
+            end_time: String::new(),
+            replay_available: true,
+            duration_seconds: None,
+            game_duration_seconds: None,
+            teams: Vec::new(),
+            average_rating: None,
+            quality: None,
+            reviews_average: None,
+            reviews_count: None,
+            game_version: None,
+            validity: String::new(),
+            victory_condition: String::new(),
+        }
+    }
+
+    fn uids(replays: &[VaultReplay]) -> Vec<i32> {
+        replays.iter().map(|replay| replay.uid).collect()
+    }
+
+    #[test]
+    fn ordering_by_a_field_is_the_same_set_read_two_ways() {
+        // The whole point of sorting the matches rather than the scan: the
+        // rows are the same rows, in the other order.
+        let mut rows = vec![row(1), row(2), row(3)];
+        rows[0].game_duration_seconds = Some(600);
+        rows[1].game_duration_seconds = Some(1800);
+        rows[2].game_duration_seconds = Some(1200);
+
+        let mut ascending = rows.clone();
+        sort_vault_replays(&mut ascending, ReplaySortField::Duration, false);
+        assert_eq!(uids(&ascending), vec![1, 3, 2]);
+
+        let mut descending = rows.clone();
+        sort_vault_replays(&mut descending, ReplaySortField::Duration, true);
+        assert_eq!(uids(&descending), vec![2, 3, 1]);
+    }
+
+    #[test]
+    fn a_missing_value_sorts_last_whichever_way_the_arrow_points() {
+        // Descending by review score must not open with the games nobody has
+        // reviewed, and ascending must not either: they are not the worst
+        // reviewed, they are unreviewed.
+        let mut rows = vec![row(1), row(2), row(3)];
+        rows[0].reviews_average = None;
+        rows[1].reviews_average = Some(4.5);
+        rows[2].reviews_average = Some(3.0);
+
+        let mut descending = rows.clone();
+        sort_vault_replays(&mut descending, ReplaySortField::ReviewScore, true);
+        assert_eq!(uids(&descending), vec![2, 3, 1]);
+
+        let mut ascending = rows.clone();
+        sort_vault_replays(&mut ascending, ReplaySortField::ReviewScore, false);
+        assert_eq!(uids(&ascending), vec![3, 2, 1]);
+    }
+
+    #[test]
+    fn an_empty_string_is_a_missing_value_rather_than_the_smallest_one() {
+        let mut rows = vec![row(1), row(2), row(3)];
+        rows[0].end_time = String::new();
+        rows[1].end_time = "2026-09-08T20:00:00Z".into();
+        rows[2].end_time = "2026-09-09T20:00:00Z".into();
+
+        sort_vault_replays(&mut rows, ReplaySortField::EndTime, false);
+        assert_eq!(uids(&rows), vec![2, 3, 1]);
+    }
+
+    #[test]
+    fn ties_keep_the_order_the_scan_produced() {
+        // The scan is newest-first, so equal keys stay newest-first: a vault
+        // full of games called "Custom Game" is still readable when ordered by
+        // title.
+        let mut rows = vec![row(9), row(8), row(7)];
+        for replay in &mut rows {
+            replay.title = "Custom Game".into();
+        }
+        sort_vault_replays(&mut rows, ReplaySortField::Title, false);
+        assert_eq!(uids(&rows), vec![9, 8, 7]);
+        sort_vault_replays(&mut rows, ReplaySortField::Title, true);
+        assert_eq!(uids(&rows), vec![9, 8, 7]);
+    }
+
+    #[test]
+    fn titles_are_ordered_as_a_reader_would_order_them() {
+        let mut rows = vec![row(1), row(2)];
+        rows[0].title = "zerg rush".into();
+        rows[1].title = "All welcome".into();
+        sort_vault_replays(&mut rows, ReplaySortField::Title, false);
+        assert_eq!(uids(&rows), vec![2, 1]);
+    }
+
+    #[test]
+    fn the_wall_clock_duration_is_only_the_fallback() {
+        // The API orders by `replayTicks`, which is simulation time, so a
+        // paused game must not be ranked by how long its players sat there.
+        let mut rows = vec![row(1), row(2)];
+        rows[0].game_duration_seconds = Some(600);
+        rows[0].duration_seconds = Some(3600);
+        rows[1].game_duration_seconds = None;
+        rows[1].duration_seconds = Some(1200);
+        sort_vault_replays(&mut rows, ReplaySortField::Duration, false);
+        assert_eq!(uids(&rows), vec![1, 2]);
+    }
+
+    #[test]
+    fn every_field_orders_something() {
+        // A field that quietly did nothing would look exactly like the bug
+        // this function exists to fix, so each one is exercised.
+        let mut a = row(1);
+        let mut b = row(2);
+        a.start_time = "2026-01-01T00:00:00Z".into();
+        b.start_time = "2026-02-01T00:00:00Z".into();
+        a.end_time = "2026-01-01T01:00:00Z".into();
+        b.end_time = "2026-02-01T01:00:00Z".into();
+        a.game_duration_seconds = Some(1);
+        b.game_duration_seconds = Some(2);
+        a.reviews_average = Some(1.0);
+        b.reviews_average = Some(2.0);
+        a.title = "a".into();
+        b.title = "b".into();
+        a.victory_condition = "DEMORALIZATION".into();
+        b.victory_condition = "ERADICATION".into();
+
+        for field in [
+            ReplaySortField::StartTime,
+            ReplaySortField::EndTime,
+            ReplaySortField::Duration,
+            ReplaySortField::ReviewScore,
+            ReplaySortField::Title,
+            ReplaySortField::Id,
+            ReplaySortField::VictoryCondition,
+        ] {
+            let mut rows = vec![b.clone(), a.clone()];
+            sort_vault_replays(&mut rows, field, false);
+            assert_eq!(uids(&rows), vec![1, 2], "{field:?} ascending");
+            sort_vault_replays(&mut rows, field, true);
+            assert_eq!(uids(&rows), vec![2, 1], "{field:?} descending");
+        }
+    }
+
     #[test]
     fn a_fresh_match_is_not_watchable_yet() {
         assert_eq!(
@@ -891,6 +1160,7 @@ mod tests {
             map_thumbnail_url: "".into(),
             mod_name: "faf".into(),
             start_time: "2026-01-01T00:00:00Z".into(),
+            end_time: "2026-01-01T00:30:00Z".into(),
             replay_available: true,
             duration_seconds: None,
             game_duration_seconds: None,
@@ -901,6 +1171,7 @@ mod tests {
             reviews_count: None,
             game_version: None,
             validity: "VALID".into(),
+            victory_condition: "DEMORALIZATION".into(),
         }
     }
 

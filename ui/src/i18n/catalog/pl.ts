@@ -1867,4 +1867,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.generate.closePreview": "Kliknij gdziekolwiek, aby zamknąć",
   "replays.detail.simMods": "Mody symulacji",
   "replays.roster.ratingChange": "Zmiana rankingu po tej grze",
+  "replays.vault.resultCountUnknown": "{shown} pokazanych · {pages} stron · przy tym filtrze suma nie jest znana",
+  "replays.search.ratingAverageNote": "API nie ma pola ze średnim rankingiem, więc jest on liczony z napływających powtórek: wyszukiwanie czyta okno najnowszych gier i pokazuje pasujące. Zmiana sortowania porządkuje te trafienia inaczej, nie zmienia tego, które pasują.",
 };

@@ -2841,6 +2841,7 @@ fn vault_replay(uid: i32) -> VaultReplay {
         map_thumbnail_url: String::new(),
         mod_name: "faf".into(),
         start_time: "2026-01-01T00:00:00Z".into(),
+        end_time: "2026-01-01T00:30:00Z".into(),
         replay_available: true,
         duration_seconds: None,
         game_duration_seconds: None,
@@ -2851,6 +2852,7 @@ fn vault_replay(uid: i32) -> VaultReplay {
         reviews_count: None,
         game_version: None,
         validity: "VALID".into(),
+        victory_condition: "DEMORALIZATION".into(),
     }
 }
 

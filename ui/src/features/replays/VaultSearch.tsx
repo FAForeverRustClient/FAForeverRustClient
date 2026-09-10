@@ -295,6 +295,14 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
         </Button>
       </div>
 
+      {/* On its own line under the toolbar rather than only in the advanced
+          panel, which is collapsed by default: the rating slider is the one
+          control on this form whose results need explaining, and an
+          explanation nobody opens is no explanation. */}
+      {!form.ratingPerPlayer && (form.minRating !== null || form.maxRating !== null) && (
+        <p className="muted vault-search-rating-note">{t("replays.search.ratingAverageNote")}</p>
+      )}
+
       <div className="vault-search-presets search-panel-secondary">
         <Button type="button" onClick={() => applyPreset("newest")}>
           {t("replays.search.preset.newest")}
