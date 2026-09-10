@@ -814,8 +814,10 @@ mod tests {
         // share a filename and differ only in the directory, so anything
         // comparing filenames would call them the same install and refuse the
         // second launch. `install_key` compares the whole path.
-        let game = PathBuf::from(r"C:\ProgramData\FAForever\bin\ForgedAlliance.exe");
-        let replay = PathBuf::from(r"C:\ProgramData\FAForever\replaydata\bin\ForgedAlliance.exe");
+        // Forward slashes, so `file_name` means the same thing on the Linux
+        // box that runs CI as it does on the Windows box this describes.
+        let game = PathBuf::from("C:/ProgramData/FAForever/bin/ForgedAlliance.exe");
+        let replay = PathBuf::from("C:/ProgramData/FAForever/replaydata/bin/ForgedAlliance.exe");
         assert_eq!(game.file_name(), replay.file_name());
         assert_ne!(super::install_key(&game), super::install_key(&replay));
     }
