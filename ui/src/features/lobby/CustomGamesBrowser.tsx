@@ -153,8 +153,8 @@ export function showsUnrankedTag(
  */
 function RatingRangeTag({ min, max }: { min: number | null; max: number | null }) {
   const any = t("lobby.browser.any");
-  const from = min ?? any;
-  const to = max ?? any;
+  const from = min === null ? any : minusSign(min);
+  const to = max === null ? any : minusSign(max);
   return (
     <i className="game-rating-range" title={t("lobby.browser.ratingRangeTooltip", { from, to })}>
       <span>{from}</span>
@@ -162,6 +162,23 @@ function RatingRangeTag({ min, max }: { min: number | null; max: number | null }
       <span>{to}</span>
     </i>
   );
+}
+
+/**
+ * A number whose sign sits where the eye expects it.
+ *
+ * `-` is HYPHEN-MINUS, and in this interface's font it is drawn low: against
+ * four digits it lands in the bottom half of them, which is what the report
+ * noticed. U+2212 MINUS SIGN is the one designed to sit on the same axis as
+ * the digits, and it is the same width as them, so a column of ratings still
+ * lines up.
+ *
+ * Only the sign. The separator between the two bounds stays a hyphen, because
+ * it is a range dash rather than an operator and the spacing around it is what
+ * distinguishes the two.
+ */
+function minusSign(value: number): string {
+  return value < 0 ? `\u2212${Math.abs(value)}` : String(value);
 }
 
 interface Props {
