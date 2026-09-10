@@ -130,6 +130,11 @@ export function NotificationsSettingsSection() {
             value={preferences.volume}
             disabled={!preferences.enabled || !preferences.sound}
             onChange={(event) => update({ volume: Number(event.target.value) })}
+            // A sample when the slider is let go, not on every step of the
+            // drag: a percentage is not something anybody can set by eye, and
+            // a tone per pixel of travel would be unusable.
+            onPointerUp={(event) => playNotificationSound("chime", Number(event.currentTarget.value))}
+            onKeyUp={(event) => playNotificationSound("chime", Number(event.currentTarget.value))}
             aria-label={t("settings.notifications.volumeAria")}
           />
           <span>{preferences.volume}%</span>
