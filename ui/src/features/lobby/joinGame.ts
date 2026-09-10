@@ -12,6 +12,8 @@
  * different game than the one it was typed for.
  */
 import { ipc } from "../../ipc/client";
+import { useAppStore } from "../../store/store";
+import { missingSimMods, setPendingJoin } from "./joinConfirmation";
 
 let lastRequest: { id: number; password: string | null } | null = null;
 
@@ -21,9 +23,35 @@ const send = (id: number, password: string | null, replaceMods: boolean) =>
     command: { type: "join", payload: { id, password, replaceMods } },
   });
 
-/** Join a game. Every entry point in the client goes through this. */
+/**
+ * Join a game. Every entry point in the client goes through this.
+ *
+ * A join that would download simulation mods you do not have stops for an
+ * answer first, unless the setting is off: see `joinConfirmation.ts`. The
+ * check reads the store directly rather than taking the state as an argument,
+ * because the callers are a chat link, a player menu and two lists, and none
+ * of them should have to know that joining can ask a question.
+ *
+ * The state is read at call time, not at render time, so a lobby that gains a
+ * mod between the list rendering and the click is judged on what it needs now.
+ */
 export function joinGame(id: number, password: string | null = null) {
   lastRequest = { id, password };
+  const state = useAppStore.getState().state;
+  if (state.settings.game.confirmDownloadsBeforeJoining ?? true) {
+    const game = state.lobby.games.find((candidate) => candidate.id === id);
+    const missing = game ? missingSimMods(game, state.mods.installed) : [];
+    if (game && missing.length > 0) {
+      setPendingJoin({ id, title: game.title, password, missingMods: missing });
+      return Promise.resolve();
+    }
+  }
+  return send(id, password, false);
+}
+
+/** Send the join the confirmation dialog was holding. */
+export function confirmPendingJoin(id: number, password: string | null) {
+  setPendingJoin(null);
   return send(id, password, false);
 }
 

@@ -541,7 +541,7 @@ export function LobbyView() {
     if (game.passwordProtected) {
       setPassword("");
       setPasswordGame(game);
-    } else join(game.id);
+    } else void join(game.id);
   };
 
   const selectGameView = (view: GameViewMode) => {
@@ -736,7 +736,7 @@ export function LobbyView() {
           onPassword={setPassword}
           onCancel={() => setPasswordGame(null)}
           onSubmit={() => {
-            join(passwordGame.id, password);
+            void join(passwordGame.id, password);
             setPasswordGame(null);
           }}
         />

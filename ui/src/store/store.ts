@@ -478,6 +478,7 @@ const INITIAL: AppState = {
     game: {
       additionalArguments: [],
       autoGenerateMaps: true,
+      confirmDownloadsBeforeJoining: true,
       cacheLifetimeDays: 30,
       cacheSizeAlertGb: 10,
       cacheRollingBranches: false,

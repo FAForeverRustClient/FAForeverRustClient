@@ -2096,6 +2096,18 @@ export type GamePreferences = {
 	/**  Automatically generate missing Neroxis maps when joining a lobby. */
 	autoGenerateMaps?: boolean,
 	/**
+	 *  Ask before a join or a replay downloads simulation mods you do not have.
+	 *
+	 *  On by default, which is a deliberate change of behaviour: the client
+	 *  used to fetch whatever a lobby required the moment you double-clicked
+	 *  it, so joining the wrong game could leave twenty mods on disk. The
+	 *  request was to be in the driver's seat, and the dialog carries its own
+	 *  "do not ask again", which is what turns this off. It is a prompt about
+	 *  *new* downloads only: a lobby whose mods you already have never raises
+	 *  it, whatever this is set to.
+	 */
+	confirmDownloadsBeforeJoining?: boolean,
+	/**
 	 *  Maximum lifetime in days for cached game data and replay binaries.
 	 *  `None` or `0` means cache retention is indefinite / automatic purging is disabled.
 	 */

@@ -744,6 +744,7 @@
       "game": {
         "additionalArguments": [],
         "autoGenerateMaps": true,
+        "confirmDownloadsBeforeJoining": true,
         "cacheLifetimeDays": 30,
         "cacheSizeAlertGb": 10,
         "cacheRollingBranches": false,
@@ -1856,6 +1857,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -28701,6 +28703,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -28934,6 +28937,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -29175,6 +29179,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -29412,6 +29417,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -29649,6 +29655,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -29908,6 +29915,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -30158,6 +30166,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -30410,6 +30419,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },
@@ -30746,6 +30756,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
               "pipeLiveReplay": false
             },

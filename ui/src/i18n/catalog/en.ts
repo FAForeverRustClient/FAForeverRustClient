@@ -1330,6 +1330,8 @@ export const en = {
   "settings.paths.replayInstall": "Replay install",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe used for replay playback: can be a different build/version than the game install.",
   "settings.game.additionalGameLaunch": "Additional game launch arguments",
+  "settings.game.confirmDownloads": "Ask before downloading mods",
+  "settings.game.confirmDownloadsHint": "Joining a lobby that needs simulation mods you do not have asks first, and lists them. Off, they are fetched the moment you join, which is what the client used to do.",
   "settings.game.autoGenerateMaps": "Automatically generate missing maps",
   "settings.game.autoGenerateMapsHint": "Download the Neroxis generator and create required generated maps automatically when joining a lobby.",
   "settings.game.keepGeneratedMaps": "Keep generated maps",
@@ -3175,6 +3177,24 @@ export const en = {
   "settings.game.pipeLiveReplay": "Live replays workaround",
   "settings.game.pipeLiveReplayHint": "Stream live replays through a named pipe instead of a local network connection. Avoids the engine errors \"unable to load replay from gpgnet\" and \"Premature EOF\", but the window freezes while catching up and the replay ends abruptly, with no army selection or end-game statistics. Windows only.",
 
+  // Joining used to fetch whatever a lobby required the moment you
+  // double-clicked it. Two dialogs answer that: what is about to arrive, and
+  // then what is arriving.
+  "lobby.joinDownload.title": "This lobby needs mods you do not have",
+  "lobby.joinDownload.body": {
+    one: "Joining “{title}” will download 1 simulation mod:",
+    other: "Joining “{title}” will download {count} simulation mods:",
+  },
+  "lobby.joinDownload.sizeNote": "The vault does not publish file sizes, so the amount is only known once the download starts. Cancelling changes nothing on disk.",
+  "lobby.joinDownload.dontAskAgain": "Do not ask again",
+  "lobby.joinDownload.cancel": "Cancel",
+  "lobby.joinDownload.confirm": "Download and join",
+  "lobby.joinProgress.title": "Getting the game ready",
+  "lobby.joinProgress.working": "Working",
+  "lobby.joinProgress.showDetails": "Show details ({count})",
+  "lobby.joinProgress.hideDetails": "Hide details",
+  "lobby.joinProgress.hide": "Hide",
+  "lobby.joinProgress.hideNote": "Hiding this does not stop anything. The status bar keeps the same progress.",
   "lobby.modConflict.title": "Replace installed mods?",
   "lobby.modConflict.body": { one: "This game uses a different version of a mod you already have installed. Nothing has been changed yet.", other: "This game uses different versions of {count} mods you already have installed. Nothing has been changed yet." },
   "lobby.modConflict.replaces": "replaces {installed} v{version} in {folder}",

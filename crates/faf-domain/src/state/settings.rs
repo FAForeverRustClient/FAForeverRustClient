@@ -1101,6 +1101,17 @@ pub struct GamePreferences {
     /// Automatically generate missing Neroxis maps when joining a lobby.
     #[serde(default = "default_true")]
     pub auto_generate_maps: bool,
+    /// Ask before a join or a replay downloads simulation mods you do not have.
+    ///
+    /// On by default, which is a deliberate change of behaviour: the client
+    /// used to fetch whatever a lobby required the moment you double-clicked
+    /// it, so joining the wrong game could leave twenty mods on disk. The
+    /// request was to be in the driver's seat, and the dialog carries its own
+    /// "do not ask again", which is what turns this off. It is a prompt about
+    /// *new* downloads only: a lobby whose mods you already have never raises
+    /// it, whatever this is set to.
+    #[serde(default = "default_true")]
+    pub confirm_downloads_before_joining: bool,
     /// Maximum lifetime in days for cached game data and replay binaries.
     /// `None` or `0` means cache retention is indefinite / automatic purging is disabled.
     #[serde(default = "default_cache_lifetime_days")]
@@ -1162,6 +1173,7 @@ impl Default for GamePreferences {
         Self {
             additional_arguments: Vec::new(),
             auto_generate_maps: true,
+            confirm_downloads_before_joining: true,
             cache_lifetime_days: default_cache_lifetime_days(),
             cache_size_alert_gb: default_cache_size_alert_gb(),
             cache_rolling_branches: false,
