@@ -645,6 +645,7 @@ export const en = {
   "lobby.details.players": "Players",
   "lobby.details.averageRating": "Average rating",
   "lobby.details.ratingRange": "Rating range",
+  "lobby.details.ratingRangeValue": "{from} to {to}",
   "lobby.details.visibility": "Visibility",
   "lobby.details.unrated": "Unrated",
   "lobby.details.any": "Any",
@@ -999,6 +1000,9 @@ export const en = {
   "lobby.mapPool.selectHint": "Select a map for details, or enter veto mode to edit.",
   "lobby.browser.new": "New",
   "lobby.browser.any": "Any",
+  // Words rather than a hyphen, because the tooltip is where a negative lower
+  // bound has to be unambiguous: "-1000-700" is what the tag itself cannot say.
+  "lobby.browser.ratingRangeTooltip": "Rating range: {from} to {to}",
   "lobby.browser.openRange": "Open",
   "lobby.browser.ratingBetween": "{min} to {max}",
   "lobby.party.friend": "Friend",

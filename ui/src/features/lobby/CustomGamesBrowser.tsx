@@ -138,6 +138,32 @@ export function showsUnrankedTag(
   return !isCoopGame(game) && !isCustomGameRanked(game, vaultMaps, vaultMods);
 }
 
+/**
+ * A lobby's rating range, as a tag.
+ *
+ * Drawn as three pieces rather than one string because of what a negative
+ * bound does to the one-string version: `-1000-700` reads as one number and a
+ * hyphen, and the eye has no way to tell which of the two hyphens is a minus
+ * sign. Spacing the separator apart from both numbers is the whole fix, and it
+ * only works if the separator is its own element.
+ *
+ * The separator is hidden from assistive technology: the tooltip already says
+ * "Rating range: {min} to {max}" in words, and a screen reader announcing a
+ * lone hyphen between two numbers is noise.
+ */
+function RatingRangeTag({ min, max }: { min: number | null; max: number | null }) {
+  const any = t("lobby.browser.any");
+  const from = min ?? any;
+  const to = max ?? any;
+  return (
+    <i className="game-rating-range" title={t("lobby.browser.ratingRangeTooltip", { from, to })}>
+      <span>{from}</span>
+      <span className="game-rating-range-separator" aria-hidden="true">-</span>
+      <span>{to}</span>
+    </i>
+  );
+}
+
 interface Props {
   games: Game[];
   totalGames: number;
@@ -620,9 +646,7 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
-              {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
-            </i>
+            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} />
           )}
         </span>
         <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
@@ -729,9 +753,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                   </i>
                 )}
                 {(game.ratingMin !== null || game.ratingMax !== null) && (
-                  <i title={`Rating range: ${game.ratingMin ?? t("lobby.browser.any")} - ${game.ratingMax ?? t("lobby.browser.any")}`}>
-                    {game.ratingMin ?? t("lobby.browser.any")}-{game.ratingMax ?? t("lobby.browser.any")}
-                  </i>
+                  <RatingRangeTag min={game.ratingMin} max={game.ratingMax} />
                 )}
               </span>
             </div>
