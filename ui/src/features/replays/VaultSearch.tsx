@@ -242,16 +242,19 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
 
         {/* The label says "any player's", because that is what the API can
             answer and therefore what this does: a 500 against a 2500 comes
-            back from a search for either number. The game's *average* is the
-            better question and was offered for a while, computed from each
-            page as it arrived, but the API has no average field so the answer
+            back from a search for either number. It is a different question
+            from the one the *local* replay search asks with the same slider,
+            which is the game's average and is exact there, because a folder
+            scan has every replay in hand and no window to be partial about. */}
+        {/* The average was offered here too for a while, computed from each
+            page as it arrived, but the API has no average field, so the answer
             could only ever cover the window the client had read. A filter that
             quietly answers a smaller question than the one asked is worse than
             one that answers a blunter question honestly, so it was withdrawn
             rather than explained. */}
         <div className="vault-search-rating">
           <RangeSlider
-            label={t("replays.search.rating")}
+            label={t("replays.search.ratingPerPlayer")}
             min={MIN_RATING}
             max={MAX_RATING}
             step={50}
