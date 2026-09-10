@@ -713,14 +713,23 @@
   color: var(--color-rating);
 }
 
-/* The two tabs above the list. Narrow column, so they share its width rather
-   than sitting at their natural size. */
+/* The two tabs above the list.
+   `flex-shrink: 0` is the whole fix for the report: the host column is a flex
+   column with a scrolling body, and a tab strip that can shrink gets squeezed
+   to a sliver whose labels then overlap the heading above it. The shared strip
+   is also built for a page header, so its 42 px rows are cut down to something
+   a 260 px column can carry. */
 .host-map-tabs {
-  margin: 0 var(--space-3) var(--space-2);
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .host-map-tabs button {
   flex: 1;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .host-map-row {
