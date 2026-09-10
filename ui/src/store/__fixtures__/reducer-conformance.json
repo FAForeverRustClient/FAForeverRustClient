@@ -409,7 +409,8 @@
       },
       "toggleStatus": {
         "type": "idle"
-      }
+      },
+      "downloadSizes": {}
     },
     "leaderboard": {
       "mode": "ratings",
@@ -687,17 +688,17 @@
         "desktopAllKinds": false,
         "sound": true,
         "sounds": {
-          "matchFound": "alert",
-          "privateMessage": "ping",
-          "mention": "ping",
-          "friendOnline": "soft",
-          "friendOffline": "soft",
-          "friendPlaying": "soft",
-          "newCustomGame": "soft",
-          "gameFull": "alert",
+          "matchFound": "chime",
+          "privateMessage": "chime",
+          "mention": "chime",
+          "friendOnline": "chime",
+          "friendOffline": "chime",
+          "friendPlaying": "chime",
+          "newCustomGame": "chime",
+          "gameFull": "chime",
           "gameLaunched": "chime",
-          "reviewReminder": "soft",
-          "partyInvite": "alert",
+          "reviewReminder": "chime",
+          "partyInvite": "chime",
           "other": "chime"
         },
         "notifyWhenFocused": false,
@@ -1920,18 +1921,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -23065,6 +23066,7 @@
             },
             "browseTotalPages": null,
             "browseTotalRecords": null,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23136,6 +23138,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23190,6 +23193,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23241,6 +23245,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23295,6 +23300,7 @@
             },
             "browseTotalPages": 2,
             "browseTotalRecords": 48,
+            "downloadSizes": {},
             "installStatus": {
               "type": "idle"
             },
@@ -23304,6 +23310,133 @@
                 "reason": "no mods folder"
               },
               "type": "failed"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mod download sizes keep only the answers that carried a number",
+      "steps": [
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "downloadSizesResolved",
+              "payload": {
+                "sizes": [
+                  {
+                    "uid": "AAA",
+                    "bytes": 4194304
+                  },
+                  {
+                    "uid": "BBB",
+                    "bytes": null
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {
+              "AAA": 4194304
+            },
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "toggleStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Mods",
+            "event": {
+              "type": "downloadSizesResolved",
+              "payload": {
+                "sizes": [
+                  {
+                    "uid": "AAA",
+                    "bytes": 5242880
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "before": "",
+              "dateFieldUpdated": true,
+              "exactName": false,
+              "maxRatingTenths": null,
+              "minRatingTenths": null,
+              "modType": "",
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "uploaderId": null
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "downloadSizes": {
+              "AAA": 5242880
+            },
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
             },
             "toggleStatus": {
               "type": "idle"
@@ -28767,18 +28900,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -29002,18 +29135,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -29245,18 +29378,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -29486,18 +29619,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -29726,18 +29859,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -29987,18 +30120,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -30239,18 +30372,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -30493,18 +30626,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70
@@ -30831,18 +30964,18 @@
               "reviewReminder": true,
               "sound": true,
               "sounds": {
-                "friendOffline": "soft",
-                "friendOnline": "soft",
-                "friendPlaying": "soft",
-                "gameFull": "alert",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "chime",
                 "gameLaunched": "chime",
-                "matchFound": "alert",
-                "mention": "ping",
-                "newCustomGame": "soft",
+                "matchFound": "chime",
+                "mention": "chime",
+                "newCustomGame": "chime",
                 "other": "chime",
-                "partyInvite": "alert",
-                "privateMessage": "ping",
-                "reviewReminder": "soft"
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
               },
               "toastPosition": "bottomLeft",
               "volume": 70

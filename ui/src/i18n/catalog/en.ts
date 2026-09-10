@@ -3192,6 +3192,11 @@ export const en = {
     other: "Joining “{title}” will download {count} simulation mods:",
   },
   "lobby.joinDownload.sizeUnknown": "The vault does not publish file sizes, so the amount is only known once the download starts. Cancelling changes nothing on disk.",
+  "lobby.joinDownload.sizeTotal": "About {size} to download. Cancelling changes nothing on disk.",
+  "lobby.joinDownload.sizePartial": {
+    one: "At least {size} to download; the server did not give a size for 1 of them. Cancelling changes nothing on disk.",
+    other: "At least {size} to download; the server did not give a size for {unknown} of them. Cancelling changes nothing on disk.",
+  },
   "lobby.joinDownload.dontAskAgain": "Do not ask again",
   "lobby.joinDownload.cancel": "Cancel",
   "lobby.joinDownload.confirm": "Download and join",

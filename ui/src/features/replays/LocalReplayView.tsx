@@ -7,6 +7,7 @@ import type { CoopMission, LocalReplay, ReplayTeam, VaultMap } from "../../ipc/b
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
+import { formatBytes } from "../../shared/formatBytes";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { mapPresentation } from "../../shared/mapPresentation";
@@ -75,12 +76,6 @@ function pickReplayFile(): void {
   }).then((path) => {
     if (path) openFile(path);
   }));
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 const LOCAL_STATUS_LABELS: Record<LocalReplay["status"], MessageKey> = {
@@ -373,7 +368,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 const mapName = presentation?.displayName || replay.map || replay.fileName;
                 const replayDetails = [
                   replay.recorder || t("replays.local.noRecorder"),
-                  formatFileSize(replay.fileSizeBytes),
+                  formatBytes(replay.fileSizeBytes),
                   replay.uid === null ? t("replays.local.noReplayId") : `#${replay.uid}`,
                 ].join(" · ");
                 const simModLabel = replay.simMods.length === 0

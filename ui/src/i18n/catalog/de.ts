@@ -3049,6 +3049,11 @@ export const de: Partial<Record<MessageKey, Message>> = {
     other: "Der Beitritt zu „{title}“ lädt {count} Simulationsmods herunter:",
   },
   "lobby.joinDownload.sizeUnknown": "Das Vault veröffentlicht keine Dateigrößen, die Menge steht also erst mit dem Download fest. Abbrechen ändert nichts auf der Festplatte.",
+  "lobby.joinDownload.sizeTotal": "Etwa {size} werden geladen. Abbrechen ändert nichts auf der Festplatte.",
+  "lobby.joinDownload.sizePartial": {
+    one: "Mindestens {size} werden geladen; für 1 davon nannte der Server keine Größe. Abbrechen ändert nichts auf der Festplatte.",
+    other: "Mindestens {size} werden geladen; für {unknown} davon nannte der Server keine Größe. Abbrechen ändert nichts auf der Festplatte.",
+  },
   "lobby.joinDownload.dontAskAgain": "Nicht mehr fragen",
   "lobby.joinDownload.cancel": "Abbrechen",
   "lobby.joinDownload.confirm": "Herunterladen und beitreten",

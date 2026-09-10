@@ -16,13 +16,21 @@
 
 import type { Game, InstalledMod } from "../../ipc/bindings";
 
+/** One simulation mod a join would have to fetch. */
+export interface MissingMod {
+  /** As the lobby server spells it, which is what the vault matches on. */
+  uid: string;
+  /** What to put in front of a person. Falls back to the uid. */
+  name: string;
+}
+
 /** A join the user has not confirmed yet. */
 export interface PendingJoin {
   id: number;
   title: string;
   password: string | null;
-  /** Display names of the simulation mods that are not on disk yet. */
-  missingMods: string[];
+  /** The simulation mods that are not on disk yet. */
+  missingMods: MissingMod[];
 }
 
 let pending: PendingJoin | null = null;
@@ -57,10 +65,32 @@ export function setPendingJoin(next: PendingJoin | null) {
  * whatever the setting says. That is the case that keeps this out of the way
  * of the people who play the same three modded lobbies every evening.
  */
-export function missingSimMods(game: Game, installed: InstalledMod[]): string[] {
+export function missingSimMods(game: Game, installed: InstalledMod[]): MissingMod[] {
   const have = new Set(installed.map((mod) => mod.uid.toLocaleLowerCase()));
   return Object.entries(game.simMods)
     .filter(([uid]) => !have.has(uid.toLocaleLowerCase()))
-    .map(([uid, name]) => name || uid)
-    .sort((left, right) => left.localeCompare(right));
+    .map(([uid, name]) => ({ uid, name: name || uid }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/**
+ * The archive sizes of those mods, and whether that is the whole story.
+ *
+ * `bytes` is the sum of what is known, `unknown` how many of them nothing came
+ * back for. Both matter: a total that silently omits three mods is worse than
+ * no total, so the dialog says "at least" when `unknown` is not zero and says
+ * nothing at all when it has no numbers whatsoever.
+ */
+export function missingModsSize(
+  missing: MissingMod[],
+  sizes: Record<string, number>,
+): { bytes: number; unknown: number } {
+  let bytes = 0;
+  let unknown = 0;
+  for (const mod of missing) {
+    const size = sizes[mod.uid];
+    if (size === undefined) unknown += 1;
+    else bytes += size;
+  }
+  return { bytes, unknown };
 }

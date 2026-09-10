@@ -3783,6 +3783,34 @@ export type MessageReactions = {
 	entries: Reaction[],
 };
 
+/**  What a HEAD request said about one of those archives. */
+export type ModDownloadSize = {
+	uid: string,
+	/**
+	 *  Bytes, or `None` when the server answered without a length.
+	 *
+	 *  Not zero: a mod whose size is unknown and a mod that is somehow empty
+	 *  are different facts, and only one of them is worth printing.
+	 *
+	 *  `u32`, so four gigabytes, which is two orders of magnitude above the
+	 *  largest mod on the vault. It is also what crosses the IPC boundary
+	 *  without a `BigInt`, which specta refuses to generate.
+	 */
+	bytes: number | null,
+};
+
+/**
+ *  One mod's archive, as the join dialog needs to ask about it.
+ *
+ *  The URL comes from the caller rather than being looked up here, the same way
+ *  [`ModsCommand::InstallMod`] takes one: the vault catalogue is already
+ *  mirrored in the frontend store, and a service is not allowed to read state.
+ */
+export type ModDownloadTarget = {
+	uid: string,
+	downloadUrl: string,
+};
+
 /**
  *  Status of an install/uninstall action for one mod. Mirrors
  *  [`crate::state::MapInstallStatus`].
@@ -3943,6 +3971,18 @@ export type ModsCommand =
 	downloadUrl: string,
 } } |
 /**
+ *  Ask how big these archives are, without downloading them.
+ *
+ *  Exists for the dialog that asks whether a join may download mods: the
+ *  vault's `mod` resource carries a download URL and no file length, so the
+ *  only way to answer "how much is this going to cost me" is to ask the
+ *  storage server. One HEAD per mod, and the answer is cached in
+ *  [`ModsState::download_sizes`] for the session.
+ */
+{ type: "queryDownloadSizes"; payload: {
+	targets: ModDownloadTarget[],
+} } |
+/**
  *  Replace an installed mod with the vault's current version.
  *
  *  Not a client-side `uninstall` followed by an `install`, which is what
@@ -4022,6 +4062,17 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | 
 	installed: InstalledMod[],
 } } | { type: "toggleFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  The answers to a [`ModsCommand::QueryDownloadSizes`].
+ *
+ *  Every target gets an entry, including the ones the server answered
+ *  without a length, so a caller can tell "asked and did not find out" from
+ *  "not asked yet". Only the ones that did produce a number reach the
+ *  state.
+ */
+{ type: "downloadSizesResolved"; payload: {
+	sizes: ModDownloadSize[],
 } };
 
 export type ModsState = {
@@ -4044,6 +4095,16 @@ export type ModsState = {
 	installedStatus: ModListStatus,
 	installStatus: ModInstallStatus,
 	toggleStatus: ModToggleStatus,
+	/**
+	 *  Archive sizes in bytes, by mod uid, for the ones anybody has asked
+	 *  about.
+	 *
+	 *  Only ever grows within a session, and only holds answers: a uid that is
+	 *  absent has not been asked about or came back without a length, and both
+	 *  mean "do not print a size". Small by construction, because the only
+	 *  caller asks about the handful of mods one lobby is missing.
+	 */
+	downloadSizes: { [key in string]: number },
 };
 
 export type NavCommand = { type: "select"; payload: {
@@ -4197,21 +4258,16 @@ export type NotificationSound =
  *  UI. Everything without a switch of its own (server notices, errors, a
  *  finished map, a new client version) shares [`Self::other`].
  *
- *  The defaults are not all the same value, and that is the point of the
- *  feature: every notification sounding identical is what was reported. They
- *  are graded by whether something is waiting on an answer:
+ *  **Every default is [`NotificationSound::Chime`]**, which is the tone the
+ *  client played for everything before this existed. Installing an update
+ *  therefore changes nothing anybody hears; a player who wants a match to sound
+ *  different from a friend coming online says so, per row, and that is the
+ *  feature. Graded defaults were tried first and rejected: shipping a set of
+ *  choices somebody did not make is a worse answer to "all notifications sound
+ *  the same" than letting them make it.
  *
- *  - **Alert** for a match, a party invite and a lobby filling up: all three
- *    expire, and the last one was asked for by name on the issue.
- *  - **Ping** for a private message and a mention: addressed to you.
- *  - **Chime**, the client's existing tone, for a game launching and for
- *    everything without a switch.
- *  - **Soft** for the ambient stream: a friend's presence, a new lobby, a
- *    review reminder. These are the ones a player hears twenty times an
- *    evening.
- *
- *  Anybody who preferred one sound for everything sets every row to Chime, and
- *  anybody who wants a kind seen but not heard sets it to Silent.
+ *  [`NotificationSound::Silent`] is available on every row, which is how a kind
+ *  is seen and not heard.
  */
 export type NotificationSoundChoices = {
 	matchFound: NotificationSound,

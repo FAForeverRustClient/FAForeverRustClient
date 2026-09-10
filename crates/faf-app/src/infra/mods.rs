@@ -47,7 +47,9 @@ use std::path::{Component, Path, PathBuf};
 
 use async_trait::async_trait;
 use faf_domain::protocol::vault_query::ModVaultQuery;
-use faf_domain::state::{InstalledMod, ModType, ModVersionConflict, VaultMod};
+use faf_domain::state::{
+    InstalledMod, ModDownloadSize, ModDownloadTarget, ModType, ModVersionConflict, VaultMod,
+};
 use serde_json::Value;
 
 use crate::infra::env_or;
@@ -182,6 +184,29 @@ impl ModsClient {
     }
 }
 
+/// One HEAD, and the `Content-Length` if there was one.
+///
+/// `None` covers every way this can fail to produce a number, and they are all
+/// the same to the caller: a URL that is not https (the client does not fetch
+/// anything else), a server that refuses HEAD, a redirect chain that drops the
+/// header, a chunked response, or the request timing out. No token: the mod
+/// archives live on content storage rather than behind the API.
+async fn head_content_length(http: &reqwest::Client, url: &str) -> Option<u32> {
+    if !url.starts_with("https://") {
+        return None;
+    }
+    let response = http
+        .head(url)
+        .timeout(std::time::Duration::from_secs(6))
+        .send()
+        .await
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    u32::try_from(response.content_length()?).ok()
+}
+
 #[async_trait]
 impl ModsPort for ModsClient {
     async fn list_vault(&self) -> Result<Vec<VaultMod>, String> {
@@ -218,6 +243,17 @@ impl ModsPort for ModsClient {
             all_mods.extend(parse_vault_mods(doc));
         }
         Ok(all_mods)
+    }
+
+    async fn download_sizes(&self, targets: Vec<ModDownloadTarget>) -> Vec<ModDownloadSize> {
+        let mut sizes = Vec::with_capacity(targets.len());
+        for target in targets {
+            sizes.push(ModDownloadSize {
+                bytes: head_content_length(&self.http, &target.download_url).await,
+                uid: target.uid,
+            });
+        }
+        sizes
     }
 
     async fn search_vault(&self, query: ModVaultQuery) -> Result<ModSearchPage, String> {
@@ -952,6 +988,17 @@ impl ModsPort for FakeMods {
 
     async fn list_installed(&self) -> Result<Vec<InstalledMod>, String> {
         Err("mod install listing is unavailable in offline mode".to_string())
+    }
+
+    async fn download_sizes(&self, targets: Vec<ModDownloadTarget>) -> Vec<ModDownloadSize> {
+        // Offline: every answer is "no idea", which the dialog already draws.
+        targets
+            .into_iter()
+            .map(|target| ModDownloadSize {
+                uid: target.uid,
+                bytes: None,
+            })
+            .collect()
     }
 
     async fn install_mod(

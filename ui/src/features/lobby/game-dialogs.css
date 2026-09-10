@@ -1573,6 +1573,21 @@
   line-height: 1.6;
 }
 
+/* Name on the left, size on the right when it has arrived. The row keeps its
+   height either way, so the list does not jump as the answers land. */
+.join-download-list > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.join-download-list > li > small {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The checkbox sits opposite the buttons rather than above them: it is a
    qualifier on the button next to it, not a step of its own. */
 .join-download-actions {

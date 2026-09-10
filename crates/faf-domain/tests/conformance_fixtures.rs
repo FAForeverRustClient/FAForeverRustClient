@@ -4589,6 +4589,37 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "mod download sizes keep only the answers that carried a number",
+            vec![
+                ModsEvent::DownloadSizesResolved {
+                    sizes: vec![
+                        faf_domain::state::ModDownloadSize {
+                            uid: "AAA".into(),
+                            bytes: Some(4_194_304),
+                        },
+                        // No length in the response. Absent from the state
+                        // rather than stored as a zero, because "unknown" and
+                        // "empty" are different answers and only one of them is
+                        // worth printing next to a mod.
+                        faf_domain::state::ModDownloadSize {
+                            uid: "BBB".into(),
+                            bytes: None,
+                        },
+                    ],
+                }
+                .into(),
+                // A second answer for a uid already known replaces it, which is
+                // what makes re-asking after a vault refresh harmless.
+                ModsEvent::DownloadSizesResolved {
+                    sizes: vec![faf_domain::state::ModDownloadSize {
+                        uid: "AAA".into(),
+                        bytes: Some(5_242_880),
+                    }],
+                }
+                .into(),
+            ],
+        ),
         // ── map generator ────────────────────────────────────────────────
         case(
             "the map generator narrates a run and keeps its option lists",

@@ -95,8 +95,8 @@ pub use maps::{
     MapsCommand, MapsEvent, MapsState, MatchmakerMapPool, MatchmakerPoolMap, VaultMap,
 };
 pub use mods::{
-    InstalledMod, ModInstallStatus, ModListStatus, ModToggleStatus, ModType, ModVersionConflict,
-    ModsCommand, ModsEvent, ModsState, VaultMod,
+    InstalledMod, ModDownloadSize, ModDownloadTarget, ModInstallStatus, ModListStatus,
+    ModToggleStatus, ModType, ModVersionConflict, ModsCommand, ModsEvent, ModsState, VaultMod,
 };
 pub use nav::{NavCommand, NavEvent, NavState, Tab};
 pub use notifications::{

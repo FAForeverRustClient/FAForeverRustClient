@@ -36,6 +36,19 @@ impl ModsPort for StubMods {
         Ok(vec![installed("11")])
     }
 
+    async fn download_sizes(
+        &self,
+        targets: Vec<faf_domain::state::ModDownloadTarget>,
+    ) -> Vec<faf_domain::state::ModDownloadSize> {
+        targets
+            .into_iter()
+            .map(|target| faf_domain::state::ModDownloadSize {
+                uid: target.uid,
+                bytes: None,
+            })
+            .collect()
+    }
+
     async fn install_mod(
         &self,
         _uid: String,
