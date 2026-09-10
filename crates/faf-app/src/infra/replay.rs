@@ -64,7 +64,7 @@
 //! big-endian length + raw zlib). The decompressed body is written to the
 //! cache dir and FA is launched with `/replay "<path>"`.
 
-use std::collections::{hash_map::DefaultHasher, HashMap};
+use std::collections::{hash_map::DefaultHasher, HashMap, HashSet};
 use std::hash::{Hash as _, Hasher as _};
 use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
@@ -848,6 +848,12 @@ impl ReplayClient {
         let fallback = query.fallback_months().map(months_ago);
         let started = std::time::Instant::now();
         let mut matched: Vec<VaultReplay> = Vec::new();
+        // The vault is live and this scan pages by offset, so a game that
+        // finishes between two of these requests pushes every later page down
+        // by one row and the row on the seam arrives twice. Rare, seconds-wide,
+        // and it would show as the same replay listed twice: cheap enough to
+        // rule out that anybody has to wonder about it.
+        let mut seen: HashSet<i32> = HashSet::new();
         let mut scanned = 0;
         let mut exhausted = false;
 
@@ -874,7 +880,11 @@ impl ReplayClient {
             let doc = fetch_document(&self.http, url, token).await?;
             let rows = parse_vault_replays(&doc);
             let received = rows.len();
-            matched.extend(retain_locally_matching(query, rows));
+            matched.extend(
+                retain_locally_matching(query, rows)
+                    .into_iter()
+                    .filter(|replay| seen.insert(replay.uid)),
+            );
             scanned = scan_page;
 
             // Only an *empty* page is the end of the results. A short one is
