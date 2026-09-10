@@ -181,7 +181,16 @@
 
 .setting-control {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* The per-kind sound picker sits in the same row as the switch that turns the
+   notification on, so it stays narrow enough to leave the switch where the eye
+   already expects it. */
+.settings-sound-select {
+  max-width: 120px;
 }
 
 .setting-row-update-status {

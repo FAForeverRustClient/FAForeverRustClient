@@ -1100,6 +1100,16 @@ export const en = {
   "settings.notifications.volume": "Sound volume",
   "settings.notifications.volumeHint": "Adjust alert volume without changing game audio.",
   "settings.notifications.volumeAria": "Notification sound volume",
+  // The shipped tones, quietest first. Synthesised rather than sampled, so
+  // "shipped" costs no files: see notificationSound.ts.
+  "settings.notifications.sound.silent": "Silent",
+  "settings.notifications.sound.soft": "Soft",
+  "settings.notifications.sound.chime": "Chime",
+  "settings.notifications.sound.ping": "Ping",
+  "settings.notifications.sound.alert": "Alert",
+  "settings.notifications.soundFor": "Sound for {what}",
+  "settings.notifications.otherSounds": "Everything else",
+  "settings.notifications.otherSoundsHint": "Server notices, errors, a finished map, a new client version.",
   "settings.notifications.toastPositionLabel": "Where notifications appear",
   "settings.notifications.toastPositionHint": "The corner a notification slides into. Defaults to the corner the bell is in, so it is still there when you look for it.",
   "settings.notifications.toastPosition.bottomLeft": "Bottom left (next to the bell)",

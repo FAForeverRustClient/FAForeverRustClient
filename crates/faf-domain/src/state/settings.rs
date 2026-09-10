@@ -368,6 +368,141 @@ pub enum ToastPosition {
     BottomRight,
 }
 
+/// One of the tones the client ships with.
+///
+/// Synthesised rather than sampled: every one of these is a couple of sine
+/// partials and an envelope, which is why "shipped with the client" costs no
+/// files and no decoder. See `ui/src/features/notifications/notificationSound.ts`
+/// for the plans themselves.
+///
+/// The set is deliberately small and ordered by how much attention it asks
+/// for. [`Self::Silent`] is part of the set rather than a separate switch: the
+/// request that started this was "visual notifications only for friend
+/// connected, but a strong sound for game full", and a sound picker that can
+/// say *nothing* answers the first half without a second control per row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NotificationSound {
+    /// No tone. The notification still appears and still counts as unread.
+    Silent,
+    /// One quiet low note. For things worth knowing and not worth looking up
+    /// for.
+    Soft,
+    /// The tone the client played for everything before this existed.
+    #[default]
+    Chime,
+    /// Short and bright, for something addressed to you personally.
+    Ping,
+    /// Two rising notes. The loudest thing here, for something that expires.
+    Alert,
+}
+
+/// Which tone each kind of notification plays.
+///
+/// One field per switch in the notification settings, so the dropdown sits
+/// next to the switch it belongs to and no mapping has to be explained in the
+/// UI. Everything without a switch of its own (server notices, errors, a
+/// finished map, a new client version) shares [`Self::other`].
+///
+/// The defaults are not all the same value, and that is the point of the
+/// feature: every notification sounding identical is what was reported. They
+/// are graded by whether something is waiting on an answer:
+///
+/// - **Alert** for a match, a party invite and a lobby filling up: all three
+///   expire, and the last one was asked for by name on the issue.
+/// - **Ping** for a private message and a mention: addressed to you.
+/// - **Chime**, the client's existing tone, for a game launching and for
+///   everything without a switch.
+/// - **Soft** for the ambient stream: a friend's presence, a new lobby, a
+///   review reminder. These are the ones a player hears twenty times an
+///   evening.
+///
+/// Anybody who preferred one sound for everything sets every row to Chime, and
+/// anybody who wants a kind seen but not heard sets it to Silent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationSoundChoices {
+    pub match_found: NotificationSound,
+    pub private_message: NotificationSound,
+    pub mention: NotificationSound,
+    pub friend_online: NotificationSound,
+    pub friend_offline: NotificationSound,
+    pub friend_playing: NotificationSound,
+    pub new_custom_game: NotificationSound,
+    pub game_full: NotificationSound,
+    pub game_launched: NotificationSound,
+    pub review_reminder: NotificationSound,
+    pub party_invite: NotificationSound,
+    /// Every kind without a switch of its own.
+    pub other: NotificationSound,
+}
+
+impl Default for NotificationSoundChoices {
+    fn default() -> Self {
+        Self {
+            match_found: NotificationSound::Alert,
+            private_message: NotificationSound::Ping,
+            mention: NotificationSound::Ping,
+            friend_online: NotificationSound::Soft,
+            friend_offline: NotificationSound::Soft,
+            friend_playing: NotificationSound::Soft,
+            new_custom_game: NotificationSound::Soft,
+            game_full: NotificationSound::Alert,
+            game_launched: NotificationSound::Chime,
+            review_reminder: NotificationSound::Soft,
+            party_invite: NotificationSound::Alert,
+            other: NotificationSound::Chime,
+        }
+    }
+}
+
+// Deserialised through a `default`-ing twin for the same reason
+// `NotificationPreferences` below is: a settings file written by an older
+// build gains the new field's default rather than failing to load, and the
+// generated TypeScript still sees a required field rather than an optional
+// one. `#[serde(default)]` on the struct itself would achieve the first and
+// lose the second, because specta renders a defaulted field as `field?:`.
+impl<'de> Deserialize<'de> for NotificationSoundChoices {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Fields {
+            match_found: Option<NotificationSound>,
+            private_message: Option<NotificationSound>,
+            mention: Option<NotificationSound>,
+            friend_online: Option<NotificationSound>,
+            friend_offline: Option<NotificationSound>,
+            friend_playing: Option<NotificationSound>,
+            new_custom_game: Option<NotificationSound>,
+            game_full: Option<NotificationSound>,
+            game_launched: Option<NotificationSound>,
+            review_reminder: Option<NotificationSound>,
+            party_invite: Option<NotificationSound>,
+            other: Option<NotificationSound>,
+        }
+
+        let fields = Fields::deserialize(deserializer)?;
+        let defaults = Self::default();
+        Ok(Self {
+            match_found: fields.match_found.unwrap_or(defaults.match_found),
+            private_message: fields.private_message.unwrap_or(defaults.private_message),
+            mention: fields.mention.unwrap_or(defaults.mention),
+            friend_online: fields.friend_online.unwrap_or(defaults.friend_online),
+            friend_offline: fields.friend_offline.unwrap_or(defaults.friend_offline),
+            friend_playing: fields.friend_playing.unwrap_or(defaults.friend_playing),
+            new_custom_game: fields.new_custom_game.unwrap_or(defaults.new_custom_game),
+            game_full: fields.game_full.unwrap_or(defaults.game_full),
+            game_launched: fields.game_launched.unwrap_or(defaults.game_launched),
+            review_reminder: fields.review_reminder.unwrap_or(defaults.review_reminder),
+            party_invite: fields.party_invite.unwrap_or(defaults.party_invite),
+            other: fields.other.unwrap_or(defaults.other),
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationPreferences {
@@ -382,6 +517,8 @@ pub struct NotificationPreferences {
     /// reasoning. On restores the old behaviour for anyone who wants it.
     pub desktop_all_kinds: bool,
     pub sound: bool,
+    /// Which tone each kind plays, when [`Self::sound`] is on.
+    pub sounds: NotificationSoundChoices,
     pub notify_when_focused: bool,
     /// Which corner a toast appears in. See [`ToastPosition`].
     pub toast_position: ToastPosition,
@@ -408,6 +545,7 @@ impl Default for NotificationPreferences {
             desktop: true,
             desktop_all_kinds: false,
             sound: true,
+            sounds: NotificationSoundChoices::default(),
             notify_when_focused: false,
             toast_position: ToastPosition::BottomLeft,
             match_found: true,
@@ -442,6 +580,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop: bool,
             desktop_all_kinds: bool,
             sound: bool,
+            sounds: NotificationSoundChoices,
             notify_when_focused: bool,
             toast_position: ToastPosition,
             match_found: bool,
@@ -467,6 +606,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     desktop: defaults.desktop,
                     desktop_all_kinds: defaults.desktop_all_kinds,
                     sound: defaults.sound,
+                    sounds: defaults.sounds,
                     notify_when_focused: defaults.notify_when_focused,
                     toast_position: defaults.toast_position,
                     match_found: defaults.match_found,
@@ -492,6 +632,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             desktop: wire.desktop,
             desktop_all_kinds: wire.desktop_all_kinds,
             sound: wire.sound,
+            sounds: wire.sounds,
             notify_when_focused: wire.notify_when_focused,
             toast_position: wire.toast_position,
             match_found: wire.match_found,

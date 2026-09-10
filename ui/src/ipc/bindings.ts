@@ -4119,6 +4119,8 @@ export type NotificationPreferences = {
 	 */
 	desktopAllKinds: boolean,
 	sound: boolean,
+	/**  Which tone each kind plays, when [`Self::sound`] is on. */
+	sounds: NotificationSoundChoices,
 	notifyWhenFocused: boolean,
 	/**  Which corner a toast appears in. See [`ToastPosition`]. */
 	toastPosition: ToastPosition,
@@ -4136,6 +4138,75 @@ export type NotificationPreferences = {
 	partyInvites: boolean,
 	/**  Sound volume from 0 to 100. */
 	volume: number,
+};
+
+/**
+ *  One of the tones the client ships with.
+ *
+ *  Synthesised rather than sampled: every one of these is a couple of sine
+ *  partials and an envelope, which is why "shipped with the client" costs no
+ *  files and no decoder. See `ui/src/features/notifications/notificationSound.ts`
+ *  for the plans themselves.
+ *
+ *  The set is deliberately small and ordered by how much attention it asks
+ *  for. [`Self::Silent`] is part of the set rather than a separate switch: the
+ *  request that started this was "visual notifications only for friend
+ *  connected, but a strong sound for game full", and a sound picker that can
+ *  say *nothing* answers the first half without a second control per row.
+ */
+export type NotificationSound =
+/**  No tone. The notification still appears and still counts as unread. */
+"silent" |
+/**
+ *  One quiet low note. For things worth knowing and not worth looking up
+ *  for.
+ */
+"soft" |
+/**  The tone the client played for everything before this existed. */
+"chime" |
+/**  Short and bright, for something addressed to you personally. */
+"ping" |
+/**  Two rising notes. The loudest thing here, for something that expires. */
+"alert";
+
+/**
+ *  Which tone each kind of notification plays.
+ *
+ *  One field per switch in the notification settings, so the dropdown sits
+ *  next to the switch it belongs to and no mapping has to be explained in the
+ *  UI. Everything without a switch of its own (server notices, errors, a
+ *  finished map, a new client version) shares [`Self::other`].
+ *
+ *  The defaults are not all the same value, and that is the point of the
+ *  feature: every notification sounding identical is what was reported. They
+ *  are graded by whether something is waiting on an answer:
+ *
+ *  - **Alert** for a match, a party invite and a lobby filling up: all three
+ *    expire, and the last one was asked for by name on the issue.
+ *  - **Ping** for a private message and a mention: addressed to you.
+ *  - **Chime**, the client's existing tone, for a game launching and for
+ *    everything without a switch.
+ *  - **Soft** for the ambient stream: a friend's presence, a new lobby, a
+ *    review reminder. These are the ones a player hears twenty times an
+ *    evening.
+ *
+ *  Anybody who preferred one sound for everything sets every row to Chime, and
+ *  anybody who wants a kind seen but not heard sets it to Silent.
+ */
+export type NotificationSoundChoices = {
+	matchFound: NotificationSound,
+	privateMessage: NotificationSound,
+	mention: NotificationSound,
+	friendOnline: NotificationSound,
+	friendOffline: NotificationSound,
+	friendPlaying: NotificationSound,
+	newCustomGame: NotificationSound,
+	gameFull: NotificationSound,
+	gameLaunched: NotificationSound,
+	reviewReminder: NotificationSound,
+	partyInvite: NotificationSound,
+	/**  Every kind without a switch of its own. */
+	other: NotificationSound,
 };
 
 export type NotificationState = {

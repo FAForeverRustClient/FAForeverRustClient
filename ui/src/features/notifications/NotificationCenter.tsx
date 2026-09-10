@@ -5,7 +5,7 @@ import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/chatFormat";
-import { playNotificationAlert } from "./notificationSound";
+import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
 import "./notifications.css";
 import { t } from "../../i18n";
@@ -170,11 +170,11 @@ export function NotificationCenter() {
     setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
 
     fresh.forEach((item) => {
+      // Per kind now, not one tone for everything with a louder variant for two
+      // of them: which tone a kind plays is the player's choice, and "silent"
+      // is one of the choices, so a kind can be seen and not heard.
       if (preferences.sound) {
-        playNotificationAlert(
-          preferences.volume,
-          item.kind === "matchFound" || item.kind === "partyInvite",
-        );
+        playNotificationSound(soundForKind(item.kind, preferences.sounds), preferences.volume);
       }
     });
     if (preferences.desktop) {
