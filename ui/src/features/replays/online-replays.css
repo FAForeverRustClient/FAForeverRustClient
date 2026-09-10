@@ -147,14 +147,6 @@ button.vault-input {
   align-self: end;
 }
 
-/* The average-rating explanation. Its own line under the primary toolbar,
-   because it belongs to a control in that toolbar and would be unreadable
-   inside the slider's own 220 px column. */
-.vault-search-rating-note {
-  margin: 0 0 var(--space-2);
-  font-size: 12px;
-}
-
 /* The date-floor explanation: spans the grid so it reads as a footnote. */
 .vault-search-note {
   grid-column: 1 / -1;

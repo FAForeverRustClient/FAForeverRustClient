@@ -1315,7 +1315,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.search.mod": "Mod",
   "replays.search.anyMod": "Indifférent",
   "replays.search.leaderboard": "Classement",
-  "replays.search.rating": "Classement",
+  "replays.search.rating": "Classement d'un joueur",
   "replays.search.sortBy": "Trier par",
   "replays.search.submit": "Rechercher",
   "replays.search.descendingAria": "Décroissant ; cliquez pour croissant",
@@ -1838,5 +1838,4 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.detail.simMods": "Mods de simulation",
   "replays.roster.ratingChange": "Variation de classement due à cette partie",
   "replays.vault.resultCountUnknown": "{shown} affichés · {pages} pages · le total est inconnu avec ce filtre",
-  "replays.search.ratingAverageNote": "L'API n'a pas de champ de classement moyen, il est donc calculé à partir des replays au fur et à mesure : la recherche lit une fenêtre des parties les plus récentes et affiche celles qui correspondent. Changer le tri réorganise ces résultats, il ne change pas lesquels correspondent.",
 };

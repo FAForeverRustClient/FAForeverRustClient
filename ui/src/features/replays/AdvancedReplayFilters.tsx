@@ -209,7 +209,7 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
         </label>
       </div>
 
-      {/* Two filters the API cannot answer, so the client applies them to the
+      {/* One filter the API cannot answer, so the client applies it to the
           page it got back. That makes a page shorter than the page size, which
           looks like a bug unless the form says otherwise. */}
       {hasLocalFilter(form) && (
@@ -262,10 +262,7 @@ function hasNarrowingFilter(q: ReplayQuery): boolean {
 }
 
 /** Mirrors `ReplayQuery::has_local_filter` in faf-domain. */
+/** Mirrors `ReplayQuery::has_local_filter`: the one filter the API cannot do. */
 function hasLocalFilter(q: ReplayQuery): boolean {
-  return (
-    q.minPlayers !== null ||
-    q.maxPlayers !== null ||
-    (!q.ratingPerPlayer && (q.minRating !== null || q.maxRating !== null))
-  );
+  return q.minPlayers !== null || q.maxPlayers !== null;
 }
