@@ -733,6 +733,17 @@ export const en = {
   "lobby.browser.ranking": "Ranking",
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
+  // The sim-mod tag says how many, and its tooltip says the thing the count
+  // does not: whether those mods cost the game its rating. Plural because
+  // German needs a different noun form, which a ternary could not express.
+  "lobby.browser.simModsRanked": {
+    one: "{count} sim mod, ranked: the game still counts",
+    other: "{count} sim mods, all ranked: the game still counts",
+  },
+  "lobby.browser.simModsUnranked": {
+    one: "{count} sim mod, which makes the game unranked",
+    other: "{count} sim mods, at least one of which makes the game unranked",
+  },
   // One friend is named; several are counted, because a row has no room for
   // four logins and the tooltip carries them.
   "lobby.browser.friendCount": { one: "{count} friend", other: "{count} friends" },

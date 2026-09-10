@@ -678,6 +678,14 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranking": "Wertung",
   "lobby.browser.ranked": "Gewertet",
   "lobby.browser.unranked": "Ungewertet",
+  "lobby.browser.simModsRanked": {
+    one: "{count} Sim-Mod, gewertet: das Spiel zählt weiterhin",
+    other: "{count} Sim-Mods, alle gewertet: das Spiel zählt weiterhin",
+  },
+  "lobby.browser.simModsUnranked": {
+    one: "{count} Sim-Mod, die das Spiel ungewertet macht",
+    other: "{count} Sim-Mods, von denen mindestens eine das Spiel ungewertet macht",
+  },
   "lobby.browser.friendCount": { one: "{count} Freund", other: "{count} Freunde" },
   "lobby.browser.friendsHere": "Auf deiner Freundesliste: {names}",
   "lobby.browser.mapSize": "Kartengröße",
