@@ -241,6 +241,7 @@ const INITIAL: AppState = {
       gamePrefsPath: "",
       mapGeneratorDir: "",
       javaPath: "",
+      winePrefix: "",
     },
   },
   social: { friends: [], foes: [], players: [] },
@@ -408,6 +409,7 @@ const INITIAL: AppState = {
       gamePrefsPath: "",
       mapGeneratorDir: "",
       javaPath: "",
+      winePrefix: "",
     },
     keptGeneratedMaps: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
@@ -462,6 +464,7 @@ const INITIAL: AppState = {
     },
     game: {
       additionalArguments: [],
+      launchWrapper: "",
       autoGenerateMaps: true,
       cacheLifetimeDays: 30,
       cacheSizeAlertGb: 10,

@@ -47,6 +47,17 @@ pub struct GameConfig {
     /// Literal arguments supplied by the user in Settings. They are prepended,
     /// leaving protocol-critical arguments later in the command line.
     pub additional_arguments: Vec<String>,
+    /// A command to run the executable *with*, as typed in Settings
+    /// (`FAF_LAUNCH_WRAPPER`). Empty runs the executable directly.
+    ///
+    /// This is how the client starts a game on Linux, where the configured
+    /// executable is a Windows binary: `wine`, or whatever else a working
+    /// prefix is reached through. Split into arguments by [`split_command`],
+    /// never handed to a shell.
+    pub launch_wrapper: String,
+    /// The Wine prefix to run in (`WINEPREFIX`), from Settings, Paths. Empty
+    /// leaves the child's environment as this process found it.
+    pub wine_prefix: String,
 }
 
 impl GameConfig {
@@ -55,6 +66,8 @@ impl GameConfig {
             game_path: std::env::var("FAF_GAME_PATH").unwrap_or_default(),
             replay_game_path: std::env::var("FAF_REPLAY_GAME_PATH").unwrap_or_default(),
             additional_arguments: Vec::new(),
+            launch_wrapper: std::env::var("FAF_LAUNCH_WRAPPER").unwrap_or_default(),
+            wine_prefix: String::new(),
         }
     }
 }
@@ -118,19 +131,47 @@ impl GameProcess {
             .map(PathBuf::from)
             .ok_or_else(|| format!("game path has no parent dir: {game_path}"))?;
 
-        tracing::info!(argument_count = args.len(), "launching Forged Alliance");
-
-        let mut command = Command::new(&exe);
         let config = self.config.lock().unwrap();
+        let wrapper = split_command(&config.launch_wrapper);
+        tracing::info!(
+            argument_count = args.len(),
+            wrapper = wrapper.first().map(String::as_str).unwrap_or(""),
+            "launching Forged Alliance"
+        );
+
+        // With a wrapper the executable stops being the program and becomes
+        // the wrapper's first argument, which is what `wine <exe> <args>` is.
+        // Everything after it keeps its order, so the arguments FA receives are
+        // the same either way.
+        let mut command = match wrapper.split_first() {
+            Some((program, rest)) => {
+                let mut command = Command::new(program);
+                command.args(rest).arg(&exe);
+                command
+            }
+            None => Command::new(&exe),
+        };
         command
             .args(&config.additional_arguments)
             .args(args)
             .current_dir(&work_dir);
+        // The prefix decides where FA's `%LOCALAPPDATA%` is, and therefore
+        // which `game.prefs` a launched game reads. Passing it to the child
+        // rather than asking the user to export it keeps the client and the
+        // game looking at one file: `infra::mods` resolves the same setting.
+        if !config.wine_prefix.is_empty() {
+            command.env("WINEPREFIX", &config.wine_prefix);
+        }
+        let launched = wrapper.first().cloned();
         drop(config);
 
-        let child = command
-            .spawn()
-            .map_err(|e| format!("could not start '{}': {e}", exe.display()))?;
+        let child = command.spawn().map_err(|e| match &launched {
+            // Naming the wrapper matters more than naming the executable here:
+            // "no such file" for `wine` on a machine without Wine installed
+            // otherwise reads as the game being missing, which it is not.
+            Some(program) => format!("could not start '{program}' to run the game: {e}"),
+            None => format!("could not start '{}': {e}", exe.display()),
+        })?;
 
         // `drop(prev)` here (the bug this replaces) only discards *our*
         // handle to the previous child: it does not send any signal, so
@@ -222,7 +263,11 @@ impl ProcessPort for GameProcess {
 
         let result = self.spawn(
             &path,
-            &build_arguments(&params, &log_path, savereplay.as_deref()),
+            &build_arguments(
+                &params,
+                &self.game_argument_path(&log_path),
+                savereplay.as_deref(),
+            ),
             "game",
         );
 
@@ -239,7 +284,7 @@ impl ProcessPort for GameProcess {
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
         self.spawn(
             &path,
-            &offline_arguments(&featured_mod, &map, &log_path),
+            &offline_arguments(&featured_mod, &map, &self.game_argument_path(&log_path)),
             "game",
         )
     }
@@ -269,6 +314,17 @@ impl ProcessPort for GameProcess {
         self.config.lock().unwrap().additional_arguments = arguments;
     }
 
+    fn set_launch_wrapper(&self, wrapper: String, wine_prefix: String) {
+        let mut config = self.config.lock().unwrap();
+        config.launch_wrapper = wrapper;
+        config.wine_prefix = wine_prefix;
+    }
+
+    fn game_argument_path(&self, path: &Path) -> String {
+        let wrapped = !self.config.lock().unwrap().launch_wrapper.trim().is_empty();
+        game_visible_path(path, wrapped)
+    }
+
     fn game_install_dir(&self) -> Option<PathBuf> {
         managed_install_dir_of(&self.config.lock().unwrap().game_path)
     }
@@ -295,35 +351,147 @@ impl ProcessPort for GameProcess {
     }
 }
 
+/// Split a command line into a program and its arguments.
+///
+/// Whitespace separates arguments and quotes group them, and that is the whole
+/// grammar: this is not a shell, and nothing else here is interpreted. A `$`,
+/// a `~`, a `;` or a `|` in this field is a character in an argument, so
+/// setting the wrapper cannot run a second command as a side effect of running
+/// the first.
+///
+/// Both quote characters are honoured because the field holds paths, and a
+/// Linux path with a space in it is quoted with whichever one is at hand. A
+/// quote that is never closed ends the argument at the end of the line, which
+/// is the reading that loses the least of what somebody typed.
+fn split_command(input: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut started = false;
+    let mut quote: Option<char> = None;
+    for character in input.chars() {
+        match quote {
+            Some(open) if character == open => quote = None,
+            Some(_) => current.push(character),
+            None if character == '"' || character == '\'' => {
+                // An empty pair of quotes is still an argument: it is the only
+                // way to write one.
+                started = true;
+                quote = Some(character);
+            }
+            None if character.is_whitespace() => {
+                if started {
+                    parts.push(std::mem::take(&mut current));
+                    started = false;
+                }
+            }
+            None => {
+                started = true;
+                current.push(character);
+            }
+        }
+    }
+    if started {
+        parts.push(current);
+    }
+    parts
+}
+
+/// How a path has to be spelled for the launched game to be able to open it.
+///
+/// Under a wrapper the thing being launched is a Windows program, and an
+/// absolute Linux path is not a path it can open: FA hands `/home/a/game.log`
+/// to `CreateFile` and gets nothing back. Every prefix Wine creates maps the
+/// root of the filesystem to the `Z:` drive, so the same file is
+/// `Z:\home\game.log` seen from inside, and that is the spelling to pass.
+///
+/// Only paths the client generates go through this: the game's own switches
+/// (`/init`, `/log`, `/gpgnet`) also start with a slash and are not paths, so
+/// this cannot be applied to an argument list as a whole.
+///
+/// Without a wrapper, or for a path that is already a Windows one, the path is
+/// returned unchanged.
+pub(crate) fn game_visible_path(path: &Path, wrapped: bool) -> String {
+    let text = path.display().to_string();
+    if !wrapped || !text.starts_with('/') {
+        return text;
+    }
+    format!("Z:{}", text.replace('/', "\\"))
+}
+
 /// Locate the data roots used by the Java and Python clients, then select an
 /// existing managed executable from them. Both reference clients store the
 /// original Steam/retail directory separately; importing that directory here
 /// would be unsafe because our updater derives its write target from the
 /// configured executable.
 fn discover_reference_install_paths() -> DiscoveredInstallPaths {
-    let app_data = std::env::var_os("APPDATA").map(PathBuf::from);
-    let program_data = std::env::var_os("PROGRAMDATA")
-        .or_else(|| std::env::var_os("ALLUSERSPROFILE"))
-        .map(PathBuf::from);
+    if cfg!(windows) {
+        let app_data = std::env::var_os("APPDATA").map(PathBuf::from);
+        let program_data = std::env::var_os("PROGRAMDATA")
+            .or_else(|| std::env::var_os("ALLUSERSPROFILE"))
+            .map(PathBuf::from);
 
-    let java_prefs = app_data
-        .as_ref()
-        .map(|root| root.join("Forged Alliance Forever").join("client.prefs"));
-    let python_ini = app_data
-        .as_ref()
-        .map(|root| root.join("ForgedAllianceForever").join("FA Lobby.ini"));
+        let java_prefs = app_data
+            .as_ref()
+            .map(|root| root.join("Forged Alliance Forever").join("client.prefs"));
+        let python_ini = app_data
+            .as_ref()
+            .map(|root| root.join("ForgedAllianceForever").join("FA Lobby.ini"));
 
-    discover_from_reference_configs(
-        java_prefs.as_deref(),
-        python_ini.as_deref(),
-        program_data.as_deref(),
-    )
+        return discover_from_reference_configs(
+            java_prefs.as_deref(),
+            python_ini.as_deref(),
+            program_data.as_deref(),
+            &[],
+        );
+    }
+
+    let (java_prefs, python_ini, roots) = linux_reference_config_paths(
+        directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()),
+        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
+        std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
+    );
+    discover_from_reference_configs(java_prefs.as_deref(), python_ini.as_deref(), None, &roots)
+}
+
+/// Where the two reference clients keep their configuration on Linux, and
+/// where a FAF install is if neither of them has one recorded.
+///
+/// `APPDATA` and `PROGRAMDATA` are Windows variables and are unset here, so
+/// the Windows version of this finds nothing at all and every path has to be
+/// typed by hand. The Linux locations are not guesses: the Java client is a
+/// Java application and follows the XDG base directories, which is
+/// `~/.local/share/Forged Alliance Forever` (its data directory is
+/// `~/.faforever` when it has been told to use the legacy layout, so both are
+/// offered), and the Python client writes `~/.config/ForgedAllianceForever`.
+///
+/// There is no per-machine equivalent of `%PROGRAMDATA%\FAForever`, because
+/// nothing on Linux installs a game for every user. `~/.faforever` takes its
+/// place as the root to look under when no reference client is installed at
+/// all, which is where the Java client puts an install it downloaded itself.
+///
+/// Split out from the discovery above so it can be tested on the machine this
+/// is written on, which is not the machine it describes.
+fn linux_reference_config_paths(
+    home: Option<PathBuf>,
+    xdg_data_home: Option<PathBuf>,
+    xdg_config_home: Option<PathBuf>,
+) -> (Option<PathBuf>, Option<PathBuf>, Vec<PathBuf>) {
+    let data_home = xdg_data_home.or_else(|| home.as_ref().map(|home| home.join(".local/share")));
+    let config_home = xdg_config_home.or_else(|| home.as_ref().map(|home| home.join(".config")));
+
+    let java_prefs = data_home.map(|root| root.join("Forged Alliance Forever/client.prefs"));
+    let python_ini = config_home.map(|root| root.join("ForgedAllianceForever/FA Lobby.ini"));
+    let roots = home
+        .map(|home| vec![home.join(".faforever")])
+        .unwrap_or_default();
+    (java_prefs, python_ini, roots)
 }
 
 fn discover_from_reference_configs(
     java_prefs: Option<&Path>,
     python_ini: Option<&Path>,
     default_program_data: Option<&Path>,
+    default_roots: &[PathBuf],
 ) -> DiscoveredInstallPaths {
     let mut roots = Vec::new();
     if let Some(path) = java_prefs.and_then(java_data_root) {
@@ -335,6 +503,7 @@ fn discover_from_reference_configs(
     if let Some(path) = default_program_data {
         roots.push(path.join("FAForever"));
     }
+    roots.extend(default_roots.iter().cloned());
 
     let mut seen = HashSet::new();
     roots.retain(|path| seen.insert(path.clone()));
@@ -519,7 +688,7 @@ fn is_original_game_executable(exe: &Path) -> bool {
 /// leave nothing in the local library.
 fn build_arguments(
     params: &GameLaunchParams,
-    log_path: &Path,
+    log_path: &str,
     savereplay: Option<&str>,
 ) -> Vec<String> {
     let mut args = params.args.clone();
@@ -533,7 +702,7 @@ fn build_arguments(
     args.push("/gpgnet".into());
     args.push(format!("127.0.0.1:{}", params.game_port));
     args.push("/log".into());
-    args.push(log_path.display().to_string());
+    args.push(log_path.to_string());
     args
 }
 
@@ -542,7 +711,7 @@ fn build_arguments(
 /// Mirrors the Java client's `LaunchCommandBuilder` for `launchOfflineGame`:
 /// the init script for the featured mod, no bug reporter, and the scenario to
 /// load. Deliberately no `/gpgnet`: there is no adapter and no lobby.
-fn offline_arguments(featured_mod: &str, map: &str, log_path: &Path) -> Vec<String> {
+fn offline_arguments(featured_mod: &str, map: &str, log_path: &str) -> Vec<String> {
     vec![
         "/init".into(),
         format!("init_{featured_mod}.lua"),
@@ -550,7 +719,7 @@ fn offline_arguments(featured_mod: &str, map: &str, log_path: &Path) -> Vec<Stri
         "/map".into(),
         map.into(),
         "/log".into(),
-        log_path.display().to_string(),
+        log_path.to_string(),
     ]
 }
 
@@ -578,6 +747,8 @@ impl ProcessPort for FakeGame {
 
     fn set_additional_arguments(&self, _arguments: Vec<String>) {}
 
+    fn set_launch_wrapper(&self, _wrapper: String, _wine_prefix: String) {}
+
     fn game_install_dir(&self) -> Option<PathBuf> {
         None
     }
@@ -598,6 +769,95 @@ impl ProcessPort for FakeGame {
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_wrapper_is_split_into_a_program_and_its_arguments() {
+        assert_eq!(split_command("wine"), vec!["wine"]);
+        assert_eq!(
+            split_command("  flatpak run   org.winehq.Wine  "),
+            vec!["flatpak", "run", "org.winehq.Wine"]
+        );
+        assert!(split_command("").is_empty());
+        assert!(split_command("   ").is_empty());
+    }
+
+    #[test]
+    fn quotes_hold_a_path_with_a_space_in_it_together() {
+        assert_eq!(
+            split_command("\"/opt/my wine/bin/wine\" --keep"),
+            vec!["/opt/my wine/bin/wine", "--keep"]
+        );
+        assert_eq!(split_command("'/opt/a b/wine'"), vec!["/opt/a b/wine"]);
+        // An unclosed quote takes the rest of the line rather than dropping
+        // it: the user typed those characters and meant them.
+        assert_eq!(split_command("\"/opt/a b/wine"), vec!["/opt/a b/wine"]);
+    }
+
+    #[test]
+    fn nothing_but_quoting_is_interpreted() {
+        // Not a shell: no expansion, no operators, no second command. Each of
+        // these is one literal argument.
+        assert_eq!(
+            split_command("wine $HOME/x; rm -rf /"),
+            vec!["wine", "$HOME/x;", "rm", "-rf", "/"]
+        );
+    }
+
+    #[test]
+    fn a_wrapped_launch_names_a_path_the_way_the_game_will_see_it() {
+        let log = Path::new("/home/player/.faf/logs/game-99.log");
+        // Wine maps the root of the filesystem to `Z:` in every prefix it
+        // makes, so this is the same file named from inside one.
+        assert_eq!(
+            game_visible_path(log, true),
+            r"Z:\home\player\.faf\logs\game-99.log"
+        );
+        // Unwrapped, and on Windows, the path is already in the right
+        // alphabet and must not be touched.
+        assert_eq!(
+            game_visible_path(log, false),
+            "/home/player/.faf/logs/game-99.log"
+        );
+        let windows = Path::new(r"C:\Users\me\game.log");
+        assert_eq!(
+            game_visible_path(windows, true),
+            game_visible_path(windows, false)
+        );
+    }
+
+    #[test]
+    fn linux_discovery_looks_where_each_reference_client_actually_writes() {
+        let (java, python, roots) =
+            linux_reference_config_paths(Some(PathBuf::from("/home/player")), None, None);
+        assert_eq!(
+            java.unwrap(),
+            PathBuf::from("/home/player/.local/share/Forged Alliance Forever/client.prefs")
+        );
+        assert_eq!(
+            python.unwrap(),
+            PathBuf::from("/home/player/.config/ForgedAllianceForever/FA Lobby.ini")
+        );
+        // No `%PROGRAMDATA%` equivalent: nothing here installs a game for
+        // every user, so the fallback root is the Java client's own.
+        assert_eq!(roots, vec![PathBuf::from("/home/player/.faforever")]);
+    }
+
+    #[test]
+    fn the_xdg_variables_win_over_the_home_directory_defaults() {
+        let (java, python, _) = linux_reference_config_paths(
+            Some(PathBuf::from("/home/player")),
+            Some(PathBuf::from("/data")),
+            Some(PathBuf::from("/conf")),
+        );
+        assert_eq!(
+            java.unwrap(),
+            PathBuf::from("/data/Forged Alliance Forever/client.prefs")
+        );
+        assert_eq!(
+            python.unwrap(),
+            PathBuf::from("/conf/ForgedAllianceForever/FA Lobby.ini")
+        );
+    }
+
     fn params() -> GameLaunchParams {
         GameLaunchParams {
             game_id: 99,
@@ -613,7 +873,7 @@ mod tests {
 
     #[test]
     fn builds_fa_command_line_in_order() {
-        let args = build_arguments(&params(), Path::new("diagnostics/game-99.log"), None);
+        let args = build_arguments(&params(), "diagnostics/game-99.log", None);
         assert_eq!(
             &args[..7],
             vec![
@@ -636,7 +896,7 @@ mod tests {
         // replay for a networked game at all: without it a played game leaves
         // nothing on disk, which is the bug this fixes.
         let url = "gpgnet://127.0.0.1:5000/99/me.SCFAreplay";
-        let args = build_arguments(&params(), Path::new("diagnostics/game-99.log"), Some(url));
+        let args = build_arguments(&params(), "diagnostics/game-99.log", Some(url));
         let save = args.iter().position(|a| a == "/savereplay").unwrap();
         assert_eq!(args[save + 1], url);
         assert!(save < args.iter().position(|a| a == "/gpgnet").unwrap());
@@ -646,7 +906,7 @@ mod tests {
     fn no_recorder_means_no_savereplay_flag() {
         // A recorder that could not bind must not leave FA streaming at a dead
         // port: the game is still perfectly playable without a replay.
-        let args = build_arguments(&params(), Path::new("diagnostics/game-99.log"), None);
+        let args = build_arguments(&params(), "diagnostics/game-99.log", None);
         assert!(!args.iter().any(|a| a == "/savereplay"));
     }
 
@@ -806,7 +1066,7 @@ mod tests {
         )
         .unwrap();
 
-        let found = discover_from_reference_configs(Some(&prefs), None, None);
+        let found = discover_from_reference_configs(Some(&prefs), None, None, &[]);
         assert_eq!(found.game.as_deref(), live.to_str());
         assert_eq!(found.replay.as_deref(), replay.to_str());
     }
@@ -829,7 +1089,7 @@ mod tests {
         )
         .unwrap();
 
-        let found = discover_from_reference_configs(None, Some(&ini), None);
+        let found = discover_from_reference_configs(None, Some(&ini), None, &[]);
         assert_eq!(found.game.as_deref(), live.to_str());
         assert_eq!(found.replay, None);
     }

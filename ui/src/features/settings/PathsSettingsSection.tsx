@@ -20,6 +20,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 import type { PathPreferences } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GamePathsSection } from "./GamePathsSection";
+import { gameNeedsALaunchWrapper } from "../../shared/platform";
 
 /** The configurable directories, in the order the tab lists them. */
 const DIRECTORY_FIELDS = [
@@ -33,6 +34,8 @@ const DIRECTORY_FIELDS = [
 type DirectoryField = (typeof DIRECTORY_FIELDS)[number];
 /** Locations that are a single file rather than a folder. */
 type FileField = "gamePrefsPath" | "javaPath";
+/** A directory, but only on the platforms that have one. */
+type WrapperField = "winePrefix";
 
 const LABEL = {
   vaultDir: "settings.paths.vault",
@@ -42,7 +45,8 @@ const LABEL = {
   mapGeneratorDir: "settings.paths.mapGenerator",
   gamePrefsPath: "settings.paths.gamePrefs",
   javaPath: "settings.paths.java",
-} as const satisfies Record<DirectoryField | FileField, MessageKey>;
+  winePrefix: "settings.paths.winePrefix",
+} as const satisfies Record<DirectoryField | FileField | WrapperField, MessageKey>;
 
 const HINT = {
   vaultDir: "settings.paths.vaultHint",
@@ -52,7 +56,8 @@ const HINT = {
   mapGeneratorDir: "settings.paths.mapGeneratorHint",
   gamePrefsPath: "settings.paths.gamePrefsHint",
   javaPath: "settings.paths.javaHint",
-} as const satisfies Record<DirectoryField | FileField, MessageKey>;
+  winePrefix: "settings.paths.winePrefixHint",
+} as const satisfies Record<DirectoryField | FileField | WrapperField, MessageKey>;
 
 const setPaths = (preferences: PathPreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setPaths", payload: { preferences } } });
@@ -63,7 +68,7 @@ function ContentPathRow({
   resolved,
   pick,
 }: {
-  field: DirectoryField | FileField;
+  field: DirectoryField | FileField | WrapperField;
   paths: PathPreferences;
   resolved: string;
   pick: () => Promise<string | null>;
@@ -138,6 +143,17 @@ export function PathsSettingsSection() {
         resolved={resolved.javaPath}
         pick={() => native.selectFile({})}
       />
+      {/* Only where the game needs one. On Windows FA runs directly and a
+          prefix is not a thing that exists, so the row would be a question
+          with no answer. */}
+      {gameNeedsALaunchWrapper() && (
+        <ContentPathRow
+          field="winePrefix"
+          paths={paths}
+          resolved={resolved.winePrefix}
+          pick={() => native.selectDirectory(paths.winePrefix || resolved.winePrefix || undefined)}
+        />
+      )}
       <p className="muted">{t("settings.paths.overrideNote")}</p>
     </div>
   );

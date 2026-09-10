@@ -599,10 +599,24 @@ pub(crate) fn mods_dir() -> PathBuf {
     crate::infra::faf_content::vault_dir().join("mods")
 }
 
+/// The tail of the `game.prefs` path, below whatever `%LOCALAPPDATA%` is.
+const GAME_PREFS_TAIL: [&str; 3] = [
+    "Gas Powered Games",
+    "Supreme Commander Forged Alliance",
+    "game.prefs",
+];
+
 /// FA's own `game.prefs` file: `%LOCALAPPDATA%\Gas Powered Games\Supreme
 /// Commander Forged Alliance\game.prefs` (confirmed via the Python
 /// client's `util.LOCALFOLDER`/`PREFSFILENAME`). `FAF_GAME_PREFS_PATH`
 /// overrides it (tests, alternate installs).
+///
+/// Off Windows the game runs under Wine, and `%LOCALAPPDATA%` is then a
+/// directory *inside the prefix*, not this machine's own local data directory.
+/// Resolving it the Windows way there produces a real path that FA has never
+/// written to, so the client reads no mods, writes an `active_mods` block
+/// nothing loads, and every mod toggle silently does nothing. The configured
+/// prefix therefore comes first: see [`wine_local_app_data`].
 pub(crate) fn game_prefs_path() -> PathBuf {
     if let Some(path) = crate::infra::paths::game_prefs_path() {
         return path;
@@ -612,13 +626,87 @@ pub(crate) fn game_prefs_path() -> PathBuf {
             return PathBuf::from(path);
         }
     }
-    let local = directories::BaseDirs::new()
-        .map(|b| b.data_local_dir().to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("."));
-    local
-        .join("Gas Powered Games")
-        .join("Supreme Commander Forged Alliance")
-        .join("game.prefs")
+    let local = if cfg!(windows) {
+        None
+    } else {
+        wine_prefix_root().and_then(|prefix| wine_local_app_data(&prefix))
+    };
+    let local = local.unwrap_or_else(|| {
+        directories::BaseDirs::new()
+            .map(|b| b.data_local_dir().to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."))
+    });
+    GAME_PREFS_TAIL
+        .iter()
+        .fold(local, |path, part| path.join(part))
+}
+
+/// The Wine prefix to look inside, off Windows.
+///
+/// The setting first, then `$WINEPREFIX`, then `~/.wine`, which is the prefix
+/// `wine` itself creates when nothing says otherwise. Only the first of these
+/// is a choice somebody made; the other two are where the answer usually is.
+pub(crate) fn resolved_wine_prefix() -> Option<PathBuf> {
+    (!cfg!(windows)).then(wine_prefix_root).flatten()
+}
+
+fn wine_prefix_root() -> Option<PathBuf> {
+    if let Some(path) = crate::infra::paths::wine_prefix() {
+        return Some(path);
+    }
+    if let Some(path) = std::env::var_os("WINEPREFIX").filter(|value| !value.is_empty()) {
+        return Some(PathBuf::from(path));
+    }
+    directories::BaseDirs::new().map(|dirs| dirs.home_dir().join(".wine"))
+}
+
+/// `%LOCALAPPDATA%` inside a Wine prefix.
+///
+/// A prefix holds one directory per Windows user under `drive_c/users`, and
+/// which one it is depends on how the prefix was made: `wine` uses the Linux
+/// login name, Proton always uses `steamuser`, and a prefix copied between
+/// machines keeps whatever name it was made with. So this looks for the user
+/// that actually has a `game.prefs` before it guesses, and only falls back to
+/// naming one when the game has never run in this prefix, which is the case
+/// where the path is being created rather than read.
+fn wine_local_app_data(prefix: &Path) -> Option<PathBuf> {
+    let users = prefix.join("drive_c").join("users");
+    let local_of = |user: &Path| user.join("AppData").join("Local");
+    let has_prefs = |local: &Path| {
+        GAME_PREFS_TAIL
+            .iter()
+            .fold(local.to_path_buf(), |path, part| path.join(part))
+            .is_file()
+    };
+
+    let mut candidates: Vec<PathBuf> = std::fs::read_dir(&users)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir())
+        .collect();
+    // Deterministic, so two runs of a prefix with two users agree with each
+    // other; `read_dir` order is the filesystem's business.
+    candidates.sort();
+    if let Some(found) = candidates
+        .iter()
+        .map(|user| local_of(user))
+        .find(|local| has_prefs(local))
+    {
+        return Some(found);
+    }
+
+    let named = std::env::var("USER")
+        .ok()
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "steamuser".to_string());
+    let guess = local_of(&users.join(named));
+    // Only worth returning when the prefix is real. Handing back a path under
+    // a prefix that does not exist would send the fallback to this machine's
+    // own local data directory anyway, and this way that decision is made
+    // where it can be explained.
+    users.is_dir().then_some(guess)
 }
 
 async fn read_active_mod_uids() -> Vec<String> {
@@ -996,6 +1084,62 @@ impl ModsPort for FakeMods {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    /// Make `<prefix>/drive_c/users/<user>/AppData/Local`, and the `game.prefs`
+    /// under it when asked, so these tests describe a prefix rather than a
+    /// mock of one.
+    fn wine_user(prefix: &Path, user: &str, with_prefs: bool) -> PathBuf {
+        let local = prefix
+            .join("drive_c")
+            .join("users")
+            .join(user)
+            .join("AppData")
+            .join("Local");
+        let prefs = GAME_PREFS_TAIL
+            .iter()
+            .fold(local.clone(), |path, part| path.join(part));
+        std::fs::create_dir_all(prefs.parent().unwrap()).unwrap();
+        if with_prefs {
+            std::fs::write(&prefs, "active_mods = { }").unwrap();
+        }
+        local
+    }
+
+    #[test]
+    fn a_prefix_is_searched_for_the_user_that_has_actually_played() {
+        let temp = tempfile::tempdir().unwrap();
+        let prefix = temp.path();
+        // Two users, which is what a prefix made by Wine and then used by
+        // Proton looks like. Only one of them has ever run the game.
+        wine_user(prefix, "player", false);
+        let played = wine_user(prefix, "steamuser", true);
+        assert_eq!(wine_local_app_data(prefix), Some(played));
+    }
+
+    #[test]
+    fn a_prefix_nobody_has_played_in_still_names_a_place_to_write() {
+        let temp = tempfile::tempdir().unwrap();
+        let prefix = temp.path();
+        let only = wine_user(prefix, "steamuser", false);
+        // No `game.prefs` anywhere: the answer is where one would go, so
+        // enabling a mod creates the file the game will read.
+        let found = wine_local_app_data(prefix).expect("a real prefix has an answer");
+        assert!(
+            found.starts_with(prefix.join("drive_c").join("users")),
+            "{found:?} is not inside the prefix"
+        );
+        assert!(found.ends_with("AppData/Local") || found.ends_with(r"AppData\Local"));
+        let _ = only;
+    }
+
+    #[test]
+    fn a_prefix_that_is_not_there_has_no_answer_at_all() {
+        let temp = tempfile::tempdir().unwrap();
+        // Nothing under it: not a prefix, so the caller falls back to this
+        // machine's own local data directory rather than inventing a path
+        // inside a directory that does not exist.
+        assert_eq!(wine_local_app_data(&temp.path().join("nope")), None);
+    }
 
     const SAMPLE_MOD_INFO: &str = r#"
         -- FAF mod

@@ -970,6 +970,11 @@ impl ReplayPort for ReplayClient {
         let first = wait_for_first_binary(&mut read).await?;
 
         let log_path = crate::infra::game_logs::next_path("live-replay", Some(target.uid))?;
+        // Spelled the way the launched game can open it, which is not the same
+        // string when the game runs through Wine: see
+        // `ProcessPort::game_argument_path`. The source is a URL on both
+        // transports here and needs no such treatment.
+        let log_argument = self.process.game_argument_path(&log_path);
         // Everything but the replay source is the same on both transports.
         let launch_args = |source: String| {
             vec![
@@ -979,7 +984,7 @@ impl ReplayPort for ReplayClient {
                 format!("init_{mod_name}.lua"),
                 "/nobugreport".to_string(),
                 "/log".to_string(),
-                log_path.display().to_string(),
+                log_argument.clone(),
                 "/replayid".to_string(),
                 target.uid.to_string(),
             ]
@@ -1158,9 +1163,12 @@ impl ReplayPort for ReplayClient {
         }
 
         let log_path = crate::infra::game_logs::next_path("replay", replay.uid)?;
+        // Both of these are files on this machine that a Windows executable
+        // has to open, so both are spelled the way that executable will see
+        // them: identical on Windows, a `Z:` path under Wine.
         let mut args = vec![
             "/replay".to_string(),
-            replay.path.display().to_string(),
+            self.process.game_argument_path(&replay.path),
             "/init".to_string(),
             format!("init_{mod_name}.lua"),
             "/nobugreport".to_string(),
@@ -1169,7 +1177,7 @@ impl ReplayPort for ReplayClient {
             // this session spent a long time diagnosing blind is otherwise
             // completely opaque (no crash, no stderr, nothing on disk).
             "/log".to_string(),
-            log_path.display().to_string(),
+            self.process.game_argument_path(&log_path),
         ];
         if let Some(uid) = replay.uid {
             args.push("/replayid".to_string());

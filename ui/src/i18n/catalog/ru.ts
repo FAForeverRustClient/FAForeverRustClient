@@ -1136,6 +1136,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gamePrefsHint": "Файл настроек Forged Alliance, читается для включения модов.",
   "settings.paths.java": "Среда Java",
   "settings.paths.javaHint": "Запускает генератор карт и Java-адаптер связи.",
+  "settings.paths.winePrefix": "ÐÑÐµÑÐ¸ÐºÑ Wine",
+  "settings.paths.winePrefixHint": "ÐÐºÑÑÐ¶ÐµÐ½Ð¸Ðµ Windows, Ð² ÐºÐ¾ÑÐ¾ÑÐ¾Ð¼ ÑÐ°Ð±Ð¾ÑÐ°ÐµÑ Forged Alliance. ÐÐ³ÑÐ° ÑÑÐ°Ð½Ð¸Ñ ÑÐ°Ð¼ ÑÐ²Ð¾Ð¸ Ð½Ð°ÑÑÑÐ¾Ð¹ÐºÐ¸, Ð¿Ð¾ÑÑÐ¾Ð¼Ñ ÐºÐ»Ð¸ÐµÐ½Ñ ÑÐ¾Ð¶Ðµ Ð´Ð¾Ð»Ð¶ÐµÐ½ Ð¸ÑÐºÐ°ÑÑ Ð¸Ñ ÑÐ°Ð¼.",
   "settings.paths.browse": "Обзор…",
   "settings.paths.reset": "Сбросить",
   "settings.paths.resetHint": "Вернуться к автоматическому расположению",
@@ -1195,6 +1197,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.argumentsLabel": "Дополнительные аргументы запуска",
   "settings.game.argumentsHint": "По одному буквальному аргументу процесса в строке. Применяются к играм и воспроизведению реплеев без вызова оболочки.",
   "settings.game.argumentsNote": "Аргументы, требуемые протоколом, клиент задаёт сам.",
+  "settings.game.launchWrapperLabel": "ÐÐ¾Ð¼Ð°Ð½Ð´Ð° Ð·Ð°Ð¿ÑÑÐºÐ°",
+  "settings.game.launchWrapperHint": "ÐÐ°Ð¿ÑÑÐºÐ°ÐµÑ Ð¸Ð³ÑÑ, Ð¸ÑÐ¿Ð¾Ð»Ð½ÑÐµÐ¼ÑÐ¹ ÑÐ°Ð¹Ð» Ð¸Ð´ÑÑ ÑÐ»ÐµÐ´Ð¾Ð¼. Forged Alliance â Ð¿ÑÐ¾Ð³ÑÐ°Ð¼Ð¼Ð° Ð´Ð»Ñ Windows, Ð¸ Ð² ÑÑÐ¾Ð¹ ÑÐ¸ÑÑÐµÐ¼Ðµ ÐµÐ¹ Ð½ÑÐ¶ÐµÐ½ Wine Ð¸Ð»Ð¸ Proton: Ð¾Ð±ÑÑÐ½Ð¾ Ð´Ð¾ÑÑÐ°ÑÐ¾ÑÐ½Ð¾ Â«wineÂ».",
+  "settings.game.launchWrapperNote": "Ð­ÑÐ¾ Ð½Ðµ Ð¾Ð±Ð¾Ð»Ð¾ÑÐºÐ°: ÐºÐ°Ð²ÑÑÐºÐ¸ Ð¾Ð±ÑÐµÐ´Ð¸Ð½ÑÑÑ ÑÐ»Ð¾Ð²Ð°, Ð±Ð¾Ð»ÑÑÐµ Ð½Ð¸ÑÐµÐ³Ð¾ Ð½Ðµ ÑÐ°Ð·Ð±Ð¸ÑÐ°ÐµÑÑÑ. ÐÑÑÑÐ¾Ðµ Ð¿Ð¾Ð»Ðµ Ð·Ð°Ð¿ÑÑÐºÐ°ÐµÑ Ð¸Ð³ÑÑ Ð½Ð°Ð¿ÑÑÐ¼ÑÑ.",
   "settings.game.saveArguments": "Сохранить аргументы",
 
   "settings.connectivity.connectivityAdapter": "Адаптер подключения",

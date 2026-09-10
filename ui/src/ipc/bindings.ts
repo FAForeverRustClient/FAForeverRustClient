@@ -2093,6 +2093,22 @@ export type GamePreferences = {
 	 *  launches. Each entry is one process argument; no shell is involved.
 	 */
 	additionalArguments?: string[],
+	/**
+	 *  A command that runs Forged Alliance instead of the client running it
+	 *  directly, with the executable and its arguments appended.
+	 *
+	 *  This is what makes the client usable on Linux: FA is a Windows binary
+	 *  and FAF ships no native build of it, so the launch has to go through
+	 *  Wine or Proton. `wine` is the whole answer for anybody with a working
+	 *  prefix; a Proton launcher or a script wanting `flatpak run` needs more
+	 *  words, so this is a command line rather than a path.
+	 *
+	 *  It is split into arguments here, not handed to a shell: quotes group
+	 *  words that belong together and nothing else is interpreted, so a `;` or
+	 *  a `$HOME` in this field is an argument, not an instruction. Empty, the
+	 *  default, launches the executable directly, which is what Windows wants.
+	 */
+	launchWrapper?: string,
 	/**  Automatically generate missing Neroxis maps when joining a lobby. */
 	autoGenerateMaps?: boolean,
 	/**
@@ -4204,6 +4220,22 @@ export type PathPreferences = {
 	mapGeneratorDir?: string,
 	/**  The JVM the map generator and the Java ICE adapter run on. */
 	javaPath?: string,
+	/**
+	 *  The Wine prefix Forged Alliance runs in, on the platforms where it has
+	 *  to run in one.
+	 *
+	 *  Ignored on Windows. Everywhere else the game is a Windows executable
+	 *  under Wine or Proton, and the prefix is the answer to a question the
+	 *  client cannot otherwise ask: FA writes `game.prefs` to
+	 *  `%LOCALAPPDATA%`, which lives *inside* the prefix, so without this the
+	 *  client reads and writes a `game.prefs` at the Linux equivalent of that
+	 *  path, which is a file the game has never seen. Enabling a mod then does
+	 *  nothing, silently.
+	 *
+	 *  Empty falls back to `$WINEPREFIX` and then to `~/.wine`, which is where
+	 *  a default `winecfg` prefix is.
+	 */
+	winePrefix?: string,
 };
 
 /**
@@ -5329,6 +5361,11 @@ export type ResolvedPaths = {
 	gamePrefsPath: string,
 	mapGeneratorDir: string,
 	javaPath: string,
+	/**
+	 *  The Wine prefix a launch would use, or empty on Windows, where the game
+	 *  runs without one.
+	 */
+	winePrefix: string,
 };
 
 /**  One game's map, as its replay file names it. */
