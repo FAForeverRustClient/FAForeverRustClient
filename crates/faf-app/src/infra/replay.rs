@@ -147,6 +147,23 @@ const VAULT_INCLUDE: &str = "mapVersion,mapVersion.map,featuredMod,playerStats.p
 /// instead of twenty.
 const ID_SCAN_PAGE_SIZE: u32 = 5000;
 
+/// How far a locally filtered search reads ahead, and how much per request.
+///
+/// Two of the vault's filters have no clause the API can answer (see
+/// `ReplayQuery::accepts_locally`), so rows are dropped after they arrive. One
+/// API page therefore does not fill one page of results, and asking for fifty
+/// used to hand back however many of those fifty happened to match: six, four,
+/// none. This reads further pages until it has enough, which is what anybody
+/// expects a page size to mean.
+///
+/// Bounded, because a filter almost nothing matches would otherwise walk the
+/// whole vault one request at a time. Eight hundred games is more than enough
+/// for a filtered search anybody actually runs, and the ceiling only costs
+/// requests when it is reached: a search whose matches turn up early stops at
+/// the first page.
+const LOCAL_SCAN_PAGES: u32 = 8;
+const LOCAL_SCAN_PAGE_SIZE: u32 = 100;
+
 /// The point at which a shared-games scan stops and says so. Roughly twice the
 /// game count of the busiest account on the server, so it exists to bound a
 /// filter that went wrong (a one-letter substring matching thousands of
@@ -650,6 +667,90 @@ impl ReplayClient {
             replays: retain_locally_matching(query, parse_vault_replays(&doc)),
             total_pages: Some(total_pages),
             total_records: Some(total_records),
+        })
+    }
+
+    /// A search whose filters the API cannot express, paged the way a reader
+    /// expects.
+    ///
+    /// Reads API pages from the first one, keeping the rows that survive
+    /// `accepts_locally`, until it has enough of them for the page that was
+    /// asked for or it runs out of vault or of patience (`LOCAL_SCAN_PAGES`).
+    /// The counts it reports are therefore counts of *matches*, which is the
+    /// number the reader cares about, and they are exact whenever the scan
+    /// reached the end of the results.
+    ///
+    /// Scanning from page one for every page is deliberate: the API knows
+    /// nothing about these filters, so there is no cursor it could be asked to
+    /// resume from. It is the same shape as the shared-games scan above and
+    /// costs the same kind of request.
+    async fn search_locally_filtered(
+        &self,
+        query: &ReplayQuery,
+        token: &str,
+    ) -> Result<VaultSearchResult, String> {
+        let page_size = query.page_size.max(1) as usize;
+        let page = query.page.max(1) as usize;
+        let needed = page * page_size;
+        let fallback = query.fallback_months().map(months_ago);
+
+        let mut matched: Vec<VaultReplay> = Vec::new();
+        let mut exhausted = false;
+        for scan_page in 1..=LOCAL_SCAN_PAGES {
+            let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
+                .map_err(|e| format!("invalid API base: {e}"))?;
+            {
+                let mut pairs = url.query_pairs_mut();
+                pairs
+                    .append_pair("sort", &query.sort_param())
+                    .append_pair("page[size]", &LOCAL_SCAN_PAGE_SIZE.to_string())
+                    .append_pair("page[number]", &scan_page.to_string())
+                    .append_pair("include", VAULT_INCLUDE);
+                if let Some(filter) = replay_query::build_filter(query, fallback.as_deref(), None) {
+                    pairs.append_pair("filter", &filter);
+                }
+            }
+
+            let doc = fetch_document(&self.http, url, token).await?;
+            let rows = parse_vault_replays(&doc);
+            let received = rows.len();
+            matched.extend(retain_locally_matching(query, rows));
+
+            // A short page is the end of the results, whatever the meta says.
+            if received < LOCAL_SCAN_PAGE_SIZE as usize {
+                exhausted = true;
+                break;
+            }
+            if matched.len() >= needed {
+                break;
+            }
+        }
+
+        let total = i32::try_from(matched.len()).unwrap_or(i32::MAX);
+        let full_pages = i32::try_from(matched.len().div_ceil(page_size)).unwrap_or(i32::MAX);
+        // Stopped early: there may well be more behind the ceiling, so the last
+        // page must not look like the last page. One page beyond the current
+        // one keeps paging available without inventing a total.
+        let total_pages = if exhausted {
+            full_pages.max(1)
+        } else {
+            full_pages.max(i32::try_from(page + 1).unwrap_or(i32::MAX))
+        };
+
+        let start = (page - 1) * page_size;
+        let replays = matched
+            .into_iter()
+            .skip(start)
+            .take(page_size)
+            .collect::<Vec<_>>();
+
+        Ok(VaultSearchResult {
+            replays,
+            total_pages: Some(total_pages),
+            // Only when it is a real total. A count that means "at least this
+            // many" printed as "N replays" is a wrong number, and the view has
+            // a shape for not knowing.
+            total_records: exhausted.then_some(total),
         })
     }
 
@@ -1191,6 +1292,13 @@ impl ReplayPort for ReplayClient {
             return self.search_shared_games(&query, &token).await;
         }
 
+        // A filter the API cannot express has to be applied to rows that have
+        // already arrived, which means one API page is not one page of
+        // results: see `search_locally_filtered`.
+        if query.has_local_filter() {
+            return self.search_locally_filtered(&query, &token).await;
+        }
+
         let mut url = url::Url::parse(&format!("{}/data/game", self.config.api_base))
             .map_err(|e| format!("invalid API base: {e}"))?;
         {
@@ -1210,7 +1318,7 @@ impl ReplayPort for ReplayClient {
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
-        let replays = retain_locally_matching(&query, parse_vault_replays(&doc));
+        let replays = parse_vault_replays(&doc);
         let total_pages = total_pages(&doc.meta, query.page_size);
         let total_records = meta_page_i32(&doc.meta, "totalRecords");
         Ok(VaultSearchResult {

@@ -1001,7 +1001,7 @@ export const en = {
   "replays.filters.reviewScore": "Review score",
   "replays.filters.mapSlots": "Map slots",
   "replays.filters.playerCount": "Players in the game",
-  "replays.filters.localFilterNote": "Player count and average rating are applied to each page after it loads, because the API cannot filter on either. A page can therefore come back shorter than the page size.",
+  "replays.filters.localFilterNote": "Player count and average rating are applied after each page loads, because the API can filter on neither. The client reads ahead to fill the page, so a search with either of these set takes longer and its result total can stay unknown.",
   "replays.filters.mapSize": "Map size",
   "replays.filters.faction": "Faction",
   "replays.filters.victoryCondition": "Victory condition",

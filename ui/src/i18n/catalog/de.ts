@@ -915,7 +915,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.filters.reviewScore": "Bewertung",
   "replays.filters.mapSlots": "Kartenplätze",
   "replays.filters.playerCount": "Spieler im Spiel",
-  "replays.filters.localFilterNote": "Spielerzahl und Durchschnittsrating werden erst nach dem Laden auf jede Seite angewendet, weil die API danach nicht filtern kann. Eine Seite kann deshalb kürzer ausfallen als die Seitengröße.",
+  "replays.filters.localFilterNote": "Spielerzahl und Durchschnittsrating werden erst nach dem Laden angewendet, weil die API nach beidem nicht filtern kann. Der Client liest voraus, um die Seite zu füllen: eine Suche mit einem davon dauert länger, und die Gesamtzahl der Treffer kann unbekannt bleiben.",
   "replays.filters.mapSize": "Kartengröße",
   "replays.filters.faction": "Fraktion",
   "replays.filters.victoryCondition": "Siegbedingung",
