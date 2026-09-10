@@ -5328,24 +5328,23 @@ export type ReplayQuery = {
 	factions: number[],
 	/**  Victory conditions, from [`VICTORY_CONDITIONS`]. Empty = any. */
 	victoryConditions: string[],
-	/**  Displayed rating bounds, inclusive. */
+	/**
+	 *  Displayed rating bounds, inclusive. Matched against **any one player's**
+	 *  rating, which is how both reference clients read the same slider.
+	 *
+	 *  It is a clause the API answers
+	 *  (`playerStats.ratingChanges.meanBefore`), so the bounds narrow the
+	 *  search itself rather than the page it returns. The known consequence is
+	 *  that a 500 against a 2500 comes back from a search for either number:
+	 *  the game's *average* would be the better question, and for a while this
+	 *  asked it, computed from each page as it arrived. That was withdrawn.
+	 *  The API has no average field, so the answer could only ever cover the
+	 *  window the client had read, which made the result depend on how far it
+	 *  had got: a filter that quietly answers a smaller question than the one
+	 *  asked is worse than one that answers a blunter question honestly.
+	 */
 	minRating: number | null,
 	maxRating: number | null,
-	/**
-	 *  What the rating bounds are measured against.
-	 *
-	 *  `false`, the default, means the game's **average** rating, which is
-	 *  what somebody looking for "a 1500 game" means. `true` restores the
-	 *  older behaviour: any single player inside the range is a match, which
-	 *  is how both reference clients read the same slider and why a 500 vs
-	 *  2500 stomp used to come back from a search for either number.
-	 *
-	 *  The two are not the same request in a second way: the per-player form
-	 *  is an API clause on `playerStats.ratingChanges.meanBefore`, while an
-	 *  average is computed from the page the API returns, because the resource
-	 *  has no average field. See [`Self::accepts_locally`].
-	 */
-	ratingPerPlayer: boolean,
 	/**  Average review score bounds, 0–5. */
 	minReviewScore: number | null,
 	maxReviewScore: number | null,

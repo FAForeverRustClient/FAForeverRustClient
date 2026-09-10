@@ -127,22 +127,21 @@ pub struct ReplayQuery {
     pub factions: Vec<i32>,
     /// Victory conditions, from [`VICTORY_CONDITIONS`]. Empty = any.
     pub victory_conditions: Vec<String>,
-    /// Displayed rating bounds, inclusive.
+    /// Displayed rating bounds, inclusive. Matched against **any one player's**
+    /// rating, which is how both reference clients read the same slider.
+    ///
+    /// It is a clause the API answers
+    /// (`playerStats.ratingChanges.meanBefore`), so the bounds narrow the
+    /// search itself rather than the page it returns. The known consequence is
+    /// that a 500 against a 2500 comes back from a search for either number:
+    /// the game's *average* would be the better question, and for a while this
+    /// asked it, computed from each page as it arrived. That was withdrawn.
+    /// The API has no average field, so the answer could only ever cover the
+    /// window the client had read, which made the result depend on how far it
+    /// had got: a filter that quietly answers a smaller question than the one
+    /// asked is worse than one that answers a blunter question honestly.
     pub min_rating: Option<i32>,
     pub max_rating: Option<i32>,
-    /// What the rating bounds are measured against.
-    ///
-    /// `false`, the default, means the game's **average** rating, which is
-    /// what somebody looking for "a 1500 game" means. `true` restores the
-    /// older behaviour: any single player inside the range is a match, which
-    /// is how both reference clients read the same slider and why a 500 vs
-    /// 2500 stomp used to come back from a search for either number.
-    ///
-    /// The two are not the same request in a second way: the per-player form
-    /// is an API clause on `playerStats.ratingChanges.meanBefore`, while an
-    /// average is computed from the page the API returns, because the resource
-    /// has no average field. See [`Self::accepts_locally`].
-    pub rating_per_player: bool,
     /// Average review score bounds, 0–5.
     pub min_review_score: Option<f32>,
     pub max_review_score: Option<f32>,
@@ -199,7 +198,6 @@ impl Default for ReplayQuery {
             victory_conditions: Vec::new(),
             min_rating: None,
             max_rating: None,
-            rating_per_player: false,
             min_review_score: None,
             max_review_score: None,
             min_duration_minutes: None,
@@ -275,43 +273,26 @@ impl ReplayQuery {
         }
     }
 
-    /// Whether a replay the API returned survives the filters the API cannot
-    /// express.
+    /// Whether a replay the API returned survives the one filter the API
+    /// cannot express.
     ///
-    /// Two of them, both explained on their fields: the number of players who
-    /// actually took part, and rating bounds read as the game's average rather
-    /// than as any one player's. Neither is a clause the game resource can
-    /// answer, so both are applied to the page after it arrives.
+    /// Only one is left: the number of players who actually took part.
+    /// `playerStats` is a to-many relation and RSQL cannot count one, so there
+    /// is no clause to send and the rule is applied to the page after it
+    /// arrives.
     ///
     /// That has a visible consequence and it is worth stating plainly: a page
-    /// of fifty can come back with six rows on it. The alternative was to
-    /// leave both requests unimplemented, and paging that thins out is the
-    /// smaller surprise.
+    /// of fifty can come back with six rows on it, and the client has to read
+    /// further pages to fill one. The alternative was to leave the request
+    /// unimplemented, and paging that thins out is the smaller surprise.
     ///
-    /// `average_rating` of `None` fails an active average-rating bound. A
-    /// replay whose ratings could not be resolved is not evidence of being
-    /// inside the range, and the per-player clause the API builds rejects the
-    /// same games for the same reason: no rating journal, no match.
-    pub fn accepts_locally(&self, player_count: i32, average_rating: Option<i32>) -> bool {
+    /// An average-rating bound used to be decided here too, and is not any
+    /// more: see [`Self::min_rating`] for why it was withdrawn.
+    pub fn accepts_locally(&self, player_count: i32) -> bool {
         if self.min_players.is_some_and(|min| player_count < min) {
             return false;
         }
         if self.max_players.is_some_and(|max| player_count > max) {
-            return false;
-        }
-        if self.rating_per_player {
-            return true;
-        }
-        if self.min_rating.is_none() && self.max_rating.is_none() {
-            return true;
-        }
-        let Some(average) = average_rating else {
-            return false;
-        };
-        if self.min_rating.is_some_and(|min| average < min) {
-            return false;
-        }
-        if self.max_rating.is_some_and(|max| average > max) {
             return false;
         }
         true
@@ -322,9 +303,7 @@ impl ReplayQuery {
     /// The view says so, because a page that comes back shorter than the page
     /// size otherwise looks like a bug.
     pub fn has_local_filter(&self) -> bool {
-        self.min_players.is_some()
-            || self.max_players.is_some()
-            || (!self.rating_per_player && (self.min_rating.is_some() || self.max_rating.is_some()))
+        self.min_players.is_some() || self.max_players.is_some()
     }
 
     /// How far back an otherwise unbounded search should reach, in months.
@@ -496,22 +475,19 @@ fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<Stri
     if let Some(clause) = in_clause("victoryCondition", &query.victory_conditions) {
         clauses.push(clause);
     }
-    // Only when the bounds are per-player. An average is not a field the API
-    // has, so asking it for one and then averaging the answer would filter
-    // twice with two different meanings: `accepts_locally` does that half.
-    if query.rating_per_player {
-        if let Some(min) = query.min_rating {
-            clauses.push(format!(
-                r#"playerStats.ratingChanges.meanBefore=ge="{}""#,
-                min + RATING_MEAN_OFFSET
-            ));
-        }
-        if let Some(max) = query.max_rating {
-            clauses.push(format!(
-                r#"playerStats.ratingChanges.meanBefore=le="{}""#,
-                max + RATING_MEAN_OFFSET
-            ));
-        }
+    // Per player, which is the only form the API can answer: there is no
+    // average-rating field on the resource. See [`ReplayQuery::min_rating`].
+    if let Some(min) = query.min_rating {
+        clauses.push(format!(
+            r#"playerStats.ratingChanges.meanBefore=ge="{}""#,
+            min + RATING_MEAN_OFFSET
+        ));
+    }
+    if let Some(max) = query.max_rating {
+        clauses.push(format!(
+            r#"playerStats.ratingChanges.meanBefore=le="{}""#,
+            max + RATING_MEAN_OFFSET
+        ));
     }
     if let Some(score) = query.min_review_score {
         clauses.push(format!(r#"reviewsSummary.averageScore=ge="{score}""#));
@@ -905,12 +881,11 @@ mod tests {
     }
 
     #[test]
-    fn per_player_rating_bounds_are_offset_to_the_raw_mean() {
+    fn rating_bounds_are_offset_to_the_raw_mean() {
         // A user asking for 1500+ means displayed rating; the API stores mean.
         let q = ReplayQuery {
             min_rating: Some(1500),
             max_rating: Some(2000),
-            rating_per_player: true,
             ..query()
         };
         let filter = build_filter(&q, None, None).unwrap();
@@ -919,46 +894,20 @@ mod tests {
     }
 
     #[test]
-    fn average_rating_bounds_are_not_sent_to_the_api() {
-        // The default reading of the slider. The API has no average field, so
-        // sending the per-player clause would filter on a different question
-        // than the one the user asked and then filter again on the answer.
+    fn a_rating_search_leaves_the_page_alone() {
+        // The whole bound is an API clause now. Nothing is decided after the
+        // rows arrive, which is what makes the result a real result rather
+        // than whatever the client happened to have read: the average form
+        // could only ever answer for the window it had scanned, and was
+        // withdrawn for it.
         let q = ReplayQuery {
             min_rating: Some(1500),
             max_rating: Some(2000),
-            ..query()
-        };
-        let filter = build_filter(&q, None, None).unwrap_or_default();
-        assert!(!filter.contains("meanBefore"), "{filter}");
-        assert!(q.has_local_filter());
-    }
-
-    #[test]
-    fn the_average_bound_reads_the_games_average() {
-        let q = ReplayQuery {
-            min_rating: Some(1500),
-            max_rating: Some(2000),
-            ..query()
-        };
-        assert!(q.accepts_locally(8, Some(1700)));
-        assert!(!q.accepts_locally(8, Some(900)));
-        assert!(!q.accepts_locally(8, Some(2400)));
-        // No resolvable rating is not evidence of being inside the range, and
-        // the per-player clause rejects the same games for the same reason.
-        assert!(!q.accepts_locally(8, None));
-    }
-
-    #[test]
-    fn a_per_player_search_leaves_the_page_alone() {
-        let q = ReplayQuery {
-            min_rating: Some(1500),
-            rating_per_player: true,
             ..query()
         };
         assert!(!q.has_local_filter());
-        // Already answered by the API clause; nothing left to reject here.
-        assert!(q.accepts_locally(8, None));
-        assert!(q.accepts_locally(8, Some(300)));
+        assert!(q.accepts_locally(8));
+        assert!(q.accepts_locally(2));
     }
 
     #[test]
@@ -974,10 +923,10 @@ mod tests {
         assert!(!filter.contains("playerStats"), "{filter}");
         assert!(q.has_local_filter());
 
-        assert!(q.accepts_locally(4, None));
-        assert!(q.accepts_locally(8, None));
-        assert!(!q.accepts_locally(3, None));
-        assert!(!q.accepts_locally(9, None));
+        assert!(q.accepts_locally(4));
+        assert!(q.accepts_locally(8));
+        assert!(!q.accepts_locally(3));
+        assert!(!q.accepts_locally(9));
     }
 
     #[test]
@@ -988,8 +937,8 @@ mod tests {
             min_players: Some(10),
             ..query()
         };
-        assert!(!q.accepts_locally(2, Some(1500)));
-        assert!(q.accepts_locally(16, Some(1500)));
+        assert!(!q.accepts_locally(2));
+        assert!(q.accepts_locally(16));
     }
 
     #[test]

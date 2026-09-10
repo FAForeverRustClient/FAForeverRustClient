@@ -240,9 +240,18 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
           />
         </div>
 
+        {/* The label says "any player's", because that is what the API can
+            answer and therefore what this does: a 500 against a 2500 comes
+            back from a search for either number. The game's *average* is the
+            better question and was offered for a while, computed from each
+            page as it arrived, but the API has no average field so the answer
+            could only ever cover the window the client had read. A filter that
+            quietly answers a smaller question than the one asked is worse than
+            one that answers a blunter question honestly, so it was withdrawn
+            rather than explained. */}
         <div className="vault-search-rating">
           <RangeSlider
-            label={t(form.ratingPerPlayer ? "replays.search.ratingPerPlayer" : "replays.search.ratingAverage")}
+            label={t("replays.search.rating")}
             min={MIN_RATING}
             max={MAX_RATING}
             step={50}
@@ -250,19 +259,6 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
             high={form.maxRating}
             onChange={(lo, hi) => setRange("minRating", "maxRating", lo, hi)}
           />
-          {/* What the slider is measuring. Unchecked, and therefore the
-              default, is the game's average: "a 1500 game" is what somebody
-              means by the number, not "a game one of whose players was 1500",
-              which is what the slider used to do and why a 500 against 2500
-              came back from a search for either. */}
-          <label className="option-check vault-search-rating-scope">
-            <input
-              type="checkbox"
-              checked={form.ratingPerPlayer}
-              onChange={(e) => set("ratingPerPlayer", e.target.checked)}
-            />
-            {t("replays.search.ratingScopePerPlayer")}
-          </label>
         </div>
 
         <label className="vault-field search-panel-field">
@@ -294,14 +290,6 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
           <Icon name="search" size={15} /> {t("replays.search.submit")}
         </Button>
       </div>
-
-      {/* On its own line under the toolbar rather than only in the advanced
-          panel, which is collapsed by default: the rating slider is the one
-          control on this form whose results need explaining, and an
-          explanation nobody opens is no explanation. */}
-      {!form.ratingPerPlayer && (form.minRating !== null || form.maxRating !== null) && (
-        <p className="muted vault-search-rating-note">{t("replays.search.ratingAverageNote")}</p>
-      )}
 
       <div className="vault-search-presets search-panel-secondary">
         <Button type="button" onClick={() => applyPreset("newest")}>

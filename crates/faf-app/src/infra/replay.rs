@@ -161,16 +161,16 @@ const API_PAGE_SIZE: u32 = 100;
 ///
 /// Fixed, and deliberately not the order the results are displayed in. These
 /// scans decide *which* games are examined at all, so taking the display order
-/// from the user made the sort pick the answer: ordered by date it examined the
-/// newest games and matched some, ordered by review score it examined the
-/// best-reviewed ones and matched others. Newest-first is the vault's own
-/// order, the one the unfiltered feed already uses, and the only one that means
-/// the same thing for every search.
+/// from the user made the sort pick the answer rather than arrange it: ordered
+/// by date it examined the newest games and matched some, ordered by review
+/// score it examined the best-reviewed ones and matched others. Newest-first is
+/// the vault's own order, the one the unfiltered feed already uses, and the
+/// only one that means the same thing for every search.
 const SCAN_ORDER: &str = "-startTime";
 
 /// How far a locally filtered search reads ahead.
 ///
-/// Two of the vault's filters have no clause the API can answer (see
+/// One of the vault's filters has no clause the API can answer (see
 /// `ReplayQuery::accepts_locally`), so rows are dropped after they arrive. One
 /// API page therefore does not fill one page of results, and asking for fifty
 /// used to hand back however many of those fifty happened to match: six, four,
@@ -3140,10 +3140,10 @@ fn parse_featured_mods(doc: &JsonApiDoc) -> Vec<String> {
 
 /// Drop the rows the API was never asked to exclude.
 ///
-/// Two of the vault's filters have no clause the game resource can answer: the
-/// number of players who actually took part, and rating bounds read as the
-/// game's average. Both are decided here, on the page that came back, and the
-/// rule itself lives in the domain so it is testable without a network.
+/// One of the vault's filters has no clause the game resource can answer: the
+/// number of players who actually took part. It is decided here, on the page
+/// that came back, and the rule itself lives in the domain so it is testable
+/// without a network.
 ///
 /// This makes a page shorter than the page size, and the view says so. See
 /// `ReplayQuery::accepts_locally`.
@@ -3159,7 +3159,7 @@ fn retain_locally_matching(query: &ReplayQuery, replays: Vec<VaultReplay>) -> Ve
                 .iter()
                 .map(|team| i32::try_from(team.players.len()).unwrap_or(i32::MAX))
                 .sum();
-            query.accepts_locally(players, replay.average_rating)
+            query.accepts_locally(players)
         })
         .collect()
 }

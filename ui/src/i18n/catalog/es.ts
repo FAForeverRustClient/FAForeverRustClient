@@ -1319,7 +1319,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.search.mod": "Mod",
   "replays.search.anyMod": "Cualquiera",
   "replays.search.leaderboard": "Clasificación",
-  "replays.search.rating": "Puntuación",
+  "replays.search.rating": "Puntuación de un jugador",
   "replays.search.sortBy": "Ordenar por",
   "replays.search.submit": "Buscar",
   "replays.search.descendingAria": "Descendente; pulsa para ascendente",
@@ -1841,5 +1841,4 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.detail.simMods": "Mods de simulación",
   "replays.roster.ratingChange": "Cambio de puntuación por esta partida",
   "replays.vault.resultCountUnknown": "{shown} mostradas · {pages} páginas · el total no se conoce con este filtro",
-  "replays.search.ratingAverageNote": "La API no tiene un campo de puntuación media, así que se calcula con las repeticiones a medida que llegan: la búsqueda lee una ventana de las partidas más recientes y muestra las que coinciden. Cambiar el orden reorganiza esas coincidencias, no cambia cuáles coinciden.",
 };

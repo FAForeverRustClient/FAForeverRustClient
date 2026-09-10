@@ -17,9 +17,6 @@ export const EMPTY_REPLAY_QUERY: ReplayQuery = {
   victoryConditions: [],
   minRating: null,
   maxRating: null,
-  // The slider reads the game's average by default: "a 1500 game" is what
-  // somebody means by it, not "a game one of whose players was 1500".
-  ratingPerPlayer: false,
   minReviewScore: null,
   maxReviewScore: null,
   minDurationMinutes: null,
@@ -100,7 +97,6 @@ export function advancedReplayFilterCount(query: ReplayQuery): number {
     query.minDurationMinutes !== null || query.maxDurationMinutes !== null,
     query.mapMinPlayers !== null || query.mapMaxPlayers !== null,
     query.minPlayers !== null || query.maxPlayers !== null,
-    query.ratingPerPlayer,
     query.mapMinSizeKm !== null || query.mapMaxSizeKm !== null,
     query.rankedMapOnly,
     query.after !== "" || query.before !== "",
