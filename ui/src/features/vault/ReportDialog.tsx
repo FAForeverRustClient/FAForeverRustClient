@@ -22,13 +22,14 @@ import { openHttpsUrl } from "../../shared/externalLinks";
 import "./report-dialog.css";
 
 /**
- * Where reports are handled.
+ * Where reports are handled: the vault-support channel on the FAF Discord.
  *
- * The server invite rather than a channel deep link: an invite works for
- * somebody who is not on the server yet, which is exactly the person who does
- * not know where to report things.
+ * A non-expiring invite, so it stays correct without anyone having to notice
+ * that it stopped being. An invite rather than a `discord.com/channels` deep
+ * link because it also works for somebody who is not on the server yet, which
+ * is exactly the person who does not know where to report things.
  */
-const REPORTS_DISCORD = "https://discord.gg/fQxrjwru6E";
+const REPORTS_DISCORD = "https://discord.gg/vvMBTncG3p";
 
 /** One line of the copyable block: a label and what it says. */
 export type ReportDetail = { label: string; value: string };
