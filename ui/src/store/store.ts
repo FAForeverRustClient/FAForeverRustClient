@@ -416,7 +416,7 @@ const INITIAL: AppState = {
     keptGeneratedMaps: [],
     matchmakerVetoes: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
-    general: { startPage: "news", autoLogin: true },
+    general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
     appearance: { density: "comfortable", reduceMotion: false, uiScale: 100, gameTileColumns: 0, sidebarWidth: 224 },
     social: { playerNotes: [] },
     notifications: {

@@ -4,7 +4,10 @@ import { LEADERBOARD_ORDER, leaderboardLabel } from "../../shared/playerRatings"
 
 function orderedRatings(profile: PlayerProfile): PlayerLobbyRating[] {
   const ratings = profile.ratings.slice();
-  if (profile.globalRating > 0 && !ratings.some((rating) => rating.leaderboard === "global")) {
+  // Same rule as `displayedRating`: the scalar stands in only where no table
+  // arrived at all, because zero is its "not supplied" sentinel as well as a
+  // rating somebody can have.
+  if (ratings.length === 0 && profile.globalRating !== 0) {
     ratings.push({
       leaderboard: "global",
       rating: profile.globalRating,

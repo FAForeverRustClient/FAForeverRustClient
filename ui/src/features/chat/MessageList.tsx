@@ -490,6 +490,10 @@ const Line = memo(function Line({
               <button
                 type="button"
                 className="chat-action-btn"
+                // Marks this as a toggle for the same picker, so the picker's
+                // close-on-outside-click leaves it alone and its own click can
+                // still close what it opened.
+                data-reaction-toggle=""
                 aria-label={t("chat.reaction.add")}
                 title={t("chat.reaction.add")}
                 onClick={() => setPickerOpen((open) => !open)}

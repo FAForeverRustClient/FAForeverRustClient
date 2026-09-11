@@ -1214,7 +1214,7 @@ export function CustomGamesBrowser({
         )}
       </div>
       <footer className="game-browser-footer">
-        <span>Showing {games.length} of {totalGames} games</span>
+        <span>{t("lobby.browser.footerCount", { shown: games.length, total: totalGames })}</span>
         <span>{t(viewMode === "tiles" ? "lobby.browser.tileHint" : "lobby.browser.listHint")}</span>
       </footer>
 

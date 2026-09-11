@@ -97,6 +97,9 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
   const player = useAppStore((state) => state.state.auth.player);
   const maps = useAppStore((state) => state.state.maps);
   const browsing = useAppStore((state) => state.state.settings.browsing);
+  // The window's own form history over the title field, which is not something
+  // this client stores; see `GeneralPreferences::remember_typed_entries`.
+  const rememberTypedEntries = useAppStore((state) => state.state.settings.general.rememberTypedEntries);
   const remembered = browsing.hostGame;
 
   /// `setBrowsing` replaces the whole preferences bag, so a writer must start
@@ -450,6 +453,8 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
           <input
             id="host-lobby-name"
             className="host-title-input"
+            name="faf-game-title"
+            autoComplete={rememberTypedEntries ? "on" : "off"}
             value={title}
             maxLength={128}
             aria-invalid={Boolean(titleError)}

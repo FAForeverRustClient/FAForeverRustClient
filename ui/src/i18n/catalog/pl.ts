@@ -1643,7 +1643,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.tileView": "Widok kafelków",
   "lobby.toolbar.listView": "Widok listy",
   "lobby.toolbar.hidePrivate": "Ukryj prywatne",
-  "lobby.toolbar.hideModded": "Ukryj z modami",
+  "lobby.toolbar.hideModded": "Ukryj z modami symulacji",
   "lobby.toolbar.hideUnranked": "Ukryj bez rankingu",
   "lobby.toolbar.applyFilters": "Zastosuj filtry",
   "lobby.toolbar.hostGame": "Utwórz grę",

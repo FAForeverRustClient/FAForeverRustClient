@@ -36,6 +36,14 @@ describe("which rating is shown", () => {
     expect(displayedRating(profile, "ladder_1v1")).toBeNull();
   });
 
+  it("shows a negative rating rather than flattening it to zero", () => {
+    // `mean - 3 * deviation` for a new or long-idle account. The server, the
+    // website and both reference clients all print this; only the lobby lists
+    // here used to clamp it, so the same player read -137 on their profile
+    // and 0 in every lineup.
+    expect(displayedRating(player([rating("global", -137)]))).toBe(-137);
+  });
+
   it("counts a rating of zero as a rating", () => {
     // A conservative rating is mean - 3 * deviation floored at zero, so a
     // ranked account with a high deviation displays as 0. That is a player
@@ -54,6 +62,11 @@ describe("which rating is shown", () => {
     expect(displayedRating(player([], 1_500), "tmm_2v2")).toBeNull();
   });
 
+  it("prefers the table over the scalar, which cannot say zero from absent", () => {
+    const profile = player([rating("global", 0)], 900);
+    expect(displayedRating(profile)).toBe(0);
+  });
+
   it("treats a game with no rating type as a global one", () => {
     expect(gameLeaderboard("")).toBe("global");
     expect(gameLeaderboard(null)).toBe("global");
@@ -70,6 +83,14 @@ describe("averaging a lineup", () => {
 
   it("leaves out only the players with no rating at all", () => {
     expect(averageRating([1_000, null, 500])).toBe(750);
+  });
+
+  it("truncates toward zero, matching the backend's integer division", () => {
+    // Not `Math.floor`: the headline average beside this one is computed in
+    // Rust, which truncates. Flooring would read one lower for a negative
+    // lineup and put the two numbers back into disagreement.
+    expect(averageRating([-3, -2])).toBe(-2);
+    expect(averageRating([-137, 100])).toBe(-18);
   });
 
   it("has no average when nobody is rated", () => {

@@ -552,8 +552,16 @@
 .generate-map-tools-group {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   min-height: 34px;
+}
+
+/* The name "Check options" resolved, on its own line under the two buttons. A
+   generated map name is fifty-odd characters and would otherwise squeeze them
+   both out of the column. */
+.generate-map-tools-group .generate-map-name-code {
+  flex-basis: 100%;
 }
 
 .generate-map-tools-group button {

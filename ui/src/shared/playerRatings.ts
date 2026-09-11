@@ -11,16 +11,15 @@
 // that leaderboard.
 //
 // And "rating zero" was read as "no rating". A conservative rating is
-// `mean - 3 * deviation` floored at zero, so a real, ranked, actively playing
-// account whose deviation is still high displays as 0, and the client printed
-// N/A for them: a player with a leaderboard entry, a rank and a profile page,
-// shown as though the server had never heard of them. Worse, the one number
-// that *did* count them, the game average, then disagreed with the team
-// average that did not.
+// `mean - 3 * deviation`, which for a new or long-idle account is at or below
+// zero, and the client printed N/A for them: a player with a leaderboard
+// entry, a rank and a profile page, shown as though the server had never heard
+// of them. Worse, the one number that *did* count them, the game average, then
+// disagreed with the team average that did not.
 //
 // So: an entry decides, not its value. A player with an entry for the
-// leaderboard has a rating, which may be 0. A player with no entry has none,
-// and that is the only N/A.
+// leaderboard has a rating, which may be 0 or below. A player with no entry
+// has none, and that is the only N/A.
 
 import type { PlayerLobbyRating, PlayerProfile } from "../ipc/bindings";
 import { t } from "../i18n";
@@ -70,6 +69,11 @@ function entryFor(
  * payloads carry the scalar and nothing else. It is deliberately not a
  * fallback for a queue leaderboard: answering "what is their 1v1 rating" with
  * their global one is the bug this function exists to stop.
+ *
+ * The fallback is gated on the table being *empty* rather than on the scalar
+ * being positive. Zero is the scalar's "not supplied" sentinel and also a
+ * rating somebody can really have, and a negative one is just as real; only
+ * the table can tell those apart.
  */
 export function displayedRating(
   profile: PlayerProfile | undefined,
@@ -78,7 +82,11 @@ export function displayedRating(
   if (!profile) return null;
   const entry = entryFor(profile, leaderboard);
   if (entry) return entry.rating;
-  if (leaderboard === GLOBAL_LEADERBOARD && profile.globalRating > 0) {
+  if (
+    leaderboard === GLOBAL_LEADERBOARD
+    && profile.ratings.length === 0
+    && profile.globalRating !== 0
+  ) {
     return profile.globalRating;
   }
   return null;
@@ -97,9 +105,10 @@ export function displayedRating(
 export function averageRating(ratings: Array<number | null>): number | null {
   const known = ratings.filter((rating): rating is number => rating !== null);
   if (known.length === 0) return null;
-  // Truncated, not rounded, because the headline average beside it is computed
-  // in Rust by integer division and this has to be the same number: 242 across
-  // four players is the 60 in the report, not 61. Ratings never go below zero,
-  // so flooring and truncating are the same thing here.
-  return Math.floor(known.reduce((total, rating) => total + rating, 0) / known.length);
+  // Truncated toward zero, not rounded and not floored, because the headline
+  // average beside it is Rust integer division and this has to be the same
+  // number: 242 across four players is the 60 in the report, not 61, and a
+  // lineup averaging -5 over two players is -2 in both rather than -2 here and
+  // -3 there. Ratings do go below zero; see the note at the top of this file.
+  return Math.trunc(known.reduce((total, rating) => total + rating, 0) / known.length);
 }

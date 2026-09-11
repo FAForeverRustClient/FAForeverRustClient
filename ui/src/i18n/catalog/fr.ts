@@ -1647,7 +1647,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.tileView": "Vue en tuiles",
   "lobby.toolbar.listView": "Vue en liste",
   "lobby.toolbar.hidePrivate": "Masquer les privées",
-  "lobby.toolbar.hideModded": "Masquer les moddées",
+  "lobby.toolbar.hideModded": "Masquer avec mods SIM",
   "lobby.toolbar.hideUnranked": "Masquer les non classées",
   "lobby.toolbar.applyFilters": "Appliquer les filtres",
   "lobby.toolbar.hostGame": "Héberger une partie",

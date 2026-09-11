@@ -2208,6 +2208,20 @@ export type GeneralPreferences = {
 	startPage: Tab,
 	/**  Automatically restore the saved session at startup. */
 	autoLogin?: boolean,
+	/**
+	 *  Let the window offer things typed into a text field before.
+	 *
+	 *  This is the embedded browser's own form history, not anything this
+	 *  client stores, and it showed up as a "Saved info" dropdown over the
+	 *  host dialog's game title. Off by default, which is a deliberate change
+	 *  of behaviour: the client already restores the last title *into* that
+	 *  field (`BrowsingPreferences::host_game`), so the dropdown was a second,
+	 *  worse copy of a feature that was already there, covering the value it
+	 *  had just put in. A setting rather than a removal because the thread
+	 *  asked for one, and because somebody who hosts under half a dozen
+	 *  rotating titles is served by it.
+	 */
+	rememberTypedEntries?: boolean,
 };
 
 /**
@@ -3314,7 +3328,8 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
 } } |
 /**
  *  A `--parse` preflight resolved the options to a map name. An empty name
- *  clears a stale prediction when the options change.
+ *  clears a prediction, which is what every edit to the options does: see
+ *  [`MapGeneratorState::predicted_name`].
  */
 { type: "namePredicted"; payload: {
 	mapName: string,
@@ -3355,11 +3370,16 @@ export type MapGeneratorState = {
 	 */
 	validation?: ValidationIssue[],
 	/**
-	 *  The map name the current options would produce, as reported by the
-	 *  generator's own `--parse`. Empty until a preflight has run.
+	 *  The map name the options would produce, as reported by the generator's
+	 *  own `--parse`. Empty until a preflight has run, and emptied again the
+	 *  moment the options change.
 	 *
-	 *  Worth showing on its own: it is shareable before the map exists, and it
-	 *  is the authoritative confirmation that the options are acceptable.
+	 *  That second half is the whole of it. This used to stand in the dialog
+	 *  unprompted, showing the name resolved for whatever the options were
+	 *  when the preflight last ran, and it did not move when they were edited:
+	 *  a map name, presented as fact, for a map nobody had asked for and which
+	 *  the current options would not produce. It is the answer to "check these
+	 *  options" now, and it only survives as long as the question does.
 	 */
 	predictedName?: string,
 	/**
@@ -4806,8 +4826,16 @@ export type PlayerProfile = {
 	id: number,
 	login: string,
 	/**
-	 *  Conservative displayed global rating (`mean - 3 × deviation`). Zero
-	 *  means the lobby supplied no global rating for this account.
+	 *  Conservative displayed global rating (`mean - 3 × deviation`), and it
+	 *  may be negative: a new or long-idle account's deviation is large enough
+	 *  to put it below zero, which is what the server, the website and both
+	 *  reference clients all print.
+	 *
+	 *  Zero is the "not supplied" sentinel and also a rating somebody can
+	 *  really have, so `ratings` is what settles the difference: an account
+	 *  the lobby said nothing about has an empty table. This field is the
+	 *  fallback for the partial `player_info` payloads that carry the scalar
+	 *  and no table at all.
 	 */
 	globalRating: number,
 	/**  All rating queues supplied by the lobby, sorted by technical name. */

@@ -481,6 +481,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.general.autoLogin.label": "Automatisch anmelden",
   "settings.general.autoLogin.hint":
     "Beim Start des Clients automatisch mit dem gespeicherten Konto anmelden.",
+  "settings.general.rememberTypedEntries.label": "Frühere Eingaben vorschlagen",
+  "settings.general.rememberTypedEntries.hint":
+    "Lässt das Fenster Einträge vorschlagen, die du schon einmal in ein Feld getippt hast, etwa den Spieltitel im Hosten-Dialog. Standardmäßig aus: der Client setzt deinen letzten Titel ohnehin wieder in dieses Feld.",
   "settings.general.language.label": "Sprache",
   "settings.general.language.hint":
     "Wirkt sofort. Nicht übersetzte Texte bleiben auf Englisch.",
@@ -672,7 +675,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.tileView": "Kachelansicht",
   "lobby.toolbar.listView": "Listenansicht",
   "lobby.toolbar.hidePrivate": "Private ausblenden",
-  "lobby.toolbar.hideModded": "Modifizierte ausblenden",
+  "lobby.toolbar.hideModded": "SIM-modifizierte ausblenden",
   "lobby.toolbar.hideUnranked": "Ungewertete ausblenden",
   "lobby.toolbar.applyFilters": "Filter anwenden",
   "lobby.toolbar.applyFiltersHint": "Blendet jedes Spiel aus, auf das eine Filterregel passt.",
@@ -1043,6 +1046,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "home.vaultReplays": "Wiederholungen im Magazin",
   "home.clientStatus": "Client-Status",
   "home.clientStatusHint": "Backend-Verbindung und lokale Client-Version.",
+  "lobby.browser.footerCount": "{shown} von {total} Spielen",
   "lobby.browser.tileHint": "Kartenbild anklicken für Vorschau · Doppelklick auf Details zum Beitreten",
   "lobby.browser.listHint": "Doppelklick auf eine Partie zum Beitreten",
 
@@ -2187,7 +2191,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.generate.hideHelp": "Generator-Hilfe ausblenden",
   "maps.generate.loadingHelp": "Generator-Hilfe wird geladen…",
   "maps.generate.checkOptions": "Prüfen",
-  "maps.generate.willBeCalled": "Wird heißen",
   "maps.generate.cancel": "Abbrechen",
   "maps.generate.cancelled": "Generierung abgebrochen.",
   "maps.generate.preparing": "Optionen werden mit dem Generator geprüft…",

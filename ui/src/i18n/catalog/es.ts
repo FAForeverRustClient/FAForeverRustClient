@@ -1645,7 +1645,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.tileView": "Vista en mosaico",
   "lobby.toolbar.listView": "Vista en lista",
   "lobby.toolbar.hidePrivate": "Ocultar las privadas",
-  "lobby.toolbar.hideModded": "Ocultar las modificadas",
+  "lobby.toolbar.hideModded": "Ocultar con mods de simulación",
   "lobby.toolbar.hideUnranked": "Ocultar no clasificatorias",
   "lobby.toolbar.applyFilters": "Aplicar filtros",
   "lobby.toolbar.hostGame": "Crear partida",

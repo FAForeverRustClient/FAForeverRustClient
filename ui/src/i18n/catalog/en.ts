@@ -530,6 +530,9 @@ export const en = {
   "settings.general.autoLogin.label": "Auto sign-in",
   "settings.general.autoLogin.hint":
     "Automatically sign in with your saved account whenever the client starts.",
+  "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
+  "settings.general.rememberTypedEntries.hint":
+    "Lets the window offer entries you have typed into a field before, such as the host dialog's game title. Off by default: the client already puts your last title back in that field.",
   "settings.general.language.label": "Language",
   "settings.general.language.hint":
     "Applies immediately. Untranslated text stays in English.",
@@ -730,7 +733,11 @@ export const en = {
   "lobby.toolbar.tileView": "Tile view",
   "lobby.toolbar.listView": "List view",
   "lobby.toolbar.hidePrivate": "Hide private",
-  "lobby.toolbar.hideModded": "Hide modded",
+  // "Hide modded" on its own read as "hide any game with a mod", including
+  // the UI mods that change nothing about the simulation. This filter has
+  // always been about `simMods` alone, and the Russian pass asked for the
+  // English to say so too.
+  "lobby.toolbar.hideModded": "Hide sim-modded",
   "lobby.toolbar.hideUnranked": "Hide unranked",
   "lobby.toolbar.applyFilters": "Apply filters",
   "lobby.toolbar.applyFiltersHint": "Hide every game matching a filter rule.",
@@ -1149,6 +1156,7 @@ export const en = {
   "home.vaultReplays": "Vault replays",
   "home.clientStatus": "Client status",
   "home.clientStatusHint": "Backend connection and local client version.",
+  "lobby.browser.footerCount": "Showing {shown} of {total} games",
   "lobby.browser.tileHint": "Click map art to preview · double-click details to join",
   "lobby.browser.listHint": "Double-click a game to join",
 
@@ -2322,7 +2330,6 @@ export const en = {
   "maps.generate.hideHelp": "Hide help",
   "maps.generate.loadingHelp": "Loading the generator help…",
   "maps.generate.checkOptions": "Verify",
-  "maps.generate.willBeCalled": "Will be called",
   "maps.generate.cancel": "Cancel",
   "maps.generate.cancelled": "Generation cancelled.",
   "maps.generate.preparing": "Checking the options with the generator…",

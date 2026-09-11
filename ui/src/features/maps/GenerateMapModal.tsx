@@ -787,6 +787,12 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                         <Button type="button" onClick={() => void preflight(form)} disabled={busy}>
                           {t("maps.generate.checkOptions")}
                         </Button>
+                        {/* What the press answered. The backend clears it on
+                            the next edit, so it can never name the options
+                            that are no longer on screen. */}
+                        {state.predictedName && !reproducing ? (
+                          <code className="generate-map-name-code">{state.predictedName}</code>
+                        ) : null}
                         <Button
                           type="button"
                           onClick={() => {
@@ -985,19 +991,18 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   className="generate-map-preview-img"
                 />
               </div>
+              {/* No predicted name here. It stood in this panel unprompted,
+                  showing the name resolved for whatever the options were when
+                  a preflight last ran, and it did not move when they were
+                  edited: a map name presented as fact, for a map nobody had
+                  asked for, which the options on screen would not produce. It
+                  is the answer to "Check options" now, beside that button. */}
               <div className="generate-map-preview-empty-meta">
-                <span className="generate-map-name-label">
-                  {t("maps.generate.willBeCalled") || "Predicted map name"}
-                </span>
-                {state.predictedName && !reproducing ? (
-                  <code className="generate-map-name-code">{state.predictedName}</code>
-                ) : (
-                  <p className="generate-map-empty-hint">
-                    {reproducing
-                      ? t("maps.generate.rebuildingHint")
-                      : t("maps.generate.subtitle")}
-                  </p>
-                )}
+                <p className="generate-map-empty-hint">
+                  {reproducing
+                    ? t("maps.generate.rebuildingHint")
+                    : t("maps.generate.subtitle")}
+                </p>
               </div>
               <div className="generate-map-preview-empty-footer">
                 <span className="muted">
