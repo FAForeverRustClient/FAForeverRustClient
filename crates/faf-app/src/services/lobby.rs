@@ -316,6 +316,12 @@ async fn handle_update(
             game_notifications.mark_authenticated();
             out.emit(LobbyEvent::Connected);
         }
+        // Back to the state the first attempt starts in. Deliberately not
+        // `Disconnected`, which clears every list the lobby has sent: the
+        // server resends all of it on the replacement connection within
+        // seconds, and emptying the Play tab in the meantime would turn a blip
+        // nobody needed to see into a visible one.
+        LobbyUpdate::Reconnecting => out.emit(LobbyEvent::Connecting),
         LobbyUpdate::Games(games) => {
             let (preferences, player_name) = out.with_state(|state| {
                 (

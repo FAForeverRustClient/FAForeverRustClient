@@ -31,7 +31,12 @@ export function mergeMatchmakerQueues(
 export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
   switch (event.type) {
     case "connecting":
-      return { ...state, status: "connecting" };
+      // A join belongs to one connection: the port reconnects on its own, and
+      // a join the dropped socket left behind is one the server has already
+      // forgotten. The lists stay, because the replacement connection resends
+      // them and emptying the Play tab would make a blip look like a
+      // disconnection.
+      return { ...state, status: "connecting", join: { type: "idle" } };
     case "connected":
       return { ...state, status: "connected" };
     // Another tab asked for the host dialog; the Play tab opens it when it sees

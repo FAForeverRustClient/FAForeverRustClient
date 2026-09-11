@@ -41,6 +41,14 @@ pub enum LobbyUpdate {
     /// the connection over an early command. This, not `connect` returning, is
     /// when the lobby becomes usable.
     Authenticated,
+    /// The connection was lost and the port is opening another one by itself.
+    ///
+    /// Distinct from the update stream ending, which is what the service reads
+    /// as a real disconnection. This says the session is still alive and
+    /// currently between sockets, so the client can stop claiming a connection
+    /// it does not have without tearing down everything it knows. The next
+    /// [`Self::Authenticated`] means the replacement is up.
+    Reconnecting,
     /// A fresh full snapshot of the open-games list.
     Games(Vec<Game>),
     /// A fresh full snapshot of the in-progress ("playing") games list.
