@@ -30,6 +30,8 @@ interface Props {
   emptyLabel: string;
   onNickClick: (nick: string) => void;
   onNickContextMenu: (nick: string, event: React.MouseEvent) => void;
+  /** Whose player menu is open: their name in a line stays highlighted. */
+  menuTarget?: string | null;
   showTimestamps: boolean;
   use24HourTime: boolean;
   users: ChatUser[];
@@ -82,6 +84,7 @@ export const MessageList = memo(function MessageList({
   emptyLabel,
   onNickClick,
   onNickContextMenu,
+  menuTarget = null,
   showTimestamps,
   use24HourTime,
   users,
@@ -286,6 +289,7 @@ export const MessageList = memo(function MessageList({
               registerRow={registerRow}
               onNickClick={onNickClick}
               onNickContextMenu={onNickContextMenu}
+              menuOpen={menuTarget === message.sender}
               onGameLink={onGameLink}
               reactions={reactions[message.msgid ?? ""] ?? EMPTY_REACTIONS}
               onReact={onReact}
@@ -312,6 +316,7 @@ const Line = memo(function Line({
   withTime,
   onNickClick,
   onNickContextMenu,
+  menuOpen,
   use24HourTime,
   user,
   profile,
@@ -338,6 +343,7 @@ const Line = memo(function Line({
   quoted?: ChatMessage;
   onNickClick: (nick: string) => void;
   onNickContextMenu: (nick: string, event: React.MouseEvent) => void;
+  menuOpen: boolean;
   use24HourTime: boolean;
   user: ChatUser | undefined;
   profile: PlayerProfile | undefined;
@@ -379,7 +385,7 @@ const Line = memo(function Line({
   const nick = (
     <button
       type="button"
-      className={nameStyle ? "chat-nick" : "chat-nick is-monochrome"}
+      className={`${nameStyle ? "chat-nick" : "chat-nick is-monochrome"}${menuOpen ? " is-menu-open" : ""}`}
       style={nameStyle}
       title={`Message ${message.sender}`}
       onClick={() => onNickClick(message.sender)}

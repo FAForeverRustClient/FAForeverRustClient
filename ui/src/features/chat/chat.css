@@ -1131,7 +1131,11 @@ html.is-resizing-chat-roster * {
   border-radius: var(--radius-sm);
 }
 
-.chat-roster-user:hover {
+.chat-roster-user:hover,
+/* Held while this row's player menu is up. The menu opens under the pointer,
+   which has left the row by then, and the menu no longer prints the name
+   across its top: this is what says which of two hundred names it is about. */
+.chat-roster-user.is-menu-open {
   background: var(--color-surface-hover);
 }
 
@@ -1418,22 +1422,11 @@ img.chat-game-map {
   box-shadow: var(--shadow-popover);
 }
 
-.chat-user-menu-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3) var(--space-1);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-user-menu-clan {
-  font-weight: 500;
-  color: var(--color-subtle);
+/* A name in a message, while its player menu is open. Same reason as the
+   roster row above: the menu is anonymous without it. */
+.chat-nick.is-menu-open {
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
 }
 
 .chat-user-menu-color {

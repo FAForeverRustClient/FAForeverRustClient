@@ -56,7 +56,20 @@ const watchGame = (game: Game) =>
 const inGame = (list: Game[], nickname: string) =>
   list.find((game) => Object.values(game.teams).some((team) => team.includes(nickname)));
 
-export function usePlayerMenu(): { openPlayerMenu: PlayerMenuOpener; playerMenu: ReactNode } {
+export function usePlayerMenu(): {
+  openPlayerMenu: PlayerMenuOpener;
+  playerMenu: ReactNode;
+  /**
+   * Whose menu is open, or `null`.
+   *
+   * The menu no longer prints the name across its top, so the name it belongs
+   * to has to stay legible where it already is: a caller marks the row it
+   * opened the menu from and keeps it looking hovered. Without that the menu
+   * appears under the pointer, which has by then left the row, and nothing on
+   * screen says which of two hundred names it is about.
+   */
+  playerMenuTarget: string | null;
+} {
   const social = useAppStore((s) => s.state.social);
   const player = useAppStore((s) => s.state.auth.player);
   const chatUsername = useAppStore((s) => s.state.chat.username);
@@ -202,5 +215,5 @@ export function usePlayerMenu(): { openPlayerMenu: PlayerMenuOpener; playerMenu:
 
   // `openPlayerMenu` is stable, so a caller can pass it through a `memo`'d row
   // without defeating the memo; only the rendered node changes per render.
-  return { openPlayerMenu, playerMenu };
+  return { openPlayerMenu, playerMenu, playerMenuTarget: menu?.nickname ?? null };
 }
