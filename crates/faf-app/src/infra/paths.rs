@@ -124,22 +124,47 @@ impl PathsPort for FakePaths {
 mod tests {
     use super::*;
 
+    /// The overrides are one process-wide value, and `cargo test` runs these
+    /// on threads of the same process. Without this the two tests race: one
+    /// resets the overrides while the other is between setting them and
+    /// reading them back, and the failure lands on whichever lost, in a run
+    /// that has nothing to do with either of them.
+    static OVERRIDES: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Exclusive use of the overrides, restored to empty on the way out.
+    ///
+    /// Poisoning is ignored on purpose: a panicking test has already failed
+    /// and there is nothing here to corrupt, so taking the lock anyway keeps
+    /// one failure from being reported as two.
+    fn with_overrides(preferences: PathPreferences, check: impl FnOnce()) {
+        let _guard = OVERRIDES
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        ConfiguredPaths.set_overrides(preferences);
+        check();
+        ConfiguredPaths.set_overrides(PathPreferences::default());
+    }
+
     #[test]
     fn an_unset_field_reads_as_no_override() {
-        ConfiguredPaths.set_overrides(PathPreferences::default());
-        assert_eq!(maps_dir(), None);
+        with_overrides(PathPreferences::default(), || {
+            assert_eq!(maps_dir(), None);
+        });
     }
 
     #[test]
     fn a_configured_field_wins_and_is_trimmed() {
         // A path pasted out of a file manager routinely arrives with a
         // trailing space; resolving that literally would find nothing.
-        ConfiguredPaths.set_overrides(PathPreferences {
-            maps_dir: "  C:/faf/maps  ".into(),
-            ..PathPreferences::default()
-        });
-        assert_eq!(maps_dir(), Some(PathBuf::from("C:/faf/maps")));
-        assert_eq!(mods_dir(), None);
-        ConfiguredPaths.set_overrides(PathPreferences::default());
+        with_overrides(
+            PathPreferences {
+                maps_dir: "  C:/faf/maps  ".into(),
+                ..PathPreferences::default()
+            },
+            || {
+                assert_eq!(maps_dir(), Some(PathBuf::from("C:/faf/maps")));
+                assert_eq!(mods_dir(), None);
+            },
+        );
     }
 }
