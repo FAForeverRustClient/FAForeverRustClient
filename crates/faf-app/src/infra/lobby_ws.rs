@@ -51,6 +51,18 @@ const MAX_SERVER_MESSAGE_CHARS: usize = 4_000;
 // the lobby server and shown on player cards to distinguish client types.
 const LOBBY_USER_AGENT: &str = "faf-rust-client";
 
+/// Reconnect schedule, from `handle_disconnected` in the Python client's
+/// `ServerConnection`: the first few attempts go out immediately, because a
+/// socket that has been working and then drops is usually a blip, and only a
+/// run of failures backs off. The same shape the chat client already uses.
+const RECONNECT_IMMEDIATE_ATTEMPTS: u32 = 3;
+const RECONNECT_BACKOFF_STEP: std::time::Duration = std::time::Duration::from_secs(10);
+const RECONNECT_BACKOFF_MAX: std::time::Duration = std::time::Duration::from_secs(60);
+/// Give up, and close the update stream, after this many attempts in a row
+/// that never reached an authenticated session: a bad token or a real outage
+/// rather than a blip, and retrying forever would hide it.
+const MAX_CONSECUTIVE_FAILURES: u32 = 10;
+
 /// How long the lobby connection may stay silent before this client pings it,
 /// and how long after that ping it may stay silent before the connection is
 /// treated as dead.
@@ -185,11 +197,72 @@ impl LobbyPort for LobbyClient {
 
         let config = self.config.clone();
         let http = self.http.clone();
-        let access_token = self.tokens.get();
+        let tokens = self.tokens.clone();
         tokio::spawn(async move {
-            // On any failure we simply drop `tx`; the receiver closes and the
-            // lobby service emits `Disconnected`.
-            run_session(config, http, access_token, tx, out_rx, token).await;
+            // The reconnect loop, which is `handle_disconnected` in the Python
+            // client. A dropped lobby connection used to end the client's
+            // session outright and wait for the user to press connect; the
+            // reference clients retry on their own, which is most of why they
+            // feel steadier on a flaky line even when they drop just as often.
+            //
+            // Giving up drops `tx`; the receiver closes and the lobby service
+            // emits `Disconnected`, exactly as it did when every drop ended
+            // here.
+            let mut mid_flight = out_rx;
+            let mut failures = 0_u32;
+            loop {
+                // The token is re-read per attempt: a refresh may have landed
+                // while the backoff was sleeping.
+                let end = run_session(
+                    config.clone(),
+                    http.clone(),
+                    tokens.get(),
+                    tx.clone(),
+                    &mut mid_flight,
+                    token.clone(),
+                )
+                .await;
+
+                match end {
+                    SessionEnd::Cancelled | SessionEnd::Hopeless => break,
+                    SessionEnd::Dropped { authenticated } => {
+                        // A session that worked and then dropped starts the
+                        // count again, so the next attempt is immediate. Only
+                        // a run of attempts that never came up backs off.
+                        failures = if authenticated { 1 } else { failures + 1 };
+                    }
+                }
+
+                if failures >= MAX_CONSECUTIVE_FAILURES {
+                    tracing::error!(failures, "lobby reconnect limit reached");
+                    break;
+                }
+                // A frame was addressed to the connection that just went. A
+                // `game_join` queued while the socket was dying must not be
+                // replayed minutes later onto its replacement, joining a game
+                // the player has long since stopped waiting for.
+                while mid_flight.try_recv().is_ok() {}
+
+                // Tell the client it is between connections. Not
+                // `Disconnected`: that is the end of the session, and this is
+                // the middle of one.
+                if tx.send(LobbyUpdate::Reconnecting).await.is_err() {
+                    break;
+                }
+
+                let delay = reconnect_delay(failures);
+                if !delay.is_zero() {
+                    tracing::info!(
+                        delay_seconds = delay.as_secs(),
+                        failures,
+                        "lobby reconnect scheduled"
+                    );
+                }
+                tokio::select! {
+                    _ = token.cancelled() => break,
+                    _ = tokio::time::sleep(delay) => {}
+                }
+            }
         });
         rx
     }
@@ -298,6 +371,23 @@ impl LobbyPort for LobbyClient {
     }
 }
 
+/// Why one lobby session ended, and what the reconnect loop should do next.
+enum SessionEnd {
+    /// `disconnect()`, or a newer `connect()` replacing this one. Stop.
+    Cancelled,
+    /// The socket ended, or the keepalive found it dead. Open another one.
+    ///
+    /// `authenticated` is whether this session ever became usable. A session
+    /// that worked and then dropped reconnects at once; a run of attempts that
+    /// never got that far is what the backoff is for. It is the same
+    /// distinction `handle_connected` draws in the Python client by resetting
+    /// `_connection_attempts` to zero once a connection is up.
+    Dropped { authenticated: bool },
+    /// Nothing another attempt would fix: nobody is signed in, or the access
+    /// service answered with a URL that is not safe to open.
+    Hopeless,
+}
+
 /// Drive one lobby connection from handshake to close. Returns when the socket
 /// ends, auth fails, or `cancel` fires (which sends a graceful close frame).
 async fn run_session(
@@ -305,12 +395,15 @@ async fn run_session(
     http: reqwest::Client,
     access_token: Option<String>,
     tx: mpsc::Sender<LobbyUpdate>,
-    mut outgoing: mpsc::Receiver<Value>,
+    outgoing: &mut mpsc::Receiver<Value>,
     cancel: CancellationToken,
-) {
+) -> SessionEnd {
+    // Borrowed rather than owned: the queue of client frames outlives any one
+    // socket, so a `game_join` that was waiting when the connection dropped is
+    // still there for the session that replaces it.
     let Some(access_token) = access_token else {
         tracing::warn!("lobby connection skipped because there is no access token");
-        return; // not logged in: nothing to authenticate with
+        return SessionEnd::Hopeless; // not logged in: nothing to authenticate with
     };
 
     // Resolve the WebSocket URL. FAF prod requires a verified URL obtained from
@@ -320,7 +413,11 @@ async fn run_session(
             Ok(url) => url,
             Err(e) => {
                 tracing::error!(error = %e, "could not obtain lobby access URL");
-                return;
+                // Worth another try: the access service having a bad minute is
+                // not the same as this client being unable to sign in.
+                return SessionEnd::Dropped {
+                    authenticated: false,
+                };
             }
         }
     } else {
@@ -332,7 +429,7 @@ async fn run_session(
         Ok(url) => url,
         Err(error) => {
             tracing::error!(%error, "lobby access service returned an unsafe URL");
-            return;
+            return SessionEnd::Hopeless;
         }
     };
 
@@ -341,7 +438,9 @@ async fn run_session(
         Ok((ws, _)) => ws,
         Err(e) => {
             tracing::error!(error = %e, "could not open lobby WebSocket");
-            return;
+            return SessionEnd::Dropped {
+                authenticated: false,
+            };
         }
     };
     tracing::info!("lobby WebSocket connected");
@@ -359,7 +458,9 @@ async fn run_session(
         .is_err()
     {
         tracing::error!("failed to request a lobby session");
-        return;
+        return SessionEnd::Dropped {
+            authenticated: false,
+        };
     }
 
     let mut games = GameSet::default();
@@ -405,10 +506,16 @@ async fn run_session(
     keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     keepalive.tick().await; // the first tick of an interval is immediate
     let mut ping_unanswered = false;
+    // Every exit but the two deliberate ones is a drop worth reconnecting
+    // after, so that is the default and only the deliberate ones assign.
+    let mut ending = SessionEnd::Dropped {
+        authenticated: false,
+    };
     'connection: loop {
         tokio::select! {
             _ = cancel.cancelled() => {
                 let _ = write.send(Message::Close(None)).await;
+                ending = SessionEnd::Cancelled;
                 break;
             }
             // Ten seconds without a single frame from the server.
@@ -434,7 +541,9 @@ async fn run_session(
             // until `welcome`: see `authenticated`.
             frame = outgoing.recv(), if authenticated => {
                 let Some(frame) = frame else {
+                    // `disconnect()` dropped the sender: asked for, not lost.
                     let _ = write.send(Message::Close(None)).await;
+                    ending = SessionEnd::Cancelled;
                     break;
                 };
                 if write
@@ -859,6 +968,12 @@ async fn run_session(
         }
     }
     tracing::info!("lobby connection closed");
+    // `authenticated` is the loop's own flag: the session became usable the
+    // moment the server said `welcome`.
+    match ending {
+        SessionEnd::Dropped { .. } => SessionEnd::Dropped { authenticated },
+        other => other,
+    }
 }
 
 fn command_of(value: &Value) -> &str {
@@ -884,6 +999,22 @@ fn parse_server_notice(value: &Value) -> (ServerNoticeStyle, String) {
         _ => ServerNoticeStyle::Info,
     };
     (style, server_text(value, "The lobby server sent a notice."))
+}
+
+/// How long to wait before the next attempt, given how many in a row have
+/// failed to produce a working connection.
+///
+/// `handle_disconnected` in the Python client: the first few go out
+/// immediately, then `attempts * 10s`. Capped, which the Python client does
+/// not do, because its counter is reset by a user action that this loop has no
+/// equivalent of.
+fn reconnect_delay(failures: u32) -> std::time::Duration {
+    if failures <= RECONNECT_IMMEDIATE_ATTEMPTS {
+        return std::time::Duration::ZERO;
+    }
+    RECONNECT_BACKOFF_STEP
+        .saturating_mul(failures - RECONNECT_IMMEDIATE_ATTEMPTS)
+        .min(RECONNECT_BACKOFF_MAX)
 }
 
 /// The keepalive this client sends after ten seconds of silence.
@@ -1794,6 +1925,7 @@ fn host_frame(config: HostGameConfig) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn hosting_without_a_password_sends_null_rather_than_an_empty_string() {
@@ -1998,6 +2130,36 @@ mod tests {
             relation_frame(7, Relation::Foe, false),
             json!({ "command": "social_remove", "foe": 7 })
         );
+    }
+
+    #[test]
+    fn a_connection_that_worked_is_retried_at_once_and_a_dead_one_backs_off() {
+        // `handle_disconnected` in the Python client: the first few attempts
+        // are immediate, because a socket that has been working and then drops
+        // is usually a blip and waiting ten seconds to find that out is ten
+        // seconds of the client being wrong about its own state.
+        assert_eq!(reconnect_delay(1), Duration::ZERO);
+        assert_eq!(
+            reconnect_delay(RECONNECT_IMMEDIATE_ATTEMPTS),
+            Duration::ZERO
+        );
+
+        // Past that it is a real outage rather than a blip, and the schedule
+        // is the reference client's `attempts * 10s`.
+        assert_eq!(
+            reconnect_delay(RECONNECT_IMMEDIATE_ATTEMPTS + 1),
+            Duration::from_secs(10)
+        );
+        assert_eq!(
+            reconnect_delay(RECONNECT_IMMEDIATE_ATTEMPTS + 2),
+            Duration::from_secs(20)
+        );
+
+        // Capped, so a server that is down all evening is still polled once a
+        // minute rather than once an hour.
+        assert_eq!(reconnect_delay(1_000), RECONNECT_BACKOFF_MAX);
+        // And it cannot overflow its way back to an immediate retry.
+        assert_eq!(reconnect_delay(u32::MAX), RECONNECT_BACKOFF_MAX);
     }
 
     #[test]

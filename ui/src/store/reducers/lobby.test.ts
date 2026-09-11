@@ -133,6 +133,21 @@ describe("the join state machine", () => {
 });
 
 describe("disconnect", () => {
+  it("drops a join the old connection left behind, and keeps the lists", () => {
+    // The port reconnects on its own, so "connecting" is no longer only the
+    // first attempt: it is also the middle of a session whose socket was
+    // replaced. The join belonged to the socket that went; the games did not.
+    const next = apply(
+      state({ status: "connected", games: [game(7)] }),
+      { type: "joining", payload: { id: 7, prepared: false } },
+      { type: "connecting" },
+    );
+
+    expect(next.status).toBe("connecting");
+    expect(next.join).toEqual({ type: "idle" });
+    expect(next.games).toHaveLength(1);
+  });
+
   it("clears everything the connection owned", () => {
     // Rust clears exactly this set. Anything left behind is stale data the UI
     // would keep rendering for a server we are no longer talking to.

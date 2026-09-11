@@ -613,7 +613,17 @@ pub enum LobbyCommand {
 
 pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
     match event {
-        LobbyEvent::Connecting => state.status = LobbyStatus::Connecting,
+        LobbyEvent::Connecting => {
+            state.status = LobbyStatus::Connecting;
+            // A join belongs to one connection. On the first attempt there is
+            // nothing to clear; on a reconnect there may be a join the server
+            // has already forgotten, and leaving it standing is how a client
+            // ends up reporting a join in progress that nothing will ever
+            // finish. The lists are deliberately left alone: the server
+            // resends them, and clearing them would make a two-second blip
+            // look like a disconnection.
+            state.join = JoinState::Idle;
+        }
         LobbyEvent::Connected => state.status = LobbyStatus::Connected,
         LobbyEvent::HostPrepared { title } => state.host_prefill = Some(title.clone()),
         LobbyEvent::HostPrefillCleared => state.host_prefill = None,
@@ -1025,6 +1035,35 @@ mod tests {
         reduce(&mut state, &LobbyEvent::GameTerminated);
 
         assert_eq!(state.join, JoinState::Idle);
+    }
+
+    #[test]
+    fn reconnecting_drops_a_join_the_old_connection_left_behind() {
+        // The port reconnects by itself now, so `Connecting` is no longer only
+        // the first attempt: it is also the middle of a session whose socket
+        // was replaced. A join belongs to the connection it was sent on, and
+        // the server has forgotten this one, so leaving it standing is how a
+        // client reports a join in progress that nothing will ever finish.
+        let mut s = LobbyState::default();
+        reduce(&mut s, &LobbyEvent::Connected);
+        reduce(
+            &mut s,
+            &LobbyEvent::Joining {
+                id: 7,
+                prepared: false,
+            },
+        );
+        s.games = vec![game(7)];
+
+        reduce(&mut s, &LobbyEvent::Connecting);
+
+        assert_eq!(s.status, LobbyStatus::Connecting);
+        assert_eq!(s.join, JoinState::Idle, "the join went with the socket");
+        assert_eq!(
+            s.games.len(),
+            1,
+            "the games list is not cleared: the replacement connection resends              it within seconds, and emptying the tab would turn a blip into a              visible disconnection"
+        );
     }
 
     #[test]
