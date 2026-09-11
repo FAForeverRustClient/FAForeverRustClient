@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use crate::protocol::map_generator::GeneratorOptions;
 
 use super::chat::normalize_channels;
+use super::lobby::PlayerVeto;
 use super::mods::ModPreset;
 use super::Tab;
 
@@ -1955,6 +1956,21 @@ pub struct SettingsState {
     /// having it survive a restart is the difference between the dialog being
     /// configured once and being configured every time.
     pub map_generator: GeneratorOptions,
+    /// The matchmaker map vetoes this account last saved.
+    ///
+    /// Kept here because the server does not keep them. A player's vetoes live
+    /// on their `Player` object for the life of the session and are gone the
+    /// moment they log out: there is no table behind them and no command to
+    /// read them back, so a client that only listens is a client whose vetoes
+    /// are always empty at login, which is the report.
+    ///
+    /// So the client remembers what it sent and sends it again once the lobby
+    /// authenticates. The server validates and caps the selection against the
+    /// current pools exactly as it does for a fresh one, and tells us when it
+    /// had to adjust it, so a pool that changed between sessions corrects
+    /// itself rather than being replayed wrong forever.
+    #[serde(default)]
+    pub matchmaker_vetoes: Vec<PlayerVeto>,
     #[serde(default)]
     pub cache_info: GameCacheInfo,
 }
@@ -1989,6 +2005,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             events: EventsPreferences,
             kept_generated_maps: Vec<String>,
             map_generator: GeneratorOptions,
+            matchmaker_vetoes: Vec<PlayerVeto>,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -2011,6 +2028,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             events: wire.events,
             kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
+            matchmaker_vetoes: wire.matchmaker_vetoes,
             cache_info: GameCacheInfo::default(),
         })
     }
@@ -2109,6 +2127,13 @@ pub enum SettingsEvent {
     CacheInfoUpdated {
         info: GameCacheInfo,
     },
+    /// The matchmaker veto selection to replay at the next login, replacing
+    /// whatever was remembered before. Not additive, unlike
+    /// [`SettingsEvent::KeptGeneratedMaps`]: this is one whole selection, and
+    /// clearing every veto has to be able to clear it.
+    MatchmakerVetoesChanged {
+        vetoes: Vec<PlayerVeto>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -2199,6 +2224,9 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
                 }
                 state.kept_generated_maps.push(name.to_owned());
             }
+        }
+        SettingsEvent::MatchmakerVetoesChanged { vetoes } => {
+            state.matchmaker_vetoes = vetoes.clone()
         }
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => {
@@ -2397,6 +2425,49 @@ mod tests {
         assert!(settings.discord.enabled);
         assert!(!settings.discord.disallow_joins);
         assert_eq!(settings.browsing, BrowsingPreferences::default());
+    }
+
+    #[test]
+    fn a_settings_file_written_before_vetoes_were_kept_reads_as_none() {
+        let settings: SettingsState = serde_json::from_str(r#"{"theme":"forgeDark"}"#).unwrap();
+        assert!(settings.matchmaker_vetoes.is_empty());
+    }
+
+    #[test]
+    fn a_veto_selection_replaces_the_last_one_rather_than_joining_it() {
+        // The opposite of `KeptGeneratedMaps`, deliberately: this is one whole
+        // selection as the server holds it, so removing a veto has to be able
+        // to remove it, and clearing them all has to clear them all.
+        let mut settings = SettingsState::default();
+        let veto = |map: i32, tokens: i32| PlayerVeto {
+            matchmaker_queue_map_pool_id: 4,
+            map_pool_map_version_id: map,
+            veto_tokens_applied: tokens,
+        };
+
+        reduce(
+            &mut settings,
+            &SettingsEvent::MatchmakerVetoesChanged {
+                vetoes: vec![veto(91, 2), veto(92, 1)],
+            },
+        );
+        assert_eq!(settings.matchmaker_vetoes.len(), 2);
+
+        // The shape of a server correction: a pool shrank, so one veto is
+        // capped and the other is gone.
+        reduce(
+            &mut settings,
+            &SettingsEvent::MatchmakerVetoesChanged {
+                vetoes: vec![veto(91, 1)],
+            },
+        );
+        assert_eq!(settings.matchmaker_vetoes, vec![veto(91, 1)]);
+
+        reduce(
+            &mut settings,
+            &SettingsEvent::MatchmakerVetoesChanged { vetoes: Vec::new() },
+        );
+        assert!(settings.matchmaker_vetoes.is_empty());
     }
 
     #[test]

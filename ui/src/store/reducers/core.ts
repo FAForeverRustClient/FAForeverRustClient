@@ -78,6 +78,10 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
       };
     case "cacheInfoUpdated":
       return { ...state, cacheInfo: event.payload.info };
+    // One whole selection, replaced rather than merged: clearing every veto
+    // has to be able to clear it.
+    case "matchmakerVetoesChanged":
+      return { ...state, matchmakerVetoes: event.payload.vetoes };
   }
 }
 

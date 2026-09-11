@@ -6024,6 +6024,15 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	mapNames: string[],
 } } | { type: "cacheInfoUpdated"; payload: {
 	info: GameCacheInfo,
+} } |
+/**
+ *  The matchmaker veto selection to replay at the next login, replacing
+ *  whatever was remembered before. Not additive, unlike
+ *  [`SettingsEvent::KeptGeneratedMaps`]: this is one whole selection, and
+ *  clearing every veto has to be able to clear it.
+ */
+{ type: "matchmakerVetoesChanged"; payload: {
+	vetoes: PlayerVeto[],
 } };
 
 /**
@@ -6066,6 +6075,22 @@ export type SettingsState = {
 	 *  configured once and being configured every time.
 	 */
 	mapGenerator: GeneratorOptions,
+	/**
+	 *  The matchmaker map vetoes this account last saved.
+	 *
+	 *  Kept here because the server does not keep them. A player's vetoes live
+	 *  on their `Player` object for the life of the session and are gone the
+	 *  moment they log out: there is no table behind them and no command to
+	 *  read them back, so a client that only listens is a client whose vetoes
+	 *  are always empty at login, which is the report.
+	 *
+	 *  So the client remembers what it sent and sends it again once the lobby
+	 *  authenticates. The server validates and caps the selection against the
+	 *  current pools exactly as it does for a fresh one, and tells us when it
+	 *  had to adjust it, so a pool that changed between sessions corrects
+	 *  itself rather than being replayed wrong forever.
+	 */
+	matchmakerVetoes?: PlayerVeto[],
 	cacheInfo?: GameCacheInfo,
 };
 
