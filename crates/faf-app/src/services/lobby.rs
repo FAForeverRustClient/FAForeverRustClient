@@ -27,6 +27,22 @@ use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::launcher::{self, LaunchSession};
 use crate::services::notifications;
 
+/// How long a found match may sit there before the client stops believing in
+/// it.
+///
+/// `match_found` says the server has paired you; `game_launch` is the order to
+/// actually start, and it follows within seconds when it follows at all. The
+/// server gives up on a match that does not come together and stops being
+/// willing to start it, but it does not always say so, and this client then
+/// waited: the report was fifteen minutes of "preparing for game start" for a
+/// game that could not be started any more.
+///
+/// Two minutes is far beyond any honest wait for a launch order and far short
+/// of fifteen. It deliberately does not cover [`MatchmakingState::Launching`],
+/// which is the phase that patches the install and can legitimately take a
+/// quarter of an hour on a slow line.
+const MATCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         LobbyCommand::Connect => connect(ctx, out).await,
@@ -303,6 +319,56 @@ async fn connect(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(SocialEvent::Cleared);
 }
 
+/// Give up on a match the server never started.
+///
+/// Spawned when `match_found` arrives and resolved by simply looking again
+/// later: if the client has moved on -- a launch order came, the search was
+/// cancelled, a new match was found, the connection dropped -- the state is no
+/// longer the `MatchFound` this was armed for and there is nothing to do.
+/// Checking the state rather than cancelling a handle keeps every one of those
+/// exits working without any of them having to know this exists.
+///
+/// It reports the same [`MatchmakingState::Cancelled`] the server sends when
+/// it cancels a match itself, so the rest of the client needs no new case: the
+/// difference is only who noticed.
+fn watch_for_match_start(queue_name: String, out: &EventSink) {
+    let out = out.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(MATCH_START_TIMEOUT).await;
+
+        let still_waiting = out.with_state(|state| {
+            matches!(
+                &state.lobby.matchmaking,
+                MatchmakingState::MatchFound { queue_name: found } if *found == queue_name
+            )
+        });
+        if !still_waiting {
+            return;
+        }
+
+        tracing::warn!(
+            queue = %queue_name,
+            seconds = MATCH_START_TIMEOUT.as_secs(),
+            "no launch order arrived for the match that was found; giving up on it"
+        );
+        out.emit(LobbyEvent::MatchmakingUpdated {
+            state: MatchmakingState::Cancelled {
+                queue_name: Some(queue_name.clone()),
+            },
+        });
+        notifications::add_required(
+            &out,
+            NotificationKind::Error,
+            "Match did not start",
+            format!(
+                "The {queue_name} match was found but never started. It has been called off; \
+                 you can search again."
+            ),
+            Some(NotificationAction::OpenMatchmaking),
+        );
+    });
+}
+
 async fn handle_update(
     update: LobbyUpdate,
     ctx: &ServiceCtx,
@@ -372,18 +438,18 @@ async fn handle_update(
                     current.settings.notifications.match_found,
                 )
             });
-            if matches!(state, MatchmakingState::MatchFound { .. })
-                && !already_found
-                && notify_match_found
-            {
+            if matches!(state, MatchmakingState::MatchFound { .. }) && !already_found {
                 let queue = state.matched_queue().unwrap_or("matchmaker");
-                notifications::add(
-                    out,
-                    NotificationKind::MatchFound,
-                    "Match found",
-                    format!("Your {queue} match is ready."),
-                    Some(NotificationAction::OpenMatchmaking),
-                );
+                if notify_match_found {
+                    notifications::add(
+                        out,
+                        NotificationKind::MatchFound,
+                        "Match found",
+                        format!("Your {queue} match is ready."),
+                        Some(NotificationAction::OpenMatchmaking),
+                    );
+                }
+                watch_for_match_start(queue.to_string(), out);
             }
             out.emit(LobbyEvent::MatchmakingUpdated { state });
             if terminate_cancelled_game {
