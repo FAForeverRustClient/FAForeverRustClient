@@ -14,9 +14,21 @@ import type { Game } from "../../ipc/bindings";
  * case-insensitive because a login's case is not stable across the two places
  * these names come from.
  */
-export function friendsInGame(game: Game, friends: string[]): string[] {
-  if (friends.length === 0) return [];
-  const wanted = new Set(friends.map((friend) => friend.toLocaleLowerCase()));
+/**
+ * The friend list as this function wants it: lower-cased once, for the whole
+ * browser, instead of once per game.
+ *
+ * The browser lists a hundred games and rebuilds every row whenever the lobby
+ * sends a snapshot, which is several times a second. Building the same set of
+ * a few dozen names inside each of those rows was a measurable part of what
+ * that cost.
+ */
+export function friendKeys(friends: string[]): ReadonlySet<string> {
+  return new Set(friends.map((friend) => friend.toLocaleLowerCase()));
+}
+
+export function friendsInGame(game: Game, wanted: ReadonlySet<string>): string[] {
+  if (wanted.size === 0) return [];
   const found: string[] = [];
   const seen = new Set<string>();
   const consider = (name: string) => {

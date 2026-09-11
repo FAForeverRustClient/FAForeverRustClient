@@ -21,7 +21,7 @@ import {
   mergeGeneratorRows,
 } from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
-import { friendsInGame } from "./friendPresence";
+import { friendKeys, friendsInGame } from "./friendPresence";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
@@ -625,26 +625,37 @@ function GameLineupTeam({
 /**
  * The friends in a lobby, and the label that names them.
  *
- * `social.friends` is one array in state and is replaced only when the list
- * changes, so every open game reading it costs a `Set` build and a walk of its
- * own roster, and none of them re-render when an unrelated player logs in.
+ * A plain function over values the browser already holds, deliberately not a
+ * hook. It was one, reading `social.friends` from the store and memoising per
+ * game, which meant a store subscription and a `useMemo` inside every one of a
+ * hundred rows. Those rows all rebuild whenever the lobby sends a snapshot,
+ * several times a second, and the hook pair was measured at 7.5 ms of the
+ * 26 ms each snapshot cost: more than the row's actual contents.
+ *
+ * The set is prepared once by the browser (`friendKeys`) rather than per row.
  */
-function useFriendsInGame(game: Game): { friends: string[]; label: string } {
-  const friendLogins = useAppStore((state) => state.state.social.friends);
-  return useMemo(() => {
-    const friends = friendsInGame(game, friendLogins);
-    return {
-      friends,
-      label: friends.length === 1
-        ? friends[0]
-        : t("lobby.browser.friendCount", { count: friends.length }),
-    };
-  }, [game, friendLogins]);
+const NOBODY: { friends: string[]; label: string } = { friends: [], label: "" };
+
+function friendsHere(game: Game, wanted: ReadonlySet<string>): { friends: string[]; label: string } {
+  const friends = friendsInGame(game, wanted);
+  // Most games have nobody you know in them, and the label is only rendered
+  // when somebody is: computing it regardless meant a translation lookup and
+  // an interpolation for every row of a hundred-game list, several times a
+  // second, to produce a string nothing displayed.
+  if (friends.length === 0) return NOBODY;
+  return {
+    friends,
+    label: friends.length === 1
+      ? friends[0]
+      : t("lobby.browser.friendCount", { count: friends.length }),
+  };
 }
 
 export const GameTile = memo(function GameTile({
   game,
   vault,
+  vaultMods,
+  friendSet,
   selected,
   now,
   onSelect,
@@ -654,6 +665,10 @@ export const GameTile = memo(function GameTile({
 }: {
   game: Game;
   vault: VaultMap[];
+  /** Read once by the browser rather than subscribed to by every row. */
+  vaultMods: VaultMod[];
+  /** The friend list, lower-cased once for the whole list. */
+  friendSet: ReadonlySet<string>;
   selected: boolean;
   now: number;
   onSelect: () => void;
@@ -661,22 +676,19 @@ export const GameTile = memo(function GameTile({
   onPreview?: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
-  const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const simModCount = Object.keys(game.simMods).length;
-  const simModsRanked = simModsKeepGameRanked(game, vaultMods);
+  const simModsRanked = simModCount > 0 && simModsKeepGameRanked(game, vaultMods);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
-  const { friends, label: friendLabel } = useFriendsInGame(game);
+  const { friends, label: friendLabel } = friendsHere(game, friendSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
 
   return (
     <article
-      className={[
-        "game-tile surface-panel",
-        friends.length > 0 && "has-friend",
-        selected && "active",
-      ].filter(Boolean).join(" ")}
+      className={
+        `game-tile surface-panel${friends.length > 0 ? " has-friend" : ""}${selected ? " active" : ""}`
+      }
       onContextMenu={(event) => {
         hideGlobalLineup();
         onContextMenu?.(event);
@@ -758,6 +770,8 @@ export const GameTile = memo(function GameTile({
 export const GameBrowserRow = memo(function GameBrowserRow({
   game,
   vault,
+  vaultMods,
+  friendSet,
   now,
   selected,
   onSelect,
@@ -766,30 +780,31 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 }: {
   game: Game;
   vault: VaultMap[];
+  /** Read once by the browser rather than subscribed to by every row. */
+  vaultMods: VaultMod[];
+  /** The friend list, lower-cased once for the whole list. */
+  friendSet: ReadonlySet<string>;
   now?: number;
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
-  const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const simModCount = Object.keys(game.simMods).length;
-  const simModsRanked = simModsKeepGameRanked(game, vaultMods);
+  const simModsRanked = simModCount > 0 && simModsKeepGameRanked(game, vaultMods);
   const players = playingCount(game);
   const currentNow = now ?? Date.now();
-  const { friends, label: friendLabel } = useFriendsInGame(game);
+  const { friends, label: friendLabel } = friendsHere(game, friendSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
   return (
     <>
       <button
         type="button"
-        className={[
-          "game-browser-row",
-          friends.length > 0 && "has-friend",
-          selected && "active",
-        ].filter(Boolean).join(" ")}
+        className={
+          `game-browser-row${friends.length > 0 ? " has-friend" : ""}${selected ? " active" : ""}`
+        }
         onClick={onSelect}
         onDoubleClick={onJoin}
         onContextMenu={(event) => {
@@ -1128,6 +1143,13 @@ export function CustomGamesBrowser({
 
   const handlePreview = onPreviewProp ?? setInternalPreviewGame;
 
+  // Read once for the whole list. Every row used to subscribe to the mod vault
+  // and to the friend list itself, which is a hundred subscriptions and a
+  // hundred `Set` builds for two values that are the same in all of them.
+  const vaultMods = useAppStore((state) => state.state.mods.vault);
+  const friendLogins = useAppStore((state) => state.state.social.friends);
+  const friendSet = useMemo(() => friendKeys(friendLogins), [friendLogins]);
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
@@ -1190,6 +1212,8 @@ export function CustomGamesBrowser({
               key={game.id}
               game={game}
               vault={vault}
+              vaultMods={vaultMods}
+              friendSet={friendSet}
               selected={selectedId === game.id}
               now={now}
               onSelect={() => onSelect(game.id)}
@@ -1204,6 +1228,8 @@ export function CustomGamesBrowser({
               key={game.id}
               game={game}
               vault={vault}
+              vaultMods={vaultMods}
+              friendSet={friendSet}
               now={now}
               selected={selectedId === game.id}
               onSelect={() => onSelect(game.id)}
