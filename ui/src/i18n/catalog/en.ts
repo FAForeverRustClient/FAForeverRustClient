@@ -733,7 +733,11 @@ export const en = {
   "lobby.toolbar.tileView": "Tile view",
   "lobby.toolbar.listView": "List view",
   "lobby.toolbar.hidePrivate": "Hide private",
-  "lobby.toolbar.hideModded": "Hide modded",
+  // "Hide modded" on its own read as "hide any game with a mod", including
+  // the UI mods that change nothing about the simulation. This filter has
+  // always been about `simMods` alone, and the Russian pass asked for the
+  // English to say so too.
+  "lobby.toolbar.hideModded": "Hide sim-modded",
   "lobby.toolbar.hideUnranked": "Hide unranked",
   "lobby.toolbar.applyFilters": "Apply filters",
   "lobby.toolbar.applyFiltersHint": "Hide every game matching a filter rule.",
@@ -1152,6 +1156,7 @@ export const en = {
   "home.vaultReplays": "Vault replays",
   "home.clientStatus": "Client status",
   "home.clientStatusHint": "Backend connection and local client version.",
+  "lobby.browser.footerCount": "Showing {shown} of {total} games",
   "lobby.browser.tileHint": "Click map art to preview · double-click details to join",
   "lobby.browser.listHint": "Double-click a game to join",
 

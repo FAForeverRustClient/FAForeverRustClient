@@ -675,7 +675,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.tileView": "Kachelansicht",
   "lobby.toolbar.listView": "Listenansicht",
   "lobby.toolbar.hidePrivate": "Private ausblenden",
-  "lobby.toolbar.hideModded": "Modifizierte ausblenden",
+  "lobby.toolbar.hideModded": "SIM-modifizierte ausblenden",
   "lobby.toolbar.hideUnranked": "Ungewertete ausblenden",
   "lobby.toolbar.applyFilters": "Filter anwenden",
   "lobby.toolbar.applyFiltersHint": "Blendet jedes Spiel aus, auf das eine Filterregel passt.",
@@ -1046,6 +1046,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "home.vaultReplays": "Wiederholungen im Magazin",
   "home.clientStatus": "Client-Status",
   "home.clientStatusHint": "Backend-Verbindung und lokale Client-Version.",
+  "lobby.browser.footerCount": "{shown} von {total} Spielen",
   "lobby.browser.tileHint": "Kartenbild anklicken für Vorschau · Doppelklick auf Details zum Beitreten",
   "lobby.browser.listHint": "Doppelklick auf eine Partie zum Beitreten",
 
