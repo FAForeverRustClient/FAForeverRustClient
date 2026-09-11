@@ -126,9 +126,27 @@
 }
 
 .links-link-copy strong {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: 13px;
   font-weight: 550;
   color: var(--color-text);
+}
+
+/* The live marker. On the card, not in the sidebar and not across the top of
+   the window: the request was for the client to promote the stream without
+   getting in the way of what somebody is doing, and a badge on a page they are
+   already reading is exactly that much. */
+.links-live {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  color: var(--color-text);
+  background: var(--color-error);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .links-link-copy small {

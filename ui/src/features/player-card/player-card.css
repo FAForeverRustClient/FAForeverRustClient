@@ -1,8 +1,13 @@
+/* The cap used to be 820px, which is shorter than the panel's own content on
+   every screen, so the scrollbar in the report was there at 1080p and 1440p
+   alike: it was not a resolution bug, it was a cap that never moved. 1120px
+   fits the densest profile, and the viewport still wins on a laptop, where the
+   panel is as tall as the window allows and scrolls inside. */
 .modal-panel.player-card-modal {
   display: flex;
   flex-direction: column;
   width: min(1180px, calc(100vw - 48px));
-  height: min(820px, calc(100vh - 48px));
+  height: min(1120px, calc(100vh - 32px));
   max-width: none;
   max-height: none;
   padding: 0;

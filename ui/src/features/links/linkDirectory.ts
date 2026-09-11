@@ -22,6 +22,7 @@
 // clicking is whether they are leaving FAF, so the chip says exactly that and
 // nothing more. The people are thanked at the bottom of the page instead.
 
+import type { LiveStream } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 
 /**
@@ -53,6 +54,16 @@ export interface DirectoryLink {
   href: string;
   origin: LinkOrigin;
   section: LinkSection;
+  /**
+   * The streaming platform's login for this destination, when it has one.
+   *
+   * Only here so a card can be marked live. Absent on everything the client
+   * cannot be told the broadcast state of, which is every YouTube channel and
+   * every entry that is not a stream: see `infra::streams` for why Twitch is the
+   * only one, and note that a channel is only ever reported live if the
+   * deployment's `FAF_TWITCH_CHANNELS` includes it.
+   */
+  channel?: string;
 }
 
 /**
@@ -172,6 +183,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     href: "https://www.twitch.tv/faflive",
     origin: "official",
     section: "watch",
+    channel: "faflive",
   },
   {
     id: "youtube",
@@ -188,6 +200,7 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     href: "https://www.twitch.tv/stellartactician",
     origin: "community",
     section: "watch",
+    channel: "stellartactician",
   },
   {
     id: "memecommander",
@@ -217,4 +230,20 @@ export function sectionLinks(section: LinkSection, filter: OriginFilter): Direct
 /** How many entries the filter would show, for the count on the filter chip. */
 export function countByOrigin(origin: LinkOrigin): number {
   return DIRECTORY.filter((link) => link.origin === origin).length;
+}
+
+/**
+ * The live broadcast on a card's channel, if there is one.
+ *
+ * Twin of `StreamsState::live_channel`: matched on the login rather than the
+ * URL, because the URL is how a human wrote it and the login is what the
+ * platform answers with.
+ */
+export function liveStreamFor(
+  link: DirectoryLink,
+  live: readonly LiveStream[],
+): LiveStream | null {
+  const channel = link.channel?.trim().toLocaleLowerCase();
+  if (!channel) return null;
+  return live.find((stream) => stream.channel.trim().toLocaleLowerCase() === channel) ?? null;
 }

@@ -561,13 +561,28 @@
   white-space: nowrap;
 }
 
+/* The name field above its buttons rather than beside them. Side by side, a
+   name field, Save and the Replace/Delete pair that appears once a preset is
+   selected did not fit the column, and the button that appeared last was the
+   one pushed out of sight. Vertical space is what this row has. */
 .generate-map-preset-save-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.generate-map-preset-save-group .generate-map-control {
+  min-width: 0;
+}
+
+.generate-map-preset-save-group-buttons {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-.generate-map-preset-save-group .generate-map-control {
+.generate-map-preset-save-group-buttons > * {
   flex: 1;
   min-width: 0;
 }
@@ -586,6 +601,13 @@
 .generate-map-check input[type="checkbox"] {
   margin: 0;
   cursor: pointer;
+}
+
+/* The one field that is never disabled, because disabling it is what trapped
+   people in it. Above the options rather than among them: it overrides all of
+   them, and the banner that says so appears directly underneath. */
+.generate-map-reproduce {
+  margin-bottom: 8px;
 }
 
 /* A map name overrides every option. That is a strong enough effect that it

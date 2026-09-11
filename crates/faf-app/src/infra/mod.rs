@@ -64,6 +64,7 @@ pub mod reviews;
 pub mod session;
 pub mod settings_fake;
 pub mod settings_file;
+pub mod streams;
 pub mod tourney;
 pub mod tourney_fake;
 pub mod training;
@@ -103,6 +104,7 @@ pub use reviews::{FakeReviews, ReviewsClient, ReviewsConfig};
 pub use session::TokenStore;
 pub use settings_fake::FakeSettings;
 pub use settings_file::FileSettings;
+pub use streams::{FakeStreams, TwitchConfig, TwitchStreams};
 pub use tourney::{TourneyClient, TourneyConfig};
 pub use tourney_fake::FakeTourney;
 pub use training::{FakeTraining, TrainingCatalogueClient, TrainingConfig};
@@ -437,6 +439,7 @@ pub fn fake_ports() -> Ports {
         clan: Arc::new(FakeClan),
         reviews: Arc::new(FakeReviews::default()),
         tourney: Arc::new(FakeTourney::default()),
+        streams: Arc::new(FakeStreams),
         events: Arc::new(FakeEvents),
         training: Arc::new(FakeTraining),
         guides: Arc::new(FakeGuides),
@@ -544,6 +547,10 @@ pub fn real_ports() -> Ports {
     let reporting: Arc<dyn crate::ports::ReportingPort> =
         Arc::new(ReportingClient::faf(tokens.clone()));
     let tourney: Arc<dyn crate::ports::TourneyPort> = Arc::new(TourneyClient::faf(tokens.clone()));
+    // Not FAF's service, not the player's identity, and inert on any build
+    // without Twitch application credentials of its own. It holds an app token
+    // for public information and nothing belonging to this session.
+    let streams: Arc<dyn crate::ports::StreamsPort> = Arc::new(TwitchStreams::faf());
     // Same posture as maps and tournaments: pure API reads, no subprocess.
     let coop: Arc<dyn crate::ports::CoopPort> = Arc::new(CoopClient::faf(tokens.clone()));
     let tutorials: Arc<dyn crate::ports::TutorialsPort> =
@@ -609,6 +616,7 @@ pub fn real_ports() -> Ports {
         reporting,
         reviews,
         tourney,
+        streams,
         events,
         training,
         guides,

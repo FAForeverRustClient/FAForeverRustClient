@@ -370,6 +370,14 @@ export const en = {
   "links.filter.all": "All ({count})",
   "links.filter.official": "Official ({count})",
   "links.filter.community": "External ({count})",
+  "links.live": "LIVE",
+  "links.liveNow": "Streaming now",
+  // Plural: the viewer count, with the broadcaster's own stream title in front
+  // of it. The title is theirs, so it is not translated.
+  "links.liveWithViewers": {
+    one: "{title} - {count} watching",
+    other: "{title} - {count} watching",
+  },
   "links.origin.official": "Official",
   "links.origin.community": "External",
   "links.origin.officialTitle": "Run by FAF",
@@ -715,6 +723,8 @@ export const en = {
   "lobby.toolbar.hideModded": "Hide modded",
   "lobby.toolbar.hideUnranked": "Hide unranked",
   "lobby.toolbar.applyFilters": "Apply filters",
+  "lobby.toolbar.applyFiltersHint": "Hide every game matching a filter rule.",
+  "lobby.toolbar.filters": "Filters",
   "lobby.toolbar.hostGame": "Host game",
 
   // Game filter rules.
@@ -738,6 +748,7 @@ export const en = {
   "lobby.filters.constraint.above": "is above",
   "lobby.filters.constraint.below": "is below",
   "lobby.filters.addRule": "Add rule",
+  "lobby.filters.hide": "Hide",
   "lobby.filters.empty": "No exclusion rules yet.",
   "lobby.filters.editRule": "Edit filter",
   "lobby.filters.saveRule": "Save changes",
@@ -1185,6 +1196,9 @@ export const en = {
   "settings.notifications.reviewReminderHint": "Prompt you to review the map or mods after your live game ends.",
   "settings.notifications.partyInvites": "Party invitations",
   "settings.notifications.partyInvitesHint": "Alert when another player invites you to a party.",
+  "settings.notifications.streamLive": "FAF goes live",
+  "settings.notifications.streamLiveHint":
+    "Tell me when FAF's own Twitch channel starts broadcasting. Never a pop-up over a game: it appears in the notification list and on the External links page.",
 
   // Settings shell.
   "settings.title": "Settings",
@@ -2249,6 +2263,7 @@ export const en = {
   "maps.generate.backToOptions": "Back to options",
   "maps.generate.reproduceTitle": "Reproduce map",
   "maps.generate.reproduceHint": "Paste a name to rebuild that exact map. Everything below is ignored while it is set.",
+  "maps.generate.reproduceClear": "Clear the map name",
   "maps.generate.reproduce": "Reproduce",
   "maps.generate.generatorVersion": "Generator version",
   "maps.generate.seedPinsOneMap": "A fixed seed always makes one map.",
@@ -2307,7 +2322,6 @@ export const en = {
   "maps.generate.presetSave": "Save",
   "maps.generate.presetReplace": "Replace preset",
   "maps.generate.presetDelete": "Delete",
-  "maps.generate.rememberOptions": "Remember these options",
   "maps.generate.issue.spawnsNotDivisible": "{spawns} spawns cannot be split evenly between {teams} teams.",
   "maps.generate.issue.mapSizeNotMultiple": "Map size {size} is not a multiple of {step}.",
   "maps.generate.issue.symmetryIncompatible": "{symmetries} cannot produce {teams} teams.",
@@ -2588,6 +2602,7 @@ export const en = {
   "notifications.action.acceptPartyInvite": "Accept invite",
   "notifications.action.watchLive": "Watch replay",
   "notifications.action.openEvent": "Open the calendar",
+  "notifications.action.openStream": "Watch the stream",
   "notifications.action.openSettings": "Open Settings",
   "reporting.statusFallback": "Submitted",
   "maps.vault.mapType": "Map",
@@ -2595,6 +2610,7 @@ export const en = {
   "tournaments.title": "Tournaments",
   "tournaments.eyebrow": "Competitive events",
   "tournaments.refresh": "Refresh",
+  "tournaments.viewOnline": "View online",
   "tournaments.refreshing": "Refreshing…",
   "tournaments.loading": "Loading tournaments…",
   "tournaments.detailLoading": "Loading the tournament…",

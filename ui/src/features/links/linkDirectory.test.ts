@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { validateHttpsUrl } from "../../shared/externalLinks";
+import type { LiveStream } from "../../ipc/bindings";
 import {
   countByOrigin,
   DIRECTORY,
   LINK_SECTIONS,
+  liveStreamFor,
   sectionLinks,
 } from "./linkDirectory";
 
@@ -78,5 +80,53 @@ describe("the link directory", () => {
     // the wiki above.
     expect(DIRECTORY.filter((link) => link.href.includes("wiki.faforever.com"))).toHaveLength(1);
     expect(DIRECTORY.some((link) => link.id === "unitdb")).toBe(false);
+  });
+});
+
+describe("marking a channel live", () => {
+  const stream = (channel: string): LiveStream => ({
+    id: `twitch:${channel}`,
+    platform: "twitch",
+    channel,
+    displayName: channel,
+    title: "FAF tournament",
+    url: `https://www.twitch.tv/${channel}`,
+    viewers: 120,
+    startedAt: "2026-09-11T18:00:00Z",
+  });
+
+  const link = (id: string) => DIRECTORY.find((entry) => entry.id === id)!;
+
+  it("matches FAF's own Twitch channel", () => {
+    expect(liveStreamFor(link("twitch"), [stream("faflive")])?.channel).toBe("faflive");
+  });
+
+  it("matches however the platform spells the login", () => {
+    expect(liveStreamFor(link("twitch"), [stream("FAFLive")])).not.toBeNull();
+  });
+
+  it("does not mark a card whose channel is not the one broadcasting", () => {
+    expect(liveStreamFor(link("stellar"), [stream("faflive")])).toBeNull();
+  });
+
+  it("never marks an entry that has no channel at all", () => {
+    // Every YouTube entry, and everything that is not a stream: the client has
+    // no way to be told whether those are live, so a badge would be a guess.
+    expect(link("youtube").channel).toBeUndefined();
+    expect(liveStreamFor(link("youtube"), [stream("faflive")])).toBeNull();
+    expect(liveStreamFor(link("forum"), [stream("forum")])).toBeNull();
+  });
+
+  it("marks nothing when nothing is live", () => {
+    expect(liveStreamFor(link("twitch"), [])).toBeNull();
+  });
+
+  it("only gives a channel to entries that are actually streams", () => {
+    // A channel on a card in any other section would be a badge in the wrong
+    // place: the lookup is by login, and a login is a streaming concept.
+    for (const entry of DIRECTORY.filter((candidate) => candidate.channel)) {
+      expect(entry.section).toBe("watch");
+      expect(entry.href.startsWith("https://www.twitch.tv/")).toBe(true);
+    }
   });
 });

@@ -81,7 +81,6 @@ const savePreset = (name: string, options: GeneratorOptions) =>
   send({ type: "savePreset", payload: { name, options } });
 const loadPresets = () => send({ type: "loadPresets" });
 const deletePreset = (name: string) => send({ type: "deletePreset", payload: { name } });
-const validate = (options: GeneratorOptions) => send({ type: "validate", payload: { options } });
 const preflight = (options: GeneratorOptions) => send({ type: "preflight", payload: { options } });
 const decodeNames = (mapNames: string[]) => send({ type: "decodeNames", payload: { mapNames } });
 const loadHelp = (version?: string | null) =>
@@ -214,11 +213,26 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   }, [reproduceValid, trimmedName]);
   const decoded = state.decoded?.[trimmedName];
 
-  // Re-check the options as they are edited. Pure and instant on the other
-  // side; the authoritative check happens with `--parse` on generate.
+  // Re-check the options as they are edited, and remember them.
+  //
+  // `setOptions` runs the same validation `validate` does and writes the
+  // options to the settings file as well, so one settled-keystroke command
+  // does both. That is deliberate: there used to be a "Remember these
+  // options" button beside Generate, and nothing on screen said whether it had
+  // been pressed, which made it indistinguishable from a button that did
+  // nothing. Remembering is now what the dialog always does.
+  //
+  // The first run is skipped because the form starts *as* the remembered
+  // options: opening the dialog should not rewrite the settings file.
+  const lastRemembered = useRef(JSON.stringify(state.options));
   useEffect(() => {
     if (reproducing) return;
-    const timer = setTimeout(() => void validate(form), 250);
+    const serialised = JSON.stringify(form);
+    if (serialised === lastRemembered.current) return;
+    const timer = setTimeout(() => {
+      lastRemembered.current = serialised;
+      void setOptions(form);
+    }, 250);
     return () => clearTimeout(timer);
   }, [form, reproducing]);
 
@@ -388,6 +402,36 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
         {/* Left Column: Generator Form & Controls */}
         <div className="generate-map-form-pane">
           <form className="generate-map" onSubmit={submit}>
+            {/* Outside every `<fieldset disabled={reproducing}>` below, and it
+                has to stay outside: `disabled` on a fieldset is inherited by
+                its descendants and a nested fieldset cannot take it back, so a
+                name typed into a field *inside* one disabled itself on the
+                first keystroke. The only way back out was closing the dialog. */}
+            <div className="generate-map-reproduce">
+              <Row label={t("maps.generate.reproduceTitle")}>
+                <div className="generate-map-seed">
+                  <input
+                    className="generate-map-control"
+                    value={reproduceName}
+                    aria-invalid={reproducing && !reproduceValid}
+                    aria-label={t("maps.generate.mapNameSeed")}
+                    placeholder={t("maps.generate.mapNameSeedPlaceholder")}
+                    onChange={(e) => setReproduceName(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="generate-map-seed-btn"
+                    disabled={!reproducing}
+                    aria-label={t("maps.generate.reproduceClear")}
+                    title={t("maps.generate.reproduceClear")}
+                    onClick={() => setReproduceName("")}
+                  >
+                    <Icon name="close" size={13} />
+                  </button>
+                </div>
+              </Row>
+            </div>
+
             {reproducing && (
               <div className="generate-map-banner">
                 <strong>{t("maps.generate.rebuildingBanner")}</strong>
@@ -647,17 +691,6 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       </div>
                     </Row>
 
-                    <Row label={t("maps.generate.reproduceTitle")}>
-                      <input
-                        className="generate-map-control"
-                        value={reproduceName}
-                        aria-invalid={reproducing && !reproduceValid}
-                        aria-label={t("maps.generate.mapNameSeed")}
-                        placeholder={t("maps.generate.mapNameSeedPlaceholder")}
-                        onChange={(e) => setReproduceName(e.target.value)}
-                      />
-                    </Row>
-
                     <Row label={t("maps.generate.outputPath")}>
                       <input
                         className="generate-map-control"
@@ -705,18 +738,20 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                           placeholder={t("maps.generate.presetName")}
                           onChange={(e) => setPresetName(e.target.value)}
                         />
-                        <Button type="button" disabled={!presetNameUsable} onClick={save}>
-                          {saved
-                            ? t("maps.generate.settingsSaved")
-                            : existing
-                              ? t("maps.generate.presetReplace")
-                              : t("maps.generate.presetSave")}
-                        </Button>
-                        {existing && (
-                          <Button type="button" onClick={() => void deletePreset(existing.name)}>
-                            {t("maps.generate.presetDelete")}
+                        <div className="generate-map-preset-save-group-buttons">
+                          <Button type="button" disabled={!presetNameUsable} onClick={save}>
+                            {saved
+                              ? t("maps.generate.settingsSaved")
+                              : existing
+                                ? t("maps.generate.presetReplace")
+                                : t("maps.generate.presetSave")}
                           </Button>
-                        )}
+                          {existing && (
+                            <Button type="button" onClick={() => void deletePreset(existing.name)}>
+                              {t("maps.generate.presetDelete")}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </Row>
                   </div>
@@ -775,9 +810,6 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
             <div className="generate-map-actions">
               <Button type="button" onClick={onClose}>
                 {t("maps.generate.close")}
-              </Button>
-              <Button type="button" disabled={reproducing} onClick={() => void setOptions(form)}>
-                {t("maps.generate.rememberOptions")}
               </Button>
               {busy && (
                 <Button type="button" onClick={() => void cancel()}>

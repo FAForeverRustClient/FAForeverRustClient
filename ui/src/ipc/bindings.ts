@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -38,6 +38,7 @@ export type AppState = {
 	reporting: ReportingState,
 	reviews: ReviewsState,
 	social: SocialState,
+	streams: StreamsState,
 	tourney: TourneyState,
 	training: TrainingState,
 	tutorials: TutorialsState,
@@ -2919,6 +2920,41 @@ export type LiveReplayTracking = {
  */
 export type LiveReplayTrackingAction = "notify" | "watch";
 
+/**  One broadcast that is live now. */
+export type LiveStream = {
+	/**
+	 *  The platform's id for *this broadcast*, not for the channel.
+	 *
+	 *  The difference is the whole announcement rule: a channel id is the same
+	 *  every time and would make the first announcement the only one, while a
+	 *  broadcast id changes when somebody starts streaming again.
+	 */
+	id: string,
+	platform: StreamPlatform,
+	/**
+	 *  The channel's login, e.g. `faflive`. Lower case, as the platform gives
+	 *  it.
+	 */
+	channel: string,
+	/**
+	 *  The channel's display name, which differs from the login in case and
+	 *  sometimes in script. Falls back to the login when the platform gives
+	 *  none.
+	 */
+	displayName: string,
+	/**  The stream's title, as the broadcaster set it. Shown as-is. */
+	title: string,
+	/**
+	 *  Where to watch. Always the channel page rather than a player URL: a
+	 *  client that is not a browser should hand the viewer to one.
+	 */
+	url: string,
+	/**  Concurrent viewers, or `None` when the platform did not say. */
+	viewers: number | null,
+	/**  RFC 3339, as the platform reports it. Empty when unknown. */
+	startedAt?: string,
+};
+
 export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 	id: number,
 	password: string | null,
@@ -4165,6 +4201,18 @@ export type NotificationAction = { type: "openChat"; payload: {
 /**  Open the calendar on one occurrence's detail panel. */
 { type: "openEvent"; payload: {
 	occurrenceId: string,
+} } |
+/**
+ *  Open a live stream in the browser.
+ *
+ *  The URL travels with the action rather than being rebuilt from a channel
+ *  name, because the notification may outlive the broadcast it is about and
+ *  the link it offered should still be the link it offered. The frontend
+ *  validates it as an ordinary HTTPS address before opening it, the way it
+ *  does every other address the backend hands it.
+ */
+{ type: "openStream"; payload: {
+	url: string,
 } };
 
 export type NotificationCommand = { type: "markRead"; payload: {
@@ -4200,7 +4248,16 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  A newer client release exists. The banner says so too, but the banner
  *  lives at the top of one workspace and this survives a tab change.
  */
-"clientUpdate" | "error";
+"clientUpdate" |
+/**
+ *  One of FAF's own channels started broadcasting.
+ *
+ *  Not on the operating-system list below, deliberately. A stream runs for
+ *  hours and nothing about it expires, so taking the screen away from
+ *  somebody mid-game to mention one would be exactly the interruption the
+ *  request asked to avoid.
+ */
+"streamLive" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -4233,6 +4290,15 @@ export type NotificationPreferences = {
 	gameLaunched: boolean,
 	reviewReminder: boolean,
 	partyInvites: boolean,
+	/**
+	 *  Whether FAF's own Twitch and YouTube channels going live is announced.
+	 *
+	 *  On, because it is the client telling people about the game the client is
+	 *  for, and somebody who has never heard of the streams will not go looking
+	 *  for a switch to turn them on. Off is one click, in the same list as every
+	 *  other kind, which is what was asked for in the thread.
+	 */
+	streamLive: boolean,
 	/**  Sound volume from 0 to 100. */
 	volume: number,
 };
@@ -6049,6 +6115,58 @@ export type Stream = {
 	/**  What this stream is, e.g. "Main stream (English)". Often empty. */
 	info: string,
 };
+
+/**
+ *  Which service a broadcast is on.
+ *
+ *  An enum rather than a string because the UI picks an icon and a word from it,
+ *  and because "twitch" spelled two ways would be two platforms.
+ */
+export type StreamPlatform = "twitch" | "youTube";
+
+export type StreamsCommand =
+/**
+ *  Look once. Sent by the ticker, and by the links tab when it opens so the
+ *  badge is right without waiting for the next tick.
+ */
+{ type: "check" };
+
+export type StreamsEvent = { type: "checking" } | { type: "loaded"; payload: {
+	streams: LiveStream[],
+} } | { type: "loadFailed"; payload: {
+	reason: string,
+} } |
+/**  These broadcasts have been announced and must not be again. */
+{ type: "announced"; payload: {
+	streamIds: string[],
+} };
+
+export type StreamsState = {
+	/**  Everything live right now, in the order the port reported it. */
+	live: LiveStream[],
+	status: StreamsStatus,
+	/**
+	 *  Broadcast ids already announced this session.
+	 *
+	 *  Not persisted. A client started while a stream is running announces it
+	 *  once, which is right: to that client it is news, and the alternative is
+	 *  remembering forever which broadcasts a machine has been told about.
+	 */
+	announced: string[],
+};
+
+/**
+ *  Whether the last look succeeded.
+ *
+ *  `Idle` covers both "not asked yet" and "this build cannot ask", and those are
+ *  deliberately the same state: neither is a failure, and neither is worth a
+ *  message in the links list. A real failure is kept because a channel that
+ *  silently stops being marked live would otherwise be indistinguishable from a
+ *  channel that is off air.
+ */
+export type StreamsStatus = { type: "idle" } | { type: "checking" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 /**  The size, spawn and team window a whole-map style is designed for. */
 export type StyleConstraints = {

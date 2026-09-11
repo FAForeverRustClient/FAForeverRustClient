@@ -3,6 +3,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ClientNotification, NotificationAction } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
+import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
@@ -28,6 +29,7 @@ function actionLabel(action: NotificationAction | null): string | null {
     case "watchLive": return t("notifications.action.watchLive");
     case "openSettings": return t("notifications.action.openSettings");
     case "openEvent": return t("notifications.action.openEvent");
+    case "openStream": return t("notifications.action.openStream");
   }
 }
 
@@ -66,6 +68,12 @@ async function runAction(item: ClientNotification) {
           kind: "Events",
           command: { type: "select", payload: { occurrenceId: action.payload.occurrenceId } },
         });
+        break;
+      case "openStream":
+        // Out to the browser rather than into a frame: this client is not a
+        // video player, and `openHttpsUrl` validates the address the backend
+        // handed it the same way it validates every other one.
+        await openHttpsUrl(action.payload.url);
         break;
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });

@@ -210,6 +210,12 @@ export function NotificationsSettingsSection() {
         <SoundChoice value={preferences.sounds.partyInvite} disabled={mute || !preferences.partyInvites} what={t("settings.notifications.partyInvites")} onChange={(partyInvite) => setSound({ partyInvite })} />
         <SettingsSwitch checked={preferences.partyInvites} disabled={!preferences.enabled} onChange={(partyInvites) => update({ partyInvites })} label={t("settings.notifications.partyInvites")} />
       </SettingRow>
+      {/* No sound picker, deliberately: a stream is the one kind here that is
+          not about this player's game, and a tone for it would be the client
+          making a noise on FAF's behalf. */}
+      <SettingRow label={t("settings.notifications.streamLive")} hint={t("settings.notifications.streamLiveHint")}>
+        <SettingsSwitch checked={preferences.streamLive} disabled={!preferences.enabled} onChange={(streamLive) => update({ streamLive })} label={t("settings.notifications.streamLive")} />
+      </SettingRow>
       {/* The kinds with no switch of their own: server notices, errors, a
           finished map, a new client version. One row rather than nine, because
           nobody is going to want a different tone for each of them. */}

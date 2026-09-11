@@ -6,13 +6,16 @@
 // might want to go, because that is the thing worth a permanent place in the
 // sidebar and a repository list is not.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "../../design-system/Icon";
+import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { useAppStore } from "../../store/store";
 import {
   countByOrigin,
   DIRECTORY,
   LINK_SECTIONS,
+  liveStreamFor,
   sectionLinks,
   type DirectoryLink,
   type LinkOrigin,
@@ -73,10 +76,13 @@ function LinkCard({
   link,
   originLabel,
   originTitle,
+  live,
 }: {
   link: DirectoryLink;
   originLabel: string;
   originTitle: string;
+  /** The broadcast on this channel right now, when there is one. */
+  live?: { title: string; viewers: number | null } | null;
 }) {
   const { t } = useTranslation();
   return (
@@ -91,8 +97,21 @@ function LinkCard({
       }}
     >
       <span className="links-link-copy">
-        <strong>{t(link.name)}</strong>
-        <small>{t(link.hint)}</small>
+        <strong>
+          {t(link.name)}
+          {/* The only place in the client that marks a channel live, and on
+              purpose: a badge on the card somebody is already reading is
+              promotion, and a strip across the top of the window is an
+              interruption. The announcement is a notification. */}
+          {live && <span className="links-live" title={live.title || undefined}>{t("links.live")}</span>}
+        </strong>
+        <small>
+          {live
+            ? live.viewers === null
+              ? live.title || t("links.liveNow")
+              : t("links.liveWithViewers", { count: live.viewers, title: live.title || t("links.liveNow") })
+            : t(link.hint)}
+        </small>
       </span>
       <span className={`links-origin links-origin-${link.origin}`} title={originTitle}>
         {originLabel}
@@ -107,6 +126,15 @@ export function LinksView() {
   // Not in the nav slice: which chip is pressed is as ephemeral as a hover, and
   // nothing in the backend has an opinion about it.
   const [filter, setFilter] = useState<OriginFilter>(null);
+  const liveStreams = useAppStore((state) => state.state.streams.live);
+
+  // Asked on open rather than waited for: the ticker runs every five minutes,
+  // and a badge that appears four minutes after somebody opens the page to look
+  // for a stream is a badge nobody saw. A build that cannot answer returns
+  // immediately without a request.
+  useEffect(() => {
+    ipc.send({ kind: "Streams", command: { type: "check" } });
+  }, []);
 
   const originLabel = (origin: LinkOrigin) => t(`links.origin.${origin}`);
   const originTitle = (origin: LinkOrigin) =>
@@ -162,6 +190,7 @@ export function LinksView() {
                   link={link}
                   originLabel={originLabel(link.origin)}
                   originTitle={originTitle(link.origin)}
+                  live={liveStreamFor(link, liveStreams)}
                 />
               ))}
             </div>

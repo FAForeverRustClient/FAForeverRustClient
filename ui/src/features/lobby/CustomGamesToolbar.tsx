@@ -73,7 +73,9 @@ export function CustomGamesToolbar(props: Props) {
           {t("lobby.toolbar.hideUnranked")}
         </label>
       )}
-      <label className="toolbar-check">
+      {/* The tooltip says which way the rules go. Both reports of this filter
+          were somebody expecting a match to show a lobby rather than hide it. */}
+      <label className="toolbar-check" title={t("lobby.toolbar.applyFiltersHint")}>
         <input
           type="checkbox"
           checked={props.applyFilters}
@@ -83,7 +85,8 @@ export function CustomGamesToolbar(props: Props) {
       </label>
       <Button onClick={props.onOpenFilters}>
         <Icon name="filter" size={15} />
-        Filters{props.filterCount > 0 ? ` (${props.filterCount})` : ""}
+        {t("lobby.toolbar.filters")}
+        {props.filterCount > 0 ? ` (${props.filterCount})` : ""}
       </Button>
       <select
         className="play-sort"

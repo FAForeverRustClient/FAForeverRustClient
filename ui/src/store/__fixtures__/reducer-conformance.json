@@ -508,6 +508,13 @@
       "foes": [],
       "players": []
     },
+    "streams": {
+      "live": [],
+      "status": {
+        "type": "idle"
+      },
+      "announced": []
+    },
     "tourney": {
       "events": [],
       "status": {
@@ -716,6 +723,7 @@
         "gameLaunched": true,
         "reviewReminder": true,
         "partyInvites": true,
+        "streamLive": true,
         "volume": 70
       },
       "chat": {
@@ -894,6 +902,238 @@
     }
   },
   "cases": [
+    {
+      "name": "a channel goes live, is announced once, and goes off air",
+      "steps": [
+        {
+          "event": {
+            "kind": "Streams",
+            "event": {
+              "type": "checking"
+            }
+          },
+          "expected": {
+            "announced": [],
+            "live": [],
+            "status": {
+              "type": "checking"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Streams",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "streams": [
+                  {
+                    "id": "twitch:1",
+                    "platform": "twitch",
+                    "channel": "faflive",
+                    "displayName": "FAFLive",
+                    "title": "Setons Summer Slam: Grand Final",
+                    "url": "https://www.twitch.tv/faflive",
+                    "viewers": 412,
+                    "startedAt": "2026-09-11T18:02:00Z"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "announced": [],
+            "live": [
+              {
+                "channel": "faflive",
+                "displayName": "FAFLive",
+                "id": "twitch:1",
+                "platform": "twitch",
+                "startedAt": "2026-09-11T18:02:00Z",
+                "title": "Setons Summer Slam: Grand Final",
+                "url": "https://www.twitch.tv/faflive",
+                "viewers": 412
+              }
+            ],
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Streams",
+            "event": {
+              "type": "announced",
+              "payload": {
+                "streamIds": [
+                  "twitch:1"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "announced": [
+              "twitch:1"
+            ],
+            "live": [
+              {
+                "channel": "faflive",
+                "displayName": "FAFLive",
+                "id": "twitch:1",
+                "platform": "twitch",
+                "startedAt": "2026-09-11T18:02:00Z",
+                "title": "Setons Summer Slam: Grand Final",
+                "url": "https://www.twitch.tv/faflive",
+                "viewers": 412
+              }
+            ],
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Streams",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "streams": [
+                  {
+                    "id": "twitch:1",
+                    "platform": "twitch",
+                    "channel": "faflive",
+                    "displayName": "FAFLive",
+                    "title": "Setons Summer Slam: Grand Final",
+                    "url": "https://www.twitch.tv/faflive",
+                    "viewers": 412,
+                    "startedAt": "2026-09-11T18:02:00Z"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "announced": [
+              "twitch:1"
+            ],
+            "live": [
+              {
+                "channel": "faflive",
+                "displayName": "FAFLive",
+                "id": "twitch:1",
+                "platform": "twitch",
+                "startedAt": "2026-09-11T18:02:00Z",
+                "title": "Setons Summer Slam: Grand Final",
+                "url": "https://www.twitch.tv/faflive",
+                "viewers": 412
+              }
+            ],
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Streams",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "streams": []
+              }
+            }
+          },
+          "expected": {
+            "announced": [
+              "twitch:1"
+            ],
+            "live": [],
+            "status": {
+              "type": "ready"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a failed check keeps the stream it last saw",
+      "steps": [
+        {
+          "event": {
+            "kind": "Streams",
+            "event": {
+              "type": "loaded",
+              "payload": {
+                "streams": [
+                  {
+                    "id": "twitch:1",
+                    "platform": "twitch",
+                    "channel": "faflive",
+                    "displayName": "FAFLive",
+                    "title": "Setons Summer Slam: Grand Final",
+                    "url": "https://www.twitch.tv/faflive",
+                    "viewers": 412,
+                    "startedAt": "2026-09-11T18:02:00Z"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "announced": [],
+            "live": [
+              {
+                "channel": "faflive",
+                "displayName": "FAFLive",
+                "id": "twitch:1",
+                "platform": "twitch",
+                "startedAt": "2026-09-11T18:02:00Z",
+                "title": "Setons Summer Slam: Grand Final",
+                "url": "https://www.twitch.tv/faflive",
+                "viewers": 412
+              }
+            ],
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Streams",
+            "event": {
+              "type": "loadFailed",
+              "payload": {
+                "reason": "Twitch responded with 503 Service Unavailable"
+              }
+            }
+          },
+          "expected": {
+            "announced": [],
+            "live": [
+              {
+                "channel": "faflive",
+                "displayName": "FAFLive",
+                "id": "twitch:1",
+                "platform": "twitch",
+                "startedAt": "2026-09-11T18:02:00Z",
+                "title": "Setons Summer Slam: Grand Final",
+                "url": "https://www.twitch.tv/faflive",
+                "viewers": 412
+              }
+            ],
+            "status": {
+              "payload": {
+                "reason": "Twitch responded with 503 Service Unavailable"
+              },
+              "type": "failed"
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "map statistics load, and a second player's scan replaces the first",
       "steps": [
@@ -1937,6 +2177,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -28909,6 +29150,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -29146,6 +29388,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -29392,6 +29635,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -29635,6 +29879,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -29877,6 +30122,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -30140,6 +30386,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -30394,6 +30641,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -30650,6 +30898,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
@@ -30990,6 +31239,7 @@
                 "privateMessage": "chime",
                 "reviewReminder": "chime"
               },
+              "streamLive": true,
               "toastPosition": "bottomLeft",
               "volume": 70
             },
