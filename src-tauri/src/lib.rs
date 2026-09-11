@@ -697,6 +697,11 @@ mod tests {
         serde_json::from_str(include_str!("../tauri.conf.json")).expect("valid tauri config")
     }
 
+    fn windows_config() -> serde_json::Value {
+        serde_json::from_str(include_str!("../tauri.windows.conf.json"))
+            .expect("valid windows tauri config")
+    }
+
     fn capabilities() -> serde_json::Value {
         serde_json::from_str(include_str!("../capabilities/default.json"))
             .expect("valid capabilities")
@@ -753,20 +758,45 @@ mod tests {
         );
     }
 
+    /// The resource list may only name helpers `prepare:native` really
+    /// produces on the platform being built.
+    ///
+    /// Tauri refuses to bundle when a declared resource path does not exist,
+    /// and the list named the bundled JRE unconditionally while
+    /// `ensure-java-runtime.mjs` downloads one for Windows alone. Every Linux
+    /// release since this workflow was written therefore died at the bundling
+    /// step with "resource path `../natives/jre` doesn't exist", which is why
+    /// no release has ever carried a Linux asset.
+    ///
+    /// So the base config names only what both platforms have, and
+    /// `tauri.windows.conf.json` adds the runtime. Tauri merges the per
+    /// platform file over the base, and merging a map adds keys: a platform
+    /// cannot take one away, which is why the base has to be the small one.
     #[test]
-    fn bundled_native_resources_have_stable_runtime_paths() {
-        let tauri = tauri_config();
-        let resources = tauri["bundle"]["resources"]
+    fn only_windows_declares_the_bundled_java_runtime() {
+        let base = tauri_config();
+        let resources = base["bundle"]["resources"]
             .as_object()
             .expect("native resources must use explicit bundle destinations");
 
-        assert_eq!(
-            resources["../natives/jre/"], "natives/jre/",
-            "the packaged Java resolver expects this directory layout"
-        );
+        assert_eq!(resources["../natives/faf-uid*"], "natives/");
+        assert_eq!(resources["../natives/faf-pioneer*"], "natives/");
         assert_eq!(
             resources["../natives/java-ice-adapter/faf-ice-adapter.jar"],
             "natives/java-ice-adapter/faf-ice-adapter.jar"
+        );
+        assert!(
+            !resources.contains_key("../natives/jre/"),
+            "no JRE is downloaded outside Windows, so naming it here fails the Linux bundle"
+        );
+
+        let windows = windows_config();
+        let windows = windows["bundle"]["resources"]
+            .as_object()
+            .expect("windows resource overrides");
+        assert_eq!(
+            windows["../natives/jre/"], "natives/jre/",
+            "the packaged Java resolver expects this directory layout"
         );
     }
 

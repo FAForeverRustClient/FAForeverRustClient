@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "../natives/jre/": "natives/jre/"
+    }
+  }
+}
