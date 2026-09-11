@@ -633,14 +633,18 @@ export function LobbyView() {
     setHostOpen(true);
   };
 
-  const closeHostDialog = () => {
+  // Stable, because the host dialogs are `memo`'d and this is their only
+  // prop that is not a store value. A fresh closure per render would hand them
+  // a changed prop on every game list the lobby sends, which is the one thing
+  // the memo exists to stop.
+  const closeHostDialog = useCallback(() => {
     setHostOpen(false);
     setCoopMissionToHost(null);
     // Otherwise the dialog reopens the next time this tab is visited.
     if (hostPrefill !== null) {
       ipc.send({ kind: "Lobby", command: { type: "clearHostPrefill" } });
     }
-  };
+  }, [hostPrefill]);
 
   return (
     <div className="play-view">
