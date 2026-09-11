@@ -103,6 +103,13 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             out.emit(MapGeneratorEvent::ValidationChanged {
                 issues: map_generator::validate_options(&options),
             });
+            // A name resolved for the options as they were is not a name for
+            // the options as they are. The dialog sends this on every settled
+            // edit, so clearing here is what keeps the prediction from
+            // outliving the question it answered.
+            out.emit(MapGeneratorEvent::NamePredicted {
+                map_name: String::new(),
+            });
             // Written through to the settings file, not just to the in-memory
             // slice: "save settings" that lasts until the next restart is
             // indistinguishable from a button that does nothing.

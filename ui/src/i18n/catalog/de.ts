@@ -2187,7 +2187,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.generate.hideHelp": "Generator-Hilfe ausblenden",
   "maps.generate.loadingHelp": "Generator-Hilfe wird geladen…",
   "maps.generate.checkOptions": "Prüfen",
-  "maps.generate.willBeCalled": "Wird heißen",
   "maps.generate.cancel": "Abbrechen",
   "maps.generate.cancelled": "Generierung abgebrochen.",
   "maps.generate.preparing": "Optionen werden mit dem Generator geprüft…",

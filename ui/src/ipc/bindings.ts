@@ -3314,7 +3314,8 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
 } } |
 /**
  *  A `--parse` preflight resolved the options to a map name. An empty name
- *  clears a stale prediction when the options change.
+ *  clears a prediction, which is what every edit to the options does: see
+ *  [`MapGeneratorState::predicted_name`].
  */
 { type: "namePredicted"; payload: {
 	mapName: string,
@@ -3355,11 +3356,16 @@ export type MapGeneratorState = {
 	 */
 	validation?: ValidationIssue[],
 	/**
-	 *  The map name the current options would produce, as reported by the
-	 *  generator's own `--parse`. Empty until a preflight has run.
+	 *  The map name the options would produce, as reported by the generator's
+	 *  own `--parse`. Empty until a preflight has run, and emptied again the
+	 *  moment the options change.
 	 *
-	 *  Worth showing on its own: it is shareable before the map exists, and it
-	 *  is the authoritative confirmation that the options are acceptable.
+	 *  That second half is the whole of it. This used to stand in the dialog
+	 *  unprompted, showing the name resolved for whatever the options were
+	 *  when the preflight last ran, and it did not move when they were edited:
+	 *  a map name, presented as fact, for a map nobody had asked for and which
+	 *  the current options would not produce. It is the answer to "check these
+	 *  options" now, and it only survives as long as the question does.
 	 */
 	predictedName?: string,
 	/**
