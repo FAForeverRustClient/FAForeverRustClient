@@ -4,6 +4,7 @@
 // callers own open/closed state.
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import "./modal.css";
 import { useTranslation } from "../i18n/useTranslation";
 
@@ -118,7 +119,7 @@ export function Modal({
     }
   };
 
-  return (
+  const dialog = (
     <div
       className="modal-backdrop"
       onPointerDown={(event) => {
@@ -155,4 +156,23 @@ export function Modal({
       </div>
     </div>
   );
+
+  // Into `document.body`, not where the caller happens to sit.
+  //
+  // `position: fixed` with a `z-index` is only fixed and only ordered relative
+  // to its own stacking context, and callers open dialogs from inside panels
+  // that have one: `.vault-detail-panel` is `position: sticky`, which creates
+  // a stacking context whatever its z-index is. A dialog opened from there was
+  // ordered against its panel's siblings rather than against the page, so a
+  // FEATURED badge on a card in the results grid -- `z-index: 1`, a hundred
+  // less than the backdrop -- painted over it.
+  //
+  // Nothing depends on where a modal sits in the DOM: every rule for one
+  // targets `.modal-backdrop` or `.modal-panel` directly rather than through
+  // an ancestor, and React events still bubble through the React tree, so a
+  // caller's handlers are unaffected.
+  //
+  // Inline when there is no document, which is `renderToStaticMarkup` in the
+  // tests: the server renderer cannot render a portal at all.
+  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body);
 }
