@@ -97,5 +97,9 @@ export function displayedRating(
 export function averageRating(ratings: Array<number | null>): number | null {
   const known = ratings.filter((rating): rating is number => rating !== null);
   if (known.length === 0) return null;
-  return Math.round(known.reduce((total, rating) => total + rating, 0) / known.length);
+  // Truncated, not rounded, because the headline average beside it is computed
+  // in Rust by integer division and this has to be the same number: 242 across
+  // four players is the 60 in the report, not 61. Ratings never go below zero,
+  // so flooring and truncating are the same thing here.
+  return Math.floor(known.reduce((total, rating) => total + rating, 0) / known.length);
 }
