@@ -62,6 +62,12 @@
   line-height: 1.5;
 }
 
+/* The lead sentence is the instruction; the paragraph around it is muted, and
+   a muted bold reads as neither. */
+.report-dialog-hint strong {
+  color: var(--color-text);
+}
+
 .report-dialog-actions {
   display: flex;
   justify-content: flex-end;

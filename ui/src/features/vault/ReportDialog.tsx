@@ -84,7 +84,12 @@ export function ReportDialog({
         </button>
       </div>
 
-      <p className="report-dialog-hint muted">{t("vault.report.instructions")}</p>
+      {/* The instruction leads, in bold: what to actually do with the block
+          above. The rest is the detail behind it, so it takes the muted
+          weight the whole line used to have. */}
+      <p className="report-dialog-hint muted">
+        <strong>{t("vault.report.lead")}</strong> {t("vault.report.instructions")}
+      </p>
 
       <div className="report-dialog-actions">
         <Button onClick={onClose}>{t("vault.report.cancel")}</Button>
