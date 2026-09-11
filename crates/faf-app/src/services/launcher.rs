@@ -323,9 +323,13 @@ async fn ensure_generated_map(
     // Forward progress so the UI can show what the wait is for: generation
     // routinely takes tens of seconds.
     let mut outcome = Err("the map generator produced no result".to_string());
+    let mut generated: Vec<String> = Vec::new();
     while let Some(crate::ports::GeneratorUpdate::Status(status)) = updates.recv().await {
         match &status {
-            GeneratorStatus::Generated { .. } => outcome = Ok(()),
+            GeneratorStatus::Generated { maps } => {
+                generated = maps.clone();
+                outcome = Ok(())
+            }
             GeneratorStatus::Failed { reason } => {
                 outcome = Err(format!("could not generate {map_name}: {reason}"))
             }
@@ -333,6 +337,11 @@ async fn ensure_generated_map(
         }
         out.emit(MapGeneratorEvent::StatusChanged { status });
     }
+    // The same bookkeeping a deliberate run gets. Joining a lobby whose map
+    // had to be built used to skip all of it, which is why the client went on
+    // showing the map as missing, with no preview, while the player was already
+    // in the game: the folder was on disk and nothing had looked again.
+    super::map_generator::record_generated_maps(&generated, ctx, out).await;
     outcome
 }
 
