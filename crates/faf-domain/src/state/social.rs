@@ -39,8 +39,16 @@ pub struct PlayerLobbyRating {
 pub struct PlayerProfile {
     pub id: i32,
     pub login: String,
-    /// Conservative displayed global rating (`mean - 3 × deviation`). Zero
-    /// means the lobby supplied no global rating for this account.
+    /// Conservative displayed global rating (`mean - 3 × deviation`), and it
+    /// may be negative: a new or long-idle account's deviation is large enough
+    /// to put it below zero, which is what the server, the website and both
+    /// reference clients all print.
+    ///
+    /// Zero is the "not supplied" sentinel and also a rating somebody can
+    /// really have, so `ratings` is what settles the difference: an account
+    /// the lobby said nothing about has an empty table. This field is the
+    /// fallback for the partial `player_info` payloads that carry the scalar
+    /// and no table at all.
     pub global_rating: i32,
     /// All rating queues supplied by the lobby, sorted by technical name.
     pub ratings: Vec<PlayerLobbyRating>,
