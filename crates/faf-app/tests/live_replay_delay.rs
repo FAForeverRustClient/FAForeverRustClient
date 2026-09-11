@@ -239,6 +239,7 @@ fn game(uid: i32) -> Game {
         map: "scmp_009".into(),
         mod_name: "faf".into(),
         average_rating: 1600,
+        rating_type: "global".into(),
         password_protected: false,
         visibility: "public".into(),
         game_type: "matchmaker".into(),

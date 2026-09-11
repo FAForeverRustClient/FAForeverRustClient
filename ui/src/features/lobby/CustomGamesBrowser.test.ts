@@ -19,6 +19,7 @@ function game(overrides: Partial<Game> = {}): Game {
     map: "scca_coop_r03.v0021",
     modName: "faf",
     averageRating: 1200,
+    ratingType: "global",
     passwordProtected: false,
     visibility: "public",
     gameType: "custom",

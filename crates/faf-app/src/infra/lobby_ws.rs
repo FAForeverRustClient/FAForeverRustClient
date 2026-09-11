@@ -468,7 +468,7 @@ async fn run_session(
     // arrive separately in `player_info`. Keep the latest displayed global
     // rating by login so game rows can mirror the reference clients' live
     // average-rating column.
-    let mut player_ratings = BTreeMap::<String, i32>::new();
+    let mut player_ratings = PlayerRatings::new();
     // Identity (rather than rating) side of the same `player_info` stream,
     // what chat needs to rank its roster. See `PlayerDirectory`.
     let mut directory = PlayerDirectory::default();
@@ -1207,6 +1207,8 @@ struct RawGame {
     #[serde(default)]
     game_type: Option<String>,
     #[serde(default)]
+    rating_type: Option<String>,
+    #[serde(default)]
     launched_at: Option<f64>,
     #[serde(default)]
     hosted_at: Option<String>,
@@ -1239,9 +1241,16 @@ impl RawGame {
         self.state.as_deref() == Some("playing")
     }
 
-    fn into_game(self, player_ratings: &BTreeMap<String, i32>) -> Option<Game> {
+    fn into_game(self, player_ratings: &PlayerRatings) -> Option<Game> {
         let id = self.uid?;
-        let average_rating = average_game_rating(self.teams.as_ref(), player_ratings);
+        // Empty is not a rating type. The server defaults the field to
+        // `global`, and a payload that omits it entirely is an older one
+        // saying the same thing.
+        let rating_type = self
+            .rating_type
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| GLOBAL_LEADERBOARD.to_string());
+        let average_rating = average_game_rating(self.teams.as_ref(), player_ratings, &rating_type);
         Some(Game {
             id,
             title: self.title.unwrap_or_default(),
@@ -1258,6 +1267,7 @@ impl RawGame {
             password_protected: self.password_protected.unwrap_or(false),
             visibility: self.visibility.unwrap_or_else(|| "public".into()),
             game_type: self.game_type.unwrap_or_else(|| "custom".into()),
+            rating_type,
             launched_at: self.launched_at.map(|value| value.round() as u32),
             hosted_at: self.hosted_at,
             rating_min: self.rating_min.map(|value| value.round() as i32),
@@ -1268,20 +1278,33 @@ impl RawGame {
     }
 }
 
-/// Compute the displayed global rating for a game from its active team
-/// members. Observers (`-1`/`null`) are intentionally excluded, matching both
-/// reference clients. A server-provided `average_rating` remains authoritative
-/// when present; this is the fallback used by current lobby payloads.
+/// Compute the displayed rating for a game from its active team members.
+/// Observers (`-1`/`null`) are intentionally excluded, matching both reference
+/// clients. A server-provided `average_rating` remains authoritative when
+/// present; this is the fallback used by current lobby payloads, which do not
+/// carry one at all.
+///
+/// Averaged over the game's *own* leaderboard rather than always over `global`.
+/// A 1v1 ladder game whose two players are 466 and 500 on the ladder is not a
+/// 900-rated game because that is what their global ratings happen to be, and
+/// the number printed here is read beside the same players' ratings in the
+/// lineup, which name the same leaderboard.
 fn average_game_rating(
     teams: Option<&BTreeMap<String, Vec<String>>>,
-    player_ratings: &BTreeMap<String, i32>,
+    player_ratings: &PlayerRatings,
+    leaderboard: &str,
 ) -> i32 {
     let ratings = teams
         .into_iter()
         .flatten()
         .filter(|(team, _)| team.as_str() != "-1" && team.as_str() != "null")
         .flat_map(|(_, players)| players.iter())
-        .filter_map(|login| player_ratings.get(login).copied())
+        .filter_map(|login| {
+            player_ratings
+                .get(login)
+                .and_then(|board| board.get(leaderboard))
+                .copied()
+        })
         .collect::<Vec<_>>();
 
     if ratings.is_empty() {
@@ -1576,7 +1599,17 @@ fn id_list(value: &Value, key: &str) -> Vec<i64> {
         .unwrap_or_default()
 }
 
-fn update_player_ratings(ratings: &mut BTreeMap<String, i32>, player: &Value) {
+/// Every player's displayed rating on every leaderboard the server has sent
+/// one for: login, then leaderboard (`global`, `ladder_1v1`, `tmm_2v2`, ...).
+///
+/// A single global number was enough while every game average was a global
+/// average. It is not enough now that a game is averaged over the leaderboard
+/// it is actually rated on.
+type PlayerRatings = BTreeMap<String, BTreeMap<String, i32>>;
+
+pub(crate) const GLOBAL_LEADERBOARD: &str = "global";
+
+fn update_player_ratings(ratings: &mut PlayerRatings, player: &Value) {
     let Some(login) = player
         .get("login")
         .or_else(|| player.get("name"))
@@ -1586,8 +1619,26 @@ fn update_player_ratings(ratings: &mut BTreeMap<String, i32>, player: &Value) {
         return;
     };
 
+    // A partial `player_info` that carries no ratings at all must not erase
+    // what the last full one said, which is the same rule `observe` follows
+    // for the profile it keeps.
+    if let Some(boards) = player_lobby_ratings(player) {
+        if !boards.is_empty() {
+            ratings.insert(
+                login.to_string(),
+                boards
+                    .into_iter()
+                    .map(|rating| (rating.leaderboard, rating.rating))
+                    .collect(),
+            );
+            return;
+        }
+    }
     if let Some(estimate) = player_rating_estimate(player) {
-        ratings.insert(login.to_string(), estimate);
+        ratings
+            .entry(login.to_string())
+            .or_default()
+            .insert(GLOBAL_LEADERBOARD.to_string(), estimate);
     }
 }
 
@@ -1851,7 +1902,7 @@ struct GameSet {
 }
 
 impl GameSet {
-    fn apply(&mut self, raw: RawGame, player_ratings: &BTreeMap<String, i32>) {
+    fn apply(&mut self, raw: RawGame, player_ratings: &PlayerRatings) {
         let Some(uid) = raw.uid else {
             return;
         };
@@ -1872,9 +1923,9 @@ impl GameSet {
         }
     }
 
-    fn refresh_ratings(&mut self, player_ratings: &BTreeMap<String, i32>) {
+    fn refresh_ratings(&mut self, player_ratings: &PlayerRatings) {
         for game in self.games.values_mut().chain(self.live_games.values_mut()) {
-            let average = average_game_rating(Some(&game.teams), player_ratings);
+            let average = average_game_rating(Some(&game.teams), player_ratings, &game.rating_type);
             if average > 0 {
                 game.average_rating = average;
             }
@@ -2311,7 +2362,7 @@ mod tests {
         let raw = extract_raw_games(&open_game_json(42, "open", 5))
             .pop()
             .unwrap();
-        let game = raw.into_game(&BTreeMap::new()).unwrap();
+        let game = raw.into_game(&PlayerRatings::new()).unwrap();
         assert_eq!(game.id, 42);
         assert_eq!(game.players, 5);
         assert_eq!(game.max_players, 8);
@@ -2322,7 +2373,7 @@ mod tests {
 
     #[test]
     fn computes_average_rating_from_player_info_and_ignores_observers() {
-        let mut ratings = BTreeMap::new();
+        let mut ratings = PlayerRatings::new();
         update_player_ratings(
             &mut ratings,
             &json!({
@@ -2363,28 +2414,101 @@ mod tests {
 
     #[test]
     fn accepts_legacy_player_rating_field() {
-        let mut ratings = BTreeMap::new();
+        let mut ratings = PlayerRatings::new();
         update_player_ratings(
             &mut ratings,
             &json!({ "login": "Legacy", "global_rating": 1234 }),
         );
-        assert_eq!(ratings.get("Legacy"), Some(&1234));
+        assert_eq!(ratings["Legacy"][GLOBAL_LEADERBOARD], 1234);
+    }
+
+    #[test]
+    fn averages_a_matchmaker_game_over_the_queue_it_is_rated_on() {
+        // The reported case: a 1v1 ladder game listing global ratings, which
+        // are the numbers the game is not being played for.
+        let mut ratings = PlayerRatings::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Valkyra",
+                "ratings": {
+                    "global": { "rating": [1100, 98] },
+                    "ladder_1v1": { "rating": [662, 65] },
+                }
+            }),
+        );
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Rival",
+                "ratings": {
+                    "global": { "rating": [1600, 200] },
+                    "ladder_1v1": { "rating": [1000, 100] },
+                }
+            }),
+        );
+
+        let mut message = open_game_json(44, "playing", 2);
+        message["rating_type"] = json!("ladder_1v1");
+        message["teams"] = json!({ "2": ["Valkyra"], "3": ["Rival"] });
+        let game = extract_raw_games(&message)
+            .pop()
+            .unwrap()
+            .into_game(&ratings)
+            .unwrap();
+
+        assert_eq!(game.rating_type, "ladder_1v1");
+        // Ladder: 467 and 700, not global's 806 and 1000.
+        assert_eq!(game.average_rating, 583);
+    }
+
+    #[test]
+    fn a_game_without_a_rating_type_is_a_global_one() {
+        let mut ratings = PlayerRatings::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({ "login": "Alpha", "ratings": { "global": { "rating": [1800, 200] } } }),
+        );
+        let mut message = open_game_json(45, "open", 1);
+        message["teams"] = json!({ "1": ["Alpha"] });
+        let game = extract_raw_games(&message)
+            .pop()
+            .unwrap()
+            .into_game(&ratings)
+            .unwrap();
+
+        assert_eq!(game.rating_type, GLOBAL_LEADERBOARD);
+        assert_eq!(game.average_rating, 1200);
+    }
+
+    #[test]
+    fn a_partial_player_info_does_not_erase_the_ratings_already_known() {
+        let mut ratings = PlayerRatings::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Alpha",
+                "ratings": { "ladder_1v1": { "rating": [900, 100] } }
+            }),
+        );
+        update_player_ratings(&mut ratings, &json!({ "login": "Alpha", "country": "de" }));
+        assert_eq!(ratings["Alpha"]["ladder_1v1"], 600);
     }
 
     #[test]
     fn gameset_adds_open_and_removes_closed() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(1, "open", 1)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         for raw in extract_raw_games(&open_game_json(2, "open", 2)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         assert_eq!(set.snapshot().len(), 2);
 
         // Game 1 transitions to playing → drops out of the open list.
         for raw in extract_raw_games(&open_game_json(1, "playing", 2)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -2395,10 +2519,10 @@ mod tests {
     fn gameset_update_replaces_in_place() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(5, "open", 1)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         for raw in extract_raw_games(&open_game_json(5, "open", 4)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -2418,7 +2542,7 @@ mod tests {
             "max_players": 6,
         });
         for raw in extract_raw_games(&forming_mm) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         assert_eq!(set.snapshot().len(), 0);
         assert_eq!(set.snapshot_live().len(), 0);
@@ -2433,7 +2557,7 @@ mod tests {
             "max_players": 6,
         });
         for raw in extract_raw_games(&playing_mm) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         assert_eq!(set.snapshot().len(), 0);
         assert_eq!(set.snapshot_live().len(), 1);
@@ -2657,7 +2781,7 @@ mod tests {
             .into_iter()
             .next()
             .unwrap()
-            .into_game(&BTreeMap::new())
+            .into_game(&PlayerRatings::new())
             .unwrap();
         assert_eq!(game.id, 9);
         assert_eq!(game.title, "");
@@ -2691,7 +2815,7 @@ mod tests {
         let game = extract_raw_games(&msg)
             .into_iter()
             .next()
-            .and_then(|raw| raw.into_game(&BTreeMap::new()))
+            .and_then(|raw| raw.into_game(&PlayerRatings::new()))
             .expect("nullable game payload should be retained");
         assert_eq!(game.id, 12);
         assert_eq!(game.visibility, "public");

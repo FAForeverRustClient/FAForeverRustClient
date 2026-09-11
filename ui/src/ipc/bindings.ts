@@ -2051,6 +2051,17 @@ export type Game = {
 	 */
 	modName: string,
 	averageRating: number,
+	/**
+	 *  Which leaderboard this game is rated on: `global` for a custom game,
+	 *  `ladder_1v1` or `tmm_2v2`/`tmm_3v3`/`tmm_4v4` for a matchmaker one.
+	 *  Wire key on `game_info` is `rating_type`.
+	 *
+	 *  It decides which of a player's ratings belongs beside their name. A
+	 *  1v1 ladder game listing everybody's global rating is the number the
+	 *  lobby is not about, and it is the number somebody reads to judge the
+	 *  game they are watching.
+	 */
+	ratingType: string,
 	passwordProtected: boolean,
 	visibility: string,
 	gameType: string,

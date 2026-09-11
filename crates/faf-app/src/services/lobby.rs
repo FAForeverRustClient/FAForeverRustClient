@@ -867,6 +867,7 @@ mod tests {
             map: "scmp_001".into(),
             mod_name: "faf".into(),
             average_rating: 1_000,
+            rating_type: "global".into(),
             password_protected: false,
             visibility: "public".into(),
             game_type: "custom".into(),

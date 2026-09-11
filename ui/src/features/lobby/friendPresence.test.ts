@@ -12,6 +12,7 @@ function game(overrides: Partial<Game> = {}): Game {
     map: "Setons Clutch",
     modName: "faf",
     averageRating: 1200,
+    ratingType: "global",
     passwordProtected: false,
     visibility: "public",
     gameType: "custom",

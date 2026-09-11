@@ -53,6 +53,7 @@ describe("chat link rendering", () => {
       map: "Seton's Clutch",
       modName: "faf",
       averageRating: 1500,
+      ratingType: "global",
       passwordProtected: false,
       visibility: "public",
       gameType: "custom",

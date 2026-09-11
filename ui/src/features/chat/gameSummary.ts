@@ -1,4 +1,5 @@
 import type { Game, PlayerProfile, SocialState } from "../../ipc/bindings";
+import { displayedRating, gameLeaderboard } from "../../shared/playerRatings";
 
 export type GamePresenceStatus = "hosting" | "lobbying" | "playing" | "playingDelayed";
 
@@ -24,6 +25,7 @@ export interface GameSummaryPlayer {
 export interface GameSummaryTeam {
   id: string;
   label: string;
+  /** Combined rating of the team, or `null` when nobody in it is rated. */
   rating: number | null;
   players: GameSummaryPlayer[];
 }
@@ -127,6 +129,9 @@ function teamOrder([id]: [string, string[]]): number {
 }
 
 export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryTeam[] {
+  // The leaderboard this game is played on, not always the global one. A 1v1
+  // ladder game listing everybody's global rating was the report.
+  const leaderboard = gameLeaderboard(game.ratingType);
   return Object.entries(game.teams)
     .filter(([, players]) => players.length > 0)
     .sort((left, right) => teamOrder(left) - teamOrder(right))
@@ -136,7 +141,7 @@ export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryT
         return {
           login,
           country: profile?.country ?? "",
-          rating: profile && profile.globalRating > 0 ? profile.globalRating : null,
+          rating: displayedRating(profile, leaderboard),
           profile,
         };
       });

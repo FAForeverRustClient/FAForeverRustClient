@@ -40,6 +40,7 @@ function game(id: number): Game {
     map: "scmp_009",
     modName: "faf",
     averageRating: 1200,
+    ratingType: "global",
     passwordProtected: false,
     visibility: "public",
     gameType: "custom",

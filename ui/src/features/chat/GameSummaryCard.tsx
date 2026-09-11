@@ -8,6 +8,7 @@
 import type { SocialState, VaultMap } from "../../ipc/bindings";
 import { MapThumbnail } from "../../shared/MapThumbnail";
 import { openPlayerCard } from "../player-card/playerCardActions";
+import { GLOBAL_LEADERBOARD, gameLeaderboard, leaderboardLabel } from "../../shared/playerRatings";
 import { displayName } from "./chatFormat";
 import { rosterRatingSummary } from "./ratingSummary";
 import { flagSrc } from "../../shared/countryFlags";
@@ -64,6 +65,7 @@ export function GameSummaryCard({
   const presentation = mapPresentation(vault, presence.game.map);
   const status = t(STATUS_LABEL[presence.status]);
   const teams = showTeams ? gameTeamSummaries(presence.game, social) : [];
+  const leaderboard = gameLeaderboard(presence.game.ratingType);
   const elapsed = gameElapsedSeconds(presence, now);
   // Named for what it answers rather than for the field it came from: how long
   // somebody has been playing, or how long a lobby has been sitting open.
@@ -92,7 +94,15 @@ export function GameSummaryCard({
       <div className="chat-game-meta">
         <span>{presence.game.modName.toUpperCase()}</span>
         <span>{presence.game.players}/{presence.game.maxPlayers} players</span>
-        {presence.game.averageRating > 0 && <span>{presence.game.averageRating} average</span>}
+        {/* Named where it is not the global board, and so is every rating in
+            the lineup below it. */}
+        {presence.game.averageRating > 0 && (
+          <span>
+            {presence.game.averageRating} {leaderboard === GLOBAL_LEADERBOARD
+              ? "average"
+              : `${leaderboardLabel(leaderboard)} average`}
+          </span>
+        )}
         {elapsed !== null && (
           <span className="chat-game-elapsed">
             {elapsedLabel} <b>{formatGameTime(elapsed)}</b>

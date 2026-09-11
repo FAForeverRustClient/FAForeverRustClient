@@ -12,6 +12,7 @@ const game = (id: number, host: string, teams: Record<string, string[]>): Game =
   map: "scmp_009",
   modName: "faf",
   averageRating: 1_200,
+  ratingType: "global",
   passwordProtected: false,
   visibility: "public",
   gameType: "custom",
@@ -27,7 +28,9 @@ const profile = (login: string, rating: number, country: string): PlayerProfile 
   id: rating,
   login,
   globalRating: rating,
-  ratings: [],
+  ratings: [
+    { leaderboard: "global", rating, mean: rating + 600, deviation: 200, gamesPlayed: 10 },
+  ],
   country,
   clan: "",
   avatarUrl: "",
@@ -81,6 +84,25 @@ describe("game team summaries", () => {
     expect(teams[0].players[1].rating).toBeNull();
     expect(teams[1].rating).toBe(1_400);
     expect(teams[2].rating).toBeNull();
+  });
+
+  it("reads the leaderboard the game is rated on, not always the global one", () => {
+    const laddered: PlayerProfile = {
+      ...profile("Valkyra", 804, "gb"),
+      ratings: [
+        { leaderboard: "global", rating: 804, mean: 1_100, deviation: 98, gamesPlayed: 83 },
+        { leaderboard: "ladder_1v1", rating: 466, mean: 662, deviation: 65, gamesPlayed: 416 },
+      ],
+    };
+    const social: SocialState = { friends: [], foes: [], players: [laddered] };
+    const ladder = {
+      ...game(1, "Valkyra", { "2": ["Valkyra"] }),
+      ratingType: "ladder_1v1",
+    };
+
+    expect(gameTeamSummaries(ladder, social)[0].players[0].rating).toBe(466);
+    expect(gameTeamSummaries(game(1, "Valkyra", { "2": ["Valkyra"] }), social)[0].players[0].rating)
+      .toBe(804);
   });
 });
 

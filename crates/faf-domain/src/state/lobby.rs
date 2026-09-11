@@ -24,6 +24,15 @@ pub struct Game {
     /// `featured_mod`, unrelated to `GameLaunch`'s `mod`.
     pub mod_name: String,
     pub average_rating: i32,
+    /// Which leaderboard this game is rated on: `global` for a custom game,
+    /// `ladder_1v1` or `tmm_2v2`/`tmm_3v3`/`tmm_4v4` for a matchmaker one.
+    /// Wire key on `game_info` is `rating_type`.
+    ///
+    /// It decides which of a player's ratings belongs beside their name. A
+    /// 1v1 ladder game listing everybody's global rating is the number the
+    /// lobby is not about, and it is the number somebody reads to judge the
+    /// game they are watching.
+    pub rating_type: String,
     pub password_protected: bool,
     pub visibility: String,
     pub game_type: String,
@@ -748,6 +757,7 @@ mod tests {
             map: "Seton's Clutch".into(),
             mod_name: "faf".into(),
             average_rating: 0,
+            rating_type: "global".into(),
             password_protected: false,
             visibility: "public".into(),
             game_type: "custom".into(),
