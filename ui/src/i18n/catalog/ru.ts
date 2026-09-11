@@ -1862,7 +1862,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.passwordProtected": "Защищена паролем",
   "lobby.host.password": "Пароль",
   "lobby.host.passwordAria": "Пароль игры",
-  "lobby.host.enforceRating": "Ограничить рейтинг игроков",
+  // Reads with the two inputs and the "до" between them: "Ограничить рейтинг
+  // игроков с [800] до [1500]". The review's version ended in another
+  // "рейтинга", which repeats the word the label opens with.
+  "lobby.host.enforceRating": "Ограничить рейтинг игроков с",
   "lobby.host.minRating": "Минимальный рейтинг",
   "lobby.host.maxRating": "Максимальный рейтинг",
   "lobby.host.selectedMap": "Выбранная карта",
@@ -1893,10 +1896,21 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.enableAll": "Включить всё",
   "lobby.host.disableAll": "Выключить всё",
   "lobby.host.deselectAll": "Снять все",
+  "lobby.host.modCount": "{active} активны · {installed} установлено",
+  "lobby.host.mapCount": {
+    one: "{count} карта",
+    few: "{count} карты",
+    many: "{count} карт",
+    other: "{count} карты",
+  },
+  "lobby.host.ratingTo": "до",
   "lobby.host.filter": "Фильтр",
   "lobby.host.presets": "Шаблоны",
   "lobby.host.randomMap": "Случайная карта",
-  "lobby.host.generateMap": "Сгенерировать карту",
+  // "Generate map" deliberately has no entry here and falls back to English.
+  // The review asked for "Сгенерировать карту[MapGen]"; the owner's call is
+  // that the generator keeps its own name rather than acquiring a Russian one,
+  // so the button stays as it is everywhere else in the client.
   "lobby.host.onlyFriends": "Только для друзей",
   "lobby.host.mapAuthor": "Автор",
   "lobby.host.mapVersion": "Версия",

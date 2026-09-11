@@ -141,7 +141,10 @@ export function HostModsColumn() {
         <h3>{t("lobby.host.mods")}</h3>
         <div className="host-header-actions">
           <span className="host-count-badge">
-            {activeModsCount} active · {installedMods.length} installed
+            {t("lobby.host.modCount", {
+              active: activeModsCount,
+              installed: installedMods.length,
+            })}
           </span>
           <button
             type="button"

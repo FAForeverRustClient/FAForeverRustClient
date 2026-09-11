@@ -524,7 +524,7 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
               onChange={setRatingMin}
               aria-label={t("lobby.host.minRating")}
             />
-            <span className="muted">to</span>
+            <span className="muted">{t("lobby.host.ratingTo")}</span>
             <NumberInput
               className="number-input"
               disabled={!ratingEnabled}
@@ -587,7 +587,9 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
         <section className="host-column host-column-maps surface-panel">
           <div className="host-column-header">
             <h3>{t("lobby.host.map")}</h3>
-            <span className="host-count-badge">{visibleMaps.length} maps</span>
+            <span className="host-count-badge">
+              {t("lobby.host.mapCount", { count: visibleMaps.length })}
+            </span>
           </div>
 
           {/* Two tabs rather than one long list. The thread that asked for this

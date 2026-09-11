@@ -925,6 +925,13 @@ export const en = {
   "lobby.host.enableAll": "Enable All",
   "lobby.host.disableAll": "Disable All",
   "lobby.host.reloadMods": "Reload Mods",
+  // The three counters and the word between the rating inputs. They were
+  // written straight into the components, so no catalogue could reach them
+  // and every language showed them in English.
+  "lobby.host.modCount": "{active} active · {installed} installed",
+  "lobby.host.mapCount": { one: "{count} map", other: "{count} maps" },
+  /** Between the two rating inputs: "Enforce player rating [800] to [1500]". */
+  "lobby.host.ratingTo": "to",
   "lobby.host.filter": "Filter",
   "lobby.host.filterWidth": "Width",
   "lobby.host.filterHeight": "Height",
