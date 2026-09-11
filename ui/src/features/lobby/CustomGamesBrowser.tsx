@@ -234,12 +234,42 @@ export function getActiveLineupSnapshot() {
 }
 
 export function hideGlobalLineup() {
+  cancelLineupHide();
   if (activeLineup !== null) {
     activeLineup = null;
     for (const listener of lineupListeners) {
       listener();
     }
   }
+}
+
+/**
+ * How long the overlay survives the pointer leaving it.
+ *
+ * The overlay is interactive now -- the player names in it open profile cards
+ * -- and reaching it means crossing the gap between the row and the overlay,
+ * which is a `mouseleave` with nothing under the pointer. Closing on that
+ * would make the overlay unreachable, so leaving starts a timer instead and
+ * arriving anywhere that counts cancels it. A second is long enough to cross
+ * six pixels without hurrying and short enough that an overlay nobody wants is
+ * gone before it is in the way.
+ */
+const LINEUP_GRACE_MS = 1000;
+
+let lineupHideTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Stop a pending close: the pointer arrived somewhere that keeps it open. */
+export function cancelLineupHide() {
+  if (lineupHideTimer !== null) {
+    clearTimeout(lineupHideTimer);
+    lineupHideTimer = null;
+  }
+}
+
+/** The pointer left. Close, unless it comes back within the grace period. */
+export function hideGlobalLineupSoon() {
+  cancelLineupHide();
+  lineupHideTimer = setTimeout(hideGlobalLineup, LINEUP_GRACE_MS);
 }
 
 /**
@@ -313,6 +343,9 @@ function useGameLineupPosition(gameId: number) {
   const tooltipPosition = currentActive?.gameId === gameId ? currentActive.position : null;
 
   const showLineup = (target: HTMLElement) => {
+    // Moving straight from one row to another: the close the first row asked
+    // for must not land on the overlay the second one is opening.
+    cancelLineupHide();
     const bounds = target.getBoundingClientRect();
     const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
     const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
@@ -329,11 +362,14 @@ function useGameLineupPosition(gameId: number) {
     setGlobalLineup(gameId, position);
   };
 
+  // Leaving starts the grace period rather than closing: the overlay is
+  // reachable now, and the pointer has to cross a gap to get to it.
   const hideLineup = () => {
     if (currentActive?.gameId === gameId) {
-      hideGlobalLineup();
+      hideGlobalLineupSoon();
     }
   };
+
 
   useEffect(() => {
     return () => {
@@ -389,6 +425,12 @@ function GameLineup({
       id={id}
       role="tooltip"
       style={position}
+      // Reaching the overlay means crossing the gap between it and the row,
+      // which is a `mouseleave` with nothing under the pointer. Arriving here
+      // cancels the close that started; leaving here starts it again, so the
+      // pointer can go back to the row without the overlay vanishing.
+      onMouseEnter={cancelLineupHide}
+      onMouseLeave={hideGlobalLineupSoon}
     >
       <header className="game-lineup-title">{game.title}</header>
       {mirrored && <TeamBalance teams={teams} profileFor={profileFor} />}
