@@ -2208,6 +2208,20 @@ export type GeneralPreferences = {
 	startPage: Tab,
 	/**  Automatically restore the saved session at startup. */
 	autoLogin?: boolean,
+	/**
+	 *  Let the window offer things typed into a text field before.
+	 *
+	 *  This is the embedded browser's own form history, not anything this
+	 *  client stores, and it showed up as a "Saved info" dropdown over the
+	 *  host dialog's game title. Off by default, which is a deliberate change
+	 *  of behaviour: the client already restores the last title *into* that
+	 *  field (`BrowsingPreferences::host_game`), so the dropdown was a second,
+	 *  worse copy of a feature that was already there, covering the value it
+	 *  had just put in. A setting rather than a removal because the thread
+	 *  asked for one, and because somebody who hosts under half a dozen
+	 *  rotating titles is served by it.
+	 */
+	rememberTypedEntries?: boolean,
 };
 
 /**

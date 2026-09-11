@@ -678,7 +678,8 @@
       },
       "general": {
         "startPage": "news",
-        "autoLogin": true
+        "autoLogin": true,
+        "rememberTypedEntries": false
       },
       "appearance": {
         "density": "comfortable",
@@ -2113,6 +2114,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [],
@@ -29090,6 +29092,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [],
@@ -29330,6 +29333,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [],
@@ -29579,6 +29583,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [],
@@ -29823,6 +29828,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [
@@ -30067,6 +30073,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [
@@ -30321,6 +30328,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [
@@ -30581,6 +30589,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [
@@ -30853,6 +30862,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [
@@ -31116,6 +31126,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [
@@ -31381,6 +31392,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [
@@ -31730,6 +31742,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "rememberTypedEntries": false,
               "startPage": "news"
             },
             "keptGeneratedMaps": [

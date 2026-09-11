@@ -5,9 +5,15 @@
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { HostLobbySettings } from "./hostLobbySettings";
 import { NumberInput } from "../../../design-system/NumberInput";
+import { useAppStore } from "../../../store/store";
 
 export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
   const { t } = useTranslation();
+  // The window's own form history over this field, which is not something
+  // this client stores; see `GeneralPreferences::remember_typed_entries`. The
+  // name is deliberately not one Chromium reads as an address or a person, so
+  // the field is treated as ordinary text and `autocomplete` is honoured.
+  const rememberTypedEntries = useAppStore((s) => s.state.settings.general.rememberTypedEntries);
 
   return (
     <section className="host-top-config surface-panel">
@@ -18,6 +24,8 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
         <input
           id="host-lobby-name"
           className="host-title-input"
+          name="faf-game-title"
+          autoComplete={rememberTypedEntries ? "on" : "off"}
           value={settings.title}
           maxLength={128}
           aria-invalid={Boolean(settings.titleError)}

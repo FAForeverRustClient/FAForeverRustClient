@@ -481,6 +481,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.general.autoLogin.label": "Automatisch anmelden",
   "settings.general.autoLogin.hint":
     "Beim Start des Clients automatisch mit dem gespeicherten Konto anmelden.",
+  "settings.general.rememberTypedEntries.label": "Frühere Eingaben vorschlagen",
+  "settings.general.rememberTypedEntries.hint":
+    "Lässt das Fenster Einträge vorschlagen, die du schon einmal in ein Feld getippt hast, etwa den Spieltitel im Hosten-Dialog. Standardmäßig aus: der Client setzt deinen letzten Titel ohnehin wieder in dieses Feld.",
   "settings.general.language.label": "Sprache",
   "settings.general.language.hint":
     "Wirkt sofort. Nicht übersetzte Texte bleiben auf Englisch.",

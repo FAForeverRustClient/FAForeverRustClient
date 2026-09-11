@@ -530,6 +530,9 @@ export const en = {
   "settings.general.autoLogin.label": "Auto sign-in",
   "settings.general.autoLogin.hint":
     "Automatically sign in with your saved account whenever the client starts.",
+  "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
+  "settings.general.rememberTypedEntries.hint":
+    "Lets the window offer entries you have typed into a field before, such as the host dialog's game title. Off by default: the client already puts your last title back in that field.",
   "settings.general.language.label": "Language",
   "settings.general.language.hint":
     "Applies immediately. Untranslated text stays in English.",
