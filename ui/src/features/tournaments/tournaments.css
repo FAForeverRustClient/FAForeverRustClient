@@ -293,16 +293,26 @@
   min-width: 0;
 }
 
+/* A FAF avatar is 40x20, not a square. This was a 20x20 box with `cover`,
+   which crops rather than scales: half of every avatar in the tab was thrown
+   away, and the half that survived was the middle. Same 40x20 and `contain`
+   as every other place the client shows one -- chat, the leaderboard, the
+   player card, the matchmaker. */
 .player-chip-avatar {
-  width: 20px;
+  width: 40px;
   height: 20px;
   border-radius: var(--radius-sm);
-  object-fit: cover;
+  object-fit: contain;
   flex: none;
 }
 
+/* Most players have no avatar, so this is the common case rather than the
+   exception: it holds the column open so names stay aligned and draws
+   nothing, which is what `.leaderboard-avatar-slot` already does. A dashed
+   box was tolerable at half the width and would be a row of empty rectangles
+   at this one. */
 .player-chip-avatar.is-empty {
-  border: 1px dashed var(--color-border);
+  display: inline-block;
 }
 
 .player-chip-name {
