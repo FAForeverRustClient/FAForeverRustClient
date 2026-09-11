@@ -343,7 +343,7 @@ export const en = {
   "uploads.intro.rulesLink": "Read the vault rules",
   "uploads.intro.accept": "I understand the vault rules and accept them.",
   "uploads.intro.cancel": "Cancel",
-  "uploads.intro.selectFolder": "Select folderâ¦",
+  "uploads.intro.selectFolder": "Select folder…",
   "uploads.title.map": "Publish map",
   "uploads.title.mod": "Publish mod",
   "uploads.description": "“{name}” will be compressed and uploaded to the FAF vault under your account, where everyone can download it.",
