@@ -2737,6 +2737,7 @@ export type JoinState = { type: "idle" } | { type: "joining"; payload: {
  *  rather than leaving the client looking frozen.
  */
 { type: "preparing"; payload: {
+	phase: PreparationPhase,
 	detail: string,
 	progress: number | null,
 } } |
@@ -3058,6 +3059,7 @@ export type LobbyEvent = { type: "connecting" } | { type: "connected" } |
 } } |
 /**  Progress on getting the install ready for the pending launch. */
 { type: "preparing"; payload: {
+	phase: PreparationPhase,
 	detail: string,
 	progress: number | null,
 } } | { type: "joinFailed"; payload: {
@@ -4893,6 +4895,30 @@ export type PoolStep = {
 	 */
 	team: PoolSide,
 };
+
+/**
+ *  Which part of getting the install ready a preparation step belongs to.
+ *
+ *  The Python client's updater dialog gives each of these its own progress bar
+ *  rather than sharing one, because their numbers do not add up: the checksum
+ *  pass walks every file the featured mod lists, and the download pass walks
+ *  only the few of them that turned out to be stale. Reporting both as a
+ *  single percentage made a bar that jumped, stalled and said nothing about
+ *  which kind of waiting was going on.
+ */
+export type PreparationPhase =
+/**  Asking the API which files this featured mod is made of. */
+"asking" |
+/**
+ *  Reading every listed file and checksumming it against the API's MD5.
+ *  The slow part of a launch that has nothing to download, and the part
+ *  that used to happen in complete silence.
+ */
+"verifying" |
+/**  Fetching the files the checksum pass rejected. */
+"downloading" |
+/**  Staging the map. */
+"map";
 
 /**
  *  The headline cash prize, where an event has one.

@@ -29,28 +29,60 @@ pub struct GamePreparation {
 }
 
 /// One user-visible preparation step. `progress` is absent for work whose
-/// length the transport cannot know (API lookup, map archive download) and a
-/// measured percentage for featured-mod file sets.
+/// length the transport cannot know (API lookup) and a measured percentage
+/// otherwise.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparationStep {
+    pub phase: PreparationPhase,
     pub detail: String,
     pub progress: Option<u8>,
 }
 
 impl PreparationStep {
-    pub fn indeterminate(detail: impl Into<String>) -> Self {
+    pub fn indeterminate(phase: PreparationPhase, detail: impl Into<String>) -> Self {
         Self {
+            phase,
             detail: detail.into(),
             progress: None,
         }
     }
 
-    pub fn counted(detail: impl Into<String>, completed: usize, total: usize) -> Self {
+    pub fn counted(
+        phase: PreparationPhase,
+        detail: impl Into<String>,
+        completed: usize,
+        total: usize,
+    ) -> Self {
         Self {
+            phase,
             detail: detail.into(),
             progress: (total > 0).then(|| ((completed.min(total) * 100) / total) as u8),
         }
     }
+}
+
+/// Which part of the preparation a step belongs to.
+///
+/// The Python client's updater dialog gives each of these its own progress bar
+/// (`hashProgress`, `modProgress`, `gameProgress`, `extrasProgress`) rather
+/// than one, because they are different kinds of waiting whose numbers do not
+/// add up: the checksum pass walks every file the mod lists, and the download
+/// pass walks only the few that turned out to be wrong. Collapsing them into a
+/// single percentage is what made a long wait look like a stuck one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreparationPhase {
+    /// Asking the API which files this featured mod is made of. Short, but the
+    /// first thing that happens, and silence here reads as a frozen client.
+    Asking,
+    /// Reading every file the mod lists and checksumming it against the API's
+    /// MD5. The slow one, and until now the silent one: an install that is
+    /// already current spends all of its time here and reported nothing at
+    /// all, which is the whole of the complaint.
+    Verifying,
+    /// Fetching the files the checksum pass rejected, one at a time.
+    Downloading,
+    /// Everything outside the mod update: staging the map, unpacking it.
+    Map,
 }
 
 /// One step of a preparation run.
@@ -82,9 +114,22 @@ mod tests {
 
     #[test]
     fn counted_progress_is_bounded_and_handles_unknown_totals() {
-        assert_eq!(PreparationStep::counted("start", 0, 4).progress, Some(0));
-        assert_eq!(PreparationStep::counted("half", 2, 4).progress, Some(50));
-        assert_eq!(PreparationStep::counted("done", 9, 4).progress, Some(100));
-        assert_eq!(PreparationStep::counted("unknown", 0, 0).progress, None);
+        use PreparationPhase::Verifying;
+        assert_eq!(
+            PreparationStep::counted(Verifying, "start", 0, 4).progress,
+            Some(0)
+        );
+        assert_eq!(
+            PreparationStep::counted(Verifying, "half", 2, 4).progress,
+            Some(50)
+        );
+        assert_eq!(
+            PreparationStep::counted(Verifying, "done", 9, 4).progress,
+            Some(100)
+        );
+        assert_eq!(
+            PreparationStep::counted(Verifying, "unknown", 0, 0).progress,
+            None
+        );
     }
 }

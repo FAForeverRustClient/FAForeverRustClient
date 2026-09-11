@@ -3439,6 +3439,7 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 LobbyEvent::Preparing {
+                    phase: PreparationPhase::Verifying,
                     detail: "Updating faf".into(),
                     progress: Some(50),
                 }

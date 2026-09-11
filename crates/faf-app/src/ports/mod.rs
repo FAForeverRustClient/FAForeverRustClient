@@ -65,7 +65,9 @@ pub use streams::StreamsPort;
 pub use tourney::TourneyPort;
 pub use training::TrainingPort;
 pub use tutorials::TutorialsPort;
-pub use updater::{GamePreparation, GameUpdaterPort, PreparationStep, UpdateProgress};
+pub use updater::{
+    GamePreparation, GameUpdaterPort, PreparationPhase, PreparationStep, UpdateProgress,
+};
 pub use uploads::UploadsPort;
 
 use std::sync::Arc;

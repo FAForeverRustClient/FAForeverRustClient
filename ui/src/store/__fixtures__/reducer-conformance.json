@@ -4450,6 +4450,7 @@
             "event": {
               "type": "preparing",
               "payload": {
+                "phase": "verifying",
                 "detail": "Updating faf",
                 "progress": 50
               }
@@ -4466,6 +4467,7 @@
             "join": {
               "payload": {
                 "detail": "Updating faf",
+                "phase": "verifying",
                 "progress": 50
               },
               "type": "preparing"

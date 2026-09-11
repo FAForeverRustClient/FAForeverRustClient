@@ -23,10 +23,10 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::ports::PreparationStep;
+use crate::ports::{PreparationPhase, PreparationStep};
 
 use crate::infra::vault_install::{
-    bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
+    bounded_body, bounded_body_with_progress, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
 
 /// Byte offsets inside `ForgedAlliance.exe` where the 4-byte little-endian
@@ -317,6 +317,13 @@ async fn install_featured_mod(
     cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<InstalledMod, String> {
+    // `Updater.run` sets "Requesting files from API..." before anything else
+    // happens, for the same reason it is here: two API round trips on a slow
+    // connection is long enough for an unlabelled dialog to read as a hang.
+    progress(PreparationStep::indeterminate(
+        PreparationPhase::Asking,
+        format!("Asking the API which files {featured_mod} is made of…"),
+    ));
     let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
     let files = fetch_file_list(http, token, api_base, &mod_id, featured_mod, version).await?;
 
@@ -331,19 +338,50 @@ async fn install_featured_mod(
     };
 
     let total = files.len();
-    for (done, file) in files.iter().enumerate() {
-        update_file(
-            http,
-            cache_dir,
-            target_dir,
-            file,
-            featured_mod,
-            resolved,
-            done,
-            total,
-            progress,
-        )
-        .await?;
+
+    // Two passes, as `UpdaterWorker.update_files` does in the Python client:
+    // checksum everything first, then fetch only what the checksums rejected.
+    //
+    // One pass that hashes-and-fetches per file is fewer lines and was what
+    // this did, but it cannot say either of the two things a player waiting on
+    // it wants to know. It cannot narrate the checksum pass, because a file
+    // that matches is simply skipped without a word -- so an install that is
+    // already current, which is nearly every launch, reported *nothing* for
+    // however long it took to read a few hundred files. And it cannot say what
+    // is about to be downloaded, because it only discovers the next outdated
+    // file after finishing the previous one.
+    let outdated = checksum_pass(target_dir, &files, featured_mod, resolved, progress).await;
+
+    if outdated.is_empty() {
+        // `on_mod_progress` in the Python dialog, for `ProgressInfo(0, 0, "")`.
+        progress(PreparationStep::counted(
+            PreparationPhase::Downloading,
+            format!("{featured_mod} {resolved} is up to date ({total} files)"),
+            1,
+            1,
+        ));
+    } else {
+        let pending = outdated.len();
+        progress(PreparationStep::counted(
+            PreparationPhase::Downloading,
+            format!("{pending} of {total} files need updating for {featured_mod} {resolved}",),
+            0,
+            pending,
+        ));
+        for (done, file) in outdated.iter().enumerate() {
+            update_file(
+                http,
+                cache_dir,
+                target_dir,
+                file,
+                featured_mod,
+                resolved,
+                done,
+                pending,
+                progress,
+            )
+            .await?;
+        }
     }
 
     let shipped_exe = files
@@ -705,9 +743,63 @@ async fn fetch_file_list(
     Ok(files)
 }
 
-/// Bring one file up to date: skip if the local MD5 already matches, else
-/// serve from the content-addressed cache or download fresh (populating the
-/// cache either way, for reuse across versions/replays that share a file).
+/// Read every listed file and compare it against the API's MD5, naming each
+/// one as it goes; answer with the ones that need fetching.
+///
+/// `_calculate_md5s` in the Python client's `UpdaterWorker`, which emits
+/// `hash_progress` per file and drives its own bar in the dialog. The point of
+/// narrating a pass that usually changes nothing is that it is the pass that
+/// takes the time: a few hundred files read off disk, every launch, whether or
+/// not a single byte turns out to be stale.
+///
+/// A file whose checksum cannot be read at all -- missing, unreadable, the
+/// wrong length -- counts as outdated and is left to [`update_file`], which is
+/// where a bad checksum from the API becomes an error.
+async fn checksum_pass<'a>(
+    target_dir: &Path,
+    files: &'a [FeaturedModFile],
+    featured_mod: &str,
+    resolved: i32,
+    progress: &(dyn Fn(PreparationStep) + Sync),
+) -> Vec<&'a FeaturedModFile> {
+    let total = files.len();
+    let mut outdated = Vec::new();
+    for (index, file) in files.iter().enumerate() {
+        progress(PreparationStep::counted(
+            PreparationPhase::Verifying,
+            format!(
+                "Checking {featured_mod} {resolved}: {} ({}/{total})",
+                file.name,
+                index + 1
+            ),
+            index + 1,
+            total,
+        ));
+        if !file_matches_checksum(target_dir, file).await {
+            outdated.push(file);
+        }
+    }
+    outdated
+}
+
+/// Whether the file on disk already is the one the API listed.
+async fn file_matches_checksum(target_dir: &Path, file: &FeaturedModFile) -> bool {
+    let Ok(target_path) = safe_join_file(target_dir, &file.group, &file.name) else {
+        return false;
+    };
+    let Ok(bytes) = tokio::fs::read(&target_path).await else {
+        return false;
+    };
+    format!("{:x}", md5::compute(&bytes)).eq_ignore_ascii_case(&file.md5)
+}
+
+/// Bring one outdated file up to date: serve from the content-addressed cache
+/// or download fresh (populating the cache either way, for reuse across
+/// versions/replays that share a file).
+///
+/// The caller has already established that this file does not match, so there
+/// is no checksum shortcut here: `done`/`total` count the files being
+/// *fetched*, not the whole mod.
 #[allow(clippy::too_many_arguments)]
 async fn update_file(
     http: &reqwest::Client,
@@ -728,18 +820,17 @@ async fn update_file(
         ));
     }
 
-    if let Ok(bytes) = tokio::fs::read(&target_path).await {
-        if format!("{:x}", md5::compute(&bytes)) == file.md5 {
-            return Ok(()); // already up to date
-        }
-    }
-
     let detail = format!(
         "Updating {featured_mod} {resolved}: {} ({}/{total})",
         file.name,
         done + 1
     );
-    progress(PreparationStep::counted(detail.clone(), done, total));
+    progress(PreparationStep::counted(
+        PreparationPhase::Downloading,
+        detail.clone(),
+        done,
+        total,
+    ));
 
     if let Some(parent) = target_path.parent() {
         tokio::fs::create_dir_all(parent)
@@ -753,7 +844,12 @@ async fn update_file(
             tokio::fs::copy(&cache_path, &target_path)
                 .await
                 .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
-            progress(PreparationStep::counted(detail, done + 1, total));
+            progress(PreparationStep::counted(
+                PreparationPhase::Downloading,
+                detail,
+                done + 1,
+                total,
+            ));
             return Ok(());
         }
         // A killed prior write or external cache edit must not be promoted
@@ -780,7 +876,39 @@ async fn update_file(
             resp.status()
         ));
     }
-    let bytes = bounded_body(resp, &file.name, MAX_DOWNLOAD_BYTES).await?;
+    // Byte progress while the file is in flight, which is the Python dialog's
+    // `on_download_progress`: without it a single large file is one unmoving
+    // line for however long the CDN takes.
+    //
+    // Throttled to whole percent. `on_bytes` fires per chunk, and an event per
+    // chunk would put thousands of snapshots through the bus to redraw the
+    // same bar.
+    let last_percent = std::sync::atomic::AtomicU8::new(u8::MAX);
+    let bytes = bounded_body_with_progress(
+        resp,
+        &file.name,
+        MAX_DOWNLOAD_BYTES,
+        &|received, declared| {
+            let Some(size) = declared.filter(|size| *size > 0) else {
+                return;
+            };
+            let percent = ((received.min(size) * 100) / size) as u8;
+            if last_percent.swap(percent, std::sync::atomic::Ordering::Relaxed) == percent {
+                return;
+            }
+            progress(PreparationStep::counted(
+                PreparationPhase::Downloading,
+                format!(
+                    "{detail} — {:.1} MB of {:.1} MB",
+                    received as f64 / (1024.0 * 1024.0),
+                    size as f64 / (1024.0 * 1024.0)
+                ),
+                done * 100 + percent as usize,
+                total * 100,
+            ));
+        },
+    )
+    .await?;
     if !format!("{:x}", md5::compute(&bytes)).eq_ignore_ascii_case(&file.md5) {
         return Err(format!("downloaded {} failed its checksum", file.name));
     }
@@ -796,7 +924,12 @@ async fn update_file(
     tokio::fs::write(&target_path, &bytes)
         .await
         .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
-    progress(PreparationStep::counted(detail, done + 1, total));
+    progress(PreparationStep::counted(
+        PreparationPhase::Downloading,
+        detail,
+        done + 1,
+        total,
+    ));
     Ok(())
 }
 
@@ -1062,9 +1195,10 @@ pub async fn ensure_live_map(
     if dirs.is_empty() {
         return Ok(());
     }
-    progress(PreparationStep::indeterminate(format!(
-        "Downloading map {map_folder}…"
-    )));
+    progress(PreparationStep::indeterminate(
+        PreparationPhase::Map,
+        format!("Downloading map {map_folder}…"),
+    ));
     stage_map(http, content_base, &dirs, map_folder).await
 }
 
@@ -2092,6 +2226,96 @@ mod tests {
             hmac_token: "tok".into(),
             hmac_parameter: "verify".into(),
         }
+    }
+
+    /// A file list whose checksums are the real MD5s of what is written to
+    /// `dir`, so a `checksum_pass` over it finds everything current.
+    fn staged(dir: &std::path::Path, names: &[(&str, &str)]) -> Vec<FeaturedModFile> {
+        names
+            .iter()
+            .map(|(group, name)| {
+                let body = format!("contents of {name}");
+                let group_dir = dir.join(group);
+                std::fs::create_dir_all(&group_dir).unwrap();
+                std::fs::write(group_dir.join(name), &body).unwrap();
+                FeaturedModFile {
+                    group: (*group).into(),
+                    name: (*name).into(),
+                    md5: format!("{:x}", md5::compute(body.as_bytes())),
+                    version: None,
+                    cacheable_url: "https://example.invalid/f".into(),
+                    hmac_token: "tok".into(),
+                    hmac_parameter: "verify".into(),
+                }
+            })
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn the_checksum_pass_names_every_file_it_reads() {
+        // The report: an install that needs nothing says nothing, for as long
+        // as it takes to read a few hundred files. The pass that finds nothing
+        // to do is exactly the pass that has to narrate itself, because it is
+        // the one that takes the time.
+        let dir = tempfile::tempdir().unwrap();
+        let files = staged(
+            dir.path(),
+            &[
+                ("bin", "ForgedAlliance.exe"),
+                ("gamedata", "units.nx2"),
+                ("gamedata", "lua.nx2"),
+            ],
+        );
+
+        let seen = std::sync::Mutex::new(Vec::new());
+        let outdated = checksum_pass(dir.path(), &files, "faf", 3836, &|step| {
+            seen.lock().unwrap().push(step);
+        })
+        .await;
+
+        assert!(outdated.is_empty(), "everything on disk is current");
+        let seen = seen.into_inner().unwrap();
+        assert_eq!(seen.len(), 3, "one line per file, not one per download");
+        assert!(seen
+            .iter()
+            .all(|step| step.phase == PreparationPhase::Verifying));
+        assert!(seen[0].detail.contains("ForgedAlliance.exe"));
+        assert_eq!(
+            seen[0].detail,
+            "Checking faf 3836: ForgedAlliance.exe (1/3)"
+        );
+        assert_eq!(
+            (seen[0].progress, seen[2].progress),
+            (Some(33), Some(100)),
+            "the bar tracks files read, so it moves while nothing downloads"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_file_that_does_not_match_is_handed_on_to_be_fetched() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut files = staged(dir.path(), &[("bin", "current.dat"), ("bin", "stale.dat")]);
+        // The API moved on: the local copy is now the wrong one.
+        files[1].md5 = format!("{:x}", md5::compute(b"a newer build"));
+        // And one the install has never had at all.
+        files.push(FeaturedModFile {
+            group: "bin".into(),
+            name: "added.dat".into(),
+            md5: format!("{:x}", md5::compute(b"brand new")),
+            version: None,
+            cacheable_url: "https://example.invalid/f".into(),
+            hmac_token: "tok".into(),
+            hmac_parameter: "verify".into(),
+        });
+
+        let outdated = checksum_pass(dir.path(), &files, "faf", 3836, &|_| {}).await;
+
+        let names: Vec<&str> = outdated.iter().map(|file| file.name.as_str()).collect();
+        assert_eq!(
+            names,
+            ["stale.dat", "added.dat"],
+            "a missing file is outdated, not an error: update_file fetches it"
+        );
     }
 
     #[test]

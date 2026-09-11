@@ -13,8 +13,8 @@ use std::time::Duration;
 use async_trait::async_trait;
 use faf_app::infra::{fake_ports, FakeAuth, FakeLobby};
 use faf_app::ports::{
-    GameLaunchParams, GamePreparation, GameUpdaterPort, InstallPresence, PreparationStep,
-    ProcessPort, UpdateProgress,
+    GameLaunchParams, GamePreparation, GameUpdaterPort, InstallPresence, PreparationPhase,
+    PreparationStep, ProcessPort, UpdateProgress,
 };
 use faf_app::{App, Ports};
 use faf_domain::state::{
@@ -85,6 +85,7 @@ impl GameUpdaterPort for ScriptedUpdater {
         let (tx, rx) = mpsc::channel(16);
         for step in &self.steps {
             tx.send(UpdateProgress::Step(PreparationStep::indeterminate(
+                PreparationPhase::Verifying,
                 step.clone(),
             )))
             .await

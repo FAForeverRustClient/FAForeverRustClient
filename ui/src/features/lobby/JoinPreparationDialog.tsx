@@ -64,6 +64,11 @@ export function JoinPreparationDialog() {
     <Modal className="confirm-modal join-preparing-modal" onClose={() => setHidden(true)}>
       <div className="confirm-dialog-content">
         <h2>{t("lobby.joinProgress.title")}</h2>
+        {/* Which of the four kinds of waiting this is. The Python client gives
+            each its own bar; one bar plus the name of the phase driving it
+            says the same thing without four mostly-empty bars, and it is what
+            stops the long silent checksum pass reading as a hang. */}
+        <p className="join-preparing-phase">{t(`lobby.joinProgress.phase.${preparing.phase}`)}</p>
         <p className="join-preparing-detail">{preparing.detail}</p>
         <div
           className="join-preparing-bar"

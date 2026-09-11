@@ -83,7 +83,7 @@ pub use leaderboard::{
 pub use lobby::{
     AvailableAvatar, AvatarListStatus, Game, GameLaunch, HostGameConfig, JoinState, LobbyCommand,
     LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue, MatchmakingState, PartyMember,
-    PartyState, PlayMode, PlayerVeto, RatingRange,
+    PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
 };
 pub use map_generator::{
     is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
