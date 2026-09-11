@@ -71,11 +71,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # No macOS. Forged Alliance itself does not run there, so a client that
+        # cannot launch a game is not worth shipping, and the two jobs failed on
+        # every release anyway: `prepare:native` has no ICE adapter jar and no
+        # Java runtime for darwin, and Tauri will not bundle a resource that is
+        # not on disk. Two lines to put back if that ever changes.
         include:
-          - platform: 'macos-latest' # Apple Silicon
-            args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # Intel
-            args: '--target x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
           - platform: 'windows-latest'
@@ -86,8 +87,6 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install Linux build dependencies
         if: matrix.platform == 'ubuntu-22.04'
