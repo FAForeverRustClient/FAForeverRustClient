@@ -379,6 +379,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "chat.jumpToLatest": "К последнему",
   "chat.send": "Отправить",
   "chat.reply.start": "Ответить",
+  "chat.reply.hint": "Ответить (или щёлкните сообщение правой кнопкой)",
   "chat.reply.banner": "Ответ для {name}",
   "chat.reply.cancel": "Отменить ответ",
   "chat.reaction.remove": "Убрать свою реакцию {emoji}",

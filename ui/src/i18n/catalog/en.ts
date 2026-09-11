@@ -165,6 +165,7 @@ export const en = {
   "chat.jumpToLatest": "Jump to latest",
   "chat.send": "Send",
   "chat.reply.start": "Reply",
+  "chat.reply.hint": "Reply (or right-click the message)",
   "chat.reply.banner": "Replying to {name}",
   "chat.reply.cancel": "Cancel reply",
   "chat.reaction.remove": "Remove your {emoji} reaction",

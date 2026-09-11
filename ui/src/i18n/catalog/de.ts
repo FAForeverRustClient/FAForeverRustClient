@@ -128,6 +128,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "chat.jumpToLatest": "Zum neuesten springen",
   "chat.send": "Senden",
   "chat.reply.start": "Antworten",
+  "chat.reply.hint": "Antworten (oder Rechtsklick auf die Nachricht)",
   "chat.reply.banner": "Antwort an {name}",
   "chat.reply.cancel": "Antwort verwerfen",
   "chat.reaction.remove": "Eigene {emoji}-Reaktion entfernen",

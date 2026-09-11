@@ -60,6 +60,22 @@ const EMPTY_REACTIONS: readonly Reaction[] = [];
 const EMPTY_REACTION_MAP: MessageReactionsMap = {};
 const noReact = () => {};
 
+/**
+ * Whether a right-click on a line should start a reply to it.
+ *
+ * Info and error lines are the client talking to the player rather than
+ * somebody in the channel: there is nobody to answer, and they carry no reply
+ * button either. A line with no `msgid` cannot be referenced by a reply, so it
+ * is not offered as one.
+ */
+export function repliesOnRightClick(
+  kind: ChatMessage["kind"],
+  msgid: string | undefined,
+  replyingOffered: boolean,
+): boolean {
+  return replyingOffered && !!msgid && kind !== "info" && kind !== "error";
+}
+
 export const MessageList = memo(function MessageList({
   messages,
   self,
@@ -343,6 +359,23 @@ const Line = memo(function Line({
   const fromSelf = !!self && message.sender === self;
   const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
 
+  // Right-clicking the line answers it. The button in the corner is a hover
+  // target the width of the pane away from the message it acts on, which is a
+  // long way to go for the most common thing anybody does with a message. It
+  // stays, because a pointer gesture is no use to the keyboard.
+  //
+  // Nothing is taken away by claiming the gesture: the desktop context menu
+  // policy already suppresses the native menu everywhere outside a text field,
+  // so a right-click on a message did nothing at all.
+  const replyOnRightClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (!repliesOnRightClick(message.kind, message.msgid, !!onReply)) return;
+      event.preventDefault();
+      onReply?.(message);
+    },
+    [onReply, message],
+  );
+
   const nick = (
     <button
       type="button"
@@ -350,14 +383,23 @@ const Line = memo(function Line({
       style={nameStyle}
       title={`Message ${message.sender}`}
       onClick={() => onNickClick(message.sender)}
-      onContextMenu={(e) => onNickContextMenu(message.sender, e)}
+      onContextMenu={(e) => {
+        // The player menu wins over the row's reply gesture: this is the one
+        // place in a message where a right-click already meant something.
+        e.stopPropagation();
+        onNickContextMenu(message.sender, e);
+      }}
     >
       {message.sender}
     </button>
   );
 
   return (
-    <div ref={rowRef} className={`chat-message is-${message.kind}${fromSelf ? " is-self" : ""}${activeSearchMatch ? " is-search-active" : ""}`}>
+    <div
+      ref={rowRef}
+      className={`chat-message is-${message.kind}${fromSelf ? " is-self" : ""}${activeSearchMatch ? " is-search-active" : ""}`}
+      onContextMenu={replyOnRightClick}
+    >
       {/* The answered line, quoted from the scrollback rather than copied into
           the reply: an answer to something scrolled out of the retained window
           shows nothing, which is honest, where a stored copy would keep
@@ -441,7 +483,7 @@ const Line = memo(function Line({
                 type="button"
                 className="chat-action-btn"
                 aria-label={t("chat.reply.start")}
-                title={t("chat.reply.start")}
+                title={t("chat.reply.hint")}
                 onClick={() => onReply(message)}
               >
                 <Icon name="arrowRight" size={13} />
