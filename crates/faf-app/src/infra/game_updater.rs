@@ -899,7 +899,7 @@ async fn update_file(
             progress(PreparationStep::counted(
                 PreparationPhase::Downloading,
                 format!(
-                    "{detail} — {:.1} MB of {:.1} MB",
+                    "{detail}: {:.1} MB of {:.1} MB",
                     received as f64 / (1024.0 * 1024.0),
                     size as f64 / (1024.0 * 1024.0)
                 ),
