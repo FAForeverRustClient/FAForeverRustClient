@@ -25,6 +25,7 @@ import { friendsInGame } from "./friendPresence";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
+import { displayedRating, gameLeaderboard } from "../../shared/playerRatings";
 
 export type GameViewMode = "list" | "tiles";
 
@@ -410,6 +411,9 @@ function GameLineup({
   const isSinglePlayer = isSingleTeam && totalPlayers === 1;
   const maxMods = isSingleTeam ? 2 : 4;
   const profileFor = (login: string) => findPlayer(social, login);
+  // Every rating in this overlay is the one this game is played for: a ladder
+  // lobby shows ladder ratings, a custom one shows global.
+  const leaderboard = gameLeaderboard(game.ratingType);
 
   const tooltipClass = [
     "game-tile-tooltip",
@@ -433,7 +437,7 @@ function GameLineup({
       onMouseLeave={hideGlobalLineupSoon}
     >
       <header className="game-lineup-title">{game.title}</header>
-      {mirrored && <TeamBalance teams={teams} profileFor={profileFor} />}
+      {mirrored && <TeamBalance teams={teams} profileFor={profileFor} leaderboard={leaderboard} />}
       {teams.length > 0 ? (
         <div
           className={
@@ -452,6 +456,7 @@ function GameLineup({
               soleTeam={teams.length === 1}
               side={mirrored ? (index === 0 ? "left" : "right") : "neutral"}
               profileFor={profileFor}
+              leaderboard={leaderboard}
             />
           ))}
           {mirrored && <span className="game-lineup-versus" aria-hidden>VS</span>}
@@ -481,10 +486,6 @@ function GameLineup({
 
 type LineupSide = "left" | "right" | "neutral";
 
-export function displayedRating(profile: PlayerProfile | undefined): number | null {
-  return profile && profile.globalRating !== 0 ? profile.globalRating : null;
-}
-
 export function displayTeamName(team: string, soleTeam: boolean): string {
   if (team === "-1" || team === "null") return t("lobby.details.observers");
   const numeric = Number(team);
@@ -499,8 +500,9 @@ export function displayTeamName(team: string, soleTeam: boolean): string {
 function teamRating(
   players: string[],
   profileFor: (login: string) => PlayerProfile | undefined,
+  leaderboard: string,
 ): number | null {
-  const ratings = players.map((login) => displayedRating(profileFor(login)));
+  const ratings = players.map((login) => displayedRating(profileFor(login), leaderboard));
   return ratings.every((rating): rating is number => rating !== null)
     ? ratings.reduce((sum, rating) => sum + rating, 0)
     : null;
@@ -517,12 +519,14 @@ function teamRating(
 function TeamBalance({
   teams,
   profileFor,
+  leaderboard,
 }: {
   teams: [string, string[]][];
   profileFor: (login: string) => PlayerProfile | undefined;
+  leaderboard: string;
 }) {
-  const left = teamRating(teams[0][1], profileFor);
-  const right = teamRating(teams[1][1], profileFor);
+  const left = teamRating(teams[0][1], profileFor, leaderboard);
+  const right = teamRating(teams[1][1], profileFor, leaderboard);
   if (left === null || right === null || left + right === 0) return null;
 
   const leftShare = Math.round((left / (left + right)) * 100);
@@ -550,17 +554,19 @@ function GameLineupTeam({
   soleTeam,
   side,
   profileFor,
+  leaderboard,
 }: {
   team: string;
   players: string[];
   soleTeam: boolean;
   side: LineupSide;
   profileFor: (login: string) => PlayerProfile | undefined;
+  leaderboard: string;
 }) {
   const countryOf = useCountryLabel();
   const profiles = players.map((login) => profileFor(login));
-  const ratings = profiles.map(displayedRating);
-  const total = teamRating(players, profileFor);
+  const ratings = profiles.map((profile) => displayedRating(profile, leaderboard));
+  const total = teamRating(players, profileFor, leaderboard);
 
   const isSinglePlayer = soleTeam && players.length === 1;
 

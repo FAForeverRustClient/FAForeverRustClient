@@ -12,6 +12,7 @@ function game(simMods: Record<string, string>): Game {
     map: "scmp_009",
     modName: "faf",
     averageRating: 1200,
+    ratingType: "global",
     passwordProtected: false,
     visibility: "public",
     gameType: "custom",

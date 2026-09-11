@@ -176,6 +176,7 @@ fn game(id: i32, host: &str, members: &[&str]) -> Game {
         map: "scmp_009".into(),
         mod_name: "faf".into(),
         average_rating: 1200,
+        rating_type: "global".into(),
         password_protected: false,
         visibility: "public".into(),
         game_type: "custom".into(),

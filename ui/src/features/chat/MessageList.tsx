@@ -15,7 +15,7 @@ import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, Reaction, S
 import { MessageReactions } from "./MessageReactions";
 import { Icon } from "../../design-system/Icon";
 import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
-import type { ChatGameLink } from "./chatFormat";
+import type { ChatGameLink, PingIndex } from "./chatFormat";
 import { useTranslation } from "../../i18n/useTranslation";
 import { playersByNickname } from "../../store/reducer";
 
@@ -30,6 +30,8 @@ interface Props {
   emptyLabel: string;
   onNickClick: (nick: string) => void;
   onNickContextMenu: (nick: string, event: React.MouseEvent) => void;
+  /** Whose player menu is open: their name in a line stays highlighted. */
+  menuTarget?: string | null;
   showTimestamps: boolean;
   use24HourTime: boolean;
   users: ChatUser[];
@@ -82,6 +84,7 @@ export const MessageList = memo(function MessageList({
   emptyLabel,
   onNickClick,
   onNickContextMenu,
+  menuTarget = null,
   showTimestamps,
   use24HourTime,
   users,
@@ -122,6 +125,16 @@ export const MessageList = memo(function MessageList({
   const usersByName = useMemo(
     () => new Map(users.map((user) => [user.name.toLowerCase(), user])),
     [users],
+  );
+  // Who a line in this conversation can ping, and in what colour. Built once
+  // per roster change rather than per line: a busy channel is a few hundred
+  // names against a few hundred rendered messages.
+  const pings = useMemo<PingIndex>(
+    () => ({
+      names: new Set(usersByName.keys()),
+      color: preferences.nameColors.pings,
+    }),
+    [usersByName, preferences.nameColors.pings],
   );
   // Shared with the roster rather than a second copy of the same few thousand
   // entries, and rebuilt only when the directory itself changes.
@@ -286,6 +299,8 @@ export const MessageList = memo(function MessageList({
               registerRow={registerRow}
               onNickClick={onNickClick}
               onNickContextMenu={onNickContextMenu}
+              menuOpen={menuTarget === message.sender}
+              pings={pings}
               onGameLink={onGameLink}
               reactions={reactions[message.msgid ?? ""] ?? EMPTY_REACTIONS}
               onReact={onReact}
@@ -312,6 +327,7 @@ const Line = memo(function Line({
   withTime,
   onNickClick,
   onNickContextMenu,
+  menuOpen,
   use24HourTime,
   user,
   profile,
@@ -320,6 +336,7 @@ const Line = memo(function Line({
   search,
   activeSearchMatch,
   registerRow,
+  pings,
   onGameLink,
   reactions,
   onReact,
@@ -338,6 +355,7 @@ const Line = memo(function Line({
   quoted?: ChatMessage;
   onNickClick: (nick: string) => void;
   onNickContextMenu: (nick: string, event: React.MouseEvent) => void;
+  menuOpen: boolean;
   use24HourTime: boolean;
   user: ChatUser | undefined;
   profile: PlayerProfile | undefined;
@@ -346,6 +364,7 @@ const Line = memo(function Line({
   search: string;
   activeSearchMatch: boolean;
   registerRow: (id: string, node: HTMLDivElement | null) => void;
+  pings: PingIndex;
   onGameLink: ((link: ChatGameLink) => void) | undefined;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -354,7 +373,7 @@ const Line = memo(function Line({
     [registerRow, message.id],
   );
   const { t } = useTranslation();
-  const body = renderBody(message.content, self, search, onGameLink);
+  const body = renderBody(message.content, self, search, onGameLink, pings);
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
   const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
@@ -379,7 +398,7 @@ const Line = memo(function Line({
   const nick = (
     <button
       type="button"
-      className={nameStyle ? "chat-nick" : "chat-nick is-monochrome"}
+      className={`${nameStyle ? "chat-nick" : "chat-nick is-monochrome"}${menuOpen ? " is-menu-open" : ""}`}
       style={nameStyle}
       title={`Message ${message.sender}`}
       onClick={() => onNickClick(message.sender)}

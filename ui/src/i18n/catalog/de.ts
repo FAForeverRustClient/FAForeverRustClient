@@ -1309,6 +1309,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.nameColors.foes": "Feinde",
   "settings.nameColors.moderators": "Moderatoren",
   "settings.nameColors.admins": "Administratoren",
+  "settings.nameColors.pings": "Pings (Namen in einer Nachricht)",
   "settings.nameColors.rules": "Regeln für Namensfarben",
   "settings.nameColors.rulesHint": "Einzelzuweisungen haben Vorrang, danach du selbst, Administratoren, Moderatoren, Freunde und Feinde.",
   "settings.nameColors.reset": "Auf Standardfarben zurücksetzen",

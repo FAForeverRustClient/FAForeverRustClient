@@ -1,4 +1,5 @@
-import type { Game, SocialState } from "../../ipc/bindings";
+import type { Game, PlayerProfile, SocialState } from "../../ipc/bindings";
+import { displayedRating, gameLeaderboard } from "../../shared/playerRatings";
 
 export type GamePresenceStatus = "hosting" | "lobbying" | "playing" | "playingDelayed";
 
@@ -11,11 +12,20 @@ export interface GameSummaryPlayer {
   login: string;
   country: string;
   rating: number | null;
+  /**
+   * The lobby's record for this player, where it has one.
+   *
+   * Carried rather than looked up again by the card: the name in a lineup is
+   * a button onto this player's profile and their menu, and both want the id
+   * and the rating table the scan above already found.
+   */
+  profile: PlayerProfile | undefined;
 }
 
 export interface GameSummaryTeam {
   id: string;
   label: string;
+  /** Combined rating of the team, or `null` when nobody in it is rated. */
   rating: number | null;
   players: GameSummaryPlayer[];
 }
@@ -119,6 +129,9 @@ function teamOrder([id]: [string, string[]]): number {
 }
 
 export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryTeam[] {
+  // The leaderboard this game is played on, not always the global one. A 1v1
+  // ladder game listing everybody's global rating was the report.
+  const leaderboard = gameLeaderboard(game.ratingType);
   return Object.entries(game.teams)
     .filter(([, players]) => players.length > 0)
     .sort((left, right) => teamOrder(left) - teamOrder(right))
@@ -128,7 +141,8 @@ export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryT
         return {
           login,
           country: profile?.country ?? "",
-          rating: profile && profile.globalRating > 0 ? profile.globalRating : null,
+          rating: displayedRating(profile, leaderboard),
+          profile,
         };
       });
       const knownRatings = players.flatMap((player) => player.rating === null ? [] : [player.rating]);
@@ -142,3 +156,4 @@ export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryT
       };
     });
 }
+

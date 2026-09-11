@@ -7,6 +7,10 @@
 
 import type { SocialState, VaultMap } from "../../ipc/bindings";
 import { MapThumbnail } from "../../shared/MapThumbnail";
+import { openPlayerCard } from "../player-card/playerCardActions";
+import { GLOBAL_LEADERBOARD, gameLeaderboard, leaderboardLabel } from "../../shared/playerRatings";
+import { displayName } from "./chatFormat";
+import { rosterRatingSummary } from "./ratingSummary";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/useCountryLabel";
 import { formatGameTime } from "../../shared/durations";
@@ -32,6 +36,18 @@ interface Props {
   showTeams?: boolean;
   /** Drawn beside the title where the card is not already next to a badge. */
   showMap?: boolean;
+  /**
+   * Makes the names in the lineup behave the way a name in the roster does:
+   * hover for the rating summary, click for the profile card, double-click
+   * for a private conversation, right-click for the player menu.
+   *
+   * Optional, and absent in the popover on purpose. That card is a tooltip
+   * that closes when the pointer leaves the badge it hangs off, so nothing in
+   * it can be reached to be clicked; offering buttons there would be a
+   * promise the surface cannot keep.
+   */
+  onOpenConversation?: (nickname: string) => void;
+  onPlayerContextMenu?: (nickname: string, event: React.MouseEvent) => void;
 }
 
 export function GameSummaryCard({
@@ -41,12 +57,15 @@ export function GameSummaryCard({
   now,
   showTeams = true,
   showMap = false,
+  onOpenConversation,
+  onPlayerContextMenu,
 }: Props) {
   const countryOf = useCountryLabel();
   const { t } = useTranslation();
   const presentation = mapPresentation(vault, presence.game.map);
   const status = t(STATUS_LABEL[presence.status]);
   const teams = showTeams ? gameTeamSummaries(presence.game, social) : [];
+  const leaderboard = gameLeaderboard(presence.game.ratingType);
   const elapsed = gameElapsedSeconds(presence, now);
   // Named for what it answers rather than for the field it came from: how long
   // somebody has been playing, or how long a lobby has been sitting open.
@@ -75,7 +94,15 @@ export function GameSummaryCard({
       <div className="chat-game-meta">
         <span>{presence.game.modName.toUpperCase()}</span>
         <span>{presence.game.players}/{presence.game.maxPlayers} players</span>
-        {presence.game.averageRating > 0 && <span>{presence.game.averageRating} average</span>}
+        {/* Named where it is not the global board, and so is every rating in
+            the lineup below it. */}
+        {presence.game.averageRating > 0 && (
+          <span>
+            {presence.game.averageRating} {leaderboard === GLOBAL_LEADERBOARD
+              ? "average"
+              : `${leaderboardLabel(leaderboard)} average`}
+          </span>
+        )}
         {elapsed !== null && (
           <span className="chat-game-elapsed">
             {elapsedLabel} <b>{formatGameTime(elapsed)}</b>
@@ -105,7 +132,23 @@ export function GameSummaryCard({
                         onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
                       />
                     ) : <span className="chat-game-flag-placeholder" />}
-                    <span>{player.login}</span>
+                    {onPlayerContextMenu ? (
+                      <button
+                        type="button"
+                        className="chat-game-player"
+                        title={rosterRatingSummary(
+                          displayName(player.login, player.profile),
+                          player.profile,
+                        )}
+                        onClick={() => void openPlayerCard(player.profile?.id ?? null, player.login)}
+                        onDoubleClick={() => onOpenConversation?.(player.login)}
+                        onContextMenu={(event) => onPlayerContextMenu(player.login, event)}
+                      >
+                        {player.login}
+                      </button>
+                    ) : (
+                      <span>{player.login}</span>
+                    )}
                     {player.rating !== null && <small>({player.rating})</small>}
                   </li>
                 ))}

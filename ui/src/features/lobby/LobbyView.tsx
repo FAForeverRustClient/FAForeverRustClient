@@ -16,7 +16,6 @@ import {
   CustomGamesBrowser,
   GamePreviewDialog,
   displayTeamName,
-  displayedRating,
   isCoopGame,
   isCustomGameRanked,
   type GameViewMode,
@@ -28,6 +27,13 @@ import { PlayModeTabs } from "./PlayModeTabs";
 import { queuedPlayerCount } from "./queuedPlayers";
 import { PrivateGameDialog } from "./PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
+import {
+  GLOBAL_LEADERBOARD,
+  averageRating,
+  displayedRating,
+  gameLeaderboard,
+  leaderboardLabel,
+} from "../../shared/playerRatings";
 import { useCountryLabel } from "../../shared/useCountryLabel";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../shared/mapPresentation";
 import { openPlayerCard } from "../player-card/playerCardActions";
@@ -157,6 +163,10 @@ function GameDetails({
         return a.localeCompare(b);
       });
   }, [game.teams]);
+  // Every rating in this panel, the headline average included, is the one
+  // this game is rated on. A ladder lobby listing global ratings is the
+  // number the game is not about.
+  const leaderboard = gameLeaderboard(game.ratingType);
   const simMods = Object.entries(game.simMods);
   const [expandedMods, setExpandedMods] = useState(false);
   useEffect(() => {
@@ -276,7 +286,18 @@ function GameDetails({
               than no row: this is a number somebody is deciding on. */}
           {size && <div><dt>{t("lobby.details.mapSize")}</dt><dd>{size.full}</dd></div>}
           <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
-          <div><dt>{t("lobby.details.averageRating")}</dt><dd>{game.averageRating || t("lobby.details.unrated")}</dd></div>
+          {/* Named where it is not the global board, because a row reading
+              "583" is not checkable against anything until it says which
+              ladder it is 583 on. */}
+          <div>
+            <dt>{t("lobby.details.averageRating")}</dt>
+            <dd>
+              {game.averageRating || t("lobby.details.unrated")}
+              {leaderboard !== GLOBAL_LEADERBOARD && (
+                <small className="game-detail-leaderboard"> {leaderboardLabel(leaderboard)}</small>
+              )}
+            </dd>
+          </div>
           <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? t("lobby.details.ratingRangeValue", { from: game.ratingMin ?? t("lobby.details.any"), to: game.ratingMax ?? t("lobby.details.any") }) : t("lobby.details.open")}</dd></div>
         </dl>
         {simMods.length > 0 && (
@@ -312,22 +333,26 @@ function GameDetails({
           <div className="game-detail-section">
             {teams.map(([team, players]) => {
               const isObserver = team === "-1" || team === "null";
-              const playerRatings = players
-                .map((p) => displayedRating(findPlayer(social, p)))
-                .filter((r): r is number => r !== null);
-              const totalRating = playerRatings.length > 0
-                ? playerRatings.reduce((sum, r) => sum + r, 0)
+              const playerRatings = players.map((p) =>
+                displayedRating(findPlayer(social, p), leaderboard),
+              );
+              const known = playerRatings.filter((r): r is number => r !== null);
+              const totalRating = known.length > 0
+                ? known.reduce((sum, r) => sum + r, 0)
                 : null;
-              const avgRating = playerRatings.length > 0
-                ? Math.round(totalRating! / playerRatings.length)
-                : null;
+              const avgRating = averageRating(playerRatings);
+              // A one-player team has no average and no total: both are the
+              // rating already printed on that player's own row, two inches
+              // to the right. A free-for-all is a column of these, and the
+              // stats it grew were the same number said three times.
+              const showsStats = !isObserver && totalRating !== null && players.length > 1;
               return (
                 <div className="game-team" key={team}>
                   <div className="game-team-header">
                     <span className="game-team-name">
                       {displayTeamName(team, teams.length === 1)}
                     </span>
-                    {!isObserver && totalRating !== null && (
+                    {showsStats && (
                       <span className="game-team-stats">
                         Avg: {avgRating} | Total: {totalRating}
                       </span>
@@ -336,7 +361,7 @@ function GameDetails({
                 <ul className="game-team-player-list">
                   {players.map((p) => {
                     const profile = findPlayer(social, p);
-                    const rating = displayedRating(profile);
+                    const rating = displayedRating(profile, leaderboard);
                     return (
                       <li key={p} className="game-preview-player-row">
                         {profile?.country ? (

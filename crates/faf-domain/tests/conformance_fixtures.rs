@@ -5122,6 +5122,34 @@ fn cases() -> Vec<Case> {
                     map_names: vec!["neroxis_map_generator_1.15.2_alsokeep".into()],
                 }
                 .into(),
+                // The opposite rule to the two above: one whole veto
+                // selection, replaced rather than merged, because clearing
+                // every veto has to be able to clear it. The second event is
+                // the server capping the first, which is the only time it
+                // sends one back.
+                SettingsEvent::MatchmakerVetoesChanged {
+                    vetoes: vec![
+                        PlayerVeto {
+                            matchmaker_queue_map_pool_id: 4,
+                            map_pool_map_version_id: 91,
+                            veto_tokens_applied: 2,
+                        },
+                        PlayerVeto {
+                            matchmaker_queue_map_pool_id: 4,
+                            map_pool_map_version_id: 92,
+                            veto_tokens_applied: 1,
+                        },
+                    ],
+                }
+                .into(),
+                SettingsEvent::MatchmakerVetoesChanged {
+                    vetoes: vec![PlayerVeto {
+                        matchmaker_queue_map_pool_id: 4,
+                        map_pool_map_version_id: 91,
+                        veto_tokens_applied: 1,
+                    }],
+                }
+                .into(),
                 SettingsEvent::SocialChanged {
                     preferences: SocialPreferences {
                         player_notes: vec![

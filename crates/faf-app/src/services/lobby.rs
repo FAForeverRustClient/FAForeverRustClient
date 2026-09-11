@@ -188,7 +188,14 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(LobbyEvent::VetoesUpdated {
                 vetoes: vetoes.clone(),
             });
+            // Remembered as well as sent. The server holds vetoes on the
+            // player's session and nowhere else, so this is the only copy that
+            // survives a logout; see `SettingsState::matchmaker_vetoes`.
+            out.emit(SettingsEvent::MatchmakerVetoesChanged {
+                vetoes: vetoes.clone(),
+            });
             ctx.ports.lobby.set_player_vetoes(vetoes);
+            crate::services::settings::persist(ctx, out).await;
         }
         LobbyCommand::LoadAvatars => {
             out.emit(LobbyEvent::AvatarsLoading);
@@ -381,6 +388,7 @@ async fn handle_update(
         LobbyUpdate::Authenticated => {
             game_notifications.mark_authenticated();
             out.emit(LobbyEvent::Connected);
+            restore_player_vetoes(ctx, out);
         }
         // Back to the state the first attempt starts in. Deliberately not
         // `Disconnected`, which clears every list the lobby has sent: the
@@ -476,7 +484,18 @@ async fn handle_update(
                 );
             }
         }
-        LobbyUpdate::Vetoes(vetoes) => out.emit(LobbyEvent::VetoesUpdated { vetoes }),
+        // The server only sends this when it has *changed* the selection:
+        // pools move between releases, and a veto on a map that left the pool,
+        // or one token too many for a pool that shrank, is capped rather than
+        // rejected. What it hands back is what is actually in force, so it
+        // replaces what we remembered instead of being merged with it.
+        LobbyUpdate::Vetoes(vetoes) => {
+            out.emit(LobbyEvent::VetoesUpdated {
+                vetoes: vetoes.clone(),
+            });
+            out.emit(SettingsEvent::MatchmakerVetoesChanged { vetoes });
+            crate::services::settings::persist(ctx, out).await;
+        }
         LobbyUpdate::Launch(launch) => {
             let already_prepared = out.with_state(|state| {
                 matches!(
@@ -642,6 +661,36 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
     for channel in channels {
         ctx.ports.chat.join_channel(channel);
     }
+}
+
+/// Send the remembered matchmaker vetoes back to the server, once the lobby
+/// has authenticated.
+///
+/// The server keeps a player's vetoes on their session object and nowhere
+/// else: no table behind them, and no command to ask for them. Logging out
+/// discards them, and a client that only ever listens for `vetoes_info` starts
+/// every session with none, whatever the player saved last time. That is the
+/// whole of "not persistent after logging in and out even after saving".
+///
+/// Replaying them is safe rather than optimistic. `set_player_vetoes` is
+/// validated and capped against the current pools on arrival, exactly as a
+/// selection made by hand is, and the server answers with `vetoes_info` when
+/// it had to change anything, which is handled above and writes the corrected
+/// set back. A pool that shrank between sessions therefore corrects itself on
+/// the first login after it did.
+///
+/// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
+/// without it the Play tab would show an empty selection while the server held
+/// the real one.
+fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
+    let vetoes = out.with_state(|state| state.settings.matchmaker_vetoes.clone());
+    if vetoes.is_empty() {
+        return;
+    }
+    out.emit(LobbyEvent::VetoesUpdated {
+        vetoes: vetoes.clone(),
+    });
+    ctx.ports.lobby.set_player_vetoes(vetoes);
 }
 
 fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
@@ -867,6 +916,7 @@ mod tests {
             map: "scmp_001".into(),
             mod_name: "faf".into(),
             average_rating: 1_000,
+            rating_type: "global".into(),
             password_protected: false,
             visibility: "public".into(),
             game_type: "custom".into(),

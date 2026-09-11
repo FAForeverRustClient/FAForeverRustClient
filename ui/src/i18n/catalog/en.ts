@@ -1422,6 +1422,7 @@ export const en = {
   "settings.nameColors.foes": "Foes",
   "settings.nameColors.moderators": "Moderators",
   "settings.nameColors.admins": "Administrators",
+  "settings.nameColors.pings": "Pings (names inside a message)",
   "settings.nameColors.rules": "Name color rules",
   "settings.nameColors.rulesHint": "Individual assignments take priority, followed by you, administrators, moderators, friends, and foes.",
   "settings.nameColors.reset": "Reset to standard colors",
