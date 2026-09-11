@@ -512,6 +512,18 @@
 
 
 
+/* The right-hand column: the state chip above the buttons that change it.
+   The chip used to sit beside the mod name and take its width, which a long
+   name paid for -- the chip is the same six letters on every row and the name
+   is the one thing that differs. A column rather than absolute positioning,
+   so it can never land on top of the buttons. */
+.installed-mod-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 .installed-mod-actions {
   display: flex;
   align-items: center;
