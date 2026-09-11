@@ -27,7 +27,7 @@ import type { UploadKind } from "../../ipc/bindings";
 import "./upload-intro.css";
 
 /** The vault rules, which an uploader is agreeing to. */
-const VAULT_RULES_URL = "https://wiki.faforever.com/en/Play/Vault-Rules";
+const VAULT_RULES_URL = "https://wiki.faforever.com/en/Development/Vault/Rules";
 
 export function UploadIntroDialog({
   kind,
