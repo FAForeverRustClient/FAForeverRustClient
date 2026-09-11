@@ -24,6 +24,15 @@ pub struct Game {
     /// `featured_mod`, unrelated to `GameLaunch`'s `mod`.
     pub mod_name: String,
     pub average_rating: i32,
+    /// Which leaderboard this game is rated on: `global` for a custom game,
+    /// `ladder_1v1` or `tmm_2v2`/`tmm_3v3`/`tmm_4v4` for a matchmaker one.
+    /// Wire key on `game_info` is `rating_type`.
+    ///
+    /// It decides which of a player's ratings belongs beside their name. A
+    /// 1v1 ladder game listing everybody's global rating is the number the
+    /// lobby is not about, and it is the number somebody reads to judge the
+    /// game they are watching.
+    pub rating_type: String,
     pub password_protected: bool,
     pub visibility: String,
     pub game_type: String,
@@ -293,6 +302,30 @@ pub struct GameLaunch {
     pub args: Vec<String>,
 }
 
+/// Which part of getting the install ready a preparation step belongs to.
+///
+/// The Python client's updater dialog gives each of these its own progress bar
+/// rather than sharing one, because their numbers do not add up: the checksum
+/// pass walks every file the featured mod lists, and the download pass walks
+/// only the few of them that turned out to be stale. Reporting both as a
+/// single percentage made a bar that jumped, stalled and said nothing about
+/// which kind of waiting was going on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PreparationPhase {
+    /// Asking the API which files this featured mod is made of.
+    #[default]
+    Asking,
+    /// Reading every listed file and checksumming it against the API's MD5.
+    /// The slow part of a launch that has nothing to download, and the part
+    /// that used to happen in complete silence.
+    Verifying,
+    /// Fetching the files the checksum pass rejected.
+    Downloading,
+    /// Staging the map.
+    Map,
+}
+
 /// Where a join attempt stands. Distinct from [`LobbyStatus`] (the connection):
 /// you can be `Connected` and `Idle`, or `Connected` and `Joining`.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -320,6 +353,7 @@ pub enum JoinState {
     /// it (Java's updater task title, the Python client's updater dialog)
     /// rather than leaving the client looking frozen.
     Preparing {
+        phase: PreparationPhase,
         detail: String,
         progress: Option<u8>,
     },
@@ -482,6 +516,7 @@ pub enum LobbyEvent {
     },
     /// Progress on getting the install ready for the pending launch.
     Preparing {
+        phase: PreparationPhase,
         detail: String,
         progress: Option<u8>,
     },
@@ -587,7 +622,17 @@ pub enum LobbyCommand {
 
 pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
     match event {
-        LobbyEvent::Connecting => state.status = LobbyStatus::Connecting,
+        LobbyEvent::Connecting => {
+            state.status = LobbyStatus::Connecting;
+            // A join belongs to one connection. On the first attempt there is
+            // nothing to clear; on a reconnect there may be a join the server
+            // has already forgotten, and leaving it standing is how a client
+            // ends up reporting a join in progress that nothing will ever
+            // finish. The lists are deliberately left alone: the server
+            // resends them, and clearing them would make a two-second blip
+            // look like a disconnection.
+            state.join = JoinState::Idle;
+        }
         LobbyEvent::Connected => state.status = LobbyStatus::Connected,
         LobbyEvent::HostPrepared { title } => state.host_prefill = Some(title.clone()),
         LobbyEvent::HostPrefillCleared => state.host_prefill = None,
@@ -640,8 +685,13 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
                 launch: launch.clone(),
             }
         }
-        LobbyEvent::Preparing { detail, progress } => {
+        LobbyEvent::Preparing {
+            phase,
+            detail,
+            progress,
+        } => {
             state.join = JoinState::Preparing {
+                phase: *phase,
                 detail: detail.clone(),
                 progress: *progress,
             }
@@ -707,6 +757,7 @@ mod tests {
             map: "Seton's Clutch".into(),
             mod_name: "faf".into(),
             average_rating: 0,
+            rating_type: "global".into(),
             password_protected: false,
             visibility: "public".into(),
             game_type: "custom".into(),
@@ -997,6 +1048,35 @@ mod tests {
     }
 
     #[test]
+    fn reconnecting_drops_a_join_the_old_connection_left_behind() {
+        // The port reconnects by itself now, so `Connecting` is no longer only
+        // the first attempt: it is also the middle of a session whose socket
+        // was replaced. A join belongs to the connection it was sent on, and
+        // the server has forgotten this one, so leaving it standing is how a
+        // client reports a join in progress that nothing will ever finish.
+        let mut s = LobbyState::default();
+        reduce(&mut s, &LobbyEvent::Connected);
+        reduce(
+            &mut s,
+            &LobbyEvent::Joining {
+                id: 7,
+                prepared: false,
+            },
+        );
+        s.games = vec![game(7)];
+
+        reduce(&mut s, &LobbyEvent::Connecting);
+
+        assert_eq!(s.status, LobbyStatus::Connecting);
+        assert_eq!(s.join, JoinState::Idle, "the join went with the socket");
+        assert_eq!(
+            s.games.len(),
+            1,
+            "the games list is not cleared: the replacement connection resends              it within seconds, and emptying the tab would turn a blip into a              visible disconnection"
+        );
+    }
+
+    #[test]
     fn preparing_narrates_the_wait_between_the_launch_order_and_the_game() {
         let mut s = LobbyState::default();
         reduce(&mut s, &LobbyEvent::Launching { launch: launch(5) });
@@ -1004,6 +1084,7 @@ mod tests {
         reduce(
             &mut s,
             &LobbyEvent::Preparing {
+                phase: PreparationPhase::Verifying,
                 detail: "Updating faf".into(),
                 progress: Some(40),
             },
@@ -1011,6 +1092,7 @@ mod tests {
         assert_eq!(
             s.join,
             JoinState::Preparing {
+                phase: PreparationPhase::Verifying,
                 detail: "Updating faf".into(),
                 progress: Some(40),
             }
@@ -1020,6 +1102,7 @@ mod tests {
         reduce(
             &mut s,
             &LobbyEvent::Preparing {
+                phase: PreparationPhase::Map,
                 detail: "Downloading map".into(),
                 progress: None,
             },
@@ -1027,6 +1110,7 @@ mod tests {
         assert_eq!(
             s.join,
             JoinState::Preparing {
+                phase: PreparationPhase::Map,
                 detail: "Downloading map".into(),
                 progress: None,
             }
@@ -1043,6 +1127,7 @@ mod tests {
         reduce(
             &mut s,
             &LobbyEvent::Preparing {
+                phase: PreparationPhase::Downloading,
                 detail: "Updating faf".into(),
                 progress: None,
             },

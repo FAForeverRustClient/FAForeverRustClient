@@ -39,6 +39,7 @@ const DEFAULT_CHAT_PREFS: ChatPreferences = {
     foes: "",
     moderators: "",
     admins: "",
+    pings: "",
     players: {},
   },
 };

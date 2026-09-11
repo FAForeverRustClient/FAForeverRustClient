@@ -51,6 +51,27 @@ const MAX_SERVER_MESSAGE_CHARS: usize = 4_000;
 // the lobby server and shown on player cards to distinguish client types.
 const LOBBY_USER_AGENT: &str = "faf-rust-client";
 
+/// Reconnect schedule, from `handle_disconnected` in the Python client's
+/// `ServerConnection`: the first few attempts go out immediately, because a
+/// socket that has been working and then drops is usually a blip, and only a
+/// run of failures backs off. The same shape the chat client already uses.
+const RECONNECT_IMMEDIATE_ATTEMPTS: u32 = 3;
+const RECONNECT_BACKOFF_STEP: std::time::Duration = std::time::Duration::from_secs(10);
+const RECONNECT_BACKOFF_MAX: std::time::Duration = std::time::Duration::from_secs(60);
+/// Give up, and close the update stream, after this many attempts in a row
+/// that never reached an authenticated session: a bad token or a real outage
+/// rather than a blip, and retrying forever would hide it.
+const MAX_CONSECUTIVE_FAILURES: u32 = 10;
+
+/// How long the lobby connection may stay silent before this client pings it,
+/// and how long after that ping it may stay silent before the connection is
+/// treated as dead.
+///
+/// Ten seconds because that is `keepalive_interval` in the Python client's
+/// `ServerConnection`, and the interval has to be short enough to beat the
+/// shortest idle timeout a home router is likely to apply to an open flow.
+const LOBBY_KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
+
 /// Configuration for the real lobby client.
 #[derive(Debug, Clone)]
 pub struct LobbyConfig {
@@ -176,11 +197,72 @@ impl LobbyPort for LobbyClient {
 
         let config = self.config.clone();
         let http = self.http.clone();
-        let access_token = self.tokens.get();
+        let tokens = self.tokens.clone();
         tokio::spawn(async move {
-            // On any failure we simply drop `tx`; the receiver closes and the
-            // lobby service emits `Disconnected`.
-            run_session(config, http, access_token, tx, out_rx, token).await;
+            // The reconnect loop, which is `handle_disconnected` in the Python
+            // client. A dropped lobby connection used to end the client's
+            // session outright and wait for the user to press connect; the
+            // reference clients retry on their own, which is most of why they
+            // feel steadier on a flaky line even when they drop just as often.
+            //
+            // Giving up drops `tx`; the receiver closes and the lobby service
+            // emits `Disconnected`, exactly as it did when every drop ended
+            // here.
+            let mut mid_flight = out_rx;
+            let mut failures = 0_u32;
+            loop {
+                // The token is re-read per attempt: a refresh may have landed
+                // while the backoff was sleeping.
+                let end = run_session(
+                    config.clone(),
+                    http.clone(),
+                    tokens.get(),
+                    tx.clone(),
+                    &mut mid_flight,
+                    token.clone(),
+                )
+                .await;
+
+                match end {
+                    SessionEnd::Cancelled | SessionEnd::Hopeless => break,
+                    SessionEnd::Dropped { authenticated } => {
+                        // A session that worked and then dropped starts the
+                        // count again, so the next attempt is immediate. Only
+                        // a run of attempts that never came up backs off.
+                        failures = if authenticated { 1 } else { failures + 1 };
+                    }
+                }
+
+                if failures >= MAX_CONSECUTIVE_FAILURES {
+                    tracing::error!(failures, "lobby reconnect limit reached");
+                    break;
+                }
+                // A frame was addressed to the connection that just went. A
+                // `game_join` queued while the socket was dying must not be
+                // replayed minutes later onto its replacement, joining a game
+                // the player has long since stopped waiting for.
+                while mid_flight.try_recv().is_ok() {}
+
+                // Tell the client it is between connections. Not
+                // `Disconnected`: that is the end of the session, and this is
+                // the middle of one.
+                if tx.send(LobbyUpdate::Reconnecting).await.is_err() {
+                    break;
+                }
+
+                let delay = reconnect_delay(failures);
+                if !delay.is_zero() {
+                    tracing::info!(
+                        delay_seconds = delay.as_secs(),
+                        failures,
+                        "lobby reconnect scheduled"
+                    );
+                }
+                tokio::select! {
+                    _ = token.cancelled() => break,
+                    _ = tokio::time::sleep(delay) => {}
+                }
+            }
         });
         rx
     }
@@ -289,6 +371,23 @@ impl LobbyPort for LobbyClient {
     }
 }
 
+/// Why one lobby session ended, and what the reconnect loop should do next.
+enum SessionEnd {
+    /// `disconnect()`, or a newer `connect()` replacing this one. Stop.
+    Cancelled,
+    /// The socket ended, or the keepalive found it dead. Open another one.
+    ///
+    /// `authenticated` is whether this session ever became usable. A session
+    /// that worked and then dropped reconnects at once; a run of attempts that
+    /// never got that far is what the backoff is for. It is the same
+    /// distinction `handle_connected` draws in the Python client by resetting
+    /// `_connection_attempts` to zero once a connection is up.
+    Dropped { authenticated: bool },
+    /// Nothing another attempt would fix: nobody is signed in, or the access
+    /// service answered with a URL that is not safe to open.
+    Hopeless,
+}
+
 /// Drive one lobby connection from handshake to close. Returns when the socket
 /// ends, auth fails, or `cancel` fires (which sends a graceful close frame).
 async fn run_session(
@@ -296,12 +395,15 @@ async fn run_session(
     http: reqwest::Client,
     access_token: Option<String>,
     tx: mpsc::Sender<LobbyUpdate>,
-    mut outgoing: mpsc::Receiver<Value>,
+    outgoing: &mut mpsc::Receiver<Value>,
     cancel: CancellationToken,
-) {
+) -> SessionEnd {
+    // Borrowed rather than owned: the queue of client frames outlives any one
+    // socket, so a `game_join` that was waiting when the connection dropped is
+    // still there for the session that replaces it.
     let Some(access_token) = access_token else {
         tracing::warn!("lobby connection skipped because there is no access token");
-        return; // not logged in: nothing to authenticate with
+        return SessionEnd::Hopeless; // not logged in: nothing to authenticate with
     };
 
     // Resolve the WebSocket URL. FAF prod requires a verified URL obtained from
@@ -311,7 +413,11 @@ async fn run_session(
             Ok(url) => url,
             Err(e) => {
                 tracing::error!(error = %e, "could not obtain lobby access URL");
-                return;
+                // Worth another try: the access service having a bad minute is
+                // not the same as this client being unable to sign in.
+                return SessionEnd::Dropped {
+                    authenticated: false,
+                };
             }
         }
     } else {
@@ -323,7 +429,7 @@ async fn run_session(
         Ok(url) => url,
         Err(error) => {
             tracing::error!(%error, "lobby access service returned an unsafe URL");
-            return;
+            return SessionEnd::Hopeless;
         }
     };
 
@@ -332,7 +438,9 @@ async fn run_session(
         Ok((ws, _)) => ws,
         Err(e) => {
             tracing::error!(error = %e, "could not open lobby WebSocket");
-            return;
+            return SessionEnd::Dropped {
+                authenticated: false,
+            };
         }
     };
     tracing::info!("lobby WebSocket connected");
@@ -350,7 +458,9 @@ async fn run_session(
         .is_err()
     {
         tracing::error!("failed to request a lobby session");
-        return;
+        return SessionEnd::Dropped {
+            authenticated: false,
+        };
     }
 
     let mut games = GameSet::default();
@@ -358,7 +468,7 @@ async fn run_session(
     // arrive separately in `player_info`. Keep the latest displayed global
     // rating by login so game rows can mirror the reference clients' live
     // average-rating column.
-    let mut player_ratings = BTreeMap::<String, i32>::new();
+    let mut player_ratings = PlayerRatings::new();
     // Identity (rather than rating) side of the same `player_info` stream,
     // what chat needs to rank its roster. See `PlayerDirectory`.
     let mut directory = PlayerDirectory::default();
@@ -376,18 +486,64 @@ async fn run_session(
     // authentication and aborts the connection on anything else, so queued
     // frames wait in `outgoing` until `welcome` rather than racing `auth`.
     let mut authenticated = false;
+    // Keepalive, as `ServerConnection`'s timer does it in the Python client.
+    //
+    // Nothing was sent from this side before: the connection only ever
+    // answered the server's `ping`. An idle lobby connection carries no
+    // traffic for minutes at a time, and a NAT table or a middlebox drops an
+    // idle flow long before either end notices -- the socket stays open here
+    // while nothing can reach it, until a write finally fails or the OS gives
+    // up on the TCP retransmits, which is hours. That is the shape of the
+    // report: random disconnections every few hours, far rarer on the clients
+    // that do send something.
+    //
+    // Two jobs, one timer, exactly as `_ping_connection` has it. Traffic every
+    // ten seconds keeps the flow alive, and a tick that arrives with the
+    // previous ping still unanswered means the connection is already dead:
+    // closing it then is what makes the loss visible in twenty seconds instead
+    // of whenever the kernel notices.
+    let mut keepalive = tokio::time::interval(LOBBY_KEEPALIVE_INTERVAL);
+    keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    keepalive.tick().await; // the first tick of an interval is immediate
+    let mut ping_unanswered = false;
+    // Every exit but the two deliberate ones is a drop worth reconnecting
+    // after, so that is the default and only the deliberate ones assign.
+    let mut ending = SessionEnd::Dropped {
+        authenticated: false,
+    };
     'connection: loop {
         tokio::select! {
             _ = cancel.cancelled() => {
                 let _ = write.send(Message::Close(None)).await;
+                ending = SessionEnd::Cancelled;
                 break;
+            }
+            // Ten seconds without a single frame from the server.
+            _ = keepalive.tick(), if authenticated => {
+                if ping_unanswered {
+                    tracing::warn!(
+                        "the lobby server went silent through two keepalive periods; \
+                         treating the connection as dead"
+                    );
+                    break 'connection;
+                }
+                ping_unanswered = true;
+                if write
+                    .send(Message::binary(encode_lobby_message(&ping_frame()).into_bytes()))
+                    .await
+                    .is_err()
+                {
+                    break 'connection;
+                }
             }
             // Client→server frames (e.g. game_join from `join`). `None` means the
             // sender was dropped by `disconnect`: tear down gracefully. Disabled
             // until `welcome`: see `authenticated`.
             frame = outgoing.recv(), if authenticated => {
                 let Some(frame) = frame else {
+                    // `disconnect()` dropped the sender: asked for, not lost.
                     let _ = write.send(Message::Close(None)).await;
+                    ending = SessionEnd::Cancelled;
                     break;
                 };
                 if write
@@ -443,6 +599,13 @@ async fn run_session(
             }
             incoming = read.next() => {
                 let Some(Ok(message)) = incoming else { break 'connection };
+                // Anything at all counts as the connection being alive, which
+                // is `_receive_message` restarting the timer in the Python
+                // client. A WebSocket control frame decodes to no lobby
+                // messages and still proves the flow is open, so this is
+                // deliberately before the decode rather than after it.
+                ping_unanswered = false;
+                keepalive.reset();
                 let Some(values) = decode_lobby_messages(message) else { break 'connection };
                 'message: for value in values {
 
@@ -805,6 +968,12 @@ async fn run_session(
         }
     }
     tracing::info!("lobby connection closed");
+    // `authenticated` is the loop's own flag: the session became usable the
+    // moment the server said `welcome`.
+    match ending {
+        SessionEnd::Dropped { .. } => SessionEnd::Dropped { authenticated },
+        other => other,
+    }
 }
 
 fn command_of(value: &Value) -> &str {
@@ -830,6 +999,31 @@ fn parse_server_notice(value: &Value) -> (ServerNoticeStyle, String) {
         _ => ServerNoticeStyle::Info,
     };
     (style, server_text(value, "The lobby server sent a notice."))
+}
+
+/// How long to wait before the next attempt, given how many in a row have
+/// failed to produce a working connection.
+///
+/// `handle_disconnected` in the Python client: the first few go out
+/// immediately, then `attempts * 10s`. Capped, which the Python client does
+/// not do, because its counter is reset by a user action that this loop has no
+/// equivalent of.
+fn reconnect_delay(failures: u32) -> std::time::Duration {
+    if failures <= RECONNECT_IMMEDIATE_ATTEMPTS {
+        return std::time::Duration::ZERO;
+    }
+    RECONNECT_BACKOFF_STEP
+        .saturating_mul(failures - RECONNECT_IMMEDIATE_ATTEMPTS)
+        .min(RECONNECT_BACKOFF_MAX)
+}
+
+/// The keepalive this client sends after ten seconds of silence.
+///
+/// The same one-word command the Python client sends from `_ping_connection`.
+/// The server answers `pong`, which the receive loop ignores: the answer is
+/// not what matters, a frame arriving at all is.
+fn ping_frame() -> Value {
+    json!({ "command": "ping" })
 }
 
 fn avatar_list_frame() -> Value {
@@ -1013,6 +1207,8 @@ struct RawGame {
     #[serde(default)]
     game_type: Option<String>,
     #[serde(default)]
+    rating_type: Option<String>,
+    #[serde(default)]
     launched_at: Option<f64>,
     #[serde(default)]
     hosted_at: Option<String>,
@@ -1045,9 +1241,16 @@ impl RawGame {
         self.state.as_deref() == Some("playing")
     }
 
-    fn into_game(self, player_ratings: &BTreeMap<String, i32>) -> Option<Game> {
+    fn into_game(self, player_ratings: &PlayerRatings) -> Option<Game> {
         let id = self.uid?;
-        let average_rating = average_game_rating(self.teams.as_ref(), player_ratings);
+        // Empty is not a rating type. The server defaults the field to
+        // `global`, and a payload that omits it entirely is an older one
+        // saying the same thing.
+        let rating_type = self
+            .rating_type
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| GLOBAL_LEADERBOARD.to_string());
+        let average_rating = average_game_rating(self.teams.as_ref(), player_ratings, &rating_type);
         Some(Game {
             id,
             title: self.title.unwrap_or_default(),
@@ -1064,6 +1267,7 @@ impl RawGame {
             password_protected: self.password_protected.unwrap_or(false),
             visibility: self.visibility.unwrap_or_else(|| "public".into()),
             game_type: self.game_type.unwrap_or_else(|| "custom".into()),
+            rating_type,
             launched_at: self.launched_at.map(|value| value.round() as u32),
             hosted_at: self.hosted_at,
             rating_min: self.rating_min.map(|value| value.round() as i32),
@@ -1074,20 +1278,33 @@ impl RawGame {
     }
 }
 
-/// Compute the displayed global rating for a game from its active team
-/// members. Observers (`-1`/`null`) are intentionally excluded, matching both
-/// reference clients. A server-provided `average_rating` remains authoritative
-/// when present; this is the fallback used by current lobby payloads.
+/// Compute the displayed rating for a game from its active team members.
+/// Observers (`-1`/`null`) are intentionally excluded, matching both reference
+/// clients. A server-provided `average_rating` remains authoritative when
+/// present; this is the fallback used by current lobby payloads, which do not
+/// carry one at all.
+///
+/// Averaged over the game's *own* leaderboard rather than always over `global`.
+/// A 1v1 ladder game whose two players are 466 and 500 on the ladder is not a
+/// 900-rated game because that is what their global ratings happen to be, and
+/// the number printed here is read beside the same players' ratings in the
+/// lineup, which name the same leaderboard.
 fn average_game_rating(
     teams: Option<&BTreeMap<String, Vec<String>>>,
-    player_ratings: &BTreeMap<String, i32>,
+    player_ratings: &PlayerRatings,
+    leaderboard: &str,
 ) -> i32 {
     let ratings = teams
         .into_iter()
         .flatten()
         .filter(|(team, _)| team.as_str() != "-1" && team.as_str() != "null")
         .flat_map(|(_, players)| players.iter())
-        .filter_map(|login| player_ratings.get(login).copied())
+        .filter_map(|login| {
+            player_ratings
+                .get(login)
+                .and_then(|board| board.get(leaderboard))
+                .copied()
+        })
         .collect::<Vec<_>>();
 
     if ratings.is_empty() {
@@ -1099,7 +1316,7 @@ fn average_game_rating(
 
 /// Store the conservative displayed global rating from a lobby `player_info`
 /// entry. FAF sends TrueSkill `[mean, deviation]`; the displayed value is
-/// `max(0, mean - 3 * deviation)`, as implemented by the Python client.
+/// `mean - 3 * deviation`, unclamped: see [`displayed_rating`].
 /// Read the channel list out of a `social` message.
 ///
 /// The server has used both `autojoin` and `channels` for this field, so both
@@ -1228,14 +1445,14 @@ impl PlayerDirectory {
                 player
                     .get("global_rating")
                     .and_then(value_as_f64)
-                    .map(|rating| {
-                        vec![PlayerLobbyRating {
+                    .and_then(|rating| {
+                        Some(vec![PlayerLobbyRating {
                             leaderboard: "global".into(),
-                            rating: rating.max(0.0).round() as i32,
-                            mean: rating.round() as i32,
+                            rating: scalar_rating(rating)?,
+                            mean: finite_i32(rating)?,
                             deviation: 0,
                             games_played: 0,
-                        }]
+                        }])
                     })
                     .unwrap_or_default()
             });
@@ -1382,7 +1599,17 @@ fn id_list(value: &Value, key: &str) -> Vec<i64> {
         .unwrap_or_default()
 }
 
-fn update_player_ratings(ratings: &mut BTreeMap<String, i32>, player: &Value) {
+/// Every player's displayed rating on every leaderboard the server has sent
+/// one for: login, then leaderboard (`global`, `ladder_1v1`, `tmm_2v2`, ...).
+///
+/// A single global number was enough while every game average was a global
+/// average. It is not enough now that a game is averaged over the leaderboard
+/// it is actually rated on.
+type PlayerRatings = BTreeMap<String, BTreeMap<String, i32>>;
+
+pub(crate) const GLOBAL_LEADERBOARD: &str = "global";
+
+fn update_player_ratings(ratings: &mut PlayerRatings, player: &Value) {
     let Some(login) = player
         .get("login")
         .or_else(|| player.get("name"))
@@ -1392,9 +1619,59 @@ fn update_player_ratings(ratings: &mut BTreeMap<String, i32>, player: &Value) {
         return;
     };
 
-    if let Some(estimate) = player_rating_estimate(player) {
-        ratings.insert(login.to_string(), estimate);
+    // A partial `player_info` that carries no ratings at all must not erase
+    // what the last full one said, which is the same rule `observe` follows
+    // for the profile it keeps.
+    if let Some(boards) = player_lobby_ratings(player) {
+        if !boards.is_empty() {
+            ratings.insert(
+                login.to_string(),
+                boards
+                    .into_iter()
+                    .map(|rating| (rating.leaderboard, rating.rating))
+                    .collect(),
+            );
+            return;
+        }
     }
+    if let Some(estimate) = player_rating_estimate(player) {
+        ratings
+            .entry(login.to_string())
+            .or_default()
+            .insert(GLOBAL_LEADERBOARD.to_string(), estimate);
+    }
+}
+
+/// The displayed rating for a TrueSkill `[mean, deviation]` pair.
+///
+/// `mean - 3 * deviation`, truncated toward zero, and deliberately **not**
+/// clamped at zero. A new or long-idle account has a deviation large enough to
+/// put this below zero, and that is a real number the player has: the server's
+/// own `displayed()` does not clamp it, the FAF website prints it, and both
+/// reference clients cast the subtraction straight to an integer.
+///
+/// This client used to clamp, and only here: the profile card and the replay
+/// parser never did. So the same player read as -137 on their own profile and
+/// 0 in every lobby list, which is the report.
+///
+/// Truncated rather than rounded for the reason already written down in
+/// `infra::replay`: Java's `RatingUtil.getRating` is `(int) (mean - 3f * dev)`
+/// and the Python client's `rating_estimate` is `int(rating.displayed())`.
+/// Rounding put us a point above them for every fraction over .5.
+fn displayed_rating(mean: f64, deviation: f64) -> Option<i32> {
+    finite_i32(mean - 3.0 * deviation)
+}
+
+/// An already-displayed rating the server sent as a scalar, in the same shape.
+fn scalar_rating(value: f64) -> Option<i32> {
+    finite_i32(value)
+}
+
+/// `as i32` saturates rather than failing, so a malformed payload would arrive
+/// as `i32::MAX` and be shown as a rating. Rejected instead.
+fn finite_i32(value: f64) -> Option<i32> {
+    (value.is_finite() && value >= f64::from(i32::MIN) && value <= f64::from(i32::MAX))
+        .then_some(value as i32)
 }
 
 fn player_rating_estimate(player: &Value) -> Option<i32> {
@@ -1406,13 +1683,13 @@ fn player_rating_estimate(player: &Value) -> Option<i32> {
         .and_then(|rating| {
             let mean = rating.first().and_then(Value::as_f64)?;
             let deviation = rating.get(1).and_then(Value::as_f64)?;
-            Some((mean - 3.0 * deviation).max(0.0).floor() as i32)
+            displayed_rating(mean, deviation)
         })
         .or_else(|| {
             player
                 .get("global_rating")
                 .and_then(value_as_f64)
-                .map(|value| value.max(0.0).round() as i32)
+                .and_then(scalar_rating)
         })
 }
 
@@ -1439,9 +1716,9 @@ fn player_lobby_ratings(player: &Value) -> Option<Vec<PlayerLobbyRating>> {
                 .max(0);
             Some(PlayerLobbyRating {
                 leaderboard: leaderboard.clone(),
-                rating: (mean - 3.0 * deviation).max(0.0).floor() as i32,
-                mean: mean.round() as i32,
-                deviation: deviation.round() as i32,
+                rating: displayed_rating(mean, deviation)?,
+                mean: finite_i32(mean.round())?,
+                deviation: finite_i32(deviation.round())?,
                 games_played,
             })
         })
@@ -1657,7 +1934,7 @@ struct GameSet {
 }
 
 impl GameSet {
-    fn apply(&mut self, raw: RawGame, player_ratings: &BTreeMap<String, i32>) {
+    fn apply(&mut self, raw: RawGame, player_ratings: &PlayerRatings) {
         let Some(uid) = raw.uid else {
             return;
         };
@@ -1678,9 +1955,9 @@ impl GameSet {
         }
     }
 
-    fn refresh_ratings(&mut self, player_ratings: &BTreeMap<String, i32>) {
+    fn refresh_ratings(&mut self, player_ratings: &PlayerRatings) {
         for game in self.games.values_mut().chain(self.live_games.values_mut()) {
-            let average = average_game_rating(Some(&game.teams), player_ratings);
+            let average = average_game_rating(Some(&game.teams), player_ratings, &game.rating_type);
             if average > 0 {
                 game.average_rating = average;
             }
@@ -1731,6 +2008,7 @@ fn host_frame(config: HostGameConfig) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn hosting_without_a_password_sends_null_rather_than_an_empty_string() {
@@ -1938,6 +2216,44 @@ mod tests {
     }
 
     #[test]
+    fn a_connection_that_worked_is_retried_at_once_and_a_dead_one_backs_off() {
+        // `handle_disconnected` in the Python client: the first few attempts
+        // are immediate, because a socket that has been working and then drops
+        // is usually a blip and waiting ten seconds to find that out is ten
+        // seconds of the client being wrong about its own state.
+        assert_eq!(reconnect_delay(1), Duration::ZERO);
+        assert_eq!(
+            reconnect_delay(RECONNECT_IMMEDIATE_ATTEMPTS),
+            Duration::ZERO
+        );
+
+        // Past that it is a real outage rather than a blip, and the schedule
+        // is the reference client's `attempts * 10s`.
+        assert_eq!(
+            reconnect_delay(RECONNECT_IMMEDIATE_ATTEMPTS + 1),
+            Duration::from_secs(10)
+        );
+        assert_eq!(
+            reconnect_delay(RECONNECT_IMMEDIATE_ATTEMPTS + 2),
+            Duration::from_secs(20)
+        );
+
+        // Capped, so a server that is down all evening is still polled once a
+        // minute rather than once an hour.
+        assert_eq!(reconnect_delay(1_000), RECONNECT_BACKOFF_MAX);
+        // And it cannot overflow its way back to an immediate retry.
+        assert_eq!(reconnect_delay(u32::MAX), RECONNECT_BACKOFF_MAX);
+    }
+
+    #[test]
+    fn the_keepalive_is_the_same_command_the_reference_client_sends() {
+        // The lobby answers this with `pong`, which the receive loop drops
+        // through its catch-all arm: every frame resets the timer, so the
+        // answer needs no handling of its own.
+        assert_eq!(ping_frame(), json!({ "command": "ping" }));
+    }
+
+    #[test]
     fn avatar_frames_match_the_reference_protocol() {
         assert_eq!(
             avatar_list_frame(),
@@ -2078,7 +2394,7 @@ mod tests {
         let raw = extract_raw_games(&open_game_json(42, "open", 5))
             .pop()
             .unwrap();
-        let game = raw.into_game(&BTreeMap::new()).unwrap();
+        let game = raw.into_game(&PlayerRatings::new()).unwrap();
         assert_eq!(game.id, 42);
         assert_eq!(game.players, 5);
         assert_eq!(game.max_players, 8);
@@ -2089,7 +2405,7 @@ mod tests {
 
     #[test]
     fn computes_average_rating_from_player_info_and_ignores_observers() {
-        let mut ratings = BTreeMap::new();
+        let mut ratings = PlayerRatings::new();
         update_player_ratings(
             &mut ratings,
             &json!({
@@ -2130,28 +2446,127 @@ mod tests {
 
     #[test]
     fn accepts_legacy_player_rating_field() {
-        let mut ratings = BTreeMap::new();
+        let mut ratings = PlayerRatings::new();
         update_player_ratings(
             &mut ratings,
             &json!({ "login": "Legacy", "global_rating": 1234 }),
         );
-        assert_eq!(ratings.get("Legacy"), Some(&1234));
+        assert_eq!(ratings["Legacy"][GLOBAL_LEADERBOARD], 1234);
+    }
+
+    #[test]
+    fn averages_a_matchmaker_game_over_the_queue_it_is_rated_on() {
+        // The reported case: a 1v1 ladder game listing global ratings, which
+        // are the numbers the game is not being played for.
+        let mut ratings = PlayerRatings::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Valkyra",
+                "ratings": {
+                    "global": { "rating": [1100, 98] },
+                    "ladder_1v1": { "rating": [662, 65] },
+                }
+            }),
+        );
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Rival",
+                "ratings": {
+                    "global": { "rating": [1600, 200] },
+                    "ladder_1v1": { "rating": [1000, 100] },
+                }
+            }),
+        );
+
+        let mut message = open_game_json(44, "playing", 2);
+        message["rating_type"] = json!("ladder_1v1");
+        message["teams"] = json!({ "2": ["Valkyra"], "3": ["Rival"] });
+        let game = extract_raw_games(&message)
+            .pop()
+            .unwrap()
+            .into_game(&ratings)
+            .unwrap();
+
+        assert_eq!(game.rating_type, "ladder_1v1");
+        // Ladder: 467 and 700, not global's 806 and 1000.
+        assert_eq!(game.average_rating, 583);
+    }
+
+    #[test]
+    fn a_game_without_a_rating_type_is_a_global_one() {
+        let mut ratings = PlayerRatings::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({ "login": "Alpha", "ratings": { "global": { "rating": [1800, 200] } } }),
+        );
+        let mut message = open_game_json(45, "open", 1);
+        message["teams"] = json!({ "1": ["Alpha"] });
+        let game = extract_raw_games(&message)
+            .pop()
+            .unwrap()
+            .into_game(&ratings)
+            .unwrap();
+
+        assert_eq!(game.rating_type, GLOBAL_LEADERBOARD);
+        assert_eq!(game.average_rating, 1200);
+    }
+
+    #[test]
+    fn a_rating_below_zero_is_kept_rather_than_flattened() {
+        // The displayed rating of a new or long-idle account. The server's own
+        // `displayed()` does not clamp it, the website prints it, and the
+        // profile card in this client already showed it: only the lobby lists
+        // clamped, so one player read -137 in one place and 0 in the other.
+        let ratings = player_lobby_ratings(&json!({
+            "ratings": {
+                "global": { "rating": [1363.0, 500.0], "number_of_games": 3 },
+            }
+        }))
+        .expect("a ratings table");
+
+        assert_eq!(ratings[0].rating, -137);
+    }
+
+    #[test]
+    fn a_displayed_rating_is_truncated_towards_zero_like_both_reference_clients() {
+        // Java casts, Python takes `int()`, and `infra::replay` already wrote
+        // this rule down for the same number read out of a replay header.
+        assert_eq!(displayed_rating(1_500.5, 0.0), Some(1_500));
+        assert_eq!(displayed_rating(-1_500.5, 0.0), Some(-1_500));
+        assert_eq!(displayed_rating(f64::NAN, 0.0), None);
+        assert_eq!(displayed_rating(f64::INFINITY, 0.0), None);
+    }
+
+    #[test]
+    fn a_partial_player_info_does_not_erase_the_ratings_already_known() {
+        let mut ratings = PlayerRatings::new();
+        update_player_ratings(
+            &mut ratings,
+            &json!({
+                "login": "Alpha",
+                "ratings": { "ladder_1v1": { "rating": [900, 100] } }
+            }),
+        );
+        update_player_ratings(&mut ratings, &json!({ "login": "Alpha", "country": "de" }));
+        assert_eq!(ratings["Alpha"]["ladder_1v1"], 600);
     }
 
     #[test]
     fn gameset_adds_open_and_removes_closed() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(1, "open", 1)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         for raw in extract_raw_games(&open_game_json(2, "open", 2)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         assert_eq!(set.snapshot().len(), 2);
 
         // Game 1 transitions to playing → drops out of the open list.
         for raw in extract_raw_games(&open_game_json(1, "playing", 2)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -2162,10 +2577,10 @@ mod tests {
     fn gameset_update_replaces_in_place() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(5, "open", 1)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         for raw in extract_raw_games(&open_game_json(5, "open", 4)) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -2185,7 +2600,7 @@ mod tests {
             "max_players": 6,
         });
         for raw in extract_raw_games(&forming_mm) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         assert_eq!(set.snapshot().len(), 0);
         assert_eq!(set.snapshot_live().len(), 0);
@@ -2200,7 +2615,7 @@ mod tests {
             "max_players": 6,
         });
         for raw in extract_raw_games(&playing_mm) {
-            set.apply(raw, &BTreeMap::new());
+            set.apply(raw, &PlayerRatings::new());
         }
         assert_eq!(set.snapshot().len(), 0);
         assert_eq!(set.snapshot_live().len(), 1);
@@ -2424,7 +2839,7 @@ mod tests {
             .into_iter()
             .next()
             .unwrap()
-            .into_game(&BTreeMap::new())
+            .into_game(&PlayerRatings::new())
             .unwrap();
         assert_eq!(game.id, 9);
         assert_eq!(game.title, "");
@@ -2458,7 +2873,7 @@ mod tests {
         let game = extract_raw_games(&msg)
             .into_iter()
             .next()
-            .and_then(|raw| raw.into_game(&BTreeMap::new()))
+            .and_then(|raw| raw.into_game(&PlayerRatings::new()))
             .expect("nullable game payload should be retained");
         assert_eq!(game.id, 12);
         assert_eq!(game.visibility, "public");

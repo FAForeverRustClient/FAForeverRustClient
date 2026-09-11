@@ -69,7 +69,10 @@ impl GameUpdaterPort for ScriptedUpdater {
         self.seen.lock().unwrap().push(request);
         let (tx, rx) = mpsc::channel(4);
         tx.send(UpdateProgress::Step(
-            faf_app::ports::PreparationStep::indeterminate("Updating tutorials…"),
+            faf_app::ports::PreparationStep::indeterminate(
+                faf_app::ports::PreparationPhase::Downloading,
+                "Updating tutorials…",
+            ),
         ))
         .await
         .unwrap();

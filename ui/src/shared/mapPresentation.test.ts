@@ -6,6 +6,8 @@ import {
   extractGeneratedMapSeed,
   isGeneratedMap,
   mapPresentation,
+  mapSize,
+  mapSizeOf,
   mapThumbnailCandidates,
 } from "./mapPresentation";
 
@@ -126,5 +128,56 @@ describe("mapPresentation", () => {
     expect(effectiveReplayMapName("Neroxis Map Generator", technicalName)).toBe(technicalName);
     expect(effectiveReplayMapName("Seton's Clutch", "scmp_009")).toBe("Seton's Clutch");
     expect(effectiveReplayMapName("Neroxis Map Generator", null)).toBe("Neroxis Map Generator");
+  });
+});
+
+describe("mapSize", () => {
+  it("says a square map once", () => {
+    // 512 generator units is the 10 km map everybody knows by that number.
+    // "10 × 10 km" spends a tile's whole corner repeating itself.
+    expect(mapSizeOf(512, 512)).toEqual({ full: "10 × 10 km", compact: "10 km" });
+    expect(mapSizeOf(256, 256)?.compact).toBe("5 km");
+    expect(mapSizeOf(1024, 1024)?.compact).toBe("20 km");
+  });
+
+  it("spells out a map that is not square", () => {
+    expect(mapSizeOf(512, 256)).toEqual({ full: "10 × 5 km", compact: "10 × 5 km" });
+  });
+
+  it("has nothing to say about a size of zero", () => {
+    // Which is what an absent width looks like once it crosses the wire.
+    expect(mapSizeOf(0, 512)).toBeNull();
+    expect(mapSizeOf(512, 0)).toBeNull();
+  });
+
+  it("reads the vault first", () => {
+    const vaultMap = {
+      folderName: "koprulu_sector.v0003",
+      displayName: "Koprulu Sector",
+      width: 1024,
+      height: 1024,
+    } as VaultMap;
+
+    expect(mapSize([vaultMap], "koprulu_sector.v0003")?.compact).toBe("20 km");
+  });
+
+  it("falls back to the built-in table for a base-game map", () => {
+    // Base-game maps are not vault records, so a vault lookup never finds
+    // them, and they are exactly the maps most people are hosting.
+    expect(mapSize([], "scmp_009")?.compact).toBe("20 km");
+    expect(mapSize([], "scmp_012")?.compact).toBe("5 km");
+    expect(mapSize([], "scmp_007")?.compact).toBe("10 km");
+  });
+
+  it("takes a generated map's size from its decoded name", () => {
+    const generated = "neroxis_map_generator_1.21.2_ybufyzg64pai2_aqfqeai";
+    expect(mapSize([], generated)).toBeNull();
+    expect(mapSize([], generated, 512)?.compact).toBe("10 km");
+  });
+
+  it("says nothing rather than guessing", () => {
+    // A badge reading 10 km because that is the common size would be worse
+    // than no badge: it is the number somebody is deciding on.
+    expect(mapSize([], "some_custom_map_nobody_has")).toBeNull();
   });
 });

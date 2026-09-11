@@ -2130,46 +2130,40 @@ pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
         };
     };
 
-    let mut sources = Vec::with_capacity(source_count as usize);
+    // The source and army tables are walked only to reach the command stream
+    // behind them. Chat used to be attributed from this roster, by way of the
+    // army index in the callback; that index is the recipient, not the sender,
+    // so the roster no longer has anything to say about who typed what.
     for _ in 0..source_count {
-        let Some(name) = replay_string(&mut cursor) else {
+        if replay_string(&mut cursor).is_none() {
             break;
-        };
-        let Some(_) = replay_u32(&mut cursor) else {
+        }
+        if replay_u32(&mut cursor).is_none() {
             break;
-        };
-        sources.push(name);
+        }
     }
     let _ = replay_u8(&mut cursor);
     let army_count = replay_u8(&mut cursor).unwrap_or(0);
 
-    let mut armies = Vec::with_capacity(army_count as usize);
     for _ in 0..army_count {
         if replay_u32(&mut cursor).is_none() {
             break;
         }
-        let Some(Value::Object(data)) = parse_replay_lua(&mut cursor, 0) else {
+        if !matches!(parse_replay_lua(&mut cursor, 0), Some(Value::Object(_))) {
             break;
-        };
+        }
         let Some(source) = replay_u8(&mut cursor) else {
             break;
         };
         if source != u8::MAX {
             let _ = replay_u8(&mut cursor);
         }
-        let name = data
-            .get("PlayerName")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .or_else(|| sources.get(source as usize).cloned())
-            .unwrap_or_else(|| format!("Player {}", armies.len() + 1));
-        armies.push(name);
     }
 
     skip_replay_bytes(&mut cursor, 4);
 
     let game_options = extract_game_options(game_options_lua.as_ref(), game_version);
-    let chat_messages = extract_chat_messages(&mut cursor, &armies, &sources);
+    let chat_messages = extract_chat_messages(&mut cursor);
 
     ReplayDetails {
         game_options,
@@ -2239,13 +2233,40 @@ fn extract_game_options(
     options
 }
 
-fn extract_chat_messages(
-    cursor: &mut Cursor<&[u8]>,
-    armies: &[String],
-    sources: &[String],
-) -> Vec<ReplayChatMessage> {
+/// One chat record as the command stream carries it, before the copies of a
+/// single typed line are folded together.
+struct ChatRecord {
+    time_seconds: u32,
+    /// `None` where the record carries no name at all. That is the case the
+    /// report was about: it reached the UI as the literal "Unknown", sitting
+    /// under the named copy of the same line.
+    sender: Option<String>,
+    /// `Msg.Id`, where the build sends one. Two records carrying the same one
+    /// are the same typed line; two carrying different ones may still be.
+    id: Option<String>,
+    message: String,
+}
+
+/// In-game chat, from the command stream.
+///
+/// The game does not send chat as chat. It smuggles it through a
+/// `GiveResourcesToPlayer` sim callback carrying no resources and a `Msg`
+/// table, and it sends that callback more than once for a single typed line:
+///
+/// * once per recipient army, each carrying `Sender`, the name of whoever
+///   typed it, and `To`/`From` set to the army it is being delivered *to*;
+/// * once more, on some builds, as the origination record: `Msg` alone, with
+///   no `Sender`, no `To` and no `From`;
+/// * once more again, for a whisper, as an echo back to its author, where
+///   `Msg.echo` is set, `Msg.from` is the author and the top-level `Sender` is
+///   the player the whisper went to.
+///
+/// Both halves of the reported bug follow from that. Every line appeared twice
+/// because the copies disagree about the sender, and one of the two said
+/// "Unknown" because the origination record has nobody to name.
+fn extract_chat_messages(cursor: &mut Cursor<&[u8]>) -> Vec<ReplayChatMessage> {
     let mut current_ticks: u32 = 0;
-    let mut messages: Vec<ReplayChatMessage> = Vec::new();
+    let mut records: Vec<ChatRecord> = Vec::new();
     let body = *cursor.get_ref();
     let len = body.len();
 
@@ -2279,30 +2300,80 @@ fn extract_chat_messages(
             }
         } else if cmd_type == 22 || cmd_type == 0x20 || cmd_type == 0x22 {
             // 22 (0x16) is CMDST_LuaSimCallback in Forged Alliance
-            if let Some(chat) = try_parse_chat_payload(payload, current_ticks / 10, armies, sources)
-            {
-                if let Some(last) = messages.last() {
-                    if last.sender == chat.sender
-                        && last.message == chat.message
-                        && chat.time_seconds <= last.time_seconds + 2
-                    {
-                        continue;
-                    }
-                }
-                messages.push(chat);
+            if let Some(record) = try_parse_chat_payload(payload, current_ticks / 10) {
+                fold_chat_record(&mut records, record);
             }
         }
     }
 
-    messages
+    records
+        .into_iter()
+        .map(|record| ReplayChatMessage {
+            time_seconds: record.time_seconds,
+            sender: record.sender.unwrap_or_else(|| "Unknown".to_string()),
+            message: record.message,
+        })
+        .collect()
 }
 
-fn try_parse_chat_payload(
-    payload: &[u8],
-    time_seconds: u32,
-    armies: &[String],
-    sources: &[String],
-) -> Option<ReplayChatMessage> {
+/// Add one record, or recognise it as another copy of one already held.
+///
+/// Two seconds of slack, because the copies of a line are not always recorded
+/// on the same tick. Only that window is searched: `time_seconds` never
+/// decreases, so the first record outside it ends the search.
+///
+/// What counts as the same line:
+///
+/// * the same `Msg.Id`, where the build sends one;
+/// * the same text from the same named sender, which is the copy-per-recipient
+///   case;
+/// * the same text where one of the two has no sender, which is the
+///   origination record meeting its delivery. The named one wins: whichever
+///   order the two arrive in, the name is kept and the copy is dropped.
+///
+/// Matching ids settle it, but differing ids settle nothing and the text is
+/// still asked. An id reads `"<tick> table: <address>"`, and a line sent to
+/// several recipients is a fresh table each time, so the copies of one line
+/// agree on the tick and disagree on the address.
+///
+/// The sender stays part of the key for two *named* records. Eight people
+/// typing "gg" at the end of a game are eight messages within the same two
+/// seconds, and collapsing those would be a worse bug than the one being fixed.
+fn fold_chat_record(records: &mut Vec<ChatRecord>, record: ChatRecord) {
+    let mut duplicate_of: Option<usize> = None;
+    for index in (0..records.len()).rev() {
+        let seen = &records[index];
+        if record.time_seconds > seen.time_seconds.saturating_add(2) {
+            break;
+        }
+        let same_id = match (&seen.id, &record.id) {
+            (Some(seen_id), Some(new_id)) => seen_id == new_id,
+            _ => false,
+        };
+        let same_line = same_id
+            || (seen.message == record.message
+                && match (&seen.sender, &record.sender) {
+                    (Some(held), Some(incoming)) => held == incoming,
+                    // One of the two is the origination record.
+                    _ => true,
+                });
+        if same_line {
+            duplicate_of = Some(index);
+            break;
+        }
+    }
+
+    match duplicate_of {
+        Some(index) => {
+            if records[index].sender.is_none() {
+                records[index].sender = record.sender;
+            }
+        }
+        None => records.push(record),
+    }
+}
+
+fn try_parse_chat_payload(payload: &[u8], time_seconds: u32) -> Option<ChatRecord> {
     let mut p_cursor = Cursor::new(payload);
     let _func = replay_string(&mut p_cursor)?;
 
@@ -2311,53 +2382,87 @@ fn try_parse_chat_payload(
         return None;
     };
 
-    // 1. Check if Msg or text is present
-    let mut message_text: Option<String> = None;
-    if let Some(Value::Object(msg_map)) = args.get("Msg").or_else(|| args.get("msg")) {
-        if let Some(Value::String(s)) = msg_map
-            .get("text")
-            .or_else(|| msg_map.get("Text"))
-            .or_else(|| msg_map.get("msg"))
-        {
-            message_text = Some(s.clone());
-        }
-    } else if let Some(Value::String(s)) = args
+    let nested = args
         .get("Msg")
         .or_else(|| args.get("msg"))
-        .or_else(|| args.get("text"))
-        .or_else(|| args.get("Text"))
-    {
-        message_text = Some(s.clone());
-    }
+        .and_then(|value| match value {
+            Value::Object(map) => Some(map),
+            _ => None,
+        });
 
-    let text = message_text?;
+    let message_text = match nested {
+        Some(msg_map) => msg_map
+            .get("text")
+            .or_else(|| msg_map.get("Text"))
+            .or_else(|| msg_map.get("msg")),
+        None => args
+            .get("Msg")
+            .or_else(|| args.get("msg"))
+            .or_else(|| args.get("text"))
+            .or_else(|| args.get("Text")),
+    };
+    let Some(Value::String(text)) = message_text else {
+        return None;
+    };
     if text.trim().is_empty() {
         return None;
     }
 
-    // 2. Resolve sender
-    let sender = if let Some(Value::String(s)) = args
-        .get("Sender")
-        .or_else(|| args.get("PlayerName"))
-        .or_else(|| args.get("sender"))
+    // `to` is the channel: "all", "allies", or the army index a whisper went
+    // to. "notify" is not a channel anybody types into. It is the Notify UI
+    // mod announcing its own upgrades ("Starting Tech 2 Land HQ upgrade")
+    // through the same callback, and until now the announcements were listed
+    // as though a player had said them.
+    if nested
+        .and_then(|msg_map| msg_map.get("to"))
+        .and_then(Value::as_str)
+        .is_some_and(|channel| channel.eq_ignore_ascii_case("notify"))
     {
-        s.clone()
-    } else if let Some(n) = args.get("From").and_then(Value::as_i64) {
-        // Lua army indices in GiveResourcesToPlayer: 1-based (or 0-based in some mods)
-        let idx = if n > 0 { (n - 1) as usize } else { n as usize };
-        armies
-            .get(idx)
-            .or_else(|| sources.get(idx))
-            .cloned()
-            .unwrap_or_else(|| format!("Player {}", n))
-    } else {
-        "Unknown".to_string()
-    };
+        return None;
+    }
 
-    Some(ReplayChatMessage {
+    Some(ChatRecord {
         time_seconds,
-        sender,
-        message: text,
+        sender: chat_sender(&args, nested),
+        id: nested
+            .and_then(|msg_map| msg_map.get("Id"))
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        message: text.clone(),
+    })
+}
+
+/// Who typed it, or `None` where the record does not say.
+///
+/// `Msg.from` is asked first and the top-level `Sender` second, which is the
+/// one ordering that survives every shape the game sends. Where both are
+/// present on an ordinary message they agree. Where they disagree the record
+/// is a whisper echoed back to its author: there `Sender` is the player the
+/// whisper was aimed at, and `Msg.from` is the author.
+///
+/// There is deliberately no fall-back to an army index. `From`, `To` and
+/// `Army` all name the army a copy is being *delivered to*, so reading any of
+/// them as the sender does not rescue a nameless record, it misattributes a
+/// named one.
+fn chat_sender(
+    args: &serde_json::Map<String, Value>,
+    nested: Option<&serde_json::Map<String, Value>>,
+) -> Option<String> {
+    let nested_value = |key: &str| nested.and_then(|map| map.get(key));
+    [
+        nested_value("from"),
+        nested_value("Sender"),
+        nested_value("sender"),
+        args.get("Sender"),
+        args.get("sender"),
+        args.get("PlayerName"),
+        args.get("playerName"),
+    ]
+    .into_iter()
+    .flatten()
+    .find_map(|value| match value {
+        Value::String(name) if !name.trim().is_empty() => Some(name.clone()),
+        _ => None,
     })
 }
 
@@ -4910,5 +5015,289 @@ mod tests {
             !details.chat_messages.is_empty(),
             "the detail parser should retain recorded in-game chat"
         );
+    }
+    // ── In-game chat out of a replay's command stream ───────────────────────
+    //
+    // Built rather than fixtured. The encoding is small enough to write out
+    // (type tag, then the value; a table is key/value pairs until a 5 byte),
+    // and a test that builds its own input says what shape of callback it is
+    // claiming the game sends, which a captured blob does not.
+    //
+    // `lua_string` and `lua_number` are the ones the header tests already use.
+    // The shapes below are the ones real `.fafreplay` files carry: a delivery
+    // per recipient army, the nameless origination record beside it, and the
+    // echo a whisper leaves in its author's own stream.
+
+    /// A Lua table: tag 4, key/value pairs, then tag 5. Keys are strings here,
+    /// which is what a callback's argument table always has.
+    fn lua_table(entries: &[(&str, Vec<u8>)]) -> Vec<u8> {
+        let mut out = vec![4u8];
+        for (key, value) in entries {
+            out.extend_from_slice(&lua_string(key));
+            out.extend_from_slice(value);
+        }
+        out.push(5);
+        out
+    }
+
+    /// One command: a type byte, a little-endian u16 length covering the whole
+    /// command, and the payload.
+    fn command(kind: u8, payload: Vec<u8>) -> Vec<u8> {
+        let mut out = vec![kind];
+        out.extend_from_slice(&((payload.len() + 3) as u16).to_le_bytes());
+        out.extend_from_slice(&payload);
+        out
+    }
+
+    /// CMDST_ADVANCE: ticks forward. Ten ticks make a second here.
+    fn advance(ticks: u32) -> Vec<u8> {
+        command(0, ticks.to_le_bytes().to_vec())
+    }
+
+    /// A chat callback as the game delivers one: the function name, then the
+    /// argument table, with `Msg` holding the line and `Sender` naming whoever
+    /// typed it. `msg_extra` and `extra` carry whichever fields the case is
+    /// about.
+    fn delivered(
+        text: &str,
+        sender: &str,
+        to_army: f32,
+        msg_extra: &[(&str, Vec<u8>)],
+        extra: &[(&str, Vec<u8>)],
+    ) -> Vec<u8> {
+        let mut msg: Vec<(&str, Vec<u8>)> = vec![
+            ("text", lua_string(text)),
+            ("to", lua_string("all")),
+            ("Chat", lua_bool(true)),
+        ];
+        msg.extend(msg_extra.iter().map(|(k, v)| (*k, v.clone())));
+
+        let mut args: Vec<(&str, Vec<u8>)> = vec![
+            ("Mass", lua_number(0.0)),
+            ("To", lua_number(to_army)),
+            ("From", lua_number(to_army)),
+            ("Msg", lua_table(&msg)),
+            ("Energy", lua_number(0.0)),
+            ("Sender", lua_string(sender)),
+        ];
+        args.extend(extra.iter().map(|(k, v)| (*k, v.clone())));
+
+        callback(&args)
+    }
+
+    /// The origination record: `Msg` on its own, no `Sender`, no `To`, no
+    /// `From`. Nobody in it is named, which is where "Unknown" came from.
+    fn originated(text: &str, msg_extra: &[(&str, Vec<u8>)]) -> Vec<u8> {
+        let mut msg: Vec<(&str, Vec<u8>)> = vec![
+            ("text", lua_string(text)),
+            ("to", lua_string("all")),
+            ("Chat", lua_bool(true)),
+        ];
+        msg.extend(msg_extra.iter().map(|(k, v)| (*k, v.clone())));
+        callback(&[("Msg", lua_table(&msg))])
+    }
+
+    fn callback(args: &[(&str, Vec<u8>)]) -> Vec<u8> {
+        let mut payload = lua_string("GiveResourcesToPlayer");
+        payload.extend_from_slice(&lua_table(args));
+        command(22, payload)
+    }
+
+    fn lua_bool(value: bool) -> Vec<u8> {
+        vec![3, u8::from(value)]
+    }
+
+    fn extract(stream: &[u8]) -> Vec<ReplayChatMessage> {
+        let mut cursor = Cursor::new(stream);
+        extract_chat_messages(&mut cursor)
+    }
+
+    #[test]
+    fn the_name_comes_from_the_record_that_has_one() {
+        let stream = delivered("gl", "Vindex", 1.0, &[], &[]);
+        let messages = extract(&stream);
+
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].sender, "Vindex");
+        assert_eq!(messages[0].message, "gl");
+    }
+
+    #[test]
+    fn one_line_delivered_to_every_army_appears_once() {
+        // A line typed to "all" is sent again for each recipient, and the
+        // recipient is what `To` and `From` count up: same sender, same text.
+        let mut stream = Vec::new();
+        for army in 1..=4 {
+            stream.extend_from_slice(&delivered("hello", "Vindex", army as f32, &[], &[]));
+        }
+
+        assert_eq!(extract(&stream).len(), 1, "four copies of one line");
+    }
+
+    #[test]
+    fn the_nameless_origination_record_does_not_become_a_second_line() {
+        // The reported bug, in the order the replays record it: the delivery
+        // first, then the origination record, which names nobody and used to
+        // be listed underneath it as "Unknown".
+        let mut stream = delivered("its done", "Ske", 1.0, &[], &[]);
+        stream.extend_from_slice(&originated("its done", &[]));
+        let messages = extract(&stream);
+
+        assert_eq!(messages.len(), 1, "one typed line");
+        assert_eq!(messages[0].sender, "Ske");
+    }
+
+    #[test]
+    fn a_name_arriving_after_the_nameless_record_still_lands_on_the_line() {
+        // The same pair the other way round, which the fold has to survive
+        // too: the held record is the nameless one and the name comes second.
+        let mut stream = originated("xd", &[]);
+        stream.extend_from_slice(&delivered("xd", "Seraphim-Noob", 2.0, &[], &[]));
+        let messages = extract(&stream);
+
+        assert_eq!(messages.len(), 1);
+        assert_eq!(
+            messages[0].sender, "Seraphim-Noob",
+            "the name fills in the record already held"
+        );
+    }
+
+    #[test]
+    fn the_pair_is_recognised_by_its_shared_id() {
+        // Builds that send `Msg.Id` put the same value on both copies. It is
+        // the exact key, and it holds even where the text alone would not.
+        let id = || ("Id", lua_string("2390 table: 134489D8"));
+        let mut stream = delivered("waste of time", "Ske", 1.0, &[id()], &[]);
+        stream.extend_from_slice(&originated("waste of time", &[id()]));
+
+        assert_eq!(extract(&stream).len(), 1);
+    }
+
+    #[test]
+    fn ids_that_differ_do_not_make_it_a_second_line() {
+        // An id is `"<tick> table: <address>"`, and a line going to several
+        // recipients is a fresh table each time. Treating a differing id as
+        // proof of a different line is what let the copies through.
+        let mut stream = delivered(
+            "tell me after the game",
+            "Nuggets",
+            1.0,
+            &[("Id", lua_string("3979 table: 1CFA7FA0"))],
+            &[],
+        );
+        stream.extend_from_slice(&delivered(
+            "tell me after the game",
+            "Nuggets",
+            2.0,
+            &[("Id", lua_string("3979 table: 1C9A5C08"))],
+            &[],
+        ));
+
+        assert_eq!(extract(&stream).len(), 1);
+    }
+
+    #[test]
+    fn a_whisper_is_credited_to_who_typed_it_not_who_it_went_to() {
+        // The echo back to the author. `Sender` is the player the whisper was
+        // aimed at and `Msg.from` is the author, so reading `Sender` first
+        // produced a second copy under the wrong name.
+        let mut stream = delivered("wtf", "Nuggets", 4.0, &[], &[]);
+        stream.extend_from_slice(&delivered(
+            "wtf",
+            "Terarii",
+            10.0,
+            &[("echo", lua_bool(true)), ("from", lua_string("Nuggets"))],
+            &[],
+        ));
+        let messages = extract(&stream);
+
+        assert_eq!(messages.len(), 1, "one whisper, recorded twice");
+        assert_eq!(messages[0].sender, "Nuggets");
+    }
+
+    #[test]
+    fn an_army_index_is_never_read_as_the_sender() {
+        // `From` is the army a copy is being delivered to. Reading it as the
+        // sender named the wrong player with complete confidence.
+        let stream = callback(&[
+            ("To", lua_number(3.0)),
+            ("From", lua_number(3.0)),
+            (
+                "Msg",
+                lua_table(&[("text", lua_string("hm")), ("to", lua_string("all"))]),
+            ),
+        ]);
+        let messages = extract(&stream);
+
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].sender, "Unknown", "nobody in it is named");
+    }
+
+    #[test]
+    fn two_people_typing_the_same_word_are_two_messages() {
+        // Why the sender stays in the key for two named records. Everybody
+        // types "gg" at the end of a game, within the same two seconds, and
+        // none of it is a duplicate.
+        let mut stream = delivered("gg", "Vindex", 1.0, &[], &[]);
+        stream.extend_from_slice(&delivered("gg", "wlsn", 1.0, &[], &[]));
+        stream.extend_from_slice(&delivered("gg", "Nuggets", 1.0, &[], &[]));
+
+        assert_eq!(extract(&stream).len(), 3);
+    }
+
+    #[test]
+    fn copies_separated_by_somebody_else_talking_still_appear_once() {
+        // The window is searched, not just the entry before this one: two
+        // people talking on the same tick interleave their copies.
+        let mut stream = delivered("hello", "Vindex", 1.0, &[], &[]);
+        stream.extend_from_slice(&delivered("hi", "wlsn", 1.0, &[], &[]));
+        stream.extend_from_slice(&delivered("hello", "Vindex", 2.0, &[], &[]));
+        let messages = extract(&stream);
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].sender, "Vindex");
+        assert_eq!(messages[1].sender, "wlsn");
+    }
+
+    #[test]
+    fn the_same_line_typed_again_later_is_not_a_duplicate() {
+        // The window is two seconds, so repeating yourself a minute later is
+        // something you did twice.
+        let mut stream = delivered("gg", "Vindex", 1.0, &[], &[]);
+        stream.extend_from_slice(&advance(600));
+        stream.extend_from_slice(&delivered("gg", "Vindex", 1.0, &[], &[]));
+        let messages = extract(&stream);
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].time_seconds, 0);
+        assert_eq!(messages[1].time_seconds, 60);
+    }
+
+    #[test]
+    fn the_notify_mod_announcing_an_upgrade_is_not_chat() {
+        // Addressed to the "notify" channel, which nobody types into. These
+        // were being listed as though the player had said "Starting Tech 2
+        // Land HQ upgrade" out loud.
+        let stream = callback(&[
+            ("To", lua_number(2.0)),
+            ("From", lua_number(2.0)),
+            (
+                "Msg",
+                lua_table(&[
+                    ("text", lua_string("Starting Tech 2 Land HQ upgrade")),
+                    ("to", lua_string("notify")),
+                    ("Chat", lua_bool(true)),
+                ]),
+            ),
+            ("Sender", lua_string("Debil11")),
+        ]);
+
+        assert!(extract(&stream).is_empty());
+    }
+
+    #[test]
+    fn an_empty_message_is_not_a_message() {
+        let stream = delivered("   ", "Vindex", 1.0, &[], &[]);
+        assert!(extract(&stream).is_empty());
     }
 }

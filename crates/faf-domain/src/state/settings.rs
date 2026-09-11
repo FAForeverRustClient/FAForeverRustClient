@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use crate::protocol::map_generator::GeneratorOptions;
 
 use super::chat::normalize_channels;
+use super::lobby::PlayerVeto;
 use super::mods::ModPreset;
 use super::Tab;
 
@@ -41,6 +42,19 @@ pub struct GeneralPreferences {
     /// Automatically restore the saved session at startup.
     #[serde(default = "default_true")]
     pub auto_login: bool,
+    /// Let the window offer things typed into a text field before.
+    ///
+    /// This is the embedded browser's own form history, not anything this
+    /// client stores, and it showed up as a "Saved info" dropdown over the
+    /// host dialog's game title. Off by default, which is a deliberate change
+    /// of behaviour: the client already restores the last title *into* that
+    /// field (`BrowsingPreferences::host_game`), so the dropdown was a second,
+    /// worse copy of a feature that was already there, covering the value it
+    /// had just put in. A setting rather than a removal because the thread
+    /// asked for one, and because somebody who hosts under half a dozen
+    /// rotating titles is served by it.
+    #[serde(default)]
+    pub remember_typed_entries: bool,
 }
 
 /// Which day a calendar week starts on.
@@ -251,6 +265,7 @@ impl Default for GeneralPreferences {
         Self {
             start_page: Tab::News,
             auto_login: true,
+            remember_typed_entries: false,
         }
     }
 }
@@ -557,6 +572,13 @@ pub struct NotificationPreferences {
     pub game_launched: bool,
     pub review_reminder: bool,
     pub party_invites: bool,
+    /// Whether FAF's own Twitch and YouTube channels going live is announced.
+    ///
+    /// On, because it is the client telling people about the game the client is
+    /// for, and somebody who has never heard of the streams will not go looking
+    /// for a switch to turn them on. Off is one click, in the same list as every
+    /// other kind, which is what was asked for in the thread.
+    pub stream_live: bool,
     /// Sound volume from 0 to 100.
     pub volume: u8,
 }
@@ -583,6 +605,7 @@ impl Default for NotificationPreferences {
             game_launched: true,
             review_reminder: true,
             party_invites: true,
+            stream_live: true,
             volume: 70,
         }
     }
@@ -618,6 +641,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             game_launched: bool,
             review_reminder: bool,
             party_invites: bool,
+            stream_live: bool,
             volume: u8,
         }
 
@@ -644,6 +668,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     game_launched: defaults.game_launched,
                     review_reminder: defaults.review_reminder,
                     party_invites: defaults.party_invites,
+                    stream_live: defaults.stream_live,
                     volume: defaults.volume,
                 }
             }
@@ -670,6 +695,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             game_launched: wire.game_launched,
             review_reminder: wire.review_reminder,
             party_invites: wire.party_invites,
+            stream_live: wire.stream_live,
             volume: wire.volume,
         })
     }
@@ -691,6 +717,15 @@ pub struct ChatNameColors {
     pub foes: String,
     pub moderators: String,
     pub admins: String,
+    /// The colour a name mentioned inside a message is printed in.
+    ///
+    /// This is the sender's confirmation that a ping landed: naming somebody
+    /// pings them, and until now nothing on the sender's own screen said
+    /// whether the word they typed had resolved to a real player or was a
+    /// misspelling that reached nobody. Configurable rather than fixed
+    /// because every other name colour here is, and the default is the one
+    /// agreed on the thread.
+    pub pings: String,
     /// Player login to a user-selected `#rrggbb` colour.
     pub players: BTreeMap<String, String>,
 }
@@ -703,6 +738,7 @@ impl Default for ChatNameColors {
             foes: "#dc143c".into(),
             moderators: "#32cd32".into(),
             admins: "#ba55d3".into(),
+            pings: "#ff8c00".into(),
             players: BTreeMap::new(),
         }
     }
@@ -721,6 +757,7 @@ impl<'de> Deserialize<'de> for ChatNameColors {
             foes: String,
             moderators: String,
             admins: String,
+            pings: String,
             players: BTreeMap<String, String>,
         }
 
@@ -733,6 +770,7 @@ impl<'de> Deserialize<'de> for ChatNameColors {
                     foes: defaults.foes,
                     moderators: defaults.moderators,
                     admins: defaults.admins,
+                    pings: defaults.pings,
                     players: defaults.players,
                 }
             }
@@ -745,6 +783,7 @@ impl<'de> Deserialize<'de> for ChatNameColors {
             foes: wire.foes,
             moderators: wire.moderators,
             admins: wire.admins,
+            pings: wire.pings,
             players: wire.players,
         })
     }
@@ -1931,6 +1970,21 @@ pub struct SettingsState {
     /// having it survive a restart is the difference between the dialog being
     /// configured once and being configured every time.
     pub map_generator: GeneratorOptions,
+    /// The matchmaker map vetoes this account last saved.
+    ///
+    /// Kept here because the server does not keep them. A player's vetoes live
+    /// on their `Player` object for the life of the session and are gone the
+    /// moment they log out: there is no table behind them and no command to
+    /// read them back, so a client that only listens is a client whose vetoes
+    /// are always empty at login, which is the report.
+    ///
+    /// So the client remembers what it sent and sends it again once the lobby
+    /// authenticates. The server validates and caps the selection against the
+    /// current pools exactly as it does for a fresh one, and tells us when it
+    /// had to adjust it, so a pool that changed between sessions corrects
+    /// itself rather than being replayed wrong forever.
+    #[serde(default)]
+    pub matchmaker_vetoes: Vec<PlayerVeto>,
     #[serde(default)]
     pub cache_info: GameCacheInfo,
 }
@@ -1965,6 +2019,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             events: EventsPreferences,
             kept_generated_maps: Vec<String>,
             map_generator: GeneratorOptions,
+            matchmaker_vetoes: Vec<PlayerVeto>,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -1987,6 +2042,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             events: wire.events,
             kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
+            matchmaker_vetoes: wire.matchmaker_vetoes,
             cache_info: GameCacheInfo::default(),
         })
     }
@@ -2085,6 +2141,13 @@ pub enum SettingsEvent {
     CacheInfoUpdated {
         info: GameCacheInfo,
     },
+    /// The matchmaker veto selection to replay at the next login, replacing
+    /// whatever was remembered before. Not additive, unlike
+    /// [`SettingsEvent::KeptGeneratedMaps`]: this is one whole selection, and
+    /// clearing every veto has to be able to clear it.
+    MatchmakerVetoesChanged {
+        vetoes: Vec<PlayerVeto>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -2175,6 +2238,9 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
                 }
                 state.kept_generated_maps.push(name.to_owned());
             }
+        }
+        SettingsEvent::MatchmakerVetoesChanged { vetoes } => {
+            state.matchmaker_vetoes = vetoes.clone()
         }
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => {
@@ -2373,6 +2439,49 @@ mod tests {
         assert!(settings.discord.enabled);
         assert!(!settings.discord.disallow_joins);
         assert_eq!(settings.browsing, BrowsingPreferences::default());
+    }
+
+    #[test]
+    fn a_settings_file_written_before_vetoes_were_kept_reads_as_none() {
+        let settings: SettingsState = serde_json::from_str(r#"{"theme":"forgeDark"}"#).unwrap();
+        assert!(settings.matchmaker_vetoes.is_empty());
+    }
+
+    #[test]
+    fn a_veto_selection_replaces_the_last_one_rather_than_joining_it() {
+        // The opposite of `KeptGeneratedMaps`, deliberately: this is one whole
+        // selection as the server holds it, so removing a veto has to be able
+        // to remove it, and clearing them all has to clear them all.
+        let mut settings = SettingsState::default();
+        let veto = |map: i32, tokens: i32| PlayerVeto {
+            matchmaker_queue_map_pool_id: 4,
+            map_pool_map_version_id: map,
+            veto_tokens_applied: tokens,
+        };
+
+        reduce(
+            &mut settings,
+            &SettingsEvent::MatchmakerVetoesChanged {
+                vetoes: vec![veto(91, 2), veto(92, 1)],
+            },
+        );
+        assert_eq!(settings.matchmaker_vetoes.len(), 2);
+
+        // The shape of a server correction: a pool shrank, so one veto is
+        // capped and the other is gone.
+        reduce(
+            &mut settings,
+            &SettingsEvent::MatchmakerVetoesChanged {
+                vetoes: vec![veto(91, 1)],
+            },
+        );
+        assert_eq!(settings.matchmaker_vetoes, vec![veto(91, 1)]);
+
+        reduce(
+            &mut settings,
+            &SettingsEvent::MatchmakerVetoesChanged { vetoes: Vec::new() },
+        );
+        assert!(settings.matchmaker_vetoes.is_empty());
     }
 
     #[test]

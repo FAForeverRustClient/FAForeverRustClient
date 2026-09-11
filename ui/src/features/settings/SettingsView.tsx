@@ -141,6 +141,8 @@ const SECTIONS = {
       "settings.notifications.reviewReminderHint",
       "settings.notifications.partyInvites",
       "settings.notifications.partyInvitesHint",
+      "settings.notifications.streamLive",
+      "settings.notifications.streamLiveHint",
     ],
     Component: NotificationsSettingsSection,
   },

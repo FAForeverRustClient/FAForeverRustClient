@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -38,6 +38,7 @@ export type AppState = {
 	reporting: ReportingState,
 	reviews: ReviewsState,
 	social: SocialState,
+	streams: StreamsState,
 	tourney: TourneyState,
 	training: TrainingState,
 	tutorials: TutorialsState,
@@ -773,6 +774,17 @@ export type ChatNameColors = {
 	foes: string,
 	moderators: string,
 	admins: string,
+	/**
+	 *  The colour a name mentioned inside a message is printed in.
+	 *
+	 *  This is the sender's confirmation that a ping landed: naming somebody
+	 *  pings them, and until now nothing on the sender's own screen said
+	 *  whether the word they typed had resolved to a real player or was a
+	 *  misspelling that reached nobody. Configurable rather than fixed
+	 *  because every other name colour here is, and the default is the one
+	 *  agreed on the thread.
+	 */
+	pings: string,
 	/**  Player login to a user-selected `#rrggbb` colour. */
 	players: { [key in string]: string },
 };
@@ -2039,6 +2051,17 @@ export type Game = {
 	 */
 	modName: string,
 	averageRating: number,
+	/**
+	 *  Which leaderboard this game is rated on: `global` for a custom game,
+	 *  `ladder_1v1` or `tmm_2v2`/`tmm_3v3`/`tmm_4v4` for a matchmaker one.
+	 *  Wire key on `game_info` is `rating_type`.
+	 *
+	 *  It decides which of a player's ratings belongs beside their name. A
+	 *  1v1 ladder game listing everybody's global rating is the number the
+	 *  lobby is not about, and it is the number somebody reads to judge the
+	 *  game they are watching.
+	 */
+	ratingType: string,
 	passwordProtected: boolean,
 	visibility: string,
 	gameType: string,
@@ -2185,6 +2208,20 @@ export type GeneralPreferences = {
 	startPage: Tab,
 	/**  Automatically restore the saved session at startup. */
 	autoLogin?: boolean,
+	/**
+	 *  Let the window offer things typed into a text field before.
+	 *
+	 *  This is the embedded browser's own form history, not anything this
+	 *  client stores, and it showed up as a "Saved info" dropdown over the
+	 *  host dialog's game title. Off by default, which is a deliberate change
+	 *  of behaviour: the client already restores the last title *into* that
+	 *  field (`BrowsingPreferences::host_game`), so the dropdown was a second,
+	 *  worse copy of a feature that was already there, covering the value it
+	 *  had just put in. A setting rather than a removal because the thread
+	 *  asked for one, and because somebody who hosts under half a dozen
+	 *  rotating titles is served by it.
+	 */
+	rememberTypedEntries?: boolean,
 };
 
 /**
@@ -2736,6 +2773,7 @@ export type JoinState = { type: "idle" } | { type: "joining"; payload: {
  *  rather than leaving the client looking frozen.
  */
 { type: "preparing"; payload: {
+	phase: PreparationPhase,
 	detail: string,
 	progress: number | null,
 } } |
@@ -2919,6 +2957,41 @@ export type LiveReplayTracking = {
  */
 export type LiveReplayTrackingAction = "notify" | "watch";
 
+/**  One broadcast that is live now. */
+export type LiveStream = {
+	/**
+	 *  The platform's id for *this broadcast*, not for the channel.
+	 *
+	 *  The difference is the whole announcement rule: a channel id is the same
+	 *  every time and would make the first announcement the only one, while a
+	 *  broadcast id changes when somebody starts streaming again.
+	 */
+	id: string,
+	platform: StreamPlatform,
+	/**
+	 *  The channel's login, e.g. `faflive`. Lower case, as the platform gives
+	 *  it.
+	 */
+	channel: string,
+	/**
+	 *  The channel's display name, which differs from the login in case and
+	 *  sometimes in script. Falls back to the login when the platform gives
+	 *  none.
+	 */
+	displayName: string,
+	/**  The stream's title, as the broadcaster set it. Shown as-is. */
+	title: string,
+	/**
+	 *  Where to watch. Always the channel page rather than a player URL: a
+	 *  client that is not a browser should hand the viewer to one.
+	 */
+	url: string,
+	/**  Concurrent viewers, or `None` when the platform did not say. */
+	viewers: number | null,
+	/**  RFC 3339, as the platform reports it. Empty when unknown. */
+	startedAt?: string,
+};
+
 export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 	id: number,
 	password: string | null,
@@ -3022,6 +3095,7 @@ export type LobbyEvent = { type: "connecting" } | { type: "connected" } |
 } } |
 /**  Progress on getting the install ready for the pending launch. */
 { type: "preparing"; payload: {
+	phase: PreparationPhase,
 	detail: string,
 	progress: number | null,
 } } | { type: "joinFailed"; payload: {
@@ -3254,7 +3328,8 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
 } } |
 /**
  *  A `--parse` preflight resolved the options to a map name. An empty name
- *  clears a stale prediction when the options change.
+ *  clears a prediction, which is what every edit to the options does: see
+ *  [`MapGeneratorState::predicted_name`].
  */
 { type: "namePredicted"; payload: {
 	mapName: string,
@@ -3295,11 +3370,16 @@ export type MapGeneratorState = {
 	 */
 	validation?: ValidationIssue[],
 	/**
-	 *  The map name the current options would produce, as reported by the
-	 *  generator's own `--parse`. Empty until a preflight has run.
+	 *  The map name the options would produce, as reported by the generator's
+	 *  own `--parse`. Empty until a preflight has run, and emptied again the
+	 *  moment the options change.
 	 *
-	 *  Worth showing on its own: it is shareable before the map exists, and it
-	 *  is the authoritative confirmation that the options are acceptable.
+	 *  That second half is the whole of it. This used to stand in the dialog
+	 *  unprompted, showing the name resolved for whatever the options were
+	 *  when the preflight last ran, and it did not move when they were edited:
+	 *  a map name, presented as fact, for a map nobody had asked for and which
+	 *  the current options would not produce. It is the answer to "check these
+	 *  options" now, and it only survives as long as the question does.
 	 */
 	predictedName?: string,
 	/**
@@ -4165,6 +4245,18 @@ export type NotificationAction = { type: "openChat"; payload: {
 /**  Open the calendar on one occurrence's detail panel. */
 { type: "openEvent"; payload: {
 	occurrenceId: string,
+} } |
+/**
+ *  Open a live stream in the browser.
+ *
+ *  The URL travels with the action rather than being rebuilt from a channel
+ *  name, because the notification may outlive the broadcast it is about and
+ *  the link it offered should still be the link it offered. The frontend
+ *  validates it as an ordinary HTTPS address before opening it, the way it
+ *  does every other address the backend hands it.
+ */
+{ type: "openStream"; payload: {
+	url: string,
 } };
 
 export type NotificationCommand = { type: "markRead"; payload: {
@@ -4200,7 +4292,16 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  A newer client release exists. The banner says so too, but the banner
  *  lives at the top of one workspace and this survives a tab change.
  */
-"clientUpdate" | "error";
+"clientUpdate" |
+/**
+ *  One of FAF's own channels started broadcasting.
+ *
+ *  Not on the operating-system list below, deliberately. A stream runs for
+ *  hours and nothing about it expires, so taking the screen away from
+ *  somebody mid-game to mention one would be exactly the interruption the
+ *  request asked to avoid.
+ */
+"streamLive" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -4233,6 +4334,15 @@ export type NotificationPreferences = {
 	gameLaunched: boolean,
 	reviewReminder: boolean,
 	partyInvites: boolean,
+	/**
+	 *  Whether FAF's own Twitch and YouTube channels going live is announced.
+	 *
+	 *  On, because it is the client telling people about the game the client is
+	 *  for, and somebody who has never heard of the streams will not go looking
+	 *  for a switch to turn them on. Off is one click, in the same list as every
+	 *  other kind, which is what was asked for in the thread.
+	 */
+	streamLive: boolean,
 	/**  Sound volume from 0 to 100. */
 	volume: number,
 };
@@ -4716,8 +4826,16 @@ export type PlayerProfile = {
 	id: number,
 	login: string,
 	/**
-	 *  Conservative displayed global rating (`mean - 3 × deviation`). Zero
-	 *  means the lobby supplied no global rating for this account.
+	 *  Conservative displayed global rating (`mean - 3 × deviation`), and it
+	 *  may be negative: a new or long-idle account's deviation is large enough
+	 *  to put it below zero, which is what the server, the website and both
+	 *  reference clients all print.
+	 *
+	 *  Zero is the "not supplied" sentinel and also a rating somebody can
+	 *  really have, so `ratings` is what settles the difference: an account
+	 *  the lobby said nothing about has an empty table. This field is the
+	 *  fallback for the partial `player_info` payloads that carry the scalar
+	 *  and no table at all.
 	 */
 	globalRating: number,
 	/**  All rating queues supplied by the lobby, sorted by technical name. */
@@ -4827,6 +4945,30 @@ export type PoolStep = {
 	 */
 	team: PoolSide,
 };
+
+/**
+ *  Which part of getting the install ready a preparation step belongs to.
+ *
+ *  The Python client's updater dialog gives each of these its own progress bar
+ *  rather than sharing one, because their numbers do not add up: the checksum
+ *  pass walks every file the featured mod lists, and the download pass walks
+ *  only the few of them that turned out to be stale. Reporting both as a
+ *  single percentage made a bar that jumped, stalled and said nothing about
+ *  which kind of waiting was going on.
+ */
+export type PreparationPhase =
+/**  Asking the API which files this featured mod is made of. */
+"asking" |
+/**
+ *  Reading every listed file and checksumming it against the API's MD5.
+ *  The slow part of a launch that has nothing to download, and the part
+ *  that used to happen in complete silence.
+ */
+"verifying" |
+/**  Fetching the files the checksum pass rejected. */
+"downloading" |
+/**  Staging the map. */
+"map";
 
 /**
  *  The headline cash prize, where an event has one.
@@ -5910,6 +6052,15 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	mapNames: string[],
 } } | { type: "cacheInfoUpdated"; payload: {
 	info: GameCacheInfo,
+} } |
+/**
+ *  The matchmaker veto selection to replay at the next login, replacing
+ *  whatever was remembered before. Not additive, unlike
+ *  [`SettingsEvent::KeptGeneratedMaps`]: this is one whole selection, and
+ *  clearing every veto has to be able to clear it.
+ */
+{ type: "matchmakerVetoesChanged"; payload: {
+	vetoes: PlayerVeto[],
 } };
 
 /**
@@ -5952,6 +6103,22 @@ export type SettingsState = {
 	 *  configured once and being configured every time.
 	 */
 	mapGenerator: GeneratorOptions,
+	/**
+	 *  The matchmaker map vetoes this account last saved.
+	 *
+	 *  Kept here because the server does not keep them. A player's vetoes live
+	 *  on their `Player` object for the life of the session and are gone the
+	 *  moment they log out: there is no table behind them and no command to
+	 *  read them back, so a client that only listens is a client whose vetoes
+	 *  are always empty at login, which is the report.
+	 *
+	 *  So the client remembers what it sent and sends it again once the lobby
+	 *  authenticates. The server validates and caps the selection against the
+	 *  current pools exactly as it does for a fresh one, and tells us when it
+	 *  had to adjust it, so a pool that changed between sessions corrects
+	 *  itself rather than being replayed wrong forever.
+	 */
+	matchmakerVetoes?: PlayerVeto[],
 	cacheInfo?: GameCacheInfo,
 };
 
@@ -6049,6 +6216,58 @@ export type Stream = {
 	/**  What this stream is, e.g. "Main stream (English)". Often empty. */
 	info: string,
 };
+
+/**
+ *  Which service a broadcast is on.
+ *
+ *  An enum rather than a string because the UI picks an icon and a word from it,
+ *  and because "twitch" spelled two ways would be two platforms.
+ */
+export type StreamPlatform = "twitch" | "youTube";
+
+export type StreamsCommand =
+/**
+ *  Look once. Sent by the ticker, and by the links tab when it opens so the
+ *  badge is right without waiting for the next tick.
+ */
+{ type: "check" };
+
+export type StreamsEvent = { type: "checking" } | { type: "loaded"; payload: {
+	streams: LiveStream[],
+} } | { type: "loadFailed"; payload: {
+	reason: string,
+} } |
+/**  These broadcasts have been announced and must not be again. */
+{ type: "announced"; payload: {
+	streamIds: string[],
+} };
+
+export type StreamsState = {
+	/**  Everything live right now, in the order the port reported it. */
+	live: LiveStream[],
+	status: StreamsStatus,
+	/**
+	 *  Broadcast ids already announced this session.
+	 *
+	 *  Not persisted. A client started while a stream is running announces it
+	 *  once, which is right: to that client it is news, and the alternative is
+	 *  remembering forever which broadcasts a machine has been told about.
+	 */
+	announced: string[],
+};
+
+/**
+ *  Whether the last look succeeded.
+ *
+ *  `Idle` covers both "not asked yet" and "this build cannot ask", and those are
+ *  deliberately the same state: neither is a failure, and neither is worth a
+ *  message in the links list. A real failure is kept because a channel that
+ *  silently stops being marked live would otherwise be indistinguishable from a
+ *  channel that is off air.
+ */
+export type StreamsStatus = { type: "idle" } | { type: "checking" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 /**  The size, spawn and team window a whole-map style is designed for. */
 export type StyleConstraints = {

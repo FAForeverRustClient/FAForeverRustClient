@@ -173,7 +173,28 @@ export function parseChatGameLink(value: string): ChatGameLink | null {
 }
 
 /**
- * Render a message body: linkify URLs and highlight our own nickname.
+ * The names a message can ping, and the colour a ping is printed in.
+ *
+ * Naming somebody in a channel pings them, with or without an `@`: that is
+ * what both reference clients do and what `mentions()` already implements
+ * here. The gap was on the *sender's* side. Nothing said whether the word
+ * typed had resolved to a real player or was a misspelling that reached
+ * nobody, so every recognised name in a line is coloured and the answer is on
+ * screen as soon as the line is.
+ *
+ * The names are the conversation's own roster rather than the whole player
+ * directory: a name is only a ping if its owner is in the room to be pinged.
+ */
+export interface PingIndex {
+  /** Lowercased nicknames currently in the conversation. */
+  names: ReadonlySet<string>;
+  /** `#rrggbb`, from `chat.nameColors.pings`. */
+  color: string;
+}
+
+/**
+ * Render a message body: linkify URLs, highlight our own nickname, and colour
+ * the names of everybody else the line pings.
  *
  * Splitting on the URL pattern first means a nickname inside a link's text is
  * never wrapped, which would break the href.
@@ -183,6 +204,7 @@ export function renderBody(
   self: string,
   search = "",
   onGameLink?: (link: ChatGameLink) => void,
+  pings?: PingIndex,
 ): ReactNode[] {
   return content.split(URL_PATTERN).map((part, i) => {
     if (i % 2 === 1) {
@@ -222,36 +244,85 @@ export function renderBody(
         </a>
       );
     }
-    return <span key={i}>{highlightPlainText(part, self, search, i)}</span>;
+    return <span key={i}>{highlightPlainText(part, self, search, i, pings)}</span>;
   });
 }
 
-function highlightPlainText(text: string, self: string, search: string, keyBase: number): ReactNode[] {
+function highlightPlainText(
+  text: string,
+  self: string,
+  search: string,
+  keyBase: number,
+  pings: PingIndex | undefined,
+): ReactNode[] {
   const query = search.trim();
-  if (!query) return highlightMention(text, self, keyBase);
+  if (!query) return highlightNames(text, self, keyBase, pings);
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return text.split(new RegExp(`(${escaped})`, "gi")).flatMap((part, index) => (
     index % 2 === 1
       ? <mark key={`${keyBase}-search-${index}`} className="chat-search-hit">{part}</mark>
-      : highlightMention(part, self, keyBase * 1_000 + index)
+      : highlightNames(part, self, keyBase * 1_000 + index, pings)
   ));
 }
 
-function highlightMention(text: string, self: string, keyBase: number): ReactNode[] {
-  if (!self) return [text];
-  // Escaped so a nickname containing regex metacharacters (`[clan]name`) is
-  // matched literally; the boundaries mirror `mentions()` in the reducer.
-  const escaped = self.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
-  const pattern = new RegExp(`(?<![\\w[\\]-])(${escaped})(?![\\w[\\]-])`, "gi");
-  return text.split(pattern).map((part, i) =>
-    i % 2 === 1 ? (
-      <mark key={`${keyBase}-${i}`} className="chat-mention">
-        {part}
-      </mark>
-    ) : (
-      part
-    ),
-  );
+/**
+ * One word of a message body, as the ping rules see it.
+ *
+ * A maximal run of the characters `mentions()` counts as part of a name, so a
+ * token is bounded by non-name characters by construction and the two agree
+ * without a second boundary rule written anywhere: "Sheikah" does not ping
+ * "Sheik" and "[DJO]Ajamajan" does not ping "Ajamajan", in this file and in
+ * the reducer alike. The optional leading `@` is matched with the name so the
+ * colour covers what was actually typed; optional, because a name pings with
+ * it or without it.
+ */
+const NAME_TOKEN = /@?[\w[\]-]+/g;
+
+function highlightNames(
+  text: string,
+  self: string,
+  keyBase: number,
+  pings: PingIndex | undefined,
+): ReactNode[] {
+  const selfKey = self.toLowerCase();
+  if (!selfKey && !pings) return [text];
+
+  const nodes: ReactNode[] = [];
+  let consumed = 0;
+  NAME_TOKEN.lastIndex = 0;
+  for (let match = NAME_TOKEN.exec(text); match !== null; match = NAME_TOKEN.exec(text)) {
+    const token = match[0];
+    const name = token.startsWith("@") ? token.slice(1) : token;
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const isSelf = !!selfKey && key === selfKey;
+    const isPing = !isSelf && !!pings && pings.names.has(key);
+    if (!isSelf && !isPing) continue;
+
+    if (match.index > consumed) nodes.push(text.slice(consumed, match.index));
+    nodes.push(
+      isSelf ? (
+        <mark key={`${keyBase}-${match.index}`} className="chat-mention">
+          {token}
+        </mark>
+      ) : (
+        // Inline, because the colour is a preference and a stylesheet cannot
+        // read one. It is the single thing about a ping the thread asked to
+        // be adjustable, since the name colours around it already are.
+        <mark
+          key={`${keyBase}-${match.index}`}
+          className="chat-ping"
+          style={{ color: pings?.color }}
+        >
+          {token}
+        </mark>
+      ),
+    );
+    consumed = match.index + token.length;
+  }
+  if (nodes.length === 0) return [text];
+  if (consumed < text.length) nodes.push(text.slice(consumed));
+  return nodes;
 }
 
 export function formatTime(timestamp: string, use24HourTime = true): string {

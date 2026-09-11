@@ -17,6 +17,7 @@ import {
 // Only the from-disk entry point: publishing an installed map moved into its own
 // modal on this branch, so `openUpload` is no longer called from here.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
+import { useUploadIntro } from "../uploads/UploadIntroDialog";
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -137,6 +138,10 @@ function mapVaultQuery(
 }
 
 function VaultView({ busy }: { busy: boolean }) {
+  // The Upload button opens this first. Pressing it used to put an OS
+  // file browser on screen immediately, which for anyone streaming is
+  // their filesystem in front of an audience.
+  const uploadIntro = useUploadIntro("map", () => void openUploadFromDisk("map"));
   const { t } = useTranslation();
   // `vault` is the catalogue index, still loaded once and still what the
   // favourites preset and every map-art lookup read. `browse` is one page of a
@@ -381,6 +386,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   return (
     <>
+      {uploadIntro.dialog}
       <SearchPanel
         className="map-search-panel"
         onSubmit={(event) => {
@@ -416,7 +422,7 @@ function VaultView({ busy }: { busy: boolean }) {
             >
               <Icon name="refresh" size={15} /> {t("maps.view.refresh")}
             </Button>
-            <Button onClick={() => void openUploadFromDisk("map")}><Icon name="plus" size={15} /> {t("maps.view.uploadFromDisk")}</Button>
+            <Button onClick={uploadIntro.start}><Icon name="plus" size={15} /> {t("maps.view.uploadFromDisk")}</Button>
                       </>
         )}
         advanced={filtersOpen ? (

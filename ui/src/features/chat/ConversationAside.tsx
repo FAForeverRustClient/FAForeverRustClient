@@ -27,6 +27,10 @@ interface Props {
   mapVault: VaultMap[];
   /** Seconds since the epoch, ticked by the view so the game time advances. */
   now: number;
+  /** Open a private conversation with somebody in the lineup. */
+  onOpenConversation: (nickname: string) => void;
+  /** Their player menu, the same one the roster and the messages open. */
+  onPlayerContextMenu: (nickname: string, event: React.MouseEvent) => void;
 }
 
 export function ConversationAside({
@@ -36,6 +40,8 @@ export function ConversationAside({
   liveGames,
   mapVault,
   now,
+  onOpenConversation,
+  onPlayerContextMenu,
 }: Props) {
   const { t } = useTranslation();
   const presence = gamePresenceForPlayer(openGames, liveGames, peer, now);
@@ -72,7 +78,15 @@ export function ConversationAside({
   return (
     <aside className="chat-conversation-aside" aria-label={t("chat.aside.title", { name: peer })}>
       <div className="chat-conversation-aside-card">
-        <GameSummaryCard presence={presence} social={social} vault={mapVault} now={now} showMap />
+        <GameSummaryCard
+          presence={presence}
+          social={social}
+          vault={mapVault}
+          now={now}
+          showMap
+          onOpenConversation={onOpenConversation}
+          onPlayerContextMenu={onPlayerContextMenu}
+        />
         <button type="button" className="chat-head-action chat-aside-action" onClick={act}>
           <Icon name={watching ? "eye" : "play"} size={14} />
           {watching ? t("chat.aside.watch") : t("chat.aside.join")}

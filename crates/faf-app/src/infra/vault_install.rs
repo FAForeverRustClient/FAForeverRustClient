@@ -72,6 +72,21 @@ pub async fn bounded_body(
     subject: &str,
     max_bytes: u64,
 ) -> Result<Vec<u8>, String> {
+    bounded_body_with_progress(response, subject, max_bytes, &|_, _| {}).await
+}
+
+/// [`bounded_body`], reporting as the bytes arrive.
+///
+/// `on_bytes` is called with the bytes received so far and the total the
+/// response declared, if it declared one. It is called per chunk, so a caller
+/// that puts anything on a channel needs its own throttle.
+pub async fn bounded_body_with_progress(
+    response: reqwest::Response,
+    subject: &str,
+    max_bytes: u64,
+    on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
+) -> Result<Vec<u8>, String> {
+    let declared = response.content_length();
     if response
         .content_length()
         .is_some_and(|size| size > max_bytes)
@@ -95,6 +110,7 @@ pub async fn bounded_body(
             ));
         }
         body.extend_from_slice(&chunk);
+        on_bytes(received, declared);
     }
     Ok(body)
 }

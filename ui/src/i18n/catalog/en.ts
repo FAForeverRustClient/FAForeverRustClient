@@ -165,6 +165,7 @@ export const en = {
   "chat.jumpToLatest": "Jump to latest",
   "chat.send": "Send",
   "chat.reply.start": "Reply",
+  "chat.reply.hint": "Reply (or right-click the message)",
   "chat.reply.banner": "Replying to {name}",
   "chat.reply.cancel": "Cancel reply",
   "chat.reaction.remove": "Remove your {emoji} reaction",
@@ -335,6 +336,14 @@ export const en = {
   "updates.required.closeToFinish": "The installer cannot replace a client that is running. Close the client now to let it finish.",
 
   // Vault upload dialog.
+  "uploads.intro.titleMap": "Upload a map to the vault",
+  "uploads.intro.titleMod": "Upload a mod to the vault",
+  "uploads.intro.bodyMap": "The next step opens a file browser so you can pick the map folder. What you upload is public: everyone can download it, and it is moderated against the vault rules.",
+  "uploads.intro.bodyMod": "The next step opens a file browser so you can pick the mod folder. What you upload is public: everyone can download it, and it is moderated against the vault rules.",
+  "uploads.intro.rulesLink": "Read the vault rules",
+  "uploads.intro.accept": "I understand the vault rules and accept them.",
+  "uploads.intro.cancel": "Cancel",
+  "uploads.intro.selectFolder": "Select folder…",
   "uploads.title.map": "Publish map",
   "uploads.title.mod": "Publish mod",
   "uploads.description": "“{name}” will be compressed and uploaded to the FAF vault under your account, where everyone can download it.",
@@ -370,6 +379,14 @@ export const en = {
   "links.filter.all": "All ({count})",
   "links.filter.official": "Official ({count})",
   "links.filter.community": "External ({count})",
+  "links.live": "LIVE",
+  "links.liveNow": "Streaming now",
+  // Plural: the viewer count, with the broadcaster's own stream title in front
+  // of it. The title is theirs, so it is not translated.
+  "links.liveWithViewers": {
+    one: "{title} - {count} watching",
+    other: "{title} - {count} watching",
+  },
   "links.origin.official": "Official",
   "links.origin.community": "External",
   "links.origin.officialTitle": "Run by FAF",
@@ -513,6 +530,9 @@ export const en = {
   "settings.general.autoLogin.label": "Auto sign-in",
   "settings.general.autoLogin.hint":
     "Automatically sign in with your saved account whenever the client starts.",
+  "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
+  "settings.general.rememberTypedEntries.hint":
+    "Lets the window offer entries you have typed into a field before, such as the host dialog's game title. Off by default: the client already puts your last title back in that field.",
   "settings.general.language.label": "Language",
   "settings.general.language.hint":
     "Applies immediately. Untranslated text stays in English.",
@@ -676,6 +696,7 @@ export const en = {
   // Custom-game detail panel.
   "lobby.details.host": "Host: {name}",
   "lobby.details.hostLabel": "Host:",
+  "lobby.details.mapSize": "Map size",
   "lobby.details.map": "Map",
   "lobby.details.players": "Players",
   "lobby.details.averageRating": "Average rating",
@@ -712,9 +733,15 @@ export const en = {
   "lobby.toolbar.tileView": "Tile view",
   "lobby.toolbar.listView": "List view",
   "lobby.toolbar.hidePrivate": "Hide private",
-  "lobby.toolbar.hideModded": "Hide modded",
+  // "Hide modded" on its own read as "hide any game with a mod", including
+  // the UI mods that change nothing about the simulation. This filter has
+  // always been about `simMods` alone, and the Russian pass asked for the
+  // English to say so too.
+  "lobby.toolbar.hideModded": "Hide sim-modded",
   "lobby.toolbar.hideUnranked": "Hide unranked",
   "lobby.toolbar.applyFilters": "Apply filters",
+  "lobby.toolbar.applyFiltersHint": "Hide every game matching a filter rule.",
+  "lobby.toolbar.filters": "Filters",
   "lobby.toolbar.hostGame": "Host game",
 
   // Game filter rules.
@@ -738,6 +765,7 @@ export const en = {
   "lobby.filters.constraint.above": "is above",
   "lobby.filters.constraint.below": "is below",
   "lobby.filters.addRule": "Add rule",
+  "lobby.filters.hide": "Hide",
   "lobby.filters.empty": "No exclusion rules yet.",
   "lobby.filters.editRule": "Edit filter",
   "lobby.filters.saveRule": "Save changes",
@@ -897,6 +925,13 @@ export const en = {
   "lobby.host.enableAll": "Enable All",
   "lobby.host.disableAll": "Disable All",
   "lobby.host.reloadMods": "Reload Mods",
+  // The three counters and the word between the rating inputs. They were
+  // written straight into the components, so no catalogue could reach them
+  // and every language showed them in English.
+  "lobby.host.modCount": "{active} active · {installed} installed",
+  "lobby.host.mapCount": { one: "{count} map", other: "{count} maps" },
+  /** Between the two rating inputs: "Enforce player rating [800] to [1500]". */
+  "lobby.host.ratingTo": "to",
   "lobby.host.filter": "Filter",
   "lobby.host.filterWidth": "Width",
   "lobby.host.filterHeight": "Height",
@@ -1128,6 +1163,7 @@ export const en = {
   "home.vaultReplays": "Vault replays",
   "home.clientStatus": "Client status",
   "home.clientStatusHint": "Backend connection and local client version.",
+  "lobby.browser.footerCount": "Showing {shown} of {total} games",
   "lobby.browser.tileHint": "Click map art to preview · double-click details to join",
   "lobby.browser.listHint": "Double-click a game to join",
 
@@ -1185,6 +1221,9 @@ export const en = {
   "settings.notifications.reviewReminderHint": "Prompt you to review the map or mods after your live game ends.",
   "settings.notifications.partyInvites": "Party invitations",
   "settings.notifications.partyInvitesHint": "Alert when another player invites you to a party.",
+  "settings.notifications.streamLive": "FAF goes live",
+  "settings.notifications.streamLiveHint":
+    "Tell me when FAF's own Twitch channel starts broadcasting. Never a pop-up over a game: it appears in the notification list and on the External links page.",
 
   // Settings shell.
   "settings.title": "Settings",
@@ -1398,6 +1437,7 @@ export const en = {
   "settings.nameColors.foes": "Foes",
   "settings.nameColors.moderators": "Moderators",
   "settings.nameColors.admins": "Administrators",
+  "settings.nameColors.pings": "Pings (names inside a message)",
   "settings.nameColors.rules": "Name color rules",
   "settings.nameColors.rulesHint": "Individual assignments take priority, followed by you, administrators, moderators, friends, and foes.",
   "settings.nameColors.reset": "Reset to standard colors",
@@ -2024,6 +2064,21 @@ export const en = {
   "mods.vault.uiMod": "UI mod",
   "mods.vault.simMod": "Simulation mod",
   "mods.vault.featured": "Featured",
+  "vault.report.action": "Report this as offensive",
+  "vault.report.title": "Report mod / map",
+  "vault.report.copy": "Copy these details",
+  "vault.report.copied": "Copied",
+  "vault.report.lead": "Open a ticket in the reports channel.",
+  "vault.report.instructions": "Copy the details above and follow the link to Discord, where a moderator can pick it up. Say what is wrong with it: the details alone are not a report.",
+  "vault.report.cancel": "Cancel",
+  "vault.report.headToDiscord": "Head to Discord",
+  "mods.vault.reportKind": "Mod",
+  "mods.vault.author": "Author",
+  "mods.vault.uid": "UID",
+  "maps.vault.reportKind": "Map",
+  "maps.vault.reportAuthor": "Author",
+  "maps.vault.reportVersion": "Version",
+  "maps.vault.reportFolder": "Folder",
   "mods.vault.version": "Version",
   "mods.vault.communityRating": "Community rating",
   "mods.vault.published": "Published",
@@ -2249,6 +2304,7 @@ export const en = {
   "maps.generate.backToOptions": "Back to options",
   "maps.generate.reproduceTitle": "Reproduce map",
   "maps.generate.reproduceHint": "Paste a name to rebuild that exact map. Everything below is ignored while it is set.",
+  "maps.generate.reproduceClear": "Clear the map name",
   "maps.generate.reproduce": "Reproduce",
   "maps.generate.generatorVersion": "Generator version",
   "maps.generate.seedPinsOneMap": "A fixed seed always makes one map.",
@@ -2281,7 +2337,6 @@ export const en = {
   "maps.generate.hideHelp": "Hide help",
   "maps.generate.loadingHelp": "Loading the generator help…",
   "maps.generate.checkOptions": "Verify",
-  "maps.generate.willBeCalled": "Will be called",
   "maps.generate.cancel": "Cancel",
   "maps.generate.cancelled": "Generation cancelled.",
   "maps.generate.preparing": "Checking the options with the generator…",
@@ -2307,7 +2362,6 @@ export const en = {
   "maps.generate.presetSave": "Save",
   "maps.generate.presetReplace": "Replace preset",
   "maps.generate.presetDelete": "Delete",
-  "maps.generate.rememberOptions": "Remember these options",
   "maps.generate.issue.spawnsNotDivisible": "{spawns} spawns cannot be split evenly between {teams} teams.",
   "maps.generate.issue.mapSizeNotMultiple": "Map size {size} is not a multiple of {step}.",
   "maps.generate.issue.symmetryIncompatible": "{symmetries} cannot produce {teams} teams.",
@@ -2588,6 +2642,7 @@ export const en = {
   "notifications.action.acceptPartyInvite": "Accept invite",
   "notifications.action.watchLive": "Watch replay",
   "notifications.action.openEvent": "Open the calendar",
+  "notifications.action.openStream": "Watch the stream",
   "notifications.action.openSettings": "Open Settings",
   "reporting.statusFallback": "Submitted",
   "maps.vault.mapType": "Map",
@@ -2595,6 +2650,7 @@ export const en = {
   "tournaments.title": "Tournaments",
   "tournaments.eyebrow": "Competitive events",
   "tournaments.refresh": "Refresh",
+  "tournaments.viewOnline": "View online",
   "tournaments.refreshing": "Refreshing…",
   "tournaments.loading": "Loading tournaments…",
   "tournaments.detailLoading": "Loading the tournament…",
@@ -3210,6 +3266,10 @@ export const en = {
   "lobby.joinDownload.cancel": "Cancel",
   "lobby.joinDownload.confirm": "Download and join",
   "lobby.joinProgress.title": "Getting the game ready",
+  "lobby.joinProgress.phase.asking": "Asking the server what this game needs",
+  "lobby.joinProgress.phase.verifying": "Checking the files you already have",
+  "lobby.joinProgress.phase.downloading": "Downloading what is missing",
+  "lobby.joinProgress.phase.map": "Getting the map",
   "lobby.joinProgress.working": "Working",
   "lobby.joinProgress.showDetails": "Show details ({count})",
   "lobby.joinProgress.hideDetails": "Hide details",

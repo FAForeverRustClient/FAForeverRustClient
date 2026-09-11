@@ -34,6 +34,13 @@ pub enum NotificationKind {
     /// A newer client release exists. The banner says so too, but the banner
     /// lives at the top of one workspace and this survives a tab change.
     ClientUpdate,
+    /// One of FAF's own channels started broadcasting.
+    ///
+    /// Not on the operating-system list below, deliberately. A stream runs for
+    /// hours and nothing about it expires, so taking the screen away from
+    /// somebody mid-game to mention one would be exactly the interruption the
+    /// request asked to avoid.
+    StreamLive,
     Error,
 }
 
@@ -106,6 +113,16 @@ pub enum NotificationAction {
     #[serde(rename_all = "camelCase")]
     OpenEvent {
         occurrence_id: String,
+    },
+    /// Open a live stream in the browser.
+    ///
+    /// The URL travels with the action rather than being rebuilt from a channel
+    /// name, because the notification may outlive the broadcast it is about and
+    /// the link it offered should still be the link it offered. The frontend
+    /// validates it as an ordinary HTTPS address before opening it, the way it
+    /// does every other address the backend hands it.
+    OpenStream {
+        url: String,
     },
 }
 

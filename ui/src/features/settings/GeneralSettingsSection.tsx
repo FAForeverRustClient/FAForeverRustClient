@@ -70,6 +70,17 @@ export function GeneralSettingsSection() {
       </SettingRow>
 
       <SettingRow
+        label={t("settings.general.rememberTypedEntries.label")}
+        hint={t("settings.general.rememberTypedEntries.hint")}
+      >
+        <SettingsSwitch
+          checked={preferences.rememberTypedEntries ?? false}
+          onChange={(checked) => void save({ ...preferences, rememberTypedEntries: checked })}
+          label={t("settings.general.rememberTypedEntries.label")}
+        />
+      </SettingRow>
+
+      <SettingRow
         label={t("settings.events.weekStart.label")}
         hint={t("settings.events.weekStart.hint")}
       >

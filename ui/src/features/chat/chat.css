@@ -445,7 +445,12 @@ html.is-resizing-chat-roster * {
   position: relative;
   display: grid;
   grid-template-columns: 32px minmax(64px, var(--chat-sender-width, 116px)) minmax(0, 1fr) 44px;
-  gap: 6px;
+  /* Columns only. The rows a message can have beyond its body are the quoted
+     line above it and the reactions below it, and both belong to this message:
+     a row gap pushed them towards the neighbouring messages instead. Each owns
+     its own spacing. */
+  column-gap: 6px;
+  row-gap: 0;
   align-items: start;
   min-height: 24px;
   padding: 2px 7px;
@@ -608,6 +613,15 @@ html.is-resizing-chat-roster * {
   font-weight: 500;
 }
 
+/* Somebody else's name inside a message: the sender's confirmation that the
+   word they typed resolved to a player in the room. The colour itself is the
+   `chat.nameColors.pings` preference, set inline by the renderer; this rule
+   only undoes the browser's yellow `mark` background. */
+.chat-ping {
+  background: none;
+  font-weight: 550;
+}
+
 .chat-search-hit {
   display: inline-block;
   line-height: 1.15;
@@ -670,13 +684,20 @@ html.is-resizing-chat-roster * {
 /* ── Replies ──────────────────────────────────────────────────────────── */
 /* The quoted line above an answer. Resolved from the scrollback at render
    time, so it simply does not appear once the original has scrolled out of
-   the retained window. */
+   the retained window.
+ *
+ * The spacing is the whole point, and it used to be backwards. Messages are one
+ * pixel apart and the row gap inside a message was six, so the quote sat almost
+ * touching the message *above* it and well clear of the message it belonged to:
+ * it read as a trailer on somebody else's line rather than as the thing being
+ * answered. Every messenger puts the quote above the answer, which works only if
+ * it is visibly attached to it. So: nothing below, a gap above. */
 .chat-quote {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
   grid-column: 3 / -1;
-  margin: 0 0 2px;
+  margin: 5px 0 0;
   padding-left: var(--space-2);
   border-left: 2px solid var(--color-border-strong);
   color: var(--color-subtle);
@@ -772,13 +793,14 @@ html.is-resizing-chat-roster * {
 }
 
 /* ── Reactions ────────────────────────────────────────────────────────── */
+/* Below its own message, and its own spacing now that the grid has no row gap. */
 .chat-reactions {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   grid-column: 3 / -1;
   flex-wrap: wrap;
-  padding-top: 2px;
+  padding-top: 4px;
 }
 
 .chat-reaction {
@@ -1118,7 +1140,11 @@ html.is-resizing-chat-roster * {
   border-radius: var(--radius-sm);
 }
 
-.chat-roster-user:hover {
+.chat-roster-user:hover,
+/* Held while this row's player menu is up. The menu opens under the pointer,
+   which has left the row by then, and the menu no longer prints the name
+   across its top: this is what says which of two hundred names it is about. */
+.chat-roster-user.is-menu-open {
   background: var(--color-surface-hover);
 }
 
@@ -1341,10 +1367,36 @@ img.chat-game-map {
   font-size: 12px;
 }
 
-.chat-game-team li > span:nth-child(2) {
+.chat-game-team li > span:nth-child(2),
+.chat-game-player {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The same name, where the card is somewhere it can be reached: standing open
+   beside a conversation rather than hanging off a roster badge. It looks like
+   the text it replaces until it is hovered, because a lineup of twelve buttons
+   styled as buttons is a wall. */
+.chat-game-player {
+  font: inherit;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chat-game-player:hover {
+  text-decoration: underline;
+}
+
+.chat-game-player:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
 }
 
 .chat-game-team img,
@@ -1405,22 +1457,11 @@ img.chat-game-map {
   box-shadow: var(--shadow-popover);
 }
 
-.chat-user-menu-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3) var(--space-1);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-user-menu-clan {
-  font-weight: 500;
-  color: var(--color-subtle);
+/* A name in a message, while its player menu is open. Same reason as the
+   roster row above: the menu is anonymous without it. */
+.chat-nick.is-menu-open {
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
 }
 
 .chat-user-menu-color {

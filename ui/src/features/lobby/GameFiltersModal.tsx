@@ -4,6 +4,7 @@ import { Modal } from "../../design-system/Modal";
 import { Icon } from "../../design-system/Icon";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { cleanFilterValue, rulesWithPending } from "./gameFilterRules";
 
 export type FilterField = "titleOrMap" | "title" | "map" | "host" | "mod" | "rating";
 export type FilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";
@@ -56,10 +57,34 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
   const [editValue, setEditValue] = useState("");
 
   const add = () => {
-    const clean = value.replace(/^["']|["']$/g, "").trim();
-    if (!clean) return;
-    onChange([...rules, { field, constraint, value: clean }]);
+    const cleaned = cleanFilterValue(value);
+    if (!cleaned) return;
+    onChange([...rules, { field, constraint, value: cleaned }]);
     setValue("");
+  };
+
+  /**
+   * Close, keeping whatever was typed.
+   *
+   * The builder row held a typed value in local state until "Add rule" was
+   * pressed, and closing the dialog threw it away. So filling the row in,
+   * ticking "Apply filters" and closing did nothing at all, which is the
+   * reported "additional filters don't apply": the filter had never been added.
+   * An open edit is the same mistake in the other direction.
+   *
+   * One `onChange` for both, because it replaces the whole list: sending two
+   * would make the second overwrite the first.
+   */
+  const closeKeepingPending = () => {
+    const next = rulesWithPending(
+      rules,
+      { field, constraint, value },
+      editingIndex === null
+        ? null
+        : { index: editingIndex, rule: { field: editField, constraint: editConstraint, value: editValue } },
+    );
+    if (next !== rules) onChange(next as GameFilterRule[]);
+    onClose();
   };
 
   const startEdit = (index: number, rule: GameFilterRule) => {
@@ -71,11 +96,11 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
 
   const saveEdit = () => {
     if (editingIndex === null) return;
-    const clean = editValue.replace(/^["']|["']$/g, "").trim();
-    if (!clean) return;
+    const cleaned = cleanFilterValue(editValue);
+    if (!cleaned) return;
     const updated = rules.map((r, i) =>
       i === editingIndex
-        ? { field: editField, constraint: editConstraint, value: clean }
+        ? { field: editField, constraint: editConstraint, value: cleaned }
         : r,
     );
     onChange(updated);
@@ -87,13 +112,16 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
   };
 
   return (
-    <Modal className="game-filters-dialog" onClose={onClose}>
+    <Modal className="game-filters-dialog" onClose={closeKeepingPending}>
       <div className="play-dialog-head">
         <div>
           <h2>{t("lobby.filters.title")}</h2>
           <p>{t("lobby.filters.subtitle")}</p>
         </div>
-        <label className="toolbar-check filter-dialog-toggle">
+        <label
+          className="toolbar-check filter-dialog-toggle"
+          title={t("lobby.toolbar.applyFiltersHint")}
+        >
           <input
             type="checkbox"
             checked={applyFilters}
@@ -210,7 +238,15 @@ export function GameFiltersModal({ rules, applyFilters, onApplyFiltersChange, on
                 key={`${rule.field}-${rule.constraint}-${rule.value}-${index}`}
                 onDoubleClick={() => startEdit(index, rule)}
               >
-                <span className="filter-rule-cell">{t(FIELD_LABELS[rule.field])}</span>
+                {/* The rule's direction, on the rule itself. It is in the
+                    dialog's subtitle too, and a subtitle is not where somebody
+                    reads it: both reports of this filter were somebody
+                    expecting a match to *show* a lobby. Four columns, so it
+                    rides along with the field rather than taking a fifth. */}
+                <span className="filter-rule-cell">
+                  <span className="filter-rule-verb">{t("lobby.filters.hide")}</span>{" "}
+                  {t(FIELD_LABELS[rule.field])}
+                </span>
                 <span className="filter-rule-cell muted">{t(CONSTRAINT_LABELS[rule.constraint])}</span>
                 <span className="filter-rule-cell filter-rule-val">
                   <strong>{rule.value}</strong>

@@ -14,14 +14,15 @@
 //! adapter and emit `LaunchFailed`.
 
 use faf_domain::state::{
-    Game, GameLaunch, HostGameConfig, LobbyEvent, NotificationKind, PlayerProfile, ReplayEvent,
+    Game, GameLaunch, HostGameConfig, LobbyEvent, NotificationKind, PlayerProfile,
+    PreparationPhase as DomainPreparationPhase, ReplayEvent,
 };
 use serde_json::Value;
 use tokio::sync::mpsc;
 
 use crate::ports::{
-    GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, RelayMsg, ReplayMetadata,
-    UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
+    GameLaunchParams, GamePreparation, IceParams, ModPrepFailure, PreparationPhase, RelayMsg,
+    ReplayMetadata, UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
 };
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::notifications;
@@ -323,9 +324,13 @@ async fn ensure_generated_map(
     // Forward progress so the UI can show what the wait is for: generation
     // routinely takes tens of seconds.
     let mut outcome = Err("the map generator produced no result".to_string());
+    let mut generated: Vec<String> = Vec::new();
     while let Some(crate::ports::GeneratorUpdate::Status(status)) = updates.recv().await {
         match &status {
-            GeneratorStatus::Generated { .. } => outcome = Ok(()),
+            GeneratorStatus::Generated { maps } => {
+                generated = maps.clone();
+                outcome = Ok(())
+            }
             GeneratorStatus::Failed { reason } => {
                 outcome = Err(format!("could not generate {map_name}: {reason}"))
             }
@@ -333,6 +338,11 @@ async fn ensure_generated_map(
         }
         out.emit(MapGeneratorEvent::StatusChanged { status });
     }
+    // The same bookkeeping a deliberate run gets. Joining a lobby whose map
+    // had to be built used to skip all of it, which is why the client went on
+    // showing the map as missing, with no preview, while the player was already
+    // in the game: the folder was on disk and nothing had looked again.
+    super::map_generator::record_generated_maps(&generated, ctx, out).await;
     outcome
 }
 
@@ -383,6 +393,7 @@ async fn prepare_request(
     while let Some(update) = updates.recv().await {
         match update {
             UpdateProgress::Step(step) => out.emit(LobbyEvent::Preparing {
+                phase: preparation_phase(step.phase),
                 detail: step.detail,
                 progress: step.progress,
             }),
@@ -390,6 +401,21 @@ async fn prepare_request(
         }
     }
     outcome
+}
+
+/// The port's phase as the domain names it.
+///
+/// Two enums rather than one shared type, because the port describes work and
+/// the domain describes state: the adapter boundary is exactly where a new
+/// kind of work should be free to appear without the reducer's snapshot
+/// changing shape.
+fn preparation_phase(phase: PreparationPhase) -> DomainPreparationPhase {
+    match phase {
+        PreparationPhase::Asking => DomainPreparationPhase::Asking,
+        PreparationPhase::Verifying => DomainPreparationPhase::Verifying,
+        PreparationPhase::Downloading => DomainPreparationPhase::Downloading,
+        PreparationPhase::Map => DomainPreparationPhase::Map,
+    }
 }
 
 /// Stop the adapter and emit `LaunchFailed`. Always returns `None` so call sites

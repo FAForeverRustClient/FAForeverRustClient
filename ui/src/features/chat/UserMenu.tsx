@@ -107,34 +107,47 @@ export function UserMenu({
     }
   };
 
-  if (!isSelf) item(t("chat.menu.privateMessage"), () => actions.privateMessage(nickname));
+  // Ordered as agreed on the thread, most used first. "View profile" is top
+  // because the menu opens under the pointer: whatever is first is what the
+  // cursor is already sitting on, and looking somebody up is what a
+  // right-click on a name is usually for. Private message is second, since
+  // the double-click on the name is the shorter way to that one anyway.
   item(t("chat.menu.viewProfile"), () => actions.viewProfile(profile?.id ?? null, nickname));
-  if (profile) item(t("chat.menu.editNote"), () => actions.editNote(profile));
+  if (!isSelf) item(t("chat.menu.privateMessage"), () => actions.privateMessage(nickname));
   item(t("chat.menu.copyUsername"), () => actions.copyUsername(nickname));
-  if (!isSelf) {
-    item(t(isMuted ? "chat.menu.unmute" : "chat.menu.mute"), () => actions.setMuted(nickname, !isMuted));
-  }
 
+  // What they are doing now, and what they have done. All of it needs a FAF
+  // account: an IRC-only nickname has no games and no note to keep.
   if (profile) {
     separator();
     if (hostedGame) item(t("chat.menu.joinGame"), () => actions.joinGame(hostedGame));
     if (liveGame) item(t("chat.menu.watchLive"), () => actions.watchGame(liveGame));
     item(t("chat.menu.viewReplays"), () => actions.viewReplays(profile.login || nickname));
+    item(t("chat.menu.editNote"), () => actions.editNote(profile));
+  }
+
+  // How you stand with them. Muting is the one entry here that works without
+  // an account, because it acts on the nickname the channel shows.
+  if (!isSelf) {
+    separator();
+    if (profile) {
+      if (canInvite) item(t("chat.menu.inviteToParty"), () => actions.inviteToParty(profile.id));
+      item(t(isFriend ? "chat.menu.removeFriend" : "chat.menu.addFriend"), () =>
+        actions.setRelation(profile, "friend", !isFriend),
+      );
+      item(t(isFoe ? "chat.menu.removeFoe" : "chat.menu.addFoe"), () =>
+        actions.setRelation(profile, "foe", !isFoe),
+      );
+    }
+    item(t(isMuted ? "chat.menu.unmute" : "chat.menu.mute"), () =>
+      actions.setMuted(nickname, !isMuted),
+    );
+    if (profile && canKickFromParty) {
+      item(t("chat.menu.kickFromParty"), () => actions.kickFromParty(profile.id), true);
+    }
   }
 
   if (profile && !isSelf) {
-    separator();
-    if (canInvite) item(t("chat.menu.inviteToParty"), () => actions.inviteToParty(profile.id));
-    item(t(isFriend ? "chat.menu.removeFriend" : "chat.menu.addFriend"), () =>
-      actions.setRelation(profile, "friend", !isFriend),
-    );
-    item(t(isFoe ? "chat.menu.removeFoe" : "chat.menu.addFoe"), () =>
-      actions.setRelation(profile, "foe", !isFoe),
-    );
-    if (canKickFromParty) {
-      separator();
-      item(t("chat.menu.kickFromParty"), () => actions.kickFromParty(profile.id), true);
-    }
     separator();
     item(t("chat.menu.reportPlayer"), () => actions.reportPlayer(profile), true);
   }
@@ -180,28 +193,10 @@ export function UserMenu({
       // A right-click inside the menu must not open the webview's own menu.
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="chat-user-menu-head">
-        {nickname}
-        {profile?.clan && <span className="chat-user-menu-clan">[{profile.clan}]</span>}
-      </div>
-      <div className="chat-user-menu-color" role="group" aria-label={t("chat.menu.nameColorGroup", { nickname })}>
-        <label>
-          <span>{t("chat.menu.customColor")}</span>
-          <input
-            type="color"
-            value={nameColor ?? DEFAULT_COLOR_PICKER_VALUE}
-            aria-label={t("chat.menu.chooseColor", { nickname })}
-            onChange={(event) => actions.setNameColor(nickname, event.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={!nameColor}
-          onClick={() => actions.setNameColor(nickname, null)}
-        >
-          {t("chat.menu.clear")}
-        </button>
-      </div>
+      {/* No name across the top. It was the first thing in a menu opened on a
+          name that is still on screen, still under the pointer, and now kept
+          highlighted for exactly this reason: a row of read-only text between
+          the cursor and the first action it could reach. */}
       {entries.map((entry, i) =>
         entry.kind === "separator" ? (
           <hr key={`sep-${i}`} className="chat-user-menu-separator" />
@@ -220,6 +215,27 @@ export function UserMenu({
           </button>
         ),
       )}
+      {/* Last, because it is a setting rather than an action: it is reached
+          deliberately, once, and never in a hurry. */}
+      <hr className="chat-user-menu-separator" />
+      <div className="chat-user-menu-color" role="group" aria-label={t("chat.menu.nameColorGroup", { nickname })}>
+        <label>
+          <span>{t("chat.menu.customColor")}</span>
+          <input
+            type="color"
+            value={nameColor ?? DEFAULT_COLOR_PICKER_VALUE}
+            aria-label={t("chat.menu.chooseColor", { nickname })}
+            onChange={(event) => actions.setNameColor(nickname, event.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={!nameColor}
+          onClick={() => actions.setNameColor(nickname, null)}
+        >
+          {t("chat.menu.clear")}
+        </button>
+      </div>
     </div>
   );
 }

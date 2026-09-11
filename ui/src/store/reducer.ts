@@ -23,6 +23,7 @@ import { reduceReplays } from "./reducers/replays";
 import { reduceReporting } from "./reducers/reporting";
 import { reduceReviews } from "./reducers/reviews";
 import { reduceSocial } from "./reducers/social";
+import { reduceStreams } from "./reducers/streams";
 import { reduceTraining } from "./reducers/training";
 import { reduceTutorials } from "./reducers/tutorials";
 import { reduceUploads } from "./reducers/uploads";
@@ -55,6 +56,8 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, install: reduceInstall(state.install, event.event) };
     case "Social":
       return { ...state, social: reduceSocial(state.social, event.event) };
+    case "Streams":
+      return { ...state, streams: reduceStreams(state.streams, event.event) };
     case "Lobby":
       return { ...state, lobby: reduceLobby(state.lobby, event.event) };
     case "Replays":

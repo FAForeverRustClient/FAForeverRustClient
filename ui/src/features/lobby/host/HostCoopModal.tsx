@@ -6,7 +6,7 @@
 // list here, the map list narrows to the missions of the chosen campaign, and
 // the map generator is gone: a generated map is not a campaign mission.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
@@ -36,7 +36,10 @@ interface Props {
   initialTitle?: string;
 }
 
-export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props) {
+/** Memoised for the same reason [`HostGameModal`] is: the Play tab it hangs
+ *  off re-renders on every game list the lobby sends, and nothing in here
+ *  reads one. */
+export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props) {
   const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const vault = useAppStore((state) => state.state.maps.vault);
@@ -414,4 +417,4 @@ export function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props
       </div>
     </Modal>
   );
-}
+});

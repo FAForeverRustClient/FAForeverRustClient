@@ -272,6 +272,18 @@ export function TournamentsView() {
               )}
             </span>
           )}
+          {/* The same deployment the tab reads from, opened in the browser.
+              The tournament site is not going away: it works on a phone, which
+              is where a good share of sign-ups happen, and it is where events
+              created outside the client still live. `assetBase` is the service
+              the tab is actually talking to, so this cannot point somewhere
+              else after a deployment move, and it is absent until the first
+              load answers. */}
+          {state.assetBase !== "" && (
+            <Button onClick={() => void openHttpsUrl(state.assetBase)}>
+              <Icon name="external" size={16} /> {t("tournaments.viewOnline")}
+            </Button>
+          )}
           <Button onClick={load} disabled={loading}>
             <Icon name="refresh" size={16} />{" "}
             {t(loading ? "tournaments.refreshing" : "tournaments.refresh")}

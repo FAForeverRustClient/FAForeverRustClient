@@ -27,6 +27,22 @@ use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::launcher::{self, LaunchSession};
 use crate::services::notifications;
 
+/// How long a found match may sit there before the client stops believing in
+/// it.
+///
+/// `match_found` says the server has paired you; `game_launch` is the order to
+/// actually start, and it follows within seconds when it follows at all. The
+/// server gives up on a match that does not come together and stops being
+/// willing to start it, but it does not always say so, and this client then
+/// waited: the report was fifteen minutes of "preparing for game start" for a
+/// game that could not be started any more.
+///
+/// Two minutes is far beyond any honest wait for a launch order and far short
+/// of fifteen. It deliberately does not cover [`MatchmakingState::Launching`],
+/// which is the phase that patches the install and can legitimately take a
+/// quarter of an hour on a slow line.
+const MATCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         LobbyCommand::Connect => connect(ctx, out).await,
@@ -172,7 +188,14 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(LobbyEvent::VetoesUpdated {
                 vetoes: vetoes.clone(),
             });
+            // Remembered as well as sent. The server holds vetoes on the
+            // player's session and nowhere else, so this is the only copy that
+            // survives a logout; see `SettingsState::matchmaker_vetoes`.
+            out.emit(SettingsEvent::MatchmakerVetoesChanged {
+                vetoes: vetoes.clone(),
+            });
             ctx.ports.lobby.set_player_vetoes(vetoes);
+            crate::services::settings::persist(ctx, out).await;
         }
         LobbyCommand::LoadAvatars => {
             out.emit(LobbyEvent::AvatarsLoading);
@@ -303,6 +326,56 @@ async fn connect(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(SocialEvent::Cleared);
 }
 
+/// Give up on a match the server never started.
+///
+/// Spawned when `match_found` arrives and resolved by simply looking again
+/// later: if the client has moved on -- a launch order came, the search was
+/// cancelled, a new match was found, the connection dropped -- the state is no
+/// longer the `MatchFound` this was armed for and there is nothing to do.
+/// Checking the state rather than cancelling a handle keeps every one of those
+/// exits working without any of them having to know this exists.
+///
+/// It reports the same [`MatchmakingState::Cancelled`] the server sends when
+/// it cancels a match itself, so the rest of the client needs no new case: the
+/// difference is only who noticed.
+fn watch_for_match_start(queue_name: String, out: &EventSink) {
+    let out = out.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(MATCH_START_TIMEOUT).await;
+
+        let still_waiting = out.with_state(|state| {
+            matches!(
+                &state.lobby.matchmaking,
+                MatchmakingState::MatchFound { queue_name: found } if *found == queue_name
+            )
+        });
+        if !still_waiting {
+            return;
+        }
+
+        tracing::warn!(
+            queue = %queue_name,
+            seconds = MATCH_START_TIMEOUT.as_secs(),
+            "no launch order arrived for the match that was found; giving up on it"
+        );
+        out.emit(LobbyEvent::MatchmakingUpdated {
+            state: MatchmakingState::Cancelled {
+                queue_name: Some(queue_name.clone()),
+            },
+        });
+        notifications::add_required(
+            &out,
+            NotificationKind::Error,
+            "Match did not start",
+            format!(
+                "The {queue_name} match was found but never started. It has been called off; \
+                 you can search again."
+            ),
+            Some(NotificationAction::OpenMatchmaking),
+        );
+    });
+}
+
 async fn handle_update(
     update: LobbyUpdate,
     ctx: &ServiceCtx,
@@ -315,7 +388,14 @@ async fn handle_update(
         LobbyUpdate::Authenticated => {
             game_notifications.mark_authenticated();
             out.emit(LobbyEvent::Connected);
+            restore_player_vetoes(ctx, out);
         }
+        // Back to the state the first attempt starts in. Deliberately not
+        // `Disconnected`, which clears every list the lobby has sent: the
+        // server resends all of it on the replacement connection within
+        // seconds, and emptying the Play tab in the meantime would turn a blip
+        // nobody needed to see into a visible one.
+        LobbyUpdate::Reconnecting => out.emit(LobbyEvent::Connecting),
         LobbyUpdate::Games(games) => {
             let (preferences, player_name) = out.with_state(|state| {
                 (
@@ -366,18 +446,18 @@ async fn handle_update(
                     current.settings.notifications.match_found,
                 )
             });
-            if matches!(state, MatchmakingState::MatchFound { .. })
-                && !already_found
-                && notify_match_found
-            {
+            if matches!(state, MatchmakingState::MatchFound { .. }) && !already_found {
                 let queue = state.matched_queue().unwrap_or("matchmaker");
-                notifications::add(
-                    out,
-                    NotificationKind::MatchFound,
-                    "Match found",
-                    format!("Your {queue} match is ready."),
-                    Some(NotificationAction::OpenMatchmaking),
-                );
+                if notify_match_found {
+                    notifications::add(
+                        out,
+                        NotificationKind::MatchFound,
+                        "Match found",
+                        format!("Your {queue} match is ready."),
+                        Some(NotificationAction::OpenMatchmaking),
+                    );
+                }
+                watch_for_match_start(queue.to_string(), out);
             }
             out.emit(LobbyEvent::MatchmakingUpdated { state });
             if terminate_cancelled_game {
@@ -404,7 +484,18 @@ async fn handle_update(
                 );
             }
         }
-        LobbyUpdate::Vetoes(vetoes) => out.emit(LobbyEvent::VetoesUpdated { vetoes }),
+        // The server only sends this when it has *changed* the selection:
+        // pools move between releases, and a veto on a map that left the pool,
+        // or one token too many for a pool that shrank, is capped rather than
+        // rejected. What it hands back is what is actually in force, so it
+        // replaces what we remembered instead of being merged with it.
+        LobbyUpdate::Vetoes(vetoes) => {
+            out.emit(LobbyEvent::VetoesUpdated {
+                vetoes: vetoes.clone(),
+            });
+            out.emit(SettingsEvent::MatchmakerVetoesChanged { vetoes });
+            crate::services::settings::persist(ctx, out).await;
+        }
         LobbyUpdate::Launch(launch) => {
             let already_prepared = out.with_state(|state| {
                 matches!(
@@ -570,6 +661,36 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
     for channel in channels {
         ctx.ports.chat.join_channel(channel);
     }
+}
+
+/// Send the remembered matchmaker vetoes back to the server, once the lobby
+/// has authenticated.
+///
+/// The server keeps a player's vetoes on their session object and nowhere
+/// else: no table behind them, and no command to ask for them. Logging out
+/// discards them, and a client that only ever listens for `vetoes_info` starts
+/// every session with none, whatever the player saved last time. That is the
+/// whole of "not persistent after logging in and out even after saving".
+///
+/// Replaying them is safe rather than optimistic. `set_player_vetoes` is
+/// validated and capped against the current pools on arrival, exactly as a
+/// selection made by hand is, and the server answers with `vetoes_info` when
+/// it had to change anything, which is handled above and writes the corrected
+/// set back. A pool that shrank between sessions therefore corrects itself on
+/// the first login after it did.
+///
+/// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
+/// without it the Play tab would show an empty selection while the server held
+/// the real one.
+fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
+    let vetoes = out.with_state(|state| state.settings.matchmaker_vetoes.clone());
+    if vetoes.is_empty() {
+        return;
+    }
+    out.emit(LobbyEvent::VetoesUpdated {
+        vetoes: vetoes.clone(),
+    });
+    ctx.ports.lobby.set_player_vetoes(vetoes);
 }
 
 fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
@@ -795,6 +916,7 @@ mod tests {
             map: "scmp_001".into(),
             mod_name: "faf".into(),
             average_rating: 1_000,
+            rating_type: "global".into(),
             password_protected: false,
             visibility: "public".into(),
             game_type: "custom".into(),

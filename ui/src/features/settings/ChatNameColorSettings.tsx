@@ -18,6 +18,10 @@ const CATEGORIES: Array<{ key: CategoryKey; label: MessageKey }> = [
   { key: "foes", label: "settings.nameColors.foes" },
   { key: "moderators", label: "settings.nameColors.moderators" },
   { key: "admins", label: "settings.nameColors.admins" },
+  // Not a category of person like the five above it, but the same kind of
+  // choice about the same kind of name, and the place anybody looking for it
+  // would look first.
+  { key: "pings", label: "settings.nameColors.pings" },
 ];
 
 export function ChatNameColorSettings({

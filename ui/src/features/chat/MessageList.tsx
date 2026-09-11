@@ -15,7 +15,7 @@ import type { ChatMessage, ChatPreferences, ChatUser, PlayerProfile, Reaction, S
 import { MessageReactions } from "./MessageReactions";
 import { Icon } from "../../design-system/Icon";
 import { formatTime, renderBody, resolvedNickStyle, showsTime } from "./chatFormat";
-import type { ChatGameLink } from "./chatFormat";
+import type { ChatGameLink, PingIndex } from "./chatFormat";
 import { useTranslation } from "../../i18n/useTranslation";
 import { playersByNickname } from "../../store/reducer";
 
@@ -30,6 +30,8 @@ interface Props {
   emptyLabel: string;
   onNickClick: (nick: string) => void;
   onNickContextMenu: (nick: string, event: React.MouseEvent) => void;
+  /** Whose player menu is open: their name in a line stays highlighted. */
+  menuTarget?: string | null;
   showTimestamps: boolean;
   use24HourTime: boolean;
   users: ChatUser[];
@@ -60,12 +62,29 @@ const EMPTY_REACTIONS: readonly Reaction[] = [];
 const EMPTY_REACTION_MAP: MessageReactionsMap = {};
 const noReact = () => {};
 
+/**
+ * Whether a right-click on a line should start a reply to it.
+ *
+ * Info and error lines are the client talking to the player rather than
+ * somebody in the channel: there is nobody to answer, and they carry no reply
+ * button either. A line with no `msgid` cannot be referenced by a reply, so it
+ * is not offered as one.
+ */
+export function repliesOnRightClick(
+  kind: ChatMessage["kind"],
+  msgid: string | undefined,
+  replyingOffered: boolean,
+): boolean {
+  return replyingOffered && !!msgid && kind !== "info" && kind !== "error";
+}
+
 export const MessageList = memo(function MessageList({
   messages,
   self,
   emptyLabel,
   onNickClick,
   onNickContextMenu,
+  menuTarget = null,
   showTimestamps,
   use24HourTime,
   users,
@@ -106,6 +125,16 @@ export const MessageList = memo(function MessageList({
   const usersByName = useMemo(
     () => new Map(users.map((user) => [user.name.toLowerCase(), user])),
     [users],
+  );
+  // Who a line in this conversation can ping, and in what colour. Built once
+  // per roster change rather than per line: a busy channel is a few hundred
+  // names against a few hundred rendered messages.
+  const pings = useMemo<PingIndex>(
+    () => ({
+      names: new Set(usersByName.keys()),
+      color: preferences.nameColors.pings,
+    }),
+    [usersByName, preferences.nameColors.pings],
   );
   // Shared with the roster rather than a second copy of the same few thousand
   // entries, and rebuilt only when the directory itself changes.
@@ -270,6 +299,8 @@ export const MessageList = memo(function MessageList({
               registerRow={registerRow}
               onNickClick={onNickClick}
               onNickContextMenu={onNickContextMenu}
+              menuOpen={menuTarget === message.sender}
+              pings={pings}
               onGameLink={onGameLink}
               reactions={reactions[message.msgid ?? ""] ?? EMPTY_REACTIONS}
               onReact={onReact}
@@ -296,6 +327,7 @@ const Line = memo(function Line({
   withTime,
   onNickClick,
   onNickContextMenu,
+  menuOpen,
   use24HourTime,
   user,
   profile,
@@ -304,6 +336,7 @@ const Line = memo(function Line({
   search,
   activeSearchMatch,
   registerRow,
+  pings,
   onGameLink,
   reactions,
   onReact,
@@ -322,6 +355,7 @@ const Line = memo(function Line({
   quoted?: ChatMessage;
   onNickClick: (nick: string) => void;
   onNickContextMenu: (nick: string, event: React.MouseEvent) => void;
+  menuOpen: boolean;
   use24HourTime: boolean;
   user: ChatUser | undefined;
   profile: PlayerProfile | undefined;
@@ -330,6 +364,7 @@ const Line = memo(function Line({
   search: string;
   activeSearchMatch: boolean;
   registerRow: (id: string, node: HTMLDivElement | null) => void;
+  pings: PingIndex;
   onGameLink: ((link: ChatGameLink) => void) | undefined;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -338,26 +373,52 @@ const Line = memo(function Line({
     [registerRow, message.id],
   );
   const { t } = useTranslation();
-  const body = renderBody(message.content, self, search, onGameLink);
+  const body = renderBody(message.content, self, search, onGameLink, pings);
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
   const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
 
+  // Right-clicking the line answers it. The button in the corner is a hover
+  // target the width of the pane away from the message it acts on, which is a
+  // long way to go for the most common thing anybody does with a message. It
+  // stays, because a pointer gesture is no use to the keyboard.
+  //
+  // Nothing is taken away by claiming the gesture: the desktop context menu
+  // policy already suppresses the native menu everywhere outside a text field,
+  // so a right-click on a message did nothing at all.
+  const replyOnRightClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (!repliesOnRightClick(message.kind, message.msgid, !!onReply)) return;
+      event.preventDefault();
+      onReply?.(message);
+    },
+    [onReply, message],
+  );
+
   const nick = (
     <button
       type="button"
-      className={nameStyle ? "chat-nick" : "chat-nick is-monochrome"}
+      className={`${nameStyle ? "chat-nick" : "chat-nick is-monochrome"}${menuOpen ? " is-menu-open" : ""}`}
       style={nameStyle}
       title={`Message ${message.sender}`}
       onClick={() => onNickClick(message.sender)}
-      onContextMenu={(e) => onNickContextMenu(message.sender, e)}
+      onContextMenu={(e) => {
+        // The player menu wins over the row's reply gesture: this is the one
+        // place in a message where a right-click already meant something.
+        e.stopPropagation();
+        onNickContextMenu(message.sender, e);
+      }}
     >
       {message.sender}
     </button>
   );
 
   return (
-    <div ref={rowRef} className={`chat-message is-${message.kind}${fromSelf ? " is-self" : ""}${activeSearchMatch ? " is-search-active" : ""}`}>
+    <div
+      ref={rowRef}
+      className={`chat-message is-${message.kind}${fromSelf ? " is-self" : ""}${activeSearchMatch ? " is-search-active" : ""}`}
+      onContextMenu={replyOnRightClick}
+    >
       {/* The answered line, quoted from the scrollback rather than copied into
           the reply: an answer to something scrolled out of the retained window
           shows nothing, which is honest, where a stored copy would keep
@@ -429,6 +490,10 @@ const Line = memo(function Line({
               <button
                 type="button"
                 className="chat-action-btn"
+                // Marks this as a toggle for the same picker, so the picker's
+                // close-on-outside-click leaves it alone and its own click can
+                // still close what it opened.
+                data-reaction-toggle=""
                 aria-label={t("chat.reaction.add")}
                 title={t("chat.reaction.add")}
                 onClick={() => setPickerOpen((open) => !open)}
@@ -441,7 +506,7 @@ const Line = memo(function Line({
                 type="button"
                 className="chat-action-btn"
                 aria-label={t("chat.reply.start")}
-                title={t("chat.reply.start")}
+                title={t("chat.reply.hint")}
                 onClick={() => onReply(message)}
               >
                 <Icon name="arrowRight" size={13} />

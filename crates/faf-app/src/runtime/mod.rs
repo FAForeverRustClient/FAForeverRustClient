@@ -435,6 +435,10 @@ impl AppLoop {
         // to anything the user just did.
         services::events::spawn(ctx.clone(), self.sink.clone());
 
+        // And a channel goes live when it goes live. Starts no task at all on a
+        // build whose Twitch credentials are absent, which is most of them.
+        services::streams::spawn(ctx.clone(), self.sink.clone());
+
         while let Some(queued) = self.cmd_rx.recv().await {
             let ctx = ctx.clone();
             let sink = self.sink.clone();
@@ -477,6 +481,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,
         AppCommand::ClientUpdate(c) => services::client_update::handle(c, ctx, sink).await,
         AppCommand::Social(c) => services::social::handle(c, ctx, sink).await,
+        AppCommand::Streams(c) => services::streams::handle(c, ctx, sink).await,
         AppCommand::Settings(c) => services::settings::handle(c, ctx, sink).await,
     }
 }

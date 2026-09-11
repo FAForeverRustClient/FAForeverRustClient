@@ -544,6 +544,18 @@
   white-space: nowrap;
 }
 
+/* Which leaderboard the average above is on, where it is not the global one.
+   A matchmaker lobby's average is a ladder average, and without the name the
+   number is not checkable against anything. */
+.game-detail-leaderboard {
+  margin-left: 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .game-team-stats {
   font-size: 11px;
   font-weight: 500;
@@ -862,7 +874,13 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popover);
   font-size: 11px;
-  pointer-events: none;
+  /* Interactive on purpose. The player names in here open profile cards, and
+     the report was that people reach for them: checking somebody means going
+     all the way to the detail panel on the right and finding them again in a
+     different layout. The grace period in `hideGlobalLineupSoon` is what makes
+     an overlay you have to cross a gap to reach actually reachable, and the
+     safety nets below are what keep an interactive `position: fixed` panel
+     from being left standing over the workspace. */
 }
 
 .game-tile-tooltip.is-single-team {

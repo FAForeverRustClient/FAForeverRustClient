@@ -3,6 +3,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ClientNotification, NotificationAction } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
+import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
@@ -18,16 +19,34 @@ const markRead = (id: string) =>
 const dismiss = (id: string) =>
   ipc.send({ kind: "Notifications", command: { type: "dismiss", payload: { id } } });
 
+/**
+ * The line under the message saying what a click will do, where that is worth
+ * a line.
+ *
+ * The whole card is one button, so every notification already does its action
+ * when clicked anywhere: "meanwhile i dont even have to click open chat to
+ * open chat, i can just click it anywhere". A label that only repeats the
+ * card's own title therefore says nothing, and it said it loudly, in bold
+ * uppercase over a greyed-out message. Somebody read "OPEN CHAT" as the
+ * message they had been sent.
+ *
+ * So the label is kept only where the click is not simply "show me this":
+ * accepting a party invite acts on somebody else's invitation, watching a
+ * live game starts a replay, and a stream leaves the client for a browser.
+ * Opening a tab in the client speaks for itself.
+ */
 function actionLabel(action: NotificationAction | null): string | null {
   if (!action) return null;
   switch (action.type) {
-    case "openChat": return t("notifications.action.openChat");
-    case "openMatchmaking": return t("notifications.action.openMatchmaking");
-    case "openCustomGames": return t("notifications.action.openCustomGames");
     case "acceptPartyInvite": return t("notifications.action.acceptPartyInvite");
     case "watchLive": return t("notifications.action.watchLive");
-    case "openSettings": return t("notifications.action.openSettings");
-    case "openEvent": return t("notifications.action.openEvent");
+    case "openStream": return t("notifications.action.openStream");
+    case "openChat":
+    case "openMatchmaking":
+    case "openCustomGames":
+    case "openSettings":
+    case "openEvent":
+      return null;
   }
 }
 
@@ -66,6 +85,12 @@ async function runAction(item: ClientNotification) {
           kind: "Events",
           command: { type: "select", payload: { occurrenceId: action.payload.occurrenceId } },
         });
+        break;
+      case "openStream":
+        // Out to the browser rather than into a frame: this client is not a
+        // video player, and `openHttpsUrl` validates the address the backend
+        // handed it the same way it validates every other one.
+        await openHttpsUrl(action.payload.url);
         break;
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
@@ -248,7 +273,7 @@ export function NotificationCenter() {
               <article className={`notification-item${item.read ? " is-read" : ""}${notificationTone(item)}`} key={item.id}>
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>
                   <span className="notification-item-head"><strong>{item.title}</strong><time>{formatTime(item.createdAt)}</time></span>
-                  <span>{renderFormattedText(item.body)}</span>
+                  <span className="notification-body">{renderFormattedText(item.body)}</span>
                   {actionLabel(item.action) && <em>{actionLabel(item.action)}</em>}
                 </button>
                 <button className="notification-dismiss" type="button" onClick={() => { hideToast(item.id); dismiss(item.id); }} aria-label={`Dismiss ${item.title}`}>
@@ -273,7 +298,7 @@ export function NotificationCenter() {
           <article className={`notification-toast${notificationTone(item)}`} key={item.id}>
             <button type="button" onClick={() => handleAction(item)}>
               <strong>{item.title}</strong>
-              <span>{renderFormattedText(item.body)}</span>
+              <span className="notification-body">{renderFormattedText(item.body)}</span>
               {actionLabel(item.action) && <em>{actionLabel(item.action)}</em>}
             </button>
             <button

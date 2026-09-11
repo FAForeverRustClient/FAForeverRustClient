@@ -175,6 +175,22 @@ export function Composer({
     }
   };
 
+  // Starting an answer puts the caret in the box.
+  //
+  // The reply button is at the far end of the message it acts on, so the
+  // pointer ends up nowhere near the input, and the next thing anybody does
+  // after choosing what to answer is type the answer. Without this the banner
+  // appeared, the keyboard went nowhere, and the line had to be clicked as a
+  // separate step.
+  //
+  // Keyed on the anchored message rather than on "is replying": cancelling
+  // must not pull focus back, and answering a second message while the first
+  // banner is still up has to move the caret again.
+  const replyMsgid = replyTo?.msgid;
+  useEffect(() => {
+    if (replyMsgid) inputRef.current?.focus();
+  }, [replyMsgid]);
+
   // Leaving a channel mid-draft retracts *there* rather than leaving the
   // notice to age out in a conversation nobody is watching any more.
   const previousChannel = useRef(channel);

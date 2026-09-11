@@ -246,6 +246,7 @@ const INITIAL: AppState = {
     },
   },
   social: { friends: [], foes: [], players: [] },
+  streams: { live: [], status: { type: "idle" }, announced: [] },
   events: {
     catalogue: [],
     source: "bundled",
@@ -413,8 +414,9 @@ const INITIAL: AppState = {
       winePrefix: "",
     },
     keptGeneratedMaps: [],
+    matchmakerVetoes: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
-    general: { startPage: "news", autoLogin: true },
+    general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
     appearance: { density: "comfortable", reduceMotion: false, uiScale: 100, gameTileColumns: 0, sidebarWidth: 224 },
     social: { playerNotes: [] },
     notifications: {
@@ -452,6 +454,7 @@ const INITIAL: AppState = {
       gameLaunched: true,
       reviewReminder: true,
       partyInvites: true,
+      streamLive: true,
       volume: 70,
     },
     chat: {
@@ -468,6 +471,7 @@ const INITIAL: AppState = {
         foes: "#dc143c",
         moderators: "#32cd32",
         admins: "#ba55d3",
+        pings: "#ff8c00",
         players: {},
       },
       hideFoeMessages: true,

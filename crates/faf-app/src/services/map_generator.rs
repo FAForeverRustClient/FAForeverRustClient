@@ -103,6 +103,13 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             out.emit(MapGeneratorEvent::ValidationChanged {
                 issues: map_generator::validate_options(&options),
             });
+            // A name resolved for the options as they were is not a name for
+            // the options as they are. The dialog sends this on every settled
+            // edit, so clearing here is what keeps the prediction from
+            // outliving the question it answered.
+            out.emit(MapGeneratorEvent::NamePredicted {
+                map_name: String::new(),
+            });
             // Written through to the settings file, not just to the in-memory
             // slice: "save settings" that lasts until the next restart is
             // indistinguishable from a button that does nothing.
@@ -306,18 +313,38 @@ async fn drain(
         out.emit(MapGeneratorEvent::StatusChanged { status });
     }
     if !succeeded_maps.is_empty() {
-        if out.with_state(|state| state.settings.game.keep_generated_maps) {
-            out.emit(SettingsEvent::KeptGeneratedMaps {
-                map_names: succeeded_maps.clone(),
-            });
-            services::settings::persist(ctx, out).await;
-        }
-        let previews = ctx.ports.map_generator.map_previews(&succeeded_maps).await;
-        if !previews.is_empty() {
-            out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
-        }
-        refresh_installed_maps(ctx, out).await;
+        record_generated_maps(&succeeded_maps, ctx, out).await;
     }
+}
+
+/// Everything a finished run owes the rest of the client.
+///
+/// Three separate things, and every path that produces a generated map owes all
+/// three: the names go on the keep list when the standing preference says to,
+/// the preview art is read out of the new folders, and the maps slice re-scans
+/// so the map counts as installed.
+///
+/// Split out of [`drain`] because [`drain`] is not the only place a map gets
+/// generated. `services::launcher::ensure_generated_map` runs the generator
+/// itself when a lobby join needs a map that is not on disk, and it forwarded
+/// progress without doing any of this: the map was built, the game started, and
+/// the client still showed it as missing with no preview until something else
+/// happened to re-scan. That is the same work, so it is the same function.
+pub(crate) async fn record_generated_maps(maps: &[String], ctx: &ServiceCtx, out: &EventSink) {
+    if maps.is_empty() {
+        return;
+    }
+    if out.with_state(|state| state.settings.game.keep_generated_maps) {
+        out.emit(SettingsEvent::KeptGeneratedMaps {
+            map_names: maps.to_vec(),
+        });
+        services::settings::persist(ctx, out).await;
+    }
+    let previews = ctx.ports.map_generator.map_previews(maps).await;
+    if !previews.is_empty() {
+        out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
+    }
+    refresh_installed_maps(ctx, out).await;
 }
 
 /// Re-read the whole preset library and publish it.

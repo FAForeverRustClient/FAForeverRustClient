@@ -8,7 +8,11 @@ describe("GamePreparationStatus", () => {
       <GamePreparationStatus
         state={{
           type: "preparing",
-          payload: { detail: "Updating faf 3836: units.nx2 (10/19)", progress: 47 },
+          payload: {
+            phase: "downloading",
+            detail: "Updating faf 3836: units.nx2 (10/19)",
+            progress: 47,
+          },
         }}
       />,
     );
@@ -25,7 +29,7 @@ describe("GamePreparationStatus", () => {
       <GamePreparationStatus
         state={{
           type: "preparing",
-          payload: { detail: "Downloading map", progress: null },
+          payload: { phase: "map", detail: "Downloading map", progress: null },
         }}
       />,
     );

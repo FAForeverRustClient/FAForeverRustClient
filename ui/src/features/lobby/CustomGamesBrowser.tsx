@@ -10,6 +10,7 @@ import { GameMapImage } from "./GameMapImage";
 import { findVaultMap, findVaultMapByFolder, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
@@ -20,10 +21,11 @@ import {
   mergeGeneratorRows,
 } from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
-import { friendsInGame } from "./friendPresence";
+import { friendKeys, friendsInGame } from "./friendPresence";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
+import { displayedRating, gameLeaderboard } from "../../shared/playerRatings";
 
 export type GameViewMode = "list" | "tiles";
 
@@ -233,12 +235,42 @@ export function getActiveLineupSnapshot() {
 }
 
 export function hideGlobalLineup() {
+  cancelLineupHide();
   if (activeLineup !== null) {
     activeLineup = null;
     for (const listener of lineupListeners) {
       listener();
     }
   }
+}
+
+/**
+ * How long the overlay survives the pointer leaving it.
+ *
+ * The overlay is interactive now -- the player names in it open profile cards
+ * -- and reaching it means crossing the gap between the row and the overlay,
+ * which is a `mouseleave` with nothing under the pointer. Closing on that
+ * would make the overlay unreachable, so leaving starts a timer instead and
+ * arriving anywhere that counts cancels it. A second is long enough to cross
+ * six pixels without hurrying and short enough that an overlay nobody wants is
+ * gone before it is in the way.
+ */
+const LINEUP_GRACE_MS = 1000;
+
+let lineupHideTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Stop a pending close: the pointer arrived somewhere that keeps it open. */
+export function cancelLineupHide() {
+  if (lineupHideTimer !== null) {
+    clearTimeout(lineupHideTimer);
+    lineupHideTimer = null;
+  }
+}
+
+/** The pointer left. Close, unless it comes back within the grace period. */
+export function hideGlobalLineupSoon() {
+  cancelLineupHide();
+  lineupHideTimer = setTimeout(hideGlobalLineup, LINEUP_GRACE_MS);
 }
 
 /**
@@ -312,6 +344,9 @@ function useGameLineupPosition(gameId: number) {
   const tooltipPosition = currentActive?.gameId === gameId ? currentActive.position : null;
 
   const showLineup = (target: HTMLElement) => {
+    // Moving straight from one row to another: the close the first row asked
+    // for must not land on the overlay the second one is opening.
+    cancelLineupHide();
     const bounds = target.getBoundingClientRect();
     const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
     const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
@@ -328,11 +363,14 @@ function useGameLineupPosition(gameId: number) {
     setGlobalLineup(gameId, position);
   };
 
+  // Leaving starts the grace period rather than closing: the overlay is
+  // reachable now, and the pointer has to cross a gap to get to it.
   const hideLineup = () => {
     if (currentActive?.gameId === gameId) {
-      hideGlobalLineup();
+      hideGlobalLineupSoon();
     }
   };
+
 
   useEffect(() => {
     return () => {
@@ -373,6 +411,9 @@ function GameLineup({
   const isSinglePlayer = isSingleTeam && totalPlayers === 1;
   const maxMods = isSingleTeam ? 2 : 4;
   const profileFor = (login: string) => findPlayer(social, login);
+  // Every rating in this overlay is the one this game is played for: a ladder
+  // lobby shows ladder ratings, a custom one shows global.
+  const leaderboard = gameLeaderboard(game.ratingType);
 
   const tooltipClass = [
     "game-tile-tooltip",
@@ -388,9 +429,15 @@ function GameLineup({
       id={id}
       role="tooltip"
       style={position}
+      // Reaching the overlay means crossing the gap between it and the row,
+      // which is a `mouseleave` with nothing under the pointer. Arriving here
+      // cancels the close that started; leaving here starts it again, so the
+      // pointer can go back to the row without the overlay vanishing.
+      onMouseEnter={cancelLineupHide}
+      onMouseLeave={hideGlobalLineupSoon}
     >
       <header className="game-lineup-title">{game.title}</header>
-      {mirrored && <TeamBalance teams={teams} profileFor={profileFor} />}
+      {mirrored && <TeamBalance teams={teams} profileFor={profileFor} leaderboard={leaderboard} />}
       {teams.length > 0 ? (
         <div
           className={
@@ -409,6 +456,7 @@ function GameLineup({
               soleTeam={teams.length === 1}
               side={mirrored ? (index === 0 ? "left" : "right") : "neutral"}
               profileFor={profileFor}
+              leaderboard={leaderboard}
             />
           ))}
           {mirrored && <span className="game-lineup-versus" aria-hidden>VS</span>}
@@ -438,10 +486,6 @@ function GameLineup({
 
 type LineupSide = "left" | "right" | "neutral";
 
-export function displayedRating(profile: PlayerProfile | undefined): number | null {
-  return profile && profile.globalRating !== 0 ? profile.globalRating : null;
-}
-
 export function displayTeamName(team: string, soleTeam: boolean): string {
   if (team === "-1" || team === "null") return t("lobby.details.observers");
   const numeric = Number(team);
@@ -456,8 +500,9 @@ export function displayTeamName(team: string, soleTeam: boolean): string {
 function teamRating(
   players: string[],
   profileFor: (login: string) => PlayerProfile | undefined,
+  leaderboard: string,
 ): number | null {
-  const ratings = players.map((login) => displayedRating(profileFor(login)));
+  const ratings = players.map((login) => displayedRating(profileFor(login), leaderboard));
   return ratings.every((rating): rating is number => rating !== null)
     ? ratings.reduce((sum, rating) => sum + rating, 0)
     : null;
@@ -474,12 +519,14 @@ function teamRating(
 function TeamBalance({
   teams,
   profileFor,
+  leaderboard,
 }: {
   teams: [string, string[]][];
   profileFor: (login: string) => PlayerProfile | undefined;
+  leaderboard: string;
 }) {
-  const left = teamRating(teams[0][1], profileFor);
-  const right = teamRating(teams[1][1], profileFor);
+  const left = teamRating(teams[0][1], profileFor, leaderboard);
+  const right = teamRating(teams[1][1], profileFor, leaderboard);
   if (left === null || right === null || left + right === 0) return null;
 
   const leftShare = Math.round((left / (left + right)) * 100);
@@ -507,16 +554,19 @@ function GameLineupTeam({
   soleTeam,
   side,
   profileFor,
+  leaderboard,
 }: {
   team: string;
   players: string[];
   soleTeam: boolean;
   side: LineupSide;
   profileFor: (login: string) => PlayerProfile | undefined;
+  leaderboard: string;
 }) {
+  const countryOf = useCountryLabel();
   const profiles = players.map((login) => profileFor(login));
-  const ratings = profiles.map(displayedRating);
-  const total = teamRating(players, profileFor);
+  const ratings = profiles.map((profile) => displayedRating(profile, leaderboard));
+  const total = teamRating(players, profileFor, leaderboard);
 
   const isSinglePlayer = soleTeam && players.length === 1;
 
@@ -547,7 +597,8 @@ function GameLineupTeam({
               {profile?.country ? (
                 <img
                   src={flagSrc(profile.country)}
-                  alt={profile.country.toUpperCase()}
+                  alt={countryOf(profile.country)}
+                  title={countryOf(profile.country)}
                   width={16}
                   height={16}
                   decoding="async"
@@ -574,26 +625,37 @@ function GameLineupTeam({
 /**
  * The friends in a lobby, and the label that names them.
  *
- * `social.friends` is one array in state and is replaced only when the list
- * changes, so every open game reading it costs a `Set` build and a walk of its
- * own roster, and none of them re-render when an unrelated player logs in.
+ * A plain function over values the browser already holds, deliberately not a
+ * hook. It was one, reading `social.friends` from the store and memoising per
+ * game, which meant a store subscription and a `useMemo` inside every one of a
+ * hundred rows. Those rows all rebuild whenever the lobby sends a snapshot,
+ * several times a second, and the hook pair was measured at 7.5 ms of the
+ * 26 ms each snapshot cost: more than the row's actual contents.
+ *
+ * The set is prepared once by the browser (`friendKeys`) rather than per row.
  */
-function useFriendsInGame(game: Game): { friends: string[]; label: string } {
-  const friendLogins = useAppStore((state) => state.state.social.friends);
-  return useMemo(() => {
-    const friends = friendsInGame(game, friendLogins);
-    return {
-      friends,
-      label: friends.length === 1
-        ? friends[0]
-        : t("lobby.browser.friendCount", { count: friends.length }),
-    };
-  }, [game, friendLogins]);
+const NOBODY: { friends: string[]; label: string } = { friends: [], label: "" };
+
+function friendsHere(game: Game, wanted: ReadonlySet<string>): { friends: string[]; label: string } {
+  const friends = friendsInGame(game, wanted);
+  // Most games have nobody you know in them, and the label is only rendered
+  // when somebody is: computing it regardless meant a translation lookup and
+  // an interpolation for every row of a hundred-game list, several times a
+  // second, to produce a string nothing displayed.
+  if (friends.length === 0) return NOBODY;
+  return {
+    friends,
+    label: friends.length === 1
+      ? friends[0]
+      : t("lobby.browser.friendCount", { count: friends.length }),
+  };
 }
 
 export const GameTile = memo(function GameTile({
   game,
   vault,
+  vaultMods,
+  friendSet,
   selected,
   now,
   onSelect,
@@ -603,6 +665,10 @@ export const GameTile = memo(function GameTile({
 }: {
   game: Game;
   vault: VaultMap[];
+  /** Read once by the browser rather than subscribed to by every row. */
+  vaultMods: VaultMod[];
+  /** The friend list, lower-cased once for the whole list. */
+  friendSet: ReadonlySet<string>;
   selected: boolean;
   now: number;
   onSelect: () => void;
@@ -610,22 +676,19 @@ export const GameTile = memo(function GameTile({
   onPreview?: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
-  const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const simModCount = Object.keys(game.simMods).length;
-  const simModsRanked = simModsKeepGameRanked(game, vaultMods);
+  const simModsRanked = simModCount > 0 && simModsKeepGameRanked(game, vaultMods);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
-  const { friends, label: friendLabel } = useFriendsInGame(game);
+  const { friends, label: friendLabel } = friendsHere(game, friendSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
 
   return (
     <article
-      className={[
-        "game-tile surface-panel",
-        friends.length > 0 && "has-friend",
-        selected && "active",
-      ].filter(Boolean).join(" ")}
+      className={
+        `game-tile surface-panel${friends.length > 0 ? " has-friend" : ""}${selected ? " active" : ""}`
+      }
       onContextMenu={(event) => {
         hideGlobalLineup();
         onContextMenu?.(event);
@@ -707,6 +770,8 @@ export const GameTile = memo(function GameTile({
 export const GameBrowserRow = memo(function GameBrowserRow({
   game,
   vault,
+  vaultMods,
+  friendSet,
   now,
   selected,
   onSelect,
@@ -715,30 +780,31 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 }: {
   game: Game;
   vault: VaultMap[];
+  /** Read once by the browser rather than subscribed to by every row. */
+  vaultMods: VaultMod[];
+  /** The friend list, lower-cased once for the whole list. */
+  friendSet: ReadonlySet<string>;
   now?: number;
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
-  const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const simModCount = Object.keys(game.simMods).length;
-  const simModsRanked = simModsKeepGameRanked(game, vaultMods);
+  const simModsRanked = simModCount > 0 && simModsKeepGameRanked(game, vaultMods);
   const players = playingCount(game);
   const currentNow = now ?? Date.now();
-  const { friends, label: friendLabel } = useFriendsInGame(game);
+  const { friends, label: friendLabel } = friendsHere(game, friendSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
   return (
     <>
       <button
         type="button"
-        className={[
-          "game-browser-row",
-          friends.length > 0 && "has-friend",
-          selected && "active",
-        ].filter(Boolean).join(" ")}
+        className={
+          `game-browser-row${friends.length > 0 ? " has-friend" : ""}${selected ? " active" : ""}`
+        }
         onClick={onSelect}
         onDoubleClick={onJoin}
         onContextMenu={(event) => {
@@ -1077,6 +1143,13 @@ export function CustomGamesBrowser({
 
   const handlePreview = onPreviewProp ?? setInternalPreviewGame;
 
+  // Read once for the whole list. Every row used to subscribe to the mod vault
+  // and to the friend list itself, which is a hundred subscriptions and a
+  // hundred `Set` builds for two values that are the same in all of them.
+  const vaultMods = useAppStore((state) => state.state.mods.vault);
+  const friendLogins = useAppStore((state) => state.state.social.friends);
+  const friendSet = useMemo(() => friendKeys(friendLogins), [friendLogins]);
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
@@ -1139,6 +1212,8 @@ export function CustomGamesBrowser({
               key={game.id}
               game={game}
               vault={vault}
+              vaultMods={vaultMods}
+              friendSet={friendSet}
               selected={selectedId === game.id}
               now={now}
               onSelect={() => onSelect(game.id)}
@@ -1153,6 +1228,8 @@ export function CustomGamesBrowser({
               key={game.id}
               game={game}
               vault={vault}
+              vaultMods={vaultMods}
+              friendSet={friendSet}
               now={now}
               selected={selectedId === game.id}
               onSelect={() => onSelect(game.id)}
@@ -1163,7 +1240,7 @@ export function CustomGamesBrowser({
         )}
       </div>
       <footer className="game-browser-footer">
-        <span>Showing {games.length} of {totalGames} games</span>
+        <span>{t("lobby.browser.footerCount", { shown: games.length, total: totalGames })}</span>
         <span>{t(viewMode === "tiles" ? "lobby.browser.tileHint" : "lobby.browser.listHint")}</span>
       </footer>
 

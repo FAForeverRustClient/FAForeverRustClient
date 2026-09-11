@@ -180,6 +180,19 @@
   padding: 0 6px;
 }
 
+/* "Hide", in front of the field a rule tests. Quieter than the field, because
+   it is the same word on every row; present at all, because a rule that reads
+   "Map name contains seton" says nothing about which way it goes. */
+.filter-rule-verb {
+  flex: 0 0 auto;
+  margin-right: 4px;
+  color: var(--color-warn);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 .filter-rule strong {
   font-weight: 550;
   overflow: hidden;
@@ -1613,10 +1626,20 @@
   font-size: 12px;
 }
 
+/* The phase leads and the file follows: which kind of waiting this is stays
+   still while the line under it changes once per file. */
+.join-preparing-phase {
+  margin: 0 0 var(--space-1);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .join-preparing-detail {
   margin: 0 0 var(--space-2);
   font-size: 13px;
   line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 .join-preparing-bar {

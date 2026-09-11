@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+
+import { ReportDialog } from "../vault/ReportDialog";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -279,8 +281,21 @@ export function ModDetailPanel({
   const { t } = useTranslation();
   const description = cleanDescription(mod.description);
   const updateAvailable = Boolean(installed && modUpdateAvailable(installed.version, mod.version));
+  const [reporting, setReporting] = useState(false);
   return (
     <aside className="vault-detail-panel mod-vault-details surface-panel">
+      {reporting && (
+        <ReportDialog
+          kind={t("mods.vault.reportKind")}
+          name={mod.displayName}
+          details={[
+            { label: t("mods.vault.author"), value: mod.author },
+            { label: t("mods.vault.version"), value: `v${mod.version}` },
+            { label: t("mods.vault.uid"), value: mod.uid },
+          ]}
+          onClose={() => setReporting(false)}
+        />
+      )}
       <div className="vault-detail-preview mod-vault-detail-preview">
         <ModPreview mod={mod} large />
       </div>
@@ -379,6 +394,17 @@ export function ModDetailPanel({
                 {t(toggling ? "mods.vault.toggling" : installed.enabled ? "mods.vault.disable" : "mods.vault.enable")}
               </Button>
             )}
+            {/* Last in the row and icon-only: reporting something is rare, and
+                a full-width button would sit in front of everybody for the
+                sake of the few who ever press it. */}
+            <Button
+              className="vault-action-report"
+              aria-label={t("vault.report.action")}
+              title={t("vault.report.action")}
+              onClick={() => setReporting(true)}
+            >
+              <Icon name="flag" size={14} />
+            </Button>
           </div>
 
           <div className="vault-detail-actions-right">

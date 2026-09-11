@@ -27,6 +27,7 @@ import {
   type UserCategory,
 } from "./chatFormat";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { rosterRatingSummary } from "./ratingSummary";
@@ -41,6 +42,15 @@ interface Props {
   preferences: ChatPreferences;
   onOpenConversation: (nick: string) => void;
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
+  /**
+   * Whose player menu is open, if anybody's.
+   *
+   * The menu opens under the pointer, which by then has left the row it was
+   * opened from, so the row stops looking hovered at the exact moment the
+   * menu needs it to say who it is about. The row keeps the hover styling
+   * while its menu is up; the menu no longer repeats the name itself.
+   */
+  menuTarget: string | null;
 }
 
 /**
@@ -74,6 +84,7 @@ export const UserList = memo(function UserList({
   preferences,
   onOpenConversation,
   onContextMenu,
+  menuTarget,
 }: Props) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState("");
@@ -285,6 +296,7 @@ export const UserList = memo(function UserList({
                     self={self}
                     onOpenConversation={onOpenConversation}
                     onContextMenu={onContextMenu}
+                    menuOpen={menuTarget === item.user.name}
                   />
                 );
               })}
@@ -306,6 +318,7 @@ const RosterRow = memo(function RosterRow({
   self,
   onOpenConversation,
   onContextMenu,
+  menuOpen,
 }: {
   user: ChatUser;
   profile: PlayerProfile | undefined;
@@ -316,12 +329,14 @@ const RosterRow = memo(function RosterRow({
   self: string;
   onOpenConversation: (nick: string) => void;
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
+  menuOpen: boolean;
 }) {
+  const countryOf = useCountryLabel();
   const nameStyle = resolvedNickStyle(user.name, user, social, preferences, self);
   return (
     <li className="chat-roster-item">
       <div
-        className="chat-roster-user"
+        className={menuOpen ? "chat-roster-user is-menu-open" : "chat-roster-user"}
         onContextMenu={(e) => onContextMenu(user.name, e)}
       >
         <button
@@ -348,8 +363,8 @@ const RosterRow = memo(function RosterRow({
             <img
               className="chat-flag"
               src={flagSrc(profile.country)}
-              alt={profile.country.toUpperCase()}
-              title={profile.country.toUpperCase()}
+              alt={countryOf(profile.country)}
+              title={countryOf(profile.country)}
               width={16}
               height={16}
               decoding="async"

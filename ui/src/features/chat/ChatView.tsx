@@ -100,7 +100,7 @@ export function ChatView() {
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const mapVault = useAppStore((s) => s.state.maps.vault);
   const chatPreferences = useAppStore((s) => s.state.settings.chat);
-  const { openPlayerMenu, playerMenu } = usePlayerMenu();
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const [searchRequest, setSearchRequest] = useState(0);
   const [gameLinkNotice, setGameLinkNotice] = useState("");
   const [rosterWidth, setRosterWidth] = useState(() => clampRosterWidth(chatPreferences.rosterWidth));
@@ -289,6 +289,7 @@ export function ChatView() {
             }
             onNickClick={openConversation}
             onNickContextMenu={openPlayerMenu}
+            menuTarget={playerMenuTarget}
             showTimestamps={chatPreferences.showTimestamps}
             use24HourTime={chatPreferences.use24HourTime}
             users={active.users}
@@ -351,6 +352,7 @@ export function ChatView() {
             preferences={chatPreferences}
             onOpenConversation={openConversation}
             onContextMenu={openPlayerMenu}
+            menuTarget={playerMenuTarget}
           />
         </div>
       )}
@@ -372,6 +374,8 @@ export function ChatView() {
             liveGames={liveGames}
             mapVault={mapVault}
             now={minuteNow}
+            onOpenConversation={openConversation}
+            onPlayerContextMenu={openPlayerMenu}
           />
         </div>
       )}

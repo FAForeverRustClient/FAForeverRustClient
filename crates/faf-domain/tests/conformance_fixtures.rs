@@ -2856,8 +2856,57 @@ fn vault_replay(uid: i32) -> VaultReplay {
     }
 }
 
+/// One live broadcast, for the streams cases.
+fn live_stream(id: &str) -> LiveStream {
+    LiveStream {
+        id: id.into(),
+        platform: StreamPlatform::Twitch,
+        channel: "faflive".into(),
+        display_name: "FAFLive".into(),
+        title: "Setons Summer Slam: Grand Final".into(),
+        url: "https://www.twitch.tv/faflive".into(),
+        viewers: Some(412),
+        started_at: "2026-09-11T18:02:00Z".into(),
+    }
+}
+
 fn cases() -> Vec<Case> {
     vec![
+        // ── streams: FAF's own channels going live ──────────────────────
+        case(
+            "a channel goes live, is announced once, and goes off air",
+            vec![
+                StreamsEvent::Checking.into(),
+                StreamsEvent::Loaded {
+                    streams: vec![live_stream("twitch:1")],
+                }
+                .into(),
+                StreamsEvent::Announced {
+                    stream_ids: vec!["twitch:1".into()],
+                }
+                .into(),
+                // The same broadcast, seen again five minutes later. Still
+                // announced, so nothing more is said about it.
+                StreamsEvent::Loaded {
+                    streams: vec![live_stream("twitch:1")],
+                }
+                .into(),
+                StreamsEvent::Loaded { streams: vec![] }.into(),
+            ],
+        ),
+        case(
+            "a failed check keeps the stream it last saw",
+            vec![
+                StreamsEvent::Loaded {
+                    streams: vec![live_stream("twitch:1")],
+                }
+                .into(),
+                StreamsEvent::LoadFailed {
+                    reason: "Twitch responded with 503 Service Unavailable".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── player card: per-map record ──────────────────────────────────
         case(
             "map statistics load, and a second player's scan replaces the first",
@@ -3390,6 +3439,7 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 LobbyEvent::Preparing {
+                    phase: PreparationPhase::Verifying,
                     detail: "Updating faf".into(),
                     progress: Some(50),
                 }
@@ -5070,6 +5120,34 @@ fn cases() -> Vec<Case> {
                 .into(),
                 SettingsEvent::KeptGeneratedMaps {
                     map_names: vec!["neroxis_map_generator_1.15.2_alsokeep".into()],
+                }
+                .into(),
+                // The opposite rule to the two above: one whole veto
+                // selection, replaced rather than merged, because clearing
+                // every veto has to be able to clear it. The second event is
+                // the server capping the first, which is the only time it
+                // sends one back.
+                SettingsEvent::MatchmakerVetoesChanged {
+                    vetoes: vec![
+                        PlayerVeto {
+                            matchmaker_queue_map_pool_id: 4,
+                            map_pool_map_version_id: 91,
+                            veto_tokens_applied: 2,
+                        },
+                        PlayerVeto {
+                            matchmaker_queue_map_pool_id: 4,
+                            map_pool_map_version_id: 92,
+                            veto_tokens_applied: 1,
+                        },
+                    ],
+                }
+                .into(),
+                SettingsEvent::MatchmakerVetoesChanged {
+                    vetoes: vec![PlayerVeto {
+                        matchmaker_queue_map_pool_id: 4,
+                        map_pool_map_version_id: 91,
+                        veto_tokens_applied: 1,
+                    }],
                 }
                 .into(),
                 SettingsEvent::SocialChanged {

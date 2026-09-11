@@ -28,6 +28,7 @@ pub mod replay;
 pub mod reporting;
 pub mod reviews;
 pub mod settings;
+pub mod streams;
 pub mod tourney;
 pub mod training;
 pub mod tutorials;
@@ -60,10 +61,13 @@ pub use replay::{ReplayPort, VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT};
 pub use reporting::{GameParticipation, ReportPlayerRequest, ReportingPort};
 pub use reviews::{ReviewPage, ReviewsPort};
 pub use settings::SettingsPort;
+pub use streams::StreamsPort;
 pub use tourney::TourneyPort;
 pub use training::TrainingPort;
 pub use tutorials::TutorialsPort;
-pub use updater::{GamePreparation, GameUpdaterPort, PreparationStep, UpdateProgress};
+pub use updater::{
+    GamePreparation, GameUpdaterPort, PreparationPhase, PreparationStep, UpdateProgress,
+};
 pub use uploads::UploadsPort;
 
 use std::sync::Arc;
@@ -104,6 +108,11 @@ pub struct Ports {
     pub reporting: Arc<dyn ReportingPort>,
     pub reviews: Arc<dyn ReviewsPort>,
     pub tourney: Arc<dyn TourneyPort>,
+    /// Whether FAF's own Twitch channel is broadcasting. The only port whose
+    /// correct answer on most builds is "nothing, forever": Twitch requires an
+    /// application's own credentials, which a public repository cannot hold, so
+    /// [`StreamsPort::can_check`] is how a build says it was never given any.
+    pub streams: Arc<dyn StreamsPort>,
     /// The community calendar's catalogue. A read of one document, and the last
     /// of the three sources the Events tab draws: the other two, tournaments
     /// and the changelog index, already have ports of their own.
