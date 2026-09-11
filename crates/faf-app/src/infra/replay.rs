@@ -2281,13 +2281,29 @@ fn extract_chat_messages(
             // 22 (0x16) is CMDST_LuaSimCallback in Forged Alliance
             if let Some(chat) = try_parse_chat_payload(payload, current_ticks / 10, armies, sources)
             {
-                if let Some(last) = messages.last() {
-                    if last.sender == chat.sender
-                        && last.message == chat.message
-                        && chat.time_seconds <= last.time_seconds + 2
-                    {
-                        continue;
-                    }
+                // One typed line can be recorded more than once, and the copies
+                // are not necessarily adjacent: two people talking at the same
+                // tick interleave theirs. So the two-second window is searched
+                // rather than only the last entry, which is what let a
+                // duplicate through.
+                //
+                // The sender stays part of the key. Without it, eight people
+                // typing "gg" at the end of a game would collapse into one
+                // line, and that is not a duplicate. The duplicates in the
+                // report had the same sender as each other once the sender was
+                // resolved at all; losing the name to "Unknown" is what made
+                // them look like two different people, which is why the fix
+                // above is the larger half of this one.
+                //
+                // `take_while` rather than a full scan: `time_seconds` never
+                // decreases, so the first message outside the window ends it.
+                let already = messages
+                    .iter()
+                    .rev()
+                    .take_while(|seen| chat.time_seconds <= seen.time_seconds + 2)
+                    .any(|seen| seen.sender == chat.sender && seen.message == chat.message);
+                if already {
+                    continue;
                 }
                 messages.push(chat);
             }
@@ -2335,30 +2351,79 @@ fn try_parse_chat_payload(
         return None;
     }
 
-    // 2. Resolve sender
-    let sender = if let Some(Value::String(s)) = args
-        .get("Sender")
-        .or_else(|| args.get("PlayerName"))
-        .or_else(|| args.get("sender"))
-    {
-        s.clone()
-    } else if let Some(n) = args.get("From").and_then(Value::as_i64) {
-        // Lua army indices in GiveResourcesToPlayer: 1-based (or 0-based in some mods)
-        let idx = if n > 0 { (n - 1) as usize } else { n as usize };
-        armies
-            .get(idx)
-            .or_else(|| sources.get(idx))
-            .cloned()
-            .unwrap_or_else(|| format!("Player {}", n))
-    } else {
-        "Unknown".to_string()
-    };
+    let sender = resolve_chat_sender(&args, armies, sources);
 
     Some(ReplayChatMessage {
         time_seconds,
         sender,
         message: text,
     })
+}
+
+/// Who said it, from the callback's arguments.
+///
+/// The game sends chat as a Lua sim callback, and which of these keys it carries
+/// depends on the build and on whether a UI mod composed the message. A name is
+/// taken as given when there is one; otherwise the army index is looked up in
+/// the army list the replay header opened with.
+///
+/// The index lookup used to be unreachable. `From` is a Lua number, and
+/// `parse_replay_lua` decodes every Lua number through
+/// `serde_json::Number::from_f64`, which stores it as a float;
+/// `Value::as_i64` answers `None` for a float, integral or not. So the `From`
+/// arm never matched, and every message without a name string fell through to
+/// the literal "Unknown" that players were seeing. `replay_i32_value` is the
+/// conversion the rest of this file already uses for exactly this reason.
+///
+/// Both the name and the index are also looked for one level down, inside `Msg`,
+/// because that is where some builds put them.
+fn resolve_chat_sender(
+    args: &serde_json::Map<String, Value>,
+    armies: &[String],
+    sources: &[String],
+) -> String {
+    let nested = args
+        .get("Msg")
+        .or_else(|| args.get("msg"))
+        .and_then(|value| match value {
+            Value::Object(map) => Some(map),
+            _ => None,
+        });
+
+    let lookup = |key: &str| -> Option<&Value> {
+        args.get(key)
+            .or_else(|| nested.and_then(|map| map.get(key)))
+    };
+    let named = |keys: &[&str]| -> Option<String> {
+        keys.iter().find_map(|key| match lookup(key) {
+            Some(Value::String(name)) if !name.trim().is_empty() => Some(name.clone()),
+            _ => None,
+        })
+    };
+
+    if let Some(name) = named(&["Sender", "sender", "PlayerName", "playerName", "from"]) {
+        return name;
+    }
+
+    // `from` appears in both lists deliberately: a UI mod may put a name there
+    // where the game puts an index, and whichever it is, it is the same field.
+    let index = ["From", "from", "Army", "army"]
+        .iter()
+        .filter_map(|key| lookup(key))
+        .find_map(replay_i32_value);
+    if let Some(n) = index {
+        // Army indices here are 1-based, as Lua's are; a zero or negative value
+        // is read as 0-based, which is what some mods send.
+        let idx = if n > 0 { (n - 1) as usize } else { n as usize };
+        return armies
+            .get(idx)
+            .or_else(|| sources.get(idx))
+            .filter(|name| !name.trim().is_empty())
+            .cloned()
+            .unwrap_or_else(|| format!("Player {n}"));
+    }
+
+    "Unknown".to_string()
 }
 
 fn replay_u8(cursor: &mut Cursor<&[u8]>) -> Option<u8> {
@@ -4910,5 +4975,165 @@ mod tests {
             !details.chat_messages.is_empty(),
             "the detail parser should retain recorded in-game chat"
         );
+    }
+    // ── In-game chat out of a replay's command stream ───────────────────────
+    //
+    // Built rather than fixtured. The encoding is small enough to write out
+    // (type tag, then the value; a table is key/value pairs until a 5 byte),
+    // and a test that builds its own input says what shape of callback it is
+    // claiming the game sends, which a captured blob does not.
+    //
+    // `lua_string` and `lua_number` are the ones the header tests already use.
+    // `lua_number` being a tag-0 f32 is the whole reason `Value::as_i64` was the
+    // wrong question to ask of an army index.
+
+    /// A Lua table: tag 4, key/value pairs, then tag 5. Keys are strings here,
+    /// which is what a callback's argument table always has.
+    fn lua_table(entries: &[(&str, Vec<u8>)]) -> Vec<u8> {
+        let mut out = vec![4u8];
+        for (key, value) in entries {
+            out.extend_from_slice(&lua_string(key));
+            out.extend_from_slice(value);
+        }
+        out.push(5);
+        out
+    }
+
+    /// One command: a type byte, a little-endian u16 length covering the whole
+    /// command, and the payload.
+    fn command(kind: u8, payload: Vec<u8>) -> Vec<u8> {
+        let mut out = vec![kind];
+        out.extend_from_slice(&((payload.len() + 3) as u16).to_le_bytes());
+        out.extend_from_slice(&payload);
+        out
+    }
+
+    /// CMDST_ADVANCE: ticks forward. Ten ticks make a second here.
+    fn advance(ticks: u32) -> Vec<u8> {
+        command(0, ticks.to_le_bytes().to_vec())
+    }
+
+    /// A chat callback, the shape FA sends: a function name, then one argument
+    /// table. `extra` carries whichever sender field the case is about.
+    fn chat(text: &str, extra: &[(&str, Vec<u8>)]) -> Vec<u8> {
+        let mut args: Vec<(&str, Vec<u8>)> =
+            vec![("Msg", lua_table(&[("text", lua_string(text))]))];
+        args.extend(extra.iter().map(|(k, v)| (*k, v.clone())));
+        let mut payload = lua_string("GiveResourcesToPlayer");
+        payload.extend_from_slice(&lua_table(&args));
+        command(22, payload)
+    }
+
+    fn extract(stream: &[u8], armies: &[&str]) -> Vec<ReplayChatMessage> {
+        let armies: Vec<String> = armies.iter().map(|a| a.to_string()).collect();
+        let mut cursor = Cursor::new(stream);
+        extract_chat_messages(&mut cursor, &armies, &[])
+    }
+
+    #[test]
+    fn an_army_index_names_the_player_who_typed() {
+        // The reported bug. `From` is a Lua number, which the replay decoder
+        // stores as a float, and `Value::as_i64` answers `None` for a float: the
+        // index arm never ran and every message without a name string came out
+        // as the literal "Unknown".
+        let stream = chat("hello", &[("From", lua_number(2.0))]);
+        let messages = extract(&stream, &["Vindex", "wlsn", "Nuggets"]);
+
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].sender, "wlsn", "army 2 is the second army");
+        assert_eq!(messages[0].message, "hello");
+    }
+
+    #[test]
+    fn a_name_in_the_arguments_is_taken_as_given() {
+        let stream = chat("gl", &[("Sender", lua_string("Vindex"))]);
+        assert_eq!(extract(&stream, &["Vindex"])[0].sender, "Vindex");
+    }
+
+    #[test]
+    fn the_sender_is_looked_for_inside_the_message_table_too() {
+        // Some builds nest it. Before, only the top level was searched.
+        let mut payload = lua_string("GiveResourcesToPlayer");
+        payload.extend_from_slice(&lua_table(&[(
+            "Msg",
+            lua_table(&[("text", lua_string("nested")), ("from", lua_number(1.0))]),
+        )]));
+        let stream = command(22, payload);
+
+        assert_eq!(extract(&stream, &["Aurora"])[0].sender, "Aurora");
+    }
+
+    #[test]
+    fn an_index_no_army_answers_to_is_still_not_unknown() {
+        // Better a number somebody can match against the roster than a word
+        // that says the parser gave up.
+        let stream = chat("hm", &[("From", lua_number(9.0))]);
+        assert_eq!(extract(&stream, &["Vindex"])[0].sender, "Player 9");
+    }
+
+    #[test]
+    fn a_callback_with_no_sender_at_all_says_so() {
+        let stream = chat("orphan", &[]);
+        assert_eq!(extract(&stream, &["Vindex"])[0].sender, "Unknown");
+    }
+
+    #[test]
+    fn one_line_recorded_per_recipient_appears_once() {
+        // The other half of the report: "it actually duplicates too". The same
+        // callback arrives several times at the same tick.
+        let mut stream = Vec::new();
+        for _ in 0..4 {
+            stream.extend_from_slice(&chat("hello", &[("From", lua_number(1.0))]));
+        }
+        let messages = extract(&stream, &["Vindex"]);
+
+        assert_eq!(messages.len(), 1, "four copies of one line");
+    }
+
+    #[test]
+    fn copies_separated_by_somebody_else_talking_still_appear_once() {
+        // Only the previous message used to be compared, so an interleaved copy
+        // walked straight past the check.
+        let mut stream = chat("hello", &[("From", lua_number(1.0))]);
+        stream.extend_from_slice(&chat("hi", &[("From", lua_number(2.0))]));
+        stream.extend_from_slice(&chat("hello", &[("From", lua_number(1.0))]));
+        let messages = extract(&stream, &["Vindex", "wlsn"]);
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].sender, "Vindex");
+        assert_eq!(messages[1].sender, "wlsn");
+    }
+
+    #[test]
+    fn two_people_typing_the_same_word_are_two_messages() {
+        // Why the sender stays in the dedupe key. Everybody types "gg" at the
+        // end of a game, within the same two seconds, and none of it is a
+        // duplicate.
+        let mut stream = chat("gg", &[("From", lua_number(1.0))]);
+        stream.extend_from_slice(&chat("gg", &[("From", lua_number(2.0))]));
+        stream.extend_from_slice(&chat("gg", &[("From", lua_number(3.0))]));
+        let messages = extract(&stream, &["Vindex", "wlsn", "Nuggets"]);
+
+        assert_eq!(messages.len(), 3);
+    }
+
+    #[test]
+    fn the_same_line_typed_again_later_is_not_a_duplicate() {
+        // The window is two seconds, so repeating yourself a minute later is
+        // something you did twice.
+        let mut stream = chat("gg", &[("From", lua_number(1.0))]);
+        stream.extend_from_slice(&advance(600));
+        stream.extend_from_slice(&chat("gg", &[("From", lua_number(1.0))]));
+        let messages = extract(&stream, &["Vindex"]);
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].time_seconds, 0);
+        assert_eq!(messages[1].time_seconds, 60);
+    }
+
+    #[test]
+    fn an_empty_message_is_not_a_message() {
+        let stream = chat("   ", &[("From", lua_number(1.0))]);
+        assert!(extract(&stream, &["Vindex"]).is_empty());
     }
 }
