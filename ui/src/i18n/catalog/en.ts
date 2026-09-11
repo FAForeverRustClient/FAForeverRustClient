@@ -2595,6 +2595,7 @@ export const en = {
   "tournaments.title": "Tournaments",
   "tournaments.eyebrow": "Competitive events",
   "tournaments.refresh": "Refresh",
+  "tournaments.viewOnline": "View online",
   "tournaments.refreshing": "Refreshing…",
   "tournaments.loading": "Loading tournaments…",
   "tournaments.detailLoading": "Loading the tournament…",

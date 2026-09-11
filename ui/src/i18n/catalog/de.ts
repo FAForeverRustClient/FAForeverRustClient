@@ -2441,6 +2441,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.title": "Turniere",
   "tournaments.eyebrow": "Wettbewerbe",
   "tournaments.refresh": "Aktualisieren",
+  "tournaments.viewOnline": "Im Browser ansehen",
   "tournaments.refreshing": "Wird aktualisiert…",
   "tournaments.loading": "Turniere werden geladen…",
   "tournaments.detailLoading": "Turnier wird geladen…",
