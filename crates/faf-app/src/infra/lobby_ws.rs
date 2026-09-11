@@ -51,6 +51,15 @@ const MAX_SERVER_MESSAGE_CHARS: usize = 4_000;
 // the lobby server and shown on player cards to distinguish client types.
 const LOBBY_USER_AGENT: &str = "faf-rust-client";
 
+/// How long the lobby connection may stay silent before this client pings it,
+/// and how long after that ping it may stay silent before the connection is
+/// treated as dead.
+///
+/// Ten seconds because that is `keepalive_interval` in the Python client's
+/// `ServerConnection`, and the interval has to be short enough to beat the
+/// shortest idle timeout a home router is likely to apply to an open flow.
+const LOBBY_KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
+
 /// Configuration for the real lobby client.
 #[derive(Debug, Clone)]
 pub struct LobbyConfig {
@@ -376,11 +385,49 @@ async fn run_session(
     // authentication and aborts the connection on anything else, so queued
     // frames wait in `outgoing` until `welcome` rather than racing `auth`.
     let mut authenticated = false;
+    // Keepalive, as `ServerConnection`'s timer does it in the Python client.
+    //
+    // Nothing was sent from this side before: the connection only ever
+    // answered the server's `ping`. An idle lobby connection carries no
+    // traffic for minutes at a time, and a NAT table or a middlebox drops an
+    // idle flow long before either end notices -- the socket stays open here
+    // while nothing can reach it, until a write finally fails or the OS gives
+    // up on the TCP retransmits, which is hours. That is the shape of the
+    // report: random disconnections every few hours, far rarer on the clients
+    // that do send something.
+    //
+    // Two jobs, one timer, exactly as `_ping_connection` has it. Traffic every
+    // ten seconds keeps the flow alive, and a tick that arrives with the
+    // previous ping still unanswered means the connection is already dead:
+    // closing it then is what makes the loss visible in twenty seconds instead
+    // of whenever the kernel notices.
+    let mut keepalive = tokio::time::interval(LOBBY_KEEPALIVE_INTERVAL);
+    keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    keepalive.tick().await; // the first tick of an interval is immediate
+    let mut ping_unanswered = false;
     'connection: loop {
         tokio::select! {
             _ = cancel.cancelled() => {
                 let _ = write.send(Message::Close(None)).await;
                 break;
+            }
+            // Ten seconds without a single frame from the server.
+            _ = keepalive.tick(), if authenticated => {
+                if ping_unanswered {
+                    tracing::warn!(
+                        "the lobby server went silent through two keepalive periods; \
+                         treating the connection as dead"
+                    );
+                    break 'connection;
+                }
+                ping_unanswered = true;
+                if write
+                    .send(Message::binary(encode_lobby_message(&ping_frame()).into_bytes()))
+                    .await
+                    .is_err()
+                {
+                    break 'connection;
+                }
             }
             // Client→server frames (e.g. game_join from `join`). `None` means the
             // sender was dropped by `disconnect`: tear down gracefully. Disabled
@@ -443,6 +490,13 @@ async fn run_session(
             }
             incoming = read.next() => {
                 let Some(Ok(message)) = incoming else { break 'connection };
+                // Anything at all counts as the connection being alive, which
+                // is `_receive_message` restarting the timer in the Python
+                // client. A WebSocket control frame decodes to no lobby
+                // messages and still proves the flow is open, so this is
+                // deliberately before the decode rather than after it.
+                ping_unanswered = false;
+                keepalive.reset();
                 let Some(values) = decode_lobby_messages(message) else { break 'connection };
                 'message: for value in values {
 
@@ -830,6 +884,15 @@ fn parse_server_notice(value: &Value) -> (ServerNoticeStyle, String) {
         _ => ServerNoticeStyle::Info,
     };
     (style, server_text(value, "The lobby server sent a notice."))
+}
+
+/// The keepalive this client sends after ten seconds of silence.
+///
+/// The same one-word command the Python client sends from `_ping_connection`.
+/// The server answers `pong`, which the receive loop ignores: the answer is
+/// not what matters, a frame arriving at all is.
+fn ping_frame() -> Value {
+    json!({ "command": "ping" })
 }
 
 fn avatar_list_frame() -> Value {
@@ -1935,6 +1998,14 @@ mod tests {
             relation_frame(7, Relation::Foe, false),
             json!({ "command": "social_remove", "foe": 7 })
         );
+    }
+
+    #[test]
+    fn the_keepalive_is_the_same_command_the_reference_client_sends() {
+        // The lobby answers this with `pong`, which the receive loop drops
+        // through its catch-all arm: every frame resets the timer, so the
+        // answer needs no handling of its own.
+        assert_eq!(ping_frame(), json!({ "command": "ping" }));
     }
 
     #[test]
