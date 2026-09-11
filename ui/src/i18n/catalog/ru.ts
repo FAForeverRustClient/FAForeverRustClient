@@ -1907,10 +1907,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.filter": "Фильтр",
   "lobby.host.presets": "Шаблоны",
   "lobby.host.randomMap": "Случайная карта",
-  // "Generate map" deliberately has no entry here and falls back to English.
-  // The review asked for "Сгенерировать карту[MapGen]"; the owner's call is
-  // that the generator keeps its own name rather than acquiring a Russian one,
-  // so the button stays as it is everywhere else in the client.
+  "lobby.host.generateMap": "Сгенерировать карту",
   "lobby.host.onlyFriends": "Только для друзей",
   "lobby.host.mapAuthor": "Автор",
   "lobby.host.mapVersion": "Версия",
