@@ -87,6 +87,15 @@ function formatMapMeta(map: { maxPlayers: number; width: number; height: number 
 }
 
 /** Map dimensions in kilometres, which is the unit players actually use. */
+// The base-game table is a module constant, so its two lookup indexes are
+// built once for the process rather than once per render of the dialog.
+const OFFICIAL_BY_FOLDER = new Map(
+  OFFICIAL_BASE_MAPS.map((base) => [base.folderName.toLowerCase(), base]),
+);
+const OFFICIAL_BY_NAME = new Map(
+  OFFICIAL_BASE_MAPS.map((base) => [base.displayName.toLowerCase(), base]),
+);
+
 function formatMapDimensions(width: number, height: number): string {
   if (width <= 0) return "";
   return `${toKilometres(width)} × ${toKilometres(height)} km`;
@@ -161,20 +170,33 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
     ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
   }, []);
 
-  const availableMaps = useMemo(() => {
-    const search = mapSearch.trim().toLocaleLowerCase();
-    const matches = (name: string) => !search || name.toLocaleLowerCase().includes(search);
+  // The map catalogue, in three memos rather than one.
+  //
+  // This used to be a single `useMemo` keyed on everything, including the
+  // search text and the selected map. So typing one character into the map
+  // filter, or clicking one row in the list, rebuilt two lookup indexes over
+  // the *entire map vault* -- which the maps service calls "the most expensive
+  // thing this client does" to crawl, and which is tens of thousands of
+  // entries -- then re-merged every installed map against them, then sorted
+  // the result, and then re-rendered every row. That is four string
+  // allocations per vault entry per keystroke, and it is why the host dialog
+  // in particular made the CPU climb.
+  //
+  // Split by what each step actually depends on: the vault index changes when
+  // the vault loads, the merge when the installed maps change, and only the
+  // filtering and sorting follow the search box.
+  const vaultIndex = useMemo(
+    () => ({
+      byFolder: new Map(maps.vault.map((map) => [map.folderName.toLowerCase(), map])),
+      byName: new Map(maps.vault.map((map) => [map.displayName.toLowerCase(), map])),
+    }),
+    [maps.vault],
+  );
 
+  const catalogue = useMemo(() => {
     const mapByFolder = new Map<string, HostMap>();
 
     // 1. Official base-game maps
-    const officialByFolder = new Map(
-      OFFICIAL_BASE_MAPS.map((base) => [base.folderName.toLowerCase(), base]),
-    );
-    const officialByName = new Map(
-      OFFICIAL_BASE_MAPS.map((base) => [base.displayName.toLowerCase(), base]),
-    );
-
     for (const base of OFFICIAL_BASE_MAPS) {
       mapByFolder.set(base.folderName.toLowerCase(), {
         displayName: base.displayName,
@@ -187,21 +209,20 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
       });
     }
 
-    // 2. Locally installed / vault maps
-    const vaultByFolder = new Map(
-      maps.vault.map((map) => [map.folderName.toLowerCase(), map]),
-    );
-    const vaultByName = new Map(
-      maps.vault.map((map) => [map.displayName.toLowerCase(), map]),
-    );
-
+    // 2. Locally installed maps, with vault metadata filling the gaps
     for (const installed of maps.installed) {
       const key = installed.folderName.toLowerCase();
       const baseKey = key.replace(/\.v\d+$/i, "");
       const nameKey = installed.displayName.toLowerCase();
 
-      const vaultMeta = vaultByFolder.get(key) ?? vaultByFolder.get(baseKey) ?? vaultByName.get(nameKey);
-      const officialMeta = officialByFolder.get(key) ?? officialByFolder.get(baseKey) ?? officialByName.get(nameKey);
+      const vaultMeta =
+        vaultIndex.byFolder.get(key)
+        ?? vaultIndex.byFolder.get(baseKey)
+        ?? vaultIndex.byName.get(nameKey);
+      const officialMeta =
+        OFFICIAL_BY_FOLDER.get(key)
+        ?? OFFICIAL_BY_FOLDER.get(baseKey)
+        ?? OFFICIAL_BY_NAME.get(nameKey);
       const existing = mapByFolder.get(key) ?? mapByFolder.get(baseKey);
 
       const maxPlayers =
@@ -231,10 +252,7 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
         existing?.description ||
         undefined;
 
-      const version =
-        installed.version ||
-        vaultMeta?.version ||
-        existing?.version;
+      const version = installed.version || vaultMeta?.version || existing?.version;
 
       mapByFolder.set(key, {
         displayName: vaultMeta?.displayName ?? officialMeta?.displayName ?? installed.displayName,
@@ -248,9 +266,16 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
       });
     }
 
-    // 3. Ensure selectedMap is present (e.g. freshly generated Neroxis map)
-    if (selectedMap && !mapByFolder.has(selectedMap.toLowerCase())) {
-      mapByFolder.set(selectedMap.toLowerCase(), {
+    return mapByFolder;
+  }, [maps.installed, vaultIndex]);
+
+  // A map generated a moment ago is not in the installed list yet, and has to
+  // be selectable anyway. One appended entry rather than a reason to rebuild
+  // the merge above every time the selection moves.
+  const catalogueMaps = useMemo(() => {
+    const all = Array.from(catalogue.values());
+    if (selectedMap && !catalogue.has(selectedMap.toLowerCase())) {
+      all.push({
         displayName: selectedMap,
         folderName: selectedMap,
         maxPlayers: 16,
@@ -260,8 +285,14 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
         description: "Generated Neroxis map.",
       });
     }
+    return all;
+  }, [catalogue, selectedMap]);
 
-    return Array.from(mapByFolder.values())
+  // The only step the search box and the filters touch.
+  const availableMaps = useMemo(() => {
+    const search = mapSearch.trim().toLocaleLowerCase();
+    const matches = (name: string) => !search || name.toLocaleLowerCase().includes(search);
+    return catalogueMaps
       .filter((map) => matches(map.displayName) || matches(map.folderName))
       .filter(
         (map) =>
@@ -270,15 +301,7 @@ export function HostGameModal({ onClose, initialTitle }: Props) {
           withinRange(toKilometres(map.height), heightKm),
       )
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
-  }, [
-    heightKm,
-    mapSearch,
-    maps.installed,
-    maps.vault,
-    playerCount,
-    selectedMap,
-    widthKm,
-  ]);
+  }, [catalogueMaps, heightKm, mapSearch, playerCount, widthKm]);
 
   // Favourites are already a thing in the map vault, kept as folder names in
   // the browsing preferences. This reuses that list rather than starting a
