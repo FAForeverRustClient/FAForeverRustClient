@@ -1,20 +1,32 @@
 /* Icon-led persistent navigation, retaining the Python client's durable tabs. */
+/* Scrolls when the window is too short for fourteen tabs plus the Game folders
+   disclosure, which is the case on a laptop and the case for anybody who opens
+   the folders list. The shell is `overflow: hidden`, so without this the bottom
+   of the navigation was simply cut off: the reported half-visible button. */
 .tabbar {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
   padding-top: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
+/* Never compressed to make room. Each group is as tall as its buttons, and the
+   `.tabbar` above scrolls instead: squeezing them is what clipped them. */
 .nav-group {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 2px;
 }
 
+/* Collapses to nothing once the groups do not fit, so the bottom group follows
+   the top one straight away instead of being pushed out of the scroll area. */
 .nav-spacer {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .tab {

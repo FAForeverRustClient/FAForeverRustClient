@@ -100,6 +100,7 @@
 
 .brand {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 10px;
   min-height: 60px;
@@ -317,8 +318,12 @@
   overflow: hidden;
 }
 
+/* Stays put however short the window is: the navigation above scrolls instead.
+   Without the shrink guard a short window took the height out of the account
+   button, which is the one control that has to remain reachable. */
 .sidebar-footer {
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: minmax(0, 1fr) 30px;
   align-items: center;
   gap: 9px;
