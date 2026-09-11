@@ -659,6 +659,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.toolbar.hideModded": "Modifizierte ausblenden",
   "lobby.toolbar.hideUnranked": "Ungewertete ausblenden",
   "lobby.toolbar.applyFilters": "Filter anwenden",
+  "lobby.toolbar.applyFiltersHint": "Blendet jedes Spiel aus, auf das eine Filterregel passt.",
+  "lobby.toolbar.filters": "Filter",
   "lobby.toolbar.hostGame": "Partie hosten",
 
   "lobby.filters.title": "Partiefilter verwalten",
@@ -681,6 +683,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.filters.constraint.above": "ist größer als",
   "lobby.filters.constraint.below": "ist kleiner als",
   "lobby.filters.addRule": "Regel hinzufügen",
+  "lobby.filters.hide": "Ausblenden",
   "lobby.filters.empty": "Noch keine Ausschlussregeln.",
   "lobby.filters.editRule": "Filter bearbeiten",
   "lobby.filters.saveRule": "Änderungen speichern",

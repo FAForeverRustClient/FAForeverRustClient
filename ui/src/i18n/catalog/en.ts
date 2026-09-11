@@ -715,6 +715,8 @@ export const en = {
   "lobby.toolbar.hideModded": "Hide modded",
   "lobby.toolbar.hideUnranked": "Hide unranked",
   "lobby.toolbar.applyFilters": "Apply filters",
+  "lobby.toolbar.applyFiltersHint": "Hide every game matching a filter rule.",
+  "lobby.toolbar.filters": "Filters",
   "lobby.toolbar.hostGame": "Host game",
 
   // Game filter rules.
@@ -738,6 +740,7 @@ export const en = {
   "lobby.filters.constraint.above": "is above",
   "lobby.filters.constraint.below": "is below",
   "lobby.filters.addRule": "Add rule",
+  "lobby.filters.hide": "Hide",
   "lobby.filters.empty": "No exclusion rules yet.",
   "lobby.filters.editRule": "Edit filter",
   "lobby.filters.saveRule": "Save changes",
