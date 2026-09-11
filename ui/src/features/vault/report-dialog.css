@@ -1,0 +1,69 @@
+/* The report dialog: details to copy, what to do with them, and the way out. */
+.report-dialog {
+  width: min(460px, calc(100vw - 64px));
+}
+
+.report-dialog h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 18px;
+}
+
+/* The copyable block. The copy button sits inside its top right corner, over
+   the text, which is where the mock-up put it and where it is closest to the
+   thing it copies. */
+.report-dialog-details {
+  position: relative;
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.report-dialog-details pre {
+  margin: 0;
+  padding-right: 34px;
+  overflow-x: auto;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.report-dialog-copy {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.report-dialog-copy:hover {
+  background: var(--color-surface-hover);
+}
+
+.report-dialog-copy:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.report-dialog-hint {
+  margin: var(--space-3) 0 var(--space-4);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.report-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

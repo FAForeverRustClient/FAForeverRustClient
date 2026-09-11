@@ -25,6 +25,7 @@ import {
   mapThumbnailCandidates,
   normalizeMapName,
 } from "../../shared/mapPresentation";
+import { ZoomableImage } from "../maps/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
@@ -881,6 +882,26 @@ export function ReplayDetailPanel({
           </div>
         </div>
       </header>
+      {/* The map, big enough to read a mex layout off. The thumbnail in the
+          header identifies the replay; this is the one somebody opens a replay
+          to look at, and it is the same zoom and panning the Maps tab and the
+          lobby's game preview already give.
+
+          Inline rather than a dialog of its own: `Modal` listens for Escape on
+          the document, so a second one stacked on this would close both at
+          once. */}
+      <section className="replay-detail-map-zoom">
+        <ZoomableImage label={presentation.displayName || effectiveMap}>
+          <ReplayMapThumb
+            url={replay.mapThumbnailUrl}
+            mapName={effectiveMap}
+            className="replay-detail-map-zoom-image"
+            emptyClassName="replay-detail-map-zoom-empty"
+            iconSize={48}
+            large
+          />
+        </ZoomableImage>
+      </section>
       {isGeneratingThisMap && generatorProgress && (
         <div className="replay-generation-banner">
           <div className="replay-generation-banner-content">
