@@ -86,8 +86,14 @@ describe("the join state machine", () => {
     next = apply(next, { type: "launching", payload: { launch } });
     expect(next.join).toEqual({ type: "launched", payload: { launch } });
 
-    next = apply(next, { type: "preparing", payload: { detail: "Updating faf", progress: 50 } });
-    expect(next.join).toEqual({ type: "preparing", payload: { detail: "Updating faf", progress: 50 } });
+    next = apply(next, {
+      type: "preparing",
+      payload: { phase: "verifying", detail: "Updating faf", progress: 50 },
+    });
+    expect(next.join).toEqual({
+      type: "preparing",
+      payload: { phase: "verifying", detail: "Updating faf", progress: 50 },
+    });
 
     next = apply(next, { type: "inGame" });
     expect(next.join).toEqual({ type: "inGame" });
@@ -97,12 +103,12 @@ describe("the join state machine", () => {
     // It is a status line, not a log; the Rust reducer overwrites too.
     const next = apply(
       state(),
-      { type: "preparing", payload: { detail: "Updating faf", progress: 25 } },
-      { type: "preparing", payload: { detail: "Downloading map", progress: null } },
+      { type: "preparing", payload: { phase: "verifying", detail: "Updating faf", progress: 25 } },
+      { type: "preparing", payload: { phase: "map", detail: "Downloading map", progress: null } },
     );
     expect(next.join).toEqual({
       type: "preparing",
-      payload: { detail: "Downloading map", progress: null },
+      payload: { phase: "map", detail: "Downloading map", progress: null },
     });
   });
 

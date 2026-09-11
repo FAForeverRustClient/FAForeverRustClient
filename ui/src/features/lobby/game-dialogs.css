@@ -1626,10 +1626,20 @@
   font-size: 12px;
 }
 
+/* The phase leads and the file follows: which kind of waiting this is stays
+   still while the line under it changes once per file. */
+.join-preparing-phase {
+  margin: 0 0 var(--space-1);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .join-preparing-detail {
   margin: 0 0 var(--space-2);
   font-size: 13px;
   line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 .join-preparing-bar {

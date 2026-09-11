@@ -96,7 +96,11 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
         ...state,
         join: {
           type: "preparing",
-          payload: { detail: event.payload.detail, progress: event.payload.progress },
+          payload: {
+            phase: event.payload.phase,
+            detail: event.payload.detail,
+            progress: event.payload.progress,
+          },
         },
       };
     case "joinFailed":

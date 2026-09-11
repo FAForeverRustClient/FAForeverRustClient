@@ -293,6 +293,30 @@ pub struct GameLaunch {
     pub args: Vec<String>,
 }
 
+/// Which part of getting the install ready a preparation step belongs to.
+///
+/// The Python client's updater dialog gives each of these its own progress bar
+/// rather than sharing one, because their numbers do not add up: the checksum
+/// pass walks every file the featured mod lists, and the download pass walks
+/// only the few of them that turned out to be stale. Reporting both as a
+/// single percentage made a bar that jumped, stalled and said nothing about
+/// which kind of waiting was going on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PreparationPhase {
+    /// Asking the API which files this featured mod is made of.
+    #[default]
+    Asking,
+    /// Reading every listed file and checksumming it against the API's MD5.
+    /// The slow part of a launch that has nothing to download, and the part
+    /// that used to happen in complete silence.
+    Verifying,
+    /// Fetching the files the checksum pass rejected.
+    Downloading,
+    /// Staging the map.
+    Map,
+}
+
 /// Where a join attempt stands. Distinct from [`LobbyStatus`] (the connection):
 /// you can be `Connected` and `Idle`, or `Connected` and `Joining`.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -320,6 +344,7 @@ pub enum JoinState {
     /// it (Java's updater task title, the Python client's updater dialog)
     /// rather than leaving the client looking frozen.
     Preparing {
+        phase: PreparationPhase,
         detail: String,
         progress: Option<u8>,
     },
@@ -482,6 +507,7 @@ pub enum LobbyEvent {
     },
     /// Progress on getting the install ready for the pending launch.
     Preparing {
+        phase: PreparationPhase,
         detail: String,
         progress: Option<u8>,
     },
@@ -640,8 +666,13 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
                 launch: launch.clone(),
             }
         }
-        LobbyEvent::Preparing { detail, progress } => {
+        LobbyEvent::Preparing {
+            phase,
+            detail,
+            progress,
+        } => {
             state.join = JoinState::Preparing {
+                phase: *phase,
                 detail: detail.clone(),
                 progress: *progress,
             }
@@ -1004,6 +1035,7 @@ mod tests {
         reduce(
             &mut s,
             &LobbyEvent::Preparing {
+                phase: PreparationPhase::Verifying,
                 detail: "Updating faf".into(),
                 progress: Some(40),
             },
@@ -1011,6 +1043,7 @@ mod tests {
         assert_eq!(
             s.join,
             JoinState::Preparing {
+                phase: PreparationPhase::Verifying,
                 detail: "Updating faf".into(),
                 progress: Some(40),
             }
@@ -1020,6 +1053,7 @@ mod tests {
         reduce(
             &mut s,
             &LobbyEvent::Preparing {
+                phase: PreparationPhase::Map,
                 detail: "Downloading map".into(),
                 progress: None,
             },
@@ -1027,6 +1061,7 @@ mod tests {
         assert_eq!(
             s.join,
             JoinState::Preparing {
+                phase: PreparationPhase::Map,
                 detail: "Downloading map".into(),
                 progress: None,
             }
@@ -1043,6 +1078,7 @@ mod tests {
         reduce(
             &mut s,
             &LobbyEvent::Preparing {
+                phase: PreparationPhase::Downloading,
                 detail: "Updating faf".into(),
                 progress: None,
             },
