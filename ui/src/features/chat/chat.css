@@ -1367,10 +1367,36 @@ img.chat-game-map {
   font-size: 12px;
 }
 
-.chat-game-team li > span:nth-child(2) {
+.chat-game-team li > span:nth-child(2),
+.chat-game-player {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The same name, where the card is somewhere it can be reached: standing open
+   beside a conversation rather than hanging off a roster badge. It looks like
+   the text it replaces until it is hovered, because a lineup of twelve buttons
+   styled as buttons is a wall. */
+.chat-game-player {
+  font: inherit;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chat-game-player:hover {
+  text-decoration: underline;
+}
+
+.chat-game-player:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
 }
 
 .chat-game-team img,

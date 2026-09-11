@@ -1,4 +1,4 @@
-import type { Game, SocialState } from "../../ipc/bindings";
+import type { Game, PlayerProfile, SocialState } from "../../ipc/bindings";
 
 export type GamePresenceStatus = "hosting" | "lobbying" | "playing" | "playingDelayed";
 
@@ -11,6 +11,14 @@ export interface GameSummaryPlayer {
   login: string;
   country: string;
   rating: number | null;
+  /**
+   * The lobby's record for this player, where it has one.
+   *
+   * Carried rather than looked up again by the card: the name in a lineup is
+   * a button onto this player's profile and their menu, and both want the id
+   * and the rating table the scan above already found.
+   */
+  profile: PlayerProfile | undefined;
 }
 
 export interface GameSummaryTeam {
@@ -129,6 +137,7 @@ export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryT
           login,
           country: profile?.country ?? "",
           rating: profile && profile.globalRating > 0 ? profile.globalRating : null,
+          profile,
         };
       });
       const knownRatings = players.flatMap((player) => player.rating === null ? [] : [player.rating]);
@@ -142,3 +151,4 @@ export function gameTeamSummaries(game: Game, social: SocialState): GameSummaryT
       };
     });
 }
+

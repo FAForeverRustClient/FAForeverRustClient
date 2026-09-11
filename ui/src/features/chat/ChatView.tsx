@@ -374,6 +374,8 @@ export function ChatView() {
             liveGames={liveGames}
             mapVault={mapVault}
             now={minuteNow}
+            onOpenConversation={openConversation}
+            onPlayerContextMenu={openPlayerMenu}
           />
         </div>
       )}

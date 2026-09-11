@@ -7,6 +7,9 @@
 
 import type { SocialState, VaultMap } from "../../ipc/bindings";
 import { MapThumbnail } from "../../shared/MapThumbnail";
+import { openPlayerCard } from "../player-card/playerCardActions";
+import { displayName } from "./chatFormat";
+import { rosterRatingSummary } from "./ratingSummary";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/useCountryLabel";
 import { formatGameTime } from "../../shared/durations";
@@ -32,6 +35,18 @@ interface Props {
   showTeams?: boolean;
   /** Drawn beside the title where the card is not already next to a badge. */
   showMap?: boolean;
+  /**
+   * Makes the names in the lineup behave the way a name in the roster does:
+   * hover for the rating summary, click for the profile card, double-click
+   * for a private conversation, right-click for the player menu.
+   *
+   * Optional, and absent in the popover on purpose. That card is a tooltip
+   * that closes when the pointer leaves the badge it hangs off, so nothing in
+   * it can be reached to be clicked; offering buttons there would be a
+   * promise the surface cannot keep.
+   */
+  onOpenConversation?: (nickname: string) => void;
+  onPlayerContextMenu?: (nickname: string, event: React.MouseEvent) => void;
 }
 
 export function GameSummaryCard({
@@ -41,6 +56,8 @@ export function GameSummaryCard({
   now,
   showTeams = true,
   showMap = false,
+  onOpenConversation,
+  onPlayerContextMenu,
 }: Props) {
   const countryOf = useCountryLabel();
   const { t } = useTranslation();
@@ -105,7 +122,23 @@ export function GameSummaryCard({
                         onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
                       />
                     ) : <span className="chat-game-flag-placeholder" />}
-                    <span>{player.login}</span>
+                    {onPlayerContextMenu ? (
+                      <button
+                        type="button"
+                        className="chat-game-player"
+                        title={rosterRatingSummary(
+                          displayName(player.login, player.profile),
+                          player.profile,
+                        )}
+                        onClick={() => void openPlayerCard(player.profile?.id ?? null, player.login)}
+                        onDoubleClick={() => onOpenConversation?.(player.login)}
+                        onContextMenu={(event) => onPlayerContextMenu(player.login, event)}
+                      >
+                        {player.login}
+                      </button>
+                    ) : (
+                      <span>{player.login}</span>
+                    )}
                     {player.rating !== null && <small>({player.rating})</small>}
                   </li>
                 ))}
