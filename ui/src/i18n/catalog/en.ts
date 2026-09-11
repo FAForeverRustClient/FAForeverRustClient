@@ -685,6 +685,7 @@ export const en = {
   // Custom-game detail panel.
   "lobby.details.host": "Host: {name}",
   "lobby.details.hostLabel": "Host:",
+  "lobby.details.mapSize": "Map size",
   "lobby.details.map": "Map",
   "lobby.details.players": "Players",
   "lobby.details.averageRating": "Average rating",
@@ -797,7 +798,6 @@ export const en = {
   "lobby.browser.friendCount": { one: "{count} friend", other: "{count} friends" },
   "lobby.browser.friendsHere": "On your friends list: {names}",
   "lobby.browser.mapSize": "Map size",
-  "lobby.browser.mapSizeValue": "Map size: {size}",
   "lobby.browser.mapFullName": "Map name",
   "lobby.browser.copyMapName": "Copy the full map name",
   "lobby.browser.copyMapNameGenerated": "Copy the full map name. Paste it into Generate map to rebuild this map.",

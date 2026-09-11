@@ -29,7 +29,7 @@ import { queuedPlayerCount } from "./queuedPlayers";
 import { PrivateGameDialog } from "./PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/useCountryLabel";
-import { isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
+import { isGeneratedMap, mapPresentation, mapSize } from "../../shared/mapPresentation";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
 import { UserMenu, type UserMenuTarget } from "../chat/UserMenu";
@@ -122,6 +122,20 @@ function GameDetails({
   const presentation = mapPresentation(maps.vault, game.map);
   const mapGenStatus = useAppStore((state) => state.state.mapGenerator.status);
   const isGenerated = isGeneratedMap(game.map);
+  // How big the map is, which the lobby's game record does not carry: the
+  // vault knows it for anything uploaded, the built-in table for the
+  // base-game maps that are not vault records, and a generated map's own
+  // name, which encodes it. Decoding that name is one command for the one
+  // game this panel is showing, the same request the preview dialog makes.
+  const decoded = useAppStore((state) => state.state.mapGenerator.decoded?.[game.map]);
+  useEffect(() => {
+    if (!isGenerated || decoded) return;
+    ipc.send({
+      kind: "MapGenerator",
+      command: { type: "decodeNames", payload: { mapNames: [game.map] } },
+    });
+  }, [isGenerated, decoded, game.map]);
+  const size = mapSize(maps.vault, game.map, decoded?.mapSize);
   const mapInstalled = maps.installed.some(
     (map) =>
       map.folderName.toLowerCase() === game.map.toLowerCase() ||
@@ -257,6 +271,10 @@ function GameDetails({
         </div>
         <dl className="game-summary-list">
           <div><dt>{t("lobby.details.map")}</dt><dd>{presentation.displayName}</dd></div>
+          {/* Only where one of the three sources actually knows it. A row
+              reading 10 km because that is the commonest size would be worse
+              than no row: this is a number somebody is deciding on. */}
+          {size && <div><dt>{t("lobby.details.mapSize")}</dt><dd>{size.full}</dd></div>}
           <div><dt>{t("lobby.details.players")}</dt><dd>{game.players} / {game.maxPlayers}</dd></div>
           <div><dt>{t("lobby.details.averageRating")}</dt><dd>{game.averageRating || t("lobby.details.unrated")}</dd></div>
           <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{game.ratingMin !== null || game.ratingMax !== null ? t("lobby.details.ratingRangeValue", { from: game.ratingMin ?? t("lobby.details.any"), to: game.ratingMax ?? t("lobby.details.any") }) : t("lobby.details.open")}</dd></div>
