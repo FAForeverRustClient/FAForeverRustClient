@@ -774,6 +774,17 @@ export type ChatNameColors = {
 	foes: string,
 	moderators: string,
 	admins: string,
+	/**
+	 *  The colour a name mentioned inside a message is printed in.
+	 *
+	 *  This is the sender's confirmation that a ping landed: naming somebody
+	 *  pings them, and until now nothing on the sender's own screen said
+	 *  whether the word they typed had resolved to a real player or was a
+	 *  misspelling that reached nobody. Configurable rather than fixed
+	 *  because every other name colour here is, and the default is the one
+	 *  agreed on the thread.
+	 */
+	pings: string,
 	/**  Player login to a user-selected `#rrggbb` colour. */
 	players: { [key in string]: string },
 };

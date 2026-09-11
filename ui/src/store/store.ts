@@ -470,6 +470,7 @@ const INITIAL: AppState = {
         foes: "#dc143c",
         moderators: "#32cd32",
         admins: "#ba55d3",
+        pings: "#ff8c00",
         players: {},
       },
       hideFoeMessages: true,

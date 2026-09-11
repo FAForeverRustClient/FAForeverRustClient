@@ -613,6 +613,15 @@ html.is-resizing-chat-roster * {
   font-weight: 500;
 }
 
+/* Somebody else's name inside a message: the sender's confirmation that the
+   word they typed resolved to a player in the room. The colour itself is the
+   `chat.nameColors.pings` preference, set inline by the renderer; this rule
+   only undoes the browser's yellow `mark` background. */
+.chat-ping {
+  background: none;
+  font-weight: 550;
+}
+
 .chat-search-hit {
   display: inline-block;
   line-height: 1.15;

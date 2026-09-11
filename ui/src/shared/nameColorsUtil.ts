@@ -12,6 +12,7 @@ export const STANDARD_CATEGORY_COLORS: Record<CategoryColorKey, string> = {
   foes: "#dc143c",
   moderators: "#32cd32",
   admins: "#ba55d3",
+  pings: "#ff8c00",
 };
 
 /**

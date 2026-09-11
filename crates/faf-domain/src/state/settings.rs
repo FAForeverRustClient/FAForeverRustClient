@@ -702,6 +702,15 @@ pub struct ChatNameColors {
     pub foes: String,
     pub moderators: String,
     pub admins: String,
+    /// The colour a name mentioned inside a message is printed in.
+    ///
+    /// This is the sender's confirmation that a ping landed: naming somebody
+    /// pings them, and until now nothing on the sender's own screen said
+    /// whether the word they typed had resolved to a real player or was a
+    /// misspelling that reached nobody. Configurable rather than fixed
+    /// because every other name colour here is, and the default is the one
+    /// agreed on the thread.
+    pub pings: String,
     /// Player login to a user-selected `#rrggbb` colour.
     pub players: BTreeMap<String, String>,
 }
@@ -714,6 +723,7 @@ impl Default for ChatNameColors {
             foes: "#dc143c".into(),
             moderators: "#32cd32".into(),
             admins: "#ba55d3".into(),
+            pings: "#ff8c00".into(),
             players: BTreeMap::new(),
         }
     }
@@ -732,6 +742,7 @@ impl<'de> Deserialize<'de> for ChatNameColors {
             foes: String,
             moderators: String,
             admins: String,
+            pings: String,
             players: BTreeMap<String, String>,
         }
 
@@ -744,6 +755,7 @@ impl<'de> Deserialize<'de> for ChatNameColors {
                     foes: defaults.foes,
                     moderators: defaults.moderators,
                     admins: defaults.admins,
+                    pings: defaults.pings,
                     players: defaults.players,
                 }
             }
@@ -756,6 +768,7 @@ impl<'de> Deserialize<'de> for ChatNameColors {
             foes: wire.foes,
             moderators: wire.moderators,
             admins: wire.admins,
+            pings: wire.pings,
             players: wire.players,
         })
     }
