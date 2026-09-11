@@ -17,6 +17,7 @@ import { EmptyState } from "../../design-system/EmptyState";
 import { ipc } from "../../ipc/client";
 import type { CoopMission, CoopResult, CoopStatus, Game } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
+import { friendKeys } from "./friendPresence";
 import { formatShortDate } from "../../shared/dates";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { GameBrowserRow, GameTile, type GameViewMode } from "./CustomGamesBrowser";
@@ -125,6 +126,10 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
   }, [missionsInActiveScenario, coop.selectedMissionId]);
 
   const connected = useAppStore((state) => state.state.lobby.status === "connected");
+  // The shared rows want these; read once here rather than inside each row.
+  const vaultMods = useAppStore((state) => state.state.mods.vault);
+  const friendLogins = useAppStore((state) => state.state.social.friends);
+  const friendSet = useMemo(() => friendKeys(friendLogins), [friendLogins]);
 
   const catalogNote = loadStatusNote(
     coop.catalogStatus,
@@ -174,6 +179,8 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   key={game.id}
                   game={game}
                   vault={maps.vault}
+                  vaultMods={vaultMods}
+                  friendSet={friendSet}
                   selected={selectedGameId === game.id}
                   onSelect={() => setSelectedGameId(game.id)}
                   onJoin={() => onJoin(game)}
@@ -187,6 +194,8 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   key={game.id}
                   game={game}
                   vault={maps.vault}
+                  vaultMods={vaultMods}
+                  friendSet={friendSet}
                   selected={selectedGameId === game.id}
                   now={now}
                   onSelect={() => setSelectedGameId(game.id)}
