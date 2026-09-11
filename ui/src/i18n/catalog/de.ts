@@ -732,6 +732,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.friendCount": { one: "{count} Freund", other: "{count} Freunde" },
   "lobby.browser.friendsHere": "Auf deiner Freundesliste: {names}",
   "lobby.browser.mapSize": "Kartengröße",
+  "lobby.browser.mapSizeValue": "Kartengröße: {size}",
   "lobby.browser.mapFullName": "Kartenname",
   "lobby.browser.copyMapName": "Vollständigen Kartennamen kopieren",
   "lobby.browser.copyMapNameGenerated": "Vollständigen Kartennamen kopieren. In „Karte generieren“ eingefügt baut er diese Karte neu.",

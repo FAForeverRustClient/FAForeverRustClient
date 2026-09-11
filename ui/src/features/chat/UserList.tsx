@@ -27,6 +27,7 @@ import {
   type UserCategory,
 } from "./chatFormat";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
 import { rosterRatingSummary } from "./ratingSummary";
@@ -317,6 +318,7 @@ const RosterRow = memo(function RosterRow({
   onOpenConversation: (nick: string) => void;
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
 }) {
+  const countryOf = useCountryLabel();
   const nameStyle = resolvedNickStyle(user.name, user, social, preferences, self);
   return (
     <li className="chat-roster-item">
@@ -348,8 +350,8 @@ const RosterRow = memo(function RosterRow({
             <img
               className="chat-flag"
               src={flagSrc(profile.country)}
-              alt={profile.country.toUpperCase()}
-              title={profile.country.toUpperCase()}
+              alt={countryOf(profile.country)}
+              title={countryOf(profile.country)}
               width={16}
               height={16}
               decoding="async"

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import type { MatchmakerPlayerProfile, MatchmakerQueue, PlayerCardStatus } from "../../ipc/bindings";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { MatchmakerFactionPicker } from "./MatchmakerFactionPicker";
 import { formatNumber } from "../../i18n";
@@ -50,6 +51,7 @@ export const MatchmakerPlayerCard = memo(function MatchmakerPlayerCard({
   factionsDisabled,
   onFactionsChange,
 }: Props) {
+  const countryOf = useCountryLabel();
   const { t } = useTranslation();
   const placement = profile?.leaguePlacements[0] ?? null;
   const displayName = profile?.login || playerName;
@@ -105,8 +107,8 @@ export const MatchmakerPlayerCard = memo(function MatchmakerPlayerCard({
             {flagCode && (
               <img
                 src={flagSrc(flagCode)}
-                alt={flagCode.toUpperCase()}
-                title={flagCode.toUpperCase()}
+                alt={countryOf(flagCode)}
+                title={countryOf(flagCode)}
                 width={20}
                 height={14}
               />

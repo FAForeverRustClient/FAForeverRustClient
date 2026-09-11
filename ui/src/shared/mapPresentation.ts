@@ -92,6 +92,11 @@ const OFFICIAL_MAPS: Record<string, string> = Object.fromEntries(
   OFFICIAL_BASE_MAPS.map((m) => [m.folderName, m.displayName]),
 );
 
+/** The same catalogue by folder name, for the fields beyond the display name. */
+const OFFICIAL_MAPS_BY_FOLDER = new Map(
+  OFFICIAL_BASE_MAPS.map((map) => [map.folderName, map] as const),
+);
+
 const OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME = new Map(
   Object.entries(OFFICIAL_MAPS).map(([key, displayName]) => [displayName.toLocaleLowerCase(), key]),
 );
@@ -439,4 +444,69 @@ export function mapPresentation(vault: VaultMap[], mapName: string, missions?: C
     thumbnailUrl: thumbnailUrls[0] ?? "",
     thumbnailUrls,
   };
+}
+
+// ── Map size ────────────────────────────────────────────────────────────────
+//
+// Asked for on the game tiles: the list said which map a game was on and not
+// how big it is, which is most of what "do I want this game" turns on. The
+// size is not on the lobby's `Game` record at all, so it comes from whichever
+// of the three sources knows this particular map.
+
+/** Generator units per kilometre. A 512-unit map is the familiar 10 km one. */
+const UNITS_PER_KM = 51.2;
+
+export type MapSize = {
+  /** `10 × 10 km`, for a tooltip or a facts list. */
+  full: string;
+  /**
+   * `10 km` for the square maps that almost all of them are, `10 × 5 km`
+   * otherwise. For the badge on a tile, where the space is a corner of a
+   * thumbnail and "10 × 10 km" spends most of it repeating itself.
+   */
+  compact: string;
+};
+
+function formatKm(units: number): string {
+  return (units / UNITS_PER_KM).toFixed(0);
+}
+
+/** Both renderings of a width and height in generator units. */
+export function mapSizeOf(width: number, height: number): MapSize | null {
+  if (!(width > 0) || !(height > 0)) return null;
+  const w = formatKm(width);
+  const h = formatKm(height);
+  return {
+    full: `${w} × ${h} km`,
+    compact: w === h ? `${w} km` : `${w} × ${h} km`,
+  };
+}
+
+/**
+ * How big the map a game is on is, from whichever source knows it.
+ *
+ * The vault first, because it is the authority for anything uploaded. Then the
+ * built-in table for the base-game maps, which are not vault records and so
+ * never appear in a vault lookup. Then, for a generated map, the name itself:
+ * a Neroxis name carries its size, and `decodedSize` is that number once the
+ * map generator slice has decoded the name.
+ *
+ * `null` where none of the three knows, which is honest: a badge saying
+ * nothing is better than one guessing 10 km because that is the common case.
+ */
+export function mapSize(
+  vault: VaultMap[],
+  mapName: string,
+  decodedSize?: number,
+): MapSize | null {
+  if (isGeneratedMap(mapName)) {
+    return decodedSize ? mapSizeOf(decodedSize, decodedSize) : null;
+  }
+  const vaultMap = findVaultMap(vault, mapName);
+  if (vaultMap) {
+    const size = mapSizeOf(vaultMap.width, vaultMap.height);
+    if (size) return size;
+  }
+  const official = OFFICIAL_MAPS_BY_FOLDER.get(baseMapName(mapName));
+  return official ? mapSizeOf(official.width, official.height) : null;
 }

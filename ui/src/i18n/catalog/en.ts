@@ -797,6 +797,7 @@ export const en = {
   "lobby.browser.friendCount": { one: "{count} friend", other: "{count} friends" },
   "lobby.browser.friendsHere": "On your friends list: {names}",
   "lobby.browser.mapSize": "Map size",
+  "lobby.browser.mapSizeValue": "Map size: {size}",
   "lobby.browser.mapFullName": "Map name",
   "lobby.browser.copyMapName": "Copy the full map name",
   "lobby.browser.copyMapNameGenerated": "Copy the full map name. Paste it into Generate map to rebuild this map.",

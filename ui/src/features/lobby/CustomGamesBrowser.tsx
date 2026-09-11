@@ -7,9 +7,10 @@ import { Modal } from "../../design-system/Modal";
 import type { Game, PlayerProfile, VaultMap, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { GameMapImage } from "./GameMapImage";
-import { findVaultMap, findVaultMapByFolder, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
+import { findVaultMap, findVaultMapByFolder, isGeneratedMap, mapPresentation, mapSize } from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { sizeLabel } from "../maps/MapVaultComponents";
@@ -514,6 +515,7 @@ function GameLineupTeam({
   side: LineupSide;
   profileFor: (login: string) => PlayerProfile | undefined;
 }) {
+  const countryOf = useCountryLabel();
   const profiles = players.map((login) => profileFor(login));
   const ratings = profiles.map(displayedRating);
   const total = teamRating(players, profileFor);
@@ -547,7 +549,8 @@ function GameLineupTeam({
               {profile?.country ? (
                 <img
                   src={flagSrc(profile.country)}
-                  alt={profile.country.toUpperCase()}
+                  alt={countryOf(profile.country)}
+                  title={countryOf(profile.country)}
                   width={16}
                   height={16}
                   decoding="async"
@@ -612,6 +615,13 @@ export const GameTile = memo(function GameTile({
 }) {
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
+  // How big the map is, which the lobby record does not carry: the vault knows
+  // it for anything uploaded, the built-in table for the base-game maps, and a
+  // generated map's own name once the browser has had it decoded.
+  const decodedSize = useAppStore(
+    (state) => state.state.mapGenerator.decoded?.[game.map]?.mapSize,
+  );
+  const size = mapSize(vault, game.map, decodedSize);
   const simModCount = Object.keys(game.simMods).length;
   const simModsRanked = simModsKeepGameRanked(game, vaultMods);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
@@ -653,6 +663,16 @@ export const GameTile = memo(function GameTile({
           placeholderClassName="game-tile-map-placeholder"
         />
         <span className="game-tile-map-name">{presentation.displayName}</span>
+        {/* Top right: the name owns the bottom edge and the lock the top left,
+            and a size behind the name would be the first thing a long name
+            truncated away. Some map names end in their own size, so this
+            repeats itself on those; that was raised on the thread and there is
+            nothing to be done about it short of parsing names. */}
+        {size && (
+          <span className="game-tile-map-size" title={t("lobby.browser.mapSizeValue", { size: size.full })}>
+            {size.compact}
+          </span>
+        )}
         {game.passwordProtected && (
           <span className="game-tile-private" role="img" aria-label={t("lobby.browser.privateGame")} title={t("lobby.browser.privateGame")}>
             <Icon name="lock" size={12} />
@@ -723,6 +743,10 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 }) {
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const presentation = mapPresentation(vault, game.map);
+  const decodedSize = useAppStore(
+    (state) => state.state.mapGenerator.decoded?.[game.map]?.mapSize,
+  );
+  const size = mapSize(vault, game.map, decodedSize);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const simModCount = Object.keys(game.simMods).length;
   const simModsRanked = simModsKeepGameRanked(game, vaultMods);
@@ -805,8 +829,16 @@ export const GameBrowserRow = memo(function GameBrowserRow({
           </div>
         </div>
 
+        {/* The size under the name rather than beside it: the column is
+            already the narrowest thing that fits a map name, and a long name
+            would push the number out of the row entirely. */}
         <div className="game-browser-map-col">
           <strong title={presentation.displayName}>{presentation.displayName}</strong>
+          {size && (
+            <small title={t("lobby.browser.mapSizeValue", { size: size.full })}>
+              {size.compact}
+            </small>
+          )}
         </div>
 
         <div className="game-browser-players-col">
@@ -1076,6 +1108,27 @@ export function CustomGamesBrowser({
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
 
   const handlePreview = onPreviewProp ?? setInternalPreviewGame;
+
+  // A generated map carries its size in its own name, and decoding it is what
+  // turns that into a number the tiles can show. One command for the whole
+  // list rather than one per tile: `decodeNames` takes a batch precisely
+  // because a browser full of generator lobbies would otherwise send forty of
+  // them, and the tiles read the answers out of the store as they land.
+  const decodedNames = useAppStore((state) => state.state.mapGenerator.decoded);
+  useEffect(() => {
+    const undecoded = Array.from(
+      new Set(
+        games
+          .map((game) => game.map)
+          .filter((name) => isGeneratedMap(name) && !decodedNames?.[name]),
+      ),
+    );
+    if (undecoded.length === 0) return;
+    ipc.send({
+      kind: "MapGenerator",
+      command: { type: "decodeNames", payload: { mapNames: undecoded } },
+    });
+  }, [games, decodedNames]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
