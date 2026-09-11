@@ -185,9 +185,18 @@
   font-size: 12px;
 }
 
+/* The message itself, which is the reason the notification exists. It used to
+   inherit the card's muted colour while the action hint below it was full
+   contrast, bold and uppercase: the loudest thing on the card was the label
+   for a click the whole card already performs, and the quietest was what
+   somebody had actually said. */
+.notification-body {
+  color: var(--color-text);
+}
+
 .notification-content em,
 .notification-toast em {
-  color: var(--color-text);
+  color: var(--color-muted);
   font-size: 12px;
   font-style: normal;
   font-weight: 600;
