@@ -6,6 +6,7 @@ import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
 import type { MapInstallStatus, VaultMap } from "../../ipc/bindings";
 import { formatShortDate } from "../../shared/dates";
 import { openReviews } from "../reviews/openReviews";
+import { ReportDialog } from "../vault/ReportDialog";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { clientIntlTag } from "../../shared/dates";
@@ -242,8 +243,21 @@ export function MapDetailPanel({
   useLocale();
   const description = cleanDescription(map.description);
   const removable = installed && !isOfficialMap(map.folderName);
+  const [reporting, setReporting] = useState(false);
   return (
     <aside className="vault-detail-panel map-vault-details surface-panel">
+      {reporting && (
+        <ReportDialog
+          kind={t("maps.vault.reportKind")}
+          name={map.displayName}
+          details={[
+            { label: t("maps.vault.reportAuthor"), value: map.author ?? "" },
+            { label: t("maps.vault.reportVersion"), value: map.version },
+            { label: t("maps.vault.reportFolder"), value: map.folderName },
+          ]}
+          onClose={() => setReporting(false)}
+        />
+      )}
       <button
         className="vault-detail-preview map-vault-detail-preview"
         onClick={onPreview}
@@ -327,6 +341,17 @@ export function MapDetailPanel({
             </Button>
             <Button onClick={() => void openReviews("map", map.mapId, map.displayName)}>
               {t("maps.vault.reviews")}
+            </Button>
+            {/* Last in the row and icon-only: reporting something is rare, and
+                a full-width button would sit in front of everybody for the
+                sake of the few who ever press it. */}
+            <Button
+              className="vault-action-report"
+              aria-label={t("vault.report.action")}
+              title={t("vault.report.action")}
+              onClick={() => setReporting(true)}
+            >
+              <Icon name="flag" size={14} />
             </Button>
           </div>
 
