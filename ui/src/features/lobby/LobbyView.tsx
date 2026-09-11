@@ -28,6 +28,7 @@ import { PlayModeTabs } from "./PlayModeTabs";
 import { queuedPlayerCount } from "./queuedPlayers";
 import { PrivateGameDialog } from "./PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
@@ -112,6 +113,7 @@ function GameDetails({
   onOpenUserMenu: (nickname: string, event: React.MouseEvent) => void;
   onPreview?: () => void;
 }) {
+  const countryOf = useCountryLabel();
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
   const lobby = useAppStore((state) => state.state.lobby);
@@ -322,7 +324,8 @@ function GameDetails({
                         {profile?.country ? (
                           <img
                             src={flagSrc(profile.country)}
-                            alt={profile.country.toUpperCase()}
+                            alt={countryOf(profile.country)}
+                            title={countryOf(profile.country)}
                             width={16}
                             height={16}
                             decoding="async"

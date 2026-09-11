@@ -7,6 +7,7 @@ import { ipc } from "../../ipc/client";
 import type { PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { noteForPlayer } from "../../shared/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { PlayerAchievements } from "./PlayerAchievements";
@@ -53,6 +54,7 @@ function PlayerLookupSearch({
   players: readonly PlayerProfile[];
   onSelect: (playerId: number | null, login: string) => void;
 }) {
+  const countryOf = useCountryLabel();
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -168,7 +170,8 @@ function PlayerLookupSearch({
                 <img
                   className="player-card-suggestion-flag"
                   src={flagSrc(player.country)}
-                  alt={player.country.toUpperCase()}
+                  alt={countryOf(player.country)}
+                  title={countryOf(player.country)}
                   width={16}
                   height={16}
                   decoding="async"
@@ -322,6 +325,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
 }
 
 export function PlayerCardModal() {
+  const countryOf = useCountryLabel();
   const state = useAppStore((store) => store.state.playerCard);
   const { t } = useTranslation();
   const me = useAppStore((store) => store.state.auth.player);
@@ -371,7 +375,8 @@ export function PlayerCardModal() {
           {country && (
             <img
               src={flagSrc(country)}
-              alt={country.toUpperCase()}
+              alt={countryOf(country)}
+              title={countryOf(country)}
               width={16}
               height={16}
               decoding="async"

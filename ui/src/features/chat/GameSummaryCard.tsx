@@ -8,6 +8,7 @@
 import type { SocialState, VaultMap } from "../../ipc/bindings";
 import { MapThumbnail } from "../../shared/MapThumbnail";
 import { flagSrc } from "../../shared/countryFlags";
+import { useCountryLabel } from "../../shared/useCountryLabel";
 import { formatGameTime } from "../../shared/durations";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { gameElapsedSeconds, gameTeamSummaries, type GamePresence } from "./gameSummary";
@@ -41,6 +42,7 @@ export function GameSummaryCard({
   showTeams = true,
   showMap = false,
 }: Props) {
+  const countryOf = useCountryLabel();
   const { t } = useTranslation();
   const presentation = mapPresentation(vault, presence.game.map);
   const status = t(STATUS_LABEL[presence.status]);
@@ -94,7 +96,8 @@ export function GameSummaryCard({
                     {player.country ? (
                       <img
                         src={flagSrc(player.country)}
-                        alt={player.country.toUpperCase()}
+                        alt={countryOf(player.country)}
+                        title={countryOf(player.country)}
                         width={16}
                         height={16}
                         decoding="async"
