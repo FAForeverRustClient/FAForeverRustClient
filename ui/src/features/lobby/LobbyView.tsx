@@ -29,6 +29,7 @@ import { PrivateGameDialog } from "./PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
 import {
   GLOBAL_LEADERBOARD,
+  averageRating,
   displayedRating,
   gameLeaderboard,
   leaderboardLabel,
@@ -332,16 +333,19 @@ function GameDetails({
           <div className="game-detail-section">
             {teams.map(([team, players]) => {
               const isObserver = team === "-1" || team === "null";
-              const playerRatings = players
-                .map((p) => displayedRating(findPlayer(social, p), leaderboard))
-                .filter((r): r is number => r !== null);
-              const totalRating = playerRatings.length > 0
-                ? playerRatings.reduce((sum, r) => sum + r, 0)
+              const playerRatings = players.map((p) =>
+                displayedRating(findPlayer(social, p), leaderboard),
+              );
+              const known = playerRatings.filter((r): r is number => r !== null);
+              const totalRating = known.length > 0
+                ? known.reduce((sum, r) => sum + r, 0)
                 : null;
-              const avgRating = playerRatings.length > 0
-                ? Math.round(totalRating! / playerRatings.length)
-                : null;
-              const showsStats = !isObserver && totalRating !== null;
+              const avgRating = averageRating(playerRatings);
+              // A one-player team has no average and no total: both are the
+              // rating already printed on that player's own row, two inches
+              // to the right. A free-for-all is a column of these, and the
+              // stats it grew were the same number said three times.
+              const showsStats = !isObserver && totalRating !== null && players.length > 1;
               return (
                 <div className="game-team" key={team}>
                   <div className="game-team-header">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlayerProfile } from "../ipc/bindings";
-import { displayedRating, gameLeaderboard } from "./playerRatings";
+import { averageRating, displayedRating, gameLeaderboard } from "./playerRatings";
 
 const rating = (leaderboard: string, value: number) => ({
   leaderboard,
@@ -36,6 +36,14 @@ describe("which rating is shown", () => {
     expect(displayedRating(profile, "ladder_1v1")).toBeNull();
   });
 
+  it("counts a rating of zero as a rating", () => {
+    // A conservative rating is mean - 3 * deviation floored at zero, so a
+    // ranked account with a high deviation displays as 0. That is a player
+    // with a leaderboard entry and a profile page, not an unknown.
+    const profile = player([rating("global", 0)]);
+    expect(displayedRating(profile)).toBe(0);
+  });
+
   it("has nothing to say about a player with no entry at all", () => {
     expect(displayedRating(player([]))).toBeNull();
     expect(displayedRating(undefined)).toBeNull();
@@ -50,5 +58,22 @@ describe("which rating is shown", () => {
     expect(gameLeaderboard("")).toBe("global");
     expect(gameLeaderboard(null)).toBe("global");
     expect(gameLeaderboard("tmm_4v4")).toBe("tmm_4v4");
+  });
+});
+
+describe("averaging a lineup", () => {
+  it("divides by everybody rated, zeroes included", () => {
+    // The free-for-all in the report: one player on 242 and three on 0. The
+    // panel divided by one and printed 242 beside a game average of 60.
+    expect(averageRating([242, 0, 0, 0])).toBe(60);
+  });
+
+  it("leaves out only the players with no rating at all", () => {
+    expect(averageRating([1_000, null, 500])).toBe(750);
+  });
+
+  it("has no average when nobody is rated", () => {
+    expect(averageRating([null, null])).toBeNull();
+    expect(averageRating([])).toBeNull();
   });
 });

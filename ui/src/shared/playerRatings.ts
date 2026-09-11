@@ -83,3 +83,19 @@ export function displayedRating(
   }
   return null;
 }
+
+/**
+ * The average of a lineup, over everybody in it rather than over the ones the
+ * client happens to know.
+ *
+ * This is the arithmetic the server and the backend's own `average_game_rating`
+ * use, and the reason the panel showed a free-for-all with three unrated
+ * players as "60 average" next to "Avg: 242": one number divided by four and
+ * the other by one. Unrated here means *no entry at all*, which is rare; a
+ * rating of 0 is a rating and counts.
+ */
+export function averageRating(ratings: Array<number | null>): number | null {
+  const known = ratings.filter((rating): rating is number => rating !== null);
+  if (known.length === 0) return null;
+  return Math.round(known.reduce((total, rating) => total + rating, 0) / known.length);
+}
