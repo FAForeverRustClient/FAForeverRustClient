@@ -370,6 +370,14 @@ export const en = {
   "links.filter.all": "All ({count})",
   "links.filter.official": "Official ({count})",
   "links.filter.community": "External ({count})",
+  "links.live": "LIVE",
+  "links.liveNow": "Streaming now",
+  // Plural: the viewer count, with the broadcaster's own stream title in front
+  // of it. The title is theirs, so it is not translated.
+  "links.liveWithViewers": {
+    one: "{title} - {count} watching",
+    other: "{title} - {count} watching",
+  },
   "links.origin.official": "Official",
   "links.origin.community": "External",
   "links.origin.officialTitle": "Run by FAF",
@@ -1188,6 +1196,9 @@ export const en = {
   "settings.notifications.reviewReminderHint": "Prompt you to review the map or mods after your live game ends.",
   "settings.notifications.partyInvites": "Party invitations",
   "settings.notifications.partyInvitesHint": "Alert when another player invites you to a party.",
+  "settings.notifications.streamLive": "FAF goes live",
+  "settings.notifications.streamLiveHint":
+    "Tell me when FAF's own Twitch channel starts broadcasting. Never a pop-up over a game: it appears in the notification list and on the External links page.",
 
   // Settings shell.
   "settings.title": "Settings",
@@ -2591,6 +2602,7 @@ export const en = {
   "notifications.action.acceptPartyInvite": "Accept invite",
   "notifications.action.watchLive": "Watch replay",
   "notifications.action.openEvent": "Open the calendar",
+  "notifications.action.openStream": "Watch the stream",
   "notifications.action.openSettings": "Open Settings",
   "reporting.statusFallback": "Submitted",
   "maps.vault.mapType": "Map",

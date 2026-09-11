@@ -404,6 +404,12 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "links.filter.all": "Alle ({count})",
   "links.filter.official": "Offiziell ({count})",
   "links.filter.community": "Extern ({count})",
+  "links.live": "LIVE",
+  "links.liveNow": "Sendet jetzt",
+  "links.liveWithViewers": {
+    one: "{title} - {count} Zuschauer",
+    other: "{title} - {count} Zuschauer",
+  },
   "links.origin.official": "Offiziell",
   "links.origin.community": "Extern",
   "links.origin.officialTitle": "Wird von FAF betrieben",
@@ -1081,6 +1087,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.reviewReminderHint": "Nach dem Ende der Partie an eine Bewertung von Karte oder Mods erinnern.",
   "settings.notifications.partyInvites": "Gruppeneinladungen",
   "settings.notifications.partyInvitesHint": "Hinweis, wenn dich jemand in eine Gruppe einlädt.",
+  "settings.notifications.streamLive": "FAF geht live",
+  "settings.notifications.streamLiveHint":
+    "Hinweis, wenn FAFs eigener Twitch-Kanal sendet. Nie als Fenster über dem Spiel: der Hinweis erscheint in der Benachrichtigungsliste und auf der Seite mit den externen Links.",
 
   "settings.title": "Einstellungen",
   "settings.intro": "Einstellungen werden automatisch gespeichert und über das Backend abgeglichen.",
@@ -2437,6 +2446,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "notifications.action.acceptPartyInvite": "Einladung annehmen",
   "notifications.action.watchLive": "Replay ansehen",
   "notifications.action.openEvent": "Kalender öffnen",
+  "notifications.action.openStream": "Stream ansehen",
   "notifications.action.openSettings": "Einstellungen öffnen",
   "reporting.statusFallback": "Abgeschickt",
   "maps.vault.mapType": "Karte",

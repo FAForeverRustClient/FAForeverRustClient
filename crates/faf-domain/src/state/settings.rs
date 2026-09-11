@@ -557,6 +557,13 @@ pub struct NotificationPreferences {
     pub game_launched: bool,
     pub review_reminder: bool,
     pub party_invites: bool,
+    /// Whether FAF's own Twitch and YouTube channels going live is announced.
+    ///
+    /// On, because it is the client telling people about the game the client is
+    /// for, and somebody who has never heard of the streams will not go looking
+    /// for a switch to turn them on. Off is one click, in the same list as every
+    /// other kind, which is what was asked for in the thread.
+    pub stream_live: bool,
     /// Sound volume from 0 to 100.
     pub volume: u8,
 }
@@ -583,6 +590,7 @@ impl Default for NotificationPreferences {
             game_launched: true,
             review_reminder: true,
             party_invites: true,
+            stream_live: true,
             volume: 70,
         }
     }
@@ -618,6 +626,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             game_launched: bool,
             review_reminder: bool,
             party_invites: bool,
+            stream_live: bool,
             volume: u8,
         }
 
@@ -644,6 +653,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     game_launched: defaults.game_launched,
                     review_reminder: defaults.review_reminder,
                     party_invites: defaults.party_invites,
+                    stream_live: defaults.stream_live,
                     volume: defaults.volume,
                 }
             }
@@ -670,6 +680,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             game_launched: wire.game_launched,
             review_reminder: wire.review_reminder,
             party_invites: wire.party_invites,
+            stream_live: wire.stream_live,
             volume: wire.volume,
         })
     }

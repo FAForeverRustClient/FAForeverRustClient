@@ -246,6 +246,7 @@ const INITIAL: AppState = {
     },
   },
   social: { friends: [], foes: [], players: [] },
+  streams: { live: [], status: { type: "idle" }, announced: [] },
   events: {
     catalogue: [],
     source: "bundled",
@@ -452,6 +453,7 @@ const INITIAL: AppState = {
       gameLaunched: true,
       reviewReminder: true,
       partyInvites: true,
+      streamLive: true,
       volume: 70,
     },
     chat: {

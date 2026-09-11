@@ -29,6 +29,7 @@ pub mod reviews;
 pub mod session;
 pub mod settings;
 pub mod social;
+pub mod streams;
 pub mod tourney;
 pub mod training;
 pub mod tutorials;
@@ -142,6 +143,9 @@ pub use settings::{
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
 };
+pub use streams::{
+    LiveStream, StreamPlatform, StreamsCommand, StreamsEvent, StreamsState, StreamsStatus,
+};
 pub use tourney::{
     map_key, match_vault_map, Article, AuditEntry, BracketKind, BracketSide, ChatMute, ChatPost,
     ChatRoom, Competition, DraftRejection, Formation, HostingStatus, InviteStatus, MapDraft,
@@ -209,6 +213,7 @@ pub struct AppState {
     pub reporting: ReportingState,
     pub reviews: ReviewsState,
     pub social: SocialState,
+    pub streams: StreamsState,
     pub tourney: TourneyState,
     pub training: TrainingState,
     pub tutorials: TutorialsState,
