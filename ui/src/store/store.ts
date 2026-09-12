@@ -446,6 +446,10 @@ const INITIAL: AppState = {
         partyInvite: "chime",
         other: "chime",
       },
+      // Mirrors NOTIFICATION_SOUND_CHOICE_VERSION. A stored file below this
+      // has its match-found row moved onto the current default on load; see
+      // `NotificationPreferences`' Deserialize.
+      soundChoiceVersion: 1,
       notifyWhenFocused: false,
       toastPosition: "bottomLeft",
       matchFound: true,

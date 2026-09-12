@@ -18,6 +18,20 @@ Eleven default to `chime`, the tone the client played for everything before the
 picker existed. **A found match defaults to `fafMatch`**, because it is the one
 notification that expires: miss it and the match is gone.
 
+### Changing a default later
+
+A settings file stores all twelve rows on every save, so changing a default in
+`NotificationSoundChoices` reaches nobody who has ever opened the client: their
+file already names the old value. `NotificationPreferences::sound_choice_version`
+is how a change gets through. Bump `NOTIFICATION_SOUND_CHOICE_VERSION`, and give
+the deserializer a rule for which stored value counts as "written by the old
+default" rather than chosen.
+
+The rule for version 1 is `chime` in the match-found row: every file written
+before this had it, and nobody could have meant it, because it was what all
+twelve said. Anything else there -- including a deliberate `silent` -- is a
+choice and is left alone.
+
 ## Sounds a player adds
 
 The five cannot answer "I want *this* sound". So the dropdown also offers
