@@ -279,6 +279,24 @@ export type BrowsingPreferences = {
 	/**  Active preset filter in the mod vault ("recommended", "favorites", "rating", "ui", "newest", "all"). */
 	modVaultPreset: string,
 	/**
+	 *  Chosen sort order in the map vault, empty to follow the preset.
+	 *
+	 *  Persisted for the same reason the preset is: leaving a tab and coming
+	 *  back put the list in an order nobody asked for, and the order is the
+	 *  half of a browse that a preset does not decide.
+	 */
+	mapVaultSort: string,
+	/**  Chosen sort order in the mod vault, empty to follow the preset. */
+	modVaultSort: string,
+	/**
+	 *  How many entries a vault page shows, or `0` for the designed default.
+	 *
+	 *  One number for maps and mods, installed and vault alike: the question
+	 *  is about how much of the screen a reader wants filled, and answering it
+	 *  four times over would be four settings saying the same thing.
+	 */
+	vaultPageSize: number,
+	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
 	 *  Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -1428,6 +1446,24 @@ export type CustomGameBrowserPreferences = {
 	hideUnranked: boolean,
 	applyFilters: boolean,
 	rules: CustomGameFilterRule[],
+	/**
+	 *  Pixel widths of the list view's columns, left to right.
+	 *
+	 *  Empty means "the stylesheet decides", which is both the default and
+	 *  what a reset goes back to. A short list is padded the same way: a
+	 *  column the user never dragged keeps its designed width rather than
+	 *  collapsing because a neighbour was resized.
+	 */
+	columnWidths: number[],
+	/**
+	 *  Pixel width of the detail panel beside the game list, or `0` for the
+	 *  designed default.
+	 *
+	 *  The tiles already resize (`gameTileColumns`); the panel beside them did
+	 *  not, so a wider preview could only be had by making the browser
+	 *  narrower and nothing offered that trade.
+	 */
+	detailWidth: number,
 };
 
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";

@@ -5222,6 +5222,8 @@ fn cases() -> Vec<Case> {
                                     value: "NOISY".into(),
                                 },
                             ],
+                            column_widths: vec![320, 180, 90, 110, 80],
+                            detail_width: 360,
                         },
                         matchmaker_unselected_queues: vec![
                             "  ladder_1v1 ".into(),
@@ -5265,6 +5267,9 @@ fn cases() -> Vec<Case> {
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
                         favorite_mods: vec!["eco_graph".into()],
                         map_vault_preset: "recommended".into(),
+                        map_vault_sort: "newest".into(),
+                        mod_vault_sort: "rating".into(),
+                        vault_page_size: 48,
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec![

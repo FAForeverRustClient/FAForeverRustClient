@@ -1,13 +1,20 @@
-import { memo, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Modal } from "../../design-system/Modal";
+import { ResizeHandle } from "../../design-system/ResizeHandle";
 import type { Game, PlayerProfile, VaultMap, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { GameMapImage } from "./GameMapImage";
-import { findVaultMap, findVaultMapByFolder, isGeneratedMap, mapPresentation } from "../../shared/mapPresentation";
+import {
+  findVaultMap,
+  findVaultMapByFolder,
+  isGeneratedMap,
+  mapPresentation,
+  mapVersionOf,
+} from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/useCountryLabel";
@@ -22,12 +29,36 @@ import {
 } from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { friendKeys, friendsInGame } from "./friendPresence";
+import { columnTemplate, columnWidths, withColumnResized } from "./browserLayout";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../shared/playerRatings";
 
 export type GameViewMode = "list" | "tiles";
+
+/**
+ * Persist the list's column widths.
+ *
+ * An empty array is the reset: the backend keeps it, and `columnWidths` reads
+ * it back as "use the designed widths", so a reset survives a restart the same
+ * way a drag does.
+ */
+function saveColumnWidths(widths: number[]): void {
+  const current = useAppStore.getState().state.settings.browsing;
+  ipc.send({
+    kind: "Settings",
+    command: {
+      type: "setBrowsing",
+      payload: {
+        preferences: {
+          ...current,
+          customGamesBrowser: { ...current.customGamesBrowser, columnWidths: widths },
+        },
+      },
+    },
+  });
+}
 
 // The mod catalogue keyed by uid, cached against the identity of the list it
 // was built from: it is replaced only when the catalogue is reloaded.
@@ -449,7 +480,9 @@ function GameLineup({
       onMouseEnter={cancelLineupHide}
       onMouseLeave={hideGlobalLineupSoon}
     >
-      <header className="game-lineup-title">{game.title}</header>
+      {/* No title. This overlay is anchored to the row or tile that already
+          carries the game's name in larger type, so repeating it here was the
+          same words twice within an inch of each other. */}
       {mirrored && <TeamBalance teams={teams} profileFor={profileFor} leaderboard={leaderboard} />}
       {teams.length > 0 ? (
         <div
@@ -786,6 +819,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   vaultMods,
   friendSet,
   now,
+  columnStyle,
   selected,
   onSelect,
   onJoin,
@@ -798,6 +832,8 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   /** The friend list, lower-cased once for the whole list. */
   friendSet: ReadonlySet<string>;
   now?: number;
+  /** The column template, built once by the browser and shared by every row. */
+  columnStyle?: React.CSSProperties;
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
@@ -818,6 +854,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         className={
           `game-browser-row${friends.length > 0 ? " has-friend" : ""}${selected ? " active" : ""}`
         }
+        style={columnStyle}
         onClick={onSelect}
         onDoubleClick={onJoin}
         onContextMenu={(event) => {
@@ -886,6 +923,12 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 
         <div className="game-browser-map-col">
           <strong title={presentation.displayName}>{presentation.displayName}</strong>
+          {/* Which version, not just which map. Two lobbies on "Dual Gap" can
+              be on maps that play differently, and the folder name is the only
+              place that ever said so. */}
+          {mapVersionOf(game.map) && (
+            <small className="game-browser-map-version">v{mapVersionOf(game.map)}</small>
+          )}
         </div>
 
         <div className="game-browser-players-col">
@@ -1173,6 +1216,39 @@ export function CustomGamesBrowser({
   const [internalPreviewGame, setInternalPreviewGame] = useState<Game | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
 
+  // Column widths live in settings, but a drag has to be visible before it is
+  // saved: writing every pointer move through the backend would be a round
+  // trip per pixel. So the saved widths seed a local copy, the drag moves the
+  // copy, and releasing the handle persists it.
+  const savedWidths = useAppStore(
+    (state) => state.state.settings.browsing.customGamesBrowser.columnWidths,
+  );
+  const [dragWidths, setDragWidths] = useState<number[] | null>(null);
+  const widths = dragWidths ?? columnWidths(savedWidths);
+  const dragOrigin = useRef<number[] | null>(null);
+  const columnStyle = useMemo(
+    () => (viewMode === "list" ? { gridTemplateColumns: columnTemplate(widths) } : undefined),
+    // The template is a string, so comparing the array by value is what keeps
+    // every row from re-rendering on an unrelated settings write.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [viewMode, widths.join(",")],
+  );
+
+  const onColumnDrag = (index: number, delta: number) => {
+    dragOrigin.current ??= widths;
+    setDragWidths(withColumnResized(dragOrigin.current, index, delta));
+  };
+  const onColumnCommit = () => {
+    dragOrigin.current = null;
+    if (dragWidths) saveColumnWidths(dragWidths);
+    setDragWidths(null);
+  };
+  const onColumnReset = () => {
+    dragOrigin.current = null;
+    setDragWidths(null);
+    saveColumnWidths([]);
+  };
+
   const handlePreview = onPreviewProp ?? setInternalPreviewGame;
 
   // Read once for the whole list. Every row used to subscribe to the mod vault
@@ -1217,15 +1293,34 @@ export function CustomGamesBrowser({
     ? { gridTemplateColumns: `repeat(${tileColumns}, minmax(0, 1fr))` }
     : undefined;
 
+  const columnLabels = [
+    t("lobby.browser.column.game"),
+    t("lobby.browser.column.map"),
+    t("lobby.browser.column.players"),
+    t("lobby.browser.column.rating"),
+    t("lobby.browser.column.age"),
+  ];
+
   return (
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
       {viewMode === "list" && (
-        <div className="game-browser-head">
-          <span>{t("lobby.browser.column.game")}</span>
-          <span>{t("lobby.browser.column.map")}</span>
-          <span>{t("lobby.browser.column.players")}</span>
-          <span>{t("lobby.browser.column.rating")}</span>
-          <span>{t("lobby.browser.column.age")}</span>
+        <div className="game-browser-head" style={columnStyle}>
+          {columnLabels.map((label, index) => (
+            <span key={label}>
+              {label}
+              {/* The last column has nothing to its right to give width to,
+                  so it is sized by the ones before it. */}
+              {index < columnLabels.length - 1 && (
+                <ResizeHandle
+                  className="game-browser-col-handle"
+                  label={t("lobby.browser.resizeColumn", { column: label })}
+                  onDrag={(delta) => onColumnDrag(index, delta)}
+                  onEnd={onColumnCommit}
+                  onReset={onColumnReset}
+                />
+              )}
+            </span>
+          ))}
         </div>
       )}
       <div
@@ -1263,6 +1358,7 @@ export function CustomGamesBrowser({
               vaultMods={vaultMods}
               friendSet={friendSet}
               now={now}
+              columnStyle={columnStyle}
               selected={selectedId === game.id}
               onSelect={() => onSelect(game.id)}
               onJoin={() => onJoin(game)}

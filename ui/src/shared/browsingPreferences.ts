@@ -91,6 +91,22 @@ export const VALID_MOD_VAULT_PRESETS = [
   "all",
 ] as const;
 
+/**
+ * Mirrors the consts of the same names in `faf_domain::state::settings`. The
+ * backend normalizes anything it is handed, so these exist so the UI never
+ * *offers* a value the backend would then quietly change underneath it.
+ */
+export const MAX_BROWSER_COLUMNS = 5;
+export const MIN_BROWSER_COLUMN_PX = 56;
+export const MAX_BROWSER_COLUMN_PX = 900;
+export const MIN_DETAIL_PX = 220;
+export const MAX_DETAIL_PX = 720;
+export const MIN_VAULT_PAGE_SIZE = 12;
+export const MAX_VAULT_PAGE_SIZE = 200;
+
+/** The page size a vault list uses when the setting is left at its default. */
+export const DEFAULT_VAULT_PAGE_SIZE = 36;
+
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   customGamesView: "tiles",
   replaysView: "tiles",
@@ -101,6 +117,8 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     hideUnranked: false,
     applyFilters: false,
     rules: [],
+    columnWidths: [],
+    detailWidth: 0,
   },
   matchmakerUnselectedQueues: [],
   matchmakerFactions: [...MATCHMAKER_FACTIONS],
@@ -111,6 +129,9 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   favoriteMods: [],
   mapVaultPreset: "recommended",
   modVaultPreset: "recommended",
+  mapVaultSort: "",
+  modVaultSort: "",
+  vaultPageSize: 0,
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   replayVaultPlayer: "",
@@ -155,6 +176,14 @@ export function normalizeBrowsingPreferences(
     favoriteMods: normalizeLabels(preferences.favoriteMods ?? [], 512, 256).map(asciiLower),
     mapVaultPreset: normalizeMapVaultPreset(preferences.mapVaultPreset),
     modVaultPreset: normalizeModVaultPreset(preferences.modVaultPreset),
+    mapVaultSort: truncateTrimmed(preferences.mapVaultSort ?? "", 32),
+    modVaultSort: truncateTrimmed(preferences.modVaultSort ?? "", 32),
+    // Zero means "the designed default", so it passes through untouched;
+    // anything else is bounded, matching `BrowsingPreferences::normalized`.
+    vaultPageSize:
+      preferences.vaultPageSize
+        ? clampInteger(preferences.vaultPageSize, MIN_VAULT_PAGE_SIZE, MAX_VAULT_PAGE_SIZE, 0)
+        : 0,
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
@@ -221,6 +250,14 @@ function normalizeCustomGamesBrowser(
     hideUnranked: Boolean(preferences.hideUnranked),
     applyFilters: Boolean(preferences.applyFilters),
     rules,
+    columnWidths: (preferences.columnWidths ?? [])
+      .slice(0, MAX_BROWSER_COLUMNS)
+      .map((width) =>
+        clampInteger(width, MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX),
+      ),
+    detailWidth: preferences.detailWidth
+      ? clampInteger(preferences.detailWidth, MIN_DETAIL_PX, MAX_DETAIL_PX, 0)
+      : 0,
   };
 }
 

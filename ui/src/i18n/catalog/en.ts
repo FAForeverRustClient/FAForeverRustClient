@@ -161,6 +161,7 @@ export const en = {
   "chat.empty.live": "No messages yet.",
   "chat.empty.offline": "Not connected: messages will appear once you're online.",
   "chat.search.placeholder": "Search this conversation",
+  "chat.joinsAndParts": "Joins & parts",
   "chat.search.open": "Search",
   "chat.jumpToLatest": "Jump to latest",
   "chat.send": "Send",
@@ -1105,6 +1106,8 @@ export const en = {
   "lobby.browser.any": "Any",
   // Words rather than a hyphen, because the tooltip is where a negative lower
   // bound has to be unambiguous: "-1000-700" is what the tag itself cannot say.
+  "lobby.browser.resizeColumn": "Resize the {column} column",
+  "lobby.browser.resizeDetails": "Resize the details panel",
   "lobby.browser.ratingRangeTooltip": "Rating range: {from} to {to}",
   "lobby.browser.ratingRangeEnforcedTooltip": "Rating range: {from} to {to}. The host enforces it, so players outside it cannot join.",
   "lobby.browser.openRange": "Open",
