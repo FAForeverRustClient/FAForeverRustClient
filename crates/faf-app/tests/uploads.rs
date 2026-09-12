@@ -29,7 +29,12 @@ impl UploadsPort for StubUploads {
         let outcome = self.outcome.clone();
         let hold = self.hold;
         tokio::spawn(async move {
-            let _ = tx.send(UploadStatus::Compressing).await;
+            let _ = tx
+                .send(UploadStatus::Compressing {
+                    done_bytes: 0,
+                    total_bytes: 1024,
+                })
+                .await;
             if !hold.is_zero() {
                 tokio::time::sleep(hold).await;
             }

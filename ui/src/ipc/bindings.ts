@@ -8378,7 +8378,18 @@ export type UploadRequest = {
  *  because zipping a large map is slow enough that a single "working…" would
  *  look hung.
  */
-export type UploadStatus = { type: "idle" } | { type: "compressing" } |
+export type UploadStatus = { type: "idle" } |
+/**
+ *  Bytes packed so far, and the folder's total size.
+ *
+ *  Measured rather than counted, because "Compressing…" on its own is the
+ *  one stage that can sit still for a minute on a large map and give no
+ *  sign of which minute it is in.
+ */
+{ type: "compressing"; payload: {
+	doneBytes: number,
+	totalBytes: number,
+} } |
 /**  Bytes sent so far, and the archive's total size. */
 { type: "uploading"; payload: {
 	sentBytes: number,

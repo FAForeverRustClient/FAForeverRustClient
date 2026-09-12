@@ -8,7 +8,10 @@
 //
 // The other is the vault rules. An upload is public and it is somebody else's
 // job to moderate, so the rules are worth a link and worth a deliberate press
-// rather than a page nobody finds until after the fact.
+// rather than a page nobody finds until after the fact. The link is here; the
+// *agreement* is on the publish dialog, because that is the first screen where
+// anything has been chosen. Accepting terms about a folder nobody has picked
+// yet is a click, not a decision.
 //
 // Deliberately not here: a "how does modding work" tutorial. That was the part
 // of the thread that did not converge, and the argument against it holds --
@@ -40,7 +43,6 @@ export function UploadIntroDialog({
   onContinue: () => void;
 }) {
   const { t } = useTranslation();
-  const [accepted, setAccepted] = useState(false);
   const isMap = kind === "map";
 
   return (
@@ -61,21 +63,12 @@ export function UploadIntroDialog({
         {t("uploads.intro.rulesLink")}
       </button>
 
-      <label className="upload-intro-accept">
-        <input
-          type="checkbox"
-          checked={accepted}
-          onChange={(event) => setAccepted(event.target.checked)}
-        />
-        <span>{t("uploads.intro.accept")}</span>
-      </label>
-
       <div className="upload-intro-actions">
         <Button onClick={onCancel}>{t("uploads.intro.cancel")}</Button>
         {/* The picker is one more press, which is the point: it is what stops
             the file browser appearing on a stream because somebody wondered
             what the button did. */}
-        <Button variant="primary" disabled={!accepted} onClick={onContinue}>
+        <Button variant="primary" onClick={onContinue}>
           {t("uploads.intro.selectFolder")}
         </Button>
       </div>

@@ -2573,7 +2573,10 @@ fn helper_fixture() -> HelperFixture {
     ];
     let statuses = vec![
         UploadStatus::Idle,
-        UploadStatus::Compressing,
+        UploadStatus::Compressing {
+            done_bytes: 3,
+            total_bytes: 10,
+        },
         UploadStatus::Uploading {
             sent_bytes: 5,
             total_bytes: 10,
@@ -3770,7 +3773,10 @@ fn cases() -> Vec<Case> {
                 .into(),
                 UploadsEvent::RankedChanged { ranked: true }.into(),
                 UploadsEvent::Progressed {
-                    status: UploadStatus::Compressing,
+                    status: UploadStatus::Compressing {
+                        done_bytes: 3,
+                        total_bytes: 10,
+                    },
                 }
                 .into(),
                 UploadsEvent::Closed.into(),
