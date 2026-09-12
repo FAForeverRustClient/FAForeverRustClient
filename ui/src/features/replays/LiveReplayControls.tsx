@@ -1,6 +1,6 @@
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { prettyGameType, type LiveFilters } from "./liveReplayModel";
+import { prettyFeaturedMod, prettyGameType, type LiveFilters } from "./liveReplayModel";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface Props {
@@ -82,7 +82,7 @@ export function LiveReplayControls(props: Props) {
             <span>{t("replays.live.featuredMod")}</span>
             <select value={filters.featuredMod} onChange={(event) => onFilter("featuredMod", event.target.value)}>
               <option value="">{t("replays.live.anyMod")}</option>
-              {props.featuredMods.map((mod) => <option key={mod} value={mod}>{mod}</option>)}
+              {props.featuredMods.map((mod) => <option key={mod} value={mod}>{prettyFeaturedMod(mod)}</option>)}
             </select>
           </label>
           <label>
