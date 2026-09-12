@@ -437,6 +437,18 @@ pub enum NotificationSound {
     Ping,
     /// Two rising notes. The loudest thing here, for something that expires.
     Alert,
+    /// The sound the FAF Java client plays when it finds you a match.
+    ///
+    /// The one sample the client ships, and the only thing here that is not
+    /// synthesised. It is included because "a match was found" is the
+    /// notification people already know by ear from the other client, and no
+    /// arrangement of sine partials is going to be that sound.
+    ///
+    /// Vendored from `FAForever/downlords-faf-client`, which carries it under
+    /// the Pixabay licence: free for commercial use, modification allowed,
+    /// attribution appreciated rather than required. See
+    /// `THIRD_PARTY_NOTICES.md`.
+    FafMatch,
     /// A file the player added, named by its stored file name.
     ///
     /// The name, not a path: the file lives in one directory the client owns
@@ -460,9 +472,9 @@ pub enum NotificationSound {
 /// finished map, a new client version) shares [`Self::other`].
 ///
 /// **One row is not [`NotificationSound::Chime`]: a found match plays
-/// [`NotificationSound::Alert`].** Everything else keeps the tone the client
-/// played before this existed, so installing an update changes one sound and
-/// not the rest.
+/// [`NotificationSound::FafMatch`].** Everything else keeps the tone the
+/// client played before this existed, so installing an update changes one
+/// sound and not the rest.
 ///
 /// That is a reversal. The original note here argued that shipping choices
 /// nobody made was the wrong answer to "all notifications sound the same", and
@@ -498,7 +510,7 @@ impl Default for NotificationSoundChoices {
         // One value, deliberately: see the note on the struct.
         Self {
             // The one graded default: see the note on the struct.
-            match_found: NotificationSound::Alert,
+            match_found: NotificationSound::FafMatch,
             private_message: NotificationSound::Chime,
             mention: NotificationSound::Chime,
             friend_online: NotificationSound::Chime,

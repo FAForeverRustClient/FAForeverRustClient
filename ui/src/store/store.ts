@@ -431,8 +431,9 @@ const INITIAL: AppState = {
       // CI rather than drifting quietly.
       sounds: {
         // The one graded default: a found match expires, and sounding like a
-        // friend coming online is what the report was about.
-        matchFound: "alert",
+        // friend coming online is what the report was about. It is the Java
+        // client's own match sound, which is what people know this event by.
+        matchFound: "fafMatch",
         privateMessage: "chime",
         mention: "chime",
         friendOnline: "chime",
