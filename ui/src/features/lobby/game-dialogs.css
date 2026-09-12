@@ -406,10 +406,23 @@
 }
 
 /* 4-Column Grid Layout (Game Type | Mods | Map | Preview)
-   Column 1 accommodates mode icons; the other three are adjusted slightly. */
+   Column 1 accommodates mode icons; the other three are adjusted slightly.
+ 
+   Each column may shrink to a floor rather than holding a fixed width. Fixed
+   widths needed 1186px inside the dialog, and the two-row fallback below only
+   starts at a 960px viewport: between the two the grid overflowed a dialog that
+   clips, so a window in that range lost the right-hand column rather than
+   rearranging. The floors bring four columns down to 956px, which is narrower
+   than the point at which they are given up. At full width the maxima are the
+   designed sizes, so nothing changes on a screen that was already wide
+   enough. */
 .host-game-grid {
   display: grid;
-  grid-template-columns: 245px 335px minmax(260px, 1fr) 310px;
+  grid-template-columns:
+    minmax(200px, 245px)
+    minmax(260px, 335px)
+    minmax(220px, 1fr)
+    minmax(240px, 310px);
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
@@ -1095,7 +1108,9 @@
 .password-dialog p { margin: 5px auto 16px; max-width: 400px; color: var(--color-muted); font-size: 11px; }
 .password-dialog > input { width: min(100%, 360px); }
 
-@media (max-width: 960px) {
+/* Where shrinking genuinely runs out: below this the four floors plus the gaps
+   no longer fit, so two rows are the honest answer rather than a clipped one. */
+@media (max-width: 1010px) {
   .host-game-grid {
     grid-template-columns: 1fr 1fr;
     height: auto;
