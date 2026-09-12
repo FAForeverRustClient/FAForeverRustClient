@@ -141,8 +141,9 @@ fn decode_dds(dds: &[u8]) -> Result<Preview, String> {
     // through rather than forced opaque: a preview with transparent corners is
     // a preview the map actually has.
     let mut rgba = Vec::with_capacity(expected);
-    for pixel in body[..expected].chunks_exact(4) {
-        rgba.extend_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
+    let (chunks, _) = body[..expected].as_chunks::<4>();
+    for [blue, green, red, alpha] in chunks {
+        rgba.extend_from_slice(&[*red, *green, *blue, *alpha]);
     }
     Ok(Preview {
         width,
