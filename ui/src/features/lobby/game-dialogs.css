@@ -48,8 +48,12 @@
   flex-direction: column;
   width: min(1360px, calc(100vw - 32px));
   max-width: 1360px;
-  height: min(85vh, 800px);
-  max-height: 85vh;
+  /* 800px was a cap, not a fit: the description field, the map list and the
+     mod list all had to share what was left after the header, so a window with
+     room to spare still scrolled. The dialog now takes the height it is given
+     and stops 12px short of the edge, which is what the replay card does. */
+  height: min(94vh, 1000px);
+  max-height: calc(100vh - 24px);
   overflow: hidden;
   box-sizing: border-box;
 }

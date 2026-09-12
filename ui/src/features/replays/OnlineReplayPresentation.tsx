@@ -42,7 +42,7 @@ import {
   ReplayList,
   type ReplayListGroup,
 } from "./ReplayList";
-import { t } from "../../i18n";
+import { formatDecimal, t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 /** "3d ago" beside the replay id, so recency reads without parsing a date. */
@@ -658,6 +658,8 @@ export function ReplayDetailPanel({
   const [copiedId, setCopiedId] = useState(false);
   const [copiedSeed, setCopiedSeed] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  /// Whether the map preview has been opened out of the rail.
+  const [enlarged, setEnlarged] = useState(false);
   // The rail's chat button both loads the details and reveals the log, so
   // its own open state is separate from whether the details have arrived.
   const [showChat, setShowChat] = useState(false);
@@ -693,6 +695,22 @@ export function ReplayDetailPanel({
   const notRated = isLocal
     ? localRatingNote(replay.uid, onlineLookup, detailTeams)
     : rated ? null : notRatedReason(validity);
+  // `Modal` closes on Escape from a bubble-phase listener on the document, so
+  // an overlay that wants Escape first has to take it in the capture phase:
+  // stopping propagation there means the modal's listener never runs, and one
+  // press steps back out of the preview instead of shutting the whole panel.
+  useEffect(() => {
+    if (!enlarged) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setEnlarged(false);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [enlarged]);
+
   const copyLink = () =>
     ipc.run(
       navigator.clipboard
@@ -754,12 +772,20 @@ export function ReplayDetailPanel({
         {/* The rail: what this replay *is* and what you can do to the file.
             The main column is what happened in it. */}
         <aside className="replay-card-rail">
+          {/* A preview the size of the one in the Play tab's sidebar, and
+              nothing more until it is asked for. The zoom widget is a viewport
+              plus a row of controls plus a hint line: at rail width that is
+              three quarters furniture, and a wheel over it swallowed the
+              scroll of the panel behind. Clicking enlarges it, and everything
+              the Maps tab offers is there once it is open. */}
           <div className="replay-rail-thumb">
-            {/* The same zoom and panning the Maps tab and the lobby preview
-                give. Inline rather than a dialog of its own: `Modal` listens
-                for Escape on the document, so a second one stacked on this
-                would close both at once. */}
-            <ZoomableImage label={mapLabel}>
+            <button
+              type="button"
+              className="replay-rail-thumb-open"
+              onClick={() => setEnlarged(true)}
+              title={t("maps.preview.enlarge", { name: mapLabel })}
+              aria-label={t("maps.preview.enlarge", { name: mapLabel })}
+            >
               <ReplayMapThumb
                 url={replay.mapThumbnailUrl}
                 mapName={effectiveMap}
@@ -768,7 +794,10 @@ export function ReplayDetailPanel({
                 iconSize={44}
                 large
               />
-            </ZoomableImage>
+              <span className="replay-rail-thumb-zoom" aria-hidden>
+                <Icon name="search" size={14} />
+              </span>
+            </button>
             {mapAction && (
               <div className="replay-rail-thumb-actions">
                 <button
@@ -809,13 +838,28 @@ export function ReplayDetailPanel({
               ))}
             </span>
             <span className="replay-card-rating-value">
-              {stars === null ? t("replays.detail.unrated") : stars.toFixed(1)}
+              {stars === null ? t("replays.detail.unrated") : formatDecimal(stars)}
               {replay.reviewsCount ? (
                 <span className="muted"> · {replay.reviewsCount}</span>
               ) : null}
             </span>
           </div>
           <div className="replay-card-rail-actions">
+            {onDownload && (
+              <Button
+                className="replay-card-rail-btn"
+                disabled={!replay.replayAvailable || downloadState === "downloading" || downloadState === "downloaded"}
+                onClick={onDownload}
+                title={t("replays.detail.download")}
+              >
+                <span>{t(downloadState === "downloading"
+                  ? "replays.detail.downloading"
+                  : downloadState === "downloaded"
+                    ? "replays.detail.downloaded"
+                    : "replays.detail.downloadReplay")}</span>
+                <Icon name="download" size={15} />
+              </Button>
+            )}
             {/* The shortest path from "that game went badly" to a request
                 someone can answer. The client already knows the replay, the
                 map, the mode and this account's rating in it, so the training
@@ -846,6 +890,17 @@ export function ReplayDetailPanel({
               <span>{t("replays.detail.requestReviewShort")}</span>
               <Icon name="book" size={15} />
             </Button>
+            {onToggleWatched && (
+              <Button
+                className={watched ? "replay-card-rail-btn is-on" : "replay-card-rail-btn"}
+                aria-pressed={watched}
+                onClick={onToggleWatched}
+                title={t(watched ? "replays.watched.unmark" : "replays.watched.mark")}
+              >
+                <span>{t(watched ? "replays.watched.unmark" : "replays.watched.mark")}</span>
+                <Icon name={watched ? "check" : "eye"} size={15} />
+              </Button>
+            )}
             <Button
               className="replay-card-rail-btn"
               disabled={isLoadingDetails}
@@ -859,50 +914,7 @@ export function ReplayDetailPanel({
               <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetails")}</span>
               <Icon name={isLoadingDetails ? "refresh" : "list"} size={15} className={isLoadingDetails ? "spin" : undefined} />
             </Button>
-            {onDownload && (
-              <Button
-                className="replay-card-rail-btn"
-                disabled={!replay.replayAvailable || downloadState === "downloading" || downloadState === "downloaded"}
-                onClick={onDownload}
-                title={t("replays.detail.download")}
-              >
-                <span>{t(downloadState === "downloading"
-                  ? "replays.detail.downloading"
-                  : downloadState === "downloaded"
-                    ? "replays.detail.downloaded"
-                    : "replays.detail.downloadReplay")}</span>
-                <Icon name="download" size={15} />
-              </Button>
-            )}
-            {onToggleWatched && (
-              <Button
-                className={watched ? "replay-card-rail-btn is-on" : "replay-card-rail-btn"}
-                aria-pressed={watched}
-                onClick={onToggleWatched}
-                title={t(watched ? "replays.watched.unmark" : "replays.watched.mark")}
-              >
-                <span>{t(watched ? "replays.watched.unmark" : "replays.watched.mark")}</span>
-                <Icon name={watched ? "check" : "eye"} size={15} />
-              </Button>
-            )}
           </div>
-          {seed && (
-            <div className="replay-card-seed">
-              <span className="replay-card-seed-label">{t("replays.detail.mapSeed")}</span>
-              <code className="replay-fact-seed-code" title={seed}>{seed}</code>
-              <button
-                type="button"
-                className="replay-card-icon-btn"
-                aria-label={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
-                title={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
-                onClick={() =>
-                  ipc.run(navigator.clipboard.writeText(seed).then(() => setCopiedSeed(true)))
-                }
-              >
-                <Icon name={copiedSeed ? "check" : "copy"} size={13} />
-              </button>
-            </div>
-          )}
           <div className="replay-card-idrow">
             <span className="replay-card-idlabel">{t("replays.detail.replayIdLabel")}</span>
             {replay.uid > 0 ? (
@@ -937,6 +949,27 @@ export function ReplayDetailPanel({
           <div className="replay-card-heading">
             <h2 className="replay-card-title" title={cardTitle}>{cardTitle}</h2>
             <p className="replay-card-onmap">{t("replays.detail.onMap", { map: mapLabel })}</p>
+            {/* Directly under the map it belongs to. A generated map has no
+                name worth reading -- the line above says only that a generator
+                made it -- so the seed is the one thing there that identifies
+                the map, and it is what somebody rebuilding it copies. */}
+            {seed && (
+              <div className="replay-card-seed">
+                <span className="replay-card-seed-label">{t("replays.detail.mapSeed")}</span>
+                <code className="replay-fact-seed-code" title={seed}>{seed}</code>
+                <button
+                  type="button"
+                  className="replay-card-icon-btn"
+                  aria-label={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
+                  title={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
+                  onClick={() =>
+                    ipc.run(navigator.clipboard.writeText(seed).then(() => setCopiedSeed(true)))
+                  }
+                >
+                  <Icon name={copiedSeed ? "check" : "copy"} size={13} />
+                </button>
+              </div>
+            )}
           </div>
           {(!replay.replayAvailable || age) && (
             <div className="replay-card-badges">
@@ -967,7 +1000,6 @@ export function ReplayDetailPanel({
               <ReplayDetailRoster
                 teams={detailTeams}
                 showResults={showResults}
-                notRated={notRated}
                 avatarByLogin={avatarByLogin}
               />
             ) : (
@@ -975,16 +1007,31 @@ export function ReplayDetailPanel({
             )}
           </section>
           <div className="replay-card-bottom">
-            <Button
-              className="replay-card-result-btn"
-              aria-pressed={showResults}
-              disabled={!rated}
-              title={rated ? undefined : notRated ?? t("replays.detail.noResultYet")}
-              onClick={() => setShowResults((visible) => !visible)}
-            >
-              <Icon name="eye" size={15} />
-              <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
-            </Button>
+            {/* Why the button is dead, next to the button.
+
+                This sentence used to sit above the lineup, where a reader who
+                had just clicked a greyed-out control at the bottom of the
+                panel never connected the two: the report was "I clicked game
+                result and wondered why it does not work". A disabled control
+                owes its reason to the place the click landed. */}
+            <span className="replay-card-result-group">
+              <Button
+                className="replay-card-result-btn"
+                aria-pressed={showResults}
+                disabled={!rated}
+                aria-describedby={rated ? undefined : "replay-result-reason"}
+                onClick={() => setShowResults((visible) => !visible)}
+              >
+                <Icon name="eye" size={15} />
+                <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
+              </Button>
+              {!rated && (
+                <span className="replay-card-result-reason" id="replay-result-reason">
+                  <Icon name="info" size={13} />
+                  <span>{notRated ?? t("replays.detail.noResultYet")}</span>
+                </span>
+              )}
+            </span>
             <Button
               className="replay-card-watch-btn"
               variant="primary"
@@ -997,6 +1044,48 @@ export function ReplayDetailPanel({
           </div>
         </div>
       </div>
+      {/* The enlarged preview, in this dialog's own markup rather than in a
+          second `Modal`: `Modal` closes on Escape from a document listener, so
+          two stacked would close both at once. It covers the viewport the way
+          a dialog would, and leaves the same three ways out -- the button, the
+          scrim, and Escape. */}
+      {enlarged && (
+        <div
+          className="replay-preview-scrim"
+          role="presentation"
+          onClick={() => setEnlarged(false)}
+        >
+          <div
+            className="replay-preview-overlay"
+            role="dialog"
+            aria-label={t("maps.preview.enlarge", { name: mapLabel })}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="replay-preview-overlay-head">
+              <h3>{mapLabel}</h3>
+              <button
+                type="button"
+                className="replay-card-icon-btn"
+                onClick={() => setEnlarged(false)}
+                title={t("common.close")}
+                aria-label={t("common.close")}
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+            <ZoomableImage label={mapLabel}>
+              <ReplayMapThumb
+                url={replay.mapThumbnailUrl}
+                mapName={effectiveMap}
+                className="replay-preview-overlay-image"
+                emptyClassName="replay-rail-thumb-empty"
+                iconSize={64}
+                large
+              />
+            </ZoomableImage>
+          </div>
+        </div>
+      )}
       {isGeneratingThisMap && generatorProgress && (
         <div className="replay-generation-banner">
           <div className="replay-generation-banner-content">

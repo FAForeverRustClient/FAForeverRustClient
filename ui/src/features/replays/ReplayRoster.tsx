@@ -188,20 +188,17 @@ function ReplayPlayerAvatar({
 export function ReplayDetailRoster({
   teams,
   showResults = false,
-  notRated,
   avatarByLogin,
 }: {
   teams: ReplayTeam[];
-  showResults?: boolean;
   /**
-   * Why this game produced no result, shown in place of the outcomes.
-   *
-   * Java hides its result labels entirely for a game that was not rated and
-   * puts this line where the "show rating change" button would be. Showing
-   * outcomes anyway is what put "Defeat" on both sides of a game nobody won,
-   * and left the other side blank when only one team had a recorded result.
+   * Whether the result is on screen. Java hides its result labels entirely for
+   * a game that was not rated; showing outcomes anyway is what put "Defeat" on
+   * both sides of a game nobody won, and left the other side blank when only
+   * one team had a recorded result. The reason it is off sits beside the
+   * button that would turn it on, not up here.
    */
-  notRated?: string | null;
+  showResults?: boolean;
   avatarByLogin?: ReadonlyMap<string, string>;
 }) {
   useLocale();
@@ -214,8 +211,6 @@ export function ReplayDetailRoster({
   // as a bracket rather than a lineup.
   const versus = teams.length === 2 && teams.every((team) => !isObserverTeam(team.team));
   return (
-    <>
-    {notRated && <p className="replay-not-rated muted">{notRated}</p>}
     <div
       className="replay-detail-teams"
       data-layout={versus ? "versus" : undefined}
@@ -319,7 +314,6 @@ export function ReplayDetailRoster({
         );
       })}
     </div>
-    </>
   );
 }
 

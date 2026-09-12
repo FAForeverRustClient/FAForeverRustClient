@@ -302,11 +302,14 @@ button.vault-input {
   margin-bottom: var(--space-2);
 }
 
+/* A row's title, not a headline: the map underneath it and the lineup beside
+   it are what a reader scans, and a bold 16px line above them competed with
+   both. */
 .replay-card-title {
   max-width: 100%;
   overflow: hidden;
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 550;
+  font-size: 14px;
   display: block;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -806,9 +809,9 @@ button.vault-input {
   align-items: center;
   justify-content: center;
   align-self: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
+  width: 30px;
+  height: 26px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-subtle);
@@ -1253,13 +1256,6 @@ button.vault-input {
   list-style: none;
 }
 
-/* Why a game produced no result, in place of the outcomes rather than beside
-   them: an unrated game has nothing to report and every reason to say so. */
-.replay-not-rated {
-  margin: 0 0 var(--space-3);
-  font-size: 12px;
-}
-
 .replay-team-outcome.unknown {
   color: var(--color-muted);
 }
@@ -1325,8 +1321,11 @@ button.vault-input {
   align-items: center;
   gap: 6px;
   margin-top: auto;
-  padding-top: var(--space-3);
-  font-size: 12px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: 13px;
 }
 
 .replay-card-idlabel {
@@ -1334,18 +1333,61 @@ button.vault-input {
   margin-right: auto;
 }
 
+/* The number people quote at each other in Discord, so it is set like one
+   rather than like a footnote. */
 .replay-card-idvalue {
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 15px;
   color: var(--color-text);
 }
 
-/* Positioning context for the map action, and nothing else.
-   `ZoomableImage` is a viewport *plus* a row of zoom controls underneath it,
-   so a wrapper that forces a square and clips the overflow cuts the controls
-   off entirely: that is how this panel shipped with a zoom nobody could use.
-   The widget sizes itself. */
+/* Positioning context for the map action, and nothing else. */
 .replay-rail-thumb {
   position: relative;
+}
+
+/* The preview at the size the Play tab's sidebar shows one. The zoom widget
+   that used to live here is a viewport plus a control row plus a hint line,
+   which at rail width is mostly furniture, and its wheel handler ate the
+   panel's own scrolling. It opens on a click instead. */
+.replay-rail-thumb-open {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: zoom-in;
+}
+
+.replay-rail-thumb-open:hover {
+  border-color: var(--color-accent);
+}
+
+.replay-rail-thumb-zoom {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.replay-rail-thumb-open:hover .replay-rail-thumb-zoom,
+.replay-rail-thumb-open:focus-visible .replay-rail-thumb-zoom {
+  opacity: 1;
 }
 
 .replay-rail-thumb-image,
@@ -1353,6 +1395,56 @@ button.vault-input {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Opened out of the rail. Above the modal's own backdrop (z-index 100), since
+   it is drawn from inside the modal and has to sit over it. */
+.replay-preview-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(4px);
+}
+
+.replay-preview-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: min(900px, 94vw);
+  max-height: 92vh;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+
+.replay-preview-overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.replay-preview-overlay-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-preview-overlay-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .replay-rail-thumb-empty {
@@ -1506,9 +1598,12 @@ button.vault-input {
   padding-right: 32px;
 }
 
-.replay-card-title {
+/* Scoped to the dialog. Unscoped, this also hit the list card's title, which
+   is a `span` of the same name, and put a 26px heading on every row of the
+   vault. */
+.replay-card-layout .replay-card-title {
   margin: 0;
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1.15;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -1630,13 +1725,21 @@ button.vault-input {
   --team-accent: var(--color-warn);
 }
 
-/* Each player is their own pill. It is what separates a roster from a table,
-   and it gives the rating change a lane of its own on the right. */
+/* A team is one block, not a stack of pills.
+   Giving every player their own filled, fully rounded row turned a four-man
+   team into four cards inside a fifth, and the team -- the thing the matchup
+   is actually between -- stopped reading as a unit. The players are plain rows
+   again, separated by a hairline rather than by a gap, and only the panel
+   around them is a surface. The hover still lights one row, because the names
+   are clickable. */
 .replay-card-layout .replay-detail-player {
-  height: 32px;
-  background: var(--color-surface);
-  border-radius: 999px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+}
+
+.replay-card-layout .replay-detail-player + .replay-detail-player {
+  border-top: 1px solid var(--color-border);
 }
 
 .replay-card-layout .replay-detail-player:hover {
@@ -1644,7 +1747,7 @@ button.vault-input {
 }
 
 .replay-card-layout .replay-detail-roster {
-  gap: 5px;
+  gap: 0;
 }
 
 /* Under about 900px the rail and the main column stop fitting side by side,
@@ -1686,4 +1789,37 @@ button.vault-input {
   .replay-card-title {
     font-size: 21px;
   }
+}
+
+/* The result button and the sentence that says why it is dead. Grouped so the
+   two never separate when the bottom bar wraps. */
+.replay-card-result-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.replay-card-result-reason {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.replay-card-result-reason > span {
+  min-width: 0;
+}
+
+.replay-card-result-reason .icon {
+  flex-shrink: 0;
+}
+
+/* The seed now sits under the line naming the generator that produced it. */
+.replay-card-heading .replay-card-seed {
+  margin-top: var(--space-2);
 }
