@@ -314,6 +314,7 @@ export function OnlineReplayList({
   onSelect,
   onOpen,
   onWatch,
+  onDownload,
   onToggleWatched,
 }: {
   replays: VaultReplay[];
@@ -323,6 +324,8 @@ export function OnlineReplayList({
   onSelect: (uid: number) => void;
   onOpen: (uid: number) => void;
   onWatch?: (uid: number) => void;
+  /** Saves the `.fafreplay` file, without opening the detail panel first. */
+  onDownload?: (uid: number) => void;
   onToggleWatched?: (uid: number) => void;
 }) {
   const { t } = useTranslation();
@@ -383,17 +386,40 @@ export function OnlineReplayList({
           ariaLabel: t("replays.list.detailsAria", { uid: replay.uid }),
           onClick: () => onOpen(replay.uid),
         },
-        iconActions: onToggleWatched
-          ? [{
-            icon: "eye" as const,
-            pressed: watchedUids.has(replay.uid),
-            ariaLabel: t(watchedUids.has(replay.uid)
-              ? "replays.watched.unmarkAria"
-              : "replays.watched.markAria", { name: replay.title || map }),
-            title: t(watchedUids.has(replay.uid) ? "replays.watched.unmark" : "replays.watched.mark"),
-            onClick: () => onToggleWatched(replay.uid),
-          }]
-          : undefined,
+        // Watch and Download on the row itself, which is what the thread
+        // asked for: both were a detail panel away, and both are the reason
+        // somebody is looking at the row in the first place. Neither appears
+        // for a replay the server has not finished processing, because
+        // neither would work.
+        iconActions: [
+          ...(onWatch && replay.replayAvailable
+            ? [{
+              icon: "play" as const,
+              ariaLabel: t("replays.list.watchAria", { name: replay.title || map }),
+              title: t("replays.detail.watch"),
+              onClick: () => onWatch(replay.uid),
+            }]
+            : []),
+          ...(onDownload && replay.replayAvailable
+            ? [{
+              icon: "download" as const,
+              ariaLabel: t("replays.list.downloadAria", { name: replay.title || map }),
+              title: t("replays.detail.download"),
+              onClick: () => onDownload(replay.uid),
+            }]
+            : []),
+          ...(onToggleWatched
+            ? [{
+              icon: "eye" as const,
+              pressed: watchedUids.has(replay.uid),
+              ariaLabel: t(watchedUids.has(replay.uid)
+                ? "replays.watched.unmarkAria"
+                : "replays.watched.markAria", { name: replay.title || map }),
+              title: t(watchedUids.has(replay.uid) ? "replays.watched.unmark" : "replays.watched.mark"),
+              onClick: () => onToggleWatched(replay.uid),
+            }]
+            : []),
+        ],
       };
     }),
   }));

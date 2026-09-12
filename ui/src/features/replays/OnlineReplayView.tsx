@@ -222,6 +222,10 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
             setSelectedUid(uid);
             if (!busy) markWatchedAndPlay(uid);
           }}
+          onDownload={(uid) => {
+            setSelectedUid(uid);
+            downloadVault(uid);
+          }}
           onToggleWatched={(uid) => setWatchedMark(uid, !watchedUids.has(uid))}
         />
       )}
