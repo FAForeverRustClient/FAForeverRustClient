@@ -25,8 +25,19 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ipc } from "../../ipc/client";
 import { joinProgressOf, nextStep } from "./joinProgress";
 import "./game-dialogs.css";
+
+/**
+ * Call the join off.
+ *
+ * One command for both halves of the dialog: while the files are coming down
+ * it stops the preparation and the join request, and once the game process is
+ * up the service turns it into the same termination the Leave button does.
+ * Which of the two applies is a question about state the backend already holds.
+ */
+const cancelJoin = () => ipc.send({ kind: "Lobby", command: { type: "cancelJoin" } });
 
 export function JoinPreparationDialog() {
   const { t } = useTranslation();
@@ -135,6 +146,14 @@ export function JoinPreparationDialog() {
         )}
 
         <div className="confirm-dialog-actions">
+          {/* Stop, not just look away. Hiding leaves the join running, which
+              is the right default for a five minute patch, and is no use at
+              all to somebody who has changed their mind about the game. */}
+          <Button onClick={cancelJoin}>
+            {t(progress.kind === "starting"
+              ? "lobby.joinProgress.cancelStarting"
+              : "lobby.joinProgress.cancel")}
+          </Button>
           <Button onClick={() => setHidden(true)}>{t("lobby.joinProgress.hide")}</Button>
         </div>
         <p className="muted join-preparing-note">{t("lobby.joinProgress.hideNote")}</p>

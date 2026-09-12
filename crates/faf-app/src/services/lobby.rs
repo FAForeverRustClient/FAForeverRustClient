@@ -54,6 +54,8 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             if !ctx.lobby_join_active.try_start() {
                 return;
             }
+            // A new join starts uncancelled, whatever the last one did.
+            ctx.lobby_join_cancelled.clear();
 
             if !out.with_state(|state| {
                 matches!(
@@ -101,9 +103,22 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                         return;
                     }
                 }
-                // Preparation can take minutes. Return to an explicit joining
-                // state while waiting for the server's accept/reject response.
+                // Preparation can take minutes, which is long enough for the
+                // user to give up on it. Nothing below this point should run
+                // for a join that was called off while its files came down.
+                if ctx.lobby_join_cancelled.is_cancelled() {
+                    ctx.lobby_join_active.finish();
+                    out.emit(LobbyEvent::JoinCancelled);
+                    return;
+                }
+                // Return to an explicit joining state while waiting for the
+                // server's accept/reject response.
                 out.emit(LobbyEvent::Joining { id, prepared: true });
+            }
+            if ctx.lobby_join_cancelled.is_cancelled() {
+                ctx.lobby_join_active.finish();
+                out.emit(LobbyEvent::JoinCancelled);
+                return;
             }
             if !ctx.ports.lobby.join(id, password) {
                 ctx.lobby_join_active.finish();
@@ -277,6 +292,26 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             }) {
                 out.emit(LobbyEvent::JoinCancelled);
             }
+        }
+        LobbyCommand::CancelJoin => {
+            // Past the point where the game process is up, "cancel" means the
+            // same thing as leaving: there is a running FA and an ICE session
+            // to take down, and no join left to call off.
+            let launched = out.with_state(|state| {
+                matches!(
+                    state.lobby.join,
+                    JoinState::Launched { .. } | JoinState::InGame
+                )
+            });
+            if launched {
+                terminate_game(ctx, out);
+                return;
+            }
+            // Before that, the flag is what stops the work: preparation reads
+            // it at its next step boundary, and the join request is not sent.
+            ctx.lobby_join_cancelled.cancel();
+            ctx.lobby_join_active.finish();
+            out.emit(LobbyEvent::JoinCancelled);
         }
         LobbyCommand::TerminateGame => {
             terminate_game(ctx, out);

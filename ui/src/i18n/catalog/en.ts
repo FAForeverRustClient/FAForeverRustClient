@@ -3661,6 +3661,8 @@ export const en = {
   "lobby.joinProgress.startingDetail": "Joining “{name}”. The game window will appear shortly.",
   "lobby.joinProgress.startingNote": "This can take a few seconds.",
   "settings.notifications.sound.fafMatch": "Match found (FAF)",
+  "lobby.joinProgress.cancel": "Cancel joining",
+  "lobby.joinProgress.cancelStarting": "Stop the game",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

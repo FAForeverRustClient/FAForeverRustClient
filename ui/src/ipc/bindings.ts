@@ -3017,11 +3017,25 @@ export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 } } |
 /**
  *  The user answered "no" to the simulation-mod replacement prompt. Only
- *  meaningful while the join is waiting on that answer; deliberately not a
- *  general "cancel the join", which would clear the state out from under a
- *  download that is still running.
+ *  meaningful while the join is waiting on that answer. See
+ *  [`Self::CancelJoin`] for the general case, which this predates.
  */
 { type: "declineModReplacement" } |
+/**
+ *  Stop the join in flight, from the button on the progress dialog.
+ *
+ *  This used not to exist, on the grounds that clearing the join state
+ *  would leave a download running underneath it. That was a reason to make
+ *  the two agree, not a reason to leave somebody stuck watching a progress
+ *  bar they cannot get out of. The service sets a flag preparation checks
+ *  at its step boundaries, so the work stops with the state rather than
+ *  after it, and the join request is never sent for a join that was called
+ *  off while its files were being fetched.
+ *
+ *  Once the game process is up this is a termination rather than a
+ *  cancellation, and it does what the Leave button does.
+ */
+{ type: "cancelJoin" } |
 /**
  *  The host dialog was closed; forget the prepared title so it does not
  *  reopen on the next visit to the tab.
@@ -4319,6 +4333,25 @@ export type NotificationPreferences = {
 	sound: boolean,
 	/**  Which tone each kind plays, when [`Self::sound`] is on. */
 	sounds: NotificationSoundChoices,
+	/**
+	 *  Version of the stored [`Self::sounds`], so a changed default can reach
+	 *  the people who never made a choice.
+	 *
+	 *  Every row is written on every save, so a settings file from an older
+	 *  build carries `chime` in all twelve whether or not anybody picked it. A
+	 *  new default is therefore invisible to everyone who has ever opened the
+	 *  client, which is everyone: giving a found match its own sound would
+	 *  have reached nobody, least of all the players the report came from.
+	 *
+	 *  Same shape as [`ConnectivityPreferences::selection_version`], and the
+	 *  same reasoning: a value written by an old default is not evidence of a
+	 *  choice. Version zero is any file written before this field existed.
+	 *
+	 *  It lives here rather than inside [`NotificationSoundChoices`] because
+	 *  that struct is twelve fields of one type and several places walk it as
+	 *  such; a `u8` among them would be a row that is not a sound.
+	 */
+	soundChoiceVersion: number,
 	notifyWhenFocused: boolean,
 	/**  Which corner a toast appears in. See [`ToastPosition`]. */
 	toastPosition: ToastPosition,
@@ -4429,6 +4462,10 @@ export type NotificationSound =
  *
  *  [`NotificationSound::Silent`] is available on every row, which is how a kind
  *  is seen and not heard.
+ *
+ *  A changed default here only reaches existing installs through
+ *  [`NotificationPreferences::sound_choice_version`]; bump that when changing
+ *  one, or the change is invisible to everybody who has ever saved settings.
  */
 export type NotificationSoundChoices = {
 	matchFound: NotificationSound,

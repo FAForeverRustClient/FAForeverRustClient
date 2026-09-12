@@ -710,6 +710,7 @@
           "partyInvite": "chime",
           "other": "chime"
         },
+        "soundChoiceVersion": 1,
         "notifyWhenFocused": false,
         "toastPosition": "bottomLeft",
         "matchFound": true,
@@ -2169,6 +2170,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -29147,6 +29149,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -29388,6 +29391,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -29638,6 +29642,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -29885,6 +29890,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -30131,6 +30137,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -30397,6 +30404,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -30653,6 +30661,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -30926,6 +30935,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -31190,6 +31200,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -31456,6 +31467,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
@@ -31806,6 +31818,7 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
+              "soundChoiceVersion": 1,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
