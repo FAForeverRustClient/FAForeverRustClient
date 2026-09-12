@@ -2929,6 +2929,7 @@ fn cases() -> Vec<Case> {
                             games: 3,
                             wins: 2,
                             losses: 1,
+                            draws: 0,
                             last_played: "2026-01-04T20:00:00Z".into(),
                         }],
                         truncated: false,
@@ -3769,6 +3770,13 @@ fn cases() -> Vec<Case> {
                         source_path: None,
                         rename_to: String::new(),
                     },
+                }
+                .into(),
+                // The picture arrives after the dialog is already open, and a
+                // later `Opened` clears it again: both halves are worth
+                // replaying through the twins.
+                UploadsEvent::PreviewRead {
+                    data_url: "data:image/png;base64,iVBORw0KGgo=".into(),
                 }
                 .into(),
                 UploadsEvent::RankedChanged { ranked: true }.into(),
@@ -5270,6 +5278,7 @@ fn cases() -> Vec<Case> {
                         map_vault_sort: "newest".into(),
                         mod_vault_sort: "rating".into(),
                         vault_page_size: 48,
+                        replay_list_columns: vec![64, 240, 150],
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec![

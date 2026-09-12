@@ -2362,7 +2362,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.empty": "Aucune partie terminée enregistrée.",
   "playerCard.maps.gamesTotal": "Parties",
   "playerCard.maps.winRate": "Taux de victoire",
-  "playerCard.maps.record": "V / D",
+  "playerCard.maps.record": "V / D / N",
   "playerCard.maps.distinctMaps": "Cartes différentes",
   "playerCard.maps.generated": "Mapgen / carte générée",
   "playerCard.maps.map": "Carte",

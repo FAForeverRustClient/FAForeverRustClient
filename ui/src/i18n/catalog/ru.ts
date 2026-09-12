@@ -2502,7 +2502,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.empty": "Завершённых игр не найдено.",
   "playerCard.maps.gamesTotal": "Игр",
   "playerCard.maps.winRate": "Процент побед",
-  "playerCard.maps.record": "П / П",
+  "playerCard.maps.record": "П / П / Н",
   "playerCard.maps.distinctMaps": "Разных карт",
   "playerCard.maps.generated": "Mapgen / сгенерированная карта",
   "playerCard.maps.map": "Карта",

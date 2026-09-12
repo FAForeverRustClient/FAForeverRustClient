@@ -383,6 +383,7 @@ mod tests {
             status: UploadStatus::Failed {
                 reason: "last time".into(),
             },
+            preview: String::new(),
         };
         reduce(&mut state, &UploadsEvent::Opened { request: request() });
         assert_eq!(state.status, UploadStatus::Idle);
@@ -414,6 +415,7 @@ mod tests {
                 sent_bytes: 10,
                 total_bytes: 100,
             },
+            preview: String::new(),
         };
         reduce(&mut state, &UploadsEvent::Closed);
         assert_eq!(state.request, None);
@@ -425,6 +427,7 @@ mod tests {
         let mut state = UploadsState {
             request: Some(request()),
             status: UploadStatus::Succeeded,
+            preview: String::new(),
         };
         reduce(&mut state, &UploadsEvent::Closed);
         assert_eq!(state, UploadsState::default());

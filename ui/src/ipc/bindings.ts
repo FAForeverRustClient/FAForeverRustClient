@@ -4925,6 +4925,11 @@ export type PlayerMapStat = {
 	games: number,
 	wins: number,
 	losses: number,
+	/**
+	 *  Games on this map that ended level, which the win rate excludes rather
+	 *  than counts as half a loss.
+	 */
+	draws: number,
 	/**  Most recent appearance, ISO. Empty when no game on this map stated one. */
 	lastPlayed: string,
 };
@@ -4943,19 +4948,23 @@ export type PlayerMapStats = {
 	totalGames: number,
 	wins: number,
 	losses: number,
-	/**  Rated games the API returned without a decided result (draws). */
+	/**  Games that ended level, counted and shown but kept out of the win rate. */
 	undecided: number,
 	/**
-	 *  Games that moved no rating at all, and so count towards nothing.
+	 *  Games that decide nothing, either because nothing says who won or
+	 *  because no rating moved.
 	 *
 	 *  A custom lobby with mods on, a game that desynced its way out of a
 	 *  result, one abandoned before it was scored: FAF rates none of them, and
-	 *  the API still returns a `gamePlayerStats` row for each. Those rows
-	 *  carried a `result` of `DEFEAT` far more often than `VICTORY`, because a
-	 *  game only reports defeat when someone is killed or leaves and nothing
-	 *  reports the winner. Counting them dragged every profile towards the
-	 *  same 40%, which is what made the figure obviously wrong rather than
-	 *  merely inaccurate.
+	 *  the API still returns rows for each. Those rows carried a `result` of
+	 *  `DEFEAT` far more often than `VICTORY`, because a game only reports
+	 *  defeat when someone is killed or leaves and nothing reports the winner.
+	 *  Counting them dragged every profile towards the same 40%, which is what
+	 *  made the figure obviously wrong rather than merely inaccurate.
+	 *
+	 *  `faftracker` keeps these in two buckets -- no result at all, and a
+	 *  result with no rating behind it -- and the distinction changes nothing a
+	 *  reader of this table would do, so they are one number here.
 	 */
 	unranked: number,
 	/**

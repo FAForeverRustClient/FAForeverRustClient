@@ -2991,6 +2991,8 @@ mod tests {
                 map_vault_sort: "  newest  ".into(),
                 mod_vault_sort: String::new(),
                 vault_page_size: 5_000,
+                // Out of bounds, and a zero that is not a width.
+                replay_list_columns: vec![10, 200, 0, 9_999],
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![

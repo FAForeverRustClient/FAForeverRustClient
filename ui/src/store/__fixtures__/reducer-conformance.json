@@ -1200,6 +1200,7 @@
                       "games": 3,
                       "wins": 2,
                       "losses": 1,
+                      "draws": 0,
                       "lastPlayed": "2026-01-04T20:00:00Z"
                     }
                   ],
@@ -1220,6 +1221,7 @@
               "losses": 1,
               "maps": [
                 {
+                  "draws": 0,
                   "games": 3,
                   "generated": false,
                   "lastPlayed": "2026-01-04T20:00:00Z",
@@ -2054,10 +2056,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -6274,6 +6276,32 @@
             }
           },
           "expected": {
+            "preview": "",
+            "request": {
+              "displayName": "My Map",
+              "folderName": "my_map.v0001",
+              "kind": "map",
+              "ranked": false,
+              "renameTo": "",
+              "sourcePath": null
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Uploads",
+            "event": {
+              "type": "previewRead",
+              "payload": {
+                "dataUrl": "data:image/png;base64,iVBORw0KGgo="
+              }
+            }
+          },
+          "expected": {
+            "preview": "data:image/png;base64,iVBORw0KGgo=",
             "request": {
               "displayName": "My Map",
               "folderName": "my_map.v0001",
@@ -6298,6 +6326,7 @@
             }
           },
           "expected": {
+            "preview": "data:image/png;base64,iVBORw0KGgo=",
             "request": {
               "displayName": "My Map",
               "folderName": "my_map.v0001",
@@ -6328,6 +6357,7 @@
             }
           },
           "expected": {
+            "preview": "data:image/png;base64,iVBORw0KGgo=",
             "request": {
               "displayName": "My Map",
               "folderName": "my_map.v0001",
@@ -6353,6 +6383,7 @@
             }
           },
           "expected": {
+            "preview": "data:image/png;base64,iVBORw0KGgo=",
             "request": null,
             "status": {
               "payload": {
@@ -6376,6 +6407,7 @@
             }
           },
           "expected": {
+            "preview": "data:image/png;base64,iVBORw0KGgo=",
             "request": null,
             "status": {
               "type": "succeeded"
@@ -6390,6 +6422,7 @@
             }
           },
           "expected": {
+            "preview": "",
             "request": null,
             "status": {
               "type": "idle"
@@ -29060,10 +29093,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -29309,10 +29342,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -29567,10 +29600,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -29820,10 +29853,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30073,10 +30106,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30336,10 +30369,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30605,10 +30638,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30886,10 +30919,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -31158,10 +31191,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -31432,10 +31465,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayListColumns": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0,
-              "replayListColumns": []
+              "vaultPageSize": 0
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -31704,7 +31737,11 @@
                   "mapVaultSort": "newest",
                   "modVaultSort": "rating",
                   "vaultPageSize": 48,
-                  "replayListColumns": [],
+                  "replayListColumns": [
+                    64,
+                    240,
+                    150
+                  ],
                   "modPresets": [],
                   "leaderboardRatingColumns": [
                     "rating",
@@ -31808,10 +31845,14 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "rating",
+              "replayListColumns": [
+                64,
+                240,
+                150
+              ],
               "replayVaultPlayer": "",
               "replaysView": "list",
-              "vaultPageSize": 48,
-              "replayListColumns": []
+              "vaultPageSize": 48
             },
             "cacheInfo": {
               "totalFiles": 0,

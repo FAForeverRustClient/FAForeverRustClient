@@ -1725,7 +1725,7 @@ export const en = {
   "playerCard.maps.empty": "No finished games on record.",
   "playerCard.maps.gamesTotal": "Games",
   "playerCard.maps.winRate": "Win rate",
-  "playerCard.maps.record": "W / L",
+  "playerCard.maps.record": "W / L / D",
   "playerCard.maps.distinctMaps": "Different maps",
   "playerCard.maps.generated": "Mapgen / generated map",
   "playerCard.maps.map": "Map",

@@ -1505,7 +1505,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.maps.empty": "Keine abgeschlossenen Spiele vorhanden.",
   "playerCard.maps.gamesTotal": "Spiele",
   "playerCard.maps.winRate": "Siegquote",
-  "playerCard.maps.record": "S / N",
+  "playerCard.maps.record": "S / N / U",
   "playerCard.maps.distinctMaps": "Verschiedene Karten",
   "playerCard.maps.generated": "Mapgen / generierte Karte",
   "playerCard.maps.map": "Karte",
