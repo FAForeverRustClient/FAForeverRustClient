@@ -981,6 +981,7 @@ export const en = {
   "lobby.host.filterReset": "Reset filters",
   "lobby.host.mapAuthor": "Author",
   "lobby.host.mapVersion": "Version",
+  "lobby.host.modVersion": "Version {version}",
   "lobby.host.mapAuthorUnknown": "Unknown",
   "lobby.host.presetModCount": { one: "{count} mod", other: "{count} mods" },
   "lobby.host.presets": "Presets",

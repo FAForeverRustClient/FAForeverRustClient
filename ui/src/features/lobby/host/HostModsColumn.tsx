@@ -282,8 +282,15 @@ export function HostModsColumn() {
                 {mod.displayName}
               </span>
               {/* The tab already says which kind these are, so the trailing
-                  slot carries the version instead of a redundant badge. */}
-              <span className="host-mod-version">{mod.version}</span>
+                  slot carries the version instead of a redundant badge. The
+                  `v` is not decoration: a bare "21" beside a mod name reads as
+                  a count of something, and nobody could tell what. */}
+              <span
+                className="host-mod-version"
+                title={t("lobby.host.modVersion", { version: mod.version })}
+              >
+                v{mod.version}
+              </span>
             </label>
           ))
         )}
