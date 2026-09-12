@@ -518,6 +518,22 @@
   text-overflow: ellipsis;
 }
 
+/* A row whose control is taller than one field: a text box with buttons under
+   it, say. The label belongs beside the *field*, not in the middle of the
+   whole stack, which is where centring it against the row put it -- level with
+   the gap between the box and the buttons, and a half-button lower than the
+   label of the single-field row beside it. Top-aligning the row and giving the
+   label the height of one control centres it on the field instead. */
+.generate-map-row.generate-map-row-tall {
+  align-items: start;
+}
+
+.generate-map-row-tall > .generate-map-row-label {
+  display: flex;
+  align-items: center;
+  height: 34px;
+}
+
 .generate-map-row-control {
   display: flex;
   flex-direction: column;
