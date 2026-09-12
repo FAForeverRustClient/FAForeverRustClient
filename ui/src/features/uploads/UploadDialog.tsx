@@ -158,6 +158,10 @@ export function UploadDialog() {
   const mods = useAppStore((store) => store.state.mods);
   const maps = useAppStore((store) => store.state.maps);
   const [accepted, setAccepted] = useState(false);
+  // The sentence around the link. Split on a placeholder rather than assembled
+  // from fragments, so a translation is free to put the rules where its own
+  // grammar wants them.
+  const [acceptBefore, acceptAfter] = t("uploads.rules.accept", { rules: "\u0000" }).split("\u0000");
 
   const kind = request?.kind;
   const folderName = request?.folderName;
@@ -301,22 +305,34 @@ export function UploadDialog() {
               {t("uploads.allowRanked")}
             </label>
           )}
-          <button
-            type="button"
-            className="upload-rules-link"
-            onClick={() => ipc.run(openHttpsUrl(VAULT_RULES_URL))}
-          >
-            <Icon name="external" size={13} />
-            {t("uploads.intro.rulesLink")}
-          </button>
-          <label className="check-field">
+          {/* One sentence with the rules in it, rather than a link above a
+              tick box repeating the same three words. The link is the words
+              themselves, which is where a reader goes looking for it. */}
+          <label className="check-field upload-rules-accept">
             <input
               type="checkbox"
               checked={accepted}
               disabled={busy}
               onChange={(event) => setAccepted(event.target.checked)}
             />
-            {t("uploads.intro.accept")}
+            <span>
+              {acceptBefore}
+              <button
+                type="button"
+                className="upload-rules-link"
+                onClick={(event) => {
+                  // Inside the label, so without this the link would also tick
+                  // the box it sits in.
+                  event.preventDefault();
+                  event.stopPropagation();
+                  ipc.run(openHttpsUrl(VAULT_RULES_URL));
+                }}
+              >
+                {t("uploads.rules.word")}
+                <Icon name="external" size={12} />
+              </button>
+              {acceptAfter}
+            </span>
           </label>
         </div>
       )}

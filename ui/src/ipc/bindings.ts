@@ -308,6 +308,14 @@ export type BrowsingPreferences = {
 	 */
 	replayListColumns: number[],
 	/**
+	 *  The same for the live-replay table, which is a different table with
+	 *  different columns and therefore a different set of widths. Sharing one
+	 *  list between them would have a drag in one tab move the other.
+	 */
+	liveReplayColumns: number[],
+	/**  And for the co-op leaderboard. */
+	coopBoardColumns: number[],
+	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
 	 *  Only the word is shared with `mod_vault_preset` above, which is a vault

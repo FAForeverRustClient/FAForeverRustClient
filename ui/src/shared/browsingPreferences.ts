@@ -27,6 +27,26 @@ const LEGACY_KEYS = [
 
 type LegacyStorage = Pick<Storage, "getItem" | "removeItem">;
 
+/**
+ * Column widths as a settings file may hold them. The twin of
+ * `normalize_column_widths` in faf-domain's settings slice.
+ *
+ * A zero stays a zero rather than being dropped: it is how one column says it
+ * keeps its designed width, and dropping it would shift every column after it
+ * onto the wrong width. Anything that is not a number at all becomes a zero
+ * for the same reason -- the position has to survive even when the value does
+ * not. `MAX_TABLE_COLUMNS` is the bound on the list itself.
+ */
+const MAX_TABLE_COLUMNS = 16;
+
+export function normalizeColumnWidths(widths: number[] | undefined): number[] {
+  return (widths ?? []).slice(0, MAX_TABLE_COLUMNS).map((width) =>
+    Number.isFinite(width) && width > 0
+      ? clampInteger(width, MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX)
+      : 0,
+  );
+}
+
 export const DEFAULT_LIVE_REPLAY_FILTERS: LiveReplayFilters = {
   search: "",
   gameType: "",
@@ -133,6 +153,8 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   modVaultSort: "",
   vaultPageSize: 0,
   replayListColumns: [],
+  liveReplayColumns: [],
+  coopBoardColumns: [],
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   replayVaultPlayer: "",
@@ -185,12 +207,9 @@ export function normalizeBrowsingPreferences(
       preferences.vaultPageSize
         ? clampInteger(preferences.vaultPageSize, MIN_VAULT_PAGE_SIZE, MAX_VAULT_PAGE_SIZE, 0)
         : 0,
-    // Widths only, bounded the way the browser's own columns are: a stored
-    // width of zero or a negative one means "the designed width", which is
-    // what an empty list means as a whole.
-    replayListColumns: (preferences.replayListColumns ?? [])
-      .filter((width) => Number.isFinite(width) && width > 0)
-      .map((width) => clampInteger(width, MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX)),
+    replayListColumns: normalizeColumnWidths(preferences.replayListColumns),
+    liveReplayColumns: normalizeColumnWidths(preferences.liveReplayColumns),
+    coopBoardColumns: normalizeColumnWidths(preferences.coopBoardColumns),
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],

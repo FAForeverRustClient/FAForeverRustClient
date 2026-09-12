@@ -1663,6 +1663,8 @@ impl CustomGameBrowserPreferences {
 /// The list view has five columns, and a saved width past these bounds is a
 /// column that cannot be dragged back into view.
 pub const MAX_BROWSER_COLUMNS: usize = 5;
+/// The widest table the client draws, plus room. Only a bound on a file.
+pub const MAX_TABLE_COLUMNS: usize = 16;
 pub const MIN_BROWSER_COLUMN_PX: u32 = 56;
 pub const MAX_BROWSER_COLUMN_PX: u32 = 900;
 
@@ -1848,6 +1850,12 @@ pub struct BrowsingPreferences {
     /// those are differs per person. Stored rather than kept in the browser so
     /// it survives a reinstall, like every other browsing preference here.
     pub replay_list_columns: Vec<u32>,
+    /// The same for the live-replay table, which is a different table with
+    /// different columns and therefore a different set of widths. Sharing one
+    /// list between them would have a drag in one tab move the other.
+    pub live_replay_columns: Vec<u32>,
+    /// And for the co-op leaderboard.
+    pub coop_board_columns: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -1898,6 +1906,8 @@ impl Default for BrowsingPreferences {
             mod_vault_sort: String::new(),
             vault_page_size: 0,
             replay_list_columns: Vec::new(),
+            live_replay_columns: Vec::new(),
+            coop_board_columns: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -1934,6 +1944,10 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             vault_page_size: u32,
             #[serde(default)]
             replay_list_columns: Vec<u32>,
+            #[serde(default)]
+            live_replay_columns: Vec<u32>,
+            #[serde(default)]
+            coop_board_columns: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
@@ -1960,6 +1974,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     mod_vault_sort: defaults.mod_vault_sort,
                     vault_page_size: defaults.vault_page_size,
                     replay_list_columns: defaults.replay_list_columns,
+                    live_replay_columns: defaults.live_replay_columns,
+                    coop_board_columns: defaults.coop_board_columns,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
@@ -1986,6 +2002,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             mod_vault_sort: wire.mod_vault_sort,
             vault_page_size: wire.vault_page_size,
             replay_list_columns: wire.replay_list_columns,
+            live_replay_columns: wire.live_replay_columns,
+            coop_board_columns: wire.coop_board_columns,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,
@@ -2094,8 +2112,27 @@ impl BrowsingPreferences {
             selected_columns
         };
         self.replay_vault_player = truncate_trimmed(self.replay_vault_player, 64);
+        self.replay_list_columns = normalize_column_widths(self.replay_list_columns);
+        self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
+        self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
         self
     }
+}
+
+/// Column widths as a settings file may hold them.
+///
+/// A zero is left alone: it is how a table says "this one keeps its designed
+/// width", and clamping it up to the minimum would silently turn an unset
+/// column into a narrow one. Everything else is bounded, against a corrupt or
+/// hand-edited file rather than against anything a drag can produce.
+fn normalize_column_widths(mut widths: Vec<u32>) -> Vec<u32> {
+    widths.truncate(MAX_TABLE_COLUMNS);
+    for width in &mut widths {
+        if *width != 0 {
+            *width = (*width).clamp(MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX);
+        }
+    }
+    widths
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
@@ -2991,8 +3028,11 @@ mod tests {
                 map_vault_sort: "  newest  ".into(),
                 mod_vault_sort: String::new(),
                 vault_page_size: 5_000,
-                // Out of bounds, and a zero that is not a width.
+                // Out of bounds, and a zero, which is how a column says it
+                // keeps its designed width.
                 replay_list_columns: vec![10, 200, 0, 9_999],
+                live_replay_columns: vec![1; 40],
+                coop_board_columns: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
@@ -3046,6 +3086,16 @@ mod tests {
         assert_eq!(settings.browsing.host_game.rating_max, 1_500);
         assert_eq!(settings.browsing.favorite_maps, ["adaptive_tabula.v0006"]);
         assert_eq!(settings.browsing.favorite_mods, ["eco_graph"]);
+        assert_eq!(
+            settings.browsing.replay_list_columns,
+            [MIN_BROWSER_COLUMN_PX, 200, 0, MAX_BROWSER_COLUMN_PX],
+            "a zero stays a zero; everything else is bounded"
+        );
+        assert_eq!(
+            settings.browsing.live_replay_columns.len(),
+            MAX_TABLE_COLUMNS,
+            "a file cannot describe more columns than the client draws"
+        );
         assert_eq!(settings.browsing.map_vault_preset, "newest");
         assert_eq!(settings.browsing.mod_vault_preset, "ui");
         assert_eq!(settings.browsing.map_vault_sort, "newest");

@@ -349,14 +349,6 @@ export const en = {
   "updates.required.closeToFinish": "The installer cannot replace a client that is running. Close the client now to let it finish.",
 
   // Vault upload dialog.
-  "uploads.intro.titleMap": "Upload a map to the vault",
-  "uploads.intro.titleMod": "Upload a mod to the vault",
-  "uploads.intro.bodyMap": "The next step opens a file browser so you can pick the map folder. What you upload is public: everyone can download it, and it is moderated against the vault rules.",
-  "uploads.intro.bodyMod": "The next step opens a file browser so you can pick the mod folder. What you upload is public: everyone can download it, and it is moderated against the vault rules.",
-  "uploads.intro.rulesLink": "Read the vault rules",
-  "uploads.intro.accept": "I understand the vault rules and accept them.",
-  "uploads.intro.cancel": "Cancel",
-  "uploads.intro.selectFolder": "Select folder…",
   "uploads.title.map": "Publish map",
   "uploads.title.mod": "Publish mod",
   "uploads.description": "“{name}” will be compressed and uploaded to the FAF vault under your account, where everyone can download it.",
@@ -380,6 +372,8 @@ export const en = {
   "uploads.uploaded": "Uploaded {mb} MB.",
   "uploads.uploading": "Uploading {mb} MB…",
   "uploads.registering": "Registering it with the vault…",
+  "uploads.rules.accept": "I understand and accept the {rules}.",
+  "uploads.rules.word": "vault rules",
   "uploads.allowRanked": "Allow ranked games on this map",
   "uploads.published": "Published. It may take a moment to appear.",
   "uploads.close": "Close",

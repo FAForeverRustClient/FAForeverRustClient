@@ -82,9 +82,12 @@ describe("browsing preferences", () => {
       mapVaultSort: "  newest  ",
       modVaultSort: "",
       vaultPageSize: 5000,
-      // Out of bounds, zero and negative: the first is clamped, the other
-      // two are not widths at all and are dropped.
+      // Out of bounds, zero and negative: the first is clamped, and the two
+      // that are not widths become zeros, which is how a column says it keeps
+      // its designed width. Dropping them would shift 9999 onto column three.
       replayListColumns: [10, 200, 0, -5, 9999],
+      liveReplayColumns: [],
+      coopBoardColumns: [],
       modVaultPreset: "  UI  ",
       modPresets: [
         { name: "  Replay watching  ", uids: ["  a  ", "A", "", "b"] },
@@ -104,6 +107,8 @@ describe("browsing preferences", () => {
     expect(normalized.replayListColumns).toEqual([
       MIN_BROWSER_COLUMN_PX,
       200,
+      0,
+      0,
       MAX_BROWSER_COLUMN_PX,
     ]);
     expect(normalized.modPresets).toEqual([

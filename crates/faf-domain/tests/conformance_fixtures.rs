@@ -5279,6 +5279,8 @@ fn cases() -> Vec<Case> {
                         mod_vault_sort: "rating".into(),
                         vault_page_size: 48,
                         replay_list_columns: vec![64, 240, 150],
+                        live_replay_columns: vec![120, 200],
+                        coop_board_columns: Vec::new(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec![

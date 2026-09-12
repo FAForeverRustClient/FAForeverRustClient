@@ -31,7 +31,6 @@ import { InstalledModsView } from "./InstalledModsView";
 // that is already installed, and `openUploadFromDisk` takes an archive straight
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
-import { useUploadIntro } from "../uploads/UploadIntroDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
 import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
 import { modUpdateAvailable } from "./modVersions";
@@ -137,7 +136,6 @@ function VaultView({ busy }: { busy: boolean }) {
   // The Upload button opens this first. Pressing it used to put an OS
   // file browser on screen immediately, which for anyone streaming is
   // their filesystem in front of an audience.
-  const uploadIntro = useUploadIntro("mod", () => void openUploadFromDisk("mod"));
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.mods.vault);
   const vaultStatus = useAppStore((state) => state.state.mods.vaultStatus);
@@ -384,8 +382,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   return (
     <>
-      {uploadIntro.dialog}
-      <SearchPanel
+            <SearchPanel
         className="mod-search-panel"
         onSubmit={(event) => {
           event.preventDefault();
@@ -419,7 +416,7 @@ function VaultView({ busy }: { busy: boolean }) {
             >
               <Icon name="refresh" size={15} /> {t("mods.view.refresh")}
             </Button>
-            <Button onClick={uploadIntro.start}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
+            <Button onClick={void openUploadFromDisk("mod")}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
                       </>
         )}
         advanced={filtersOpen ? (

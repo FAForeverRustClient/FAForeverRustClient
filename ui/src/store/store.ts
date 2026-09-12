@@ -570,6 +570,8 @@ const INITIAL: AppState = {
       modVaultSort: "",
       vaultPageSize: 0,
       replayListColumns: [],
+      liveReplayColumns: [],
+      coopBoardColumns: [],
       modPresets: [],
       leaderboardRatingColumns: ["rating", "games", "wins", "winRate", "updated"],
       replayVaultPlayer: "",

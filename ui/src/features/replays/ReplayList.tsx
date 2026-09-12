@@ -11,8 +11,7 @@ import { useAppStore } from "../../store/store";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
-import { ipc } from "../../ipc/client";
-import { MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX } from "../../shared/browsingPreferences";
+import { useColumnWidths } from "../../shared/useColumnWidths";
 
 export type ReplayListCell = {
   primary: string;
@@ -235,34 +234,6 @@ function ReplayListRowView({ row }: { row: ReplayListRow }) {
  */
 const DEFAULT_COLUMN_PX = [56, 260, 140, 110, 70, 82, 126];
 
-/** Stored widths, bounded, falling back to the designed ones. */
-function columnPx(stored: readonly number[] | undefined): number[] {
-  return DEFAULT_COLUMN_PX.map((fallback, index) => {
-    const saved = stored?.[index];
-    return saved && saved > 0
-      ? Math.min(MAX_BROWSER_COLUMN_PX, Math.max(MIN_BROWSER_COLUMN_PX, Math.round(saved)))
-      : fallback;
-  });
-}
-
-/**
- * Persist the widths.
- *
- * An empty array is the reset: the backend keeps it and `columnPx` reads it
- * back as "use the designed widths", so a reset survives a restart the same way
- * a drag does. The twin of `saveColumnWidths` in the game browser.
- */
-function saveColumnPx(widths: number[]): void {
-  const current = useAppStore.getState().state.settings.browsing;
-  ipc.send({
-    kind: "Settings",
-    command: {
-      type: "setBrowsing",
-      payload: { preferences: { ...current, replayListColumns: widths } },
-    },
-  });
-}
-
 export function ReplayList({
   groups,
   footer,
@@ -271,29 +242,8 @@ export function ReplayList({
   footer: ReactNode;
 }) {
   const { t } = useTranslation();
-  const stored = useAppStore((state) => state.state.settings.browsing.replayListColumns);
-  // Dragging is local until the pointer is released: persisting per frame would
-  // write a settings file on every mouse move.
-  const [dragged, setDragged] = useState<number[] | null>(null);
-  const widths = dragged ?? columnPx(stored);
-  const template = `${widths.map((width) => `${width}px`).join(" ")} minmax(120px, 1fr)`;
-
-  const onColumnDrag = (index: number, delta: number) =>
-    setDragged((current) =>
-      (current ?? columnPx(stored)).map((width, position) =>
-        position === index
-          ? Math.min(MAX_BROWSER_COLUMN_PX, Math.max(MIN_BROWSER_COLUMN_PX, Math.round(width + delta)))
-          : width,
-      ),
-    );
-  const onColumnCommit = () => {
-    if (dragged) saveColumnPx(dragged);
-    setDragged(null);
-  };
-  const onColumnReset = () => {
-    setDragged(null);
-    saveColumnPx([]);
-  };
+  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX);
+  const template = `${columns.widths.map((width) => `${width}px`).join(" ")} minmax(120px, 1fr)`;
 
   return (
     <section
@@ -311,9 +261,9 @@ export function ReplayList({
               <ResizeHandle
                 className="replay-list-col-handle"
                 label={t("lobby.browser.resizeColumn", { column: t(column.label) })}
-                onDrag={(delta) => onColumnDrag(index, delta)}
-                onEnd={onColumnCommit}
-                onReset={onColumnReset}
+                onDrag={(delta) => columns.onDrag(index, delta)}
+                onEnd={columns.onCommit}
+                onReset={columns.onReset}
               />
             )}
           </span>

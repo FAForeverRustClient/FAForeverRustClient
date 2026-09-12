@@ -1,8 +1,18 @@
 /* Wide enough for a map preview beside its facts, which is what the screen is
    for: an author checking that the version, the size and the player count are
    the ones they meant before the vault has them. */
+/* Wider and less tightly packed than it was. Every line in here is something
+   somebody is reading before making their work public: the folder they picked,
+   what it will be called, whether games on it count, and the rules they are
+   agreeing to. A 620px column with 6px between the rows read as a form to get
+   through rather than as four decisions. */
 .upload-dialog {
-  width: min(620px, 94vw);
+  width: min(680px, 94vw);
+  padding: var(--space-4);
+}
+
+.upload-dialog > * + * {
+  margin-top: var(--space-3);
 }
 
 .upload-dialog-header {
@@ -103,23 +113,37 @@
 .upload-rules {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
+.upload-rules-accept {
+  align-items: flex-start;
+  gap: var(--space-2);
+  line-height: 1.45;
+}
+
+/* The rules themselves, inside the sentence that accepts them. Underlined
+   because it is a link in running text, where colour alone is not enough to
+   say so. */
 .upload-rules-link {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
+  align-items: baseline;
+  gap: 4px;
   padding: 0;
   color: var(--color-accent);
   background: none;
   border: none;
-  font-size: 12px;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
+}
+
+.upload-rules-link:hover {
+  text-decoration-thickness: 2px;
 }
 
 /* The bar the compression stage never had. Zipping a large map is the one

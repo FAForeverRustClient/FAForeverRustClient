@@ -846,6 +846,8 @@
         "modVaultSort": "",
         "vaultPageSize": 0,
         "replayListColumns": [],
+        "liveReplayColumns": [],
+        "coopBoardColumns": [],
         "modPresets": [],
         "leaderboardRatingColumns": [
           "rating",
@@ -1991,6 +1993,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -2034,6 +2037,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -29028,6 +29032,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -29071,6 +29076,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -29277,6 +29283,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -29320,6 +29327,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -29535,6 +29543,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -29578,6 +29587,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -29788,6 +29798,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -29831,6 +29842,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -30041,6 +30053,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -30084,6 +30097,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -30304,6 +30318,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -30347,6 +30362,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -30573,6 +30589,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -30616,6 +30633,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -30854,6 +30872,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -30897,6 +30916,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -31126,6 +31146,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -31169,6 +31190,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -31400,6 +31422,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
@@ -31443,6 +31466,7 @@
                 "updated"
               ],
               "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
               "liveReplayFilters": {
                 "activePlayers": "",
                 "featuredMod": "",
@@ -31742,6 +31766,11 @@
                     240,
                     150
                   ],
+                  "liveReplayColumns": [
+                    120,
+                    200
+                  ],
+                  "coopBoardColumns": [],
                   "modPresets": [],
                   "leaderboardRatingColumns": [
                     "rating",
@@ -31765,6 +31794,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": true,
                 "columnWidths": [
@@ -31824,6 +31854,10 @@
                 "updated"
               ],
               "legacyStorageMigrated": true,
+              "liveReplayColumns": [
+                120,
+                200
+              ],
               "liveReplayFilters": {
                 "activePlayers": "4",
                 "featuredMod": "faf",
