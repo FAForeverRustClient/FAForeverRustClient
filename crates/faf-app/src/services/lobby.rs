@@ -71,6 +71,17 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 return;
             }
 
+            // A host who enforced a rating range meant it. The server hides
+            // such a lobby from out-of-range players, but a game already on
+            // the list when the range was set, or reached from a link, still
+            // gets this far, and preparing a join for minutes before the
+            // server refuses it is the worst of both.
+            if let Some(reason) = out.with_state(|state| rating_gate_refusal(state, id)) {
+                ctx.lobby_join_active.finish();
+                out.emit(LobbyEvent::JoinFailed { id, reason });
+                return;
+            }
+
             out.emit(LobbyEvent::Joining {
                 id,
                 prepared: false,
@@ -935,6 +946,40 @@ fn game_has_player(game: &Game, player_name: &str) -> bool {
         || participants(game).any(|name| name.eq_ignore_ascii_case(player_name))
 }
 
+/// Why this account may not join game `id`, or `None` when nothing stops it.
+///
+/// Reads the same three facts the lobby server reads in
+/// `Game.is_visible_to_player`: the host's flag, the host's bounds, and this
+/// player's displayed rating on the board the game is played for.
+fn rating_gate_refusal(state: &faf_domain::AppState, id: i32) -> Option<String> {
+    let game = state.lobby.games.iter().find(|game| game.id == id)?;
+    if !game.enforce_rating_range {
+        return None;
+    }
+    let player = state.auth.player.as_ref()?;
+    let profile = state
+        .social
+        .players
+        .iter()
+        .find(|profile| profile.login.eq_ignore_ascii_case(&player.name))?;
+    let rating = faf_domain::state::rating_for_game(profile, game)?;
+    if !faf_domain::state::rating_gate_blocks(game, Some(rating)) {
+        return None;
+    }
+    Some(match (game.rating_min, game.rating_max) {
+        (Some(minimum), Some(maximum)) => format!(
+            "this lobby is limited to ratings {minimum} to {maximum}, and yours is {rating}"
+        ),
+        (Some(minimum), None) => {
+            format!("this lobby is limited to ratings {minimum} and above, and yours is {rating}")
+        }
+        (None, Some(maximum)) => {
+            format!("this lobby is limited to ratings {maximum} and below, and yours is {rating}")
+        }
+        (None, None) => "this lobby enforces a rating range you are outside of".to_string(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -959,6 +1004,7 @@ mod tests {
             hosted_at: None,
             rating_min: None,
             rating_max: None,
+            enforce_rating_range: false,
             teams: BTreeMap::from([(
                 "1".into(),
                 players.iter().map(|name| (*name).to_owned()).collect(),

@@ -336,8 +336,17 @@
 
 .host-rating-option {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/* Its own line under the checkbox and the bounds, which is where a sentence
+   explaining both of them belongs. */
+.host-field-hint {
+  flex-basis: 100%;
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .host-rating-inputs {

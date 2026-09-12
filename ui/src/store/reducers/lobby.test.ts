@@ -48,6 +48,7 @@ function game(id: number): Game {
     hostedAt: null,
     ratingMin: null,
     ratingMax: null,
+    enforceRatingRange: false,
     teams: {},
     simMods: {},
   };

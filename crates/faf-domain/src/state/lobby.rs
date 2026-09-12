@@ -42,6 +42,9 @@ pub struct Game {
     pub hosted_at: Option<String>,
     pub rating_min: Option<i32>,
     pub rating_max: Option<i32>,
+    /// Whether the host asked the server to keep out-of-range players out,
+    /// rather than merely stating a preferred range. See [`rating_gate_blocks`].
+    pub enforce_rating_range: bool,
     /// Team number to player names. Observer teams use the server's `-1`/`null`
     /// keys, matching the reference client's game model.
     pub teams: BTreeMap<String, Vec<String>>,
@@ -114,6 +117,59 @@ impl HostGameConfig {
 
         Ok(self)
     }
+}
+
+/// The leaderboard a custom game is rated on when it names none. The lobby
+/// server's own default for `rating_type`.
+pub const GLOBAL_LEADERBOARD: &str = "global";
+
+/// This account's displayed rating on the board `game` is played for, or
+/// `None` when the lobby has told us nothing about it.
+///
+/// The scalar on the profile is the fallback for the global board alone, and
+/// only for a profile whose rating table never arrived: answering "what is
+/// their 1v1 rating" with their global one is the mistake this guards against.
+pub fn rating_for_game(profile: &crate::state::PlayerProfile, game: &Game) -> Option<i32> {
+    let leaderboard = if game.rating_type.is_empty() {
+        GLOBAL_LEADERBOARD
+    } else {
+        game.rating_type.as_str()
+    };
+    if let Some(entry) = profile
+        .ratings
+        .iter()
+        .find(|rating| rating.leaderboard == leaderboard)
+    {
+        return Some(entry.rating);
+    }
+    (leaderboard == GLOBAL_LEADERBOARD && profile.ratings.is_empty() && profile.global_rating != 0)
+        .then_some(profile.global_rating)
+}
+
+/// Whether the host's rating gate shuts this player out of `game`.
+///
+/// The range on its own is only a wish: `faf_domain` mirrors the lobby
+/// server's `Game.is_visible_to_player`, which consults the range only when
+/// `enforce_rating_range` is set. Without the flag, a lobby advertising
+/// "1000 to 1500" is a sign on the door and nothing more, which is exactly
+/// what was reported: the badge appeared and everyone walked in anyway.
+///
+/// An unknown rating never blocks. The server knows every player's rating on
+/// every leaderboard and the client only knows the ones it has been told
+/// about, so guessing here would lock someone out of a lobby they belong in.
+/// The server is the authority; this is the part of the same rule the user can
+/// see before they click.
+pub fn rating_gate_blocks(game: &Game, player_rating: Option<i32>) -> bool {
+    if !game.enforce_rating_range {
+        return false;
+    }
+    let Some(rating) = player_rating else {
+        return false;
+    };
+    // Inclusive at both ends, like the server's `InclusiveRange`, and an
+    // absent bound is no bound.
+    game.rating_min.is_some_and(|minimum| rating < minimum)
+        || game.rating_max.is_some_and(|maximum| rating > maximum)
 }
 
 fn validate_host_text(
@@ -797,6 +853,7 @@ mod tests {
             hosted_at: None,
             rating_min: None,
             rating_max: None,
+            enforce_rating_range: false,
             teams: BTreeMap::new(),
             sim_mods: BTreeMap::new(),
         }
@@ -1323,6 +1380,97 @@ mod tests {
             rating_min: Some(800),
             rating_max: Some(1_500),
         }
+    }
+
+    #[test]
+    fn a_range_without_the_flag_keeps_nobody_out() {
+        // What was reported: the badge appeared, and everyone walked in. The
+        // lobby server only consults the range when the flag is set, so a
+        // client that sent the bounds alone advertised a rule it had not made.
+        let mut open = game(1);
+        open.rating_min = Some(1000);
+        open.rating_max = Some(1500);
+        assert!(!rating_gate_blocks(&open, Some(200)));
+
+        let gated = Game {
+            enforce_rating_range: true,
+            ..open
+        };
+        assert!(rating_gate_blocks(&gated, Some(200)));
+        assert!(rating_gate_blocks(&gated, Some(1501)));
+        assert!(
+            !rating_gate_blocks(&gated, Some(1000)),
+            "inclusive at the floor"
+        );
+        assert!(
+            !rating_gate_blocks(&gated, Some(1500)),
+            "and at the ceiling"
+        );
+        assert!(
+            !rating_gate_blocks(&gated, None),
+            "an unknown rating is the server's business, not a guess worth locking on"
+        );
+    }
+
+    #[test]
+    fn a_one_sided_range_only_bounds_the_side_it_names() {
+        let floor = Game {
+            enforce_rating_range: true,
+            rating_min: Some(1000),
+            rating_max: None,
+            ..game(1)
+        };
+        assert!(rating_gate_blocks(&floor, Some(999)));
+        assert!(!rating_gate_blocks(&floor, Some(4000)));
+    }
+
+    #[test]
+    fn a_rating_comes_from_the_board_the_game_is_played_for() {
+        use crate::state::{PlayerLobbyRating, PlayerProfile};
+
+        let profile = PlayerProfile {
+            login: "Ada".into(),
+            global_rating: 1800,
+            ratings: vec![
+                PlayerLobbyRating {
+                    leaderboard: "global".into(),
+                    rating: 1800,
+                    ..PlayerLobbyRating::default()
+                },
+                PlayerLobbyRating {
+                    leaderboard: "ladder_1v1".into(),
+                    rating: 900,
+                    ..PlayerLobbyRating::default()
+                },
+            ],
+            ..PlayerProfile::default()
+        };
+
+        let ladder = Game {
+            rating_type: "ladder_1v1".into(),
+            ..game(1)
+        };
+        assert_eq!(rating_for_game(&profile, &ladder), Some(900));
+
+        // A board this account has never played is not answered with their
+        // global rating: that substitution is the whole reason the field
+        // exists separately.
+        let tmm = Game {
+            rating_type: "tmm_2v2".into(),
+            ..game(1)
+        };
+        assert_eq!(rating_for_game(&profile, &tmm), None);
+
+        // The scalar is the fallback for global alone, and only for a profile
+        // whose table never arrived.
+        let scalar_only = PlayerProfile {
+            login: "Ada".into(),
+            global_rating: 1300,
+            ratings: Vec::new(),
+            ..PlayerProfile::default()
+        };
+        assert_eq!(rating_for_game(&scalar_only, &game(1)), Some(1300));
+        assert_eq!(rating_for_game(&scalar_only, &ladder), None);
     }
 
     #[test]

@@ -1434,3 +1434,12 @@
   margin: 0 5px;
   color: var(--color-subtle);
 }
+
+/* An enforced range is a rule, so it is drawn like one: the padlock and the
+   warning colour separate it from the advisory range beside it in the list. */
+.game-rating-range.is-enforced {
+  gap: 4px;
+  color: var(--color-warn);
+  border-color: color-mix(in srgb, var(--color-warn) 45%, transparent);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+}

@@ -25,7 +25,7 @@ import { friendKeys, friendsInGame } from "./friendPresence";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
-import { displayedRating, gameLeaderboard } from "../../shared/playerRatings";
+import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../shared/playerRatings";
 
 export type GameViewMode = "list" | "tiles";
 
@@ -153,12 +153,25 @@ export function showsUnrankedTag(
  * "Rating range: {min} to {max}" in words, and a screen reader announcing a
  * lone hyphen between two numbers is noise.
  */
-function RatingRangeTag({ min, max }: { min: number | null; max: number | null }) {
+function RatingRangeTag(
+  { min, max, enforced }: { min: number | null; max: number | null; enforced: boolean },
+) {
   const any = t("lobby.browser.any");
   const from = min === null ? any : minusSign(min);
   const to = max === null ? any : minusSign(max);
   return (
-    <i className="game-rating-range" title={t("lobby.browser.ratingRangeTooltip", { from, to })}>
+    <i
+      className={`game-rating-range${enforced ? " is-enforced" : ""}`}
+      title={
+        enforced
+          ? t("lobby.browser.ratingRangeEnforcedTooltip", { from, to })
+          : t("lobby.browser.ratingRangeTooltip", { from, to })
+      }
+    >
+      {/* A closed padlock is the difference between a range that keeps people
+          out and one that only suggests. Without it both looked the same, and
+          only one of them was a rule. */}
+      {enforced && <Icon name="lock" size={9} />}
       <span>{from}</span>
       <span className="game-rating-range-separator" aria-hidden="true">-</span>
       <span>{to}</span>
@@ -754,7 +767,7 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} />
+            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
           )}
         </span>
         <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
@@ -864,7 +877,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                   </i>
                 )}
                 {(game.ratingMin !== null || game.ratingMax !== null) && (
-                  <RatingRangeTag min={game.ratingMin} max={game.ratingMax} />
+                  <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
                 )}
               </span>
             </div>
@@ -961,6 +974,17 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
   );
 
+  // The server hides an enforced lobby from an out-of-range player, so this
+  // usually never fires. It fires for the lobby that was already on screen
+  // when the host set the range, which is the case worth catching: the join
+  // would otherwise download mods for a minute and then be refused.
+  const social = useAppStore((state) => state.state.social);
+  const ownRating = displayedRating(
+    player ? findPlayer(social, player.name) : undefined,
+    gameLeaderboard(game.ratingType),
+  );
+  const ratingBlocked = !isHost && ratingGateBlocks(game, ownRating);
+
   const isJoiningThis = lobby.join.type === "joining" && lobby.join.payload.id === game.id;
   const isPreparingThis = lobby.join.type === "preparing";
   const isLaunchedThis = lobby.join.type === "launched" && lobby.join.payload.launch.uid === game.id;
@@ -990,6 +1014,14 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     joinLabel = t("lobby.details.joinGame");
     joinDisabled = true;
     joinTitle = t("lobby.details.alreadyInGame");
+  } else if (ratingBlocked) {
+    joinLabel = t("lobby.details.ratingLocked");
+    joinDisabled = true;
+    joinTitle = t("lobby.details.ratingLockedTitle", {
+      from: game.ratingMin === null ? t("lobby.browser.any") : String(game.ratingMin),
+      to: game.ratingMax === null ? t("lobby.browser.any") : String(game.ratingMax),
+      rating: String(ownRating ?? 0),
+    });
   }
 
   return (

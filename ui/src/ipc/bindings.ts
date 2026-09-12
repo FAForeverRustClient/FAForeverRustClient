@@ -2074,6 +2074,11 @@ export type Game = {
 	ratingMin: number | null,
 	ratingMax: number | null,
 	/**
+	 *  Whether the host asked the server to keep out-of-range players out,
+	 *  rather than merely stating a preferred range. See [`rating_gate_blocks`].
+	 */
+	enforceRatingRange: boolean,
+	/**
 	 *  Team number to player names. Observer teams use the server's `-1`/`null`
 	 *  keys, matching the reference client's game model.
 	 */

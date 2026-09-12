@@ -386,7 +386,10 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   const passwordError = passwordEnabled && !PRINTABLE_ASCII.test(password)
     ? t("lobby.host.error.passwordAscii")
     : "";
-  const ratingError = ratingEnabled && ratingMin > ratingMax
+  // Checked whether or not the range is enforced: a back-to-front range is a
+  // mistake worth pointing out while it is being typed, not only once the
+  // checkbox is ticked.
+  const ratingError = ratingMin > ratingMax
     ? t("lobby.host.error.ratingOrder")
     : "";
   const formError = titleError || passwordError || ratingError || (!chosen ? t("lobby.host.error.selectMap") : "");
@@ -440,6 +443,8 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
             enforceRatingRange: ratingEnabled,
             ratingMin: ratingEnabled ? ratingMin : null,
             ratingMax: ratingEnabled ? ratingMax : null,
+            // Only sent when enforced. An advisory range the server does not
+            // act on is the badge that started this: it looked like a rule.
           },
         },
       },
@@ -552,9 +557,12 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
             <span>{t("lobby.host.enforceRating")}</span>
           </label>
           <div className="host-rating-inputs">
+            {/* Never disabled. A range that cannot be typed until a checkbox
+                is found is a range nobody sets, and the numbers are useful on
+                their own: unenforced they are the sign on the door, enforced
+                they are the door. */}
             <NumberInput
               className="number-input"
-              disabled={!ratingEnabled}
               value={ratingMin}
               min={-9999}
               max={9999}
@@ -565,7 +573,6 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
             <span className="muted">{t("lobby.host.ratingTo")}</span>
             <NumberInput
               className="number-input"
-              disabled={!ratingEnabled}
               value={ratingMax}
               min={-9999}
               max={9999}
@@ -575,6 +582,14 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
             />
           </div>
           {ratingError && <small className="host-field-error host-rating-error">{ratingError}</small>}
+          {/* The difference the checkbox makes, said where it is made. The
+              report was that an enforced range "merely added a badge": it did,
+              because the flag never left the client. */}
+          <small className="host-field-hint muted">
+            {ratingEnabled
+              ? t("lobby.host.enforceRatingOn")
+              : t("lobby.host.enforceRatingOff")}
+          </small>
         </div>
         </div>
       </section>

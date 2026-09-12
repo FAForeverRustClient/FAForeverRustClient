@@ -1217,6 +1217,8 @@ struct RawGame {
     #[serde(default)]
     rating_max: Option<f64>,
     #[serde(default)]
+    enforce_rating_range: Option<bool>,
+    #[serde(default)]
     teams: Option<std::collections::BTreeMap<String, Vec<String>>>,
     #[serde(default)]
     sim_mods: Option<std::collections::BTreeMap<String, String>>,
@@ -1272,6 +1274,7 @@ impl RawGame {
             hosted_at: self.hosted_at,
             rating_min: self.rating_min.map(|value| value.round() as i32),
             rating_max: self.rating_max.map(|value| value.round() as i32),
+            enforce_rating_range: self.enforce_rating_range.unwrap_or(false),
             teams: self.teams.unwrap_or_default(),
             sim_mods: self.sim_mods.unwrap_or_default(),
         })
@@ -1995,6 +1998,12 @@ fn host_frame(config: HostGameConfig) -> Value {
         },
     });
     if config.enforce_rating_range {
+        // The flag, not just the bounds. The server reads all three
+        // (`lobbyconnection.on_game_host`) and only its `enforce_rating_range`
+        // makes `Game.is_visible_to_player` consult the range at all: sending
+        // the bounds alone produced a lobby that advertised a rating window
+        // and admitted anybody, which is what the report described.
+        frame["enforce_rating_range"] = json!(true);
         if let Some(min) = config.rating_min {
             frame["rating_min"] = json!(min);
         }

@@ -900,6 +900,8 @@ export const en = {
   "lobby.host.password": "Password",
   "lobby.host.passwordAria": "Game password",
   "lobby.host.enforceRating": "Enforce player rating",
+  "lobby.host.enforceRatingOn": "Players outside this range cannot see or join the lobby.",
+  "lobby.host.enforceRatingOff": "Shown as a guide only. Anyone can still join.",
   "lobby.host.minRating": "Minimum rating",
   "lobby.host.maxRating": "Maximum rating",
   "lobby.host.selectedMap": "Selected Map",
@@ -1088,6 +1090,7 @@ export const en = {
   // Words rather than a hyphen, because the tooltip is where a negative lower
   // bound has to be unambiguous: "-1000-700" is what the tag itself cannot say.
   "lobby.browser.ratingRangeTooltip": "Rating range: {from} to {to}",
+  "lobby.browser.ratingRangeEnforcedTooltip": "Rating range: {from} to {to}. The host enforces it, so players outside it cannot join.",
   "lobby.browser.openRange": "Open",
   "lobby.browser.ratingBetween": "{min} to {max}",
   "lobby.party.friend": "Friend",
@@ -1143,6 +1146,8 @@ export const en = {
   "lobby.details.hostedByYou": "Hosted by you",
   "lobby.details.inGame": "In game",
   "lobby.details.preparing": "Preparing…",
+  "lobby.details.ratingLocked": "Outside the rating range",
+  "lobby.details.ratingLockedTitle": "The host limited this lobby to ratings {from} to {to}. Yours is {rating}.",
   "lobby.details.alreadyInGame": "You are already in a game",
   "lobby.mode.aria": "Play modes",
   "lobby.mode.custom": "Play",
