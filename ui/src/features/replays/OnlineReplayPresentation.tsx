@@ -754,7 +754,7 @@ export function ReplayDetailPanel({
         {/* The rail: what this replay *is* and what you can do to the file.
             The main column is what happened in it. */}
         <aside className="replay-card-rail">
-          <div className="replay-card-thumb">
+          <div className="replay-rail-thumb">
             {/* The same zoom and panning the Maps tab and the lobby preview
                 give. Inline rather than a dialog of its own: `Modal` listens
                 for Escape on the document, so a second one stacked on this
@@ -763,17 +763,17 @@ export function ReplayDetailPanel({
               <ReplayMapThumb
                 url={replay.mapThumbnailUrl}
                 mapName={effectiveMap}
-                className="replay-card-thumb-image"
-                emptyClassName="replay-card-thumb-empty"
+                className="replay-rail-thumb-image"
+                emptyClassName="replay-rail-thumb-empty"
                 iconSize={44}
                 large
               />
             </ZoomableImage>
             {mapAction && (
-              <div className="replay-card-thumb-actions">
+              <div className="replay-rail-thumb-actions">
                 <button
                   type="button"
-                  className="replay-card-thumb-btn"
+                  className="replay-rail-thumb-btn"
                   disabled={mapAction.disabled}
                   onClick={mapAction.run}
                   title={mapAction.label}
@@ -854,10 +854,10 @@ export function ReplayDetailPanel({
                 setShowChat((open) => !open);
               }}
               aria-pressed={showChat}
-              title={t("replays.detail.openChat")}
+              title={t("replays.detail.loadDetails")}
             >
-              <span>{t("replays.detail.openChat")}</span>
-              <Icon name={isLoadingDetails ? "refresh" : "chat"} size={15} className={isLoadingDetails ? "spin" : undefined} />
+              <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetails")}</span>
+              <Icon name={isLoadingDetails ? "refresh" : "list"} size={15} className={isLoadingDetails ? "spin" : undefined} />
             </Button>
             {onDownload && (
               <Button
@@ -1027,26 +1027,6 @@ export function ReplayDetailPanel({
       )}
       {downloadState === "failed" && (
         <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
-      )}
-
-      {(!details || !showChat) && (
-        <div className="replay-detail-more-info-trigger">
-          <Button
-            disabled={isLoadingDetails}
-            onClick={() => {
-              if (!details) loadDetails();
-              setShowChat(true);
-            }}
-            title={t("replays.detail.loadDetails")}
-          >
-            {isLoadingDetails ? (
-              <Icon name="refresh" size={14} className="spin" />
-            ) : (
-              <Icon name="list" size={14} />
-            )}
-            <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetails")}</span>
-          </Button>
-        </div>
       )}
 
       {details && showChat && (

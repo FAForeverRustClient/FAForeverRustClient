@@ -141,6 +141,8 @@
    separator below. */
 .replay-list-row.watched {
   box-shadow: inset 0 0 0 1px var(--color-text);
+  /* The same subtle grey the watched card gets, for the same reason. */
+  background: color-mix(in srgb, var(--color-text) 5%, transparent);
 }
 
 .replay-list-row.watched.selected {

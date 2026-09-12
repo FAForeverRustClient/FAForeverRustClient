@@ -641,33 +641,36 @@ fn km_to_pixels(km: i32) -> i32 {
     (km as f32 * MAP_PIXELS_PER_KM).round() as i32
 }
 
-/// A substring match. RSQL uses `*` as its wildcard, so a literal `*` the user
-/// typed has to go: otherwise `a*b` silently becomes a two-part wildcard.
+/// The API's wildcard, around the longest part of the value it can actually
+/// search for.
 ///
-/// A character [`escape`] has to remove becomes a wildcard rather than nothing.
-/// The apostrophe is why: the base game's map is called `Seton's Clutch`, so
-/// dropping the character searched for `*Setons Clutch*`, which matches every
-/// FAF re-upload spelled without one and misses the original. `*Seton*s
-/// Clutch*` matches whichever spelling the user typed and whichever the vault
-/// stores.
+/// Elide, which is what the FAF API is built on, does not take a wildcard in
+/// the middle of a value. A `*` at the start or the end selects a prefix,
+/// suffix or infix match and is then stripped; anything between is matched
+/// literally. So `*Seton*s*` asks for names containing the characters
+/// `Seton*s`, and nothing is called that.
+///
+/// That matters because of the apostrophe. The base game's map is `Seton's
+/// Clutch` and the FAF re-upload is `Setons Clutch`, the character cannot be
+/// put inside a quoted RSQL argument, and the API offers no way to escape it.
+/// Dropping it searched for `*Setons Clutch*`, which finds the re-upload and
+/// misses the original. Turning it into a wildcard searched for a literal star
+/// and found neither, which is what this replaces.
+///
+/// What is left is to search for the longest stretch the API can take: for
+/// `Seton's` that is `*Seton*`, which finds both spellings. A wider search
+/// than was asked for, and the alternative is no results at all.
 fn glob(value: &str) -> String {
-    let mut out = String::from("*");
-    for c in value.chars() {
-        if is_reserved(c) {
-            // Never two in a row: `**` is legal but says nothing extra, and a
-            // value made only of reserved characters would otherwise become a
-            // filter on wildcards alone.
-            if !out.ends_with('*') {
-                out.push('*');
-            }
-        } else {
-            out.push(c);
-        }
+    let longest = value
+        .split(is_reserved)
+        .max_by_key(|part| part.chars().count())
+        .unwrap_or_default();
+    if longest.is_empty() {
+        // Nothing searchable was typed. Match everything rather than build a
+        // filter on a bare wildcard pair that means the same thing.
+        return "*".to_string();
     }
-    if !out.ends_with('*') {
-        out.push('*');
-    }
-    out
+    format!("*{longest}*")
 }
 
 /// The map clause, matching the display name *or* the folder name.
@@ -697,6 +700,41 @@ fn escape(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The bug this file has now been through twice.
+    ///
+    /// Elide takes a wildcard only at the ends of a value, so the fix cannot be
+    /// "put a wildcard where the apostrophe was": that asks for a literal star.
+    #[test]
+    fn an_apostrophe_widens_the_search_instead_of_breaking_it() {
+        // Finds `Seton's Clutch` and `Setons Clutch` alike, which is the point.
+        assert_eq!(glob("Seton's"), "*Seton*");
+        assert_eq!(glob("Seton's Clutch"), "* Clutch*");
+        // No reserved character: unchanged from what it always did.
+        assert_eq!(glob("Setons"), "*Setons*");
+        assert_eq!(glob("scmp_009"), "*scmp_009*");
+    }
+
+    #[test]
+    fn a_value_with_nothing_searchable_in_it_matches_everything() {
+        assert_eq!(glob("'"), "*");
+        assert_eq!(glob("\"\"\""), "*");
+        assert_eq!(glob(""), "*");
+    }
+
+    /// Never an internal wildcard, whatever is typed: that is the shape the API
+    /// cannot read.
+    #[test]
+    fn the_pattern_never_has_a_wildcard_in_the_middle() {
+        for typed in ["a'b", "a*b*c", "x;y;z", "(a),(b)", "Seton's Clutch"] {
+            let pattern = glob(typed);
+            let inner = &pattern[1..pattern.len() - 1];
+            assert!(
+                !inner.contains('*'),
+                "{typed} produced {pattern}, which asks for a literal star"
+            );
+        }
+    }
 
     fn query() -> ReplayQuery {
         ReplayQuery::default()
