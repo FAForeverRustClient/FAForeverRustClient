@@ -5830,10 +5830,17 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Leaderboard:seasonsLoaded",
     "Lobby:avatarSelectionFailed",
     "Lobby:avatarsLoadFailed",
+    // The two lists themselves, snapshot and delta alike. Building a `Game` is
+    // twenty fields, and the value of a case here would be pinning the fold:
+    // the delta twins sort by id and upsert in place, and the snapshot twins
+    // assign. The fold is covered by matching unit tests on both sides
+    // (`state/lobby.rs` and `reducers/lobby.test.ts`) rather than by a replay.
+    "Lobby:gamesChanged",
     "Lobby:gamesUpdated",
     "Lobby:joinFailed",
     "Lobby:launchFailed",
     "Lobby:launching",
+    "Lobby:liveGamesChanged",
     "Lobby:liveGamesUpdated",
     "Lobby:matchmakingUpdated",
     "Lobby:partyUpdated",
