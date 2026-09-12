@@ -92,16 +92,22 @@ function Row({
   label,
   hint,
   superseded = false,
+  className,
   children,
 }: {
   label: string;
   hint?: string;
   /** Dim the row: something else is deciding this value (see the style rows). */
   superseded?: boolean;
+  /** Extra class, for a row whose control is taller than one field. */
+  className?: string;
   children: ReactNode;
 }) {
+  const classes = ["generate-map-row"];
+  if (superseded) classes.push("is-superseded");
+  if (className) classes.push(className);
   return (
-    <div className={superseded ? "generate-map-row is-superseded" : "generate-map-row"}>
+    <div className={classes.join(" ")}>
       <span className="generate-map-row-label">{label}</span>
       <div className="generate-map-row-control">
         {children}
@@ -731,7 +737,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                     </Row>
 
-                    <Row label={t("maps.generate.presetName")}>
+                    <Row label={t("maps.generate.presetName")} className="generate-map-row-tall">
                       <div className="generate-map-preset-save-group">
                         <input
                           className="generate-map-control"

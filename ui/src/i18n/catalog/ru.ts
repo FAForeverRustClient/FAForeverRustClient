@@ -2060,4 +2060,5 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.joinProgress.phase.starting": "Forged Alliance запускается",
   "lobby.joinProgress.startingDetail": "Вход в «{name}». Окно игры скоро появится.",
   "lobby.joinProgress.startingNote": "Это может занять несколько секунд.",
+  "settings.notifications.sound.fafMatch": "Матч найден (FAF)",
 };

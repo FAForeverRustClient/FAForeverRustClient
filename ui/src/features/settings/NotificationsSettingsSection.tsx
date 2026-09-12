@@ -10,7 +10,7 @@ import { recordEntries } from "../../shared/records";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { native } from "../../ipc/native";
-import type { AudibleSound } from "../notifications/notificationSound";
+import type { SampleSound, ToneSound } from "../notifications/notificationSound";
 import {
   customSoundName,
   forgetCustomSounds,
@@ -38,12 +38,15 @@ const save = (preferences: NotificationPreferences) =>
   });
 
 /* Quietest first, so the list itself says what the choice is about. */
-const SOUNDS: Record<AudibleSound | "silent", MessageKey> = {
+const SOUNDS: Record<ToneSound | SampleSound | "silent", MessageKey> = {
   silent: "settings.notifications.sound.silent",
   soft: "settings.notifications.sound.soft",
   chime: "settings.notifications.sound.chime",
   ping: "settings.notifications.sound.ping",
   alert: "settings.notifications.sound.alert",
+  // Last of the shipped set, because it is the only one that is a recording
+  // rather than a tone and it is longer than the four above it.
+  fafMatch: "settings.notifications.sound.fafMatch",
 };
 
 /**

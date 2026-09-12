@@ -40,3 +40,20 @@ The five diagrams in the leaderboard's "How rating works" tab
 which is that project's own documentation. The prose beside them is a summary
 of the same page written for this client. If the wiki states a licence for its
 media, name it here.
+
+## Match-found notification sound
+
+`ui/src/features/notifications/assets/match-found.mp3` is the sound the FAF
+Java client plays when the matchmaker finds you a game, taken from
+[FAForever/downlords-faf-client](https://github.com/FAForever/downlords-faf-client)
+(`src/main/resources/theme/sounds/matchFoundSound.mp3`).
+
+That repository states the licence for its sounds in a `license.txt` beside
+them: they come from [Pixabay](https://pixabay.com/service/license/), whose
+licence allows commercial and non-commercial use and modification, and asks for
+no attribution. This notice is here because attribution is appreciated, and
+because the next person to wonder where a binary in the tree came from should
+not have to find out the hard way.
+
+It is the only sound file the client ships. The other five notification tones
+are synthesised at runtime; see `ui/src/features/notifications/notificationSound.ts`.

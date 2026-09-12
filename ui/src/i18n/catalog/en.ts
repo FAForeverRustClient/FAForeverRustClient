@@ -3660,6 +3660,7 @@ export const en = {
   "lobby.joinProgress.phase.starting": "Forged Alliance is opening",
   "lobby.joinProgress.startingDetail": "Joining “{name}”. The game window will appear shortly.",
   "lobby.joinProgress.startingNote": "This can take a few seconds.",
+  "settings.notifications.sound.fafMatch": "Match found (FAF)",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;
