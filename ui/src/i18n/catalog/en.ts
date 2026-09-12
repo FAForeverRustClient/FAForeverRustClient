@@ -2337,7 +2337,7 @@ export const en = {
   "maps.generate.subtitle": "Configure the Neroxis generator, or rebuild an exact map from its name.",
   "maps.generate.notAGeneratedName": "That is not a generated map name. They look like neroxis_map_generator_1.22.1_<seed>_<options>.",
   "maps.generate.latestVersion": "Latest ({version})",
-  "maps.generate.asymmetric": "Asymmetric",
+  "maps.generate.asymmetric": "Asymmetric (no teams)",
   // Plural: the two facts beside it in the specs grid, which were template
   // literals and so stayed English in every language.
   "maps.generate.spawnCount": { one: "{count} player", other: "{count} players" },

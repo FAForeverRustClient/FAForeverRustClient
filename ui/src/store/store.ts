@@ -424,10 +424,15 @@ const INITIAL: AppState = {
       desktop: true,
       desktopAllKinds: false,
       sound: true,
-      // All chime, which is the tone the client played before the picker
-      // existed: an update changes nothing anybody hears until they say so.
+      // Chime everywhere but the found match, mirroring
+      // `NotificationSoundChoices::default()` in
+      // `crates/faf-domain/src/state/settings.rs`. The two are compared by the
+      // reducer conformance fixture, so changing one without the other fails
+      // CI rather than drifting quietly.
       sounds: {
-        matchFound: "chime",
+        // The one graded default: a found match expires, and sounding like a
+        // friend coming online is what the report was about.
+        matchFound: "alert",
         privateMessage: "chime",
         mention: "chime",
         friendOnline: "chime",
