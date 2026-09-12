@@ -493,7 +493,7 @@ export function InstalledModsView({
             <option value="sim">{t("mods.installed.simMods")}</option>
           </select>
         </SearchField>
-        <SearchField label="State" className="search-panel-field-compact">
+        <SearchField label={t("mods.installed.stateLabel")} className="search-panel-field-compact">
           <select
             className="search-panel-control"
             value={enabled}

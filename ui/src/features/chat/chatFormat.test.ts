@@ -104,6 +104,50 @@ describe("chat search highlighting", () => {
   });
 });
 
+describe("who a coloured ping is shown to", () => {
+  const roster = { names: new Set(["nuggets", "vindex"]), color: "#ff8c00" };
+
+  /** Every `mark` in the tree, as `[className, colour, text]`. */
+  const marks = (node: ReactNode): [string, string, string][] => {
+    if (Array.isArray(node)) return node.flatMap((child: ReactNode) => marks(child));
+    if (!isValidElement<{ children?: ReactNode; className?: string; style?: { color?: string } }>(node)) {
+      return [];
+    }
+    const { children, className, style } = node.props;
+    const inner = marks(children);
+    // A mark wraps the matched token and nothing else, so its child is the
+    // string; anything else is not a case this helper needs to describe.
+    const text = typeof children === "string" ? children : "";
+    return node.type === "mark"
+      ? [[className ?? "", style?.color ?? "", text], ...inner]
+      : inner;
+  };
+
+  it("colours every recognised name on a line we sent, so the sender sees it landed", () => {
+    const nodes = renderBody("Nuggets and Vindex, look", "sheppy", "", undefined, roster, true);
+    expect(marks(nodes).map(([, colour, text]) => [text, colour]))
+      .toEqual([["Nuggets", "#ff8c00"], ["Vindex", "#ff8c00"]]);
+  });
+
+  it("colours only our own name on somebody else's line", () => {
+    // The reported bug: a ping between two other people was painted on our
+    // screen as though it concerned us.
+    const nodes = renderBody("Nuggets and Vindex, look", "vindex", "", undefined, roster, false);
+    expect(marks(nodes).map(([, , text]) => text)).toEqual(["Vindex"]);
+  });
+
+  it("colours nothing on somebody else's line that never names us", () => {
+    const nodes = renderBody("Nuggets and Vindex, look", "sheppy", "", undefined, roster, false);
+    expect(marks(nodes)).toEqual([]);
+  });
+
+  it("gives our own name the ping colour and no box", () => {
+    const [[className, colour]] = marks(renderBody("hi Vindex", "vindex", "", undefined, roster, false));
+    expect(className).toBe("chat-mention");
+    expect(colour).toBe("#ff8c00");
+  });
+});
+
 describe("server notice HTML tag parsing and stripping", () => {
   it("strips HTML anchor tags for native desktop notification popups", () => {
     const raw = 'Please download the client from <a href="https://www.faforever.com">https://www.faforever.com</a>';

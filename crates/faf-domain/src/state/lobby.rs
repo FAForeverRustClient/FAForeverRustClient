@@ -724,7 +724,27 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
                 reason: reason.clone(),
             }
         }
-        LobbyEvent::GameTerminated => state.join = JoinState::Idle,
+        LobbyEvent::GameTerminated => {
+            state.join = JoinState::Idle;
+            // A matchmaker game that ends leaves the search finished too.
+            //
+            // Nothing else cleared this. The server sends no `search_info` when
+            // a match ends -- the search was already over when the match was
+            // made -- so `matchmaking` stayed on the state the launch left it
+            // in, the panel kept the Start button locked behind "Launching",
+            // and the only way back was to restart the client.
+            //
+            // Only the two states a launch produces are cleared. `Searching` is
+            // left alone deliberately: the queue can be rejoined while the
+            // previous game's process is still shutting down, and this event
+            // arrives late enough to undo that.
+            if matches!(
+                state.matchmaking,
+                MatchmakingState::Launching { .. } | MatchmakingState::MatchFound { .. }
+            ) {
+                state.matchmaking = MatchmakingState::Idle;
+            }
+        }
         LobbyEvent::Disconnected => {
             state.status = LobbyStatus::Disconnected;
             state.games.clear();
@@ -1045,6 +1065,45 @@ mod tests {
         reduce(&mut state, &LobbyEvent::GameTerminated);
 
         assert_eq!(state.join, JoinState::Idle);
+    }
+
+    #[test]
+    fn finishing_a_matchmaker_game_frees_the_queue_to_be_searched_again() {
+        // The reported symptom: after a ladder or TMM game the panel stayed on
+        // "Launching" with the Start button locked, and nothing the client
+        // received afterwards ever cleared it.
+        let mut state = LobbyState {
+            join: JoinState::InGame,
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "tmm_2v2".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::GameTerminated);
+
+        assert_eq!(state.matchmaking, MatchmakingState::Idle);
+    }
+
+    #[test]
+    fn finishing_a_game_does_not_cancel_a_search_started_since() {
+        // The process exit arrives after the game is over, by which time the
+        // queue can legitimately have been rejoined.
+        let mut state = LobbyState {
+            matchmaking: MatchmakingState::Searching {
+                queue_names: vec!["ladder_1v1".into()],
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::GameTerminated);
+
+        assert_eq!(
+            state.matchmaking,
+            MatchmakingState::Searching {
+                queue_names: vec!["ladder_1v1".into()],
+            }
+        );
     }
 
     #[test]

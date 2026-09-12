@@ -281,7 +281,7 @@ export function ReplayDetailRoster({
                       <span className="replay-player-name-group">
                         <PlayerName name={player.name} className="replay-player-name-text" />
                         {player.rating !== null && (
-                          <span className="replay-player-rating" title={t("replays.roster.rating") || "Rating"}>
+                          <span className="replay-player-rating" title={t("replays.roster.rating")}>
                             ({player.rating})
                           </span>
                         )}

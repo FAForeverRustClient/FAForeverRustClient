@@ -494,6 +494,15 @@
   gap: 8px 48px;
 }
 
+/* A pair of cells whose contents differ in height -- here a single dropdown
+   beside a field with buttons under it -- top-aligned rather than stretched.
+   Stretched, each cell was as tall as the taller of the two and `.generate-map-row`
+   centred its control inside that, so the dropdown floated half a button below
+   the field it sits next to instead of starting on the same line. */
+.generate-map-grid-2col.generate-map-grid-top {
+  align-items: start;
+}
+
 .generate-map-row {
   display: grid;
   grid-template-columns: 105px minmax(0, 1fr);
@@ -587,12 +596,19 @@
 .generate-map-preset-save-group-buttons {
   display: flex;
   gap: 6px;
-  align-items: center;
+  align-items: stretch;
 }
 
+/* Both buttons exactly one line tall, whatever they say.
+   `min-height` alone let a label that did not fit wrap to a second line, so
+   the button beside it -- whose label did fit -- ended up visibly shorter.
+   The height is the one every other control in this dialog uses, and `nowrap`
+   keeps a longer translation from reintroducing the wrap it was caused by. */
 .generate-map-preset-save-group-buttons > * {
   flex: 1;
   min-width: 0;
+  height: 34px;
+  white-space: nowrap;
 }
 
 .generate-map-check {
