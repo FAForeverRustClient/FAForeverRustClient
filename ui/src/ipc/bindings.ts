@@ -4374,7 +4374,22 @@ export type NotificationSound =
 /**  Short and bright, for something addressed to you personally. */
 "ping" |
 /**  Two rising notes. The loudest thing here, for something that expires. */
-"alert";
+"alert" |
+/**
+ *  A file the player added, named by its stored file name.
+ *
+ *  The name, not a path: the file lives in one directory the client owns
+ *  (`sounds/` beside the settings), so a settings file stays portable
+ *  between machines and a stored value cannot point anywhere else on disk.
+ *  A name whose file has since been deleted plays nothing, which is the
+ *  same as `Silent` and better than refusing to load the settings.
+ *
+ *  This is the one variant with a payload, so serde writes the other five
+ *  as the plain strings they have always been and only this one as
+ *  `{"custom": "horn.wav"}`. Settings written by an older build load
+ *  unchanged.
+ */
+{ custom: string };
 
 /**
  *  Which tone each kind of notification plays.
@@ -4384,13 +4399,19 @@ export type NotificationSound =
  *  UI. Everything without a switch of its own (server notices, errors, a
  *  finished map, a new client version) shares [`Self::other`].
  *
- *  **Every default is [`NotificationSound::Chime`]**, which is the tone the
- *  client played for everything before this existed. Installing an update
- *  therefore changes nothing anybody hears; a player who wants a match to sound
- *  different from a friend coming online says so, per row, and that is the
- *  feature. Graded defaults were tried first and rejected: shipping a set of
- *  choices somebody did not make is a worse answer to "all notifications sound
- *  the same" than letting them make it.
+ *  **One row is not [`NotificationSound::Chime`]: a found match plays
+ *  [`NotificationSound::Alert`].** Everything else keeps the tone the client
+ *  played before this existed, so installing an update changes one sound and
+ *  not the rest.
+ *
+ *  That is a reversal. The original note here argued that shipping choices
+ *  nobody made was the wrong answer to "all notifications sound the same", and
+ *  left every row on `Chime`. What that missed is that the rows are not equal:
+ *  a found match expires. Miss it and the match is gone, while a missed friend
+ *  notice costs nothing, and telling the two apart is not a preference so much
+ *  as the point of having a sound at all. Nobody who had not already opened
+ *  this page could tell them apart, and the report that followed said exactly
+ *  that. The remaining eleven rows are still one tone and still a preference.
  *
  *  [`NotificationSound::Silent`] is available on every row, which is how a kind
  *  is seen and not heard.

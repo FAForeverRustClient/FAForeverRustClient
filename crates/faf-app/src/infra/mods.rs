@@ -1084,12 +1084,7 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
                     .get("createTime")
                     .and_then(Value::as_str)
                     .filter(|time| !time.is_empty())
-                    .or_else(|| {
-                        version
-                            .attributes
-                            .get("createTime")
-                            .and_then(Value::as_str)
-                    })
+                    .or_else(|| version.attributes.get("createTime").and_then(Value::as_str))
                     .unwrap_or("")
                     .to_string(),
                 updated_at: version

@@ -3647,6 +3647,15 @@ export const en = {
   "links.thanks.note.feedback": "feedback",
   "links.thanks.note.communityHub": "community hub",
   "lobby.host.defaultBadge": "Default",
+  "settings.notifications.sound.add": "Add a sound file...",
+  "settings.notifications.sound.missing": "{name} (missing)",
+  "settings.notifications.sound.pickTitle": "Choose a notification sound",
+  "settings.notifications.sound.pickFilter": "Sound files",
+  "settings.notifications.sound.importFailed": "That sound could not be added: {reason}",
+  "settings.notifications.sound.yours": "Your sounds",
+  "settings.notifications.sound.yoursHint": "Files you added. Removing one puts every notification using it back on Chime.",
+  "settings.notifications.sound.preview": "Play {name}",
+  "settings.notifications.sound.remove": "Remove {name}",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

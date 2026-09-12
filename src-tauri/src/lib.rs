@@ -120,6 +120,39 @@ fn client_folder_path(kind: String) -> Result<String, String> {
     Ok(path.to_string_lossy().into_owned())
 }
 
+/// Copy a picked sound file into the client's own sounds directory.
+///
+/// Returns the name it was stored under, which is what goes in the settings.
+/// It is not always the name that was picked: see `import_sound` for why a
+/// collision gets a suffix rather than overwriting.
+#[tauri::command]
+fn import_notification_sound(path: String) -> Result<String, String> {
+    faf_app::infra::notification_sounds::import_sound(std::path::Path::new(&path))
+}
+
+/// The sounds the player has added, by name.
+#[tauri::command]
+fn list_notification_sounds() -> Result<Vec<String>, String> {
+    faf_app::infra::notification_sounds::list_sounds()
+}
+
+/// One stored sound, as bytes the webview can decode.
+///
+/// Read here rather than handed over as a file:// URL: the webview's asset
+/// protocol would need the whole data directory opened up to reach one file,
+/// and this is a couple of hundred kilobytes read once and cached by the page.
+#[tauri::command]
+fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
+    let path = faf_app::infra::notification_sounds::sound_path(&name)?;
+    std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
+}
+
+/// Forget one stored sound.
+#[tauri::command]
+fn remove_notification_sound(name: String) -> Result<(), String> {
+    faf_app::infra::notification_sounds::remove_sound(&name)
+}
+
 #[tauri::command]
 fn open_version_folder(name: String, app: tauri::AppHandle) -> Result<(), String> {
     let cache_root = faf_app::infra::cache_dir()?;
@@ -697,6 +730,10 @@ pub fn run() {
             open_log_folder,
             open_client_folder,
             client_folder_path,
+            import_notification_sound,
+            list_notification_sounds,
+            read_notification_sound,
+            remove_notification_sound,
             open_version_folder,
             reveal_replay,
             read_latest_log,

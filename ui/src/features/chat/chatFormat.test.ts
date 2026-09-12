@@ -113,9 +113,13 @@ describe("who a coloured ping is shown to", () => {
     if (!isValidElement<{ children?: ReactNode; className?: string; style?: { color?: string } }>(node)) {
       return [];
     }
-    const inner = marks(node.props.children);
+    const { children, className, style } = node.props;
+    const inner = marks(children);
+    // A mark wraps the matched token and nothing else, so its child is the
+    // string; anything else is not a case this helper needs to describe.
+    const text = typeof children === "string" ? children : "";
     return node.type === "mark"
-      ? [[node.props.className ?? "", node.props.style?.color ?? "", String(node.props.children)], ...inner]
+      ? [[className ?? "", style?.color ?? "", text], ...inner]
       : inner;
   };
 

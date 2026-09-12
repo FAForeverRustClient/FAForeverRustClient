@@ -52,6 +52,32 @@ export const native = {
   },
 
   /**
+   * Copy a picked sound file into the client's own sounds directory.
+   *
+   * Resolves to the name it was stored under, which is what the settings hold.
+   * Not always the name that was picked: a collision gets a numbered suffix
+   * rather than replacing a sound somebody had already chosen.
+   */
+  importNotificationSound(path: string): Promise<string> {
+    return invoke<string>("import_notification_sound", { path });
+  },
+
+  /** The sounds the player has added, by name. */
+  listNotificationSounds(): Promise<string[]> {
+    return invoke<string[]>("list_notification_sounds");
+  },
+
+  /** One stored sound's bytes, for the page to decode. */
+  readNotificationSound(name: string): Promise<number[]> {
+    return invoke<number[]>("read_notification_sound", { name });
+  },
+
+  /** Forget one stored sound. */
+  removeNotificationSound(name: string): Promise<void> {
+    return invoke("remove_notification_sound", { name });
+  },
+
+  /**
    * Where a client folder is, for a file dialog to start in.
    *
    * Resolves the same way `openClientFolder` does. Rejects when the folder
