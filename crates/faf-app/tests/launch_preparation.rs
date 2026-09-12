@@ -198,6 +198,153 @@ async fn join_and_collect(h: &Harness) -> Vec<LobbyEvent> {
     seen
 }
 
+/// An updater that emits its steps slowly enough for a test to cancel between
+/// two of them, which is the only interesting moment for cancellation.
+struct SlowUpdater {
+    steps: usize,
+    gap: Duration,
+}
+
+#[async_trait]
+impl GameUpdaterPort for SlowUpdater {
+    async fn prepare(&self, _request: GamePreparation) -> mpsc::Receiver<UpdateProgress> {
+        let (tx, rx) = mpsc::channel(1);
+        let (steps, gap) = (self.steps, self.gap);
+        // Spawned, unlike `ScriptedUpdater`: the point is that the steps arrive
+        // over time rather than all being buffered before the caller looks.
+        tokio::spawn(async move {
+            for index in 0..steps {
+                tokio::time::sleep(gap).await;
+                let step = PreparationStep::indeterminate(
+                    PreparationPhase::Downloading,
+                    format!("file {index}"),
+                );
+                if tx.send(UpdateProgress::Step(step)).await.is_err() {
+                    return;
+                }
+            }
+            let _ = tx.send(UpdateProgress::Finished(Ok(()))).await;
+        });
+        rx
+    }
+}
+
+#[tokio::test]
+async fn cancelling_a_join_stops_the_progress_dialog_coming_back() {
+    // The reported bug. Cancel stopped the game from starting, but the updater
+    // carried on through its remaining steps and each one put the join back
+    // into `Preparing`, so the dialog reopened over and over.
+    let prepared = Arc::new(Mutex::new(Vec::new()));
+    let launched = Arc::new(Mutex::new(false));
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        process: Arc::new(LaunchableProcess {
+            launched: launched.clone(),
+            install_dir: Some(PathBuf::from("C:/faf")),
+            exits_after: None,
+        }),
+        updater: Arc::new(SlowUpdater {
+            steps: 12,
+            gap: Duration::from_millis(40),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let h = Harness {
+        app,
+        prepared,
+        launched,
+    };
+
+    let mut events = h.app.subscribe();
+    h.app
+        .dispatch(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    h.app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(AppEvent::Lobby(LobbyEvent::Connected))
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("the fake lobby never connected");
+    h.app
+        .dispatch(
+            LobbyCommand::Join {
+                id: 1,
+                password: None,
+                replace_mods: false,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+
+    // Let it get going, so the cancel lands between two steps rather than
+    // before the updater has been asked for anything.
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(AppEvent::Lobby(LobbyEvent::Preparing { .. }))
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("preparation never started");
+
+    h.app
+        .dispatch(LobbyCommand::CancelJoin.into())
+        .await
+        .unwrap();
+
+    // Collect for longer than the updater's remaining steps would take, so a
+    // `Preparing` that slipped through has every chance to show up.
+    let mut after_cancel = Vec::new();
+    let mut cancelled = false;
+    let _ = tokio::time::timeout(Duration::from_millis(900), async {
+        while let Ok(event) = events.recv().await {
+            if let AppEvent::Lobby(lobby) = event {
+                if matches!(lobby, LobbyEvent::JoinCancelled) {
+                    cancelled = true;
+                    continue;
+                }
+                if cancelled {
+                    after_cancel.push(lobby);
+                }
+            }
+        }
+    })
+    .await;
+
+    assert!(cancelled, "the cancel was not acknowledged");
+    let reopened: Vec<_> = after_cancel
+        .iter()
+        .filter(|event| matches!(event, LobbyEvent::Preparing { .. }))
+        .collect();
+    assert!(
+        reopened.is_empty(),
+        "preparation kept narrating after the cancel, which reopens the dialog: {reopened:?}"
+    );
+    assert!(
+        !*h.launched.lock().unwrap(),
+        "a cancelled join must not start the game"
+    );
+}
+
 #[tokio::test]
 async fn a_game_that_exits_releases_the_join_so_another_can_be_attempted() {
     // The reported failure: after a join that did not work out, the client
