@@ -266,8 +266,10 @@ impl NeroxisMapGenerator {
     pub fn new(config: MapGeneratorConfig) -> Self {
         Self {
             config,
-            // The shared transport supplies the User-Agent GitHub requires.
-            http: super::http::shared_http_client(),
+            // Carries the User-Agent GitHub requires, and refuses a redirect
+            // that leaves HTTPS: these bytes are handed to a JVM, and the
+            // decision not to sign them rests on the connection staying HTTPS.
+            http: super::http::https_only_download_client(),
             cancel: Arc::new(CancelSignal::default()),
             installing: Arc::new(tokio::sync::Mutex::new(())),
             releases: Arc::new(tokio::sync::Mutex::new(None)),
