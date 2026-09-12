@@ -1320,7 +1320,24 @@ pub struct GamePreferences {
     /// kept while it was on.
     #[serde(default)]
     pub keep_generated_maps: bool,
+    /// How many generated maps the keep list may hold, or `0` for no limit.
+    ///
+    /// The switch above answers "keep them"; this answers "how many". Without
+    /// it the two choices are keep nothing and keep everything, and the thread
+    /// that asked for this had watched the second one fill a system drive: a
+    /// generated map is kept because it was good, and the hundred before it
+    /// are still on the disk saying nothing.
+    ///
+    /// Oldest first when the cap is reached, which is what makes this a cache
+    /// rather than a quota that refuses new maps once it is full.
+    #[serde(default)]
+    pub keep_generated_maps_limit: u32,
 }
+
+/// The most generated maps a keep list may hold. Far past what anybody sets,
+/// and there so a hand-edited settings file cannot make the list unbounded by
+/// a different route than `0` does deliberately.
+pub const MAX_KEPT_GENERATED_MAPS: u32 = 500;
 
 fn default_true() -> bool {
     true
@@ -1346,6 +1363,7 @@ impl Default for GamePreferences {
             cache_rolling_branches: false,
             pipe_live_replay: false,
             keep_generated_maps: false,
+            keep_generated_maps_limit: 0,
         }
     }
 }
@@ -1360,6 +1378,8 @@ impl GamePreferences {
             .take(32)
             .collect();
         self.launch_wrapper = self.launch_wrapper.trim().to_owned();
+        self.keep_generated_maps_limit =
+            self.keep_generated_maps_limit.min(MAX_KEPT_GENERATED_MAPS);
         self
     }
 }
@@ -2210,7 +2230,24 @@ impl SettingsState {
         // Zero: pruning by the clock is the persistence boundary's job, which
         // is where the clock is. Normalising only deduplicates here.
         self.events = self.events.pruned(0);
+        // After `game`, so a hand-edited limit is already bounded when the
+        // list is measured against it.
+        self.trim_kept_generated_maps();
         self
+    }
+
+    /// Drop the oldest kept maps until the list fits the limit.
+    ///
+    /// A no-op when the limit is `0`, which is what "keep them all" is spelled
+    /// as: a cap of zero would mean the switch above keeps nothing, and there
+    /// is already a switch for that.
+    pub fn trim_kept_generated_maps(&mut self) {
+        let limit = self.game.keep_generated_maps_limit as usize;
+        if limit == 0 || self.kept_generated_maps.len() <= limit {
+            return;
+        }
+        let excess = self.kept_generated_maps.len() - limit;
+        self.kept_generated_maps.drain(..excess);
     }
 }
 
@@ -2388,6 +2425,13 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
                 }
                 state.kept_generated_maps.push(name.to_owned());
             }
+            // Oldest first, so the cap makes this a cache rather than a quota
+            // that starts refusing maps once it is full. Which names fell off
+            // is the caller's business: the service compares the list either
+            // side of this event and deletes the folders, because a name that
+            // is merely unprotected still occupies the disk it was capped to
+            // protect.
+            state.trim_kept_generated_maps();
         }
         SettingsEvent::MatchmakerVetoesChanged { vetoes } => {
             state.matchmaker_vetoes = vetoes.clone()

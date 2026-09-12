@@ -2242,6 +2242,19 @@ export type GamePreferences = {
 	 *  kept while it was on.
 	 */
 	keepGeneratedMaps?: boolean,
+	/**
+	 *  How many generated maps the keep list may hold, or `0` for no limit.
+	 *
+	 *  The switch above answers "keep them"; this answers "how many". Without
+	 *  it the two choices are keep nothing and keep everything, and the thread
+	 *  that asked for this had watched the second one fill a system drive: a
+	 *  generated map is kept because it was good, and the hundred before it
+	 *  are still on the disk saying nothing.
+	 *
+	 *  Oldest first when the cap is reached, which is what makes this a cache
+	 *  rather than a quota that refuses new maps once it is full.
+	 */
+	keepGeneratedMapsLimit?: number,
 };
 
 export type GeneralPreferences = {
