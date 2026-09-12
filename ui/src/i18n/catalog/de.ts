@@ -2044,7 +2044,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.preview.zoomGroup": "Zoom",
   "maps.preview.zoomIn": "Vergrößern",
   "maps.preview.zoomOut": "Verkleinern",
-  "maps.preview.resetZoom": "Ganze Karte",
+  "maps.preview.resetZoom": "Zoom zurücksetzen",
   "maps.preview.zoomHint": "Scrollen zum Zoomen, ziehen zum Verschieben, Doppelklick springt hinein und wieder heraus.",
   "maps.preview.copyImage": "Bild kopieren",
   "maps.preview.imageCopied": "Bild kopiert",

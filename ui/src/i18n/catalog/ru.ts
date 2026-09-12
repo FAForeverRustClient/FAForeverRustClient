@@ -1941,4 +1941,5 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.detail.simMods": "Моды симуляции",
   "replays.roster.ratingChange": "Изменение рейтинга за эту игру",
   "replays.vault.resultCountUnknown": "Показано {shown} · страниц: {pages} · общее число с этим фильтром неизвестно",
+  "maps.preview.resetZoom": "Сбросить",
 };

@@ -2182,7 +2182,7 @@ export const en = {
   "maps.preview.zoomGroup": "Zoom",
   "maps.preview.zoomIn": "Zoom in",
   "maps.preview.zoomOut": "Zoom out",
-  "maps.preview.resetZoom": "Whole map",
+  "maps.preview.resetZoom": "Reset zoom",
   "maps.preview.zoomHint": "Scroll to zoom, drag to pan, double-click to jump in or out.",
   "maps.preview.copyImage": "Copy image",
   "maps.preview.imageCopied": "Image copied",
