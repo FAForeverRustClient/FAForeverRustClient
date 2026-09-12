@@ -569,8 +569,9 @@ pub fn run() {
                 }
             }
 
-            // Real OAuth2 auth + (still-faked) lobby. Set FAF_FAKE_AUTH=1 to run
-            // fully offline without a browser login during local dev.
+            // Real OAuth2 auth and the real lobby WebSocket
+            // (`infra::LobbyClient`). Set FAF_FAKE_AUTH=1 to run fully offline
+            // without a browser login during local dev.
             let ports = faf_app::infra::ports_from_env();
             let (core, app_loop) = App::new(backend_version, ports);
             let core = Arc::new(core);

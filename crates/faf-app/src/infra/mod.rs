@@ -164,10 +164,29 @@ pub(crate) fn hide_console(command: &mut tokio::process::Command) {
 /// `tcp_server()` helper; the brief gap before the subprocess binds is the same
 /// small race it accepts.
 pub(crate) fn free_port() -> Option<u16> {
-    std::net::TcpListener::bind(("127.0.0.1", 0))
-        .ok()
-        .and_then(|l| l.local_addr().ok())
-        .map(|addr| addr.port())
+    free_ports(1).map(|ports| ports[0])
+}
+
+/// Reserve several free loopback ports at once, all different from each other.
+///
+/// Calling [`free_port`] twice does not guarantee two ports: each listener is
+/// dropped before the next bind, so the operating system is free to hand back
+/// the one it just released, and an adapter told to use the same number for
+/// its RPC and its GPGNet socket fails in a way whose log says nothing useful.
+/// Holding every listener until all of them are chosen is what makes them
+/// distinct.
+///
+/// The gap between choosing and the subprocess binding is still there and is
+/// still the race the reference client accepts.
+pub(crate) fn free_ports(count: usize) -> Option<Vec<u16>> {
+    let mut listeners = Vec::with_capacity(count);
+    for _ in 0..count {
+        listeners.push(std::net::TcpListener::bind(("127.0.0.1", 0)).ok()?);
+    }
+    listeners
+        .iter()
+        .map(|listener| listener.local_addr().ok().map(|addr| addr.port()))
+        .collect()
 }
 
 /// On-disk identity. One definition, because these were duplicated across six

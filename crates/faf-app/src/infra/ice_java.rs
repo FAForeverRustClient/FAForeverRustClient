@@ -21,7 +21,7 @@ use tokio::sync::mpsc;
 
 use crate::infra::jsonrpc::{JsonRpcClient, RpcNotification};
 use crate::infra::session::TokenStore;
-use crate::infra::{console_window, free_port};
+use crate::infra::{console_window, free_ports};
 use crate::ports::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 
 /// How long to wait for the adapter's RPC port to come up.
@@ -161,8 +161,10 @@ impl IcePort for JavaAdapter {
         let ice =
             fetch_ice_servers(&self.http, &self.config.api_base, &token, params.game_id).await?;
 
-        let rpc_port = free_port().ok_or("could not reserve an rpc port")?;
-        let gpg_port = free_port().ok_or("could not reserve a game port")?;
+        // Both at once, so they cannot come back as the same number: see
+        // `infra::free_ports`.
+        let ports = free_ports(2).ok_or("could not reserve the adapter's ports")?;
+        let (rpc_port, gpg_port) = (ports[0], ports[1]);
 
         let mut args: Vec<String> = vec![
             "-jar".into(),

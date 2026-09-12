@@ -331,10 +331,13 @@ pub enum PlayMode {
     GalacticWar,
 }
 
-/// The server's `game_launch` order: everything the connectivity + launch chain
-/// (a later phase) needs to actually start the game. For now we only model and
-/// surface it; nothing acts on it yet. Mirrors the relevant fields of the Python
-/// client's `GameLaunchCommand` (`src/protocol/lobbyprotocol.py`).
+/// The server's `game_launch` order: everything the connectivity and launch
+/// chain needs to actually start the game.
+///
+/// `services::launcher` acts on this: it starts the ICE adapter, stages the
+/// map and featured mod, and launches Forged Alliance. Mirrors the relevant
+/// fields of the Python client's `GameLaunchCommand`
+/// (`src/protocol/lobbyprotocol.py`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GameLaunch {
