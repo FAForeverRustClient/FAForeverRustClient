@@ -6,7 +6,8 @@
 //!    calendar are loaded too. Tournaments and the changelog index are owned by
 //!    other services, so this one asks them rather than fetching either again:
 //!    the calendar then shows a tournament the moment the Tournaments tab has
-//!    ever been opened, and loads it itself when it has not.
+//!    ever been opened, and loads it itself when it has not. Same shape as the
+//!    training hub asking the tutorials service for FAF's lessons.
 //!
 //! 2. **Hold the view.** Which of the three views is open, which day it is
 //!    anchored on, and what it is filtered to. Pure command to event.

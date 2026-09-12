@@ -45,4 +45,5 @@ pub mod social;
 pub mod streams;
 pub mod tourney;
 pub mod training;
+pub mod tutorials;
 pub mod uploads;

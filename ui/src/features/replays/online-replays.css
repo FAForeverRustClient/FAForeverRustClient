@@ -799,7 +799,7 @@ button.vault-input {
   align-self: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-full);
+  border-radius: 999px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-subtle);
@@ -1281,4 +1281,397 @@ button.vault-input {
   place-items: center;
   color: var(--color-subtle);
   background: var(--color-surface-raised);
+}
+
+/* ---------------------------------------------------------------------------
+   The replay card.
+
+   Two columns: a narrow rail holding what the replay *is* and what you can do
+   to the file, and a main column holding what happened in the game. The rail
+   is a fixed width because its three controls are full-width buttons and a
+   rail that grows with the dialog turns them into banners.
+   --------------------------------------------------------------------------- */
+
+.replay-card-layout {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.replay-card-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--color-border);
+}
+
+/* The replay ID sits on the floor of the rail rather than under the buttons:
+   it is a reference you copy, not an action, and the gap above it is what
+   says so. */
+.replay-card-idrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: var(--space-3);
+  font-size: 12px;
+}
+
+.replay-card-idlabel {
+  color: var(--color-muted);
+  margin-right: auto;
+}
+
+.replay-card-idvalue {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.replay-card-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.replay-card-thumb-image,
+.replay-card-thumb-empty {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.replay-card-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-subtle);
+}
+
+/* Over the image rather than beside it: the map action belongs to the map, and
+   the rail below is already three buttons tall. */
+.replay-card-thumb-actions {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+
+.replay-card-thumb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / 0.62);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.replay-card-thumb-btn:hover:not(:disabled) {
+  background: rgb(0 0 0 / 0.82);
+}
+
+.replay-card-thumb-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.replay-card-rating {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 20px;
+}
+
+.replay-card-stars {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--color-subtle);
+}
+
+.replay-card-stars .is-filled {
+  color: var(--color-rating);
+  fill: currentColor;
+}
+
+.replay-card-rating-value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.replay-card-rail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Label left, icon right, full width: the rail reads as a list of verbs, and a
+   centred label would make three buttons of different word lengths look
+   ragged. */
+.replay-card-rail-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  text-align: left;
+}
+
+.replay-card-rail-btn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.replay-card-rail-btn.is-on {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.replay-card-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.replay-card-icon-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.replay-card-seed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.replay-card-seed-label {
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.replay-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* Room for the dialog's own close button, which sits in this column's corner. */
+.replay-card-heading {
+  padding-right: 32px;
+}
+
+.replay-card-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.replay-card-onmap {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.replay-card-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* Four columns of icon + label + value, two rows deep. The pair of durations
+   that are routinely minutes apart end up side by side, which is the point of
+   giving them distinct glyphs in the first place. */
+.replay-card-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px var(--space-4);
+  margin: 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.replay-card-facts > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.replay-card-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-card-facts dt svg {
+  flex-shrink: 0;
+  color: var(--color-subtle);
+}
+
+.replay-card-facts dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.replay-card-lineup {
+  min-width: 0;
+}
+
+/* The teams fill what is left, so the action row lands on the floor of the
+   card however tall the rosters are. */
+.replay-card-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+
+.replay-card-result-btn,
+.replay-card-watch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* A team's colour is carried by a line across the top of its panel, not by its
+   border: a fully coloured outline around six rows reads as an alert. */
+.replay-detail-team {
+  position: relative;
+  overflow: hidden;
+}
+
+.replay-detail-team::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--team-accent, transparent);
+}
+
+.replay-detail-teams[data-layout="versus"] > .replay-detail-team:first-of-type,
+.replay-detail-teams:not([data-layout="versus"]) > .replay-detail-team:nth-of-type(1) {
+  --team-accent: var(--color-ok);
+}
+
+.replay-detail-teams[data-layout="versus"] > .replay-detail-team:last-of-type,
+.replay-detail-teams:not([data-layout="versus"]) > .replay-detail-team:nth-of-type(2) {
+  --team-accent: var(--color-error);
+}
+
+.replay-detail-teams > .replay-detail-team:nth-of-type(3) {
+  --team-accent: var(--color-warn);
+}
+
+.replay-detail-teams > .replay-detail-team:nth-of-type(4) {
+  --team-accent: var(--color-accent);
+}
+
+/* Each player is their own pill. It is what separates a roster from a table,
+   and it gives the rating change a lane of its own on the right. */
+.replay-card-layout .replay-detail-player {
+  height: 32px;
+  background: var(--color-surface);
+  border-radius: 999px;
+  padding: 0 12px;
+}
+
+.replay-card-layout .replay-detail-player:hover {
+  background: var(--color-surface-hover);
+}
+
+.replay-card-layout .replay-detail-roster {
+  gap: 5px;
+}
+
+/* Under about 900px the rail and the main column stop fitting side by side,
+   and the facts strip stops fitting four across. */
+@media (max-width: 900px) {
+  .replay-card-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .replay-card-rail {
+    padding-right: 0;
+    border-right: none;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .replay-card-thumb {
+    max-width: 236px;
+  }
+
+  .replay-card-idrow {
+    margin-top: 0;
+  }
+
+  .replay-card-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .replay-card-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .replay-card-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .replay-card-title {
+    font-size: 21px;
+  }
 }

@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -41,6 +41,7 @@ export type AppState = {
 	streams: StreamsState,
 	tourney: TourneyState,
 	training: TrainingState,
+	tutorials: TutorialsState,
 	uploads: UploadsState,
 	galacticWar: GalacticWarState,
 	guides: GuidesState,
@@ -8255,6 +8256,90 @@ export type TrainingStatus = { type: "idle" } | { type: "loading" } | { type: "r
 export type TrainingTopic = "economy" | "buildOrder" | "micro" | "strategy" | "armyComposition" | "mapControl" | "scouting" | "factions" | "teamplay" |
 /**  The client and the game's own interface: hotkeys, templates, options. */
 "interface";
+
+/**  One lesson. */
+export type Tutorial = {
+	id: number,
+	title: string,
+	/**  Already reduced to plain text; the API stores it as HTML. */
+	description: string,
+	/**
+	 *  The first `https://` destination the description linked to, or empty.
+	 *
+	 *  FAF publishes whole categories: "Video tutorials", "Written guides",
+	 *  whose entries are not playable maps at all but pointers to YouTube and
+	 *  the wiki. Reducing the description to plain text keeps their prose and
+	 *  throws away the only thing they are for, which left most of the tab
+	 *  showing rows labelled "unavailable" that did nothing when clicked.
+	 */
+	linkUrl: string,
+	imageUrl: string,
+	/**  Position within its category, as the API orders them. */
+	ordinal: number,
+	/**
+	 *  Whether the server considers this one playable. A tutorial can be
+	 *  listed for reference while its map is being replaced.
+	 */
+	launchable: boolean,
+	/**  The map the lesson runs on: needed before launching. */
+	mapFolderName: string,
+	/**  The scenario name passed to the game as `/map`. */
+	technicalName: string,
+	categoryId: number | null,
+};
+
+/**  A group of lessons: "Basics", "Build order", and so on. */
+export type TutorialCategory = {
+	id: number,
+	name: string,
+};
+
+/**
+ *  Where a launch stands. Its own status because the wait is long: the
+ *  `tutorials` featured mod has to be patched and the map downloaded first.
+ */
+export type TutorialLaunchStatus = { type: "idle" } | { type: "preparing"; payload: {
+	tutorialId: number,
+	detail: string,
+} } | { type: "launched"; payload: {
+	tutorialId: number,
+} } | { type: "failed"; payload: {
+	reason: string,
+} };
+
+export type TutorialsCommand = { type: "load" } | { type: "select"; payload: {
+	tutorialId: number,
+} } | { type: "launch"; payload: {
+	tutorialId: number,
+} };
+
+export type TutorialsEvent = { type: "loading" } | { type: "loaded"; payload: {
+	categories: TutorialCategory[],
+	tutorials: Tutorial[],
+} } | { type: "loadFailed"; payload: {
+	reason: string,
+} } | { type: "selected"; payload: {
+	tutorialId: number,
+} } | { type: "launchPreparing"; payload: {
+	tutorialId: number,
+	detail: string,
+} } | { type: "launched"; payload: {
+	tutorialId: number,
+} } | { type: "launchFailed"; payload: {
+	reason: string,
+} };
+
+export type TutorialsState = {
+	categories: TutorialCategory[],
+	tutorials: Tutorial[],
+	status: TutorialsStatus,
+	selectedId: number | null,
+	launch: TutorialLaunchStatus,
+};
+
+export type TutorialsStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
+	reason: string,
+} };
 
 /**  Someone composing a message, and when we last heard so. */
 export type TypingNotice = {

@@ -69,6 +69,7 @@ pub mod streams;
 pub mod tourney;
 pub mod tourney_fake;
 pub mod training;
+pub mod tutorials;
 pub mod updater;
 pub mod uploads;
 pub(crate) mod vault_install;
@@ -108,6 +109,7 @@ pub use streams::{FakeStreams, TwitchConfig, TwitchStreams};
 pub use tourney::{TourneyClient, TourneyConfig};
 pub use tourney_fake::FakeTourney;
 pub use training::{FakeTraining, TrainingCatalogueClient, TrainingConfig};
+pub use tutorials::{FakeTutorials, TutorialsClient, TutorialsConfig};
 pub use updater::{FakeGameUpdater, GameUpdaterClient, UpdaterConfig};
 pub use uploads::{FakeUploads, UploadsClient, UploadsConfig};
 
@@ -522,6 +524,7 @@ pub fn fake_ports() -> Ports {
         events: Arc::new(FakeEvents),
         training: Arc::new(FakeTraining),
         guides: Arc::new(FakeGuides),
+        tutorials: Arc::new(FakeTutorials),
         changelog: Arc::new(FakeChangelog),
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
@@ -631,6 +634,8 @@ pub fn real_ports() -> Ports {
     let streams: Arc<dyn crate::ports::StreamsPort> = Arc::new(TwitchStreams::faf());
     // Same posture as maps and tournaments: pure API reads, no subprocess.
     let coop: Arc<dyn crate::ports::CoopPort> = Arc::new(CoopClient::faf(tokens.clone()));
+    let tutorials: Arc<dyn crate::ports::TutorialsPort> =
+        Arc::new(TutorialsClient::faf(tokens.clone()));
     // A plain document, and not FAF's: the training catalogue is a manifest the
     // training team publishes, so no token and no gating. Falls back to the
     // catalogue shipped with the client when none is configured.
@@ -696,6 +701,7 @@ pub fn real_ports() -> Ports {
         events,
         training,
         guides,
+        tutorials,
         changelog,
         uploads,
         client_update,
