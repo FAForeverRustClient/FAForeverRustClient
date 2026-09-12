@@ -132,6 +132,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   mapVaultSort: "",
   modVaultSort: "",
   vaultPageSize: 0,
+  replayListColumns: [],
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   replayVaultPlayer: "",
@@ -184,6 +185,12 @@ export function normalizeBrowsingPreferences(
       preferences.vaultPageSize
         ? clampInteger(preferences.vaultPageSize, MIN_VAULT_PAGE_SIZE, MAX_VAULT_PAGE_SIZE, 0)
         : 0,
+    // Widths only, bounded the way the browser's own columns are: a stored
+    // width of zero or a negative one means "the designed width", which is
+    // what an empty list means as a whole.
+    replayListColumns: (preferences.replayListColumns ?? [])
+      .filter((width) => Number.isFinite(width) && width > 0)
+      .map((width) => clampInteger(width, MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX)),
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],

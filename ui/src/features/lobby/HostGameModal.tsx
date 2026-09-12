@@ -6,7 +6,7 @@ import { RangeSlider } from "../../design-system/RangeSlider";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../shared/listboxNavigation";
-import { isGeneratedMap, OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
+import { OFFICIAL_BASE_MAPS } from "../../shared/mapPresentation";
 import { GameMapImage } from "./GameMapImage";
 import { MapPreviewDialog } from "../maps/MapPreviewZoom";
 import { isOfficialMap, MapUninstallDialog } from "../maps/MapVaultComponents";
@@ -379,12 +379,6 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
 
   // Reset by itself, so the tick is feedback rather than a state the button
   // gets stuck in.
-  const [copiedName, setCopiedName] = useState(false);
-  useEffect(() => {
-    if (!copiedName) return;
-    const timer = window.setTimeout(() => setCopiedName(false), 2_000);
-    return () => window.clearTimeout(timer);
-  }, [copiedName]);
   useEffect(() => {
     if (!copiedTitle) return;
     const timer = window.setTimeout(() => setCopiedTitle(false), 2_000);
@@ -937,40 +931,6 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
 
             {chosen && (
               <div className="host-map-info-section">
-                {/* The full folder name. The overlay on the picture shows the
-                    display name and truncates it, and for a generated map the
-                    name is not a label but the whole recipe: it is what the
-                    Generate map dialog takes to rebuild this exact map, and
-                    what somebody asking "which map is that" needs to be given.
-                    Same row and the same strings as the lobby's preview dialog,
-                    because it is the same fact about the same thing. */}
-                <div className="host-map-fullname">
-                  <span>{t("lobby.browser.mapFullName")}</span>
-                  <code>{chosen.folderName}</code>
-                  <button
-                    type="button"
-                    className="host-map-fullname-copy"
-                    aria-label={t(
-                      copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName",
-                    )}
-                    title={t(
-                      copiedName
-                        ? "lobby.browser.mapNameCopied"
-                        : isGeneratedMap(chosen.folderName)
-                          ? "lobby.browser.copyMapNameGenerated"
-                          : "lobby.browser.copyMapName",
-                    )}
-                    onClick={() =>
-                      ipc.run(
-                        navigator.clipboard
-                          .writeText(chosen.folderName)
-                          .then(() => setCopiedName(true)),
-                      )
-                    }
-                  >
-                    <Icon name={copiedName ? "check" : "copy"} size={13} />
-                  </button>
-                </div>
                 <div className="host-map-info-row">
                   <div className="host-map-info-item" title={t("lobby.host.mapPlayerCapacity")}>
                     <Icon name="users" size={13} />
@@ -990,12 +950,20 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                   </div>
                 </div>
                 {(chosen.version || chosen.author) && (
-                  <dl className="host-map-facts">
-                    <dt>{t("lobby.host.mapAuthor")}</dt>
-                    <dd>{chosen.author || t("lobby.host.mapAuthorUnknown")}</dd>
-                    <dt>{t("lobby.host.mapVersion")}</dt>
-                    <dd>{chosen.version || t("lobby.host.mapAuthorUnknown")}</dd>
-                  </dl>
+                  /* The same row shape as the capacity and the size above,
+                     rather than a definition list that sets its own type and
+                     its own spacing. Four facts about one map should look like
+                     four facts about one map. */
+                  <div className="host-map-info-row">
+                    <div className="host-map-info-item" title={t("lobby.host.mapAuthor")}>
+                      <Icon name="edit" size={13} />
+                      <span>{chosen.author || t("lobby.host.mapAuthorUnknown")}</span>
+                    </div>
+                    <div className="host-map-info-item" title={t("lobby.host.mapVersion")}>
+                      <Icon name="changelog" size={13} />
+                      <span>{chosen.version || t("lobby.host.mapAuthorUnknown")}</span>
+                    </div>
+                  </div>
                 )}
                 {/* A generated map's description is not prose: it is the
                     generator's parameter dump, one line, with its escapes

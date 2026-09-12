@@ -1839,6 +1839,15 @@ pub struct BrowsingPreferences {
     /// is about how much of the screen a reader wants filled, and answering it
     /// four times over would be four settings saying the same thing.
     pub vault_page_size: u32,
+    /// Column widths in the replay list, in pixels and in the order the
+    /// columns are drawn. Empty means the designed widths.
+    ///
+    /// The same shape and the same reason as
+    /// `CustomGameBrowserPreferences::column_widths`: the columns worth
+    /// widening are the ones whose contents the reader is scanning, and which
+    /// those are differs per person. Stored rather than kept in the browser so
+    /// it survives a reinstall, like every other browsing preference here.
+    pub replay_list_columns: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -1888,6 +1897,7 @@ impl Default for BrowsingPreferences {
             map_vault_sort: String::new(),
             mod_vault_sort: String::new(),
             vault_page_size: 0,
+            replay_list_columns: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -1922,6 +1932,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             map_vault_sort: String,
             mod_vault_sort: String,
             vault_page_size: u32,
+            #[serde(default)]
+            replay_list_columns: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
@@ -1947,6 +1959,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     map_vault_sort: defaults.map_vault_sort,
                     mod_vault_sort: defaults.mod_vault_sort,
                     vault_page_size: defaults.vault_page_size,
+                    replay_list_columns: defaults.replay_list_columns,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
@@ -1972,6 +1985,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             map_vault_sort: wire.map_vault_sort,
             mod_vault_sort: wire.mod_vault_sort,
             vault_page_size: wire.vault_page_size,
+            replay_list_columns: wire.replay_list_columns,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,

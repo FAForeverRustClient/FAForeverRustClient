@@ -158,6 +158,12 @@ pub struct UploadsState {
     /// The publish dialog's subject, or `None` when it is closed.
     pub request: Option<UploadRequest>,
     pub status: UploadStatus,
+    /// The map's own preview, read out of its `.scmap`, as a data URL.
+    ///
+    /// Empty for a mod, for a map whose file cannot be read, and until the read
+    /// finishes. The vault cannot supply this one: a map that is being uploaded
+    /// for the first time has no vault entry to have a thumbnail on.
+    pub preview: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -173,6 +179,13 @@ pub enum UploadsEvent {
     },
     Progressed {
         status: UploadStatus,
+    },
+    /// The preview read out of the map being published, or an empty string
+    /// when there was none to read. Not an error worth showing: a dialog
+    /// without a picture is still a working dialog.
+    #[serde(rename_all = "camelCase")]
+    PreviewRead {
+        data_url: String,
     },
 }
 
@@ -194,9 +207,11 @@ pub enum UploadsCommand {
 pub fn reduce(state: &mut UploadsState, event: &UploadsEvent) {
     match event {
         UploadsEvent::Opened { request } => {
+            // A fresh subject, so the previous map's picture goes with it.
             *state = UploadsState {
                 request: Some(request.clone()),
                 status: UploadStatus::Idle,
+                preview: String::new(),
             }
         }
         UploadsEvent::Closed => {
@@ -215,6 +230,7 @@ pub fn reduce(state: &mut UploadsState, event: &UploadsEvent) {
             }
         }
         UploadsEvent::Progressed { status } => state.status = status.clone(),
+        UploadsEvent::PreviewRead { data_url } => state.preview = data_url.clone(),
     }
 }
 

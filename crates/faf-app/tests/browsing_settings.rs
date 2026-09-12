@@ -75,6 +75,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 map_vault_sort: String::new(),
                 mod_vault_sort: String::new(),
                 vault_page_size: 0,
+                replay_list_columns: Vec::new(),
                 mod_vault_preset: "rating".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec!["rating".into(), "GAMES".into(), "invalid".into()],

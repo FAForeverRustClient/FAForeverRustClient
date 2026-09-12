@@ -297,6 +297,17 @@ export type BrowsingPreferences = {
 	 */
 	vaultPageSize: number,
 	/**
+	 *  Column widths in the replay list, in pixels and in the order the
+	 *  columns are drawn. Empty means the designed widths.
+	 *
+	 *  The same shape and the same reason as
+	 *  `CustomGameBrowserPreferences::column_widths`: the columns worth
+	 *  widening are the ones whose contents the reader is scanning, and which
+	 *  those are differs per person. Stored rather than kept in the browser so
+	 *  it survives a reinstall, like every other browsing preference here.
+	 */
+	replayListColumns: number[],
+	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
 	 *  Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -8490,12 +8501,28 @@ export type UploadsEvent = { type: "opened"; payload: {
 	ranked: boolean,
 } } | { type: "progressed"; payload: {
 	status: UploadStatus,
+} } |
+/**
+ *  The preview read out of the map being published, or an empty string
+ *  when there was none to read. Not an error worth showing: a dialog
+ *  without a picture is still a working dialog.
+ */
+{ type: "previewRead"; payload: {
+	dataUrl: string,
 } };
 
 export type UploadsState = {
 	/**  The publish dialog's subject, or `None` when it is closed. */
 	request: UploadRequest | null,
 	status: UploadStatus,
+	/**
+	 *  The map's own preview, read out of its `.scmap`, as a data URL.
+	 *
+	 *  Empty for a mod, for a map whose file cannot be read, and until the read
+	 *  finishes. The vault cannot supply this one: a map that is being uploaded
+	 *  for the first time has no vault entry to have a thumbnail on.
+	 */
+	preview: string,
 };
 
 /**  A parameter combination the generator will reject, or advise against. */

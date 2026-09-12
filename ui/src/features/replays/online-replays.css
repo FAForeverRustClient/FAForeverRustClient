@@ -220,6 +220,12 @@ button.vault-input {
 .replay-card.replay-card-watched,
 .replay-card.replay-card-watched:hover {
   border-color: var(--color-text);
+  /* A tint as well as the outline, the way the mod vault marks a mod that is
+     switched on, but grey and at a third of the strength: this is a fact about
+     the reader's own history, not a state of the replay, and a card that
+     announces itself competes with the one being looked for. Behind the text
+     rather than over it, so nothing it carries loses contrast. */
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface-raised));
 }
 
 .replay-card-selected {
@@ -403,9 +409,12 @@ button.vault-input {
 /* Replay detail modal */
 .replay-detail-modal {
   box-sizing: border-box;
-  width: min(1080px, 94vw);
-  max-width: 1080px;
-  max-height: calc(100vh - 24px);
+  width: min(1180px, 96vw);
+  max-width: 1180px;
+  /* The card is the tallest thing the client draws, and the rosters are what
+     gets squeezed. Taking the margin down to 12px a side is around 24px of
+     roster, which is most of a player row. */
+  max-height: calc(100vh - 12px);
   overflow-x: hidden;
   overflow-y: auto;
   padding: var(--space-4);
@@ -1294,7 +1303,7 @@ button.vault-input {
 
 .replay-card-layout {
   display: grid;
-  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   align-items: stretch;
   gap: var(--space-4);
 }
@@ -1330,22 +1339,23 @@ button.vault-input {
   color: var(--color-text);
 }
 
-.replay-card-thumb {
+/* Positioning context for the map action, and nothing else.
+   `ZoomableImage` is a viewport *plus* a row of zoom controls underneath it,
+   so a wrapper that forces a square and clips the overflow cuts the controls
+   off entirely: that is how this panel shipped with a zoom nobody could use.
+   The widget sizes itself. */
+.replay-rail-thumb {
   position: relative;
-  aspect-ratio: 1;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--color-surface);
 }
 
-.replay-card-thumb-image,
-.replay-card-thumb-empty {
+.replay-rail-thumb-image,
+.replay-rail-thumb-empty {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.replay-card-thumb-empty {
+.replay-rail-thumb-empty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1354,10 +1364,12 @@ button.vault-input {
 
 /* Over the image rather than beside it: the map action belongs to the map, and
    the rail below is already three buttons tall. */
-.replay-card-thumb-actions {
+.replay-rail-thumb-actions {
   position: absolute;
   right: 6px;
-  bottom: 6px;
+  /* Top, not bottom: the bottom of this box is the zoom controls now, and a
+     button floating over them would cover the thing it sits next to. */
+  top: 6px;
   display: flex;
   gap: 4px;
   z-index: 2;
@@ -1366,7 +1378,7 @@ button.vault-input {
 /* Tokens rather than a translucent black, so the button stays legible in both
    themes and over a light desert map as well as a dark one. The same shape the
    map zoom controls use. */
-.replay-card-thumb-btn {
+.replay-rail-thumb-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1381,11 +1393,11 @@ button.vault-input {
   transition: background-color 100ms ease;
 }
 
-.replay-card-thumb-btn:hover:not(:disabled) {
+.replay-rail-thumb-btn:hover:not(:disabled) {
   background: var(--color-surface-hover);
 }
 
-.replay-card-thumb-btn:disabled {
+.replay-rail-thumb-btn:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -1603,22 +1615,19 @@ button.vault-input {
   background: var(--team-accent, transparent);
 }
 
-.replay-detail-teams[data-layout="versus"] > .replay-detail-team:first-of-type,
-.replay-detail-teams:not([data-layout="versus"]) > .replay-detail-team:nth-of-type(1) {
+/* Keyed to the result, not to the order the teams arrived in. The attribute is
+   only set once the result is revealed, so until then every panel keeps the
+   transparent default and the card says nothing it does not know. */
+.replay-detail-team[data-outcome="victory"] {
   --team-accent: var(--color-ok);
 }
 
-.replay-detail-teams[data-layout="versus"] > .replay-detail-team:last-of-type,
-.replay-detail-teams:not([data-layout="versus"]) > .replay-detail-team:nth-of-type(2) {
+.replay-detail-team[data-outcome="defeat"] {
   --team-accent: var(--color-error);
 }
 
-.replay-detail-teams > .replay-detail-team:nth-of-type(3) {
+.replay-detail-team[data-outcome="draw"] {
   --team-accent: var(--color-warn);
-}
-
-.replay-detail-teams > .replay-detail-team:nth-of-type(4) {
-  --team-accent: var(--color-accent);
 }
 
 /* Each player is their own pill. It is what separates a roster from a table,
@@ -1653,7 +1662,7 @@ button.vault-input {
   }
 
   .replay-card-thumb {
-    max-width: 236px;
+    max-width: 320px;
   }
 
   .replay-card-idrow {

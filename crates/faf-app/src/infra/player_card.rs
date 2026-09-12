@@ -547,9 +547,7 @@ fn parse_played_games(document: &JsonApiDoc) -> Vec<PlayedGame> {
                 .unwrap_or_default()
                 .to_string();
 
-            // The API states the result in capitals; anything other than a
-            // win or a loss (a draw, or a game that never finished) is not a
-            // decided game and must not move the record either way.
+            // The API states the result in capitals.
             let result = row
                 .attributes
                 .get("result")
@@ -557,15 +555,7 @@ fn parse_played_games(document: &JsonApiDoc) -> Vec<PlayedGame> {
                 .unwrap_or_default()
                 .to_ascii_uppercase();
 
-            // What the rating did is the better witness, and where the two
-            // disagree it is the one FAF itself acted on. See
-            // [`mean_delta`] for why `result` alone was not enough.
-            let delta = mean_delta(row, &included);
-            let (rated, decided, won) = match delta {
-                Some(moved) if result != "DRAW" && moved != 0.0 => (true, true, moved > 0.0),
-                Some(_) => (true, false, false),
-                None => (false, false, false),
-            };
+            let (rated, decided, won) = classify(&result, || mean_delta(row, &included));
 
             PlayedGame {
                 map,
@@ -596,6 +586,44 @@ fn parse_played_games(document: &JsonApiDoc) -> Vec<PlayedGame> {
 /// decision, and its absence is exactly the definition of a game that did not
 /// count: unranked lobbies, desyncs and games abandoned before scoring all
 /// arrive here without one.
+/// What one game did to the win/loss record.
+///
+/// `(rated, decided, won)`: whether FAF scored the game at all, whether it
+/// produced a winner, and whether that winner was this player.
+///
+/// The server's own `result` leads. It is what FAF wrote down, it is what every
+/// other client shows, and it is right for the overwhelming majority of games.
+/// An earlier version of this read the rating movement first and treated "no
+/// movement" as "not scored", which put a great many ordinary games into
+/// neither column: the journal is absent on older games and on whole
+/// leaderboards a player has since stopped playing, and absence is not a draw.
+///
+/// The rating is the fallback, for the two answers that are not answers.
+/// `UNKNOWN` is a game the server never resolved, and `CONFLICTING` is one
+/// where the players disagreed; in both cases a rating that moved says what the
+/// server acted on even though it never wrote a verdict. `faftracker` resolves
+/// the same two cases the same way, from score first and then rating; the score
+/// is not in this query, so only the rating is consulted here.
+fn classify(result: &str, delta: impl Fn() -> Option<f64>) -> (bool, bool, bool) {
+    match result {
+        "VICTORY" => (true, true, true),
+        "DEFEAT" => (true, true, false),
+        // Played and scored, with nobody ahead at the end. Counted, and counted
+        // as neither a win nor a loss.
+        "DRAW" => (true, false, false),
+        // No verdict on the wire. Ask the rating, and if that is silent too
+        // then nothing about this game belongs in a record.
+        "UNKNOWN" | "CONFLICTING" | "" => match delta() {
+            Some(moved) if moved != 0.0 => (true, true, moved > 0.0),
+            Some(_) => (true, false, false),
+            None => (false, false, false),
+        },
+        // Something the API grew since this was written. Better counted as
+        // played but undecided than silently dropped or guessed at.
+        _ => (true, false, false),
+    }
+}
+
 fn mean_delta(row: &Resource, included: &Index<'_>) -> Option<f64> {
     let mut total = 0.0;
     let mut seen = false;
@@ -1696,5 +1724,43 @@ mod map_stats_tests {
         assert_eq!(stats.total_games, 1);
         assert_eq!((stats.wins, stats.losses), (0, 0));
         assert_eq!(stats.unranked, 1);
+    }
+}
+
+#[cfg(test)]
+mod classify_tests {
+    use super::classify;
+
+    /// The regression this was written for: a decided game with no rating
+    /// journal used to land in neither column, which showed as 0/0 on maps the
+    /// player had plainly won and lost on.
+    #[test]
+    fn the_servers_verdict_counts_even_without_a_rating_journal() {
+        assert_eq!(classify("VICTORY", || None), (true, true, true));
+        assert_eq!(classify("DEFEAT", || None), (true, true, false));
+    }
+
+    #[test]
+    fn a_draw_is_played_and_scored_but_won_by_nobody() {
+        assert_eq!(classify("DRAW", || Some(12.0)), (true, false, false));
+    }
+
+    /// The two answers that are not answers. The rating is asked only here.
+    #[test]
+    fn an_unresolved_game_falls_back_to_what_the_rating_did() {
+        assert_eq!(classify("UNKNOWN", || Some(8.5)), (true, true, true));
+        assert_eq!(classify("CONFLICTING", || Some(-8.5)), (true, true, false));
+        assert_eq!(classify("UNKNOWN", || Some(0.0)), (true, false, false));
+        // Nothing said it, nothing scored it: it is not part of a record.
+        assert_eq!(classify("UNKNOWN", || None), (false, false, false));
+        assert_eq!(classify("", || None), (false, false, false));
+    }
+
+    #[test]
+    fn a_result_this_client_does_not_know_is_played_but_undecided() {
+        assert_eq!(
+            classify("SOMETHING_NEW", || Some(5.0)),
+            (true, false, false)
+        );
     }
 }

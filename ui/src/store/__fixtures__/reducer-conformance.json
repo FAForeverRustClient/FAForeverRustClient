@@ -622,7 +622,8 @@
       "request": null,
       "status": {
         "type": "idle"
-      }
+      },
+      "preview": ""
     },
     "galacticWar": {
       "status": {
@@ -844,6 +845,7 @@
         "mapVaultSort": "",
         "modVaultSort": "",
         "vaultPageSize": 0,
+        "replayListColumns": [],
         "modPresets": [],
         "leaderboardRatingColumns": [
           "rating",
@@ -2054,7 +2056,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -29059,7 +29062,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -29307,7 +29311,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -29564,7 +29569,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -29816,7 +29822,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30068,7 +30075,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30330,7 +30338,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30598,7 +30607,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -30878,7 +30888,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -31149,7 +31160,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -31422,7 +31434,8 @@
               "modVaultSort": "",
               "replayVaultPlayer": "",
               "replaysView": "tiles",
-              "vaultPageSize": 0
+              "vaultPageSize": 0,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,
@@ -31691,6 +31704,7 @@
                   "mapVaultSort": "newest",
                   "modVaultSort": "rating",
                   "vaultPageSize": 48,
+                  "replayListColumns": [],
                   "modPresets": [],
                   "leaderboardRatingColumns": [
                     "rating",
@@ -31796,7 +31810,8 @@
               "modVaultSort": "rating",
               "replayVaultPlayer": "",
               "replaysView": "list",
-              "vaultPageSize": 48
+              "vaultPageSize": 48,
+              "replayListColumns": []
             },
             "cacheInfo": {
               "totalFiles": 0,

@@ -82,6 +82,9 @@ describe("browsing preferences", () => {
       mapVaultSort: "  newest  ",
       modVaultSort: "",
       vaultPageSize: 5000,
+      // Out of bounds, zero and negative: the first is clamped, the other
+      // two are not widths at all and are dropped.
+      replayListColumns: [10, 200, 0, -5, 9999],
       modVaultPreset: "  UI  ",
       modPresets: [
         { name: "  Replay watching  ", uids: ["  a  ", "A", "", "b"] },
@@ -98,6 +101,11 @@ describe("browsing preferences", () => {
 
     expect(normalized.favoriteMods).toEqual(["eco_graph"]);
 
+    expect(normalized.replayListColumns).toEqual([
+      MIN_BROWSER_COLUMN_PX,
+      200,
+      MAX_BROWSER_COLUMN_PX,
+    ]);
     expect(normalized.modPresets).toEqual([
       { name: "Replay watching", uids: ["a", "b"] },
       { name: "Vanilla", uids: [] },

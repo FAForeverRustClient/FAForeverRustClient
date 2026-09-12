@@ -244,7 +244,14 @@ export function ReplayDetailRoster({
         return (
           <Fragment key={team.team}>
             {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
-            <section className="replay-detail-team surface-panel">
+            {/* Green and red say who won, so they may only appear once the
+                result is on screen. Before that the panels are neutral: a
+                colour keyed to which team happens to be listed first told the
+                reader something the game never said. */}
+            <section
+              className="replay-detail-team surface-panel"
+              data-outcome={showResults && outcomeKind ? outcomeKind : undefined}
+            >
               {showHeader && (
                 <header className="replay-detail-team-title">
                   <span>{!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}</span>

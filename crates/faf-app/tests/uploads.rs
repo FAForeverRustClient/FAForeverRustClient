@@ -23,6 +23,12 @@ struct StubUploads {
 
 #[async_trait]
 impl UploadsPort for StubUploads {
+    // No picture in these tests: they are about what gets published, and a
+    // preview is only what the dialog draws while deciding.
+    async fn map_preview(&self, _request: UploadRequest) -> String {
+        String::new()
+    }
+
     async fn publish(&self, request: UploadRequest) -> mpsc::Receiver<UploadStatus> {
         self.seen.lock().unwrap().push(request);
         let (tx, rx) = mpsc::channel(8);
@@ -49,6 +55,12 @@ struct ForbiddenUploads;
 
 #[async_trait]
 impl UploadsPort for ForbiddenUploads {
+    // No picture in these tests: they are about what gets published, and a
+    // preview is only what the dialog draws while deciding.
+    async fn map_preview(&self, _request: UploadRequest) -> String {
+        String::new()
+    }
+
     async fn publish(&self, request: UploadRequest) -> mpsc::Receiver<UploadStatus> {
         panic!("the port must not be reached for {request:?}");
     }

@@ -342,7 +342,7 @@ const INITIAL: AppState = {
     selectedId: null,
     launch: { type: "idle" },
   },
-  uploads: { request: null, status: { type: "idle" } },
+  uploads: { request: null, status: { type: "idle" }, preview: "" },
   galacticWar: {
     status: { type: "idle" },
     installedVersion: null,
@@ -569,6 +569,7 @@ const INITIAL: AppState = {
       mapVaultSort: "",
       modVaultSort: "",
       vaultPageSize: 0,
+      replayListColumns: [],
       modPresets: [],
       leaderboardRatingColumns: ["rating", "games", "wins", "winRate", "updated"],
       replayVaultPlayer: "",

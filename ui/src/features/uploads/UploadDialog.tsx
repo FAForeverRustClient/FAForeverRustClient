@@ -154,7 +154,7 @@ function percentOf(status: UploadsState["status"]): number | null {
 
 export function UploadDialog() {
   useLocale();
-  const { request, status } = useAppStore((store) => store.state.uploads);
+  const { request, status, preview } = useAppStore((store) => store.state.uploads);
   const mods = useAppStore((store) => store.state.mods);
   const maps = useAppStore((store) => store.state.maps);
   const [accepted, setAccepted] = useState(false);
@@ -239,7 +239,15 @@ export function UploadDialog() {
       </p>
 
       <div className="upload-subject">
-        {isMap && (
+        {/* The map's own picture, read out of its `.scmap`, and only then the
+            vault's. A map being published for the first time has no vault
+            entry, so `MapThumbnail` has nothing to find and drew a placeholder
+            for the one case this dialog exists to serve. The file on disk is
+            the only likeness of it that exists yet. */}
+        {isMap && preview !== "" && (
+          <img className="upload-preview" src={preview} alt={request.displayName} />
+        )}
+        {isMap && preview === "" && (
           <MapThumbnail
             mapName={request.folderName}
             vault={maps.vault}
@@ -270,25 +278,29 @@ export function UploadDialog() {
         </p>
       )}
 
-      {/* Maps only: the ranked flag decides whether games on it affect
-          ratings. Neither reference client offers an equivalent for mods. */}
-      {isMap && (
-        <label className="check-field">
-          <input
-            type="checkbox"
-            checked={request.ranked}
-            disabled={busy || done}
-            onChange={(event) => setRanked(event.target.checked)}
-          />
-          {t("uploads.allowRanked")}
-        </label>
-      )}
-
       {/* The rules belong to what is being published, and until this screen
           nothing had been chosen yet. Accepting them at the file picker was
           agreeing to terms about a folder nobody had picked. */}
       {!done && (
         <div className="upload-rules">
+          {/* Maps only: the ranked flag decides whether games on it affect
+              ratings. Neither reference client offers an equivalent for mods.
+
+              Here rather than above the divider, because it belongs with the
+              rules: both are decisions about how this upload will behave once
+              it is public, and both are the last things settled before the
+              button. */}
+          {isMap && (
+            <label className="check-field">
+              <input
+                type="checkbox"
+                checked={request.ranked}
+                disabled={busy || done}
+                onChange={(event) => setRanked(event.target.checked)}
+              />
+              {t("uploads.allowRanked")}
+            </label>
+          )}
           <button
             type="button"
             className="upload-rules-link"
