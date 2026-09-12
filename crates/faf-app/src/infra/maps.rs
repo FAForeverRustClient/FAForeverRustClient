@@ -42,7 +42,7 @@ use crate::infra::jsonapi::{
     JsonApiDoc, JsonApiResource,
 };
 use crate::infra::vault_install::{
-    bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
+    bounded_body_to_file, install_archive_from_file, validate_url, MAX_DOWNLOAD_BYTES,
 };
 use crate::infra::{env_or, GENERATED_MAP_PLACEHOLDER_URL};
 use crate::ports::{MapSearchPage, MapsPort};
@@ -240,7 +240,16 @@ impl MapsPort for MapsClient {
         if !status.is_success() {
             return Err(format!("could not download map {folder_name}: {status}"));
         }
-        let bytes = bounded_body(resp, &format!("map {folder_name}"), MAX_DOWNLOAD_BYTES).await?;
+        // To a file, not to a `Vec`: a map is allowed to be half a gigabyte,
+        // and the zip reader only ever seeks around the archive. The handle
+        // deletes the file when it drops, including on the error paths below.
+        let archive = bounded_body_to_file(
+            resp,
+            &format!("map {folder_name}"),
+            MAX_DOWNLOAD_BYTES,
+            &|_, _| {},
+        )
+        .await?;
 
         let dest = maps_dir();
         tokio::fs::create_dir_all(&dest)
@@ -249,11 +258,15 @@ impl MapsPort for MapsClient {
 
         let dest_clone = dest.clone();
         let expected_folder = folder_name.clone();
+        let archive_path = archive.path().to_path_buf();
         tokio::task::spawn_blocking(move || {
-            install_archive(&bytes, &dest_clone, Some(&expected_folder), |_| Ok(()))
+            install_archive_from_file(&archive_path, &dest_clone, Some(&expected_folder), |_| {
+                Ok(())
+            })
         })
         .await
         .map_err(|e| format!("extraction task panicked: {e}"))??;
+        drop(archive);
 
         list_installed_dir(&dest).await
     }
