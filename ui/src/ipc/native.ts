@@ -51,6 +51,17 @@ export const native = {
     return invoke("open_client_folder", { kind });
   },
 
+  /**
+   * Where a client folder is, for a file dialog to start in.
+   *
+   * Resolves the same way `openClientFolder` does. Rejects when the folder
+   * cannot be created, which callers treat as "no preference" rather than an
+   * error worth showing: a picker in the wrong place still works.
+   */
+  clientFolderPath(kind: ClientFolder): Promise<string> {
+    return invoke<string>("client_folder_path", { kind });
+  },
+
   /** Reveal a specific cached game version folder. */
   openVersionFolder(name: string): Promise<void> {
     return invoke("open_version_folder", { name });

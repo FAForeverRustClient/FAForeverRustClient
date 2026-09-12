@@ -26,6 +26,21 @@ export const openUpload = (kind: UploadKind, folderName: string, displayName: st
     },
   });
 
+/**
+ * Where the picker should open for this kind of upload.
+ *
+ * `undefined` when the backend cannot resolve or create the folder, which is
+ * the same as not asking: the dialog opens at its own default and the upload
+ * still works. A misconfigured path is not a reason to refuse to publish.
+ */
+async function defaultUploadDir(kind: UploadKind): Promise<string | undefined> {
+  try {
+    return await native.clientFolderPath(kind === "map" ? "maps" : "mods");
+  } catch {
+    return undefined;
+  }
+}
+
 /** The last path segment, for either separator: Windows gives back backslashes. */
 const folderNameOf = (path: string): string =>
   path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
@@ -43,6 +58,12 @@ export async function openUploadFromDisk(kind: UploadKind): Promise<void> {
   const path = await native.selectFile({
     directory: true,
     title: t(kind === "map" ? "uploads.pick.map" : "uploads.pick.mod"),
+    // Start in the folder the thing being published actually lives in.
+    //
+    // Without this the dialog opens wherever the OS last left it, which on
+    // Windows is Documents: two levels above the maps and mods directories,
+    // and with no hint that the client already knows where they are.
+    defaultPath: await defaultUploadDir(kind),
   });
   if (path === null) return;
   const folderName = folderNameOf(path);

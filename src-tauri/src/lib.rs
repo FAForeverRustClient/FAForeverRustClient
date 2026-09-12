@@ -105,6 +105,21 @@ fn open_client_folder(kind: String, app: tauri::AppHandle) -> Result<(), String>
         .map_err(|error| format!("could not open {}: {error}", path.display()))
 }
 
+/// Where one of the client's own folders is, as a path a file dialog can open.
+///
+/// The same resolution as [`open_client_folder`], returned rather than
+/// revealed, so a picker can start somewhere useful instead of wherever the
+/// operating system last left it. Created on demand for the same reason: a
+/// dialog pointed at a directory that does not exist yet falls back to the
+/// default, which is the behaviour this exists to avoid.
+#[tauri::command]
+fn client_folder_path(kind: String) -> Result<String, String> {
+    let path = faf_app::infra::client_folder(&kind)?;
+    std::fs::create_dir_all(&path)
+        .map_err(|error| format!("could not create {}: {error}", path.display()))?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn open_version_folder(name: String, app: tauri::AppHandle) -> Result<(), String> {
     let cache_root = faf_app::infra::cache_dir()?;
@@ -681,6 +696,7 @@ pub fn run() {
             snapshot,
             open_log_folder,
             open_client_folder,
+            client_folder_path,
             open_version_folder,
             reveal_replay,
             read_latest_log,
