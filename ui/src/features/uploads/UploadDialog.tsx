@@ -154,7 +154,7 @@ function percentOf(status: UploadsState["status"]): number | null {
 
 export function UploadDialog() {
   useLocale();
-  const { request, status } = useAppStore((store) => store.state.uploads);
+  const { request, status, preview } = useAppStore((store) => store.state.uploads);
   const mods = useAppStore((store) => store.state.mods);
   const maps = useAppStore((store) => store.state.maps);
   const [accepted, setAccepted] = useState(false);
@@ -239,7 +239,15 @@ export function UploadDialog() {
       </p>
 
       <div className="upload-subject">
-        {isMap && (
+        {/* The map's own picture, read out of its `.scmap`, and only then the
+            vault's. A map being published for the first time has no vault
+            entry, so `MapThumbnail` has nothing to find and drew a placeholder
+            for the one case this dialog exists to serve. The file on disk is
+            the only likeness of it that exists yet. */}
+        {isMap && preview !== "" && (
+          <img className="upload-preview" src={preview} alt={request.displayName} />
+        )}
+        {isMap && preview === "" && (
           <MapThumbnail
             mapName={request.folderName}
             vault={maps.vault}

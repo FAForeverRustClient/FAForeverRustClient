@@ -81,6 +81,17 @@ impl UploadsClient {
 
 #[async_trait]
 impl UploadsPort for UploadsClient {
+    async fn map_preview(&self, request: UploadRequest) -> String {
+        if request.kind != UploadKind::Map {
+            return String::new();
+        }
+        // Off the runtime: opening a file, reading a quarter of a megabyte and
+        // building a PNG out of it is not work for an async worker.
+        tokio::task::spawn_blocking(move || read_map_preview(&request).unwrap_or_default())
+            .await
+            .unwrap_or_default()
+    }
+
     async fn publish(&self, request: UploadRequest) -> mpsc::Receiver<UploadStatus> {
         let (tx, rx) = mpsc::channel(16);
         let config = self.config.clone();
@@ -118,6 +129,36 @@ async fn run(
     let result = send(config, http, &token, request, &archive, tx).await;
     let _ = tokio::fs::remove_file(&archive).await;
     result
+}
+
+/// The `.scmap` inside the folder being published, read into a data URL.
+///
+/// The folder goes through the same `source_folder` the publish does, so a name
+/// that could not be published cannot be read from either. Exactly one `.scmap`
+/// is expected at the top level, which is what a map folder is; anything else
+/// yields no picture rather than a guess at which file was meant.
+fn read_map_preview(request: &UploadRequest) -> Result<String, String> {
+    let folder = source_folder(request)?;
+    let mut found: Option<PathBuf> = None;
+    for entry in std::fs::read_dir(&folder)
+        .map_err(|error| format!("could not read the map folder: {error}"))?
+        .flatten()
+    {
+        let path = entry.path();
+        let is_scmap = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("scmap"));
+        if !is_scmap {
+            continue;
+        }
+        if found.is_some() {
+            return Err("the folder holds more than one map file".to_string());
+        }
+        found = Some(path);
+    }
+    let scmap = found.ok_or_else(|| "the folder holds no map file".to_string())?;
+    crate::infra::scmap::preview_data_url(&scmap)
 }
 
 /// Resolve, and validate, the folder being published.
@@ -771,6 +812,10 @@ pub struct FakeUploads;
 
 #[async_trait]
 impl UploadsPort for FakeUploads {
+    async fn map_preview(&self, _request: UploadRequest) -> String {
+        String::new()
+    }
+
     async fn publish(&self, request: UploadRequest) -> mpsc::Receiver<UploadStatus> {
         let (tx, rx) = mpsc::channel(8);
         tokio::spawn(async move {
