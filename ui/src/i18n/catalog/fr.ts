@@ -1527,6 +1527,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.how.client.title": "L'application séparée",
   "lobby.galacticWar.how.client.body": "Galactic War tourne comme sa propre application, avec sa propre connexion. Ce client l'installe, la tient à jour et la lance ; tout le reste se passe dans la fenêtre de Galactic War.",
   "lobby.matchmaker.inRange": "{count} dans votre plage",
+  "lobby.matchmaker.queueByRating": "Joueurs en file d’attente par classement",
   "lobby.matchmaker.inRangeHint": "Joueurs en attente dans cette file dont la plage de classement recoupe la vôtre, votre propre recherche exclue. Hors 1v1, le serveur la déduit du premier joueur de chaque groupe.",
   "lobby.matchmaker.mapPool": "Pool de cartes",
   "lobby.matchmaker.state.searching": "Recherche",

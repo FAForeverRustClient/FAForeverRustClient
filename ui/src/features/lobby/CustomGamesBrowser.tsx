@@ -693,11 +693,14 @@ function friendsHere(game: Game, wanted: ReadonlySet<string>): { friends: string
   // an interpolation for every row of a hundred-game list, several times a
   // second, to produce a string nothing displayed.
   if (friends.length === 0) return NOBODY;
+  // The count, never the name. A single friend used to be named here, and the
+  // name was already on the tile in the lineup underneath: the same person
+  // twice, once as a tag among "unranked" and "3 SIM" where a name does not
+  // belong. Who they are is in the title attribute, and in the lineup the
+  // tile shows on hover.
   return {
     friends,
-    label: friends.length === 1
-      ? friends[0]
-      : t("lobby.browser.friendCount", { count: friends.length }),
+    label: t("lobby.browser.friendCount", { count: friends.length }),
   };
 }
 
@@ -801,16 +804,26 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
-          {friends.length > 0 && (
-            <i className="friend" title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}>
-              {friendLabel}
-            </i>
-          )}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
             <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
           )}
         </span>
-        <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
+        {/* The friend count goes in the empty half of the host line rather
+            than among the tags. It is not a property of the lobby the way
+            "unranked" and "3 SIM" are -- it is a nice thing to notice -- so it
+            reads as a note, not as a badge. */}
+        <span className="game-tile-host">
+          <small>{t("lobby.browser.host")}</small>
+          <b><PlayerName name={game.host} /></b>
+          {friends.length > 0 && (
+            <span
+              className="game-tile-friends"
+              title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}
+            >
+              {friendLabel}
+            </span>
+          )}
+        </span>
       </button>
       {tooltipPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,

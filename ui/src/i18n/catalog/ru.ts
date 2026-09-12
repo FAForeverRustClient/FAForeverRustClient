@@ -1579,6 +1579,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.how.client.title": "Отдельный клиент",
   "lobby.galacticWar.how.client.body": "Galactic War работает как отдельное приложение со своим входом. Этот клиент устанавливает его, поддерживает в актуальном состоянии и запускает; всё остальное происходит в окне Galactic War.",
   "lobby.matchmaker.inRange": "{count} в вашем диапазоне",
+  "lobby.matchmaker.queueByRating": "Игроки в очереди по рейтингу",
   "lobby.matchmaker.inRangeHint": "Игроки в этой очереди, чей диапазон рейтинга пересекается с вашим, без учёта вашего собственного поиска. Вне 1v1 сервер выводит это из первого игрока каждой группы.",
   "lobby.matchmaker.mapPool": "Пул карт",
   "lobby.matchmaker.state.searching": "Поиск",

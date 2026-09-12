@@ -1430,20 +1430,35 @@
    Mixed into the surface rather than laid over it, so the tint follows every
    theme's own background and the text on top keeps its contrast. The hover and
    selected states are restated, otherwise this would swallow them. */
+/* A wash, not a coat of paint. At 14% the tile stopped reading as one of the
+   grey tiles and started competing with the amber and red tags inside it,
+   which is worse the more friends somebody has. Half that leaves the tile
+   plainly tinted and plainly still a tile; the border carries the rest. */
 .game-tile.has-friend {
-  background: color-mix(in srgb, var(--color-friend) 14%, var(--color-surface));
-  border-color: var(--color-friend);
+  background: color-mix(in srgb, var(--color-friend) 7%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-friend) 70%, transparent);
 }
 
 .game-tile.has-friend:hover,
 .game-tile.has-friend:focus-within {
-  background: color-mix(in srgb, var(--color-friend) 20%, var(--color-surface-hover));
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-hover));
   border-color: var(--color-friend);
 }
 
+/* Selected has to win over friendly, not blend with it: a selected tile that
+   looked the same as an unselected one was the complaint. */
 .game-tile.has-friend.active {
-  background: color-mix(in srgb, var(--color-friend) 22%, var(--color-surface-raised));
-  border-color: color-mix(in srgb, var(--color-friend) 60%, var(--color-text));
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-raised));
+  border-color: var(--color-accent);
+}
+
+.game-tile-friends {
+  margin-left: auto;
+  padding-left: var(--space-2);
+  color: var(--color-friend);
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
 }
 
 .game-browser-tags i.friend,
