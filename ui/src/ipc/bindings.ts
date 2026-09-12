@@ -3142,6 +3142,30 @@ export type LobbyEvent = { type: "connecting" } | { type: "connected" } |
 	games: Game[],
 } } | { type: "liveGamesUpdated"; payload: {
 	games: Game[],
+} } |
+/**
+ *  The open-games list changed, said as a change rather than as a list.
+ *
+ *  The server pushes one `game_info` per lobby that opens, fills, empties
+ *  or starts, and answering each with the whole list meant a clone of every
+ *  game four times over before the frontend replaced its array and React
+ *  re-rendered every card. A busy evening is hundreds of lobbies and a
+ *  frame a second.
+ *
+ *  [`Self::GamesUpdated`] is still how the list is *replaced*: the server's
+ *  opening dump arrives as one array, and a reconnect has to start from
+ *  what the new socket says rather than from what the old one left behind.
+ */
+{ type: "gamesChanged"; payload: {
+	/**  Games that are new to the list, or whose contents changed. */
+	upserted: Game[],
+	/**  Games that left the open list, by id. They either started or died. */
+	removed: number[],
+} } |
+/**  The same, for the in-progress list. */
+{ type: "liveGamesChanged"; payload: {
+	upserted: Game[],
+	removed: number[],
 } } | { type: "matchmakerQueuesUpdated"; payload: {
 	queues: MatchmakerQueue[],
 } } | { type: "matchmakingUpdated"; payload: {

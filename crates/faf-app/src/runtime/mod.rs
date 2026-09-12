@@ -8,7 +8,7 @@
 //! keeps the runtime free of any hard dependency on a particular executor.
 
 use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use faf_domain::{AppCommand, AppEvent, AppState};
 use serde::Serialize;
@@ -139,6 +139,10 @@ pub struct EventSink {
     tx: broadcast::Sender<AppEvent>,
     versioned_tx: broadcast::Sender<VersionedEvent>,
     revision: Arc<AtomicU64>,
+    /// Serialises delivery, so that revision N is on both channels before
+    /// N+1 is handed out. Held by [`EventSink::emit`] across the whole
+    /// operation; never taken by a reader. See the note on `emit`.
+    send_order: Arc<Mutex<()>>,
 }
 
 /// One state delta with the exact authoritative-state revision it produced.
@@ -165,25 +169,38 @@ pub struct VersionedSnapshot {
 impl EventSink {
     /// Reduce an event into the authoritative state and broadcast it.
     ///
-    /// **The write guard is deliberately held across both sends.** It looks
-    /// like an easy win to drop it right after `reduce` so readers are not
-    /// blocked by broadcast work, and that is wrong: revisions are handed out
-    /// under this lock, so releasing it early lets two concurrent emitters
-    /// interleave and deliver revision N+1 before N. The frontend mirror
-    /// (`ui/src/ipc/revisionedMirror.ts`) treats any revision gap as
-    /// corruption and requests a fresh snapshot, and a snapshot is a few
-    /// megabytes: the map vault alone measures ~3.6 MiB of JSON at a
-    /// realistic 5000-entry catalogue. Trading a microsecond of lock hold for
-    /// intermittent multi-megabyte refetches is a bad deal. `broadcast::send`
-    /// does not block on slow receivers, so the hold is bounded anyway.
+    /// Two locks, each held for exactly what it protects.
+    ///
+    /// `send_order` is taken first and held across the whole operation. It is
+    /// what keeps revisions in order: without it two concurrent emitters can
+    /// interleave and deliver N+1 before N, and the frontend mirror
+    /// (`ui/src/ipc/revisionedMirror.ts`) reads any revision gap as corruption
+    /// and asks for a fresh snapshot. A snapshot is a few megabytes: the map
+    /// vault alone measures ~3.6 MiB of JSON at a realistic 5000-entry
+    /// catalogue. No reader ever takes this lock, so holding it costs them
+    /// nothing.
+    ///
+    /// The state write guard is held only across `reduce` and the revision
+    /// bump, which is the shortest window that still leaves the two consistent
+    /// for [`Self::versioned_snapshot`]: a reader must never see state that has
+    /// already absorbed event N while being told the newest revision is N-1,
+    /// or it would apply N a second time. Broadcasting happens after that guard
+    /// is dropped, so a `with_state` reader is no longer blocked behind two
+    /// channel sends. That was the review's point, and this is the version of
+    /// it that does not reorder revisions.
     pub fn emit(&self, event: impl Into<AppEvent>) {
         let event = event.into();
-        let mut guard = self.state.write().expect("app state lock poisoned");
-        faf_domain::reduce(&mut guard, &event);
-        let revision = self
-            .revision
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-            .wrapping_add(1);
+        let _delivery = self
+            .send_order
+            .lock()
+            .expect("event delivery lock poisoned");
+        let revision = {
+            let mut guard = self.state.write().expect("app state lock poisoned");
+            faf_domain::reduce(&mut guard, &event);
+            self.revision
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                .wrapping_add(1)
+        };
         // Err only means "no subscribers yet": fine to ignore. The clone is
         // skipped when nobody is listening on the plain stream, because some
         // events carry the whole player directory and this would otherwise
@@ -265,12 +282,14 @@ impl App {
         let (versioned_event_tx, _) = broadcast::channel::<VersionedEvent>(1024);
         let (cmd_tx, cmd_rx) = mpsc::channel::<QueuedCommand>(64);
         let revision = Arc::new(AtomicU64::new(0));
+        let send_order = Arc::new(Mutex::new(()));
 
         let sink = EventSink {
             state: state.clone(),
             tx: event_tx.clone(),
             versioned_tx: versioned_event_tx.clone(),
             revision: revision.clone(),
+            send_order: send_order.clone(),
         };
         let ctx = ServiceCtx {
             backend_version: backend_version.into(),

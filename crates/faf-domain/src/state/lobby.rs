@@ -539,6 +539,28 @@ pub enum LobbyEvent {
     LiveGamesUpdated {
         games: Vec<Game>,
     },
+    /// The open-games list changed, said as a change rather than as a list.
+    ///
+    /// The server pushes one `game_info` per lobby that opens, fills, empties
+    /// or starts, and answering each with the whole list meant a clone of every
+    /// game four times over before the frontend replaced its array and React
+    /// re-rendered every card. A busy evening is hundreds of lobbies and a
+    /// frame a second.
+    ///
+    /// [`Self::GamesUpdated`] is still how the list is *replaced*: the server's
+    /// opening dump arrives as one array, and a reconnect has to start from
+    /// what the new socket says rather than from what the old one left behind.
+    GamesChanged {
+        /// Games that are new to the list, or whose contents changed.
+        upserted: Vec<Game>,
+        /// Games that left the open list, by id. They either started or died.
+        removed: Vec<i32>,
+    },
+    /// The same, for the in-progress list.
+    LiveGamesChanged {
+        upserted: Vec<Game>,
+        removed: Vec<i32>,
+    },
     MatchmakerQueuesUpdated {
         queues: Vec<MatchmakerQueue>,
     },
@@ -691,6 +713,29 @@ pub enum LobbyCommand {
     Disconnect,
 }
 
+/// Fold a set of changes into a games list, in place.
+///
+/// The list stays sorted by id, which is the order the server's own map hands
+/// it out in and the order the list had when it was replaced wholesale. Sorting
+/// here rather than at the edge keeps the two twins honest: the TypeScript
+/// reducer does the same, and the conformance fixture compares the results.
+///
+/// A removal that names an id the list never had is not an error. The server
+/// announces a lobby closing whether or not this client ever saw it open, and
+/// the alternative is a client that has to remember what it has been told in
+/// order to be told something new.
+fn apply_game_changes(list: &mut Vec<Game>, upserted: &[Game], removed: &[i32]) {
+    if !removed.is_empty() {
+        list.retain(|game| !removed.contains(&game.id));
+    }
+    for game in upserted {
+        match list.binary_search_by_key(&game.id, |existing| existing.id) {
+            Ok(at) => list[at] = game.clone(),
+            Err(at) => list.insert(at, game.clone()),
+        }
+    }
+}
+
 pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
     match event {
         LobbyEvent::Connecting => {
@@ -709,6 +754,12 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
         LobbyEvent::HostPrefillCleared => state.host_prefill = None,
         LobbyEvent::GamesUpdated { games } => state.games = games.clone(),
         LobbyEvent::LiveGamesUpdated { games } => state.live_games = games.clone(),
+        LobbyEvent::GamesChanged { upserted, removed } => {
+            apply_game_changes(&mut state.games, upserted, removed)
+        }
+        LobbyEvent::LiveGamesChanged { upserted, removed } => {
+            apply_game_changes(&mut state.live_games, upserted, removed)
+        }
         LobbyEvent::MatchmakerQueuesUpdated { queues } => {
             merge_matchmaker_queues(&mut state.matchmaker_queues, queues)
         }
@@ -860,6 +911,76 @@ mod tests {
             teams: BTreeMap::new(),
             sim_mods: BTreeMap::new(),
         }
+    }
+
+    #[test]
+    fn a_change_inserts_updates_and_removes_without_touching_the_rest() {
+        let mut s = LobbyState::default();
+        reduce(
+            &mut s,
+            &LobbyEvent::GamesUpdated {
+                games: vec![game(1), game(3)],
+            },
+        );
+
+        let mut renamed = game(3);
+        renamed.title = "renamed".into();
+        reduce(
+            &mut s,
+            &LobbyEvent::GamesChanged {
+                upserted: vec![game(2), renamed],
+                removed: vec![1],
+            },
+        );
+
+        // Sorted by id, whatever order the changes arrived in: the snapshot
+        // path produces the same order, and the two have to agree.
+        let ids: Vec<i32> = s.games.iter().map(|g| g.id).collect();
+        assert_eq!(ids, vec![2, 3]);
+        assert_eq!(s.games[1].title, "renamed");
+    }
+
+    #[test]
+    fn removing_a_game_nobody_announced_is_not_an_error() {
+        let mut s = LobbyState::default();
+        reduce(
+            &mut s,
+            &LobbyEvent::GamesUpdated {
+                games: vec![game(1)],
+            },
+        );
+        // The server says a lobby closed whether or not this client ever saw
+        // it open, and a client that has to remember what it was told in order
+        // to be told something new is a client that desynchronises.
+        reduce(
+            &mut s,
+            &LobbyEvent::GamesChanged {
+                upserted: Vec::new(),
+                removed: vec![99],
+            },
+        );
+        assert_eq!(s.games.len(), 1);
+    }
+
+    #[test]
+    fn the_live_list_changes_on_its_own() {
+        let mut s = LobbyState::default();
+        reduce(
+            &mut s,
+            &LobbyEvent::GamesUpdated {
+                games: vec![game(1)],
+            },
+        );
+        reduce(
+            &mut s,
+            &LobbyEvent::LiveGamesChanged {
+                upserted: vec![game(7)],
+                removed: Vec::new(),
+            },
+        );
+        assert_eq!(s.games.len(), 1, "the open list is untouched");
+        assert_eq!(s.live_games.len(), 1);
+        assert_eq!(s.live_games[0].id, 7);
     }
 
     #[test]
