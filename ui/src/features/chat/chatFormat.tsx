@@ -179,11 +179,17 @@ export function parseChatGameLink(value: string): ChatGameLink | null {
  * what both reference clients do and what `mentions()` already implements
  * here. The gap was on the *sender's* side. Nothing said whether the word
  * typed had resolved to a real player or was a misspelling that reached
- * nobody, so every recognised name in a line is coloured and the answer is on
- * screen as soon as the line is.
+ * nobody, so a recognised name is coloured and the answer is on screen as
+ * soon as the line is.
  *
  * The names are the conversation's own roster rather than the whole player
  * directory: a name is only a ping if its owner is in the room to be pinged.
+ *
+ * Who sees that colour is decided per line by `fromSelf` at the call site,
+ * not here: it is a property of the message rather than of the roster. A ping
+ * is confirmation to whoever sent it and a summons to whoever was named, and
+ * to everybody else it is somebody else's business. Colouring a third party's
+ * name on a stranger's line said "this concerns you" to a reader it did not.
  */
 export interface PingIndex {
   /** Lowercased nicknames currently in the conversation. */
@@ -205,6 +211,7 @@ export function renderBody(
   search = "",
   onGameLink?: (link: ChatGameLink) => void,
   pings?: PingIndex,
+  fromSelf = false,
 ): ReactNode[] {
   return content.split(URL_PATTERN).map((part, i) => {
     if (i % 2 === 1) {
@@ -244,7 +251,7 @@ export function renderBody(
         </a>
       );
     }
-    return <span key={i}>{highlightPlainText(part, self, search, i, pings)}</span>;
+    return <span key={i}>{highlightPlainText(part, self, search, i, pings, fromSelf)}</span>;
   });
 }
 
@@ -254,14 +261,15 @@ function highlightPlainText(
   search: string,
   keyBase: number,
   pings: PingIndex | undefined,
+  fromSelf: boolean,
 ): ReactNode[] {
   const query = search.trim();
-  if (!query) return highlightNames(text, self, keyBase, pings);
+  if (!query) return highlightNames(text, self, keyBase, pings, fromSelf);
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return text.split(new RegExp(`(${escaped})`, "gi")).flatMap((part, index) => (
     index % 2 === 1
       ? <mark key={`${keyBase}-search-${index}`} className="chat-search-hit">{part}</mark>
-      : highlightNames(part, self, keyBase * 1_000 + index, pings)
+      : highlightNames(part, self, keyBase * 1_000 + index, pings, fromSelf)
   ));
 }
 
@@ -283,6 +291,7 @@ function highlightNames(
   self: string,
   keyBase: number,
   pings: PingIndex | undefined,
+  fromSelf: boolean,
 ): ReactNode[] {
   const selfKey = self.toLowerCase();
   if (!selfKey && !pings) return [text];
@@ -296,13 +305,24 @@ function highlightNames(
     if (!name) continue;
     const key = name.toLowerCase();
     const isSelf = !!selfKey && key === selfKey;
-    const isPing = !isSelf && !!pings && pings.names.has(key);
+    // Somebody else's name is coloured only on our own lines. On anybody
+    // else's it is a ping between two other people, which the reader is not
+    // part of and which used to be painted as though they were.
+    const isPing = !isSelf && fromSelf && !!pings && pings.names.has(key);
     if (!isSelf && !isPing) continue;
 
     if (match.index > consumed) nodes.push(text.slice(consumed, match.index));
     nodes.push(
       isSelf ? (
-        <mark key={`${keyBase}-${match.index}`} className="chat-mention">
+        // Our own name, in the same colour as any other ping: being named is
+        // the same event whoever it happens to, and one colour for it is one
+        // thing to learn. The box this used to draw is gone, because a filled
+        // rectangle mid-sentence broke the line it was meant to mark.
+        <mark
+          key={`${keyBase}-${match.index}`}
+          className="chat-mention"
+          style={{ color: pings?.color }}
+        >
           {token}
         </mark>
       ) : (
