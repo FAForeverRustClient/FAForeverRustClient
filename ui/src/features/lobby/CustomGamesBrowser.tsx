@@ -30,7 +30,7 @@ import {
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { friendKeys, friendsInGame } from "./friendPresence";
 import { columnTemplate, columnWidths, withColumnResized } from "./browserLayout";
-import { t } from "../../i18n";
+import { formatNumber, t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../shared/playerRatings";
@@ -623,10 +623,10 @@ function GameLineupTeam({
       <header>
         <b>{displayTeamName(team, soleTeam)}</b>
         {total === null ? (
-          <span>{players.length} player{players.length === 1 ? "" : "s"}</span>
+          <span>{t("lobby.browser.playerCount", { count: players.length })}</span>
         ) : (
           <span title={t("lobby.browser.combinedRating")}>
-            <strong>{total.toLocaleString("en-US")}</strong> rating
+            {t("lobby.browser.teamRating", { rating: formatNumber(total) })}
           </span>
         )}
       </header>
@@ -655,7 +655,7 @@ function GameLineupTeam({
                 type="button"
                 className="game-team-player"
                 onClick={() => openPlayerCard(profile?.id ?? null, login)}
-                title={`Open ${login}'s profile`}
+                title={t("lobby.browser.openProfile", { name: login })}
               >
                 <PlayerName name={login} className="game-lineup-player" />
               </button>
@@ -773,13 +773,16 @@ export const GameTile = memo(function GameTile({
         className="game-tile-body"
         onClick={onSelect}
         onDoubleClick={onJoin}
-        aria-label={`${game.title}, hosted by ${game.host}. Double-click to join.`}
+        aria-label={t("lobby.browser.tileAria", { title: game.title, host: game.host })}
         aria-pressed={selected}
         aria-describedby={tooltipPosition ? tooltipId : undefined}
       >
         <span className="game-tile-title" title={game.title}>{game.title}</span>
         <span className="game-tile-primary-stats">
-          <span><b>{players} / {game.maxPlayers}</b><small>{players === 1 ? "player" : "players"}</small></span>
+          <span>
+            <b>{players} / {game.maxPlayers}</b>
+            <small>{t("lobby.browser.playersWord", { count: players })}</small>
+          </span>
           <span><b>{formatAge(game.hostedAt, now)}</b><small>age</small></span>
           <span><b>{game.averageRating || "N/A"}</b><small>avg. rating</small></span>
         </span>

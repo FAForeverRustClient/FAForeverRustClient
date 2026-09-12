@@ -61,7 +61,9 @@ export function LiveReplayControls(props: Props) {
           onClick={props.onToggleFilters}
         >
           <Icon name="filter" size={15} />
-          Filters{props.activeFilterCount > 0 ? ` (${props.activeFilterCount})` : ""}
+          {props.activeFilterCount > 0
+            ? t("replays.live.filtersCount", { count: props.activeFilterCount })
+            : t("replays.live.filters")}
         </Button>
         {props.activeFilterCount > 0 && <Button onClick={props.onClear}>{t("replays.live.clear")}</Button>}
         <span className="live-replay-stream-status">
@@ -96,7 +98,9 @@ export function LiveReplayControls(props: Props) {
             <span>{t("replays.live.gameSize")}</span>
             <select value={filters.maxPlayers} onChange={(event) => onFilter("maxPlayers", event.target.value)}>
               <option value="">{t("replays.live.anySize")}</option>
-              {props.maxPlayerOptions.map((count) => <option key={count} value={count}>{count} slots</option>)}
+              {props.maxPlayerOptions.map((count) => (
+                <option key={count} value={count}>{t("replays.live.slots", { count })}</option>
+              ))}
             </select>
           </label>
         </div>

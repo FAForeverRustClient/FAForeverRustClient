@@ -275,7 +275,7 @@ function GameDetails({
               className="game-team-player"
               onClick={() => openPlayerCard(hostProfile?.id ?? null, game.host)}
               onContextMenu={(e) => onOpenUserMenu(game.host, e)}
-              title={`Open ${game.host}'s profile`}
+              title={t("lobby.browser.openProfile", { name: game.host })}
             >
               <PlayerName name={game.host} />
             </button>
@@ -384,7 +384,7 @@ function GameDetails({
                           className="game-team-player"
                           onClick={() => openPlayerCard(profile?.id ?? null, p)}
                           onContextMenu={(e) => onOpenUserMenu(p, e)}
-                          title={`Open ${p}'s profile`}
+                          title={t("lobby.browser.openProfile", { name: p })}
                         >
                           <PlayerName name={p} />
                         </button>

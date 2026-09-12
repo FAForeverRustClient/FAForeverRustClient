@@ -61,7 +61,9 @@ export function MatchmakerQueueCard({
         className="matchmaker-queue-select"
         aria-pressed={selected}
         disabled={disabled}
-        title={selected ? `${queueTitle(queue)} is in your search` : `Add ${queueTitle(queue)} to your search`}
+        title={t(selected ? "lobby.matchmaker.queueInSearch" : "lobby.matchmaker.queueAddToSearch", {
+          queue: queueTitle(queue),
+        })}
         onClick={onToggle}
       >
         <span className="matchmaker-queue-head">

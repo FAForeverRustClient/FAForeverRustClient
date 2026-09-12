@@ -90,8 +90,8 @@ function InstalledModCard({
             <strong>{mod.displayName}</strong>
           </span>
           <small>
-            {mod.modType === "ui" ? "UI mod" : "Simulation mod"} · v{mod.version}
-            {mod.author ? ` · ${mod.author}` : ""}
+            {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")} · v{mod.version}
+            {mod.author ? ` \u00b7 ${mod.author}` : ""}
           </small>
           <small title={mod.uid}>{mod.uid}</small>
         </span>

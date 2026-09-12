@@ -783,7 +783,11 @@ function InstalledView({ busy }: { busy: boolean }) {
                 key={key}
                 className={preset === key ? "active" : ""}
                 onClick={() => choosePreset(key)}
-                title={key === "favorites" ? `Show ${favoriteFolders.size} favorited maps` : undefined}
+                title={
+                  key === "favorites"
+                    ? t("maps.view.showFavorites", { count: favoriteFolders.size })
+                    : undefined
+                }
               >
                 {key === "favorites" && <Icon name="star" size={14} fill="currentColor" />} {label}
               </Button>

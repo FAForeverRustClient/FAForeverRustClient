@@ -235,7 +235,9 @@ export function HostModsColumn() {
                         }}
                       >
                         <span className="host-preset-popover-name">{preset.name}</span>
-                        <span className="host-preset-popover-count">{preset.uids.length} mods</span>
+                        <span className="host-preset-popover-count">
+                          {t("lobby.host.presetModCount", { count: preset.uids.length })}
+                        </span>
                       </button>
                       <button
                         type="button"

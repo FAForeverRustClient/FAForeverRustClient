@@ -405,7 +405,7 @@ const Line = memo(function Line({
       type="button"
       className={`${nameStyle ? "chat-nick" : "chat-nick is-monochrome"}${menuOpen ? " is-menu-open" : ""}`}
       style={nameStyle}
-      title={`Message ${message.sender}`}
+      title={t("chat.message.openConversation", { name: message.sender })}
       onClick={() => onNickClick(message.sender)}
       onContextMenu={(e) => {
         // The player menu wins over the row's reply gesture: this is the one
