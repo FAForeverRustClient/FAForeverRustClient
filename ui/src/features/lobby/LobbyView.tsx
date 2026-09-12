@@ -45,6 +45,7 @@ import { findPlayer } from "../../store/reducer";
 import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
 import { noteForPlayer } from "../../shared/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
+import { requestReplaySearch } from "../replays/replaySearchIntent";
 import "./custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
@@ -509,6 +510,14 @@ export function LobbyView() {
     if (useAppStore.getState().state.mods.vaultStatus.type === "idle") {
       ipc.send({ kind: "Mods", command: { type: "loadVault" } });
     }
+    // What is on disk, which until now only the Mods tab and the host dialog
+    // ever asked for. Joining is the other thing that needs the answer: a
+    // player who had not opened either since starting the client was told to
+    // download mods they had been playing with minutes earlier, because an
+    // empty list and an unread list look the same from here.
+    if (useAppStore.getState().state.mods.installedStatus.type === "idle") {
+      ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
+    }
   }, []);
 
   const isMatchmakerGame = (game: Game) =>
@@ -858,13 +867,7 @@ export function LobbyView() {
                 command: { type: "watchLive", payload: { uid: game.id, modName: game.modName, map: game.map } },
               }),
             viewReplays: (username) => {
-              ipc.send({
-                kind: "Replays",
-                command: {
-                  type: "searchVault",
-                  payload: { query: { ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true } },
-                },
-              });
+              requestReplaySearch({ ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true });
               ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
             },
             inviteToParty: (id) =>
