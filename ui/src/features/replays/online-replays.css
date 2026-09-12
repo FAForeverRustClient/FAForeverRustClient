@@ -1363,6 +1363,9 @@ button.vault-input {
   z-index: 2;
 }
 
+/* Tokens rather than a translucent black, so the button stays legible in both
+   themes and over a light desert map as well as a dark one. The same shape the
+   map zoom controls use. */
 .replay-card-thumb-btn {
   display: flex;
   align-items: center;
@@ -1370,16 +1373,16 @@ button.vault-input {
   width: 26px;
   height: 26px;
   padding: 0;
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: rgb(0 0 0 / 0.62);
-  color: #fff;
+  background: var(--color-bg);
+  color: var(--color-text);
   cursor: pointer;
   transition: background-color 100ms ease;
 }
 
 .replay-card-thumb-btn:hover:not(:disabled) {
-  background: rgb(0 0 0 / 0.82);
+  background: var(--color-surface-hover);
 }
 
 .replay-card-thumb-btn:disabled {

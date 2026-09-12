@@ -3500,4 +3500,5 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameResult": "Resultado de la partida",
   "replays.detail.noResultYet": "Esta partida no tiene ningún resultado que mostrar.",
   "replays.detail.noRatingYet": "Todavía nadie ha valorado esta repetición",
+  "lobby.host.modVersion": "Versión {version}",
 };

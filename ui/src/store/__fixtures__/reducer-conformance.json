@@ -764,7 +764,8 @@
         "cacheSizeAlertGb": 10,
         "cacheRollingBranches": false,
         "pipeLiveReplay": false,
-        "keepGeneratedMaps": false
+        "keepGeneratedMaps": false,
+        "keepGeneratedMapsLimit": 0
       },
       "discord": {
         "enabled": true,
@@ -2121,6 +2122,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -29117,6 +29119,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -29364,6 +29367,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -29620,6 +29624,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -29871,6 +29876,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -30122,6 +30128,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -30383,6 +30390,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -30650,6 +30658,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -30929,6 +30938,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -31199,6 +31209,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -31471,6 +31482,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },
@@ -31844,6 +31856,7 @@
               "cacheSizeAlertGb": 10,
               "confirmDownloadsBeforeJoining": true,
               "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
               "pipeLiveReplay": false
             },

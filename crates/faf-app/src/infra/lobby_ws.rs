@@ -709,15 +709,13 @@ async fn run_session(
                                     }
                                 }
                             }
-                            games.refresh_ratings(&player_ratings);
-                            if tx.send(LobbyUpdate::Games(games.snapshot())).await.is_err() {
-                                break 'connection;
-                            }
-                            if tx
-                                .send(LobbyUpdate::LiveGames(games.snapshot_live()))
-                                .await
-                                .is_err()
-                            {
+                            // Almost always nothing: the player this frame
+                            // describes is usually not in a lobby at all, and
+                            // this used to answer every one of them with both
+                            // lists in full.
+                            let mut delta = GameDelta::default();
+                            games.refresh_ratings(&player_ratings, &mut delta);
+                            if send_game_delta(&tx, delta).await.is_err() {
                                 break 'connection;
                             }
                         }
@@ -754,17 +752,27 @@ async fn run_session(
                         break 'connection;
                     }
                     "game_info" => {
-                        for raw in extract_raw_games(&value) {
-                            games.apply(raw, &player_ratings);
+                        let raws = extract_raw_games(&value);
+                        // The opening dump arrives as one array and is the list,
+                        // not a change to it. Anything else is an edit to a
+                        // lobby this client already knows about.
+                        let replaces_the_list = raws.len() > 1;
+                        let mut delta = GameDelta::default();
+                        for raw in raws {
+                            games.apply(raw, &player_ratings, &mut delta);
                         }
-                        if tx.send(LobbyUpdate::Games(games.snapshot())).await.is_err() {
-                            break 'connection; // consumer gone
-                        }
-                        if tx
-                            .send(LobbyUpdate::LiveGames(games.snapshot_live()))
-                            .await
-                            .is_err()
-                        {
+                        if replaces_the_list {
+                            if tx.send(LobbyUpdate::Games(games.snapshot())).await.is_err() {
+                                break 'connection; // consumer gone
+                            }
+                            if tx
+                                .send(LobbyUpdate::LiveGames(games.snapshot_live()))
+                                .await
+                                .is_err()
+                            {
+                                break 'connection;
+                            }
+                        } else if send_game_delta(&tx, delta).await.is_err() {
                             break 'connection;
                         }
                     }
@@ -1920,33 +1928,112 @@ struct GameSet {
     live_games: BTreeMap<i32, Game>,
 }
 
+/// Send whichever halves of a delta actually carry something.
+///
+/// Returns `Err` when the consumer is gone, so the caller can break the
+/// connection loop the same way an ordinary `send` lets it.
+async fn send_game_delta(
+    tx: &tokio::sync::mpsc::Sender<LobbyUpdate>,
+    delta: GameDelta,
+) -> Result<(), ()> {
+    let GameDelta {
+        open_upserted,
+        open_removed,
+        live_upserted,
+        live_removed,
+    } = delta;
+    if !open_upserted.is_empty() || !open_removed.is_empty() {
+        tx.send(LobbyUpdate::GamesChanged {
+            upserted: open_upserted,
+            removed: open_removed,
+        })
+        .await
+        .map_err(|_| ())?;
+    }
+    if !live_upserted.is_empty() || !live_removed.is_empty() {
+        tx.send(LobbyUpdate::LiveGamesChanged {
+            upserted: live_upserted,
+            removed: live_removed,
+        })
+        .await
+        .map_err(|_| ())?;
+    }
+    Ok(())
+}
+
+/// What one batch of `game_info` frames did to the two lists.
+///
+/// Accumulated across the frames in a batch and sent once, so a server dump of
+/// fifty lobbies is one event rather than fifty. Empty halves are not sent at
+/// all: the common frame touches the open list and leaves the live list alone,
+/// and re-sending an unchanged live list is most of what this replaces.
+#[derive(Default)]
+struct GameDelta {
+    open_upserted: Vec<Game>,
+    open_removed: Vec<i32>,
+    live_upserted: Vec<Game>,
+    live_removed: Vec<i32>,
+}
+
 impl GameSet {
-    fn apply(&mut self, raw: RawGame, player_ratings: &PlayerRatings) {
+    fn apply(&mut self, raw: RawGame, player_ratings: &PlayerRatings, delta: &mut GameDelta) {
         let Some(uid) = raw.uid else {
             return;
         };
         let (open, playing) = (raw.is_open(), raw.is_playing());
         if open {
             if let Some(game) = raw.into_game(player_ratings) {
-                self.games.insert(uid, game);
+                // An unchanged repeat is not a change. The server re-announces a
+                // lobby on any edit, including ones that leave everything this
+                // client shows identical.
+                if self.games.get(&uid) != Some(&game) {
+                    delta.open_upserted.push(game.clone());
+                    self.games.insert(uid, game);
+                }
             }
-            self.live_games.remove(&uid);
+            if self.live_games.remove(&uid).is_some() {
+                delta.live_removed.push(uid);
+            }
         } else if playing {
             if let Some(game) = raw.into_game(player_ratings) {
-                self.live_games.insert(uid, game);
+                if self.live_games.get(&uid) != Some(&game) {
+                    delta.live_upserted.push(game.clone());
+                    self.live_games.insert(uid, game);
+                }
             }
-            self.games.remove(&uid);
+            if self.games.remove(&uid).is_some() {
+                delta.open_removed.push(uid);
+            }
         } else {
-            self.games.remove(&uid);
-            self.live_games.remove(&uid);
+            if self.games.remove(&uid).is_some() {
+                delta.open_removed.push(uid);
+            }
+            if self.live_games.remove(&uid).is_some() {
+                delta.live_removed.push(uid);
+            }
         }
     }
 
-    fn refresh_ratings(&mut self, player_ratings: &PlayerRatings) {
-        for game in self.games.values_mut().chain(self.live_games.values_mut()) {
+    /// Re-average every game against ratings that just arrived, reporting only
+    /// the games whose number actually moved.
+    ///
+    /// This runs on every `player_info`, which is the most frequent frame the
+    /// lobby sends. It used to be followed by a full resend of both lists;
+    /// almost always nothing had changed, because the player it described was
+    /// not in a lobby at all.
+    fn refresh_ratings(&mut self, player_ratings: &PlayerRatings, delta: &mut GameDelta) {
+        for game in self.games.values_mut() {
             let average = average_game_rating(Some(&game.teams), player_ratings, &game.rating_type);
-            if average > 0 {
+            if average > 0 && average != game.average_rating {
                 game.average_rating = average;
+                delta.open_upserted.push(game.clone());
+            }
+        }
+        for game in self.live_games.values_mut() {
+            let average = average_game_rating(Some(&game.teams), player_ratings, &game.rating_type);
+            if average > 0 && average != game.average_rating {
+                game.average_rating = average;
+                delta.live_upserted.push(game.clone());
             }
         }
     }
@@ -2550,16 +2637,16 @@ mod tests {
     fn gameset_adds_open_and_removes_closed() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(1, "open", 1)) {
-            set.apply(raw, &PlayerRatings::new());
+            set.apply(raw, &PlayerRatings::new(), &mut GameDelta::default());
         }
         for raw in extract_raw_games(&open_game_json(2, "open", 2)) {
-            set.apply(raw, &PlayerRatings::new());
+            set.apply(raw, &PlayerRatings::new(), &mut GameDelta::default());
         }
         assert_eq!(set.snapshot().len(), 2);
 
         // Game 1 transitions to playing → drops out of the open list.
         for raw in extract_raw_games(&open_game_json(1, "playing", 2)) {
-            set.apply(raw, &PlayerRatings::new());
+            set.apply(raw, &PlayerRatings::new(), &mut GameDelta::default());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -2570,10 +2657,10 @@ mod tests {
     fn gameset_update_replaces_in_place() {
         let mut set = GameSet::default();
         for raw in extract_raw_games(&open_game_json(5, "open", 1)) {
-            set.apply(raw, &PlayerRatings::new());
+            set.apply(raw, &PlayerRatings::new(), &mut GameDelta::default());
         }
         for raw in extract_raw_games(&open_game_json(5, "open", 4)) {
-            set.apply(raw, &PlayerRatings::new());
+            set.apply(raw, &PlayerRatings::new(), &mut GameDelta::default());
         }
         let snap = set.snapshot();
         assert_eq!(snap.len(), 1);
@@ -2593,7 +2680,7 @@ mod tests {
             "max_players": 6,
         });
         for raw in extract_raw_games(&forming_mm) {
-            set.apply(raw, &PlayerRatings::new());
+            set.apply(raw, &PlayerRatings::new(), &mut GameDelta::default());
         }
         assert_eq!(set.snapshot().len(), 0);
         assert_eq!(set.snapshot_live().len(), 0);
@@ -2608,7 +2695,7 @@ mod tests {
             "max_players": 6,
         });
         for raw in extract_raw_games(&playing_mm) {
-            set.apply(raw, &PlayerRatings::new());
+            set.apply(raw, &PlayerRatings::new(), &mut GameDelta::default());
         }
         assert_eq!(set.snapshot().len(), 0);
         assert_eq!(set.snapshot_live().len(), 1);

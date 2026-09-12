@@ -613,10 +613,13 @@
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
+  /* Carried by every row, transparent until the mod is on, so switching one on
+     colours it instead of moving the text three pixels sideways. */
+  border-left: 3px solid transparent;
   border-bottom: 1px solid var(--color-border);
   font-size: 11px;
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition: background-color 120ms ease, border-left-color 120ms ease;
 }
 
 .host-mod-row:last-child {
@@ -627,8 +630,22 @@
   background: var(--color-surface-hover);
 }
 
+/* The same green edge and tint the mod vault gives a mod that is switched on,
+   so the state looks the same wherever a mod is drawn. It used to be a slightly
+   different grey, which left the checkbox tick as the only thing separating an
+   active row from an inactive one. */
 .host-mod-row.is-active {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-ok) 7%, var(--color-surface));
+  border-left-color: var(--color-ok);
+}
+
+.host-mod-row.is-active:hover {
+  background: color-mix(in srgb, var(--color-ok) 13%, var(--color-surface));
+}
+
+.host-mod-row.is-active .host-mod-name {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 .host-mod-name {
@@ -1255,6 +1272,8 @@
   text-align: center;
 }
 
+/* Prefixed with a `v` in the markup: on its own the number read as a count of
+   something rather than as the mod's version. */
 .host-mod-version {
   flex: none;
   font-size: 11px;

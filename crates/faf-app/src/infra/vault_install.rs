@@ -115,6 +115,84 @@ pub async fn bounded_body_with_progress(
     Ok(body)
 }
 
+/// A downloaded archive held on disk, deleted when it goes out of scope.
+///
+/// Not `tempfile::NamedTempFile`: the install path has to open the same file
+/// twice by name, which that type deliberately makes awkward, and the only
+/// thing wanted here is "a path that cleans itself up".
+pub struct DownloadedArchive {
+    path: PathBuf,
+}
+
+impl DownloadedArchive {
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for DownloadedArchive {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
+
+/// [`bounded_body_with_progress`], writing to a temporary file instead of
+/// growing a `Vec`.
+///
+/// Same bounds, same progress callback, same refusal of a response that
+/// declares or delivers more than `max_bytes`. The difference is where the
+/// bytes live: a 512 MiB map no longer needs 512 MiB of heap to be unpacked
+/// from, and the file is removed when the returned handle is dropped, whether
+/// the install succeeded or not.
+pub async fn bounded_body_to_file(
+    response: reqwest::Response,
+    subject: &str,
+    max_bytes: u64,
+    on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
+) -> Result<DownloadedArchive, String> {
+    let declared = response.content_length();
+    if declared.is_some_and(|size| size > max_bytes) {
+        return Err(format!(
+            "{subject} is larger than the allowed download size"
+        ));
+    }
+
+    let directory = std::env::temp_dir().join(crate::infra::APP_SLUG);
+    tokio::fs::create_dir_all(&directory)
+        .await
+        .map_err(|error| format!("could not create a download folder: {error}"))?;
+    let path = directory.join(format!(".faf-download-{:016x}", rand::random::<u64>()));
+    // Constructed before the first write, so an error partway through still
+    // takes the partial file with it.
+    let archive = DownloadedArchive { path: path.clone() };
+
+    let mut file = tokio::fs::File::create(&path)
+        .await
+        .map_err(|error| format!("could not open a download file: {error}"))?;
+    let mut received = 0_u64;
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| format!("could not read {subject}: {error}"))?;
+        received = received
+            .checked_add(chunk.len() as u64)
+            .ok_or_else(|| format!("{subject} is too large"))?;
+        if received > max_bytes {
+            return Err(format!(
+                "{subject} is larger than the allowed download size"
+            ));
+        }
+        tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
+            .await
+            .map_err(|error| format!("could not save {subject}: {error}"))?;
+        on_bytes(received, declared);
+    }
+    tokio::io::AsyncWriteExt::flush(&mut file)
+        .await
+        .map_err(|error| format!("could not save {subject}: {error}"))?;
+    drop(file);
+    Ok(archive)
+}
+
 /// The single top-level folder a vault archive installs into, without
 /// extracting anything.
 ///
@@ -123,7 +201,7 @@ pub async fn bounded_body_with_progress(
 /// mod is already installed, and it must be able to stop and ask rather than
 /// find out halfway through an extraction.
 pub fn archive_root_name(bytes: &[u8]) -> Result<String, String> {
-    let root = inspect_archive(bytes, None)?;
+    let root = inspect_archive(std::io::Cursor::new(bytes), None)?;
     // A name we cannot represent is a name we cannot safely compare against
     // what is on disk either, so it is rejected rather than lossily converted.
     root.into_string()
@@ -142,7 +220,55 @@ pub fn install_archive<F>(
 where
     F: FnOnce(&Path) -> Result<(), String>,
 {
-    let root_name = inspect_archive(bytes, expected_root)?;
+    install_archive_from(
+        || Ok(std::io::Cursor::new(bytes)),
+        destination,
+        expected_root,
+        validate_contents,
+    )
+}
+
+/// [`install_archive`], reading the archive off disk rather than out of a
+/// `Vec`.
+///
+/// A map can be half a gigabyte, and holding all of it in the heap to hand a
+/// slice to a zip reader that only ever seeks around it is a cost with nothing
+/// to show for it. The download streams into a temporary file and this opens
+/// that file twice: once to inspect the shape, once to extract. Every bound the
+/// in-memory path enforces is enforced here, because it is the same code.
+pub fn install_archive_from_file<F>(
+    archive: &Path,
+    destination: &Path,
+    expected_root: Option<&str>,
+    validate_contents: F,
+) -> Result<PathBuf, String>
+where
+    F: FnOnce(&Path) -> Result<(), String>,
+{
+    install_archive_from(
+        || {
+            std::fs::File::open(archive)
+                .map_err(|error| format!("could not read the downloaded archive: {error}"))
+        },
+        destination,
+        expected_root,
+        validate_contents,
+    )
+}
+
+/// The shared body. `open` is called twice, once per pass over the archive.
+fn install_archive_from<R, O, F>(
+    open: O,
+    destination: &Path,
+    expected_root: Option<&str>,
+    validate_contents: F,
+) -> Result<PathBuf, String>
+where
+    R: std::io::Read + std::io::Seek,
+    O: Fn() -> Result<R, String>,
+    F: FnOnce(&Path) -> Result<(), String>,
+{
+    let root_name = inspect_archive(open()?, expected_root)?;
     std::fs::create_dir_all(destination)
         .map_err(|error| format!("could not create {}: {error}", destination.display()))?;
 
@@ -155,7 +281,7 @@ where
     std::fs::create_dir(&staging)
         .map_err(|error| format!("could not create install staging folder: {error}"))?;
     let outcome = (|| {
-        extract_archive(bytes, &staging, "vault archive")?;
+        extract_archive(open()?, &staging, "vault archive")?;
         let staged_root = staging.join(&root_name);
         validate_contents(&staged_root)?;
         std::fs::rename(&staged_root, &target).map_err(|error| {
@@ -187,7 +313,26 @@ pub fn install_flat_archive<F>(
 where
     F: FnOnce(&Path) -> Result<(), String>,
 {
-    inspect_flat_archive(bytes, subject)?;
+    install_flat_archive_from(
+        || Ok(std::io::Cursor::new(bytes)),
+        target,
+        subject,
+        validate_contents,
+    )
+}
+
+fn install_flat_archive_from<R, O, F>(
+    open: O,
+    target: &Path,
+    subject: &str,
+    validate_contents: F,
+) -> Result<(), String>
+where
+    R: std::io::Read + std::io::Seek,
+    O: Fn() -> Result<R, String>,
+    F: FnOnce(&Path) -> Result<(), String>,
+{
+    inspect_flat_archive(open()?, subject)?;
 
     let parent = target
         .parent()
@@ -203,7 +348,7 @@ where
     std::fs::create_dir(&staging)
         .map_err(|error| format!("could not create install staging folder: {error}"))?;
     let outcome = (|| {
-        extract_archive(bytes, &staging, subject)?;
+        extract_archive(open()?, &staging, subject)?;
         validate_contents(&staging)?;
         std::fs::rename(&staging, target)
             .map_err(|error| format!("could not finish installing {}: {error}", target.display()))
@@ -260,8 +405,11 @@ fn check_entry(
 
 /// Validate an archive whose entries sit at the top level, with no wrapping
 /// folder. The caller owns the destination directory name.
-fn inspect_flat_archive(bytes: &[u8], subject: &str) -> Result<(), String> {
-    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
+fn inspect_flat_archive<R: std::io::Read + std::io::Seek>(
+    reader: R,
+    subject: &str,
+) -> Result<(), String> {
+    let mut archive = zip::ZipArchive::new(reader)
         .map_err(|error| format!("not a valid zip archive: {error}"))?;
     check_archive_shape(archive.len(), subject)?;
 
@@ -281,9 +429,12 @@ fn inspect_flat_archive(bytes: &[u8], subject: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn inspect_archive(bytes: &[u8], expected_root: Option<&str>) -> Result<OsString, String> {
+fn inspect_archive<R: std::io::Read + std::io::Seek>(
+    reader: R,
+    expected_root: Option<&str>,
+) -> Result<OsString, String> {
     const SUBJECT: &str = "vault archive";
-    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
+    let mut archive = zip::ZipArchive::new(reader)
         .map_err(|error| format!("not a valid zip archive: {error}"))?;
     check_archive_shape(archive.len(), SUBJECT)?;
 
@@ -370,8 +521,12 @@ fn extract_entry(
     Ok(())
 }
 
-fn extract_archive(bytes: &[u8], destination: &Path, subject: &str) -> Result<(), String> {
-    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
+fn extract_archive<R: std::io::Read + std::io::Seek>(
+    reader: R,
+    destination: &Path,
+    subject: &str,
+) -> Result<(), String> {
+    let mut archive = zip::ZipArchive::new(reader)
         .map_err(|error| format!("not a valid zip archive: {error}"))?;
     let mut remaining = MAX_EXPANDED_BYTES;
     for index in 0..archive.len() {
@@ -400,6 +555,7 @@ fn extract_archive(bytes: &[u8], destination: &Path, subject: &str) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
 
     /// An archive whose headers understate an entry, byte for byte the shape
     /// the review demonstrated: the declared size is patched in both the local
@@ -599,13 +755,13 @@ mod tests {
     fn archive_requires_one_expected_root() {
         let bytes = zip(&[("wanted/file.txt", b"ok")]);
         assert_eq!(
-            inspect_archive(&bytes, Some("wanted")).unwrap(),
+            inspect_archive(Cursor::new(&bytes), Some("wanted")).unwrap(),
             OsString::from("wanted")
         );
-        assert!(inspect_archive(&bytes, Some("other")).is_err());
+        assert!(inspect_archive(Cursor::new(&bytes), Some("other")).is_err());
 
         let multiple = zip(&[("one/a", b"a"), ("two/b", b"b")]);
-        assert!(inspect_archive(&multiple, None).is_err());
+        assert!(inspect_archive(Cursor::new(&multiple), None).is_err());
     }
 
     fn temp_dir(tag: &str) -> PathBuf {
@@ -635,14 +791,14 @@ mod tests {
     #[test]
     fn the_vault_installer_still_refuses_what_the_flat_one_accepts() {
         let flat = zip(&[("faf_galactic_war_client.exe", b"binary")]);
-        assert!(inspect_archive(&flat, None).is_err());
-        assert!(inspect_flat_archive(&flat, "archive").is_ok());
+        assert!(inspect_archive(Cursor::new(&flat), None).is_err());
+        assert!(inspect_flat_archive(Cursor::new(&flat), "archive").is_ok());
     }
 
     #[test]
     fn a_flat_archive_cannot_escape_its_directory() {
         let escaping = zip(&[("../escaped.txt", b"nope")]);
-        assert!(inspect_flat_archive(&escaping, "archive").is_err());
+        assert!(inspect_flat_archive(Cursor::new(&escaping), "archive").is_err());
     }
 
     #[test]

@@ -112,7 +112,10 @@ impl GitHubUpdates {
     pub fn new(config: ClientUpdateConfig) -> Self {
         Self {
             config,
-            http: super::http::shared_http_client(),
+            // The installer is executed, so the transport refuses a redirect
+            // that leaves HTTPS. `is_trusted` pins the first URL to the
+            // release prefix; this is what stops a later hop undoing that.
+            http: super::http::https_only_download_client(),
         }
     }
 

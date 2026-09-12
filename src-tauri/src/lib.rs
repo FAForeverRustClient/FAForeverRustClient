@@ -10,7 +10,9 @@
 use std::sync::Arc;
 
 use faf_app::{App, VersionedSnapshot};
-use faf_domain::state::{AuthCommand, LobbyCommand, SessionCommand, SettingsCommand};
+use faf_domain::state::{
+    AuthCommand, LobbyCommand, NavCommand, ReplayCommand, SessionCommand, SettingsCommand, Tab,
+};
 use faf_domain::{AppCommand, AppEvent, AppState};
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -448,6 +450,45 @@ fn open_externally<R: tauri::Runtime>(handle: &tauri::AppHandle<R>, url: &tauri:
     }
 }
 
+/// The replay file this process was asked to open, if it was asked to open one.
+///
+/// A file association starts the client with the path as an argument, and
+/// nothing else this client is started with looks like one. The extension is
+/// checked rather than "the first argument that is not a flag", because the
+/// association is the only thing that should be able to make the client open a
+/// file, and `faf-client.exe --some-flag C:	hing` should not.
+///
+/// `argv[0]` is the executable and is skipped. The backend refuses a path whose
+/// extension it does not recognise anyway; this only decides whether to ask.
+fn replay_argument(argv: &[String]) -> Option<&str> {
+    argv.iter().skip(1).map(String::as_str).find(|argument| {
+        let lowered = argument.to_ascii_lowercase();
+        lowered.ends_with(".fafreplay") || lowered.ends_with(".scfareplay")
+    })
+}
+
+/// Hand a replay path to the running client and show it.
+///
+/// Deliberately `try_dispatch` and not a wait: this is called from the
+/// single-instance callback, which runs on Tauri's main thread, and from
+/// startup. Neither is a place to block on a replay that may take seconds to
+/// prepare.
+fn open_replay_from_argument(app: &tauri::AppHandle, path: &str) {
+    let Some(core) = app.try_state::<Core>() else {
+        tracing::warn!("asked to open a replay before the backend was ready");
+        return;
+    };
+    tracing::info!(%path, "opening a replay handed to the client as an argument");
+    let _ = core
+        .0
+        .try_dispatch(AppCommand::Nav(NavCommand::Select { tab: Tab::Replays }));
+    let _ = core
+        .0
+        .try_dispatch(AppCommand::Replays(ReplayCommand::OpenFile {
+            path: path.to_string(),
+        }));
+}
+
 pub fn run() {
     #[cfg(windows)]
     if std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_err() {
@@ -458,6 +499,27 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        // First, and the order is not cosmetic: this is what decides whether
+        // this process is the client or a messenger for one that is already
+        // running, and everything below assumes it is the client.
+        //
+        // A second start is not an error to report. Double-clicking a
+        // `.fafreplay` is how most people will open one, and the shell starts
+        // a whole new process for it: the useful answer is to hand the path to
+        // the client that is already up, raise its window, and exit quietly.
+        // Anything else means two clients fighting over one lobby connection.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                // Unminimise first: `set_focus` on a minimised window raises
+                // nothing on Windows and the click appears to do nothing.
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            if let Some(path) = replay_argument(&argv) {
+                open_replay_from_argument(app, path);
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
@@ -633,7 +695,18 @@ pub fn run() {
                 let _ = startup_core.try_dispatch(AppCommand::Session(SessionCommand::Hello));
             });
 
+
             app.manage(Core(core));
+
+            // The other half of the file association: this is the client being
+            // started *by* a double-click rather than being told about one by
+            // a second process. After `app.manage`, because the dispatch looks
+            // the `Core` up out of Tauri's state and would otherwise find
+            // nothing and log a warning about its own startup.
+            let arguments: Vec<String> = std::env::args().collect();
+            if let Some(path) = replay_argument(&arguments) {
+                open_replay_from_argument(app.handle(), path);
+            }
 
             // Create the main window programmatically so we can attach
             // on_navigation and on_new_window hooks. These intercept external

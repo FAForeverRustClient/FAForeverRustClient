@@ -3568,4 +3568,5 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameResult": "Результат игры",
   "replays.detail.noResultYet": "У этой игры нет результата, который можно показать.",
   "replays.detail.noRatingYet": "Этот реплей ещё никто не оценил",
+  "lobby.host.modVersion": "Версия {version}",
 };
