@@ -3511,4 +3511,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.sound.yoursHint": "Von dir hinzugefügte Dateien. Wird eine entfernt, nutzen alle Benachrichtigungen damit wieder Chime.",
   "settings.notifications.sound.preview": "{name} abspielen",
   "settings.notifications.sound.remove": "{name} entfernen",
+  "lobby.joinProgress.startingTitle": "Spiel wird gestartet",
+  "lobby.joinProgress.phase.starting": "Forged Alliance wird geöffnet",
+  "lobby.joinProgress.startingDetail": "„{name}“ wird betreten. Das Spielfenster erscheint gleich.",
+  "lobby.joinProgress.startingNote": "Das kann ein paar Sekunden dauern.",
 };
