@@ -1664,6 +1664,10 @@ export const en = {
   "playerCard.maps.searchPlaceholder": "Find a map…",
   "playerCard.maps.searchAria": "Find a map in this player's history",
   "playerCard.maps.noMatch": "No map matches that.",
+  "playerCard.maps.unrankedNote": {
+    one: "{count} game is not counted in the record: it moved no rating, so FAF did not score it.",
+    other: "{count} games are not counted in the record: they moved no rating, so FAF did not score them.",
+  },
   "playerCard.maps.truncated": "This player has more games than one scan covers. The numbers below are their most recent games, newest first.",
   "playerCard.tab.statistics": "Statistics",
   "playerCard.tab.achievements": "Achievements",

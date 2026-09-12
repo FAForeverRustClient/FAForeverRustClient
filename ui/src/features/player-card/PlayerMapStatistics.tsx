@@ -178,6 +178,15 @@ export function PlayerMapStatistics({ playerId }: Props) {
         <p className="player-maps-note muted">{t("playerCard.maps.truncated")}</p>
       )}
 
+      {/* Same reason. The record counts only games that moved a rating, so a
+          player whose history is mostly unranked lobbies sees a small W/L
+          beside a large game count, and is owed the arithmetic. */}
+      {stats.unranked > 0 && (
+        <p className="player-maps-note muted">
+          {t("playerCard.maps.unrankedNote", { count: stats.unranked })}
+        </p>
+      )}
+
 
       <div className="search-field player-maps-search">
         <input

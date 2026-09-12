@@ -4851,8 +4851,21 @@ export type PlayerMapStats = {
 	totalGames: number,
 	wins: number,
 	losses: number,
-	/**  Games the API returned without a decided result (draws, unfinished). */
+	/**  Rated games the API returned without a decided result (draws). */
 	undecided: number,
+	/**
+	 *  Games that moved no rating at all, and so count towards nothing.
+	 *
+	 *  A custom lobby with mods on, a game that desynced its way out of a
+	 *  result, one abandoned before it was scored: FAF rates none of them, and
+	 *  the API still returns a `gamePlayerStats` row for each. Those rows
+	 *  carried a `result` of `DEFEAT` far more often than `VICTORY`, because a
+	 *  game only reports defeat when someone is killed or leaves and nothing
+	 *  reports the winner. Counting them dragged every profile towards the
+	 *  same 40%, which is what made the figure obviously wrong rather than
+	 *  merely inaccurate.
+	 */
+	unranked: number,
 	/**
 	 *  How many of the generated row's games got there by having no map name
 	 *  at all, rather than by carrying a recognisable generated one.

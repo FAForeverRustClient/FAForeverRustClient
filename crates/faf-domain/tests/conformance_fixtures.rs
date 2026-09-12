@@ -2918,6 +2918,7 @@ fn cases() -> Vec<Case> {
                         wins: 2,
                         losses: 1,
                         undecided: 0,
+                        unranked: 0,
                         unattributed: 0,
                         maps: vec![PlayerMapStat {
                             map: "Setons Clutch".into(),
