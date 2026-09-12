@@ -456,7 +456,7 @@ fn open_externally<R: tauri::Runtime>(handle: &tauri::AppHandle<R>, url: &tauri:
 /// nothing else this client is started with looks like one. The extension is
 /// checked rather than "the first argument that is not a flag", because the
 /// association is the only thing that should be able to make the client open a
-/// file, and `faf-client.exe --some-flag C:	hing` should not.
+/// file, and `faf-client.exe --some-flag some/path` should not.
 ///
 /// `argv[0]` is the executable and is skipped. The backend refuses a path whose
 /// extension it does not recognise anyway; this only decides whether to ask.
