@@ -1741,11 +1741,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.list.selectHint": "Zeile anklicken zum Hervorheben · Doppelklick zum Ansehen",
 
   "replays.detail.aria": "Replay {name}",
-  "replays.detail.eyebrow": "#{uid}",
   "replays.detail.idCopied": "Replay-ID kopiert",
   "replays.detail.copyId": "Replay-ID kopieren",
   "replays.detail.copiedShort": "Kopiert",
-  "replays.detail.copyIdShort": "ID kopieren",
   "replays.detail.available": "Replay verfügbar",
   "replays.detail.processing": "Upload wird verarbeitet",
   "replays.detail.reviewCount": {
@@ -1774,7 +1772,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.detail.unrated": "Ohne Rating",
   "replays.detail.lineup": "Aufstellung",
   "replays.detail.hideResults": "Ergebnisse verbergen",
-  "replays.detail.revealResults": "Ergebnisse zeigen",
   "replays.detail.noLineup": "Für dieses Replay wurde keine Aufstellung erfasst.",
   "replays.detail.playerCount": { one: "{count} Spieler", other: "{count} Spieler" },
   "replays.detail.teamSummary": "{teams} Teams · {players}",
@@ -3608,4 +3605,11 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "reviews.scoreAria": "{score} von {of}",
   "reviews.otherReviews": { one: "{count} weitere Bewertung", other: "{count} weitere Bewertungen" },
   "reviews.version": "Version {version}",
+  "replays.detail.onMap": "auf {map}",
+  "replays.detail.replayIdLabel": "Replay-ID",
+  "replays.detail.openChat": "Chat öffnen",
+  "replays.detail.downloadReplay": "Replay herunterladen",
+  "replays.detail.gameResult": "Spielergebnis",
+  "replays.detail.noResultYet": "Für dieses Spiel gibt es kein Ergebnis zu zeigen.",
+  "replays.detail.noRatingYet": "Dieses Replay hat noch niemand bewertet",
 };

@@ -1353,11 +1353,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   },
   "replays.list.selectHint": "Kliknij wiersz, aby go wyróżnić; kliknij dwukrotnie, aby obejrzeć powtórkę",
   "replays.detail.aria": "Powtórka {name}",
-  "replays.detail.eyebrow": "#{uid}",
   "replays.detail.idCopied": "Skopiowano ID powtórki",
   "replays.detail.copyId": "Kopiuj ID powtórki",
   "replays.detail.copiedShort": "Skopiowano",
-  "replays.detail.copyIdShort": "Kopiuj ID",
   "replays.detail.available": "Powtórka dostępna",
   "replays.detail.processing": "Przetwarzanie przesyłki",
   "replays.detail.reviewCount": {
@@ -1388,7 +1386,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.detail.unrated": "Bez rankingu",
   "replays.detail.lineup": "Skład",
   "replays.detail.hideResults": "Ukryj wyniki",
-  "replays.detail.revealResults": "Pokaż wyniki",
   "replays.detail.noLineup": "Dla tej powtórki nie zapisano składu.",
   "replays.detail.playerCount": {
     one: "{count} gracz",
@@ -3522,4 +3519,11 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.sound.fafMatch": "Znaleziono grę (FAF)",
   "lobby.joinProgress.cancel": "Anuluj dołączanie",
   "lobby.joinProgress.cancelStarting": "Zatrzymaj grę",
+  "replays.detail.onMap": "na mapie {map}",
+  "replays.detail.replayIdLabel": "ID powtórki",
+  "replays.detail.openChat": "Otwórz czat",
+  "replays.detail.downloadReplay": "Pobierz powtórkę",
+  "replays.detail.gameResult": "Wynik gry",
+  "replays.detail.noResultYet": "Ta gra nie ma wyniku, który dałoby się pokazać.",
+  "replays.detail.noRatingYet": "Nikt jeszcze nie ocenił tej powtórki",
 };

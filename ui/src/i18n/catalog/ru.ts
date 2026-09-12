@@ -1414,11 +1414,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.list.selectHint": "Выберите строку, чтобы выделить её · двойной щелчок запускает реплей",
 
   "replays.detail.aria": "Реплей {name}",
-  "replays.detail.eyebrow": "#{uid}",
   "replays.detail.idCopied": "ID реплея скопирован",
   "replays.detail.copyId": "Копировать ID реплея",
   "replays.detail.copiedShort": "Скопировано",
-  "replays.detail.copyIdShort": "Копировать ID",
   "replays.detail.available": "Реплей доступен",
   "replays.detail.processing": "Загрузка обрабатывается",
   "replays.detail.reviewCount": {
@@ -1449,7 +1447,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.detail.unrated": "Без рейтинга",
   "replays.detail.lineup": "Состав",
   "replays.detail.hideResults": "Скрыть результаты",
-  "replays.detail.revealResults": "Показать результаты",
   "replays.detail.noLineup": "Для этого реплея состав не записан.",
   "replays.detail.playerCount": {
     one: "{count} игрок",
@@ -3564,4 +3561,11 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "training.post.copyTitle": "Скопировать заголовок",
   "training.post.copied": "Скопировано",
   "training.post.noDestination": "Этой сборке не сказали, куда это отправлять, поэтому скопируйте текст и опубликуйте его там, где положено.",
+  "replays.detail.onMap": "на карте {map}",
+  "replays.detail.replayIdLabel": "ID реплея",
+  "replays.detail.openChat": "Открыть чат",
+  "replays.detail.downloadReplay": "Скачать реплей",
+  "replays.detail.gameResult": "Результат игры",
+  "replays.detail.noResultYet": "У этой игры нет результата, который можно показать.",
+  "replays.detail.noRatingYet": "Этот реплей ещё никто не оценил",
 };
