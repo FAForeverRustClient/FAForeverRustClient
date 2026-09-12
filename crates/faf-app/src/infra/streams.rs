@@ -66,11 +66,39 @@ pub struct TwitchConfig {
     pub channels: Vec<String>,
 }
 
+/// A credential, from the environment this build was *compiled* in, or the one
+/// it is *running* in.
+///
+/// Both, in that order of preference, because the two answer different
+/// questions. A release is run by a player who has never heard of these
+/// variables, so the only way credentials can reach them is to have been
+/// present when the binary was built: that is what `option_env!` reads, and it
+/// is why reading the environment at runtime alone meant FAF Live could never
+/// work in a shipped client, only in a developer's shell.
+///
+/// The runtime value wins where both exist, so setting the variable in a shell
+/// still overrides whatever a build was given, which is what makes a local
+/// check of somebody else's build possible.
+///
+/// None of this hides anything. A string compiled into a binary is a string
+/// anybody can read out of it, and no amount of encoding changes that while the
+/// key to decode it ships alongside. What it does buy is the thing actually
+/// worth buying: the secret is not in the repository and not in its history.
+/// See `docs/streams.md`.
+macro_rules! credential {
+    ($key:literal) => {
+        match std::env::var($key) {
+            Ok(value) if !value.is_empty() => value,
+            _ => option_env!($key).unwrap_or("").to_string(),
+        }
+    };
+}
+
 impl TwitchConfig {
     pub fn faf() -> Self {
         Self {
-            client_id: env_or("TWITCH_CLIENT_ID", ""),
-            client_secret: env_or("TWITCH_CLIENT_SECRET", ""),
+            client_id: credential!("TWITCH_CLIENT_ID"),
+            client_secret: credential!("TWITCH_CLIENT_SECRET"),
             channels: split_channels(&env_or("FAF_TWITCH_CHANNELS", DEFAULT_CHANNELS)),
         }
     }
