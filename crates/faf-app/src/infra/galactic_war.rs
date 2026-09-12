@@ -79,7 +79,11 @@ impl GalacticWarConfig {
     pub fn faf() -> Result<Self, String> {
         Ok(Self {
             api_base: env_or("FAF_GW_API_BASE", "https://galactic-war-test.spidarna.com"),
-            download_base: env_or("FAF_GW_DOWNLOAD_BASE", "https://downloads.faforever.com"),
+            // The archive this names is unpacked and executed.
+            download_base: crate::infra::dev_env_or(
+                "FAF_GW_DOWNLOAD_BASE",
+                "https://downloads.faforever.com",
+            ),
             install_dir: data_dir()?.join("galactic-war"),
         })
     }

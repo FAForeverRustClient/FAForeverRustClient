@@ -57,21 +57,10 @@ fn default_jar_path() -> String {
         }
     }
 
-    let executable = std::env::current_exe().ok();
-    let working_directory = std::env::current_dir().ok();
-    let roots = executable
-        .as_deref()
-        .and_then(Path::parent)
-        .into_iter()
-        .flat_map(|directory| directory.ancestors().take(4))
-        .chain(
-            working_directory
-                .as_deref()
-                .into_iter()
-                .flat_map(|directory| directory.ancestors().take(3)),
-        )
-        .map(Path::to_path_buf)
-        .collect::<Vec<_>>();
+    // Never the working directory: see `infra::helper_search_roots`. This jar
+    // is handed to a JVM, so a stray copy in a folder the client was started
+    // from is code execution.
+    let roots = crate::infra::helper_search_roots();
 
     resolve_jar_from_roots(&roots)
         .map(|path| path.to_string_lossy().into_owned())

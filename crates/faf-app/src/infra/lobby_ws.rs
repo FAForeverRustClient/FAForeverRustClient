@@ -116,13 +116,9 @@ fn default_uid_path() -> String {
     };
 
     let mut candidates = Vec::<PathBuf>::new();
-    if let Ok(current_dir) = std::env::current_dir() {
-        add_uid_candidates(&mut candidates, &current_dir, executable);
-    }
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(parent) = current_exe.parent() {
-            add_uid_candidates(&mut candidates, parent, executable);
-        }
+    for root in crate::infra::helper_search_roots() {
+        candidates.push(root.join("natives").join(executable));
+        candidates.push(root.join(executable));
     }
 
     candidates
@@ -130,18 +126,6 @@ fn default_uid_path() -> String {
         .find(|path| path.is_file())
         .map(|path| path.to_string_lossy().into_owned())
         .unwrap_or_else(|| executable.to_string())
-}
-
-/// Development launches can run with `src-tauri` or `target/debug` as their
-/// working directory, while the helper is prepared in the workspace-level
-/// `natives/` directory. Walk ancestors so all of those layouts resolve the
-/// same bundled helper; packaged builds set `FAF_UID_PATH` from Tauri resources
-/// before this fallback is reached.
-fn add_uid_candidates(candidates: &mut Vec<PathBuf>, root: &std::path::Path, executable: &str) {
-    for directory in root.ancestors() {
-        candidates.push(directory.join("natives").join(executable));
-        candidates.push(directory.join(executable));
-    }
 }
 
 pub struct LobbyClient {

@@ -260,6 +260,67 @@ pub(crate) fn env_or(key: &str, fallback: impl Into<String>) -> String {
         .unwrap_or_else(|| fallback.into())
 }
 
+/// [`env_or`] for a variable that decides where executable content comes from.
+///
+/// Ignored outside a development build. The update download prefix, the
+/// Galactic War download base and the map generator's release URLs all name a
+/// server whose bytes end up running on the machine, and in a release binary
+/// the only answer to "where does the client fetch its own installer from" is
+/// the one compiled into it. Redirecting that is a debugging tool, not a
+/// supported deployment, and leaving it readable from the environment turns
+/// every one of those downloads into "whatever the environment says".
+///
+/// The rest of the `FAF_*` overrides stay: an API base or a log directory
+/// changes what the client reads, not what it executes.
+pub(crate) fn dev_env_or(key: &str, fallback: impl Into<String>) -> String {
+    if cfg!(debug_assertions) {
+        env_or(key, fallback)
+    } else {
+        if std::env::var_os(key).is_some() {
+            tracing::warn!(
+                variable = key,
+                "ignoring a download override in a release build"
+            );
+        }
+        fallback.into()
+    }
+}
+
+/// The directories a bundled helper binary may be searched for in.
+///
+/// The executable's own directory, and in a development build the few
+/// ancestors above it that hold the workspace's `natives/`. Nothing else.
+///
+/// The working directory used to lead the list, and the walk used to run every
+/// ancestor to the drive root. Between them that meant a client started from a
+/// downloaded folder, or with a shortcut carrying a "start in" of somebody
+/// else's choosing, looked for `faf-uid.exe` and `java.exe` in that folder and
+/// in every folder above it, `C:\` included. On a shared or terminal-server
+/// machine a writable `C:\natives\faf-uid.exe` is then found and run, and the
+/// processes this affects are exactly the ones handed the session id and the
+/// player's traffic.
+///
+/// A packaged build gets its helpers from Tauri resources through
+/// `FAF_UID_PATH` and friends, so this is the fallback, not the path normally
+/// taken. The development case is the only one that needs to look upward at
+/// all, and it is the only one that still does.
+pub(crate) fn helper_search_roots() -> Vec<std::path::PathBuf> {
+    let Ok(executable) = std::env::current_exe() else {
+        return Vec::new();
+    };
+    let Some(directory) = executable.parent() else {
+        return Vec::new();
+    };
+    // Four levels covers `target/debug/faf.exe` reaching the workspace root,
+    // which is where `natives/` is prepared.
+    let depth = if cfg!(debug_assertions) { 4 } else { 1 };
+    directory
+        .ancestors()
+        .take(depth)
+        .map(std::path::Path::to_path_buf)
+        .collect()
+}
+
 /// A folder (or file) the client writes to and the user may want to open.
 ///
 /// The Java client reveals six such locations from its main menu

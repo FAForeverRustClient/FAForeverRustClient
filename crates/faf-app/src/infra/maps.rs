@@ -196,9 +196,25 @@ impl MapsPort for MapsClient {
                 "include",
                 "mapPool.mapPoolAssignments.mapVersion.map,matchmakerQueue",
             )
+            // Validated, not escaped. Every other vault and replay filter runs
+            // through the escapers in `faf_domain::protocol`; this one
+            // interpolated a name that arrives over IPC straight into RSQL.
+            // A queue's technical name is `ladder_1v1` or `tmm_4v4_full_share`,
+            // so a whitelist says more than an escaper would and cannot be
+            // widened by accident.
             .append_pair(
                 "filter",
-                &format!("matchmakerQueue.technicalName=='{queue_name}'"),
+                &format!("matchmakerQueue.technicalName=='{}'", {
+                    if queue_name
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+                        && !queue_name.is_empty()
+                    {
+                        queue_name.clone()
+                    } else {
+                        return Err("that is not a matchmaker queue name".to_string());
+                    }
+                }),
             )
             .append_pair("page[size]", "100");
 
