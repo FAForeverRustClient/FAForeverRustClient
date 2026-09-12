@@ -493,11 +493,10 @@ pub fn run() {
 
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if let Some(core) = window.try_state::<Core>() {
-                    let snapshot = core.0.versioned_snapshot();
-                    let is_in_game = matches!(
-                        snapshot.state.lobby.join,
-                        faf_domain::state::JoinState::InGame
-                    );
+                    // One field, not a clone of the whole state to read it.
+                    let is_in_game = core.0.with_state(|state| {
+                        matches!(state.lobby.join, faf_domain::state::JoinState::InGame)
+                    });
                     if is_in_game {
                         api.prevent_close();
                         let _ = window.emit("app://request-exit-confirm", ());

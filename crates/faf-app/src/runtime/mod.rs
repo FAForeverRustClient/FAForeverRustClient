@@ -250,7 +250,13 @@ impl App {
     pub fn new(backend_version: impl Into<String>, ports: Ports) -> (Self, AppLoop) {
         let state = Arc::new(RwLock::new(AppState::default()));
         let (event_tx, _) = broadcast::channel::<AppEvent>(256);
-        let (versioned_event_tx, _) = broadcast::channel::<VersionedEvent>(256);
+        // Four times the plain stream's room. A receiver that falls behind on
+        // this one does not merely miss events: the mirror reads a revision
+        // gap as corruption and asks for a whole `AppState` back, which is
+        // megabytes of JSON requested exactly when the client is already
+        // behind. Lag here is self-feeding, so the cheapest thing to spend on
+        // it is queue.
+        let (versioned_event_tx, _) = broadcast::channel::<VersionedEvent>(1024);
         let (cmd_tx, cmd_rx) = mpsc::channel::<QueuedCommand>(64);
         let revision = Arc::new(AtomicU64::new(0));
 
@@ -413,6 +419,20 @@ impl App {
     pub fn snapshot(&self) -> AppState {
         self.state.read().expect("app state lock poisoned").clone()
     }
+
+    /// Read one projection of the state without cloning the rest of it.
+    ///
+    /// The twin of [`EventSink::with_state`], for the shell. Closing the
+    /// window used to clone the whole `AppState` to read a single enum out of
+    /// `lobby.join`: a few megabytes at a realistic catalogue size, to answer
+    /// "is a game running".
+    ///
+    /// The closure runs under the read lock, so it must copy out what it needs
+    /// and must not block or do IO.
+    pub fn with_state<T>(&self, read: impl FnOnce(&AppState) -> T) -> T {
+        let state = self.state.read().expect("app state lock poisoned");
+        read(&state)
+    }
 }
 
 impl AppLoop {
@@ -442,10 +462,29 @@ impl AppLoop {
         // build whose Twitch credentials are absent, which is most of them.
         services::streams::spawn(ctx.clone(), self.sink.clone());
 
+        // A ceiling on service tasks running at once.
+        //
+        // The command queue bounds how many are *waiting*, not how many are
+        // running: every command that arrives is spawned immediately, so a
+        // render loop in the UI that dispatches on every frame would start an
+        // unbounded number of concurrent network requests. A few services hold
+        // their own single-flight guards; most do not, and a ceiling here
+        // means none of them has to.
+        //
+        // Wide enough that nothing a person does reaches it: a busy session is
+        // a handful of concurrent commands, and a permit is held only for the
+        // duration of one service call.
+        let permits = Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_COMMANDS));
+
         while let Some(queued) = self.cmd_rx.recv().await {
             let ctx = ctx.clone();
             let sink = self.sink.clone();
+            let permits = permits.clone();
             tokio::spawn(async move {
+                // Acquired inside the task, so the loop keeps draining the
+                // queue while services are busy: the waiting happens here, not
+                // in front of the channel.
+                let _permit = permits.acquire_owned().await;
                 dispatch(queued.command, &ctx, &sink).await;
                 if let Some(completion) = queued.completion {
                     let _ = completion.send(());
@@ -454,6 +493,10 @@ impl AppLoop {
         }
     }
 }
+
+/// See [`AppLoop::run`]. Not a tuning knob: it exists so a runaway dispatcher
+/// cannot open a thousand sockets, and is far above any honest workload.
+const MAX_CONCURRENT_COMMANDS: usize = 64;
 
 /// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
 async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
