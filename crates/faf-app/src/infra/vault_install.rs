@@ -328,9 +328,52 @@ fn inspect_archive(bytes: &[u8], expected_root: Option<&str>) -> Result<OsString
     Ok(root)
 }
 
+/// Unpack one entry, refusing an archive that decompresses to more than its
+/// own header said it would.
+///
+/// [`check_entry`] bounds the *declared* sizes, and a header is written by
+/// whoever built the archive. `zip`'s reader caps the compressed stream and
+/// puts no ceiling at all on the decompressed output, so copying to EOF wrote
+/// whatever the stream produced: a 65 kB archive declaring ten bytes an entry
+/// really does write 64 MB an entry, and the vault is content anybody can
+/// upload. Hosting a game on such a map would have every player who joined
+/// download it and fill their disk.
+///
+/// Reading one byte past the declared size is what turns that number from a
+/// claim into a limit: if the reader can still produce it, the header lied,
+/// and nothing beyond the limit has been written yet.
+///
+/// `remaining` is the running budget across the whole archive, so a thousand
+/// honestly-declared entries cannot add up past the ceiling either.
+fn extract_entry(
+    entry: &mut impl std::io::Read,
+    declared: u64,
+    output: &Path,
+    remaining: &mut u64,
+    subject: &str,
+) -> Result<(), String> {
+    use std::io::Read as _;
+
+    let allowed = declared.min(*remaining);
+    let mut file = std::fs::File::create(output)
+        .map_err(|error| format!("could not create {}: {error}", output.display()))?;
+    let written = std::io::copy(&mut entry.take(allowed.saturating_add(1)), &mut file)
+        .map_err(|error| format!("could not write {}: {error}", output.display()))?;
+    if written > allowed {
+        return Err(format!(
+            "{subject} contains an entry bigger than the size it declares"
+        ));
+    }
+    *remaining -= written;
+    file.flush()
+        .map_err(|error| format!("could not finish {}: {error}", output.display()))?;
+    Ok(())
+}
+
 fn extract_archive(bytes: &[u8], destination: &Path, subject: &str) -> Result<(), String> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
         .map_err(|error| format!("not a valid zip archive: {error}"))?;
+    let mut remaining = MAX_EXPANDED_BYTES;
     for index in 0..archive.len() {
         let mut entry = archive
             .by_index(index)
@@ -348,12 +391,8 @@ fn extract_archive(bytes: &[u8], destination: &Path, subject: &str) -> Result<()
             std::fs::create_dir_all(parent)
                 .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
         }
-        let mut file = std::fs::File::create(&output)
-            .map_err(|error| format!("could not create {}: {error}", output.display()))?;
-        std::io::copy(&mut entry, &mut file)
-            .map_err(|error| format!("could not write {}: {error}", output.display()))?;
-        file.flush()
-            .map_err(|error| format!("could not finish {}: {error}", output.display()))?;
+        let declared = entry.size();
+        extract_entry(&mut entry, declared, &output, &mut remaining, subject)?;
     }
     Ok(())
 }
@@ -361,6 +400,146 @@ fn extract_archive(bytes: &[u8], destination: &Path, subject: &str) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An archive whose headers understate an entry, byte for byte the shape
+    /// the review demonstrated: the declared size is patched in both the local
+    /// header and the central directory, while the compressed stream still
+    /// holds the real payload.
+    ///
+    /// `zip` caps the compressed side and not the decompressed side, so before
+    /// the bound in [`extract_entry`] this wrote the whole payload and
+    /// `check_entry` booked it as ten bytes.
+    fn zip_that_lies_about_its_size(name: &str, payload: &[u8], declared: u32) -> Vec<u8> {
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        {
+            let mut writer = zip::ZipWriter::new(&mut bytes);
+            writer
+                .start_file(name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(payload).unwrap();
+            writer.finish().unwrap();
+        }
+        let mut bytes = bytes.into_inner();
+
+        // Uncompressed size sits at +22 in a local file header and at +24 in a
+        // central directory record.
+        for (signature, offset) in [(b"PK\x03\x04", 22_usize), (b"PK\x01\x02", 24_usize)] {
+            let at = bytes
+                .windows(4)
+                .position(|window| window == signature.as_slice())
+                .expect("the writer emits both records");
+            bytes[at + offset..at + offset + 4].copy_from_slice(&declared.to_le_bytes());
+        }
+        bytes
+    }
+
+    #[test]
+    fn an_archive_that_understates_an_entry_is_refused_rather_than_written() {
+        let payload = vec![0_u8; 4 * 1024 * 1024];
+        let bytes = zip_that_lies_about_its_size("bomb.v0001/heightmap.raw", &payload, 10);
+
+        let root = std::env::temp_dir().join(format!("faf-zip-bomb-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+
+        let outcome = install_archive(&bytes, &root, None, |_| Ok(()));
+        let error = outcome.expect_err("an archive that lies about its size must not install");
+        assert!(
+            error.contains("bigger than the size it declares"),
+            "unexpected error: {error}"
+        );
+
+        // Staging is removed either way, so nothing of the payload survives.
+        let leftovers: Vec<_> = std::fs::read_dir(&root)
+            .map(|entries| entries.flatten().map(|entry| entry.path()).collect())
+            .unwrap_or_default();
+        assert!(leftovers.is_empty(), "left behind {leftovers:?}");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn nothing_past_the_declared_size_is_ever_written_to_disk() {
+        // The refusal above proves the archive is rejected. This proves the
+        // rejection happens *before* the payload lands: the old code wrote
+        // every byte the decompressor produced and only then had anything to
+        // compare, which on a real bomb is gigabytes onto the user's disk.
+        let payload = vec![0_u8; 4 * 1024 * 1024];
+        let output = std::env::temp_dir().join(format!("faf-zip-bound-{}", std::process::id()));
+        let _ = std::fs::remove_file(&output);
+
+        let mut remaining = MAX_EXPANDED_BYTES;
+        let error = extract_entry(
+            &mut payload.as_slice(),
+            10,
+            &output,
+            &mut remaining,
+            "test archive",
+        )
+        .expect_err("a reader that outruns its declared size is refused");
+        assert!(
+            error.contains("bigger than the size it declares"),
+            "{error}"
+        );
+
+        let written = std::fs::metadata(&output)
+            .map(|meta| meta.len())
+            .unwrap_or(0);
+        assert!(written <= 11, "wrote {written} bytes for a 10 byte entry");
+
+        let _ = std::fs::remove_file(&output);
+    }
+
+    #[test]
+    fn the_budget_is_shared_across_every_entry() {
+        // A thousand honestly-declared entries must not add up past the
+        // ceiling either, which is what the running total is for.
+        let output = std::env::temp_dir().join(format!("faf-zip-budget-{}", std::process::id()));
+        let _ = std::fs::remove_file(&output);
+
+        let mut remaining = 4_u64;
+        extract_entry(
+            &mut b"abcd".as_slice(),
+            4,
+            &output,
+            &mut remaining,
+            "test archive",
+        )
+        .expect("the first entry fits exactly");
+        assert_eq!(remaining, 0, "the budget is spent by what was written");
+
+        let error = extract_entry(
+            &mut b"e".as_slice(),
+            1,
+            &output,
+            &mut remaining,
+            "test archive",
+        )
+        .expect_err("nothing fits once the budget is gone");
+        assert!(
+            error.contains("bigger than the size it declares"),
+            "{error}"
+        );
+
+        let _ = std::fs::remove_file(&output);
+    }
+
+    #[test]
+    fn an_honest_archive_still_installs() {
+        // The other half of the bound: a truthful header must not be refused
+        // by the extra byte the check reads.
+        let root = std::env::temp_dir().join(format!("faf-zip-honest-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+
+        let bytes = zip(&[("honest.v0001/scenario.lua", b"-- a map")]);
+        let installed = install_archive(&bytes, &root, Some("honest.v0001"), |_| Ok(()))
+            .expect("an ordinary archive installs");
+        assert_eq!(
+            std::fs::read(installed.join("scenario.lua")).unwrap(),
+            b"-- a map"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     fn zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
         let mut bytes = std::io::Cursor::new(Vec::new());

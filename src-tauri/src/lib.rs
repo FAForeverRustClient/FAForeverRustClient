@@ -405,34 +405,47 @@ fn is_internal_navigation(url: &tauri::Url) -> bool {
         || url_str.starts_with("https://faforever.github.io/spooky-db")
 }
 
-/// News Hub video links arrive with the destination pasted onto the hub's own
-/// path. Unwrap those before handing the link to the browser.
-fn external_target(url: &tauri::Url) -> String {
-    let url_str = url.as_str();
-    if let Some(stripped) = url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/") {
-        format!("https://www.youtube.com/{stripped}")
-    } else if let Some(stripped) =
-        url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
-    {
-        format!("https://youtu.be/{stripped}")
-    } else {
-        url_str.to_string()
+/// The link to hand the operating system, or `None` for one it must never see.
+///
+/// Two jobs, together because they are one decision. News Hub video links
+/// arrive with the destination pasted onto the hub's own path, so those are
+/// unwrapped; and the scheme is checked, because the opener starts whatever
+/// Windows has registered for it.
+///
+/// The scheme check used to exist only on `on_new_window`. `on_navigation`
+/// passed anything that was not an internal page straight through, so a
+/// top-level navigation out of an embedded page to `file:`, `ms-msdt:`,
+/// `search-ms:` or any other registered protocol would have been opened by the
+/// shell. The embeds run with `allow-top-navigation-by-user-activation`, so
+/// that navigation is reachable from a compromised newshub or spooky-db, and
+/// the `opener:allow-open-url` capability scope does not apply here: it gates
+/// the JavaScript command, not this Rust-side call.
+fn external_target(url: &tauri::Url) -> Option<String> {
+    if !matches!(url.scheme(), "http" | "https") {
+        tracing::warn!(scheme = url.scheme(), "refusing to open a non-web link");
+        return None;
     }
+    let url_str = url.as_str();
+    Some(
+        if let Some(stripped) =
+            url_str.strip_prefix("https://www.faforever.com/newshub/youtube.com/")
+        {
+            format!("https://www.youtube.com/{stripped}")
+        } else if let Some(stripped) =
+            url_str.strip_prefix("https://www.faforever.com/newshub/youtu.be/")
+        {
+            format!("https://youtu.be/{stripped}")
+        } else {
+            url_str.to_string()
+        },
+    )
 }
 
-fn external_link_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
-    tauri::plugin::Builder::<R>::new("external-link-handler")
-        .on_navigation(|webview, url| {
-            if is_internal_navigation(url) {
-                return true;
-            }
-            let _ = webview
-                .app_handle()
-                .opener()
-                .open_url(external_target(url), None::<&str>);
-            false
-        })
-        .build()
+/// Hand a link to the OS browser, if it is one the OS may be given.
+fn open_externally<R: tauri::Runtime>(handle: &tauri::AppHandle<R>, url: &tauri::Url) {
+    if let Some(target) = external_target(url) {
+        let _ = handle.opener().open_url(target, None::<&str>);
+    }
 }
 
 pub fn run() {
@@ -472,7 +485,6 @@ pub fn run() {
                 )
                 .build(),
         )
-        .plugin(external_link_plugin())
         .on_window_event(|window, event| {
             #[cfg(windows)]
             if matches!(event, tauri::WindowEvent::Focused(false)) {
@@ -647,24 +659,24 @@ pub fn run() {
             .min_inner_size(560.0, 480.0)
             .resizable(true)
             .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
+            // The only navigation hook. A plugin carrying a second copy of
+            // this used to be registered as well, and never ran: Tauri asks
+            // the builder closure first (`manager::webview::prepare_pending_webview`)
+            // and skips the plugin store when it answers `false`, which this
+            // does for every external URL. Two copies of a security decision
+            // where one is unreachable is how the reachable one drifts.
             .on_navigation(move |url| {
                 // Allow the Tauri app origin and the two embedded site roots.
                 if is_internal_navigation(url) {
                     return true;
                 }
-                let _ = nav_handle
-                    .opener()
-                    .open_url(external_target(url), None::<&str>);
+                open_externally(&nav_handle, url);
                 false
             })
             .on_new_window(move |url, _features| {
                 // Any new-window request (target="_blank", window.open, popup)
                 // that escapes the iframe sandbox is routed to the OS browser.
-                if matches!(url.scheme(), "http" | "https") {
-                    let _ = new_win_handle
-                        .opener()
-                        .open_url(external_target(&url), None::<&str>);
-                }
+                open_externally(&new_win_handle, &url);
                 tauri::webview::NewWindowResponse::Deny
             })
             .build()?;
@@ -933,17 +945,40 @@ mod tests {
         assert_eq!(
             super::external_target(&url(
                 "https://www.faforever.com/newshub/youtube.com/watch?v=abc"
-            )),
-            "https://www.youtube.com/watch?v=abc"
+            ))
+            .as_deref(),
+            Some("https://www.youtube.com/watch?v=abc")
         );
         assert_eq!(
-            super::external_target(&url("https://www.faforever.com/newshub/youtu.be/abc")),
-            "https://youtu.be/abc"
+            super::external_target(&url("https://www.faforever.com/newshub/youtu.be/abc"))
+                .as_deref(),
+            Some("https://youtu.be/abc")
         );
         assert_eq!(
-            super::external_target(&url("https://forum.faforever.com/topic/1")),
-            "https://forum.faforever.com/topic/1"
+            super::external_target(&url("https://forum.faforever.com/topic/1")).as_deref(),
+            Some("https://forum.faforever.com/topic/1")
         );
+    }
+
+    #[test]
+    fn only_web_links_are_ever_handed_to_the_operating_system() {
+        // The opener starts whatever Windows has registered for a scheme, and
+        // the embeds can drive a top-level navigation. A compromised newshub
+        // must not be able to reach a protocol handler through this.
+        for hostile in [
+            "file:///C:/Windows/System32/calc.exe",
+            "ms-msdt:/id%20PCWDiagnostic",
+            "search-ms:query=passwords",
+            "steam://run/9420",
+            "javascript:alert(1)",
+            "data:text/html,<script>alert(1)</script>",
+        ] {
+            assert_eq!(
+                super::external_target(&url(hostile)),
+                None,
+                "{hostile} must never reach the OS opener"
+            );
+        }
     }
 
     #[test]
