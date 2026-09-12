@@ -3837,7 +3837,7 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
-        // ── tournaments / tutorials ──────────────────────────────────────
+        // ── tournaments ──────────────────────────────────────────────────
         case(
             "the account's Discord handle is read, then changed",
             vec![
@@ -4113,27 +4113,6 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 LobbyEvent::HostPrefillCleared.into(),
-            ],
-        ),
-        case(
-            "tutorials narrate a launch",
-            vec![
-                TutorialsEvent::Loading.into(),
-                TutorialsEvent::Loaded {
-                    categories: vec![TutorialCategory {
-                        id: 1,
-                        name: "Basics".into(),
-                    }],
-                    tutorials: vec![tutorial(7), tutorial(8)],
-                }
-                .into(),
-                TutorialsEvent::Selected { tutorial_id: 8 }.into(),
-                TutorialsEvent::LaunchPreparing {
-                    tutorial_id: 8,
-                    detail: "Updating tutorials".into(),
-                }
-                .into(),
-                TutorialsEvent::Launched { tutorial_id: 8 }.into(),
             ],
         ),
         case(
@@ -5725,21 +5704,6 @@ fn contribution_draft() -> ContributionDraft {
     }
 }
 
-fn tutorial(id: i32) -> Tutorial {
-    Tutorial {
-        id,
-        title: format!("Lesson {id}"),
-        description: String::new(),
-        link_url: String::new(),
-        image_url: String::new(),
-        ordinal: id,
-        launchable: true,
-        map_folder_name: format!("scmp_tut_{id}"),
-        technical_name: format!("tut_{id}"),
-        category_id: Some(1),
-    }
-}
-
 /// Writes the fixture. A test rather than a binary so it cannot go stale
 /// without someone noticing: `cargo test` regenerates it, and the frontend
 /// test then fails if the twin has not kept up.
@@ -5901,8 +5865,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Tourney:chatFailed",
     "Tourney:detailLoadFailed",
     "Tourney:loadFailed",
-    "Tutorials:launchFailed",
-    "Tutorials:loadFailed",
 ];
 
 const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
@@ -5987,11 +5949,6 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         "Training",
         "TrainingEvent",
         include_str!("../src/state/training.rs"),
-    ),
-    (
-        "Tutorials",
-        "TutorialsEvent",
-        include_str!("../src/state/tutorials.rs"),
     ),
     (
         "Uploads",

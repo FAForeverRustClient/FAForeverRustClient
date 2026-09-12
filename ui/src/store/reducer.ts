@@ -25,7 +25,6 @@ import { reduceReviews } from "./reducers/reviews";
 import { reduceSocial } from "./reducers/social";
 import { reduceStreams } from "./reducers/streams";
 import { reduceTraining } from "./reducers/training";
-import { reduceTutorials } from "./reducers/tutorials";
 import { reduceUploads } from "./reducers/uploads";
 import { reduceTourney } from "./reducers/tourney";
 
@@ -82,8 +81,6 @@ export function applyEvent(state: AppState, event: AppEvent): AppState {
       return { ...state, guides: reduceGuides(state.guides, event.event) };
     case "Training":
       return { ...state, training: reduceTraining(state.training, event.event) };
-    case "Tutorials":
-      return { ...state, tutorials: reduceTutorials(state.tutorials, event.event) };
     case "Uploads":
       return { ...state, uploads: reduceUploads(state.uploads, event.event) };
     case "GalacticWar":

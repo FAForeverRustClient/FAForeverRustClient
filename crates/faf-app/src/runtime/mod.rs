@@ -81,7 +81,6 @@ pub struct ServiceCtx {
     pub replay_vault_generation: LatestRequest,
     pub replay_local_generation: LatestRequest,
     pub map_generator_active: SingleFlight,
-    pub tutorial_launch_active: SingleFlight,
     /// The changelog tab re-mounts on every visit and asks for the index each
     /// time. Without this, two quick visits both read a not-ready status and
     /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
@@ -194,9 +193,15 @@ impl EventSink {
         let _ = self.versioned_tx.send(VersionedEvent { revision, event });
     }
 
-    /// A snapshot of the authoritative state. Lets a service read back the result
-    /// of its own `emit` (e.g. to persist the post-reduce slice). Read-only,
-    /// state still only changes through [`Self::emit`].
+    /// A snapshot of the authoritative state, for a test that wants to read
+    /// the whole thing back after an `emit`.
+    ///
+    /// Not for services: every one of them uses [`Self::with_state`], which
+    /// copies out the one slice it needs instead of cloning a state whose map
+    /// catalogue alone is megabytes. The doc here used to point at "IPC
+    /// hydration boundaries", and that boundary goes through
+    /// `App::versioned_snapshot`, not through the sink.
+    #[cfg(test)]
     pub fn snapshot(&self) -> AppState {
         self.state.read().expect("app state lock poisoned").clone()
     }
@@ -298,7 +303,6 @@ impl App {
             replay_vault_generation: LatestRequest::default(),
             replay_local_generation: LatestRequest::default(),
             map_generator_active: SingleFlight::default(),
-            tutorial_launch_active: SingleFlight::default(),
             changelog_active: SingleFlight::default(),
             changelog_entry_generation: LatestRequest::default(),
             guides_login_active: SingleFlight::default(),
@@ -381,8 +385,13 @@ impl App {
 
     /// Atomically subscribe at the event-stream tail and clone the state at
     /// that exact boundary. Events represented by the snapshot precede the
-    /// receiver; every later event is queued for it. This lets IPC recover from
-    /// broadcast lag without dropping or replaying state transitions.
+    /// receiver; every later event is queued for it.
+    ///
+    /// The unversioned twin of [`Self::subscribe_versioned_with_snapshot`],
+    /// which is what the shell uses: without a revision the frontend cannot
+    /// tell a gap from a quiet moment, so this is kept for the tests that
+    /// exercise the subscribe-and-snapshot boundary itself.
+    #[cfg(test)]
     pub fn subscribe_with_snapshot(&self) -> (broadcast::Receiver<AppEvent>, AppState) {
         let guard = self.state.read().expect("app state lock poisoned");
         let events = self.event_tx.subscribe();
@@ -521,7 +530,6 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Tourney(c) => services::tourney::handle(c, ctx, sink).await,
         AppCommand::Guides(c) => services::guides::handle(c, ctx, sink).await,
         AppCommand::Training(c) => services::training::handle(c, ctx, sink).await,
-        AppCommand::Tutorials(c) => services::tutorials::handle(c, ctx, sink).await,
         AppCommand::Changelog(c) => services::changelog::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,
         AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,

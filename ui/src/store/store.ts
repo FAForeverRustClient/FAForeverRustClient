@@ -335,13 +335,6 @@ const INITIAL: AppState = {
     contribution: null,
     contributionPost: null,
   },
-  tutorials: {
-    categories: [],
-    tutorials: [],
-    status: { type: "idle" },
-    selectedId: null,
-    launch: { type: "idle" },
-  },
   uploads: { request: null, status: { type: "idle" } },
   galacticWar: {
     status: { type: "idle" },

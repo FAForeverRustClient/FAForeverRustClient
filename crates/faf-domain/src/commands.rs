@@ -13,7 +13,7 @@ use crate::state::{
     MapGeneratorCommand, MapsCommand, ModsCommand, NavCommand, NotificationCommand,
     PlayerCardCommand, ReplayCommand, ReportingCommand, ReviewsCommand, SessionCommand,
     SettingsCommand, SocialCommand, StreamsCommand, TourneyCommand, TrainingCommand,
-    TutorialsCommand, UploadsCommand,
+    UploadsCommand,
 };
 
 // No `Eq`: `ReplayCommand` carries a `ReplayQuery`, which has an `f32`
@@ -42,7 +42,6 @@ pub enum AppCommand {
     Streams(StreamsCommand),
     Tourney(TourneyCommand),
     Training(TrainingCommand),
-    Tutorials(TutorialsCommand),
     Changelog(ChangelogCommand),
     Events(EventsCommand),
     Uploads(UploadsCommand),
@@ -163,12 +162,6 @@ impl From<GuidesCommand> for AppCommand {
 impl From<TrainingCommand> for AppCommand {
     fn from(c: TrainingCommand) -> Self {
         AppCommand::Training(c)
-    }
-}
-
-impl From<TutorialsCommand> for AppCommand {
-    fn from(c: TutorialsCommand) -> Self {
-        AppCommand::Tutorials(c)
     }
 }
 

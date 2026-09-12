@@ -12,7 +12,7 @@ use crate::state::{
     GalacticWarEvent, GuidesEvent, InstallEvent, LeaderboardEvent, LobbyEvent, MapGeneratorEvent,
     MapsEvent, ModsEvent, NavEvent, NotificationEvent, PlayerCardEvent, ReplayEvent,
     ReportingEvent, ReviewsEvent, SessionEvent, SettingsEvent, SocialEvent, StreamsEvent,
-    TourneyEvent, TrainingEvent, TutorialsEvent, UploadsEvent,
+    TourneyEvent, TrainingEvent, UploadsEvent,
 };
 
 // No `Eq`: `ReplayEvent` carries an `f32` (vault replay review score).
@@ -40,7 +40,6 @@ pub enum AppEvent {
     Streams(StreamsEvent),
     Tourney(TourneyEvent),
     Training(TrainingEvent),
-    Tutorials(TutorialsEvent),
     Changelog(ChangelogEvent),
     Events(EventsEvent),
     Uploads(UploadsEvent),
@@ -168,12 +167,6 @@ impl From<GuidesEvent> for AppEvent {
 impl From<TrainingEvent> for AppEvent {
     fn from(e: TrainingEvent) -> Self {
         AppEvent::Training(e)
-    }
-}
-
-impl From<TutorialsEvent> for AppEvent {
-    fn from(e: TutorialsEvent) -> Self {
-        AppEvent::Tutorials(e)
     }
 }
 
