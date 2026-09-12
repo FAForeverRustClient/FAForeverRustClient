@@ -62,6 +62,7 @@ pub mod replay;
 pub(crate) mod replay_recorder;
 pub mod reporting;
 pub mod reviews;
+pub mod scmap;
 pub mod session;
 pub mod settings_fake;
 pub mod settings_file;

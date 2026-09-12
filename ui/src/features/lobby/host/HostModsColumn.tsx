@@ -163,17 +163,24 @@ export function HostModsColumn() {
         </div>
       </div>
 
-      <div className="host-mod-tabs">
+      {/* The same switch the map column uses, rather than a second one that
+          looks nearly like it. Two controls doing the same job in one dialog
+          should not be distinguishable by their styling. */}
+      <div className="host-mod-tabs section-tabs" role="tablist" aria-label={t("lobby.host.mods")}>
         <button
           type="button"
-          className={`host-mod-tab${modTab === "ui" ? " active" : ""}`}
+          role="tab"
+          aria-selected={modTab === "ui"}
+          className={modTab === "ui" ? "active" : ""}
           onClick={() => setModTab("ui")}
         >
           {t("lobby.host.uiMods")} ({uiMods.length})
         </button>
         <button
           type="button"
-          className={`host-mod-tab${modTab === "sim" ? " active" : ""}`}
+          role="tab"
+          aria-selected={modTab === "sim"}
+          className={modTab === "sim" ? "active" : ""}
           onClick={() => setModTab("sim")}
         >
           {t("lobby.host.simMods")} ({simMods.length})

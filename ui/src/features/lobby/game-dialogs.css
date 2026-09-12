@@ -579,34 +579,19 @@
 }
 
 /* Column 2: Mods */
+/* Mirrors `.host-map-tabs`: both are `section-tabs`, and the only thing either
+   adds is that its two buttons split the width. */
 .host-mod-tabs {
-  display: flex;
-  gap: 2px;
   flex-shrink: 0;
-  background: var(--color-bg);
-  padding: 2px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  margin: 0;
 }
 
-.host-mod-tab {
+.host-mod-tabs button {
   flex: 1;
-  height: 24px;
-  font-size: 11px;
-  font-weight: 550;
-  color: var(--color-muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  text-align: center;
-  transition: all 120ms ease;
-}
-
-.host-mod-tab.active {
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-sm);
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .host-column-search {
