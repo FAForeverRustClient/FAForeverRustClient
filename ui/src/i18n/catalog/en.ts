@@ -196,6 +196,13 @@ export const en = {
   "lobby.mapPool.failed": "Could not load map pools: {reason}",
   "lobby.host.mapPlayerCapacity": "Player capacity",
   "lobby.host.mapDimensions": "Map dimensions",
+  // Plural: Russian needs four forms for a count of players, which the
+  // template literal this replaced could not express in any language.
+  "lobby.host.mapPlayers": { one: "{count} player", other: "{count} players" },
+  "lobby.host.mapPlayersUnknown": "Players: N/A",
+  "lobby.host.mapSizeUnknown": "Size: N/A",
+  "lobby.host.mapOfficialDescription": "Official base game map.",
+  "lobby.host.mapGeneratedDescription": "Generated Neroxis map.",
   "playerCard.clearSearch": "Clear search",
   "shell.exitGuard.title": "Forged Alliance is still running",
   "shell.exitGuard.body": "Closing the client now also shuts down the connection to the game, so you would drop out of the match. Quit the game first if it is still in progress.",
@@ -1601,6 +1608,12 @@ export const en = {
   "maps.view.unranked": "Unranked",
   "maps.view.sort.name": "Name",
   "maps.view.sort.size": "Largest",
+  "maps.view.sort.players": "Players",
+  "maps.view.preset.custom": "Custom",
+  "maps.view.preset.builtin": "Built-in",
+  // Plural: the map card's "8 players" line, which was a template literal and
+  // therefore English in every language.
+  "maps.view.playerCount": { one: "{count} player", other: "{count} players" },
   "maps.view.detectionUnavailable": "Installed-state detection is unavailable.",
   "maps.view.emptyVault": "No maps available",
   "maps.view.emptyVaultHint": "Refresh the vault when the FAF API is available.",
@@ -2324,7 +2337,11 @@ export const en = {
   "maps.generate.subtitle": "Configure the Neroxis generator, or rebuild an exact map from its name.",
   "maps.generate.notAGeneratedName": "That is not a generated map name. They look like neroxis_map_generator_1.22.1_<seed>_<options>.",
   "maps.generate.latestVersion": "Latest ({version})",
-  "maps.generate.asymmetric": "Asymmetric (no teams)",
+  "maps.generate.asymmetric": "Asymmetric",
+  // Plural: the two facts beside it in the specs grid, which were template
+  // literals and so stayed English in every language.
+  "maps.generate.spawnCount": { one: "{count} player", other: "{count} players" },
+  "maps.generate.teamCount": { one: "{count} team", other: "{count} teams" },
   "maps.generate.spawnsMultipleHint": "Must divide evenly between {teams} teams.",
   "maps.generate.visualize": "Generator viewer",
   "maps.generate.visualizeHint": "Opens a window and stays open. The run is not timed out.",
@@ -3619,6 +3636,17 @@ export const en = {
   "training.post.copyTitle": "Copy the title",
   "training.post.copied": "Copied",
   "training.post.noDestination": "This client was not told where to send it, so copy the text and post it where it belongs.",
+  "chat.sword.hosting": "Host",
+  "chat.sword.lobbying": "In lobby",
+  "chat.sword.playing": "Playing",
+  "chat.sword.playingDelayed": "Playing (live replay delayed)",
+  "maps.generate.copied": "Copied",
+  "maps.generate.copy": "Copy",
+  "mods.installed.stateLabel": "State",
+  "training.build.chartLabel": "Recorded build order",
+  "links.thanks.note.feedback": "feedback",
+  "links.thanks.note.communityHub": "community hub",
+  "lobby.host.defaultBadge": "Default",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

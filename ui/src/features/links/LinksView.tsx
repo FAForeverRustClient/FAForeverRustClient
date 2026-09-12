@@ -63,13 +63,15 @@ const REPOSITORIES = [
   },
 ] as const satisfies readonly { name: MessageKey; description: MessageKey; href: string }[];
 
+// The names are names and stay as they are written; what each person is being
+// thanked *for* is a phrase, so it is a key.
 const ACKNOWLEDGMENTS = [
   { name: "Seraphim-Noob", note: null },
   { name: "Nory", note: null },
-  { name: "Nuggets", note: "feedback" },
-  { name: "Vindex", note: "feedback" },
-  { name: "Sheppy", note: "community hub" },
-] as const;
+  { name: "Nuggets", note: "links.thanks.note.feedback" },
+  { name: "Vindex", note: "links.thanks.note.feedback" },
+  { name: "Sheppy", note: "links.thanks.note.communityHub" },
+] as const satisfies readonly { name: string; note: MessageKey | null }[];
 
 /** One row of the directory. The chip is the whole point of the page. */
 function LinkCard({
@@ -232,7 +234,7 @@ export function LinksView() {
           {ACKNOWLEDGMENTS.map((person) => (
             <li key={person.name} className="links-thanks-item">
               <span className="links-thanks-name">{person.name}</span>
-              {person.note && <span className="links-thanks-note"> ({person.note})</span>}
+              {person.note && <span className="links-thanks-note"> ({t(person.note)})</span>}
             </li>
           ))}
         </ul>

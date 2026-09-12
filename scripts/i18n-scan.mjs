@@ -36,11 +36,17 @@ const IGNORED_FILES = new Map([
   ["ui/src/design-system/Icon.tsx", "inline SVG path data"],
   ["ui/src/shared/externalLinks.ts", "developer-facing throw messages, never rendered"],
   ["ui/src/shared/factions.ts", "faction data keyed by wire id; the shown label is factions.random"],
+  ["ui/src/features/links/LinksView.tsx", "the names in the thanks list; what each is thanked for is a key"],
+  ["ui/src/features/player-card/PlayerOverview.tsx", "the three clients' product names, matched against the user agent"],
+  ["ui/src/features/training/RunMap.tsx", "marker type ids read out of the game's own map files"],
+  ["ui/src/features/training/recording.ts", "the same marker type ids, on the analyser side"],
+  ["ui/src/features/events/eventSubmission.ts", "the body of a GitHub issue, which is English wherever it is written from"],
+  ["ui/src/features/maps/MapPreviewZoom.tsx", "throw messages for a copy that falls back on its own; never rendered"],
 ]);
 
 // Attribute names whose values are machine tokens, never prose.
 const TECHNICAL_ATTRS =
-  /\b(?:className|key|id|htmlFor|name|type|role|value|href|src|rel|target|autoComplete|inputMode|data-[\w-]+|aria-(?:hidden|current|expanded|haspopup|controls|live|valuetext|labelledby|describedby|selected|checked|disabled|sort))\s*=\s*"[^"]*"/g;
+  /\b(?:className|key|id|htmlFor|name|type|role|value|href|src|rel|target|autoComplete|inputMode|allow|data-[\w-]+|aria-(?:hidden|current|expanded|haspopup|controls|live|valuetext|labelledby|describedby|selected|checked|disabled|sort))\s*=\s*"[^"]*"/g;
 
 // Object keys carrying machine tokens in this codebase's command shapes.
 const COMMAND_KEYS =
@@ -51,6 +57,8 @@ const COMMAND_KEYS =
 const KEYBOARD_KEYS = new Set([
   "Enter", "Escape", "Backspace", "Delete", "Tab", "Home", "End", "PageUp", "PageDown",
   "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Shift", "Control", "Alt", "Meta",
+  // The bare prefix, for the `startsWith("Arrow")` that handles all four.
+  "Arrow",
 ]);
 
 // TypeScript builtins that appear as bare words in type positions.
@@ -65,7 +73,9 @@ const NOT_PROSE = [
   /^#[0-9a-f]{3,8}$/i,                            // colours
   /^\d/,                                          // starts with a digit
   /^[^a-zA-Z]*$/,                                 // no letters at all
-  /^(?:faf|coop|nomads|fafbeta|fafdevelop|ladder1v1|global|en|de|UEF|Aeon|Cybran|Seraphim)$/,
+  // Proper nouns: a generator, a league division and a release kind, all of
+  // them matched against or printed verbatim rather than translated.
+  /^(?:faf|coop|nomads|fafbeta|fafdevelop|ladder1v1|global|en|de|UEF|Aeon|Cybran|Seraphim|Neroxis|Grandmaster|Hotfix)$/,
   /^[a-z][\w-]*(?:\s+[a-z][\w-]*)+$/,             // a CSS class list
   /(?:\|\||&&|===|!==|=>|\)\.)/,                  // half of a split expression
   /^[A-Z][a-z]+(?:[A-Z][a-z]+)+$/,                // PascalCase type or slice name

@@ -1,3 +1,5 @@
+import type { MessageKey } from "../../i18n/catalog/en";
+import { useTranslation } from "../../i18n/useTranslation";
 import type { GamePresenceStatus } from "./gameSummary";
 import hostIcon from "./assets/status/host.png";
 import lobbyIcon from "./assets/status/lobby.png";
@@ -9,11 +11,11 @@ interface Props {
   className?: string;
 }
 
-const STATUS_ICONS: Record<GamePresenceStatus, { src: string; alt: string }> = {
-  hosting: { src: hostIcon, alt: "Host" },
-  lobbying: { src: lobbyIcon, alt: "In lobby" },
-  playing: { src: playingIcon, alt: "Playing" },
-  playingDelayed: { src: playing5Icon, alt: "Playing (live replay delayed)" },
+const STATUS_ICONS: Record<GamePresenceStatus, { src: string; alt: MessageKey }> = {
+  hosting: { src: hostIcon, alt: "chat.sword.hosting" },
+  lobbying: { src: lobbyIcon, alt: "chat.sword.lobbying" },
+  playing: { src: playingIcon, alt: "chat.sword.playing" },
+  playingDelayed: { src: playing5Icon, alt: "chat.sword.playingDelayed" },
 };
 
 /**
@@ -24,6 +26,7 @@ const STATUS_ICONS: Record<GamePresenceStatus, { src: string; alt: string }> = {
  * - `playingDelayed`: Red crossed swords (in a live game, safety delay active)
  */
 export function GameStatusSword({ status, className = "" }: Props) {
+  const { t } = useTranslation();
   const icon = STATUS_ICONS[status];
   if (!icon) return null;
 
@@ -34,7 +37,7 @@ export function GameStatusSword({ status, className = "" }: Props) {
     >
       <img
         src={icon.src}
-        alt={icon.alt}
+        alt={t(icon.alt)}
         className="chat-game-sword-img"
         width={16}
         height={16}

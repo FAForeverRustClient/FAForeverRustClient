@@ -897,7 +897,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               <div className="generate-map-name-row">
                 <div className="generate-map-name-wrap">
                   <span className="generate-map-name-label">
-                    {t("maps.generate.reproduceTitle") || "Map name"}
+                    {t("maps.generate.reproduceTitle")}
                   </span>
                   <code className="generate-map-name-code" title={currentMap}>
                     {currentMap}
@@ -905,7 +905,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <Button onClick={() => copyCurrentName(currentMap)} title={t("maps.generate.copyName")}>
                   <Icon name={copied ? "check" : "copy"} size={14} />
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? t("maps.generate.copied") : t("maps.generate.copy")}
                 </Button>
               </div>
 
@@ -916,15 +916,19 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <div>
                   <dt>{t("maps.generate.spawns")}</dt>
-                  <dd>{currentFacts ? `${currentFacts.spawnCount} players` : "N/A"}</dd>
+                  <dd>
+                    {currentFacts
+                      ? t("maps.generate.spawnCount", { count: currentFacts.spawnCount })
+                      : "N/A"}
+                  </dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.teams")}</dt>
                   <dd>
                     {currentFacts
                       ? currentFacts.numTeams === 0
-                        ? "Asymmetric"
-                        : `${currentFacts.numTeams} teams`
+                        ? t("maps.generate.asymmetric")
+                        : t("maps.generate.teamCount", { count: currentFacts.numTeams })
                       : "N/A"}
                   </dd>
                 </div>
