@@ -494,6 +494,15 @@
   gap: 8px 48px;
 }
 
+/* A pair of cells whose contents differ in height -- here a single dropdown
+   beside a field with buttons under it -- top-aligned rather than stretched.
+   Stretched, each cell was as tall as the taller of the two and `.generate-map-row`
+   centred its control inside that, so the dropdown floated half a button below
+   the field it sits next to instead of starting on the same line. */
+.generate-map-grid-2col.generate-map-grid-top {
+  align-items: start;
+}
+
 .generate-map-row {
   display: grid;
   grid-template-columns: 105px minmax(0, 1fr);
@@ -507,6 +516,22 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* A row whose control is taller than one field: a text box with buttons under
+   it, say. The label belongs beside the *field*, not in the middle of the
+   whole stack, which is where centring it against the row put it -- level with
+   the gap between the box and the buttons, and a half-button lower than the
+   label of the single-field row beside it. Top-aligning the row and giving the
+   label the height of one control centres it on the field instead. */
+.generate-map-row.generate-map-row-tall {
+  align-items: start;
+}
+
+.generate-map-row-tall > .generate-map-row-label {
+  display: flex;
+  align-items: center;
+  height: 34px;
 }
 
 .generate-map-row-control {
@@ -587,12 +612,19 @@
 .generate-map-preset-save-group-buttons {
   display: flex;
   gap: 6px;
-  align-items: center;
+  align-items: stretch;
 }
 
+/* Both buttons exactly one line tall, whatever they say.
+   `min-height` alone let a label that did not fit wrap to a second line, so
+   the button beside it -- whose label did fit -- ended up visibly shorter.
+   The height is the one every other control in this dialog uses, and `nowrap`
+   keeps a longer translation from reintroducing the wrap it was caused by. */
 .generate-map-preset-save-group-buttons > * {
   flex: 1;
   min-width: 0;
+  height: 34px;
+  white-space: nowrap;
 }
 
 .generate-map-check {

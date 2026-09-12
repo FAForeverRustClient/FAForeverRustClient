@@ -1,16 +1,23 @@
 import { describe, expect, it } from "vitest";
 import type { NotificationKind, NotificationSound, NotificationSoundChoices } from "../../ipc/bindings";
+import type { ToneSound } from "./notificationSound";
 import {
+  customSoundName,
+  isSampleSound,
   notificationTonePlan,
   soundForKind,
+  soundFromOptionValue,
+  soundOptionValue,
   tonePeakGain,
   tonePlanDuration,
 } from "./notificationSound";
 
-const AUDIBLE: NotificationSound[] = ["soft", "chime", "ping", "alert"];
+// The shipped tones only. A custom sound is a file rather than a plan, so it
+// has nothing for the tests below to measure.
+const AUDIBLE: ToneSound[] = ["soft", "chime", "ping", "alert"];
 
-// Not the defaults, which are all chime: a mapping test needs the twelve
-// fields to be distinguishable, which is exactly what the defaults are not.
+// Not the defaults, which are chime everywhere but the found match: a mapping
+// test needs the twelve fields to be distinguishable, which they are not.
 const CHOICES: NotificationSoundChoices = {
   matchFound: "alert",
   privateMessage: "ping",
@@ -126,5 +133,53 @@ describe("which tone a notification plays", () => {
     const quiet: NotificationSoundChoices = { ...CHOICES, friendOnline: "silent" };
     expect(soundForKind("friendOnline", quiet)).toBe("silent");
     expect(notificationTonePlan(soundForKind("friendOnline", quiet))).toBeNull();
+  });
+});
+
+describe("the one sound the client ships as a file", () => {
+  it("has no tone plan, because it is a recording rather than notes", () => {
+    expect(notificationTonePlan("fafMatch")).toBeNull();
+  });
+
+  it("is a shipped sample, where the four tones and a custom file are not", () => {
+    expect(isSampleSound("fafMatch")).toBe(true);
+    for (const tone of [...AUDIBLE, "silent"] as const) {
+      expect(isSampleSound(tone), tone).toBe(false);
+    }
+    expect(isSampleSound({ custom: "fafMatch" })).toBe(false);
+  });
+
+  it("survives the round trip through a select's string value", () => {
+    expect(soundFromOptionValue(soundOptionValue("fafMatch"))).toBe("fafMatch");
+  });
+
+  it("is not confused with a custom file of the same name", () => {
+    // The cache keys are prefixed for exactly this: somebody naming their own
+    // file `fafMatch` must not shadow the shipped one.
+    expect(soundOptionValue({ custom: "fafMatch" })).toBe("custom:fafMatch");
+    expect(soundOptionValue("fafMatch")).toBe("fafMatch");
+  });
+});
+
+describe("a sound the player added", () => {
+  it("has no tone plan, because it is a file rather than notes", () => {
+    expect(notificationTonePlan({ custom: "horn.wav" })).toBeNull();
+  });
+
+  it("names itself, where a shipped tone names nothing", () => {
+    expect(customSoundName({ custom: "horn.wav" })).toBe("horn.wav");
+    expect(customSoundName("chime")).toBeNull();
+  });
+
+  it("survives the round trip through a select's string value", () => {
+    for (const sound of [...AUDIBLE, "silent", { custom: "horn.wav" }] as NotificationSound[]) {
+      expect(soundFromOptionValue(soundOptionValue(sound))).toEqual(sound);
+    }
+  });
+
+  it("keeps a file name containing a colon in one piece", () => {
+    // The option value is `custom:<name>` and a name may contain a colon on
+    // any filesystem that allows one, so only the first is a separator.
+    expect(soundFromOptionValue("custom:a:b.wav")).toEqual({ custom: "a:b.wav" });
   });
 });

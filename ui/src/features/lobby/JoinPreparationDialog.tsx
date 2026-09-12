@@ -7,6 +7,14 @@
 // hundreds of files and a map is a fresh download, so "nothing" can last a
 // while.
 //
+// It stays up past the patching, too. Preparation used to be the whole of it:
+// the moment the files were ready the dialog closed, and the wait that follows
+// -- the adapter starting, Forged Alliance opening its window, which is a good
+// few seconds on any machine -- was narrated by one line at the bottom of the
+// window reading "Initiating". The report was that the client looks like it
+// stopped. So `launched` keeps the dialog, saying the game is starting, until
+// the game itself is on screen.
+//
 // Dismissible on purpose. A dialog that cannot be closed while a five minute
 // patch runs is a client you cannot use, and the status bar keeps the same
 // narration once this is out of the way. Closing hides the dialog; it does not
@@ -17,13 +25,27 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ipc } from "../../ipc/client";
+import { joinProgressOf, nextStep } from "./joinProgress";
 import "./game-dialogs.css";
+
+/**
+ * Call the join off.
+ *
+ * One command for both halves of the dialog: while the files are coming down
+ * it stops the preparation and the join request, and once the game process is
+ * up the service turns it into the same termination the Leave button does.
+ * Which of the two applies is a question about state the backend already holds.
+ */
+const cancelJoin = () => ipc.send({ kind: "Lobby", command: { type: "cancelJoin" } });
 
 export function JoinPreparationDialog() {
   const { t } = useTranslation();
   const join = useAppStore((state) => state.state.lobby.join);
-  const preparing = join.type === "preparing" ? join.payload : null;
-  const detail = preparing?.detail ?? "";
+  const progress = joinProgressOf(join);
+  // The line the step log follows. While the game is starting there is no
+  // detail to follow, so the log stops growing and keeps what it has.
+  const detail = progress?.kind === "preparing" ? progress.detail : "";
 
   const [hidden, setHidden] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
@@ -36,7 +58,7 @@ export function JoinPreparationDialog() {
   const wasPreparing = useRef(false);
 
   useEffect(() => {
-    if (!preparing) {
+    if (!progress) {
       // Reset on the way out, not on the way in: the first render with a step
       // in it must not throw that step away.
       if (wasPreparing.current) {
@@ -47,43 +69,58 @@ export function JoinPreparationDialog() {
       return;
     }
     wasPreparing.current = true;
-    setSteps((current) => (
-      // The backend repeats the same step with a new percentage, which is one
-      // step, not a hundred.
-      current[current.length - 1] === detail || detail === "" ? current : [...current, detail]
-    ));
-  }, [preparing, detail]);
+    setSteps((current) => {
+      const line = nextStep(current, detail);
+      return line === null ? current : [...current, line];
+    });
+  }, [progress, detail]);
 
-  if (!preparing || hidden) return null;
+  if (!progress || hidden) return null;
 
-  const progress = preparing.progress === null
-    ? null
-    : Math.min(100, Math.max(0, preparing.progress));
+  // Starting the game has nothing to measure: the client has handed off to a
+  // process and is waiting for a window, so the bar runs rather than fills.
+  const percent = progress.kind === "preparing" ? progress.progress : null;
 
   return (
     <Modal className="confirm-modal join-preparing-modal" onClose={() => setHidden(true)}>
       <div className="confirm-dialog-content">
-        <h2>{t("lobby.joinProgress.title")}</h2>
+        <h2>
+          {t(progress.kind === "starting"
+            ? "lobby.joinProgress.startingTitle"
+            : "lobby.joinProgress.title")}
+        </h2>
         {/* Which of the four kinds of waiting this is. The Python client gives
             each its own bar; one bar plus the name of the phase driving it
             says the same thing without four mostly-empty bars, and it is what
             stops the long silent checksum pass reading as a hang. */}
-        <p className="join-preparing-phase">{t(`lobby.joinProgress.phase.${preparing.phase}`)}</p>
-        <p className="join-preparing-detail">{preparing.detail}</p>
+        <p className="join-preparing-phase">
+          {progress.kind === "starting"
+            ? t("lobby.joinProgress.phase.starting")
+            : t(`lobby.joinProgress.phase.${progress.phase}`)}
+        </p>
+        <p className="join-preparing-detail">
+          {progress.kind === "starting"
+            ? t("lobby.joinProgress.startingDetail", { name: progress.name })
+            : progress.detail}
+        </p>
         <div
           className="join-preparing-bar"
-          data-indeterminate={progress === null ? "true" : undefined}
+          data-indeterminate={percent === null ? "true" : undefined}
           role="progressbar"
           aria-label={t("lobby.joinProgress.title")}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={progress ?? undefined}
-          aria-valuetext={progress === null ? preparing.detail : `${preparing.detail}, ${progress}%`}
+          aria-valuenow={percent ?? undefined}
+          aria-valuetext={percent === null ? detail : `${detail}, ${percent}%`}
         >
-          <span style={progress === null ? undefined : { width: `${progress}%` }} />
+          <span style={percent === null ? undefined : { width: `${percent}%` }} />
         </div>
         <p className="muted join-preparing-percent">
-          {progress === null ? t("lobby.joinProgress.working") : `${progress}%`}
+          {percent === null
+            ? t(progress.kind === "starting"
+              ? "lobby.joinProgress.startingNote"
+              : "lobby.joinProgress.working")
+            : `${percent}%`}
         </p>
 
         {/* The reference client's "Details" button: which file, which step,
@@ -109,6 +146,14 @@ export function JoinPreparationDialog() {
         )}
 
         <div className="confirm-dialog-actions">
+          {/* Stop, not just look away. Hiding leaves the join running, which
+              is the right default for a five minute patch, and is no use at
+              all to somebody who has changed their mind about the game. */}
+          <Button onClick={cancelJoin}>
+            {t(progress.kind === "starting"
+              ? "lobby.joinProgress.cancelStarting"
+              : "lobby.joinProgress.cancel")}
+          </Button>
           <Button onClick={() => setHidden(true)}>{t("lobby.joinProgress.hide")}</Button>
         </div>
         <p className="muted join-preparing-note">{t("lobby.joinProgress.hideNote")}</p>

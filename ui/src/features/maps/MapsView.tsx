@@ -574,7 +574,7 @@ function VaultView({ busy }: { busy: boolean }) {
           map={previewMap}
           onClose={() => setPreviewMap(null)}
           meta={<>
-            {sizeLabel(previewMap)} · {previewMap.maxPlayers} players
+            {sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers })}
             {typeof previewMap.ranked === "boolean" && (
               <>
                 {" · "}
@@ -749,8 +749,8 @@ function InstalledView({ busy }: { busy: boolean }) {
               ["all", t("maps.view.preset.all")],
               ["favorites", t("maps.view.preset.favorites")],
               ["ranked", t("maps.view.ranked")],
-              ["custom", "Custom"],
-              ["builtin", "Built-in"],
+              ["custom", t("maps.view.preset.custom")],
+              ["builtin", t("maps.view.preset.builtin")],
             ] as Array<[InstalledPreset, string]>).map(([key, label]) => (
               <Button
                 key={key}
@@ -841,7 +841,7 @@ function InstalledView({ busy }: { busy: boolean }) {
           <select className="search-panel-control" value={sort} onChange={(event) => setSort(event.target.value as InstalledSort)}>
             <option value="name">{t("maps.view.sort.name")}</option>
             <option value="size">{t("maps.view.sort.size")}</option>
-            <option value="players">Players</option>
+            <option value="players">{t("maps.view.sort.players")}</option>
             <option value="rating">{t("maps.view.preset.rating")}</option>
             <option value="newest">{t("maps.view.preset.newest")}</option>
           </select>
@@ -887,7 +887,9 @@ function InstalledView({ busy }: { busy: boolean }) {
                     </span>
                     <small>{map.folderName}</small>
                     <small>
-                      {sizeLabel(metadata ?? { width: map.width ?? 512, height: map.height ?? 512 })} · {map.maxPlayers ?? metadata?.maxPlayers ?? 2} players
+                      {sizeLabel(metadata ?? { width: map.width ?? 512, height: map.height ?? 512 })}
+                      {" · "}
+                      {t("maps.view.playerCount", { count: map.maxPlayers ?? metadata?.maxPlayers ?? 2 })}
                       {metadata && metadata.reviews > 0 && ` · ${ratingLabel(metadata)}`}
                     </small>
                   </span>
@@ -919,7 +921,7 @@ function InstalledView({ busy }: { busy: boolean }) {
         <MapPreviewDialog
           map={previewMap}
           onClose={() => setPreviewMap(null)}
-          meta={<>{sizeLabel(previewMap)} · {previewMap.maxPlayers ?? 2} players</>}
+          meta={<>{sizeLabel(previewMap)} · {t("maps.view.playerCount", { count: previewMap.maxPlayers ?? 2 })}</>}
         />
       )}
       {pendingUninstall && (

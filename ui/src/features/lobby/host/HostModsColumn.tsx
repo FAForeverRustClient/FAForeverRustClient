@@ -199,7 +199,7 @@ export function HostModsColumn() {
                 </button>
               </div>
               {presets.length === 0 ? (
-                <p className="host-preset-popover-empty">{t("lobby.host.noPresets") ?? "No saved presets"}</p>
+                <p className="host-preset-popover-empty">{t("lobby.host.noPresets")}</p>
               ) : (
                 <div className="host-preset-popover-list">
                   {presets.map((preset) => (

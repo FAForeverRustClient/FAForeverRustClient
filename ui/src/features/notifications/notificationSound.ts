@@ -16,6 +16,8 @@ import type {
   NotificationSound,
   NotificationSoundChoices,
 } from "../../ipc/bindings";
+import { native } from "../../ipc/native";
+import fafMatchUrl from "./assets/match-found.mp3";
 
 /** A harmonic above the note's own frequency. Shapes the timbre. */
 export interface TonePartial {
@@ -37,8 +39,48 @@ export interface NotificationTonePlan {
   partials: readonly TonePartial[];
 }
 
-/** Every tone that makes a sound. `silent` has no plan, which is the point. */
-export type AudibleSound = Exclude<NotificationSound, "silent">;
+/**
+ * Every synthesised tone. `silent` has no plan, which is the point; `fafMatch`
+ * is a file the client ships rather than notes to schedule; and a custom sound
+ * is a file the player added.
+ */
+export type ToneSound = Exclude<NotificationSound, "silent" | SampleSound | { custom: string }>;
+
+/**
+ * The samples the client ships, mapped to the bundled file.
+ *
+ * One entry, and it is not a slippery slope: `fafMatch` is here because "a
+ * match was found" is a sound people already know by ear from the Java client,
+ * and no arrangement of sine partials is going to be that sound. Anything else
+ * anybody wants is what the custom picker is for.
+ */
+export type SampleSound = "fafMatch";
+
+const SAMPLES: Record<SampleSound, string> = {
+  fafMatch: fafMatchUrl,
+};
+
+/** Whether a choice is one of the shipped samples. */
+export function isSampleSound(sound: NotificationSound): sound is SampleSound {
+  return typeof sound === "string" && sound in SAMPLES;
+}
+
+/** The stored file name, for a choice that is one; `null` for the five tones. */
+export function customSoundName(sound: NotificationSound): string | null {
+  return typeof sound === "object" && "custom" in sound ? sound.custom : null;
+}
+
+/** A choice as a value a `<select>` can hold and hand back. */
+export function soundOptionValue(sound: NotificationSound): string {
+  return typeof sound === "string" ? sound : `custom:${sound.custom}`;
+}
+
+/** The inverse of {@link soundOptionValue}. */
+export function soundFromOptionValue(value: string): NotificationSound {
+  return value.startsWith("custom:")
+    ? { custom: value.slice("custom:".length) }
+    : (value as NotificationSound);
+}
 
 const PARTIALS: readonly TonePartial[] = [
   { ratio: 1, gain: 1 },
@@ -68,7 +110,7 @@ const BRIGHT_PARTIALS: readonly TonePartial[] = [
  * risk of clipping: the partials above the fundamental are quiet enough that a
  * rendered tone peaks at the plan's own gain.
  */
-const PLANS: Record<AudibleSound, NotificationTonePlan> = {
+const PLANS: Record<ToneSound, NotificationTonePlan> = {
   soft: {
     notes: [{ frequency: 392, startSeconds: 0, durationSeconds: 0.16 }],
     attackSeconds: 0.02,
@@ -98,9 +140,16 @@ const PLANS: Record<AudibleSound, NotificationTonePlan> = {
   },
 };
 
-/** The plan for a tone, or `null` for the one that stays quiet. */
+/**
+ * The plan for a shipped tone.
+ *
+ * `null` for the one that stays quiet, and also for a custom sound: that is a
+ * file to decode rather than notes to schedule, and it is played by
+ * {@link playNotificationSound} down a different path.
+ */
 export function notificationTonePlan(sound: NotificationSound): NotificationTonePlan | null {
-  return sound === "silent" ? null : PLANS[sound];
+  if (sound === "silent" || isSampleSound(sound) || customSoundName(sound) !== null) return null;
+  return PLANS[sound as ToneSound];
 }
 
 /** How long a plan runs, for tests and for closing the audio context. */
@@ -226,6 +275,16 @@ const SCHEDULE_LEAD_SECONDS = 0.02;
  * afterwards puts the whole envelope behind the clock, which is silence.
  */
 export function playNotificationSound(sound: NotificationSound, volume: number) {
+  const custom = customSoundName(sound);
+  if (custom !== null) {
+    playFile(`custom:${custom}`, () => native.readNotificationSound(custom)
+      .then((bytes) => new Uint8Array(bytes).buffer), volume);
+    return;
+  }
+  if (isSampleSound(sound)) {
+    playFile(`shipped:${sound}`, () => fetch(SAMPLES[sound]).then((r) => r.arrayBuffer()), volume);
+    return;
+  }
   const plan = notificationTonePlan(sound);
   if (!plan) return;
   const peak = tonePeakGain(plan, volume);
@@ -250,5 +309,85 @@ export function playNotificationSound(sound: NotificationSound, volume: number) 
   // interacted with. Every caller here is either a click or a keypress in the
   // settings, or a notification arriving in a window somebody has already used,
   // so this resolves; if it does not, the tone is dropped rather than queued.
+  void context.resume().then(play, () => undefined);
+}
+
+
+/**
+ * Decoded sound files, by cache key.
+ *
+ * Decoding is the expensive half -- the bytes are read, crossed over the IPC
+ * boundary or fetched, and turned into float samples -- and a notification
+ * sound is played over and over, so it happens once per key per session. The
+ * entry is the promise rather than the buffer, so two notifications arriving
+ * together share one decode instead of racing two.
+ *
+ * A key that fails to load caches its failure as `null`. The alternative is
+ * retrying a read of a file somebody deleted every time a friend comes online.
+ *
+ * Keys are prefixed (`custom:` / `shipped:`) so a player who names a file after
+ * a shipped sample does not collide with it.
+ */
+const decoded = new Map<string, Promise<AudioBuffer | null>>();
+
+/** Drop the cache, for when the set of stored sounds has changed. */
+export function forgetCustomSounds() {
+  decoded.clear();
+}
+
+function loadSound(
+  context: AudioContext,
+  key: string,
+  read: () => Promise<ArrayBuffer>,
+): Promise<AudioBuffer | null> {
+  const existing = decoded.get(key);
+  if (existing) return existing;
+
+  // `decodeAudioData` detaches the buffer it is given, so every reader hands
+  // over one it owns rather than a view onto something else.
+  const loading = read()
+    .then((bytes) => context.decodeAudioData(bytes))
+    .catch(() => null);
+  decoded.set(key, loading);
+  return loading;
+}
+
+/**
+ * Play a sound that is a file: one the client ships, or one the player added.
+ *
+ * Volume is applied the same way the tones apply it -- as a fraction of the
+ * setting -- so moving the slider moves everything together. Unlike a tone,
+ * the file's own level is whatever it was recorded at, so there is no peak
+ * gain to scale: 100 means "as loud as the file is".
+ *
+ * Failure is silence. A sound that was deleted, or that turned out not to
+ * decode, must not stop the notification it belongs to from appearing.
+ */
+function playFile(key: string, read: () => Promise<ArrayBuffer>, volume: number) {
+  const level = Math.min(100, Math.max(0, volume)) / 100;
+  if (level <= 0) return;
+  const context = sharedContext();
+  if (!context) return;
+
+  const start = (buffer: AudioBuffer | null) => {
+    if (!buffer) return;
+    try {
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      source.buffer = buffer;
+      gain.gain.setValueAtTime(level, context.currentTime);
+      source.connect(gain);
+      gain.connect(context.destination);
+      source.start();
+    } catch {
+      // Same bargain as a tone: the notification is visible either way.
+    }
+  };
+
+  const play = () => void loadSound(context, key, read).then(start, () => undefined);
+  if (context.state === "running") {
+    play();
+    return;
+  }
   void context.resume().then(play, () => undefined);
 }

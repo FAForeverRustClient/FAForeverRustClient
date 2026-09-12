@@ -15,6 +15,7 @@
 // route it drove over there, which is the whole reason the two panes sit side
 // by side.
 
+import { t } from "../../i18n";
 import { catColor, mmss, type Lane } from "./recording";
 
 const ROW_H = 36;
@@ -68,12 +69,12 @@ export function BuildFlow({ lanes, durationMs, hovered, onHover }: Props) {
 
   return (
     <div className="training-flow">
-      <svg width={width} height={height} role="img" aria-label="Recorded build order">
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={x(t)} y1={TOP - 4} x2={x(t)} y2={height} className="training-flow-grid" />
-            <text x={x(t)} y={TOP - 8} className="training-flow-tick" textAnchor="middle">
-              {mmss(t)}
+      <svg width={width} height={height} role="img" aria-label={t("training.build.chartLabel")}>
+        {ticks.map((tick) => (
+          <g key={tick}>
+            <line x1={x(tick)} y1={TOP - 4} x2={x(tick)} y2={height} className="training-flow-grid" />
+            <text x={x(tick)} y={TOP - 8} className="training-flow-tick" textAnchor="middle">
+              {mmss(tick)}
             </text>
           </g>
         ))}

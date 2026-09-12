@@ -373,9 +373,9 @@ const Line = memo(function Line({
     [registerRow, message.id],
   );
   const { t } = useTranslation();
-  const body = renderBody(message.content, self, search, onGameLink, pings);
   const time = withTime ? formatTime(message.timestamp, use24HourTime) : "";
   const fromSelf = !!self && message.sender === self;
+  const body = renderBody(message.content, self, search, onGameLink, pings, fromSelf);
   const nameStyle = resolvedNickStyle(message.sender, user, social, preferences, self);
 
   // Right-clicking the line answers it. The button in the corner is a hover

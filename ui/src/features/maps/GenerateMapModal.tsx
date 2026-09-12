@@ -92,16 +92,22 @@ function Row({
   label,
   hint,
   superseded = false,
+  className,
   children,
 }: {
   label: string;
   hint?: string;
   /** Dim the row: something else is deciding this value (see the style rows). */
   superseded?: boolean;
+  /** Extra class, for a row whose control is taller than one field. */
+  className?: string;
   children: ReactNode;
 }) {
+  const classes = ["generate-map-row"];
+  if (superseded) classes.push("is-superseded");
+  if (className) classes.push(className);
   return (
-    <div className={superseded ? "generate-map-row is-superseded" : "generate-map-row"}>
+    <div className={classes.join(" ")}>
       <span className="generate-map-row-label">{label}</span>
       <div className="generate-map-row-control">
         {children}
@@ -714,7 +720,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
                   <hr className="generate-map-divider" />
 
-                  <div className="generate-map-grid-2col">
+                  {/* Top-aligned: the right cell carries a field with buttons
+                      under it and the left one a single dropdown, and stretched
+                      cells put those two on different lines. */}
+                  <div className="generate-map-grid-2col generate-map-grid-top">
                     <Row label={t("maps.generate.presets")}>
                       <Select
                         value=""
@@ -728,7 +737,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       />
                     </Row>
 
-                    <Row label={t("maps.generate.presetName")}>
+                    <Row label={t("maps.generate.presetName")} className="generate-map-row-tall">
                       <div className="generate-map-preset-save-group">
                         <input
                           className="generate-map-control"
@@ -894,7 +903,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               <div className="generate-map-name-row">
                 <div className="generate-map-name-wrap">
                   <span className="generate-map-name-label">
-                    {t("maps.generate.reproduceTitle") || "Map name"}
+                    {t("maps.generate.reproduceTitle")}
                   </span>
                   <code className="generate-map-name-code" title={currentMap}>
                     {currentMap}
@@ -902,7 +911,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <Button onClick={() => copyCurrentName(currentMap)} title={t("maps.generate.copyName")}>
                   <Icon name={copied ? "check" : "copy"} size={14} />
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? t("maps.generate.copied") : t("maps.generate.copy")}
                 </Button>
               </div>
 
@@ -913,15 +922,19 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <div>
                   <dt>{t("maps.generate.spawns")}</dt>
-                  <dd>{currentFacts ? `${currentFacts.spawnCount} players` : "N/A"}</dd>
+                  <dd>
+                    {currentFacts
+                      ? t("maps.generate.spawnCount", { count: currentFacts.spawnCount })
+                      : "N/A"}
+                  </dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.teams")}</dt>
                   <dd>
                     {currentFacts
                       ? currentFacts.numTeams === 0
-                        ? "Asymmetric"
-                        : `${currentFacts.numTeams} teams`
+                        ? t("maps.generate.asymmetric")
+                        : t("maps.generate.teamCount", { count: currentFacts.numTeams })
                       : "N/A"}
                   </dd>
                 </div>

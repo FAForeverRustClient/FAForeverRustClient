@@ -193,6 +193,48 @@
   max-width: 120px;
 }
 
+/* The added sound files. A list rather than a row of chips: the names are the
+   file names somebody chose, so they are any length, and wrapping them into
+   columns would put a remove button a long way from the name it removes. */
+.settings-sound-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.settings-sound-list-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* The name is the play button: a sound is chosen by ear, and a separate
+   preview control beside the name would be a second thing to explain. */
+.settings-sound-play {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.settings-sound-remove {
+  flex: 0 0 auto;
+  padding: 6px;
+  color: var(--color-muted);
+}
+
+.settings-sound-remove:hover {
+  color: var(--color-error);
+}
+
 .setting-row-update-status {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
 }

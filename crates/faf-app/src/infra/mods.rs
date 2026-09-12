@@ -1072,10 +1072,19 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
                 recommended: value_bool(&mod_res.attributes, "recommended"),
                 rating_tenths,
                 reviews,
-                created_at: version
+                // The mod's own creation time, not the latest version's.
+                //
+                // Both resources carry `createTime`, and the version's is the
+                // moment that *version* was uploaded: for any mod whose author
+                // has ever shipped an update, reading it here makes "Published"
+                // and "Updated" the same date. Falling back to the version keeps
+                // a mod the API answers without the field showing something.
+                created_at: mod_res
                     .attributes
                     .get("createTime")
                     .and_then(Value::as_str)
+                    .filter(|time| !time.is_empty())
+                    .or_else(|| version.attributes.get("createTime").and_then(Value::as_str))
                     .unwrap_or("")
                     .to_string(),
                 updated_at: version
@@ -1482,7 +1491,8 @@ mod tests {
                     "attributes": {
                         "displayName": "Total Mayhem",
                         "author": "Some Author",
-                        "recommended": true
+                        "recommended": true,
+                        "createTime": "2019-05-06T07:08:09Z"
                     },
                     "relationships": {
                         "latestVersion": { "data": { "type": "modVersion", "id": "9" } },
@@ -1542,8 +1552,41 @@ mod tests {
         assert!(mods[0].recommended);
         assert_eq!(mods[0].rating_tenths, 45);
         assert_eq!(mods[0].reviews, 31);
-        assert_eq!(mods[0].created_at, "2025-01-02T03:04:05Z");
+        // The mod was first published in 2019; its latest version went up in
+        // 2025 and was edited in 2026. "Published" is the first of those.
+        assert_eq!(mods[0].created_at, "2019-05-06T07:08:09Z");
         assert_eq!(mods[0].updated_at, "2026-02-03T04:05:06Z");
+    }
+
+    #[test]
+    fn parse_vault_mods_falls_back_to_the_version_when_the_mod_has_no_create_time() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [
+                {
+                    "type": "mod",
+                    "id": "77",
+                    "attributes": { "displayName": "Total Mayhem" },
+                    "relationships": {
+                        "latestVersion": { "data": { "type": "modVersion", "id": "9" } },
+                    },
+                },
+            ],
+            "included": [
+                {
+                    "type": "modVersion",
+                    "id": "9",
+                    "attributes": {
+                        "uid": "dcd9a5e5-5444-4266-a016-ccbbff528268",
+                        "createTime": "2025-01-02T03:04:05Z"
+                    },
+                },
+            ],
+        }))
+        .unwrap();
+
+        let mods = parse_vault_mods(&doc);
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].created_at, "2025-01-02T03:04:05Z");
     }
 
     #[test]

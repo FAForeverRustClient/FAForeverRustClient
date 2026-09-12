@@ -53,6 +53,7 @@ pub mod lobby_ws;
 pub mod map_generator;
 pub mod maps;
 pub mod mods;
+pub mod notification_sounds;
 pub mod oauth;
 pub mod paths;
 pub mod player_card;

@@ -71,6 +71,37 @@ impl AutoReconnect {
     }
 }
 
+/// Whether the join in flight has been called off.
+///
+/// Cleared when a join starts, set by `CancelJoin`, and read at the points
+/// where a join can still be stopped without leaving something half done: after
+/// preparation returns, and before the join request goes to the server.
+///
+/// A flag checked at boundaries rather than a cancellation token that aborts
+/// mid-work, because the work in question is the file loop inside the updater
+/// and stopping that mid-write is how a corrupt entry gets into the content
+/// store. Preparation therefore finishes the step it is on. That is the
+/// difference between this and clearing the join state on its own, which is
+/// what the note on `DeclineModReplacement` warned against: the state and the
+/// work now agree about whether the join is still happening.
+#[derive(Debug, Default)]
+pub struct CancelledJoin(AtomicBool);
+
+impl CancelledJoin {
+    /// A new join is starting: nothing has been cancelled yet.
+    pub fn clear(&self) {
+        self.0.store(false, Ordering::Release);
+    }
+
+    pub fn cancel(&self) {
+        self.0.store(true, Ordering::Release);
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
+}
+
 /// Generation counter for requests where only the newest response may land.
 #[derive(Debug, Default, Clone)]
 pub struct LatestRequest(Arc<AtomicU64>);

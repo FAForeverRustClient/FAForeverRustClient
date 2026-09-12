@@ -424,10 +424,16 @@ const INITIAL: AppState = {
       desktop: true,
       desktopAllKinds: false,
       sound: true,
-      // All chime, which is the tone the client played before the picker
-      // existed: an update changes nothing anybody hears until they say so.
+      // Chime everywhere but the found match, mirroring
+      // `NotificationSoundChoices::default()` in
+      // `crates/faf-domain/src/state/settings.rs`. The two are compared by the
+      // reducer conformance fixture, so changing one without the other fails
+      // CI rather than drifting quietly.
       sounds: {
-        matchFound: "chime",
+        // The one graded default: a found match expires, and sounding like a
+        // friend coming online is what the report was about. It is the Java
+        // client's own match sound, which is what people know this event by.
+        matchFound: "fafMatch",
         privateMessage: "chime",
         mention: "chime",
         friendOnline: "chime",
@@ -440,6 +446,10 @@ const INITIAL: AppState = {
         partyInvite: "chime",
         other: "chime",
       },
+      // Mirrors NOTIFICATION_SOUND_CHOICE_VERSION. A stored file below this
+      // has its match-found row moved onto the current default on load; see
+      // `NotificationPreferences`' Deserialize.
+      soundChoiceVersion: 1,
       notifyWhenFocused: false,
       toastPosition: "bottomLeft",
       matchFound: true,

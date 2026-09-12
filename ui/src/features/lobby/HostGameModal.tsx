@@ -220,7 +220,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         width: base.width,
         height: base.height,
         version: "1.0",
-        description: "Official base game map.",
+        description: t("lobby.host.mapOfficialDescription"),
       });
     }
 
@@ -282,7 +282,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
     }
 
     return mapByFolder;
-  }, [maps.installed, vaultIndex]);
+  }, [maps.installed, vaultIndex, t]);
 
   // A map generated a moment ago is not in the installed list yet, and has to
   // be selectable anyway. One appended entry rather than a reason to rebuild
@@ -297,11 +297,11 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         width: 1024,
         height: 1024,
         version: "1.0",
-        description: "Generated Neroxis map.",
+        description: t("lobby.host.mapGeneratedDescription"),
       });
     }
     return all;
-  }, [catalogue, selectedMap]);
+  }, [catalogue, selectedMap, t]);
 
   // The only step the search box and the filters touch.
   const availableMaps = useMemo(() => {
@@ -608,7 +608,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                   <div className="host-gametype-info">
                     <div className="host-gametype-title-row">
                       <span className="host-gametype-name">{t(mod.nameKey)}</span>
-                      {mod.defaultMarker && <span className="host-badge-default">Default</span>}
+                      {mod.defaultMarker && <span className="host-badge-default">{t("lobby.host.defaultBadge")}</span>}
                     </div>
                     <span className="host-gametype-desc">{t(mod.descKey)}</span>
                   </div>
@@ -870,14 +870,18 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                 <div className="host-map-info-row">
                   <div className="host-map-info-item" title={t("lobby.host.mapPlayerCapacity")}>
                     <Icon name="users" size={13} />
-                    <span>{chosen.maxPlayers > 0 ? `${chosen.maxPlayers} players` : "Players: N/A"}</span>
+                    <span>
+                      {chosen.maxPlayers > 0
+                        ? t("lobby.host.mapPlayers", { count: chosen.maxPlayers })
+                        : t("lobby.host.mapPlayersUnknown")}
+                    </span>
                   </div>
                   <div className="host-map-info-item" title={t("lobby.host.mapDimensions")}>
                     <Icon name="maps" size={13} />
                     <span>
                       {chosen.width > 0
                         ? formatMapDimensions(chosen.width, chosen.height)
-                        : "Size: N/A"}
+                        : t("lobby.host.mapSizeUnknown")}
                     </span>
                   </div>
                 </div>
