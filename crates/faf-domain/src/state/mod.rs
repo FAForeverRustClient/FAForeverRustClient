@@ -32,7 +32,6 @@ pub mod social;
 pub mod streams;
 pub mod tourney;
 pub mod training;
-pub mod tutorials;
 pub mod uploads;
 
 pub use auth::{AuthCommand, AuthEvent, AuthMode, AuthState, AuthStatus, Player};
@@ -81,9 +80,10 @@ pub use leaderboard::{
     RatingQuery, SeasonLeaderboard,
 };
 pub use lobby::{
-    AvailableAvatar, AvatarListStatus, Game, GameLaunch, HostGameConfig, JoinState, LobbyCommand,
-    LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue, MatchmakingState, PartyMember,
-    PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
+    rating_for_game, rating_gate_blocks, AvailableAvatar, AvatarListStatus, Game, GameLaunch,
+    HostGameConfig, JoinState, LobbyCommand, LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue,
+    MatchmakingState, PartyMember, PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
+    GLOBAL_LEADERBOARD,
 };
 pub use map_generator::{
     is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
@@ -168,18 +168,13 @@ pub use tourney::{
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
     derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,
-    leaderboard_word, lesson_resources, level_label, merge_catalogue, normalise_map,
-    percent_encode, profile_from_state, recommend, related_resources, review_problem, score,
-    topic_counts, topic_label, video_still, within_band, ContributionDraft, ContributionProblem,
-    ForumPost, HostedGuide, ReviewProblem, ReviewRequestDraft, Trainer, TrainingCatalogue,
-    TrainingCommand, TrainingDocument, TrainingEvent, TrainingKind, TrainingLevel, TrainingLinks,
-    TrainingProfile, TrainingQuery, TrainingResource, TrainingSource, TrainingState,
-    TrainingStatus, TrainingTopic, FORUM_BASE, LESSON_ID_PREFIX, PROFILE_REPLAY_WINDOW,
-    RECOMMENDED_LIMIT,
-};
-pub use tutorials::{
-    tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,
-    TutorialsEvent, TutorialsState, TutorialsStatus, TUTORIALS_FEATURED_MOD,
+    leaderboard_word, level_label, merge_catalogue, normalise_map, percent_encode,
+    profile_from_state, recommend, related_resources, review_problem, score, topic_counts,
+    topic_label, video_still, within_band, ContributionDraft, ContributionProblem, ForumPost,
+    HostedGuide, ReviewProblem, ReviewRequestDraft, Trainer, TrainingCatalogue, TrainingCommand,
+    TrainingDocument, TrainingEvent, TrainingKind, TrainingLevel, TrainingLinks, TrainingProfile,
+    TrainingQuery, TrainingResource, TrainingSource, TrainingState, TrainingStatus, TrainingTopic,
+    FORUM_BASE, LESSON_ID_PREFIX, PROFILE_REPLAY_WINDOW, RECOMMENDED_LIMIT,
 };
 pub use uploads::{
     is_safe_folder_name, UploadKind, UploadRequest, UploadStatus, UploadsCommand, UploadsEvent,
@@ -216,7 +211,6 @@ pub struct AppState {
     pub streams: StreamsState,
     pub tourney: TourneyState,
     pub training: TrainingState,
-    pub tutorials: TutorialsState,
     pub uploads: UploadsState,
     pub galactic_war: GalacticWarState,
     pub guides: GuidesState,

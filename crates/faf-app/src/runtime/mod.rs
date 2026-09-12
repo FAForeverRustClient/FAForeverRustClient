@@ -81,7 +81,6 @@ pub struct ServiceCtx {
     pub replay_vault_generation: LatestRequest,
     pub replay_local_generation: LatestRequest,
     pub map_generator_active: SingleFlight,
-    pub tutorial_launch_active: SingleFlight,
     /// The changelog tab re-mounts on every visit and asks for the index each
     /// time. Without this, two quick visits both read a not-ready status and
     /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
@@ -194,9 +193,15 @@ impl EventSink {
         let _ = self.versioned_tx.send(VersionedEvent { revision, event });
     }
 
-    /// A snapshot of the authoritative state. Lets a service read back the result
-    /// of its own `emit` (e.g. to persist the post-reduce slice). Read-only,
-    /// state still only changes through [`Self::emit`].
+    /// A snapshot of the authoritative state, for a test that wants to read
+    /// the whole thing back after an `emit`.
+    ///
+    /// Not for services: every one of them uses [`Self::with_state`], which
+    /// copies out the one slice it needs instead of cloning a state whose map
+    /// catalogue alone is megabytes. The doc here used to point at "IPC
+    /// hydration boundaries", and that boundary goes through
+    /// `App::versioned_snapshot`, not through the sink.
+    #[cfg(test)]
     pub fn snapshot(&self) -> AppState {
         self.state.read().expect("app state lock poisoned").clone()
     }
@@ -250,7 +255,13 @@ impl App {
     pub fn new(backend_version: impl Into<String>, ports: Ports) -> (Self, AppLoop) {
         let state = Arc::new(RwLock::new(AppState::default()));
         let (event_tx, _) = broadcast::channel::<AppEvent>(256);
-        let (versioned_event_tx, _) = broadcast::channel::<VersionedEvent>(256);
+        // Four times the plain stream's room. A receiver that falls behind on
+        // this one does not merely miss events: the mirror reads a revision
+        // gap as corruption and asks for a whole `AppState` back, which is
+        // megabytes of JSON requested exactly when the client is already
+        // behind. Lag here is self-feeding, so the cheapest thing to spend on
+        // it is queue.
+        let (versioned_event_tx, _) = broadcast::channel::<VersionedEvent>(1024);
         let (cmd_tx, cmd_rx) = mpsc::channel::<QueuedCommand>(64);
         let revision = Arc::new(AtomicU64::new(0));
 
@@ -292,7 +303,6 @@ impl App {
             replay_vault_generation: LatestRequest::default(),
             replay_local_generation: LatestRequest::default(),
             map_generator_active: SingleFlight::default(),
-            tutorial_launch_active: SingleFlight::default(),
             changelog_active: SingleFlight::default(),
             changelog_entry_generation: LatestRequest::default(),
             guides_login_active: SingleFlight::default(),
@@ -375,8 +385,13 @@ impl App {
 
     /// Atomically subscribe at the event-stream tail and clone the state at
     /// that exact boundary. Events represented by the snapshot precede the
-    /// receiver; every later event is queued for it. This lets IPC recover from
-    /// broadcast lag without dropping or replaying state transitions.
+    /// receiver; every later event is queued for it.
+    ///
+    /// The unversioned twin of [`Self::subscribe_versioned_with_snapshot`],
+    /// which is what the shell uses: without a revision the frontend cannot
+    /// tell a gap from a quiet moment, so this is kept for the tests that
+    /// exercise the subscribe-and-snapshot boundary itself.
+    #[cfg(test)]
     pub fn subscribe_with_snapshot(&self) -> (broadcast::Receiver<AppEvent>, AppState) {
         let guard = self.state.read().expect("app state lock poisoned");
         let events = self.event_tx.subscribe();
@@ -413,6 +428,20 @@ impl App {
     pub fn snapshot(&self) -> AppState {
         self.state.read().expect("app state lock poisoned").clone()
     }
+
+    /// Read one projection of the state without cloning the rest of it.
+    ///
+    /// The twin of [`EventSink::with_state`], for the shell. Closing the
+    /// window used to clone the whole `AppState` to read a single enum out of
+    /// `lobby.join`: a few megabytes at a realistic catalogue size, to answer
+    /// "is a game running".
+    ///
+    /// The closure runs under the read lock, so it must copy out what it needs
+    /// and must not block or do IO.
+    pub fn with_state<T>(&self, read: impl FnOnce(&AppState) -> T) -> T {
+        let state = self.state.read().expect("app state lock poisoned");
+        read(&state)
+    }
 }
 
 impl AppLoop {
@@ -442,10 +471,29 @@ impl AppLoop {
         // build whose Twitch credentials are absent, which is most of them.
         services::streams::spawn(ctx.clone(), self.sink.clone());
 
+        // A ceiling on service tasks running at once.
+        //
+        // The command queue bounds how many are *waiting*, not how many are
+        // running: every command that arrives is spawned immediately, so a
+        // render loop in the UI that dispatches on every frame would start an
+        // unbounded number of concurrent network requests. A few services hold
+        // their own single-flight guards; most do not, and a ceiling here
+        // means none of them has to.
+        //
+        // Wide enough that nothing a person does reaches it: a busy session is
+        // a handful of concurrent commands, and a permit is held only for the
+        // duration of one service call.
+        let permits = Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_COMMANDS));
+
         while let Some(queued) = self.cmd_rx.recv().await {
             let ctx = ctx.clone();
             let sink = self.sink.clone();
+            let permits = permits.clone();
             tokio::spawn(async move {
+                // Acquired inside the task, so the loop keeps draining the
+                // queue while services are busy: the waiting happens here, not
+                // in front of the channel.
+                let _permit = permits.acquire_owned().await;
                 dispatch(queued.command, &ctx, &sink).await;
                 if let Some(completion) = queued.completion {
                     let _ = completion.send(());
@@ -454,6 +502,10 @@ impl AppLoop {
         }
     }
 }
+
+/// See [`AppLoop::run`]. Not a tuning knob: it exists so a runaway dispatcher
+/// cannot open a thousand sockets, and is far above any honest workload.
+const MAX_CONCURRENT_COMMANDS: usize = 64;
 
 /// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
 async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
@@ -478,7 +530,6 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Tourney(c) => services::tourney::handle(c, ctx, sink).await,
         AppCommand::Guides(c) => services::guides::handle(c, ctx, sink).await,
         AppCommand::Training(c) => services::training::handle(c, ctx, sink).await,
-        AppCommand::Tutorials(c) => services::tutorials::handle(c, ctx, sink).await,
         AppCommand::Changelog(c) => services::changelog::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,
         AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,

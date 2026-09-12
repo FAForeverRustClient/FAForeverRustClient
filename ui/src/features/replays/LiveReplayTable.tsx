@@ -106,12 +106,20 @@ export function LiveReplayTable(props: Props) {
         </tbody>
       </table>
       <footer className="live-replay-footer">
-        <span>Showing {props.games.length} of {props.matchingCount} matching live games ({props.totalCount} total)</span>
+        <span>
+          {t("replays.live.showing", {
+            shown: props.games.length,
+            matching: props.matchingCount,
+            total: props.totalCount,
+          })}
+        </span>
         <div className="live-replay-footer-actions">
           <span>{t(props.previewsLoading ? "replays.live.loadingPreviews" : "replays.live.selectGame")}</span>
           {props.games.length < props.matchingCount && (
             <Button className="live-replay-load-more" onClick={props.onLoadMore}>
-              Show {Math.min(props.batchSize, props.matchingCount - props.games.length)} more
+              {t("replays.live.showMore", {
+                count: Math.min(props.batchSize, props.matchingCount - props.games.length),
+              })}
             </Button>
           )}
         </div>

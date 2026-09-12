@@ -433,10 +433,7 @@ fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<Stri
         clauses.push(r#"validity=="VALID""#.to_string());
     }
     if !query.map.is_empty() {
-        clauses.push(format!(
-            r#"mapVersion.map.displayName=="{}""#,
-            glob(&query.map)
-        ));
+        clauses.push(map_clause(&query.map));
     }
     if !query.map_author.is_empty() {
         clauses.push(format!(
@@ -646,18 +643,55 @@ fn km_to_pixels(km: i32) -> i32 {
 
 /// A substring match. RSQL uses `*` as its wildcard, so a literal `*` the user
 /// typed has to go: otherwise `a*b` silently becomes a two-part wildcard.
+///
+/// A character [`escape`] has to remove becomes a wildcard rather than nothing.
+/// The apostrophe is why: the base game's map is called `Seton's Clutch`, so
+/// dropping the character searched for `*Setons Clutch*`, which matches every
+/// FAF re-upload spelled without one and misses the original. `*Seton*s
+/// Clutch*` matches whichever spelling the user typed and whichever the vault
+/// stores.
 fn glob(value: &str) -> String {
-    format!("*{}*", escape(value))
+    let mut out = String::from("*");
+    for c in value.chars() {
+        if is_reserved(c) {
+            // Never two in a row: `**` is legal but says nothing extra, and a
+            // value made only of reserved characters would otherwise become a
+            // filter on wildcards alone.
+            if !out.ends_with('*') {
+                out.push('*');
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    if !out.ends_with('*') {
+        out.push('*');
+    }
+    out
 }
 
-/// Strip the characters that would break out of a quoted RSQL argument.
-/// The API offers no escape syntax, so removal is the only safe option: and
-/// none of them are meaningful in a login, map name or title.
+/// The map clause, matching the display name *or* the folder name.
+///
+/// A player reading a replay's details sees `Seton's Clutch`, but the name the
+/// game and the vault use is `scmp_009`, and both get typed into the search
+/// box. Only the display name was matched, so the folder name found nothing.
+fn map_clause(value: &str) -> String {
+    let pattern = glob(value);
+    format!(r#"(mapVersion.map.displayName=="{pattern}",mapVersion.folderName=="{pattern}")"#)
+}
+
+/// The characters that would break out of a quoted RSQL argument, or mean
+/// something to the grammar around it. The API offers no escape syntax, so
+/// removal is the only safe option: and none of them are meaningful in a
+/// login, map name or title.
+fn is_reserved(c: char) -> bool {
+    matches!(c, '"' | '\\' | '*' | ';' | '(' | ')' | ',' | '\'')
+}
+
+/// Strip the reserved characters outright. An exact match has no wildcard to
+/// put in their place, which is why [`glob`] cannot share this.
 fn escape(value: &str) -> String {
-    value
-        .chars()
-        .filter(|c| !matches!(c, '"' | '\\' | '*' | ';' | '(' | ')' | ',' | '\''))
-        .collect()
+    value.chars().filter(|c| !is_reserved(*c)).collect()
 }
 
 #[cfg(test)]
@@ -713,11 +747,11 @@ mod tests {
         assert_eq!(q.player_names(), vec!["Stormlord", "Foley"]);
         assert_eq!(
             build_filter(&q, None, Some("Stormlord")).unwrap(),
-            r#"(playerStats.player.login=="Stormlord";mapVersion.map.displayName=="*Setons*")"#
+            r#"(playerStats.player.login=="Stormlord";(mapVersion.map.displayName=="*Setons*",mapVersion.folderName=="*Setons*"))"#
         );
         assert_eq!(
             build_filter(&q, None, Some("Foley")).unwrap(),
-            r#"(playerStats.player.login=="Foley";mapVersion.map.displayName=="*Setons*")"#
+            r#"(playerStats.player.login=="Foley";(mapVersion.map.displayName=="*Setons*",mapVersion.folderName=="*Setons*"))"#
         );
 
         let q_wide = ReplayQuery {
@@ -726,7 +760,7 @@ mod tests {
         };
         assert_eq!(
             build_filter(&q_wide, None, Some("Foley")).unwrap(),
-            r#"(playerStats.player.login=="*Foley*";mapVersion.map.displayName=="*Setons*")"#
+            r#"(playerStats.player.login=="*Foley*";(mapVersion.map.displayName=="*Setons*",mapVersion.folderName=="*Setons*"))"#
         );
     }
 
@@ -755,9 +789,9 @@ mod tests {
             map: "Setons".into(),
             ..q
         };
-        assert!(build_scan_filter(&mapped, &[42], None)
-            .unwrap()
-            .contains(r#"mapVersion.map.displayName=="*Setons*""#));
+        assert!(build_scan_filter(&mapped, &[42], None).unwrap().contains(
+            r#"(mapVersion.map.displayName=="*Setons*",mapVersion.folderName=="*Setons*")"#
+        ));
         assert_eq!(
             build_scan_filter(&mapped, &[], None),
             None,
@@ -876,7 +910,7 @@ mod tests {
         };
         assert_eq!(
             build_filter(&q, None, None).unwrap(),
-            r#"(validity=="VALID";mapVersion.map.displayName=="*Setons*")"#
+            r#"(validity=="VALID";(mapVersion.map.displayName=="*Setons*",mapVersion.folderName=="*Setons*"))"#
         );
     }
 
@@ -965,7 +999,7 @@ mod tests {
         };
         let filter = build_filter(&q, None, None).unwrap();
         for expected in [
-            r#"mapVersion.map.displayName=="*Setons*""#,
+            r#"(mapVersion.map.displayName=="*Setons*",mapVersion.folderName=="*Setons*")"#,
             r#"mapVersion.map.author.login=="*Ozonex*""#,
             r#"name=="*all welcome*""#,
             r#"id=="22841190""#,
@@ -1211,5 +1245,47 @@ mod tests {
             ..query()
         };
         assert_eq!(q.fallback_months(), Some(3));
+    }
+
+    #[test]
+    fn a_map_name_matches_the_folder_name_too() {
+        // `scmp_009` is what the vault and the game call Seton's Clutch, and it
+        // is what a player copying a name out of a replay folder types.
+        let q = ReplayQuery {
+            map: "scmp_009".into(),
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&q, None, None).unwrap(),
+            r#"((mapVersion.map.displayName=="*scmp_009*",mapVersion.folderName=="*scmp_009*"))"#
+        );
+    }
+
+    #[test]
+    fn a_stripped_character_becomes_a_wildcard() {
+        // The base map is `Seton's Clutch`. Dropping the apostrophe searched
+        // for `*Setons Clutch*`, which matched only the re-uploads spelled
+        // without one; the wildcard matches either spelling.
+        let q = ReplayQuery {
+            map: "Seton's Clutch".into(),
+            ..query()
+        };
+        let filter = build_filter(&q, None, None).unwrap();
+        assert!(
+            filter.contains(r#"mapVersion.map.displayName=="*Seton*s Clutch*""#),
+            "{filter}"
+        );
+
+        // Reserved characters never pile up into a run of wildcards, and a
+        // value made of nothing else does not become a filter on `*` alone.
+        let q = ReplayQuery {
+            map: "**".into(),
+            ..query()
+        };
+        let filter = build_filter(&q, None, None).unwrap();
+        assert!(
+            filter.contains(r#"mapVersion.map.displayName=="*""#),
+            "{filter}"
+        );
     }
 }

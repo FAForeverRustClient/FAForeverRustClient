@@ -83,7 +83,16 @@ pub struct UploadRequest {
 pub enum UploadStatus {
     #[default]
     Idle,
-    Compressing,
+    /// Bytes packed so far, and the folder's total size.
+    ///
+    /// Measured rather than counted, because "Compressing…" on its own is the
+    /// one stage that can sit still for a minute on a large map and give no
+    /// sign of which minute it is in.
+    #[serde(rename_all = "camelCase")]
+    Compressing {
+        done_bytes: u32,
+        total_bytes: u32,
+    },
     /// Bytes sent so far, and the archive's total size.
     Uploading {
         sent_bytes: u32,
@@ -103,17 +112,21 @@ impl UploadStatus {
     pub fn is_busy(&self) -> bool {
         matches!(
             self,
-            Self::Compressing | Self::Uploading { .. } | Self::Finishing
+            Self::Compressing { .. } | Self::Uploading { .. } | Self::Finishing
         )
     }
 
     /// Progress as a percentage, when it is meaningful.
     pub fn percent(&self) -> Option<u32> {
         match self {
-            Self::Uploading {
-                sent_bytes,
-                total_bytes,
-            } if *total_bytes > 0 => Some((*sent_bytes as u64 * 100 / *total_bytes as u64) as u32),
+            Self::Compressing {
+                done_bytes: done,
+                total_bytes: total,
+            }
+            | Self::Uploading {
+                sent_bytes: done,
+                total_bytes: total,
+            } if *total > 0 => Some((*done as u64 * 100 / *total as u64).min(100) as u32),
             _ => None,
         }
     }
@@ -278,9 +291,27 @@ mod tests {
     }
 
     #[test]
-    fn progress_is_a_percentage_only_while_uploading() {
+    fn progress_is_a_percentage_only_while_bytes_are_moving() {
         assert_eq!(UploadStatus::Idle.percent(), None);
-        assert_eq!(UploadStatus::Compressing.percent(), None);
+        // Compression reports a measured share too: it is the stage that can
+        // sit still for a minute on a large map.
+        assert_eq!(
+            UploadStatus::Compressing {
+                done_bytes: 30,
+                total_bytes: 120
+            }
+            .percent(),
+            Some(25)
+        );
+        assert_eq!(
+            UploadStatus::Compressing {
+                done_bytes: 1,
+                total_bytes: 0
+            }
+            .percent(),
+            None,
+            "an unmeasurable folder leaves the bar indeterminate"
+        );
         assert_eq!(
             UploadStatus::Uploading {
                 sent_bytes: 50,
@@ -314,7 +345,11 @@ mod tests {
     #[test]
     fn only_the_in_flight_stages_count_as_busy() {
         assert!(!UploadStatus::Idle.is_busy());
-        assert!(UploadStatus::Compressing.is_busy());
+        assert!(UploadStatus::Compressing {
+            done_bytes: 0,
+            total_bytes: 1
+        }
+        .is_busy());
         assert!(UploadStatus::Uploading {
             sent_bytes: 1,
             total_bytes: 2

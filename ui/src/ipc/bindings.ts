@@ -13,9 +13,9 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -41,7 +41,6 @@ export type AppState = {
 	streams: StreamsState,
 	tourney: TourneyState,
 	training: TrainingState,
-	tutorials: TutorialsState,
 	uploads: UploadsState,
 	galacticWar: GalacticWarState,
 	guides: GuidesState,
@@ -278,6 +277,24 @@ export type BrowsingPreferences = {
 	mapVaultPreset: string,
 	/**  Active preset filter in the mod vault ("recommended", "favorites", "rating", "ui", "newest", "all"). */
 	modVaultPreset: string,
+	/**
+	 *  Chosen sort order in the map vault, empty to follow the preset.
+	 *
+	 *  Persisted for the same reason the preset is: leaving a tab and coming
+	 *  back put the list in an order nobody asked for, and the order is the
+	 *  half of a browse that a preset does not decide.
+	 */
+	mapVaultSort: string,
+	/**  Chosen sort order in the mod vault, empty to follow the preset. */
+	modVaultSort: string,
+	/**
+	 *  How many entries a vault page shows, or `0` for the designed default.
+	 *
+	 *  One number for maps and mods, installed and vault alike: the question
+	 *  is about how much of the screen a reader wants filled, and answering it
+	 *  four times over would be four settings saying the same thing.
+	 */
+	vaultPageSize: number,
 	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
@@ -1428,6 +1445,24 @@ export type CustomGameBrowserPreferences = {
 	hideUnranked: boolean,
 	applyFilters: boolean,
 	rules: CustomGameFilterRule[],
+	/**
+	 *  Pixel widths of the list view's columns, left to right.
+	 *
+	 *  Empty means "the stylesheet decides", which is both the default and
+	 *  what a reset goes back to. A short list is padded the same way: a
+	 *  column the user never dragged keeps its designed width rather than
+	 *  collapsing because a neighbour was resized.
+	 */
+	columnWidths: number[],
+	/**
+	 *  Pixel width of the detail panel beside the game list, or `0` for the
+	 *  designed default.
+	 *
+	 *  The tiles already resize (`gameTileColumns`); the panel beside them did
+	 *  not, so a wider preview could only be had by making the browser
+	 *  narrower and nothing offered that trade.
+	 */
+	detailWidth: number,
 };
 
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";
@@ -2074,6 +2109,11 @@ export type Game = {
 	ratingMin: number | null,
 	ratingMax: number | null,
 	/**
+	 *  Whether the host asked the server to keep out-of-range players out,
+	 *  rather than merely stating a preferred range. See [`rating_gate_blocks`].
+	 */
+	enforceRatingRange: boolean,
+	/**
 	 *  Team number to player names. Observer teams use the server's `-1`/`null`
 	 *  keys, matching the reference client's game model.
 	 */
@@ -2089,10 +2129,13 @@ export type GameCacheInfo = {
 };
 
 /**
- *  The server's `game_launch` order: everything the connectivity + launch chain
- *  (a later phase) needs to actually start the game. For now we only model and
- *  surface it; nothing acts on it yet. Mirrors the relevant fields of the Python
- *  client's `GameLaunchCommand` (`src/protocol/lobbyprotocol.py`).
+ *  The server's `game_launch` order: everything the connectivity and launch
+ *  chain needs to actually start the game.
+ *
+ *  `services::launcher` acts on this: it starts the ICE adapter, stages the
+ *  map and featured mod, and launches Forged Alliance. Mirrors the relevant
+ *  fields of the Python client's `GameLaunchCommand`
+ *  (`src/protocol/lobbyprotocol.py`).
  */
 export type GameLaunch = {
 	uid: number,
@@ -2201,6 +2244,19 @@ export type GamePreferences = {
 	 *  kept while it was on.
 	 */
 	keepGeneratedMaps?: boolean,
+	/**
+	 *  How many generated maps the keep list may hold, or `0` for no limit.
+	 *
+	 *  The switch above answers "keep them"; this answers "how many". Without
+	 *  it the two choices are keep nothing and keep everything, and the thread
+	 *  that asked for this had watched the second one fill a system drive: a
+	 *  generated map is kept because it was good, and the hundred before it
+	 *  are still on the disk saying nothing.
+	 *
+	 *  Oldest first when the cap is reached, which is what makes this a cache
+	 *  rather than a quota that refuses new maps once it is full.
+	 */
+	keepGeneratedMapsLimit?: number,
 };
 
 export type GeneralPreferences = {
@@ -4851,8 +4907,21 @@ export type PlayerMapStats = {
 	totalGames: number,
 	wins: number,
 	losses: number,
-	/**  Games the API returned without a decided result (draws, unfinished). */
+	/**  Rated games the API returned without a decided result (draws). */
 	undecided: number,
+	/**
+	 *  Games that moved no rating at all, and so count towards nothing.
+	 *
+	 *  A custom lobby with mods on, a game that desynced its way out of a
+	 *  result, one abandoned before it was scored: FAF rates none of them, and
+	 *  the API still returns a `gamePlayerStats` row for each. Those rows
+	 *  carried a `result` of `DEFEAT` far more often than `VICTORY`, because a
+	 *  game only reports defeat when someone is killed or leaves and nothing
+	 *  reports the winner. Counting them dragged every profile towards the
+	 *  same 40%, which is what made the figure obviously wrong rather than
+	 *  merely inaccurate.
+	 */
+	unranked: number,
 	/**
 	 *  How many of the generated row's games got there by having no map name
 	 *  at all, rather than by carrying a recognisable generated one.
@@ -8187,90 +8256,6 @@ export type TrainingTopic = "economy" | "buildOrder" | "micro" | "strategy" | "a
 /**  The client and the game's own interface: hotkeys, templates, options. */
 "interface";
 
-/**  One lesson. */
-export type Tutorial = {
-	id: number,
-	title: string,
-	/**  Already reduced to plain text; the API stores it as HTML. */
-	description: string,
-	/**
-	 *  The first `https://` destination the description linked to, or empty.
-	 *
-	 *  FAF publishes whole categories: "Video tutorials", "Written guides",
-	 *  whose entries are not playable maps at all but pointers to YouTube and
-	 *  the wiki. Reducing the description to plain text keeps their prose and
-	 *  throws away the only thing they are for, which left most of the tab
-	 *  showing rows labelled "unavailable" that did nothing when clicked.
-	 */
-	linkUrl: string,
-	imageUrl: string,
-	/**  Position within its category, as the API orders them. */
-	ordinal: number,
-	/**
-	 *  Whether the server considers this one playable. A tutorial can be
-	 *  listed for reference while its map is being replaced.
-	 */
-	launchable: boolean,
-	/**  The map the lesson runs on: needed before launching. */
-	mapFolderName: string,
-	/**  The scenario name passed to the game as `/map`. */
-	technicalName: string,
-	categoryId: number | null,
-};
-
-/**  A group of lessons: "Basics", "Build order", and so on. */
-export type TutorialCategory = {
-	id: number,
-	name: string,
-};
-
-/**
- *  Where a launch stands. Its own status because the wait is long: the
- *  `tutorials` featured mod has to be patched and the map downloaded first.
- */
-export type TutorialLaunchStatus = { type: "idle" } | { type: "preparing"; payload: {
-	tutorialId: number,
-	detail: string,
-} } | { type: "launched"; payload: {
-	tutorialId: number,
-} } | { type: "failed"; payload: {
-	reason: string,
-} };
-
-export type TutorialsCommand = { type: "load" } | { type: "select"; payload: {
-	tutorialId: number,
-} } | { type: "launch"; payload: {
-	tutorialId: number,
-} };
-
-export type TutorialsEvent = { type: "loading" } | { type: "loaded"; payload: {
-	categories: TutorialCategory[],
-	tutorials: Tutorial[],
-} } | { type: "loadFailed"; payload: {
-	reason: string,
-} } | { type: "selected"; payload: {
-	tutorialId: number,
-} } | { type: "launchPreparing"; payload: {
-	tutorialId: number,
-	detail: string,
-} } | { type: "launched"; payload: {
-	tutorialId: number,
-} } | { type: "launchFailed"; payload: {
-	reason: string,
-} };
-
-export type TutorialsState = {
-	categories: TutorialCategory[],
-	tutorials: Tutorial[],
-	status: TutorialsStatus,
-	selectedId: number | null,
-	launch: TutorialLaunchStatus,
-};
-
-export type TutorialsStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
-	reason: string,
-} };
-
 /**  Someone composing a message, and when we last heard so. */
 export type TypingNotice = {
 	nickname: string,
@@ -8360,7 +8345,18 @@ export type UploadRequest = {
  *  because zipping a large map is slow enough that a single "working…" would
  *  look hung.
  */
-export type UploadStatus = { type: "idle" } | { type: "compressing" } |
+export type UploadStatus = { type: "idle" } |
+/**
+ *  Bytes packed so far, and the folder's total size.
+ *
+ *  Measured rather than counted, because "Compressing…" on its own is the
+ *  one stage that can sit still for a minute on a large map and give no
+ *  sign of which minute it is in.
+ */
+{ type: "compressing"; payload: {
+	doneBytes: number,
+	totalBytes: number,
+} } |
 /**  Bytes sent so far, and the archive's total size. */
 { type: "uploading"; payload: {
 	sentBytes: number,

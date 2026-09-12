@@ -116,13 +116,9 @@ fn default_uid_path() -> String {
     };
 
     let mut candidates = Vec::<PathBuf>::new();
-    if let Ok(current_dir) = std::env::current_dir() {
-        add_uid_candidates(&mut candidates, &current_dir, executable);
-    }
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(parent) = current_exe.parent() {
-            add_uid_candidates(&mut candidates, parent, executable);
-        }
+    for root in crate::infra::helper_search_roots() {
+        candidates.push(root.join("natives").join(executable));
+        candidates.push(root.join(executable));
     }
 
     candidates
@@ -130,18 +126,6 @@ fn default_uid_path() -> String {
         .find(|path| path.is_file())
         .map(|path| path.to_string_lossy().into_owned())
         .unwrap_or_else(|| executable.to_string())
-}
-
-/// Development launches can run with `src-tauri` or `target/debug` as their
-/// working directory, while the helper is prepared in the workspace-level
-/// `natives/` directory. Walk ancestors so all of those layouts resolve the
-/// same bundled helper; packaged builds set `FAF_UID_PATH` from Tauri resources
-/// before this fallback is reached.
-fn add_uid_candidates(candidates: &mut Vec<PathBuf>, root: &std::path::Path, executable: &str) {
-    for directory in root.ancestors() {
-        candidates.push(directory.join("natives").join(executable));
-        candidates.push(directory.join(executable));
-    }
 }
 
 pub struct LobbyClient {
@@ -1217,6 +1201,8 @@ struct RawGame {
     #[serde(default)]
     rating_max: Option<f64>,
     #[serde(default)]
+    enforce_rating_range: Option<bool>,
+    #[serde(default)]
     teams: Option<std::collections::BTreeMap<String, Vec<String>>>,
     #[serde(default)]
     sim_mods: Option<std::collections::BTreeMap<String, String>>,
@@ -1272,6 +1258,7 @@ impl RawGame {
             hosted_at: self.hosted_at,
             rating_min: self.rating_min.map(|value| value.round() as i32),
             rating_max: self.rating_max.map(|value| value.round() as i32),
+            enforce_rating_range: self.enforce_rating_range.unwrap_or(false),
             teams: self.teams.unwrap_or_default(),
             sim_mods: self.sim_mods.unwrap_or_default(),
         })
@@ -1995,6 +1982,12 @@ fn host_frame(config: HostGameConfig) -> Value {
         },
     });
     if config.enforce_rating_range {
+        // The flag, not just the bounds. The server reads all three
+        // (`lobbyconnection.on_game_host`) and only its `enforce_rating_range`
+        // makes `Game.is_visible_to_player` consult the range at all: sending
+        // the bounds alone produced a lobby that advertised a rating window
+        // and admitted anybody, which is what the report described.
+        frame["enforce_rating_range"] = json!(true);
         if let Some(min) = config.rating_min {
             frame["rating_min"] = json!(min);
         }

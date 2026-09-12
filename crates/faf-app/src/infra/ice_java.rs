@@ -21,7 +21,7 @@ use tokio::sync::mpsc;
 
 use crate::infra::jsonrpc::{JsonRpcClient, RpcNotification};
 use crate::infra::session::TokenStore;
-use crate::infra::{console_window, free_port};
+use crate::infra::{console_window, free_ports};
 use crate::ports::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 
 /// How long to wait for the adapter's RPC port to come up.
@@ -57,21 +57,10 @@ fn default_jar_path() -> String {
         }
     }
 
-    let executable = std::env::current_exe().ok();
-    let working_directory = std::env::current_dir().ok();
-    let roots = executable
-        .as_deref()
-        .and_then(Path::parent)
-        .into_iter()
-        .flat_map(|directory| directory.ancestors().take(4))
-        .chain(
-            working_directory
-                .as_deref()
-                .into_iter()
-                .flat_map(|directory| directory.ancestors().take(3)),
-        )
-        .map(Path::to_path_buf)
-        .collect::<Vec<_>>();
+    // Never the working directory: see `infra::helper_search_roots`. This jar
+    // is handed to a JVM, so a stray copy in a folder the client was started
+    // from is code execution.
+    let roots = crate::infra::helper_search_roots();
 
     resolve_jar_from_roots(&roots)
         .map(|path| path.to_string_lossy().into_owned())
@@ -172,8 +161,10 @@ impl IcePort for JavaAdapter {
         let ice =
             fetch_ice_servers(&self.http, &self.config.api_base, &token, params.game_id).await?;
 
-        let rpc_port = free_port().ok_or("could not reserve an rpc port")?;
-        let gpg_port = free_port().ok_or("could not reserve a game port")?;
+        // Both at once, so they cannot come back as the same number: see
+        // `infra::free_ports`.
+        let ports = free_ports(2).ok_or("could not reserve the adapter's ports")?;
+        let (rpc_port, gpg_port) = (ports[0], ports[1]);
 
         let mut args: Vec<String> = vec![
             "-jar".into(),

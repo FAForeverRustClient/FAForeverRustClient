@@ -34,7 +34,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::state::{AppState, Tutorial};
+use crate::state::AppState;
 
 /// The FAF forum, which is where both routing paths land.
 pub const FORUM_BASE: &str = "https://forum.faforever.com";
@@ -1281,55 +1281,6 @@ fn youtube_id(url: &str) -> Option<&str> {
     .then_some(id)
 }
 
-pub fn lesson_resources(
-    tutorials: &[Tutorial],
-    category_name: impl Fn(Option<i32>) -> String,
-) -> Vec<TrainingResource> {
-    tutorials
-        .iter()
-        .map(|tutorial| {
-            let category = category_name(tutorial.category_id);
-            let text = format!("{} {} {}", tutorial.title, tutorial.description, category);
-            let playable = tutorial.is_playable();
-            TrainingResource {
-                id: format!("{LESSON_ID_PREFIX}{}", tutorial.id),
-                title: tutorial.title.clone(),
-                summary: tutorial.description.clone(),
-                kind: if playable {
-                    TrainingKind::Lesson
-                } else if is_video_link(&tutorial.link_url) {
-                    TrainingKind::Video
-                } else {
-                    TrainingKind::Guide
-                },
-                level: derive_level(&text),
-                url: if playable {
-                    String::new()
-                } else {
-                    tutorial.link_url.clone()
-                },
-                // FAF's tutorial API already publishes a map preview for a
-                // lesson, which is the best picture available for it.
-                image_url: tutorial.image_url.clone(),
-                tutorial_id: Some(tutorial.id),
-                author: String::new(),
-                topics: derive_topics(&text),
-                maps: Vec::new(),
-                game_modes: Vec::new(),
-                factions: derive_factions(&text),
-                ..TrainingResource::default()
-            }
-        })
-        .collect()
-}
-
-fn is_video_link(url: &str) -> bool {
-    let url = url.to_lowercase();
-    ["youtube.com", "youtu.be", "twitch.tv", "vimeo.com"]
-        .iter()
-        .any(|host| url.contains(host))
-}
-
 /// Topics inferred from the words an author used.
 ///
 /// A keyword table, and openly a heuristic: it exists so a catalogue that
@@ -1429,15 +1380,6 @@ pub fn derive_level(text: &str) -> Option<TrainingLevel> {
         return Some(TrainingLevel::Beginner);
     }
     None
-}
-
-fn derive_factions(text: &str) -> Vec<String> {
-    let text = text.to_lowercase();
-    ["uef", "aeon", "cybran", "seraphim"]
-        .iter()
-        .filter(|faction| text.contains(*faction))
-        .map(|faction| faction.to_string())
-        .collect()
 }
 
 /// The library: manifest entries first, then every lesson the manifest did not
@@ -2436,99 +2378,6 @@ mod tests {
     #[test]
     fn a_profile_from_an_empty_client_says_so() {
         assert!(profile_from_state(&AppState::default()).is_empty());
-    }
-
-    // -- lessons -----------------------------------------------------------
-
-    fn tutorial(id: i32, title: &str, description: &str, playable: bool, link: &str) -> Tutorial {
-        Tutorial {
-            id,
-            title: title.into(),
-            description: description.into(),
-            link_url: link.into(),
-            image_url: String::new(),
-            ordinal: 1,
-            launchable: playable,
-            map_folder_name: if playable {
-                "scmp_tut".into()
-            } else {
-                String::new()
-            },
-            technical_name: if playable {
-                "tut".into()
-            } else {
-                String::new()
-            },
-            category_id: Some(1),
-        }
-    }
-
-    #[test]
-    fn a_faf_lesson_becomes_a_catalogue_entry_with_inferred_tags() {
-        let lessons = lesson_resources(
-            &[tutorial(
-                7,
-                "Economy basics",
-                "Learn how mass and energy work for a new player.",
-                true,
-                "",
-            )],
-            |_| "Basics".to_string(),
-        );
-        let entry = &lessons[0];
-        assert_eq!(entry.id, "faf-tutorial-7");
-        assert_eq!(entry.kind, TrainingKind::Lesson);
-        assert_eq!(entry.tutorial_id, Some(7));
-        assert_eq!(entry.level, Some(TrainingLevel::Beginner));
-        assert!(entry.topics.contains(&TrainingTopic::Economy));
-        assert!(entry.is_lesson());
-    }
-
-    #[test]
-    fn a_tutorial_that_is_really_a_youtube_link_is_catalogued_as_a_video() {
-        // FAF publishes whole tutorial categories that are pointers to videos.
-        // Listing those as lessons would offer a start button for something the
-        // client cannot start.
-        let lessons = lesson_resources(
-            &[tutorial(
-                9,
-                "Advanced eco management",
-                "A video by a high level player.",
-                false,
-                "https://www.youtube.com/watch?v=abc",
-            )],
-            |_| "Video tutorials".to_string(),
-        );
-        assert_eq!(lessons[0].kind, TrainingKind::Video);
-        assert_eq!(lessons[0].url, "https://www.youtube.com/watch?v=abc");
-        assert_eq!(lessons[0].level, Some(TrainingLevel::Advanced));
-        assert!(!lessons[0].is_lesson());
-    }
-
-    #[test]
-    fn a_curated_entry_replaces_the_lesson_it_describes() {
-        // The whole reason a manifest entry carries `tutorialId`: a curator's
-        // tags must not be merged with a keyword table's guesses.
-        let curated = vec![TrainingResource {
-            id: "setons-build".into(),
-            title: "Seton's build order".into(),
-            tutorial_id: Some(7),
-            maps: vec!["Setons Clutch".into()],
-            ..TrainingResource::default()
-        }];
-        let lessons = lesson_resources(
-            &[
-                tutorial(7, "Lesson", "", true, ""),
-                tutorial(8, "Other", "", true, ""),
-            ],
-            |_| String::new(),
-        );
-
-        let merged = merge_catalogue(&curated, lessons);
-        assert_eq!(
-            merged.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
-            vec!["setons-build", "faf-tutorial-8"]
-        );
     }
 
     // -- composing a post --------------------------------------------------

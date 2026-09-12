@@ -31,7 +31,6 @@ pub mod settings;
 pub mod streams;
 pub mod tourney;
 pub mod training;
-pub mod tutorials;
 pub mod updater;
 pub mod uploads;
 
@@ -64,7 +63,6 @@ pub use settings::SettingsPort;
 pub use streams::StreamsPort;
 pub use tourney::TourneyPort;
 pub use training::TrainingPort;
-pub use tutorials::TutorialsPort;
 pub use updater::{
     GamePreparation, GameUpdaterPort, PreparationPhase, PreparationStep, UpdateProgress,
 };
@@ -125,7 +123,6 @@ pub struct Ports {
     /// an identity that is not the FAF account: committing to it is a GitHub
     /// operation, authorised by GitHub.
     pub guides: Arc<dyn GuidesPort>,
-    pub tutorials: Arc<dyn TutorialsPort>,
     /// FAForever/fa's published patch notes. Public documents, never gated on
     /// login: the changelog is worth reading before signing in.
     pub changelog: Arc<dyn ChangelogPort>,

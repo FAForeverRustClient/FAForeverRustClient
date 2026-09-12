@@ -2,18 +2,38 @@
 //
 // Mirrors the reference clients' upload widgets: confirm what is being
 // published, set the ranked flag (maps only: mods have no equivalent in
-// either client), then watch the two stages go by.
+// either client), then watch the stages go by.
+//
+// The confirmation used to be a name and a folder, and it said the same
+// sentence whether the vault had never heard of the thing or already held four
+// versions of it. An author updating their own mod was told they were
+// uploading a new one, which is alarming in exactly the situation where being
+// wrong is expensive. So this screen now says which of the two is happening,
+// shows the fields an author can check it against, and takes the agreement to
+// the vault rules here rather than before the file picker: the rules are about
+// what is being published, and nobody knows that yet at the picker.
+
+import { useEffect, useState } from "react";
 
 import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import type { UploadKind, UploadsState } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { isUploadBusy } from "../../store/reducers/uploads";
 import { useAppStore } from "../../store/store";
+import { MapThumbnail } from "../../shared/MapThumbnail";
+import { formatBytes } from "../../shared/formatBytes";
+import { openHttpsUrl } from "../../shared/externalLinks";
+import { uploadDescription, uploadFacts, vaultPresence } from "./uploadSubject";
 import "./uploads.css";
 import { t } from "../../i18n";
+import type { MessageKey } from "../../i18n/catalog/en";
 import { useLocale } from "../../i18n/useTranslation";
+
+/** The vault rules, which an uploader is agreeing to. */
+export const VAULT_RULES_URL = "https://wiki.faforever.com/en/Development/Vault/Rules";
 
 export const openUpload = (kind: UploadKind, folderName: string, displayName: string) =>
   ipc.send({
@@ -113,24 +133,134 @@ function statusLine(status: UploadsState["status"]): string | null {
   }
 }
 
+/**
+ * How far along, as a percentage, or `null` when nothing measurable is moving.
+ *
+ * Mirrors `UploadStatus::percent` rather than reading a second field across
+ * the boundary, which is the same reason the Rust side has it: one rule, two
+ * renderings of it.
+ */
+function percentOf(status: UploadsState["status"]): number | null {
+  if (status.type === "compressing") {
+    const { doneBytes, totalBytes } = status.payload;
+    return totalBytes > 0 ? Math.min(100, Math.floor((doneBytes / totalBytes) * 100)) : null;
+  }
+  if (status.type === "uploading") {
+    const { sentBytes, totalBytes } = status.payload;
+    return totalBytes > 0 ? Math.min(100, Math.floor((sentBytes / totalBytes) * 100)) : null;
+  }
+  return null;
+}
+
 export function UploadDialog() {
   useLocale();
   const { request, status } = useAppStore((store) => store.state.uploads);
+  const mods = useAppStore((store) => store.state.mods);
+  const maps = useAppStore((store) => store.state.maps);
+  const [accepted, setAccepted] = useState(false);
+
+  const kind = request?.kind;
+  const folderName = request?.folderName;
+
+  // A fresh subject is a fresh agreement. Carrying the tick over from the last
+  // publish would make the checkbox a formality, which is the opposite of why
+  // it moved here.
+  useEffect(() => setAccepted(false), [kind, folderName]);
+
+  // The catalogue is what decides new-versus-update, and it is a load-once
+  // cache every other view primes the same way. Asking for it here covers the
+  // publish that is reached before either vault tab has been opened.
+  const modsIdle = mods.vaultStatus.type === "idle";
+  const mapsIdle = maps.vaultStatus.type === "idle";
+  useEffect(() => {
+    if (kind === "mod" && modsIdle) ipc.send({ kind: "Mods", command: { type: "loadVault" } });
+    if (kind === "map" && mapsIdle) ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+  }, [kind, modsIdle, mapsIdle]);
+
   if (request === null) return null;
 
+  const isMap = request.kind === "map";
   const busy = isUploadBusy(status);
   const done = status.type === "succeeded";
   const line = statusLine(status);
+  const percent = percentOf(status);
+
+  const installed = isMap
+    ? maps.installed.find((map) => map.folderName === request.folderName)
+    : mods.installed.find((mod) => mod.folderName === request.folderName);
+
+  // Only known once compression has measured the folder, which is the first
+  // moment anybody knows it: the archive does not exist before then.
+  const folderBytes =
+    status.type === "compressing"
+      ? status.payload.totalBytes
+      : status.type === "uploading"
+        ? status.payload.totalBytes
+        : null;
+
+  const presence = isMap
+    ? vaultPresence(request, maps.vault, maps.vaultStatus.type === "ready")
+    : vaultPresence(request, mods.vault, mods.vaultStatus.type === "ready");
+
+  const facts = uploadFacts(request, installed, folderBytes, formatBytes);
+  const description = uploadDescription(installed);
 
   return (
     <Modal className="upload-dialog" onClose={close}>
-      <h2>{t(request.kind === "map" ? "uploads.title.map" : "uploads.title.mod")}</h2>
-      <p className="muted">
-        {t("uploads.description", { name: request.displayName })}
+      <header className="upload-dialog-header">
+        <h2>{t(isMap ? "uploads.title.map" : "uploads.title.mod")}</h2>
+        {/* The sentence Nuggets was owed. "Update" is not a guess: it means
+            the vault already holds an entry under this exact name, and FAF
+            files every upload under that name as another version of it. */}
+        {presence !== "unknown" && (
+          <span className={`upload-badge is-${presence}`}>
+            {t(
+              presence === "update"
+                ? isMap
+                  ? "uploads.badge.updateMap"
+                  : "uploads.badge.updateMod"
+                : isMap
+                  ? "uploads.badge.newMap"
+                  : "uploads.badge.newMod",
+            )}
+          </span>
+        )}
+      </header>
+
+      <p className="muted upload-lede">
+        {t(
+          presence === "update"
+            ? "uploads.descriptionUpdate"
+            : presence === "new"
+              ? "uploads.descriptionNew"
+              : "uploads.description",
+          { name: request.displayName },
+        )}
       </p>
-      {/* The full path when it was picked from disk: the folder name alone is
-          not enough to tell two copies apart. */}
-      <p className="upload-folder muted">{request.sourcePath ?? request.folderName}</p>
+
+      <div className="upload-subject">
+        {isMap && (
+          <MapThumbnail
+            mapName={request.folderName}
+            vault={maps.vault}
+            className="upload-preview"
+            placeholderClassName="upload-preview is-placeholder"
+            large
+          />
+        )}
+        <dl className="upload-facts">
+          {facts.map((fact) => (
+            <div key={fact.labelKey}>
+              <dt>{t(fact.labelKey as MessageKey)}</dt>
+              <dd className={fact.labelKey === "uploads.fact.folder" ? "upload-folder" : undefined}>
+                {fact.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      {description && <p className="upload-description muted">{description}</p>}
 
       {/* A rename is not a rename as far as FAF is concerned: it is a new mod
           with a new uid, and this is the last screen before that happens. */}
@@ -142,7 +272,7 @@ export function UploadDialog() {
 
       {/* Maps only: the ranked flag decides whether games on it affect
           ratings. Neither reference client offers an equivalent for mods. */}
-      {request.kind === "map" && (
+      {isMap && (
         <label className="check-field">
           <input
             type="checkbox"
@@ -154,17 +284,61 @@ export function UploadDialog() {
         </label>
       )}
 
+      {/* The rules belong to what is being published, and until this screen
+          nothing had been chosen yet. Accepting them at the file picker was
+          agreeing to terms about a folder nobody had picked. */}
+      {!done && (
+        <div className="upload-rules">
+          <button
+            type="button"
+            className="upload-rules-link"
+            onClick={() => ipc.run(openHttpsUrl(VAULT_RULES_URL))}
+          >
+            <Icon name="external" size={13} />
+            {t("uploads.intro.rulesLink")}
+          </button>
+          <label className="check-field">
+            <input
+              type="checkbox"
+              checked={accepted}
+              disabled={busy}
+              onChange={(event) => setAccepted(event.target.checked)}
+            />
+            {t("uploads.intro.accept")}
+          </label>
+        </div>
+      )}
+
+      {percent !== null && (
+        <div
+          className="upload-progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+          aria-label={t(status.type === "compressing" ? "uploads.compressing" : "uploads.progress")}
+        >
+          <i style={{ width: `${percent}%` }} />
+        </div>
+      )}
+
       {done && <p className="upload-status is-ok">{t("uploads.published")}</p>}
       {line && (
         <p className={status.type === "failed" ? "upload-status is-error" : "upload-status muted"}>
           {line}
+          {percent !== null && ` ${percent}%`}
         </p>
       )}
 
       <div className="upload-actions">
         <Button onClick={close}>{t(done ? "uploads.close" : "uploads.cancel")}</Button>
         {!done && (
-          <Button variant="primary" disabled={busy} onClick={start}>
+          <Button
+            variant="primary"
+            disabled={busy || !accepted}
+            title={accepted ? undefined : t("uploads.acceptFirst")}
+            onClick={start}
+          >
             {t(busy ? "uploads.publishing" : "uploads.publish")}
           </Button>
         )}

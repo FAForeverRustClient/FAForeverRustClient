@@ -336,8 +336,17 @@
 
 .host-rating-option {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/* Its own line under the checkbox and the bounds, which is where a sentence
+   explaining both of them belongs. */
+.host-field-hint {
+  flex-basis: 100%;
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .host-rating-inputs {
@@ -826,25 +835,61 @@
   color: var(--color-muted);
 }
 
-.host-preview-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 8px 10px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+/* The name, under the picture rather than dimming the corner of it. */
+.host-preview-name {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 6px 6px 0;
 }
 
-.host-preview-title {
+.host-preview-name > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 650;
-  color: var(--color-text);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Far from the map list on purpose: this deletes a folder off the disk, and
+   the rows it would sit beside are clicked through a few hundred at a time. */
+.host-map-delete {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 4px 8px;
+  color: var(--color-error);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.host-map-delete:hover {
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
+  border-color: var(--color-error);
+}
+
+/* The ranked choice in the map filter popover, above the reset. */
+.host-map-filter-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.host-map-filter-choice-label {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 
 .host-map-info-section {

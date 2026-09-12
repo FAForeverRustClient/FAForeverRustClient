@@ -842,6 +842,9 @@ mod tests {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayedGame {
     pub map: String,
+    /// Whether the game moved the player's rating, which is FAF's own test of
+    /// whether it counted. See [`PlayerMapStats::unranked`].
+    pub rated: bool,
     /// `false` for a draw, an unfinished game, or a result the API did not state.
     pub decided: bool,
     pub won: bool,
@@ -884,8 +887,19 @@ pub struct PlayerMapStats {
     pub total_games: i32,
     pub wins: i32,
     pub losses: i32,
-    /// Games the API returned without a decided result (draws, unfinished).
+    /// Rated games the API returned without a decided result (draws).
     pub undecided: i32,
+    /// Games that moved no rating at all, and so count towards nothing.
+    ///
+    /// A custom lobby with mods on, a game that desynced its way out of a
+    /// result, one abandoned before it was scored: FAF rates none of them, and
+    /// the API still returns a `gamePlayerStats` row for each. Those rows
+    /// carried a `result` of `DEFEAT` far more often than `VICTORY`, because a
+    /// game only reports defeat when someone is killed or leaves and nothing
+    /// reports the winner. Counting them dragged every profile towards the
+    /// same 40%, which is what made the figure obviously wrong rather than
+    /// merely inaccurate.
+    pub unranked: i32,
     /// How many of the generated row's games got there by having no map name
     /// at all, rather than by carrying a recognisable generated one.
     ///
@@ -928,10 +942,11 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
 
     for game in games {
         stats.total_games += 1;
-        match (game.decided, game.won) {
-            (true, true) => stats.wins += 1,
-            (true, false) => stats.losses += 1,
-            (false, _) => stats.undecided += 1,
+        match (game.rated, game.decided, game.won) {
+            (true, true, true) => stats.wins += 1,
+            (true, true, false) => stats.losses += 1,
+            (true, false, _) => stats.undecided += 1,
+            (false, _, _) => stats.unranked += 1,
         }
 
         // A game the API names no map for is a generated one.
@@ -968,7 +983,7 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
             last_played: String::new(),
         });
         entry.games += 1;
-        if game.decided {
+        if game.rated && game.decided {
             if game.won {
                 entry.wins += 1;
             } else {
@@ -994,6 +1009,7 @@ mod map_stats_tests {
     fn game(map: &str, decided: bool, won: bool, played_at: &str) -> PlayedGame {
         PlayedGame {
             map: map.into(),
+            rated: true,
             decided,
             won,
             played_at: played_at.into(),
@@ -1044,6 +1060,38 @@ mod map_stats_tests {
             false,
         );
         assert_eq!(first.maps, second.maps, "order must not depend on arrival");
+    }
+
+    #[test]
+    fn an_unranked_game_counts_towards_nothing_but_the_total() {
+        // The reason the figure was wrong everywhere: an unrated custom game
+        // reports DEFEAT for whoever was killed and nothing for the winner, so
+        // counting it could only ever push a win rate down.
+        let stats = aggregate_map_stats(
+            &[
+                game("Loki", true, true, "2026-01-01"),
+                PlayedGame {
+                    rated: false,
+                    // Stated as a loss by the API, and still not one: nothing
+                    // about this game was rated.
+                    decided: true,
+                    won: false,
+                    ..game("Loki", true, false, "2026-01-02")
+                },
+            ],
+            false,
+        );
+        assert_eq!(stats.total_games, 2);
+        assert_eq!((stats.wins, stats.losses), (1, 0));
+        assert_eq!(stats.unranked, 1);
+        assert_eq!(stats.undecided, 0, "unrated is its own bucket, not a draw");
+
+        let loki = &stats.maps[0];
+        assert_eq!(
+            loki.games, 2,
+            "an unrated game is still a game played there"
+        );
+        assert_eq!((loki.wins, loki.losses), (1, 0));
     }
 
     #[test]
@@ -1117,6 +1165,7 @@ mod generated_map_tests {
     fn generated(seed: &str) -> PlayedGame {
         PlayedGame {
             map: format!("neroxis_map_generator_1.8.0_{seed}"),
+            rated: true,
             decided: true,
             won: true,
             played_at: "2026-01-01".into(),
@@ -1135,6 +1184,7 @@ mod generated_map_tests {
                 generated("cccc"),
                 PlayedGame {
                     map: "Setons Clutch".into(),
+                    rated: true,
                     decided: true,
                     won: false,
                     played_at: "2026-01-02".into(),

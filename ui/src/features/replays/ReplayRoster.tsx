@@ -269,7 +269,7 @@ export function ReplayDetailRoster({
                     <button
                       type="button"
                       className="replay-player-identity replay-player-link"
-                      title={`Open ${player.name}'s profile`}
+                      title={t("lobby.browser.openProfile", { name: player.name })}
                       onClick={() => openPlayerCard(null, player.name)}
                     >
                       <ReplayPlayerAvatar player={player} avatarByLogin={avatarByLogin} />

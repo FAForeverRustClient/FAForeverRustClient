@@ -41,7 +41,6 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
 
-use crate::infra::env_or;
 use crate::infra::vault_install::MAX_DOWNLOAD_BYTES;
 use crate::ports::{GeneratorUpdate, MapGeneratorPort};
 
@@ -159,11 +158,12 @@ pub struct MapGeneratorConfig {
 impl MapGeneratorConfig {
     pub fn faf() -> Self {
         Self {
-            releases_url: env_or(
+            // Both name a server whose bytes are handed to a JVM.
+            releases_url: crate::infra::dev_env_or(
                 "FAF_MAP_GENERATOR_RELEASES_URL",
                 "https://api.github.com/repos/FAForever/Neroxis-Map-Generator/releases",
             ),
-            download_url_format: env_or(
+            download_url_format: crate::infra::dev_env_or(
                 "FAF_MAP_GENERATOR_DOWNLOAD_URL",
                 "https://github.com/FAForever/Neroxis-Map-Generator/releases/download/{version}/NeroxisGen_{version}.jar",
             ),

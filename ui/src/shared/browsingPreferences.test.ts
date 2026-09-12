@@ -6,7 +6,11 @@ import {
   LEGACY_LIVE_REPLAY_FILTERS_KEY,
   LEGACY_MATCHMAKER_FACTIONS_KEY,
   LEGACY_MATCHMAKER_QUEUES_KEY,
+  MAX_BROWSER_COLUMN_PX,
+  MAX_VAULT_PAGE_SIZE,
   migrateLegacyBrowsingPreferences,
+  MIN_BROWSER_COLUMN_PX,
+  MIN_DETAIL_PX,
   normalizeBrowsingPreferences,
 } from "./browsingPreferences";
 
@@ -30,6 +34,8 @@ describe("browsing preferences", () => {
         hideModded: true,
         hideUnranked: true,
         applyFilters: true,
+        columnWidths: [10, 5000, 200, 200, 200, 200],
+        detailWidth: 40,
         rules: [
           { field: "title", constraint: "contains", value: "  no rush  " },
           { field: "title", constraint: "contains", value: "NO RUSH" },
@@ -73,6 +79,9 @@ describe("browsing preferences", () => {
       favoriteMaps: [" Adaptive_Tabula.v0006 ", "adaptive_tabula.v0006", ""],
       favoriteMods: [" Eco_Graph ", "eco_graph", ""],
       mapVaultPreset: "  NEWEST  ",
+      mapVaultSort: "  newest  ",
+      modVaultSort: "",
+      vaultPageSize: 5000,
       modVaultPreset: "  UI  ",
       modPresets: [
         { name: "  Replay watching  ", uids: ["  a  ", "A", "", "b"] },
@@ -127,6 +136,16 @@ describe("browsing preferences", () => {
     expect(normalized.favoriteMaps).toEqual(["adaptive_tabula.v0006"]);
     expect(normalized.mapVaultPreset).toBe("newest");
     expect(normalized.modVaultPreset).toBe("ui");
+    expect(normalized.mapVaultSort).toBe("newest");
+    expect(normalized.vaultPageSize).toBe(MAX_VAULT_PAGE_SIZE);
+    expect(normalized.customGamesBrowser.columnWidths).toEqual([
+      MIN_BROWSER_COLUMN_PX,
+      MAX_BROWSER_COLUMN_PX,
+      200,
+      200,
+      200,
+    ]);
+    expect(normalized.customGamesBrowser.detailWidth).toBe(MIN_DETAIL_PX);
     expect(normalized.leaderboardRatingColumns).toEqual(["rating", "mean"]);
     expect(normalized.replayVaultPlayer).toBe("VindexNoob");
   });

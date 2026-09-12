@@ -2573,7 +2573,10 @@ fn helper_fixture() -> HelperFixture {
     ];
     let statuses = vec![
         UploadStatus::Idle,
-        UploadStatus::Compressing,
+        UploadStatus::Compressing {
+            done_bytes: 3,
+            total_bytes: 10,
+        },
         UploadStatus::Uploading {
             sent_bytes: 5,
             total_bytes: 10,
@@ -2918,6 +2921,7 @@ fn cases() -> Vec<Case> {
                         wins: 2,
                         losses: 1,
                         undecided: 0,
+                        unranked: 0,
                         unattributed: 0,
                         maps: vec![PlayerMapStat {
                             map: "Setons Clutch".into(),
@@ -3769,7 +3773,10 @@ fn cases() -> Vec<Case> {
                 .into(),
                 UploadsEvent::RankedChanged { ranked: true }.into(),
                 UploadsEvent::Progressed {
-                    status: UploadStatus::Compressing,
+                    status: UploadStatus::Compressing {
+                        done_bytes: 3,
+                        total_bytes: 10,
+                    },
                 }
                 .into(),
                 UploadsEvent::Closed.into(),
@@ -3830,7 +3837,7 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
-        // ── tournaments / tutorials ──────────────────────────────────────
+        // ── tournaments ──────────────────────────────────────────────────
         case(
             "the account's Discord handle is read, then changed",
             vec![
@@ -4106,27 +4113,6 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 LobbyEvent::HostPrefillCleared.into(),
-            ],
-        ),
-        case(
-            "tutorials narrate a launch",
-            vec![
-                TutorialsEvent::Loading.into(),
-                TutorialsEvent::Loaded {
-                    categories: vec![TutorialCategory {
-                        id: 1,
-                        name: "Basics".into(),
-                    }],
-                    tutorials: vec![tutorial(7), tutorial(8)],
-                }
-                .into(),
-                TutorialsEvent::Selected { tutorial_id: 8 }.into(),
-                TutorialsEvent::LaunchPreparing {
-                    tutorial_id: 8,
-                    detail: "Updating tutorials".into(),
-                }
-                .into(),
-                TutorialsEvent::Launched { tutorial_id: 8 }.into(),
             ],
         ),
         case(
@@ -5215,6 +5201,8 @@ fn cases() -> Vec<Case> {
                                     value: "NOISY".into(),
                                 },
                             ],
+                            column_widths: vec![320, 180, 90, 110, 80],
+                            detail_width: 360,
                         },
                         matchmaker_unselected_queues: vec![
                             "  ladder_1v1 ".into(),
@@ -5258,6 +5246,9 @@ fn cases() -> Vec<Case> {
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
                         favorite_mods: vec!["eco_graph".into()],
                         map_vault_preset: "recommended".into(),
+                        map_vault_sort: "newest".into(),
+                        mod_vault_sort: "rating".into(),
+                        vault_page_size: 48,
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec![
@@ -5713,21 +5704,6 @@ fn contribution_draft() -> ContributionDraft {
     }
 }
 
-fn tutorial(id: i32) -> Tutorial {
-    Tutorial {
-        id,
-        title: format!("Lesson {id}"),
-        description: String::new(),
-        link_url: String::new(),
-        image_url: String::new(),
-        ordinal: id,
-        launchable: true,
-        map_folder_name: format!("scmp_tut_{id}"),
-        technical_name: format!("tut_{id}"),
-        category_id: Some(1),
-    }
-}
-
 /// Writes the fixture. A test rather than a binary so it cannot go stale
 /// without someone noticing: `cargo test` regenerates it, and the frontend
 /// test then fails if the twin has not kept up.
@@ -5889,8 +5865,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Tourney:chatFailed",
     "Tourney:detailLoadFailed",
     "Tourney:loadFailed",
-    "Tutorials:launchFailed",
-    "Tutorials:loadFailed",
 ];
 
 const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
@@ -5975,11 +5949,6 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         "Training",
         "TrainingEvent",
         include_str!("../src/state/training.rs"),
-    ),
-    (
-        "Tutorials",
-        "TutorialsEvent",
-        include_str!("../src/state/tutorials.rs"),
     ),
     (
         "Uploads",
