@@ -709,7 +709,9 @@ mod tests {
     fn an_apostrophe_widens_the_search_instead_of_breaking_it() {
         // Finds `Seton's Clutch` and `Setons Clutch` alike, which is the point.
         assert_eq!(glob("Seton's"), "*Seton*");
-        assert_eq!(glob("Seton's Clutch"), "* Clutch*");
+        // The longest stretch the API can take, which here is everything after
+        // the apostrophe. Both spellings contain it.
+        assert_eq!(glob("Seton's Clutch"), "*s Clutch*");
         // No reserved character: unchanged from what it always did.
         assert_eq!(glob("Setons"), "*Setons*");
         assert_eq!(glob("scmp_009"), "*scmp_009*");
@@ -1299,19 +1301,28 @@ mod tests {
         );
     }
 
+    /// The bug this file has been through three times.
+    ///
+    /// The base map is `Seton's Clutch` and the FAF re-upload is `Setons
+    /// Clutch`. Dropping the apostrophe searched for `*Setons Clutch*`, which
+    /// found the re-upload and missed the original; putting a wildcard where
+    /// it had been searched for a literal star, because Elide reads a wildcard
+    /// only at the ends of a value, and found neither. What is searched now is
+    /// the longest stretch either spelling shares.
     #[test]
-    fn a_stripped_character_becomes_a_wildcard() {
-        // The base map is `Seton's Clutch`. Dropping the apostrophe searched
-        // for `*Setons Clutch*`, which matched only the re-uploads spelled
-        // without one; the wildcard matches either spelling.
+    fn a_reserved_character_narrows_the_value_rather_than_breaking_it() {
         let q = ReplayQuery {
             map: "Seton's Clutch".into(),
             ..query()
         };
         let filter = build_filter(&q, None, None).unwrap();
         assert!(
-            filter.contains(r#"mapVersion.map.displayName=="*Seton*s Clutch*""#),
+            filter.contains(r#"mapVersion.map.displayName=="*s Clutch*""#),
             "{filter}"
+        );
+        assert!(
+            !filter.contains("*Seton*s"),
+            "an internal wildcard is the shape the API cannot read: {filter}"
         );
 
         // Reserved characters never pile up into a run of wildcards, and a
