@@ -2,10 +2,11 @@
 //!
 //! Three jobs, and the middle one is the interesting one:
 //!
-//! 1. **Load the library.** The catalogue comes from a port, and only from
-//!    there. It used to be that catalogue plus FAF's own tutorial API, folded
-//!    together; see the note above `recompute_recommendations` for why that is
-//!    gone, and why nothing here reads FAF's tutorial endpoint any more.
+//! 1. **Load the library.** The catalogue comes from a port; FAF's own guided
+//!    lessons come from the tutorials slice, which another service already
+//!    owns. This service asks for them rather than fetching them again, which
+//!    is why the tab shows lessons the moment the tutorials tab has ever been
+//!    opened, and loads them itself when it has not.
 //!
 //! 2. **Recommend.** Computed here, from the post-reduce state, and emitted as
 //!    an event. Not computed in the view: a recommendation is a rule, and this

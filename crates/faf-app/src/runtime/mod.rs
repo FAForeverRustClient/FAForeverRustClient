@@ -81,6 +81,7 @@ pub struct ServiceCtx {
     pub replay_vault_generation: LatestRequest,
     pub replay_local_generation: LatestRequest,
     pub map_generator_active: SingleFlight,
+    pub tutorial_launch_active: SingleFlight,
     /// The changelog tab re-mounts on every visit and asks for the index each
     /// time. Without this, two quick visits both read a not-ready status and
     /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
@@ -303,6 +304,7 @@ impl App {
             replay_vault_generation: LatestRequest::default(),
             replay_local_generation: LatestRequest::default(),
             map_generator_active: SingleFlight::default(),
+            tutorial_launch_active: SingleFlight::default(),
             changelog_active: SingleFlight::default(),
             changelog_entry_generation: LatestRequest::default(),
             guides_login_active: SingleFlight::default(),
@@ -530,6 +532,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Tourney(c) => services::tourney::handle(c, ctx, sink).await,
         AppCommand::Guides(c) => services::guides::handle(c, ctx, sink).await,
         AppCommand::Training(c) => services::training::handle(c, ctx, sink).await,
+        AppCommand::Tutorials(c) => services::tutorials::handle(c, ctx, sink).await,
         AppCommand::Changelog(c) => services::changelog::handle(c, ctx, sink).await,
         AppCommand::Uploads(c) => services::uploads::handle(c, ctx, sink).await,
         AppCommand::GalacticWar(c) => services::galactic_war::handle(c, ctx, sink).await,

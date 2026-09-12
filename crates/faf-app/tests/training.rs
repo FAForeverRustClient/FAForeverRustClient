@@ -3,8 +3,9 @@
 //! Two things here are worth a test at this level rather than in the domain,
 //! because both are about the service reading *other* slices:
 //!
-//! 1. loading the hub fills the library from the manifest and ranks it
-//!    against a profile folded out of the local replay archive;
+//! 1. loading the hub fills the library from FAF's tutorial catalogue as well
+//!    as the manifest, and then ranks it against a profile folded out of the
+//!    local replay archive;
 //! 2. a review request opened by naming a replay comes back filled in from
 //!    that replay, including this account's own faction and the rating it had
 //!    *in that game*.
@@ -14,12 +15,12 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
-use faf_app::ports::{ReplayPort, TrainingPort, VaultSearchResult};
+use faf_app::ports::{ReplayPort, TrainingPort, TutorialsPort, VaultSearchResult};
 use faf_app::{App, Ports};
 use faf_domain::state::{
     AuthCommand, LiveReplayTarget, LocalReplay, LocalReplayPlayer, LocalReplayStatus,
     LocalReplayTeam, ReplayQuery, TrainingCatalogue, TrainingCommand, TrainingKind, TrainingLinks,
-    TrainingResource, TrainingStatus,
+    TrainingResource, TrainingStatus, Tutorial, TutorialCategory,
 };
 
 const ME: &str = "Nuggets";
@@ -73,6 +74,32 @@ impl TrainingPort for StubCatalogue {
 
     async fn read_recording(&self, _url: String) -> Result<String, String> {
         Err("this stub holds no recordings".into())
+    }
+}
+
+struct StubTutorials;
+
+#[async_trait]
+impl TutorialsPort for StubTutorials {
+    async fn list_tutorials(&self) -> Result<(Vec<TutorialCategory>, Vec<Tutorial>), String> {
+        Ok((
+            vec![TutorialCategory {
+                id: 1,
+                name: "Basics".into(),
+            }],
+            vec![Tutorial {
+                id: 7,
+                title: "Economy basics".into(),
+                description: "Mass and energy for a new player.".into(),
+                link_url: String::new(),
+                image_url: String::new(),
+                ordinal: 1,
+                launchable: true,
+                map_folder_name: "scmp_tut_7".into(),
+                technical_name: "tut_7".into(),
+                category_id: Some(1),
+            }],
+        ))
     }
 }
 
@@ -162,6 +189,7 @@ struct Harness {
 fn harness(replays: Vec<LocalReplay>) -> Harness {
     let ports = Ports {
         training: Arc::new(StubCatalogue),
+        tutorials: Arc::new(StubTutorials),
         replay: Arc::new(StubReplays(replays)),
         ..fake_ports()
     };
@@ -238,6 +266,14 @@ async fn the_library_is_the_manifest_and_nothing_the_client_added() {
         .map(|resource| resource.id.clone())
         .collect();
     assert_eq!(ids, vec!["setons-eco", "top-level"]);
+    assert!(
+        h.app
+            .snapshot()
+            .training
+            .resource("faf-tutorial-7")
+            .is_none(),
+        "the tutorial API is not a source for this tab"
+    );
 }
 
 #[tokio::test]
