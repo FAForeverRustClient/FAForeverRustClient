@@ -295,11 +295,15 @@ export function hideGlobalLineup() {
  * -- and reaching it means crossing the gap between the row and the overlay,
  * which is a `mouseleave` with nothing under the pointer. Closing on that
  * would make the overlay unreachable, so leaving starts a timer instead and
- * arriving anywhere that counts cancels it. A second is long enough to cross
- * six pixels without hurrying and short enough that an overlay nobody wants is
- * gone before it is in the way.
+ * arriving anywhere that counts cancels it.
+ *
+ * A second was the first guess and it was far too long: scanning down the list
+ * the overlay trails the pointer by a visible beat, which reads as the client
+ * lagging rather than as a grace period. A sixth of a second still covers the
+ * six-pixel gap -- a pointer crosses that in well under 50ms -- while being
+ * short enough that leaving looks like leaving.
  */
-const LINEUP_GRACE_MS = 1000;
+const LINEUP_GRACE_MS = 160;
 
 let lineupHideTimer: ReturnType<typeof setTimeout> | null = null;
 
