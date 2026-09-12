@@ -2061,4 +2061,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.joinProgress.startingDetail": "Вход в «{name}». Окно игры скоро появится.",
   "lobby.joinProgress.startingNote": "Это может занять несколько секунд.",
   "settings.notifications.sound.fafMatch": "Матч найден (FAF)",
+  "lobby.joinProgress.cancel": "Отменить вход",
+  "lobby.joinProgress.cancelStarting": "Остановить игру",
 };

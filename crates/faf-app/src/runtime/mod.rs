@@ -18,7 +18,7 @@ use crate::ports::Ports;
 use crate::services;
 
 mod policies;
-pub use policies::{AutoReconnect, LatestRequest, SerialMutation, SingleFlight};
+pub use policies::{AutoReconnect, CancelledJoin, LatestRequest, SerialMutation, SingleFlight};
 
 /// Read-only context handed to every service: shared dependencies.
 ///
@@ -34,6 +34,8 @@ pub struct ServiceCtx {
     /// server accepts or rejects it. Preparation can take minutes, so a local
     /// component disabled-state alone is not a concurrency boundary.
     pub lobby_join_active: SingleFlight,
+    /// Whether the join that guard is holding has been called off.
+    pub lobby_join_cancelled: CancelledJoin,
     /// Same single-flight guard, for the chat connection.
     pub chat_active: SingleFlight,
     /// Whether [`services::reconnect`] should bring these sockets back after
@@ -263,6 +265,7 @@ impl App {
             ports,
             lobby_active: SingleFlight::default(),
             lobby_join_active: SingleFlight::default(),
+            lobby_join_cancelled: CancelledJoin::default(),
             chat_active: SingleFlight::default(),
             lobby_auto_reconnect: AutoReconnect::default(),
             chat_auto_reconnect: AutoReconnect::default(),

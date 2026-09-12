@@ -570,10 +570,22 @@ pub enum LobbyCommand {
         title: String,
     },
     /// The user answered "no" to the simulation-mod replacement prompt. Only
-    /// meaningful while the join is waiting on that answer; deliberately not a
-    /// general "cancel the join", which would clear the state out from under a
-    /// download that is still running.
+    /// meaningful while the join is waiting on that answer. See
+    /// [`Self::CancelJoin`] for the general case, which this predates.
     DeclineModReplacement,
+    /// Stop the join in flight, from the button on the progress dialog.
+    ///
+    /// This used not to exist, on the grounds that clearing the join state
+    /// would leave a download running underneath it. That was a reason to make
+    /// the two agree, not a reason to leave somebody stuck watching a progress
+    /// bar they cannot get out of. The service sets a flag preparation checks
+    /// at its step boundaries, so the work stops with the state rather than
+    /// after it, and the join request is never sent for a join that was called
+    /// off while its files were being fetched.
+    ///
+    /// Once the game process is up this is a termination rather than a
+    /// cancellation, and it does what the Leave button does.
+    CancelJoin,
     /// The host dialog was closed; forget the prepared title so it does not
     /// reopen on the next visit to the tab.
     ClearHostPrefill,
@@ -1265,6 +1277,39 @@ mod tests {
         state.join = JoinState::InGame;
         reduce(&mut state, &LobbyEvent::JoinCancelled);
         assert_eq!(state.join, JoinState::InGame);
+    }
+
+    #[test]
+    fn cancelling_while_the_files_come_down_returns_to_idle() {
+        // What the Cancel button on the progress dialog reaches. The service
+        // also stops the preparation and withholds the join request; this is
+        // only the half of it the state machine owns.
+        let mut state = LobbyState {
+            join: JoinState::Preparing {
+                phase: PreparationPhase::Downloading,
+                detail: "units.nx2".into(),
+                progress: Some(40),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::JoinCancelled);
+
+        assert_eq!(state.join, JoinState::Idle);
+    }
+
+    #[test]
+    fn cancelling_does_not_take_down_a_game_that_is_already_starting() {
+        // Past this point the dialog's button is a termination instead, which
+        // goes through `TerminateGame` and arrives as `GameTerminated`.
+        let mut state = LobbyState {
+            join: JoinState::Launched { launch: launch(11) },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::JoinCancelled);
+
+        assert_eq!(state.join, JoinState::Launched { launch: launch(11) });
     }
 
     fn host_config() -> HostGameConfig {

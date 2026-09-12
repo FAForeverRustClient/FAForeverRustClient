@@ -3516,4 +3516,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.joinProgress.startingDetail": "„{name}“ wird betreten. Das Spielfenster erscheint gleich.",
   "lobby.joinProgress.startingNote": "Das kann ein paar Sekunden dauern.",
   "settings.notifications.sound.fafMatch": "Match gefunden (FAF)",
+  "lobby.joinProgress.cancel": "Beitritt abbrechen",
+  "lobby.joinProgress.cancelStarting": "Spiel beenden",
 };
