@@ -999,7 +999,7 @@ mod tests {
         std::fs::write(&private, b"must not be published").unwrap();
         symlink(&private, source.join("innocent.txt")).unwrap();
 
-        let result = write_archive(&source, &root.join("out.zip"), None);
+        let result = write_archive(&source, &root.join("out.zip"), None, &|_| {});
         assert!(result.is_err(), "a symlink must never be followed");
         assert!(result.unwrap_err().contains("symbolic links"));
 

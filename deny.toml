@@ -49,7 +49,12 @@ allow = ["MIT", "Apache-2.0"]
 # this repository can pass today. Warn so the number is visible and does not
 # quietly grow.
 multiple-versions = "warn"
+# The workspace crates depend on each other by path, which resolves as a
+# wildcard version and is the normal shape for a workspace. `allow-wildcard-paths`
+# keeps the check meaningful for registry crates, where a wildcard really would
+# mean "any version of somebody else's code".
 wildcards = "deny"
+allow-wildcard-paths = true
 
 [advisories]
 # `cargo audit` is the gate for these in CI; keeping the default here means

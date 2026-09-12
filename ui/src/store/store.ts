@@ -497,6 +497,7 @@ const INITIAL: AppState = {
       cacheRollingBranches: false,
       pipeLiveReplay: false,
       keepGeneratedMaps: false,
+      keepGeneratedMapsLimit: 0,
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "java", selectionVersion: 1 },
