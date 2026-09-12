@@ -2217,7 +2217,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.generate.presetsEmpty": "Noch keine Presets gespeichert",
   "maps.generate.presetName": "Preset-Name",
   "maps.generate.presetSave": "Speichern",
-  "maps.generate.presetReplace": "Preset ersetzen",
+  "maps.generate.presetReplace": "Ersetzen",
   "maps.generate.presetDelete": "Löschen",
   "maps.generate.issue.spawnsNotDivisible": "{spawns} Startpunkte lassen sich nicht gleichmäßig auf {teams} Teams aufteilen.",
   "maps.generate.issue.mapSizeNotMultiple": "Kartengröße {size} ist kein Vielfaches von {step}.",

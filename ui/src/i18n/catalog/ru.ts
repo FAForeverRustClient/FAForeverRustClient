@@ -1942,4 +1942,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.roster.ratingChange": "Изменение рейтинга за эту игру",
   "replays.vault.resultCountUnknown": "Показано {shown} · страниц: {pages} · общее число с этим фильтром неизвестно",
   "maps.preview.resetZoom": "Сбросить",
+  "maps.generate.presetSave": "Сохранить",
+  "maps.generate.presetReplace": "Заменить",
+  "maps.generate.presetDelete": "Удалить",
 };

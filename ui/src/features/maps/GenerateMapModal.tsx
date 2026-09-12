@@ -714,7 +714,10 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
                   <hr className="generate-map-divider" />
 
-                  <div className="generate-map-grid-2col">
+                  {/* Top-aligned: the right cell carries a field with buttons
+                      under it and the left one a single dropdown, and stretched
+                      cells put those two on different lines. */}
+                  <div className="generate-map-grid-2col generate-map-grid-top">
                     <Row label={t("maps.generate.presets")}>
                       <Select
                         value=""

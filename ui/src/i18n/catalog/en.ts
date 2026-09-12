@@ -2360,7 +2360,7 @@ export const en = {
   "maps.generate.presetsEmpty": "No presets saved yet",
   "maps.generate.presetName": "Preset name",
   "maps.generate.presetSave": "Save",
-  "maps.generate.presetReplace": "Replace preset",
+  "maps.generate.presetReplace": "Replace",
   "maps.generate.presetDelete": "Delete",
   "maps.generate.issue.spawnsNotDivisible": "{spawns} spawns cannot be split evenly between {teams} teams.",
   "maps.generate.issue.mapSizeNotMultiple": "Map size {size} is not a multiple of {step}.",
