@@ -483,15 +483,25 @@ export type MapSize = {
   compact: string;
 };
 
-function formatKm(units: number): string {
-  return (units / UNITS_PER_KM).toFixed(0);
+/**
+ * A size in generator units as kilometres: `10`, `17.5`, `1.25`.
+ *
+ * Rounding to whole kilometres was wrong for most of the sizes that exist.
+ * The generator steps in 64 units, which is 1.25 km, so a 896-unit map is
+ * 17.5 km and used to be announced as 18 -- a number no map has -- and the
+ * smallest maps, 64 and 128 units, were announced as 1 km and 3 km. Whole
+ * kilometres stay whole; the rest get as many decimals as they need, and 64
+ * units divides into 1.25 exactly, so two are always enough.
+ */
+export function kilometresLabel(units: number): string {
+  return (units / UNITS_PER_KM).toFixed(2).replace(/\.?0+$/, "");
 }
 
 /** Both renderings of a width and height in generator units. */
 export function mapSizeOf(width: number, height: number): MapSize | null {
   if (!(width > 0) || !(height > 0)) return null;
-  const w = formatKm(width);
-  const h = formatKm(height);
+  const w = kilometresLabel(width);
+  const h = kilometresLabel(height);
   return {
     full: `${w} × ${h} km`,
     compact: w === h ? `${w} km` : `${w} × ${h} km`,

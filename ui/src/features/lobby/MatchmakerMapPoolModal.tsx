@@ -10,10 +10,15 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { coversMap } from "../../shared/trainingRules";
 import { EMPTY_TRAINING_QUERY } from "../../shared/trainingQuery";
 import { useAppStore } from "../../store/store";
+import { kilometresLabel } from "../../shared/mapPresentation";
 
 function formatMapSize(width: number, height: number) {
-  const normalize = (value: number) => value > 64 ? value / 51.2 : value;
-  return `${normalize(width).toLocaleString("en-US", { maximumFractionDigits: 1 })}×${normalize(height).toLocaleString("en-US", { maximumFractionDigits: 1 })} km`;
+  // A pool may state either units or kilometres; anything above 64 is units.
+  // Both ends go through the one formatter, so a 17.5 km map is not announced
+  // as 18 here and as 17.5 everywhere else.
+  const normalize = (value: number) =>
+    value > 64 ? kilometresLabel(value) : String(Math.round(value * 100) / 100);
+  return `${normalize(width)}×${normalize(height)} km`;
 }
 
 function bracketTitle(pool: MatchmakerMapPool) {

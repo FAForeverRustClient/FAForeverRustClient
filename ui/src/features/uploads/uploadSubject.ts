@@ -6,6 +6,7 @@
 // a name and a folder and nothing else an author could check against.
 
 import type { InstalledMap, InstalledMod, UploadRequest } from "../../ipc/bindings";
+import { kilometresLabel } from "../../shared/mapPresentation";
 
 /**
  * Whether the vault already holds what is about to be published.
@@ -48,13 +49,12 @@ export interface UploadFact {
   readonly value: string;
 }
 
-/** Generator units per kilometre, as in `shared/mapPresentation`. */
-const UNITS_PER_KM = 51.2;
-
 function kilometres(width: number | undefined, height: number | undefined): string | null {
   if (!width || !height) return null;
-  const w = Math.round((width / UNITS_PER_KM) * 10) / 10;
-  const h = Math.round((height / UNITS_PER_KM) * 10) / 10;
+  // One decimal was not enough: map sizes step by 64 units, which is 1.25 km,
+  // so the smallest of them rounded to 1.3.
+  const w = kilometresLabel(width);
+  const h = kilometresLabel(height);
   return w === h ? `${w} km` : `${w} × ${h} km`;
 }
 

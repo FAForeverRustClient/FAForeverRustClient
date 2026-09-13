@@ -144,6 +144,18 @@ describe("mapSize", () => {
     expect(mapSizeOf(512, 256)).toEqual({ full: "10 × 5 km", compact: "10 × 5 km" });
   });
 
+  it("keeps the quarter kilometres the generator actually produces", () => {
+    // The generator steps in 64 units, which is 1.25 km. Rounding to whole
+    // kilometres announced a 17.5 km map as 18 -- a size no map has -- and the
+    // two smallest as 1 km and 3 km.
+    expect(mapSizeOf(896, 896)?.compact).toBe("17.5 km");
+    expect(mapSizeOf(320, 320)?.compact).toBe("6.25 km");
+    expect(mapSizeOf(64, 64)?.compact).toBe("1.25 km");
+    expect(mapSizeOf(128, 128)?.compact).toBe("2.5 km");
+    // And a whole number stays whole: no "20.00 km" anywhere.
+    expect(mapSizeOf(2048, 2048)?.compact).toBe("40 km");
+  });
+
   it("has nothing to say about a size of zero", () => {
     // Which is what an absent width looks like once it crosses the wire.
     expect(mapSizeOf(0, 512)).toBeNull();

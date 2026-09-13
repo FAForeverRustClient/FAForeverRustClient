@@ -10,6 +10,7 @@ import { ReportDialog } from "../vault/ReportDialog";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { clientIntlTag } from "../../shared/dates";
+import { kilometresLabel } from "../../shared/mapPresentation";
 
 export function installNote(status: MapInstallStatus): string | null {
   switch (status.type) {
@@ -25,7 +26,7 @@ export function installNote(status: MapInstallStatus): string | null {
 export function sizeLabel(map: { width?: number; height?: number }): string {
   const w = map.width ?? 512;
   const h = map.height ?? 512;
-  return `${(w / 51.2).toFixed(0)} × ${(h / 51.2).toFixed(0)} km`;
+  return `${kilometresLabel(w)} × ${kilometresLabel(h)} km`;
 }
 
 export function ratingLabel(map: VaultMap): string {
