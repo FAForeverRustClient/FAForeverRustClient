@@ -1272,6 +1272,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.live.autoWatchSet": "Lecture automatique programmée",
   "replays.live.delayHint": "Le serveur de replays rend les flux en direct disponibles après cinq minutes.",
   "replays.live.readyIn": "Prêt dans {time}",
+  "replays.live.runningFor": "En cours depuis",
+  "replays.live.simModCount": { one: "{count} mod de simulation", other: "{count} mods de simulation" },
   "replays.live.whenReady": "Quand le replay sera prêt",
   "replays.live.notifyMe": "Me prévenir",
   "replays.live.watchAutomatically": "Regarder automatiquement",

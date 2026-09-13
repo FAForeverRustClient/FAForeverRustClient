@@ -1469,6 +1469,13 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.live.autoWatchSet": "Ustawiono automatyczne oglądanie",
   "replays.live.delayHint": "Serwer powtórek udostępnia transmisje po pięciu minutach.",
   "replays.live.readyIn": "Gotowe za {time}",
+  "replays.live.runningFor": "Trwa od",
+  "replays.live.simModCount": {
+    one: "{count} mod symulacji",
+    few: "{count} mody symulacji",
+    many: "{count} modów symulacji",
+    other: "{count} modów symulacji",
+  },
   "replays.live.whenReady": "Gdy powtórka będzie gotowa",
   "replays.live.notifyMe": "Powiadom mnie",
   "replays.live.watchAutomatically": "Oglądaj automatycznie",

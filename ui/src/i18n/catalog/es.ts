@@ -1271,6 +1271,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.live.autoWatchSet": "Visionado automático programado",
   "replays.live.delayHint": "El servidor de repeticiones abre las retransmisiones a los cinco minutos.",
   "replays.live.readyIn": "Listo en {time}",
+  "replays.live.runningFor": "En curso desde hace",
+  "replays.live.simModCount": { one: "{count} mod de simulación", other: "{count} mods de simulación" },
   "replays.live.whenReady": "Cuando la repetición esté lista",
   "replays.live.notifyMe": "Avisarme",
   "replays.live.watchAutomatically": "Ver automáticamente",

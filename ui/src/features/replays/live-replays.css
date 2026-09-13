@@ -622,9 +622,30 @@
 }
 
 /* A card nobody can select: the vault's is a button and this one is an
-   article, so it takes the hover treatment and none of the pressed states. */
+   article, so it takes the hover treatment and none of the pressed states. It
+   is still a click target, and says so. */
 .live-replay-card {
   text-align: left;
+  cursor: pointer;
+}
+
+/* The watch control closes the left column, under the facts: the same corner
+   the vault's card has nothing in, and the one place on the card that is not
+   competing with the lineup. */
+.live-replay-card-watch {
+  display: flex;
+  width: 100%;
+  margin-top: auto;
+  justify-content: center;
+}
+
+.live-replay-card-watch .live-watch-button,
+.live-replay-card-watch .live-delay-actions {
+  width: 100%;
+}
+
+.live-replay-card-watch .live-delay-trigger {
+  width: 100%;
 }
 
 /* In the slot the vault card gives its review stars. */
@@ -632,17 +653,15 @@
   font-size: 11px;
 }
 
-/* The footer carries a control, so it is a row rather than a line of text. */
-.live-replay-card-footer {
+/* The detail panel's own action row: the rail is a column, so the watch
+   control spans it the way the buttons under it do. */
+.live-replay-detail-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  width: 100%;
 }
 
-.live-replay-card-footer > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.live-replay-detail-actions .live-watch-button,
+.live-replay-detail-actions .live-delay-actions,
+.live-replay-detail-actions .live-delay-trigger {
+  width: 100%;
 }

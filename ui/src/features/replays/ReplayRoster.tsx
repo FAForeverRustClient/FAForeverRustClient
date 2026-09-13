@@ -114,7 +114,21 @@ export function mergeReplayTeamsWithLocal(
   });
 }
 
-export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
+export function ReplayCardRoster({
+  teams,
+  interactive = false,
+}: {
+  teams: ReplayTeam[];
+  /**
+   * Whether a name in here opens the player card.
+   *
+   * Off by default, and it has to be: the vault's card is itself one large
+   * `<button>`, and a button inside a button is not markup a browser will
+   * accept. The live grid's card is an `<article>`, so its names can be the
+   * handle on a player that every other list in this client makes them.
+   */
+  interactive?: boolean;
+}) {
   useLocale();
   if (teams.length === 0) return null;
   const nonObserverTeams = teams.filter((team) => !isObserverTeam(team.team));
@@ -144,10 +158,28 @@ export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
             >
               {team.players.map((player) => (
                 <div key={player.name} className="replay-player">
-                  <span className="replay-player-identity">
-                    <ReplayPlayerMarker player={player} observer={observer} size={17} />
-                    <PlayerName name={player.name} />
-                  </span>
+                  {interactive ? (
+                    <button
+                      type="button"
+                      className="replay-player-identity replay-player-link"
+                      title={t("lobby.browser.openProfile", { name: player.name })}
+                      onClick={(event) => {
+                        // The card around this one opens the game; this opens
+                        // the player. Both are reasonable readings of a click
+                        // on a name, and the nearer target wins.
+                        event.stopPropagation();
+                        openPlayerCard(null, player.name);
+                      }}
+                    >
+                      <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      <PlayerName name={player.name} />
+                    </button>
+                  ) : (
+                    <span className="replay-player-identity">
+                      <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      <PlayerName name={player.name} />
+                    </span>
+                  )}
                   {player.rating !== null && <span className="muted">{player.rating}</span>}
                 </div>
               ))}

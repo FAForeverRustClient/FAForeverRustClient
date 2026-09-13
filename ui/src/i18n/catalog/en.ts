@@ -2112,6 +2112,8 @@ export const en = {
   "replays.live.autoWatchSet": "Auto-watch set",
   "replays.live.delayHint": "The replay server makes live streams available after five minutes.",
   "replays.live.readyIn": "Ready in {time}",
+  "replays.live.runningFor": "Running for",
+  "replays.live.simModCount": { one: "{count} sim mod", other: "{count} sim mods" },
   "replays.live.whenReady": "When the replay is ready",
   "replays.live.notifyMe": "Notify me",
   "replays.live.watchAutomatically": "Watch automatically",

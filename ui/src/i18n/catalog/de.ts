@@ -1848,6 +1848,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.live.autoWatchSet": "Automatisches Ansehen gesetzt",
   "replays.live.delayHint": "Der Replay-Server gibt Live-Streams erst nach fünf Minuten frei.",
   "replays.live.readyIn": "Bereit in {time}",
+  "replays.live.runningFor": "Läuft seit",
+  "replays.live.simModCount": { one: "{count} Sim-Mod", other: "{count} Sim-Mods" },
   "replays.live.whenReady": "Sobald das Replay bereit ist",
   "replays.live.notifyMe": "Benachrichtige mich",
   "replays.live.watchAutomatically": "Automatisch ansehen",

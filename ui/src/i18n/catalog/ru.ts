@@ -1294,6 +1294,13 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.live.autoWatchSet": "Автопросмотр назначен",
   "replays.live.delayHint": "Сервер реплеев открывает трансляции через пять минут.",
   "replays.live.readyIn": "Готово через {time}",
+  "replays.live.runningFor": "Идёт уже",
+  "replays.live.simModCount": {
+    one: "{count} мод симуляции",
+    few: "{count} мода симуляции",
+    many: "{count} модов симуляции",
+    other: "{count} модов симуляции",
+  },
   "replays.live.whenReady": "Когда реплей будет готов",
   "replays.live.notifyMe": "Уведомить меня",
   "replays.live.watchAutomatically": "Смотреть автоматически",
