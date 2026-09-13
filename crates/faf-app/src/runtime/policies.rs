@@ -5,7 +5,7 @@
 //! place and makes a `ServiceCtx` field explain whether work is single-flight,
 //! latest-response-wins, or serialized.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use tokio::sync::{Mutex, MutexGuard};
@@ -102,6 +102,54 @@ impl CancelledJoin {
     }
 }
 
+/// Which game this client is playing, for as long as the process is alive.
+///
+/// Not in the view state, because nothing on screen reads it: what needs it is
+/// the reconnection handshake. When the lobby socket comes back while a game
+/// is still running, the server has to be told which game this player belongs
+/// to (`restore_game_session`), or it keeps no game connection for them and
+/// the ICE adapter has nothing on the other end to talk to. The reference
+/// client keeps the same field for the same reason.
+///
+/// An explicit Disconnect ends the update stream and with it the connect loop,
+/// so this cannot live in that loop's locals: it has to outlast the socket
+/// that was lost, which is the whole case it exists for.
+/// `Arc` because the game-exit watcher is a spawned task that outlives the
+/// call that started it, and it is the one that clears this.
+#[derive(Debug, Clone)]
+pub struct RunningGame(Arc<AtomicI64>);
+
+/// No game. Game ids are positive, so this cannot collide with one -- and it
+/// is not zero, which a derived `Default` would have made indistinguishable
+/// from a game whose id genuinely is nothing.
+const NO_GAME: i64 = -1;
+
+impl Default for RunningGame {
+    fn default() -> Self {
+        Self(Arc::new(AtomicI64::new(NO_GAME)))
+    }
+}
+
+impl RunningGame {
+    /// The game process is up, playing this game.
+    pub fn set(&self, game_id: i32) {
+        self.0.store(i64::from(game_id), Ordering::Release);
+    }
+
+    /// The game is over, or was never really running.
+    pub fn clear(&self) {
+        self.0.store(NO_GAME, Ordering::Release);
+    }
+
+    /// The game being played, or `None`.
+    pub fn id(&self) -> Option<i32> {
+        match self.0.load(Ordering::Acquire) {
+            id if id <= 0 => None,
+            id => i32::try_from(id).ok(),
+        }
+    }
+}
+
 /// Generation counter for requests where only the newest response may land.
 #[derive(Debug, Default, Clone)]
 pub struct LatestRequest(Arc<AtomicU64>);
@@ -135,6 +183,23 @@ impl SerialMutation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Nothing is running until something is, and "nothing" has to survive a
+    /// `Default` rather than reading as game zero.
+    #[test]
+    fn a_running_game_is_remembered_until_the_game_ends() {
+        let running = RunningGame::default();
+        assert_eq!(running.id(), None);
+
+        running.set(4242);
+        assert_eq!(running.id(), Some(4242));
+
+        // The game-exit watcher holds a clone of this, so the two have to be
+        // the same value rather than two copies of it.
+        let watcher = running.clone();
+        watcher.clear();
+        assert_eq!(running.id(), None);
+    }
 
     #[test]
     fn single_flight_has_one_owner_and_releases_on_drop() {

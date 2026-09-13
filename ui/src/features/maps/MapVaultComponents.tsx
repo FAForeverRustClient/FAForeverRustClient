@@ -10,6 +10,7 @@ import { ReportDialog } from "../vault/ReportDialog";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { clientIntlTag } from "../../shared/dates";
+import { kilometresLabel } from "../../shared/mapPresentation";
 
 export function installNote(status: MapInstallStatus): string | null {
   switch (status.type) {
@@ -25,7 +26,7 @@ export function installNote(status: MapInstallStatus): string | null {
 export function sizeLabel(map: { width?: number; height?: number }): string {
   const w = map.width ?? 512;
   const h = map.height ?? 512;
-  return `${(w / 51.2).toFixed(0)} × ${(h / 51.2).toFixed(0)} km`;
+  return `${kilometresLabel(w)} × ${kilometresLabel(h)} km`;
 }
 
 export function ratingLabel(map: VaultMap): string {
@@ -166,7 +167,7 @@ export function MapCard({
           <span className="map-vault-fact" title={t("maps.vault.maxPlayersTitle", { count: map.maxPlayers || t("maps.vault.unknown") })}>
             <Icon name="users" size={13} /> {map.maxPlayers || "N/A"}
           </span>
-          <span className="map-vault-fact" title={`Map dimensions: ${sizeLabel(map)}`}>
+          <span className="map-vault-fact" title={t("maps.vault.dimensionsTitle", { size: sizeLabel(map) })}>
             {sizeLabel(map).replace(" km", "")}
           </span>
           <span
@@ -181,7 +182,9 @@ export function MapCard({
       <div className="map-vault-card-action">
         <Button
           className={favorite ? "map-favorite-button active" : "map-favorite-button"}
-          aria-label={favorite ? `Remove ${map.displayName} from favorites` : `Add ${map.displayName} to favorites`}
+          aria-label={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", {
+            name: map.displayName,
+          })}
           aria-pressed={favorite}
           title={t(favorite ? "maps.vault.removeFavorite" : "maps.vault.addFavorite")}
           onClick={onToggleFavorite}
@@ -261,7 +264,7 @@ export function MapDetailPanel({
       <button
         className="vault-detail-preview map-vault-detail-preview"
         onClick={onPreview}
-        aria-label={`Enlarge ${map.displayName} preview`}
+        aria-label={t("maps.preview.enlarge", { name: map.displayName })}
       >
         <MapPreview map={map} large />
         {(map.thumbnailUrlLarge || map.thumbnailUrl) && (

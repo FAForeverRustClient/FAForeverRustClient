@@ -3,6 +3,9 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use faf_domain::protocol::game_outcome::{
+    moved_a_rating, outcome_for, GameRows, PlayerRow, RatingChange,
+};
 use faf_domain::state::{
     aggregate_map_stats, leaderboard_display_name, sort_rating_summaries, ClanMember,
     MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
@@ -14,8 +17,8 @@ use serde_json::Value;
 
 use crate::infra::env_or;
 use crate::infra::jsonapi::{
-    document_index as index, fetch_document, fetch_document_typed, rel_many, rel_one, JsonApiDoc,
-    JsonApiResource as Resource, ResourceIndex as Index,
+    document_index as index, fetch_document, fetch_document_typed, rel_many, rel_one, value_f64,
+    value_i32, value_string, JsonApiDoc, JsonApiResource as Resource, ResourceIndex as Index,
 };
 use crate::ports::{PlayerCardPort, RequestError};
 
@@ -23,11 +26,18 @@ const MAX_PAGE_SIZE: usize = 10_000;
 
 /// Rows asked for per request when scanning a player's history.
 ///
-/// A request, not a promise: the API is free to return fewer, and it does.
-/// Nothing downstream may assume a full page came back, which is exactly the
-/// bug this replaced: treating a short page as the end of the history capped
-/// every player at the server's own page limit.
-const HISTORY_PAGE_SIZE: usize = 1_000;
+/// A request, not a promise: the API is free to return fewer, and it does --
+/// it clamps to a hundred. Asking for a thousand fetched a hundred anyway and
+/// meant the loop could never tell a clamped page from the last one, so this
+/// asks for what the server gives and learns the real size from the answer.
+const HISTORY_PAGE_SIZE: usize = 100;
+
+/// How many of those pages are in flight at once.
+///
+/// A seven-thousand-game history is seventy-odd requests. One at a time is why
+/// this took a minute where faftracker takes seconds, and four at a time is
+/// what the tracker itself uses against the same API.
+const HISTORY_PAGE_CONCURRENCY: usize = 4;
 
 /// Hard stop on the paging loop, so a server that keeps answering with rows
 /// cannot spin this forever.
@@ -36,6 +46,13 @@ const MAX_HISTORY_PAGES: usize = 400;
 /// Safety limit on a single scan. Beyond this the statistics are reported as
 /// truncated rather than the client quietly paging forever against the API.
 const MAX_HISTORY_GAMES: usize = 30_000;
+
+/// Everything a game's outcome is decided from: the map it was played on,
+/// every player's row, and the rating each row moved.
+const HISTORY_INCLUDE: &str = concat!(
+    "featuredMod,mapVersion.map,playerStats,playerStats.player,",
+    "playerStats.ratingChanges,playerStats.ratingChanges.leaderboard",
+);
 
 #[derive(Debug, Clone)]
 pub struct PlayerCardConfig {
@@ -474,67 +491,124 @@ impl PlayerCardPort for PlayerCardClient {
     async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String> {
         let token = self.token()?;
         let mut games: Vec<PlayedGame> = Vec::new();
-        let mut page = 1usize;
         let mut truncated = false;
+        // The largest page the API has actually answered with. Asked-for and
+        // given are different numbers here -- the server clamps `page[size]`
+        // to its own limit and says so nowhere in the payload -- so "shorter
+        // than I asked for" is not the end of the history, and "shorter than
+        // the server's own page" is.
+        let mut server_page_rows = 0usize;
+        let mut page = 1usize;
 
-        loop {
-            let mut url = self.url("gamePlayerStats")?;
-            url.query_pairs_mut()
-                .append_pair("filter", &format!("player.id=={player_id}"))
-                .append_pair("include", "game.mapVersion.map")
-                // Only the fields the fold reads. Without this each row drags
-                // along the full game and map resources, and a long history
-                // turns into tens of megabytes.
-                .append_pair("fields[gamePlayerStats]", "result,scoreTime,game")
-                .append_pair("fields[game]", "startTime,mapVersion")
-                .append_pair("fields[mapVersion]", "map")
-                .append_pair("fields[map]", "displayName")
-                .append_pair("sort", "-scoreTime")
-                .append_pair("page[number]", &page.to_string())
-                .append_pair("page[size]", &HISTORY_PAGE_SIZE.to_string());
-
-            let document = self.get(url, &token).await?;
-            let batch = parse_played_games(&document);
-
-            // The history ends when a page comes back empty, never when it
-            // comes back short. The API clamps `page[size]` to its own limit
-            // and says so nowhere in the payload, so comparing against what
-            // was *asked for* stopped after the very first page.
-            if batch.is_empty() {
-                break;
-            }
-            games.extend(batch);
-
-            if games.len() >= MAX_HISTORY_GAMES {
-                games.truncate(MAX_HISTORY_GAMES);
+        'scan: loop {
+            if page > MAX_HISTORY_PAGES {
                 truncated = true;
                 break;
             }
-            if page >= MAX_HISTORY_PAGES {
+            let last = (page + HISTORY_PAGE_CONCURRENCY - 1).min(MAX_HISTORY_PAGES);
+            // Several pages at once. A full history is seventy-odd requests,
+            // and one at a time is the whole of why opening a profile took a
+            // minute where faftracker took seconds against the same API; it
+            // fetches four at a time for exactly this reason.
+            let batch = futures_util::future::try_join_all(
+                (page..=last).map(|number| self.history_page(player_id, number, &token)),
+            )
+            .await?;
+
+            let mut ended = false;
+            for rows in batch {
+                server_page_rows = server_page_rows.max(rows.len());
+                if rows.is_empty() || rows.len() < server_page_rows {
+                    ended = true;
+                }
+                games.extend(rows);
+                if games.len() >= MAX_HISTORY_GAMES {
+                    games.truncate(MAX_HISTORY_GAMES);
+                    truncated = true;
+                    break 'scan;
+                }
+            }
+            if ended {
+                break;
+            }
+            if last >= MAX_HISTORY_PAGES {
                 truncated = true;
                 break;
             }
-            page += 1;
+            page = last + 1;
         }
 
         Ok(aggregate_map_stats(&games, truncated))
     }
 }
 
-/// Turn `gamePlayerStats` rows into the flat shape the fold consumes.
+impl PlayerCardClient {
+    /// One page of a player's game history, already folded into the flat shape
+    /// the record is built from.
+    async fn history_page(
+        &self,
+        player_id: i32,
+        number: usize,
+        token: &str,
+    ) -> Result<Vec<PlayedGame>, String> {
+        let mut url = self.url("game")?;
+        url.query_pairs_mut()
+            // Games, not this player's rows in them. Six of the seven rules
+            // that decide a win compare the player against the rest of the
+            // lobby -- who else lost, which team scored highest -- and none of
+            // that is visible from one row.
+            .append_pair(
+                "filter",
+                &format!("playerStats.player.id=={player_id};endTime=isnull=false"),
+            )
+            .append_pair("include", HISTORY_INCLUDE)
+            // Only the fields the rules read. Without this each game drags
+            // along its full map and player resources, and a long history
+            // turns into tens of megabytes.
+            .append_pair(
+                "fields[game]",
+                "startTime,endTime,validity,featuredMod,mapVersion,playerStats",
+            )
+            // The featured mod is how a game with no rating journal says which
+            // queue it was. See `queue_of`.
+            .append_pair("fields[featuredMod]", "technicalName,displayName")
+            .append_pair(
+                "fields[gamePlayerStats]",
+                "result,score,team,scoreTime,player,ratingChanges",
+            )
+            .append_pair("fields[player]", "login")
+            .append_pair("fields[mapVersion]", "map")
+            .append_pair("fields[map]", "displayName")
+            .append_pair(
+                "fields[leaderboardRatingJournal]",
+                "meanBefore,meanAfter,deviationBefore,deviationAfter,leaderboard",
+            )
+            .append_pair("fields[leaderboard]", "technicalName")
+            // By start, not by end, and the same key faftracker pages on.
+            // Games are paged, so the sort has to be stable across requests,
+            // and two games that ended in the same second are far commoner
+            // than two that started in one.
+            .append_pair("sort", "-startTime")
+            .append_pair("page[number]", &number.to_string())
+            .append_pair("page[size]", &HISTORY_PAGE_SIZE.to_string());
+
+        let document = self.get(url, token).await?;
+        Ok(parse_history_games(&document, player_id))
+    }
+}
+
+/// Turn a page of `game` documents into the flat shape the fold consumes.
 ///
-/// The map is reached through `game -> mapVersion -> map`, so a row whose
-/// game or map the API omitted still yields a game with an empty map name:
-/// it counts towards the record, it just cannot be attributed.
-fn parse_played_games(document: &JsonApiDoc) -> Vec<PlayedGame> {
+/// The map is reached through `mapVersion -> map`, so a game whose map the API
+/// omitted still yields an entry with an empty map name: it counts towards the
+/// record, it just cannot be attributed.
+fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame> {
     let included = index(document);
     document
         .data
         .iter()
-        .map(|row| {
-            let map = rel_one(row, "game")
-                .and_then(|key| included.get(&key))
-                .and_then(|game| rel_one(game, "mapVersion"))
+        .map(|game| {
+            let map = rel_one(game, "mapVersion")
                 .and_then(|key| included.get(&key))
                 .and_then(|version| rel_one(version, "map"))
                 .and_then(|key| included.get(&key))
@@ -543,30 +617,139 @@ fn parse_played_games(document: &JsonApiDoc) -> Vec<PlayedGame> {
                 .unwrap_or_default()
                 .to_string();
 
-            // The API states the result in capitals; anything other than a
-            // win or a loss (a draw, or a game that never finished) is not a
-            // decided game and must not move the record either way.
-            let result = row
-                .attributes
-                .get("result")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_ascii_uppercase();
-            let decided = result == "VICTORY" || result == "DEFEAT";
+            let stats: Vec<&Resource> = rel_many(game, "playerStats")
+                .iter()
+                .filter_map(|key| included.get(key).copied())
+                .collect();
+            let rows: Vec<PlayerRow> = stats.iter().map(|row| player_row(row, &included)).collect();
+
+            // The player's own row states when they were scored; a game that
+            // never scored them still has its own end to fall back on.
+            let played_at = rows
+                .iter()
+                .position(|row| row.player_id == player_id)
+                .map(|at| value_string(&stats[at].attributes, "scoreTime"))
+                .filter(|time| !time.is_empty())
+                .unwrap_or_else(|| {
+                    let ended = value_string(&game.attributes, "endTime");
+                    if ended.is_empty() {
+                        value_string(&game.attributes, "startTime")
+                    } else {
+                        ended
+                    }
+                });
+
+            let featured_mod = rel_one(game, "featuredMod")
+                .and_then(|key| included.get(&key))
+                .map(|resource| {
+                    format!(
+                        "{} {}",
+                        value_string(&resource.attributes, "technicalName"),
+                        value_string(&resource.attributes, "displayName"),
+                    )
+                })
+                .unwrap_or_default();
+            let queue = queue_of(&rows, player_id, &featured_mod);
+            let ladder = queue.eq_ignore_ascii_case("ladder_1v1");
+            let rows = GameRows {
+                rows,
+                validity: value_string(&game.attributes, "validity").to_ascii_uppercase(),
+                queue,
+            };
 
             PlayedGame {
                 map,
-                decided,
-                won: result == "VICTORY",
-                played_at: row
-                    .attributes
-                    .get("scoreTime")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
+                outcome: outcome_for(&rows, player_id),
+                rating_moved: moved_a_rating(&rows, player_id),
+                ladder,
+                played_at,
             }
         })
         .collect()
+}
+
+/// Which queue a game belongs to, the way `faftracker`'s `inferQueueCategory`
+/// decides it.
+///
+/// **This player's own** rating journal names the leaderboard whenever there
+/// is one -- reading any row's journal, as this used to, answers for whoever
+/// happened to be listed first.
+///
+/// When there is no journal at all the featured mod is the only thing left
+/// that says which queue it was, and a *ladder game without a journal* is
+/// exactly the case worth catching: those games are ranked by definition, and
+/// missing them left this client a few dozen wins short of the tracker on a
+/// long history. `faf` and `fafbeta` fall through to `global`, which is what
+/// the tracker calls everything it cannot place.
+fn queue_of(rows: &[PlayerRow], player_id: i32, featured_mod: &str) -> String {
+    let named = rows
+        .iter()
+        .find(|row| row.player_id == player_id)
+        .into_iter()
+        .flat_map(|row| row.rating_changes.iter())
+        .map(|change| change.leaderboard.as_str())
+        .find(|name| !name.is_empty());
+    if let Some(name) = named {
+        return name.to_ascii_lowercase();
+    }
+
+    let raw = featured_mod.to_ascii_lowercase();
+    if raw.contains("4v4") || raw.contains("tmm4") {
+        "tmm_4v4_full_share".into()
+    } else if raw.contains("3v3") || raw.contains("tmm3") {
+        "tmm_3v3".into()
+    } else if raw.contains("2v2") || raw.contains("tmm2") {
+        "tmm_2v2".into()
+    } else if raw.contains("ladder") || raw.contains("1v1") {
+        "ladder_1v1".into()
+    } else {
+        "global".into()
+    }
+}
+
+fn player_row(row: &Resource, included: &Index<'_>) -> PlayerRow {
+    PlayerRow {
+        player_id: rel_one(row, "player")
+            .and_then(|(_, id)| id.parse().ok())
+            .unwrap_or_default(),
+        // The API states the result in capitals, and the rules compare against
+        // capitals.
+        result: value_string(&row.attributes, "result").to_ascii_uppercase(),
+        score: value_i32(&row.attributes, "score").map(i64::from),
+        team: value_i32(&row.attributes, "team"),
+        rating_changes: rel_many(row, "ratingChanges")
+            .iter()
+            .filter_map(|key| included.get(key).copied())
+            .map(|journal| rating_change(journal, included))
+            .collect(),
+    }
+}
+
+/// One journal entry, with the leaderboard it belongs to named.
+///
+/// The name matters because a change with no leaderboard is dropped from every
+/// sum. `faftracker` drops entries whose rating *type* it cannot recognise,
+/// which it decides against a name list of its own; this client keeps no such
+/// list, so it drops only what the API itself leaves unattached. Where the
+/// technical name is not in the payload the relationship's id stands in, so a
+/// missing `included` entry cannot quietly empty a player's whole record.
+fn rating_change(journal: &Resource, included: &Index<'_>) -> RatingChange {
+    let leaderboard = rel_one(journal, "leaderboard")
+        .map(|key| {
+            included
+                .get(&key)
+                .map(|board| value_string(&board.attributes, "technicalName"))
+                .filter(|name| !name.is_empty())
+                .unwrap_or(key.1)
+        })
+        .unwrap_or_default();
+    RatingChange {
+        leaderboard,
+        mean_before: value_f64(&journal.attributes, "meanBefore"),
+        mean_after: value_f64(&journal.attributes, "meanAfter"),
+        deviation_before: value_f64(&journal.attributes, "deviationBefore"),
+        deviation_after: value_f64(&journal.attributes, "deviationAfter"),
+    }
 }
 
 fn section(
@@ -1470,48 +1653,129 @@ mod tests {
 #[cfg(test)]
 mod map_stats_tests {
     use super::*;
+    use faf_domain::protocol::game_outcome::Outcome;
     use serde_json::json;
 
-    /// Shaped like the API's answer to
-    /// `gamePlayerStats?filter=player.id==7&include=game.mapVersion.map`:
-    /// the map hangs three relationships deep, and the rows carry the result.
+    /// One `gamePlayerStats` row, as the API nests it under a game.
+    fn stats_row(
+        id: u32,
+        player: u32,
+        result: &str,
+        team: i32,
+        score: i64,
+        journal: Option<&str>,
+    ) -> Value {
+        let changes: Vec<Value> = journal
+            .into_iter()
+            .map(|id| json!({ "type": "leaderboardRatingJournal", "id": id }))
+            .collect();
+        json!({
+            "type": "gamePlayerStats", "id": id.to_string(),
+            "attributes": {
+                "result": result, "team": team, "score": score,
+                "scoreTime": "2026-01-04T20:00:00Z"
+            },
+            "relationships": {
+                "player": { "data": { "type": "player", "id": player.to_string() } },
+                "ratingChanges": { "data": changes }
+            }
+        })
+    }
+
+    fn journal(id: &str, before: f64, after: f64) -> Value {
+        json!({
+            "type": "leaderboardRatingJournal", "id": id,
+            "attributes": {
+                "meanBefore": before, "meanAfter": after,
+                "deviationBefore": 50.0, "deviationAfter": 50.0
+            },
+            "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "1" } } }
+        })
+    }
+
+    /// Shaped like the API's answer to the history query: whole games, each
+    /// carrying every player's row, because six of the seven rules that decide
+    /// a win read rows other than this player's.
+    ///
+    /// Player 7 throughout. Five games, one of each shape that matters:
+    /// a reported win, a reported loss, a game both sides lost, a game nobody
+    /// reported at all, and an unranked lobby.
     fn document() -> JsonApiDoc {
         serde_json::from_value(json!({
             "data": [
                 {
-                    "type": "gamePlayerStats", "id": "1",
-                    "attributes": { "result": "VICTORY", "scoreTime": "2026-01-04T20:00:00Z" },
-                    "relationships": { "game": { "data": { "type": "game", "id": "100" } } }
+                    "type": "game", "id": "100",
+                    "attributes": { "validity": "VALID", "endTime": "2026-01-04T20:00:00Z" },
+                    "relationships": {
+                        "mapVersion": { "data": { "type": "mapVersion", "id": "10" } },
+                        "playerStats": { "data": [
+                            { "type": "gamePlayerStats", "id": "1" },
+                            { "type": "gamePlayerStats", "id": "2" }
+                        ] }
+                    }
                 },
                 {
-                    "type": "gamePlayerStats", "id": "2",
-                    "attributes": { "result": "DEFEAT", "scoreTime": "2026-01-03T20:00:00Z" },
-                    "relationships": { "game": { "data": { "type": "game", "id": "101" } } }
+                    "type": "game", "id": "101",
+                    "attributes": { "validity": "VALID", "endTime": "2026-01-03T20:00:00Z" },
+                    "relationships": {
+                        "mapVersion": { "data": { "type": "mapVersion", "id": "11" } },
+                        "playerStats": { "data": [
+                            { "type": "gamePlayerStats", "id": "3" },
+                            { "type": "gamePlayerStats", "id": "4" }
+                        ] }
+                    }
                 },
                 {
-                    "type": "gamePlayerStats", "id": "3",
-                    "attributes": { "result": "VICTORY", "scoreTime": "2026-01-02T20:00:00Z" },
-                    "relationships": { "game": { "data": { "type": "game", "id": "102" } } }
+                    "type": "game", "id": "102",
+                    "attributes": { "validity": "VALID", "endTime": "2026-01-02T20:00:00Z" },
+                    "relationships": {
+                        "mapVersion": { "data": { "type": "mapVersion", "id": "10" } },
+                        "playerStats": { "data": [
+                            { "type": "gamePlayerStats", "id": "5" },
+                            { "type": "gamePlayerStats", "id": "6" }
+                        ] }
+                    }
                 },
-                // A draw, and a row whose game the API did not include.
+                // A generated map: FAF holds no map version for one, so the
+                // game arrives with nothing to name it by.
                 {
-                    "type": "gamePlayerStats", "id": "4",
-                    "attributes": { "result": "DRAW", "scoreTime": "2026-01-01T20:00:00Z" },
-                    "relationships": { "game": { "data": { "type": "game", "id": "100" } } }
+                    "type": "game", "id": "103",
+                    "attributes": { "validity": "VALID", "endTime": "2026-01-01T20:00:00Z" },
+                    "relationships": {
+                        "playerStats": { "data": [
+                            { "type": "gamePlayerStats", "id": "7" },
+                            { "type": "gamePlayerStats", "id": "8" }
+                        ] }
+                    }
                 },
+                // An unranked lobby: reported as a defeat, rated by nothing.
                 {
-                    "type": "gamePlayerStats", "id": "5",
-                    "attributes": { "result": "VICTORY", "scoreTime": "2025-12-31T20:00:00Z" },
-                    "relationships": { "game": { "data": { "type": "game", "id": "999" } } }
+                    "type": "game", "id": "104",
+                    "attributes": { "validity": "BAD_MOD", "endTime": "2025-12-31T20:00:00Z" },
+                    "relationships": {
+                        "mapVersion": { "data": { "type": "mapVersion", "id": "11" } },
+                        "playerStats": { "data": [
+                            { "type": "gamePlayerStats", "id": "9" },
+                            { "type": "gamePlayerStats", "id": "10" }
+                        ] }
+                    }
                 }
             ],
             "included": [
-                { "type": "game", "id": "100", "attributes": {},
-                  "relationships": { "mapVersion": { "data": { "type": "mapVersion", "id": "10" } } } },
-                { "type": "game", "id": "101", "attributes": {},
-                  "relationships": { "mapVersion": { "data": { "type": "mapVersion", "id": "11" } } } },
-                { "type": "game", "id": "102", "attributes": {},
-                  "relationships": { "mapVersion": { "data": { "type": "mapVersion", "id": "10" } } } },
+                stats_row(1, 7, "VICTORY", 2, 10, Some("j1")),
+                stats_row(2, 8, "DEFEAT", 3, 5, Some("j1b")),
+                stats_row(3, 7, "DEFEAT", 2, 3, Some("j2")),
+                stats_row(4, 8, "VICTORY", 3, 9, Some("j2b")),
+                // Both sides reported a defeat, which is a draw for both.
+                stats_row(5, 7, "DEFEAT", 2, 4, Some("j3")),
+                stats_row(6, 8, "DEFEAT", 3, 4, Some("j3b")),
+                // Nobody reported anything: the team scores decide it.
+                stats_row(7, 7, "", 2, 9, Some("j4")),
+                stats_row(8, 8, "", 3, 2, Some("j4b")),
+                // No rating journal at all.
+                stats_row(9, 7, "DEFEAT", 2, 1, None),
+                stats_row(10, 8, "VICTORY", 3, 8, None),
+
                 { "type": "mapVersion", "id": "10", "attributes": {},
                   "relationships": { "map": { "data": { "type": "map", "id": "20" } } } },
                 { "type": "mapVersion", "id": "11", "attributes": {},
@@ -1519,77 +1783,198 @@ mod map_stats_tests {
                 { "type": "map", "id": "20", "attributes": { "displayName": "Setons Clutch" },
                   "relationships": {} },
                 { "type": "map", "id": "21", "attributes": { "displayName": "Dual Gap" },
-                  "relationships": {} }
+                  "relationships": {} },
+                { "type": "leaderboard", "id": "1",
+                  "attributes": { "technicalName": "global" }, "relationships": {} },
+
+                journal("j1", 1500.0, 1520.0),
+                journal("j1b", 1500.0, 1480.0),
+                journal("j2", 1500.0, 1480.0),
+                journal("j2b", 1480.0, 1500.0),
+                journal("j3", 1500.0, 1495.0),
+                journal("j3b", 1500.0, 1495.0),
+                journal("j4", 1500.0, 1512.0),
+                journal("j4b", 1512.0, 1500.0)
             ]
         }))
         .expect("fixture must parse")
     }
 
     #[test]
-    fn rows_resolve_their_map_through_game_and_map_version() {
-        let games = parse_played_games(&document());
+    fn games_resolve_their_map_through_map_version() {
+        let games = parse_history_games(&document(), 7);
         assert_eq!(games.len(), 5);
 
         assert_eq!(games[0].map, "Setons Clutch");
-        assert!(games[0].decided && games[0].won);
+        assert_eq!(games[0].outcome, Outcome::Win);
+        assert!(games[0].rating_moved);
         assert_eq!(games[0].played_at, "2026-01-04T20:00:00Z");
 
         assert_eq!(games[1].map, "Dual Gap");
-        assert!(games[1].decided && !games[1].won);
+        assert_eq!(games[1].outcome, Outcome::Loss);
 
-        // A draw is a game played, but it decides nothing.
-        assert!(!games[3].decided, "a draw must not move the record");
+        // The API names no map version for a generated map, so the game
+        // survives without a name, which the fold then reads as generated.
+        assert_eq!(games[3].map, "");
+    }
 
-        // The API omitted game 999 from `included`; the row survives without a
-        // map name, which the fold then reads as a generated map.
-        assert_eq!(games[4].map, "");
-        assert!(games[4].decided && games[4].won);
+    /// The rule that most changes a record, and the one the client did not
+    /// have: a game both sides reported a defeat in is a draw for both, not a
+    /// loss for both.
+    #[test]
+    fn a_game_everybody_lost_is_a_draw_rather_than_a_loss() {
+        let games = parse_history_games(&document(), 7);
+        assert_eq!(games[2].outcome, Outcome::Draw);
+        assert_eq!(
+            parse_history_games(&document(), 8)[2].outcome,
+            Outcome::Draw,
+            "and a draw for the other side too"
+        );
+    }
+
+    /// FA reports a defeat when a commander dies and reports nothing for
+    /// whoever survives, so a custom game's winner often has no result at all.
+    /// The team scores answer it.
+    #[test]
+    fn a_game_nobody_reported_is_decided_by_the_team_scores() {
+        let games = parse_history_games(&document(), 7);
+        assert_eq!(games[3].outcome, Outcome::Win);
+        assert_eq!(
+            parse_history_games(&document(), 8)[3].outcome,
+            Outcome::Loss
+        );
+    }
+
+    /// `inferQueueCategory`: the journal names the queue when there is one,
+    /// and the featured mod answers when there is not.
+    ///
+    /// The second half is what makes a ladder game with no journal count. It
+    /// is worth a few dozen games on a long history, which was the whole of
+    /// what was left between this client's record and faftracker's.
+    #[test]
+    fn a_queue_is_named_by_the_journal_or_by_the_featured_mod() {
+        let journal = vec![PlayerRow {
+            player_id: 7,
+            rating_changes: vec![RatingChange {
+                leaderboard: "tmm_2v2".into(),
+                ..RatingChange::default()
+            }],
+            ..PlayerRow::default()
+        }];
+        assert_eq!(queue_of(&journal, 7, "ladder1v1 Ladder 1v1"), "tmm_2v2");
+
+        // Somebody else's journal is not this player's answer.
+        let others = vec![
+            PlayerRow {
+                player_id: 8,
+                rating_changes: journal[0].rating_changes.clone(),
+                ..PlayerRow::default()
+            },
+            PlayerRow {
+                player_id: 7,
+                ..PlayerRow::default()
+            },
+        ];
+        assert_eq!(queue_of(&others, 7, "ladder1v1 Ladder 1v1"), "ladder_1v1");
+
+        let none = vec![PlayerRow {
+            player_id: 7,
+            ..PlayerRow::default()
+        }];
+        assert_eq!(queue_of(&none, 7, "ladder1v1 Ladder 1v1"), "ladder_1v1");
+        assert_eq!(
+            queue_of(&none, 7, "tmm4v4 Team Matchmaker 4v4"),
+            "tmm_4v4_full_share"
+        );
+        assert_eq!(queue_of(&none, 7, "tmm3v3 3v3"), "tmm_3v3");
+        assert_eq!(queue_of(&none, 7, "faf Forged Alliance Forever"), "global");
+        assert_eq!(queue_of(&none, 7, ""), "global");
+    }
+
+    #[test]
+    fn a_game_that_moved_no_rating_counts_towards_nothing() {
+        let games = parse_history_games(&document(), 7);
+        assert_eq!(games[4].outcome, Outcome::Loss);
+        assert!(
+            !games[4].rating_moved,
+            "an unranked lobby decides nothing, whatever the game reported"
+        );
     }
 
     #[test]
     fn the_fold_answers_the_question_a_host_is_asking() {
-        let stats = aggregate_map_stats(&parse_played_games(&document()), false);
+        let stats = aggregate_map_stats(&parse_history_games(&document(), 7), false);
 
         assert_eq!(stats.total_games, 5);
-        assert_eq!(stats.wins, 3);
+        assert_eq!(stats.wins, 2);
         assert_eq!(stats.losses, 1);
-        assert_eq!(stats.undecided, 1);
+        assert_eq!(stats.undecided, 1, "the game both sides lost");
+        assert_eq!(stats.unranked, 1, "the unranked lobby");
 
-        // Most played first: Setons three times (two decided), then the two
-        // single-game rows. The row whose game the API omitted is a generated
-        // map, so it appears here rather than vanishing from the table; its
-        // name is empty because the view supplies the label.
+        // Two maps with two games each, so the tie breaks on the name; the
+        // generated row is last with one. Its name is empty because the view
+        // supplies the label.
         assert_eq!(
             stats
                 .maps
                 .iter()
-                .map(|entry| (entry.map.as_str(), entry.generated, entry.games, entry.wins))
+                .map(|entry| (
+                    entry.map.as_str(),
+                    entry.generated,
+                    entry.games,
+                    entry.wins,
+                    entry.losses,
+                    entry.draws
+                ))
                 .collect::<Vec<_>>(),
             [
-                ("Setons Clutch", false, 3, 2),
-                ("", true, 1, 1),
-                ("Dual Gap", false, 1, 0),
+                ("Dual Gap", false, 2, 0, 1, 0),
+                ("Setons Clutch", false, 2, 1, 0, 1),
+                ("", true, 1, 1, 0, 0),
             ]
         );
-        assert_eq!(stats.unattributed, 1, "one row got there by having no name");
-        assert_eq!(stats.maps[0].last_played, "2026-01-04T20:00:00Z");
+        assert_eq!(stats.unattributed, 1, "one game got there by having no map");
+    }
+
+    /// A leaderboard the payload does not spell out must not empty a record.
+    /// The relationship id stands in, because "the API did not include it" is
+    /// not the same as "this game was rated on nothing".
+    #[test]
+    fn an_unincluded_leaderboard_still_counts_as_movement() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "game", "id": "1",
+                "attributes": { "validity": "VALID", "endTime": "2026-01-01T00:00:00Z" },
+                "relationships": {
+                    "playerStats": { "data": [{ "type": "gamePlayerStats", "id": "1" }] }
+                }
+            }],
+            "included": [
+                stats_row(1, 7, "VICTORY", 1, 10, Some("j")),
+                journal("j", 1200.0, 1224.0)
+            ]
+        }))
+        .expect("fixture must parse");
+
+        let stats = aggregate_map_stats(&parse_history_games(&doc, 7), false);
+        assert_eq!((stats.wins, stats.losses), (1, 0));
     }
 
     #[test]
-    fn an_unknown_result_is_not_silently_a_loss() {
+    fn a_game_with_nothing_in_it_is_not_silently_a_loss() {
         let doc: JsonApiDoc = serde_json::from_value(json!({
             "data": [{
-                "type": "gamePlayerStats", "id": "1",
-                "attributes": { "scoreTime": "2026-01-01T00:00:00Z" },
+                "type": "game", "id": "1",
+                "attributes": { "endTime": "2026-01-01T00:00:00Z" },
                 "relationships": {}
             }],
             "included": []
         }))
         .expect("fixture must parse");
 
-        let stats = aggregate_map_stats(&parse_played_games(&doc), false);
+        let stats = aggregate_map_stats(&parse_history_games(&doc, 7), false);
         assert_eq!(stats.total_games, 1);
         assert_eq!((stats.wins, stats.losses), (0, 0));
-        assert_eq!(stats.undecided, 1);
+        assert_eq!(stats.unranked, 1);
     }
 }

@@ -21,7 +21,11 @@ import { friendKeys } from "./friendPresence";
 import { formatShortDate } from "../../shared/dates";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { GameBrowserRow, GameTile, type GameViewMode } from "./CustomGamesBrowser";
+import { useGameBrowserColumns } from "./gameBrowserColumns";
 import { coopFailureAction } from "./coopFailure";
+import { ResizeHandle } from "../../design-system/ResizeHandle";
+import { useColumnWidths } from "../../shared/useColumnWidths";
+import { tableMinWidth } from "../../shared/tableColumns";
 import "./custom-games.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { scenarioBadge, sortCoopScenarios } from "./coopScenarios";
@@ -69,6 +73,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
+  const columns = useGameBrowserColumns(viewMode === "list");
 
   useEffect(() => {
     if (useAppStore.getState().state.coop.catalogStatus.type === "idle") void loadCatalog();
@@ -166,14 +171,12 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
               </Button>
             </EmptyState>
           ) : viewMode === "list" ? (
+            /* The same header the custom-games list draws, from the same
+               widths. It used to be five bare spans here, so the co-op tab
+               laid the identical five columns out differently from the tab
+               next to it and none of them could be dragged. */
             <div className="game-browser-list">
-              <div className="game-browser-head">
-                <span>{t("lobby.browser.column.game")}</span>
-                <span>{t("lobby.browser.column.map")}</span>
-                <span>{t("lobby.browser.column.players")}</span>
-                <span>{t("lobby.browser.column.rating")}</span>
-                <span>{t("lobby.browser.column.age")}</span>
-              </div>
+              {columns.header}
               {games.map((game) => (
                 <GameBrowserRow
                   key={game.id}
@@ -181,6 +184,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   vault={maps.vault}
                   vaultMods={vaultMods}
                   friendSet={friendSet}
+                  columnStyle={columns.style}
                   selected={selectedGameId === game.id}
                   onSelect={() => setSelectedGameId(game.id)}
                   onJoin={() => onJoin(game)}
@@ -270,8 +274,36 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
  * there. What is left on this side is the leaderboard and the two selects that
  * choose whose leaderboard it is.
  */
+/**
+ * The designed widths of the record board, in the order the columns are drawn,
+ * the Replay column included: a divider takes from the column on one side of
+ * it and gives to the column on the other, and a column with no width of its
+ * own has nothing to give.
+ */
+const BOARD_COLUMN_PX = [56, 96, 96, 220, 96, 110, 90];
+
+/**
+ * The team column, which is the flexible one.
+ *
+ * Four names in one cell is what runs out of room first, so it is what the
+ * board spends a wide panel on. The number above is its floor rather than its
+ * width: on screen it is whatever the board has left after the other six. The
+ * player count beside it no longer carries the 220 pixels the names needed.
+ */
+const FLEXIBLE_BOARD_COLUMN = 3;
+
 function MissionDetail({ mission }: { mission: CoopMission }) {
   const { t } = useTranslation();
+  const columns = useColumnWidths("coopBoardColumns", BOARD_COLUMN_PX, FLEXIBLE_BOARD_COLUMN);
+  const boardLabels = [
+    "#",
+    t("lobby.coop.column.time"),
+    t("lobby.coop.column.players"),
+    t("lobby.coop.column.team"),
+    t("lobby.coop.column.secondary"),
+    t("lobby.coop.column.played"),
+    t("lobby.coop.column.replay"),
+  ];
   const coop = useAppStore((state) => state.state.coop);
   const note = loadStatusNote(
     coop.leaderboardStatus,
@@ -329,16 +361,49 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
       {coop.leaderboard.length > 0 && (
         <div className="coop-board-scroll">
-          <table className="coop-board">
+          <table
+            className="coop-board"
+            style={{ minWidth: `${tableMinWidth(columns.widths)}px` }}
+          >
+            {/* `table-layout: fixed` plus a colgroup is how a real table takes
+                dragged widths: putting them on the cells would let the widest
+                row win instead. */}
+            {/* Every column the width it was given except the players
+                column, which has none and so takes what is left. An empty
+                track at the end took it for one release, and the board then
+                stopped well short of the panel it sits in. */}
+            <colgroup>
+              {columns.widths.map((width, index) =>
+                index === FLEXIBLE_BOARD_COLUMN ? (
+                  <col key={boardLabels[index]} />
+                ) : (
+                  <col key={boardLabels[index]} style={{ width: `${width}px` }} />
+                ),
+              )}
+            </colgroup>
             <thead>
               <tr>
-                <th scope="col">#</th>
-                <th scope="col">{t("lobby.coop.column.time")}</th>
-                <th scope="col">{t("lobby.coop.column.players")}</th>
-                <th scope="col">{t("lobby.coop.column.team")}</th>
-                <th scope="col">{t("lobby.coop.column.secondary")}</th>
-                <th scope="col">{t("lobby.coop.column.played")}</th>
-                <th scope="col">{t("lobby.coop.column.replay")}</th>
+                {/* One line in front of every column but the first, standing
+                    where that column starts. It trades width between the two
+                    columns it separates, so it lands under the cursor and no
+                    other line moves. */}
+                {boardLabels.map((label, index) => (
+                  <th scope="col" key={label}>
+                    {index > 0 && (
+                      <ResizeHandle
+                        className="coop-board-col-handle is-ruled"
+                        label={t("lobby.browser.resizeColumn", {
+                          column:
+                            boardLabels[index - 1 === FLEXIBLE_BOARD_COLUMN ? index : index - 1],
+                        })}
+                        onDrag={(delta) => columns.onDrag(index, delta)}
+                        onEnd={columns.onCommit}
+                        onReset={columns.onReset}
+                      />
+                    )}
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>

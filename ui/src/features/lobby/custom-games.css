@@ -1,10 +1,18 @@
 .custom-games-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(460px, 1fr) 270px;
+  /* Three tracks now: list, divider, details. The inline style overrides the
+     last one; the divider keeps its own width so the gap either side of it
+     stays even whatever the panel is dragged to. */
+  grid-template-columns: minmax(360px, 1fr) 5px 270px;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
+}
+
+.custom-games-layout > .custom-games-divider {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .custom-games-layout > .play-toolbar {
@@ -20,7 +28,7 @@
 }
 
 .custom-games-layout > .game-detail-panel {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 2;
   min-height: 0;
 }
@@ -43,7 +51,6 @@
   flex-direction: column;
 }
 
-.game-browser-panel > .game-browser-head,
 .game-browser-panel > .game-browser-footer {
   flex: none;
 }
@@ -56,12 +63,64 @@
 .game-browser-head,
 .game-browser-row {
   display: grid;
-  grid-template-columns: minmax(280px, 2.4fr) minmax(150px, 1.2fr) 80px 100px 75px;
+  /* The fallback for the moment before the saved widths arrive, in the shape
+     the saved ones have: four columns at a fixed width and the game column
+     taking the rest. */
+  grid-template-columns: minmax(0, 1fr) 170px 80px 100px 75px;
   align-items: center;
   gap: 16px;
 }
 
+.game-browser-head > span {
+  position: relative;
+  min-width: 0;
+}
+
+/* The clipping sits on the label, not on the cell around it: the grab handle
+   reaches into the gap to the right of its cell, and a cell that hides its
+   overflow hides the handle with it. */
+.game-browser-head-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Centred on the gap between two columns, in the cell of the *right*-hand one,
+   so the grab area straddles the boundary it moves rather than sitting a whole
+   narrow column away from it. Wider than the line it draws, because a
+   two-pixel target is a target nobody hits. */
+/* Two classes, not one, and deliberately: `.resize-handle` in the design
+   system sets `position: relative` for the in-flow panel dividers, and it is a
+   single-class selector like this one was. Which of the two won came down to
+   which stylesheet the bundler emitted last -- and with the feature sheets in
+   lazily loaded chunks, that differed between a dev run and a build. When
+   `relative` won, the handle sat in the text flow after the label and the
+   `left` offset moved it from *there*, so where it landed depended on how long
+   the label was. That is the "sometimes in the wrong place" this fixes. */
+.game-browser-head > span > .game-browser-col-handle {
+  position: absolute;
+  top: -10px;
+  left: -14px;
+  bottom: -10px;
+  width: 12px;
+}
+
+.game-browser-map-version {
+  margin-left: 6px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inside the list it heads rather than above it, so the two are always the
+   same width: with the header outside the scroller, a scrollbar appearing
+   narrowed the rows and left every right-hand column a scrollbar's width off
+   its own label. Sticky, so it still stays put as the list scrolls. */
 .game-browser-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   min-height: 36px;
   padding: 0 16px;
   color: var(--color-subtle);
@@ -73,10 +132,14 @@
   text-transform: uppercase;
 }
 
-.game-browser-head > span:nth-child(3),
-.game-browser-head > span:nth-child(4),
-.game-browser-head > span:nth-child(5) {
-  text-align: right;
+/* Every label against the leading edge of its own column, where its divider
+   stands. Right-aligning the three number columns put their labels a whole
+   column away from the line that moves them, so the same line read as being
+   in front of one label, behind another and in the middle of nothing at all,
+   depending on which column it was. The numbers under them start there too:
+   a column that is dragged wider has to take its own contents with it. */
+.game-browser-head > span {
+  text-align: left;
 }
 
 .game-browser-list {
@@ -254,14 +317,19 @@
   white-space: nowrap;
 }
 
+/* Hard against the start of the column, not its end. A right-aligned
+   figure sits against the *next* column's divider, so dragging the line in
+   front of Players left the count where it was and moved everything else:
+   the column grew away from its own number. Start-aligned, the label, the
+   divider and the figures under them all move together. */
 .game-browser-players-col,
 .game-browser-rating-col,
 .game-browser-age-col {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: left;
   font-size: 13px;
   font-weight: 550;
   color: var(--color-text-strong);
@@ -893,17 +961,6 @@
   max-width: min(290px, calc(100vw - 32px));
 }
 
-/* Left-aligned and unruled: the panel below it now carries its own dividers,
-   and a centred title above a centred VS made three stacked centre lines. */
-.game-lineup-title {
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .game-lineup-teams {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -918,6 +975,10 @@
   position: relative;
   grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
   gap: var(--space-1);
+  /* The height of a team header plus the rule and gap under it. The VS is
+     offset by exactly this so it centres against the two player lists rather
+     than against the lists plus a heading only one of them needs. */
+  --lineup-header-block: 27px;
 }
 
 .game-lineup-team {
@@ -940,6 +1001,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
+  min-height: 17px;
   margin-bottom: 6px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--color-border);
@@ -1018,7 +1080,8 @@
   display: grid;
   grid-column: 2;
   grid-row: 1;
-  align-self: center;
+  align-self: stretch;
+  padding-top: var(--lineup-header-block);
   place-items: center;
   color: var(--color-subtle);
   font-size: 11px;
@@ -1369,16 +1432,6 @@
     height: 102px;
     grid-template-columns: 102px minmax(0, 1fr);
   }
-
-  .game-browser-head,
-  .game-browser-row {
-    grid-template-columns: minmax(190px, 1fr) 68px 62px;
-  }
-
-  .game-browser-head > span:nth-child(2),
-  .game-browser-row > span:nth-child(2) {
-    display: none;
-  }
 }
 
 /* A lobby with a friend in it.
@@ -1402,27 +1455,53 @@
    Mixed into the surface rather than laid over it, so the tint follows every
    theme's own background and the text on top keeps its contrast. The hover and
    selected states are restated, otherwise this would swallow them. */
+/* A wash, not a coat of paint. At 14% the tile stopped reading as one of the
+   grey tiles and started competing with the amber and red tags inside it,
+   which is worse the more friends somebody has. Half that leaves the tile
+   plainly tinted and plainly still a tile; the border carries the rest. */
 .game-tile.has-friend {
-  background: color-mix(in srgb, var(--color-friend) 14%, var(--color-surface));
-  border-color: var(--color-friend);
+  background: color-mix(in srgb, var(--color-friend) 7%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-friend) 70%, transparent);
 }
 
 .game-tile.has-friend:hover,
 .game-tile.has-friend:focus-within {
-  background: color-mix(in srgb, var(--color-friend) 20%, var(--color-surface-hover));
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-hover));
   border-color: var(--color-friend);
 }
 
+/* Selected has to win over friendly, not blend with it: a selected tile that
+   looked the same as an unselected one was the complaint. */
 .game-tile.has-friend.active {
-  background: color-mix(in srgb, var(--color-friend) 22%, var(--color-surface-raised));
-  border-color: color-mix(in srgb, var(--color-friend) 60%, var(--color-text));
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-raised));
+  border-color: var(--color-accent);
 }
 
+/* The friend tag, in the colour the reader chose for friends in chat rather
+   than in a green of its own -- `--color-friend` follows that setting now.
+   It sits at rest under the amber and red tags beside it, because a friend in
+   a lobby is a nice thing to notice and not a warning, and comes up to the
+   full colour when the pointer is on the tile it belongs to. */
 .game-browser-tags i.friend,
 .game-tile-flags i.friend {
-  color: var(--color-friend);
-  border-color: color-mix(in srgb, var(--color-friend) 45%, transparent);
+  color: color-mix(in srgb, var(--color-friend) 80%, var(--color-text));
+  border-color: color-mix(in srgb, var(--color-friend) 30%, transparent);
   background: color-mix(in srgb, var(--color-friend) 12%, transparent);
+  /* Spelled out rather than through `--transition-fast`: that token is
+     referenced in three places in this client and defined in none of them, so
+     a rule using it has no transition at all. */
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.game-tile:hover .game-tile-flags i.friend,
+.game-tile:focus-within .game-tile-flags i.friend,
+.game-tile-flags i.friend:hover,
+.game-browser-row:hover .game-browser-tags i.friend,
+.game-browser-row:focus-within .game-browser-tags i.friend,
+.game-browser-tags i.friend:hover {
+  color: var(--color-friend);
+  border-color: color-mix(in srgb, var(--color-friend) 55%, transparent);
+  background: color-mix(in srgb, var(--color-friend) 24%, transparent);
 }
 
 /* The rating range tag.
@@ -1433,4 +1512,13 @@
 .game-rating-range-separator {
   margin: 0 5px;
   color: var(--color-subtle);
+}
+
+/* An enforced range is a rule, so it is drawn like one: the padlock and the
+   warning colour separate it from the advisory range beside it in the list. */
+.game-rating-range.is-enforced {
+  gap: 4px;
+  color: var(--color-warn);
+  border-color: color-mix(in srgb, var(--color-warn) 45%, transparent);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
 }

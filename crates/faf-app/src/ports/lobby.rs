@@ -50,9 +50,24 @@ pub enum LobbyUpdate {
     /// [`Self::Authenticated`] means the replacement is up.
     Reconnecting,
     /// A fresh full snapshot of the open-games list.
+    ///
+    /// Sent when the list is being *replaced*: the server's opening dump, and
+    /// the first frames after a reconnect. Incremental changes go through
+    /// [`Self::GamesChanged`] instead.
     Games(Vec<Game>),
     /// A fresh full snapshot of the in-progress ("playing") games list.
     LiveGames(Vec<Game>),
+    /// Games that appeared, changed or left the open list since the last
+    /// update. See `faf_domain::state::lobby::LobbyEvent::GamesChanged`.
+    GamesChanged {
+        upserted: Vec<Game>,
+        removed: Vec<i32>,
+    },
+    /// The same, for the in-progress list.
+    LiveGamesChanged {
+        upserted: Vec<Game>,
+        removed: Vec<i32>,
+    },
     MatchmakerQueues(Vec<MatchmakerQueue>),
     Matchmaking(MatchmakingState),
     Party(PartyState),
@@ -158,6 +173,20 @@ pub trait LobbyPort: Send + Sync {
     /// Select an avatar by its server-provided URL, or clear it with `None`.
     /// Returns whether the command was accepted by the outgoing connection.
     fn select_avatar(&self, url: Option<String>) -> bool;
+
+    /// Tell the server this client is still in game `game_id`
+    /// (`restore_game_session`).
+    ///
+    /// The lobby server ties a player's game connection to the socket it was
+    /// made on. When that socket goes -- a drop, or the user disconnecting and
+    /// reconnecting by hand -- the connection goes with it, and the running
+    /// game keeps talking to an adapter the server no longer relays for: the
+    /// players never reconnect to each other. This is the frame that puts the
+    /// session back, and the reference client sends it on every transition
+    /// back to connected while a game is running.
+    ///
+    /// Returns whether it entered the live socket's outgoing queue.
+    fn restore_game_session(&self, game_id: i32) -> bool;
 
     /// Relay a connectivity message to the server addressed to the game
     /// (`{ command, target: "game", args }`). Used by the launcher to forward

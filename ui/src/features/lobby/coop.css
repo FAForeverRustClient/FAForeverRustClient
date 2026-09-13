@@ -351,8 +351,36 @@
 
 .coop-board {
   width: 100%;
+  /* Fixed, so the colgroup's dragged widths are what the table uses rather
+     than a suggestion the widest row can overrule. */
+  table-layout: fixed;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 12px;
+}
+
+.coop-board th {
+  position: relative;
+}
+
+/* Same shape as every other column divider in the client: on a cell's leading
+   edge, centred on the boundary it moves. */
+/* Two classes, not one, and deliberately: `.resize-handle` in the design
+   system sets `position: relative` for the in-flow panel dividers, and it is a
+   single-class selector like this one was. Which of the two won came down to
+   which stylesheet the bundler emitted last -- and with the feature sheets in
+   lazily loaded chunks, that differed between a dev run and a build. When
+   `relative` won, the handle sat in the text flow after the label and the
+   `left` offset moved it from *there*, so where it landed depended on how long
+   the label was. That is the "sometimes in the wrong place" this fixes. */
+.coop-board th > .coop-board-col-handle {
+  position: absolute;
+  /* Over the neighbouring header cell's own background. */
+  z-index: 1;
+  top: 0;
+  left: -6px;
+  bottom: 0;
+  width: 12px;
 }
 
 .coop-board th,

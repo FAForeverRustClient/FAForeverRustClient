@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Pagination } from "../../design-system/Pagination";
+import { useGridPageSize } from "../../shared/useGridPageSize";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   SearchField,
@@ -25,6 +26,11 @@ type RankedFilter = "all" | "ranked" | "unranked";
 type InstalledModPreset = "all" | "enabled" | "disabled" | "ui" | "sim" | "updates";
 type InstalledModSort = "state" | "name" | "rating" | "newest" | "author";
 
+/** `.installed-mod-card`'s designed height, which is what a page is measured in. */
+const INSTALLED_MOD_CARD_PX = 86;
+
+/// Only until the grid has been measured. Nothing is fetched here, so a page
+/// is as much of the list as fits and the fixed count is a starting guess.
 const PAGE_SIZE = 48;
 
 const loadVault = () => ipc.send({ kind: "Mods", command: { type: "loadVault" } });
@@ -90,8 +96,8 @@ function InstalledModCard({
             <strong>{mod.displayName}</strong>
           </span>
           <small>
-            {mod.modType === "ui" ? "UI mod" : "Simulation mod"} · v{mod.version}
-            {mod.author ? ` · ${mod.author}` : ""}
+            {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")} · v{mod.version}
+            {mod.author ? ` \u00b7 ${mod.author}` : ""}
           </small>
           <small title={mod.uid}>{mod.uid}</small>
         </span>
@@ -114,8 +120,17 @@ function InstalledModCard({
             {t(installing ? "mods.installed.working" : "mods.vault.update")}
           </Button>
         )}
-        <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
-          {t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
+        {/* An icon rather than the word, the way the Maps tab already does it.
+            "Uninstall" in red was the loudest thing on a row whose subject is
+            the mod, and it sat beside two buttons that are ordinary switches. */}
+        <Button
+          className="mod-vault-uninstall is-icon"
+          disabled={busy}
+          aria-label={t("mods.installed.uninstallNamed", { name: mod.displayName })}
+          title={t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
+          onClick={onUninstall}
+        >
+          <Icon name="trash" size={14} />
         </Button>
         </div>
       </div>
@@ -245,6 +260,7 @@ export function InstalledModsView({
   const installed = useAppStore((state) => state.state.mods.installed);
   const installedStatus = useAppStore((state) => state.state.mods.installedStatus);
   const vault = useAppStore((state) => state.state.mods.vault);
+  const vaultStatus = useAppStore((state) => state.state.mods.vaultStatus);
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
 
@@ -261,6 +277,14 @@ export function InstalledModsView({
   const [page, setPage] = useState(1);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
+  // The answer to "how do I know if a mod needs updating", which was the part
+  // of the report nothing on this screen answered: the badges only appear once
+  // the catalogue happens to have been reloaded, and nothing asks it to.
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState("");
+  const installedGrid = useRef<HTMLDivElement>(null);
+  const browsing = useAppStore((state) => state.state.settings.browsing);
+  const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MOD_CARD_PX, PAGE_SIZE);
 
   const note = loadStatusNote(installedStatus, t("mods.installed.scanning"), t("mods.installed.scanFailed"));
   const vaultByUid = useMemo(() => new Map(vault.map((mod) => [mod.uid, mod])), [vault]);
@@ -270,6 +294,36 @@ export function InstalledModsView({
     if (mods.installedStatus.type === "idle") loadInstalled();
     if (mods.vaultStatus.type === "idle") loadVault();
   }, []);
+
+  // The catalogue reload finished: say what it found, and take the reader to
+  // the mods it found it for. Silence would leave the button looking broken in
+  // the common case, which is that everything is already current.
+  useEffect(() => {
+    if (!checking || vaultStatus.type === "loading") return;
+    setChecking(false);
+    if (vaultStatus.type === "failed") {
+      setCheckResult(t("mods.installed.checkFailed"));
+      return;
+    }
+    const count = updatableFolders.size;
+    setCheckResult(
+      count > 0
+        ? t("mods.installed.checkFound", { count })
+        : t("mods.installed.checkNone"),
+    );
+    if (count > 0) choosePreset("updates");
+    // `updatableFolders` is recomputed from the reloaded catalogue, and it is
+    // the value this effect exists to read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checking, vaultStatus]);
+
+  // The result is a note, not a state: it says what one press found and then
+  // gets out of the way.
+  useEffect(() => {
+    if (!checkResult) return;
+    const timer = window.setTimeout(() => setCheckResult(""), 6_000);
+    return () => window.clearTimeout(timer);
+  }, [checkResult]);
 
   const choosePreset = (next: InstalledModPreset) => {
     setPreset(next);
@@ -401,9 +455,13 @@ export function InstalledModsView({
   // enabled state behind the button that had just changed it.
   const opened = openFolder ? installed.find((mod) => mod.folderName === openFolder) : undefined;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // A page is as much of the list as fits, unless the reader has picked a
+  // number in Settings. A fixed count left half the panel empty under the
+  // pager on a tall window and scrolled anyway on a short one.
+  const pageSize = browsing.vaultPageSize || fittedPageSize;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageMods = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageMods = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <>
@@ -440,6 +498,22 @@ export function InstalledModsView({
             <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}>
               <Icon name="refresh" size={15} /> {t("mods.installed.rescan")}
             </Button>
+            <Button
+              disabled={checking || vaultStatus.type === "loading"}
+              onClick={() => {
+                setCheckResult("");
+                setChecking(true);
+                loadVault();
+              }}
+            >
+              <Icon name="download" size={15} />{" "}
+              {t(checking ? "mods.installed.checking" : "mods.installed.checkUpdates")}
+            </Button>
+            {checkResult && (
+              <span className="installed-mod-check-result muted" role="status">
+                {checkResult}
+              </span>
+            )}
           </>
         )}
       >
@@ -550,7 +624,7 @@ export function InstalledModsView({
             <span>{filtered.length} installed {filtered.length === 1 ? "mod" : "mods"}</span>
             <span>{installed.filter((mod) => mod.enabled).length} active</span>
           </div>
-          <div className="installed-mod-grid">
+          <div className="installed-mod-grid" ref={installedGrid}>
             {pageMods.map((mod) => (
               <InstalledModCard
                 key={mod.folderName}

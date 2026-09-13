@@ -271,6 +271,12 @@ impl LobbyPort for FakeLobby {
         self.updates.lock().unwrap().is_some()
     }
 
+    fn restore_game_session(&self, _game_id: i32) -> bool {
+        // Nothing to restore: the fake has no server-side game connection to
+        // lose in the first place.
+        self.updates.lock().unwrap().is_some()
+    }
+
     fn send_game_relay(&self, _command: String, _args: Vec<serde_json::Value>) {
         // The fake stops at the launch order; it doesn't simulate in-game relay.
     }
@@ -334,6 +340,7 @@ fn seed_games() -> Vec<Game> {
             hosted_at: None,
             rating_min: None,
             rating_max: None,
+            enforce_rating_range: false,
             teams: BTreeMap::from([("1".into(), vec!["Stormlord".into()])]),
             sim_mods: Default::default(),
         },
@@ -354,6 +361,7 @@ fn seed_games() -> Vec<Game> {
             hosted_at: None,
             rating_min: Some(700),
             rating_max: Some(1600),
+            enforce_rating_range: false,
             teams: BTreeMap::from([
                 (
                     "1".into(),
@@ -380,6 +388,7 @@ fn seed_games() -> Vec<Game> {
             hosted_at: None,
             rating_min: None,
             rating_max: None,
+            enforce_rating_range: false,
             teams: Default::default(),
             sim_mods: Default::default(),
         },
@@ -432,6 +441,7 @@ fn evolve(games: &mut Vec<Game>, tick: u32) {
             hosted_at: None,
             rating_min: None,
             rating_max: None,
+            enforce_rating_range: false,
             teams: Default::default(),
             sim_mods: Default::default(),
         });

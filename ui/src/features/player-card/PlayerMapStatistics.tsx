@@ -9,7 +9,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { formatNumber } from "../../i18n";
+import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
+import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapThumbnail } from "../../shared/MapThumbnail";
 import { formatDateTime } from "../../shared/dates";
@@ -21,10 +22,25 @@ interface Props {
   playerId: number;
 }
 
-/** Win rate in whole percent, or `null` when nothing has been decided. */
+/**
+ * Win rate in percent, or `null` when nothing has been decided.
+ *
+ * Draws are left out of the denominator rather than counted as half a loss,
+ * which is what faftracker.xyz does and therefore what the number players
+ * compare this against means.
+ *
+ * Unrounded: a whole percent hides the difference between this and the
+ * tracker's figure in one direction and invents one in the other. Over five
+ * thousand games, 52.47 and 52.5 are the same answer and 52 and 52.5 are not.
+ */
 function winRate(wins: number, losses: number): number | null {
   const decided = wins + losses;
-  return decided > 0 ? Math.round((wins / decided) * 100) : null;
+  return decided > 0 ? (wins / decided) * 100 : null;
+}
+
+/** The record cell: wins, losses, and the draws the rate leaves out. */
+function record(wins: number, losses: number, draws: number): string {
+  return `${formatNumber(wins)} / ${formatNumber(losses)} / ${formatNumber(draws)}`;
 }
 
 type SortColumn = "map" | "games" | "record" | "winRate" | "lastPlayed";
@@ -45,6 +61,9 @@ const FIRST_DIRECTION: Record<SortColumn, "asc" | "desc"> = {
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
   const stats = useAppStore((state) => state.state.playerCard.mapStats);
+  // The leaderboards' own games-played totals, which is what faftracker prints
+  // as "ranked games" rather than what its scan read. See `rankedRecord`.
+  const ratings = useAppStore((state) => state.state.playerCard.profile?.ratings);
   // The vault supplies map art; without it every thumbnail is a placeholder.
   const vault = useAppStore((state) => state.state.maps.vault);
   const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
@@ -145,7 +164,7 @@ export function PlayerMapStatistics({ playerId }: Props) {
     return <div className="player-card-empty muted">{t("playerCard.maps.empty")}</div>;
   }
 
-  const overall = winRate(stats.wins, stats.losses);
+  const summary = rankedRecord(stats, leaderboardTotalGames(ratings));
 
   return (
     <div className="player-maps-view">
@@ -155,14 +174,22 @@ export function PlayerMapStatistics({ playerId }: Props) {
           <span className="player-maps-label">{t("playerCard.maps.gamesTotal")}</span>
         </div>
         <div className="player-maps-figure">
+          <span className="player-maps-value">{formatNumber(summary.rankedGames)}</span>
+          <span className="player-maps-label">{t("playerCard.maps.rankedGames")}</span>
+        </div>
+        <div className="player-maps-figure">
+          <span className="player-maps-value">{formatNumber(summary.unrankedGames)}</span>
+          <span className="player-maps-label">{t("playerCard.maps.unrankedGames")}</span>
+        </div>
+        <div className="player-maps-figure">
           <span className="player-maps-value">
-            {overall === null ? "–" : `${overall}%`}
+            {summary.winRate === null ? "–" : `${formatDecimal(summary.winRate)}%`}
           </span>
           <span className="player-maps-label">{t("playerCard.maps.winRate")}</span>
         </div>
         <div className="player-maps-figure">
           <span className="player-maps-value">
-            {formatNumber(stats.wins)} / {formatNumber(stats.losses)}
+            {record(summary.wins, summary.losses, summary.draws)}
           </span>
           <span className="player-maps-label">{t("playerCard.maps.record")}</span>
         </div>
@@ -176,6 +203,27 @@ export function PlayerMapStatistics({ playerId }: Props) {
           history, and a reader comparing them to the profile deserves to know. */}
       {stats.truncated && (
         <p className="player-maps-note muted">{t("playerCard.maps.truncated")}</p>
+      )}
+
+      {/* Same reason. The record covers only the games FAF scored, so a player
+          whose history is mostly unranked lobbies sees a small W/L beside a
+          large game count, and is owed the arithmetic. */}
+      {stats.unranked > 0 && (
+        <p className="player-maps-note muted">
+          {t("playerCard.maps.unrankedNote", { count: stats.unranked })}
+        </p>
+      )}
+
+      {/* And when the leaderboards count more ranked games than the history
+          endpoint returned, those games are in the draws column without
+          anybody having drawn them. faftracker does this silently; saying it
+          costs one line and is the difference between a number and a claim. */}
+      {summary.draws > stats.undecided && (
+        <p className="player-maps-note muted">
+          {t("playerCard.maps.leaderboardGapNote", {
+            count: summary.draws - stats.undecided,
+          })}
+        </p>
       )}
 
 
@@ -230,10 +278,8 @@ export function PlayerMapStatistics({ playerId }: Props) {
                   </span>
                 </td>
                 <td>{formatNumber(entry.games)}</td>
-                <td>
-                  {formatNumber(entry.wins)} / {formatNumber(entry.losses)}
-                </td>
-                <td>{rate === null ? "–" : `${rate}%`}</td>
+                <td>{record(entry.wins, entry.losses, entry.draws)}</td>
+                <td>{rate === null ? "–" : `${formatDecimal(rate)}%`}</td>
                 <td>{entry.lastPlayed ? formatDateTime(entry.lastPlayed) : "–"}</td>
               </tr>
             );

@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "../../design-system/Icon";
 import {
   isGeneratedMap,
   mapThumbnailCandidates,
   normalizeMapName,
 } from "../../shared/mapPresentation";
-import { formatRelativeDuration } from "../../shared/durations";
-import { clientIntlTag } from "../../shared/dates";
+import { clientIntlTag, formatAgeOrDate } from "../../shared/dates";
 import { useAppStore } from "../../store/store";
-import { t, type MessageKey } from "../../i18n";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ResizeHandle } from "../../design-system/ResizeHandle";
+import { useColumnWidths } from "../../shared/useColumnWidths";
+import { columnTemplate } from "../../shared/tableColumns";
 
 export type ReplayListCell = {
   primary: string;
@@ -78,14 +80,7 @@ export function formatReplayListTime(value: string | number, fallback = "N/A"): 
 }
 
 export function formatReplayListAge(value: string | number, fallback = "N/A"): string {
-  if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
-  const played = new Date(value).getTime();
-  if (Number.isNaN(played)) return fallback;
-  const seconds = (Date.now() - played) / 1000;
-  if (seconds < 0) return fallback;
-  const justNow = t("replays.card.justNow");
-  const elapsed = formatRelativeDuration(seconds, { nowLabel: justNow });
-  return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
+  return formatAgeOrDate(value, fallback);
 }
 
 function ReplayListCellView({ cell, className = "" }: { cell: ReplayListCell; className?: string }) {
@@ -224,6 +219,25 @@ function ReplayListRowView({ row }: { row: ReplayListRow }) {
   );
 }
 
+/**
+ * The designed widths, in the order the columns are drawn, the last column
+ * included: a divider takes from the column on one side of it and gives to the
+ * column on the other, and a column with no width of its own has nothing to
+ * give.
+ */
+const DEFAULT_COLUMN_PX = [56, 260, 140, 110, 70, 82, 126, 150];
+
+/**
+ * The game column, which is the flexible one.
+ *
+ * A replay's title is what gets cut off, so it is what a wide window is spent
+ * on. The number above is its floor rather than its width: on screen it is
+ * whatever the row has left after the other seven. The status column had the
+ * job before, and on a wide window it stretched two small buttons across the
+ * space a title was being ellipsised into.
+ */
+const FLEXIBLE_COLUMN = 1;
+
 export function ReplayList({
   groups,
   footer,
@@ -232,10 +246,39 @@ export function ReplayList({
   footer: ReactNode;
 }) {
   const { t } = useTranslation();
+  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN);
+  const template = columnTemplate(columns.widths, FLEXIBLE_COLUMN);
+
   return (
-    <section className="replay-list-wrap surface-panel" role="table" aria-label={t("replays.list.aria")}>
+    <section
+      className="replay-list-wrap surface-panel"
+      role="table"
+      aria-label={t("replays.list.aria")}
+      style={{ "--replay-list-columns": template } as CSSProperties}
+    >
       <div className="replay-list-header" role="row">
-        {COLUMNS.map((column) => <span className={column.className} key={column.label} role="columnheader">{t(column.label)}</span>)}
+        {COLUMNS.map((column, index) => (
+          <span className={column.className} key={column.label} role="columnheader">
+            {/* One line in front of every column but the first, standing
+                where that column starts. It trades width between the two
+                columns it separates, so it lands under the cursor and no
+                other line moves. */}
+            {index > 0 && (
+              <ResizeHandle
+                className="replay-list-col-handle is-ruled"
+                label={t("lobby.browser.resizeColumn", {
+                  column: t(COLUMNS[index - 1 === FLEXIBLE_COLUMN ? index : index - 1].label),
+                })}
+                onDrag={(delta) => columns.onDrag(index, delta)}
+                onEnd={columns.onCommit}
+                onReset={columns.onReset}
+              />
+            )}
+            {/* The label clips itself rather than letting the header cell do
+                it: the cell has to let the divider hang outside its own box. */}
+            <span className="replay-list-head-label">{t(column.label)}</span>
+          </span>
+        ))}
       </div>
       <div className="replay-list-body" role="rowgroup">
         {groups.map((group) => (

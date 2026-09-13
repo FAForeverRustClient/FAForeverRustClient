@@ -100,6 +100,41 @@ describe("mapPresentation", () => {
     expect(candidates).not.toContain(staleVaultMap.thumbnailUrlLarge);
   });
 
+  it("answers for one map when the vault holds a record over a base-game folder", () => {
+    // A vault record whose folder collides with a base-game map, describing
+    // something else entirely. The Play tab used to take the name from the
+    // built-in catalogue and the size and the picture from this, which is how
+    // a lobby on The Ditch came to be announced as 20 x 10 km with a picture
+    // of another map.
+    const colliding = {
+      folderName: "scmp_040",
+      displayName: "Somebody's Remake",
+      width: 1024,
+      height: 512,
+      thumbnailUrl: "https://example.invalid/remake-small.png",
+      thumbnailUrlLarge: "https://example.invalid/remake-large.png",
+    } as VaultMap;
+
+    expect(mapPresentation([colliding], "scmp_040").displayName).toBe("The Ditch");
+    expect(mapSize([colliding], "scmp_040")?.compact).toBe("10 km");
+    expect(mapThumbnailCandidates([colliding], "scmp_040")[0]).toBe(
+      "https://content.faforever.com/maps/previews/small/scmp_040.png",
+    );
+  });
+
+  it("does not lead a large request with a caller's small thumbnail", () => {
+    // A replay listing carries `mapVersion.thumbnailUrlSmall`. Leading with it
+    // for a large request is why the enlarged replay preview was a 256 px
+    // picture blown up to nine hundred. It stays in the list as the last
+    // fallback, for a map nothing else has art for.
+    const small = "https://content.faforever.com/maps/previews/small/scmp_009.png";
+    const large = mapThumbnailCandidates([], "scmp_009", true, undefined, undefined, small);
+
+    expect(large[0]).toBe("https://content.faforever.com/maps/previews/large/scmp_009.png");
+    expect(large).toContain(small);
+    expect(mapThumbnailCandidates([], "scmp_009", false, undefined, undefined, small)[0]).toBe(small);
+  });
+
   it("formats generated map presentation using Neroxis Map Generator as displayName", () => {
     const presentation = mapPresentation(
       [],
@@ -142,6 +177,18 @@ describe("mapSize", () => {
 
   it("spells out a map that is not square", () => {
     expect(mapSizeOf(512, 256)).toEqual({ full: "10 × 5 km", compact: "10 × 5 km" });
+  });
+
+  it("keeps the quarter kilometres the generator actually produces", () => {
+    // The generator steps in 64 units, which is 1.25 km. Rounding to whole
+    // kilometres announced a 17.5 km map as 18 -- a size no map has -- and the
+    // two smallest as 1 km and 3 km.
+    expect(mapSizeOf(896, 896)?.compact).toBe("17.5 km");
+    expect(mapSizeOf(320, 320)?.compact).toBe("6.25 km");
+    expect(mapSizeOf(64, 64)?.compact).toBe("1.25 km");
+    expect(mapSizeOf(128, 128)?.compact).toBe("2.5 km");
+    // And a whole number stays whole: no "20.00 km" anywhere.
+    expect(mapSizeOf(2048, 2048)?.compact).toBe("40 km");
   });
 
   it("has nothing to say about a size of zero", () => {

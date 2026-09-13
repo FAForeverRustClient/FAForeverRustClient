@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use crate::protocol::game_outcome::Outcome;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum PlayerCardStatus {
@@ -836,15 +838,29 @@ mod tests {
 
 /// One game from a player's history, reduced to what map statistics need.
 ///
-/// Produced by the infrastructure from `gamePlayerStats` rows and folded by
+/// Produced by the infrastructure from a `game` document and folded by
 /// [`aggregate_map_stats`]. A separate type so the folding is testable without
 /// a JSON:API document in the way.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayedGame {
     pub map: String,
-    /// `false` for a draw, an unfinished game, or a result the API did not state.
-    pub decided: bool,
-    pub won: bool,
+    /// What the game was, after
+    /// [`crate::protocol::game_outcome::outcome_for`] has applied every rule.
+    pub outcome: Outcome,
+    /// Whether the game moved a rating this client can name a leaderboard for.
+    ///
+    /// Separate from the outcome because both are required before a game joins
+    /// a *map's* record: a win that moved nothing is a game played and nothing
+    /// else. See [`PlayerMapStats::unranked`].
+    pub rating_moved: bool,
+    /// Whether this was a ladder 1v1.
+    ///
+    /// The one queue whose games count even when no rating moved, which is
+    /// `isRankedGame` in `faftracker`'s `analytics.js`: a ladder game with a
+    /// result is ranked by definition, journal or no journal. It is the
+    /// difference of a few dozen games on a long history, and therefore the
+    /// difference between agreeing with the tracker and nearly agreeing.
+    pub ladder: bool,
     /// ISO timestamp, or empty when the API did not state one.
     pub played_at: String,
 }
@@ -866,6 +882,9 @@ pub struct PlayerMapStat {
     pub games: i32,
     pub wins: i32,
     pub losses: i32,
+    /// Games on this map that ended level, which the win rate excludes rather
+    /// than counts as half a loss.
+    pub draws: i32,
     /// Most recent appearance, ISO. Empty when no game on this map stated one.
     pub last_played: String,
 }
@@ -882,10 +901,32 @@ pub struct PlayerMapStat {
 pub struct PlayerMapStats {
     /// Games actually counted, which is every game the scan returned.
     pub total_games: i32,
+    /// Of those, the ones FAF scored: a rating moved, or it was a ladder game
+    /// with a result. `faftracker`'s `isRankedGame`.
+    ///
+    /// Reported rather than derived because the view needs it to reconcile
+    /// this scan against the leaderboard's own games-played total, which is
+    /// the number the tracker actually prints.
+    pub ranked_games: i32,
     pub wins: i32,
     pub losses: i32,
-    /// Games the API returned without a decided result (draws, unfinished).
+    /// Games that ended level, counted and shown but kept out of the win rate.
     pub undecided: i32,
+    /// Games FAF did not score at all: no rating moved and it was not a ladder
+    /// game with a result.
+    ///
+    /// A custom lobby with mods on, a game that desynced its way out of a
+    /// result, one abandoned before it was scored: FAF rates none of them, and
+    /// the API still returns rows for each. Those rows carried a `result` of
+    /// `DEFEAT` far more often than `VICTORY`, because a game only reports
+    /// defeat when someone is killed or leaves and nothing reports the winner.
+    /// Counting them dragged every profile towards the same 40%, which is what
+    /// made the figure obviously wrong rather than merely inaccurate.
+    ///
+    /// `faftracker` keeps these in two buckets -- no result at all, and a
+    /// result with no rating behind it -- and the distinction changes nothing a
+    /// reader of this table would do, so they are one number here.
+    pub unranked: i32,
     /// How many of the generated row's games got there by having no map name
     /// at all, rather than by carrying a recognisable generated one.
     ///
@@ -928,10 +969,24 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
 
     for game in games {
         stats.total_games += 1;
-        match (game.decided, game.won) {
-            (true, true) => stats.wins += 1,
-            (true, false) => stats.losses += 1,
-            (false, _) => stats.undecided += 1,
+        // Whether FAF scored this game at all. `faftracker`'s `isRankedGame`:
+        // a rating moved, or it was a ladder game somebody won. The second
+        // half is the one this client used to be missing, and it is worth a
+        // few dozen games on a long history.
+        let ranked = game.rating_moved || (game.ladder && game.outcome != Outcome::Unknown);
+        if ranked {
+            stats.ranked_games += 1;
+        } else {
+            stats.unranked += 1;
+        }
+        // A ranked game with no verdict is in neither column. The tracker
+        // leaves the same hole and reconciles it against the leaderboard's own
+        // total, which is what `ranked_games` is reported for.
+        match (ranked, game.outcome) {
+            (true, Outcome::Win) => stats.wins += 1,
+            (true, Outcome::Loss) => stats.losses += 1,
+            (true, Outcome::Draw) => stats.undecided += 1,
+            _ => {}
         }
 
         // A game the API names no map for is a generated one.
@@ -965,14 +1020,20 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
             games: 0,
             wins: 0,
             losses: 0,
+            draws: 0,
             last_played: String::new(),
         });
         entry.games += 1;
-        if game.decided {
-            if game.won {
-                entry.wins += 1;
-            } else {
-                entry.losses += 1;
+        // Per map the tracker asks a different question: `hasKnownRatingMovement`,
+        // not `isRankedGame`. A ladder game that moved nothing counts towards
+        // the header's record and not towards a map's, which reads oddly
+        // written down and is what the numbers players compare against do.
+        if game.rating_moved && game.outcome != Outcome::Unknown {
+            match game.outcome {
+                Outcome::Win => entry.wins += 1,
+                Outcome::Loss => entry.losses += 1,
+                Outcome::Draw => entry.draws += 1,
+                Outcome::Unknown => {}
             }
         }
         if game.played_at > entry.last_played {
@@ -991,11 +1052,12 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
 mod map_stats_tests {
     use super::*;
 
-    fn game(map: &str, decided: bool, won: bool, played_at: &str) -> PlayedGame {
+    fn game(map: &str, outcome: Outcome, played_at: &str) -> PlayedGame {
         PlayedGame {
             map: map.into(),
-            decided,
-            won,
+            outcome,
+            rating_moved: true,
+            ladder: false,
             played_at: played_at.into(),
         }
     }
@@ -1004,10 +1066,10 @@ mod map_stats_tests {
     fn maps_are_ordered_by_how_often_they_were_played() {
         let stats = aggregate_map_stats(
             &[
-                game("Setons Clutch", true, true, "2026-01-01"),
-                game("Dual Gap", true, false, "2026-01-02"),
-                game("Setons Clutch", true, false, "2026-01-03"),
-                game("Setons Clutch", true, true, "2026-01-04"),
+                game("Setons Clutch", Outcome::Win, "2026-01-01"),
+                game("Dual Gap", Outcome::Loss, "2026-01-02"),
+                game("Setons Clutch", Outcome::Loss, "2026-01-03"),
+                game("Setons Clutch", Outcome::Win, "2026-01-04"),
             ],
             false,
         );
@@ -1036,22 +1098,58 @@ mod map_stats_tests {
     #[test]
     fn equal_counts_keep_a_stable_order() {
         let first = aggregate_map_stats(
-            &[game("Beta", true, true, ""), game("Alpha", true, true, "")],
+            &[
+                game("Beta", Outcome::Win, ""),
+                game("Alpha", Outcome::Win, ""),
+            ],
             false,
         );
         let second = aggregate_map_stats(
-            &[game("Alpha", true, true, ""), game("Beta", true, true, "")],
+            &[
+                game("Alpha", Outcome::Win, ""),
+                game("Beta", Outcome::Win, ""),
+            ],
             false,
         );
         assert_eq!(first.maps, second.maps, "order must not depend on arrival");
     }
 
     #[test]
+    fn an_unranked_game_counts_towards_nothing_but_the_total() {
+        // The reason the figure was wrong everywhere: an unrated custom game
+        // reports DEFEAT for whoever was killed and nothing for the winner, so
+        // counting it could only ever push a win rate down.
+        let stats = aggregate_map_stats(
+            &[
+                game("Loki", Outcome::Win, "2026-01-01"),
+                PlayedGame {
+                    // Stated as a loss by the API, and still not one: nothing
+                    // about this game was rated.
+                    rating_moved: false,
+                    ..game("Loki", Outcome::Loss, "2026-01-02")
+                },
+            ],
+            false,
+        );
+        assert_eq!(stats.total_games, 2);
+        assert_eq!((stats.wins, stats.losses), (1, 0));
+        assert_eq!(stats.unranked, 1);
+        assert_eq!(stats.undecided, 0, "unrated is its own bucket, not a draw");
+
+        let loki = &stats.maps[0];
+        assert_eq!(
+            loki.games, 2,
+            "an unrated game is still a game played there"
+        );
+        assert_eq!((loki.wins, loki.losses), (1, 0));
+    }
+
+    #[test]
     fn undecided_games_count_towards_the_total_but_not_the_record() {
         let stats = aggregate_map_stats(
             &[
-                game("Loki", true, true, "2026-01-01"),
-                game("Loki", false, false, "2026-01-02"),
+                game("Loki", Outcome::Win, "2026-01-01"),
+                game("Loki", Outcome::Draw, "2026-01-02"),
             ],
             false,
         );
@@ -1062,7 +1160,69 @@ mod map_stats_tests {
 
         let loki = &stats.maps[0];
         assert_eq!(loki.games, 2, "a draw is still a game played there");
-        assert_eq!((loki.wins, loki.losses), (1, 0));
+        assert_eq!((loki.wins, loki.losses, loki.draws), (1, 0, 1));
+    }
+
+    /// The rule that makes these numbers agree with faftracker, stated on its
+    /// own: a game can be decided and still count towards nothing, because the
+    /// rating never moved.
+    /// `isRankedGame`'s second half: a ladder game with a result counts even
+    /// when no journal came back for it. Without this the header's record ran
+    /// a few dozen games short of faftracker's on a long history, which is the
+    /// whole of the difference that was left between them.
+    #[test]
+    fn a_ladder_game_counts_even_when_no_rating_moved() {
+        let ladder = PlayedGame {
+            map: "Theta Passage".into(),
+            outcome: Outcome::Win,
+            rating_moved: false,
+            ladder: true,
+            played_at: "2026-01-01".into(),
+        };
+        let custom = PlayedGame {
+            ladder: false,
+            ..ladder.clone()
+        };
+
+        let stats = aggregate_map_stats(&[ladder, custom], false);
+        assert_eq!(stats.total_games, 2);
+        assert_eq!(stats.ranked_games, 1, "only the ladder game was scored");
+        assert_eq!(stats.wins, 1);
+        assert_eq!(stats.unranked, 1);
+
+        // The map's own row asks the other question -- did a rating move --
+        // so neither game is a win there. That is what the tracker does, and
+        // it is why the header and the table can disagree.
+        assert_eq!(stats.maps.len(), 1);
+        assert_eq!(stats.maps[0].games, 2);
+        assert_eq!(stats.maps[0].wins, 0);
+    }
+
+    #[test]
+    fn a_decided_game_that_moved_no_rating_is_not_a_win() {
+        let stats = aggregate_map_stats(
+            &[PlayedGame {
+                rating_moved: false,
+                ..game("Loki", Outcome::Win, "2026-01-01")
+            }],
+            false,
+        );
+        assert_eq!((stats.wins, stats.losses, stats.undecided), (0, 0, 0));
+        assert_eq!(stats.unranked, 1);
+        assert_eq!(stats.maps[0].games, 1, "still a game played on that map");
+    }
+
+    /// And its mirror: a rating moved, but nothing says which way the game
+    /// went. FAF scored it, so it is not unranked -- and it is in none of the
+    /// three columns either, because there is no verdict to put in one. The
+    /// tracker leaves exactly the same hole, and reconciles it against the
+    /// leaderboard's own total.
+    #[test]
+    fn a_scored_game_nobody_can_call_is_in_no_column_at_all() {
+        let stats = aggregate_map_stats(&[game("Loki", Outcome::Unknown, "2026-01-01")], false);
+        assert_eq!((stats.wins, stats.losses, stats.undecided), (0, 0, 0));
+        assert_eq!(stats.ranked_games, 1, "a rating moved, so FAF scored it");
+        assert_eq!(stats.unranked, 0);
     }
 
     #[test]
@@ -1072,9 +1232,9 @@ mod map_stats_tests {
         // they had never played one.
         let stats = aggregate_map_stats(
             &[
-                game("", true, true, "2026-01-01"),
-                game("", true, false, "2026-01-02"),
-                game("Loki", true, true, "2026-01-03"),
+                game("", Outcome::Win, "2026-01-01"),
+                game("", Outcome::Loss, "2026-01-02"),
+                game("Loki", Outcome::Win, "2026-01-03"),
             ],
             false,
         );
@@ -1099,8 +1259,12 @@ mod map_stats_tests {
     fn nameless_and_named_generated_games_share_one_row() {
         let stats = aggregate_map_stats(
             &[
-                game("", true, true, "2026-01-01"),
-                game("neroxis_map_generator_1.8.0_abcd", true, true, "2026-01-02"),
+                game("", Outcome::Win, "2026-01-01"),
+                game(
+                    "neroxis_map_generator_1.8.0_abcd",
+                    Outcome::Win,
+                    "2026-01-02",
+                ),
             ],
             false,
         );
@@ -1117,8 +1281,9 @@ mod generated_map_tests {
     fn generated(seed: &str) -> PlayedGame {
         PlayedGame {
             map: format!("neroxis_map_generator_1.8.0_{seed}"),
-            decided: true,
-            won: true,
+            outcome: Outcome::Win,
+            rating_moved: true,
+            ladder: false,
             played_at: "2026-01-01".into(),
         }
     }
@@ -1135,8 +1300,9 @@ mod generated_map_tests {
                 generated("cccc"),
                 PlayedGame {
                     map: "Setons Clutch".into(),
-                    decided: true,
-                    won: false,
+                    outcome: Outcome::Loss,
+                    rating_moved: true,
+                    ladder: false,
                     played_at: "2026-01-02".into(),
                 },
             ],

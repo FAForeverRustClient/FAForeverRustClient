@@ -176,6 +176,7 @@ pub async fn start(
     // is in the game, which is its own reason a rejoin can be refused.
     let exit_ports = ctx.ports.clone();
     let exit_sink = out.clone();
+    let exit_running_game = ctx.running_game.clone();
     tokio::spawn(async move {
         tracing::debug!("launcher: game exit watcher started");
         exit_ports.process.wait_for_exit().await;
@@ -186,6 +187,7 @@ pub async fn start(
             .send_game_relay("GameState".into(), vec![Value::String("Ended".into())]);
         tracing::debug!("stopping ICE adapter");
         exit_ports.ice.stop();
+        exit_running_game.clear();
         exit_sink.emit(LobbyEvent::GameTerminated);
 
         // The replay the game just streamed to the local recorder is on disk
@@ -204,6 +206,12 @@ pub async fn start(
         }
         tracing::info!("launcher: game exit cleanup complete");
     });
+
+    // Which game is being played, for as long as it is. Read by the lobby
+    // service when the socket comes back: the server drops a player's game
+    // connection with the socket it was made on, and without being told to
+    // restore it the running game is relayed for nobody.
+    ctx.running_game.set(launch.uid);
 
     out.emit(LobbyEvent::InGame);
     Some(LaunchSession {

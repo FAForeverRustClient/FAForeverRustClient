@@ -1175,3 +1175,71 @@
   padding: var(--space-3) var(--space-4) var(--space-4);
   border-top: 1px solid var(--color-border);
 }
+
+/* The queue's rating breakdown, on hover anywhere on the card.
+   A pure-CSS popover rather than a portal: it lives inside the card's own
+   button, so anything focusable in here would be a control inside a control.
+   `pointer-events: none` keeps it from eating the click that selects the
+   queue.
+
+   Along the bottom edge, centred. It used to rise from the "n queued" line and
+   cover the card's own heading -- the queue's name, which is the one thing a
+   reader needs to still be able to see while deciding whether to wait in it.
+   Down here it covers the fact lines instead, one of which is the number it
+   breaks down. */
+.matchmaker-queue-breakdown {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  min-width: 160px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease;
+}
+
+/* Anywhere on the card, not only on the words "n queued". The breakdown is
+   what the card is for -- it answers whether waiting in this queue is worth
+   it -- and asking for it by finding six characters of text turned a fact
+   into a trick. It still hangs off the count, because that is the number it
+   breaks down. */
+.matchmaker-queue-card:hover .matchmaker-queue-breakdown {
+  opacity: 1;
+}
+
+.matchmaker-queue-breakdown b {
+  margin-bottom: 2px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.matchmaker-queue-breakdown > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.matchmaker-queue-breakdown em {
+  color: var(--color-text);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-queue-breakdown i {
+  color: var(--color-muted);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}

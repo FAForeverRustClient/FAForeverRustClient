@@ -180,25 +180,21 @@
   font-size: 12px;
 }
 
-.live-replay-table th:nth-child(2) { width: 104px; }
-.live-replay-table th:nth-child(3) { width: 28%; }
-.live-replay-table th:nth-child(4) { width: 76px; }
-.live-replay-table th:nth-child(5) { width: 80px; }
-.live-replay-table th:nth-child(6) { width: 13%; }
-.live-replay-table th:nth-child(7) { width: 17%; }
-.live-replay-table th:nth-child(8) { width: 122px; }
-
+/* No widths on the cells. The colgroup carries them, which is the only place
+   a dragged width can go in a fixed table layout, and a second set here was
+   read by nobody while still describing columns that no longer had those
+   proportions. */
 .live-map-column {
-  width: 58px;
   text-align: center !important;
 }
 
-.live-number-column button {
-  justify-content: flex-end;
-}
-
+/* Every label against the leading edge of its own column, where its divider
+   stands, so one line reads the same way in front of every column. The figures
+   under them start there too. */
+.live-number-column button,
 .live-watch-column {
-  text-align: right !important;
+  justify-content: flex-start;
+  text-align: left !important;
 }
 
 .live-replay-row td {
@@ -302,10 +298,15 @@
   font-weight: 600;
 }
 
+/* Hard against the start of the column, not its end. A right-aligned
+   figure sits against the *next* column's divider, so dragging the line in
+   front of Players left the count where it was and moved everything else:
+   the column grew away from its own number. Start-aligned, the label, the
+   divider and the figures under them all move together. */
 .live-number-cell,
 .live-rating-cell {
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: left;
 }
 
 .live-number-cell strong {
@@ -578,4 +579,31 @@
   .live-detail-meta {
     grid-template-columns: 1fr;
   }
+}
+
+/* A column divider on the leading edge of each header cell, resizing the cell
+   before it. Wider than it looks, so the grab area is findable without a
+   hairline target -- the same shape the game browser and the replay list use. */
+.live-replay-table th {
+  position: relative;
+}
+
+/* Two classes, not one, and deliberately: `.resize-handle` in the design
+   system sets `position: relative` for the in-flow panel dividers, and it is a
+   single-class selector like this one was. Which of the two won came down to
+   which stylesheet the bundler emitted last -- and with the feature sheets in
+   lazily loaded chunks, that differed between a dev run and a build. When
+   `relative` won, the handle sat in the text flow after the label and the
+   `left` offset moved it from *there*, so where it landed depended on how long
+   the label was. That is the "sometimes in the wrong place" this fixes. */
+.live-replay-table th > .live-replay-col-handle {
+  position: absolute;
+  /* Over the neighbouring header cell's own background, which is painted
+     later when this sits in an earlier cell. */
+  z-index: 1;
+  top: 0;
+  /* Centred on this cell's leading edge, which is the boundary it moves. */
+  left: -6px;
+  bottom: 0;
+  width: 12px;
 }
