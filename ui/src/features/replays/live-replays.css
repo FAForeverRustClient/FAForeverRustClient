@@ -629,23 +629,22 @@
   cursor: pointer;
 }
 
-/* The watch control closes the left column, under the facts: the same corner
-   the vault's card has nothing in, and the one place on the card that is not
-   competing with the lineup. */
-.live-replay-card-watch {
+/* The card's last line: the host at one end, the way in at the other. It is
+   the only row on the card that holds a control, so it is a row rather than
+   the line of muted text the vault's footer is. */
+.live-replay-card-footer {
   display: flex;
-  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   margin-top: auto;
-  justify-content: center;
 }
 
-.live-replay-card-watch .live-watch-button,
-.live-replay-card-watch .live-delay-actions {
-  width: 100%;
-}
-
-.live-replay-card-watch .live-delay-trigger {
-  width: 100%;
+.live-replay-card-footer > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* In the slot the vault card gives its review stars. */
