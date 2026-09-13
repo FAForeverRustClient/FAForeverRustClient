@@ -622,9 +622,56 @@
 }
 
 /* A card nobody can select: the vault's is a button and this one is an
-   article, so it takes the hover treatment and none of the pressed states. */
+   article, so it takes the hover treatment and none of the pressed states. It
+   is still a click target, and says so. */
 .live-replay-card {
   text-align: left;
+  cursor: pointer;
+}
+
+/* The card's last line: the host at one end, the way in at the other. It is
+   the only row on the card that holds a control, so it is a row rather than
+   the line of muted text the vault's footer is. */
+/* One height whatever it holds, so the host sits on the same line in every
+   card of a row: a "Ready in 0:42" trigger and a "Watch" button are not the
+   same height, and the row would otherwise shift as games mature. */
+.live-replay-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 30px;
+  margin-top: auto;
+}
+
+.live-replay-card-footer > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The watch control is a label, not a bar.
+ *
+   `.live-watch-button` is `width: 100%` because in the table it fills a 128px
+   column of its own; in this row that made it eat the line and left the host
+   showing three letters and an ellipsis. Here it is sized like the "Ready in
+   0:42" trigger it alternates with, so the footer does not change shape when a
+   game matures, and the rest of the row is the host's. */
+.live-replay-card-footer .live-watch-button,
+.live-replay-card-footer .live-delay-actions,
+.live-replay-card-footer .live-delay-trigger {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 92px;
+}
+
+.live-replay-card-footer .live-watch-button {
+  min-height: 0;
+  padding: 7px var(--space-2);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 /* In the slot the vault card gives its review stars. */
@@ -632,17 +679,24 @@
   font-size: 11px;
 }
 
-/* The footer carries a control, so it is a row rather than a line of text. */
-.live-replay-card-footer {
+/* The detail panel's action row: one control, in the corner the vault panel
+   puts its "Watch" in. `.replay-card-bottom` is a two-column grid there
+   because that panel has two buttons; with one, a flex row that ends at the
+   right edge is the same corner without a phantom column beside it. */
+.live-replay-detail-bottom {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
-.live-replay-card-footer > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Sized like the vault panel's watch button, not like the table's: this is the
+   panel's primary action rather than a cell in a column. */
+.live-replay-detail-bottom .live-watch-button,
+.live-replay-detail-bottom .live-delay-trigger {
+  width: auto;
+  min-width: 200px;
+  min-height: 42px;
+  padding-inline: var(--space-4);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }

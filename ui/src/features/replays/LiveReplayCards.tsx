@@ -15,9 +15,10 @@
 // and this one holds a button with a menu behind it, which is not something a
 // button may contain.
 
-import { Fragment, memo, useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import type { Game, LiveReplayTracking, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
+import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { mapPresentation, type MapPresentation } from "../../shared/mapPresentation";
 import { ReplayMapThumb, ReplayMetaFact, replayCardTitle } from "./OnlineReplayPresentation";
@@ -62,6 +63,8 @@ interface Props {
   batchSize: number;
   previewsLoading: boolean;
   tracking: LiveReplayTracking | null;
+  /** Open one game's detail panel. */
+  onOpen: (id: number) => void;
   onLoadMore: () => void;
 }
 
@@ -97,6 +100,7 @@ export function LiveReplayCards(props: Props) {
             ageNow={ageNow}
             waitSeconds={replayDelayRemaining(game, waitNow)}
             tracking={props.tracking}
+            onOpen={props.onOpen}
           />
         ))}
       </div>
@@ -131,23 +135,53 @@ const LiveReplayCard = memo(function LiveReplayCard({
   ageNow,
   waitSeconds,
   tracking,
+  onOpen,
 }: {
   busy: boolean;
   game: Game;
   ageNow: number;
   waitSeconds: number;
   tracking: LiveReplayTracking | null;
+  onOpen: (id: number) => void;
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const missions = useAppStore((state) => state.state.coop.missions);
+  // The vault's lineup when it has one: the lobby sends names and nothing
+  // else, and the API's row for a game carries the faction each player picked.
+  // `LiveReplayView` asks for the whole page at once; this only reads the
+  // answer, and draws the lobby's names until it arrives.
+  const lookup = useAppStore((state) => state.state.replays.onlineLookups?.[game.id]);
   const presentation = mapPresentation(vault, game.map, missions);
   const title = replayCardTitle(game.title, presentation.displayName || game.map);
-  const teams = liveReplayTeams(game);
+  const vaultTeams = lookup?.type === "found" ? lookup.payload.teams : [];
+  const teams = vaultTeams.length > 0 ? vaultTeams : liveReplayTeams(game);
   const simMods = Object.values(game.simMods);
 
+  // A click that did not land on a control opens the game, which is what the
+  // vault's card does with a plain click. That card is one `<button>` and this
+  // one cannot be: it holds the watch control and the lineup's player links.
+  const opensDetail = (event: { target: EventTarget | null }) =>
+    !(event.target as HTMLElement | null)?.closest("button, a");
+
   return (
-    <article className="replay-card live-replay-card surface-panel">
+    <article
+      className="replay-card live-replay-card surface-panel"
+      onClick={(event) => {
+        if (opensDetail(event)) onOpen(game.id);
+      }}
+      // Double click watches, as it does on a table row.
+      onDoubleClick={(event) => {
+        if (!opensDetail(event) || busy || waitSeconds > 0) return;
+        ipc.send({
+          kind: "Replays",
+          command: {
+            type: "watchLive",
+            payload: { uid: game.id, modName: game.modName, map: game.map },
+          },
+        });
+      }}
+    >
       <div className="replay-card-left">
         <ReplayMapThumb
           url=""
@@ -183,6 +217,19 @@ const LiveReplayCard = memo(function LiveReplayCard({
             label={t("replays.live.gameType")}
             value={prettyGameType(game.gameType)}
           />
+          {/* The id and what the game is running, in the grid rather than in
+              the footer: both are facts about the game, like the four above
+              them, and the footer is a line of text. */}
+          <ReplayMetaFact
+            icon="replays"
+            label={t("replays.detail.replayIdLabel")}
+            value={`#${game.id}`}
+          />
+          <ReplayMetaFact
+            icon="mods"
+            label={t("replays.detail.simMods")}
+            value={t("replays.live.simModCount", { count: simMods.length })}
+          />
         </div>
       </div>
       <div className="replay-card-right">
@@ -194,24 +241,12 @@ const LiveReplayCard = memo(function LiveReplayCard({
             {t("replays.card.onMap", { map: presentation.displayName || game.map })}
           </span>
         </div>
-        <ReplayCardRoster teams={teams} />
-        <div className="replay-card-footer live-replay-card-footer muted">
-          <span>
-            {t("lobby.details.host", { name: game.host })} · #{game.id}
-            {simMods.length > 0 && (
-              <Fragment>
-                {" · "}
-                <span title={simMods.join(", ")}>
-                  {simMods.length === 1
-                    ? simMods[0]
-                    : t("replays.live.moreSimMods", {
-                      first: simMods[0],
-                      count: simMods.length - 1,
-                    })}
-                </span>
-              </Fragment>
-            )}
-          </span>
+        <ReplayCardRoster teams={teams} interactive />
+        {/* Who hosts it, and the one thing to do with it. The featured mod and
+            the sim mods used to close this line and are in the fact grid on
+            the left, where the rest of what the game *is* lives. */}
+        <div className="replay-card-footer live-replay-card-footer">
+          <span className="muted">{t("lobby.details.host", { name: game.host })}</span>
           <LiveWatchButton
             busy={busy}
             game={game}

@@ -131,6 +131,7 @@
         "mapAuthor": "",
         "title": "",
         "replayId": "",
+        "replayIds": [],
         "host": "",
         "featuredMods": [],
         "leaderboards": [],
@@ -789,6 +790,7 @@
       "browsing": {
         "customGamesView": "tiles",
         "replaysView": "tiles",
+        "liveReplayView": "tiles",
         "customGamesBrowser": {
           "sort": "players",
           "sortReversed": false,
@@ -807,6 +809,7 @@
           "Cybran",
           "Seraphim"
         ],
+        "matchmakerChatWidth": 0,
         "liveReplayFilters": {
           "search": "",
           "gameType": "",
@@ -2052,8 +2055,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -26536,6 +26541,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -26610,6 +26616,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -26678,6 +26685,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -26767,6 +26775,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -26835,6 +26844,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -26903,6 +26913,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -26929,6 +26940,7 @@
                   "mapAuthor": "",
                   "title": "",
                   "replayId": "",
+                  "replayIds": [],
                   "host": "",
                   "featuredMods": [],
                   "leaderboards": [],
@@ -27010,6 +27022,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27093,6 +27106,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27170,6 +27184,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27287,6 +27302,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27384,6 +27400,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27483,6 +27500,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27580,6 +27598,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27678,6 +27697,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27778,6 +27798,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27875,6 +27896,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -27955,6 +27977,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -28070,6 +28093,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -28168,6 +28192,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -28267,6 +28292,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -28368,6 +28394,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -28473,6 +28500,7 @@
               "player": "",
               "rankedMapOnly": false,
               "replayId": "",
+              "replayIds": [],
               "sortBy": "startTime",
               "sortDescending": true,
               "title": "",
@@ -29092,8 +29120,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -29344,8 +29374,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -29605,8 +29637,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -29861,8 +29895,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30117,8 +30153,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30383,8 +30421,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30655,8 +30695,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30939,8 +30981,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -31214,8 +31258,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -31491,8 +31537,10 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -31697,6 +31745,7 @@
                 "preferences": {
                   "customGamesView": "list",
                   "replaysView": "list",
+                  "liveReplayView": "tiles",
                   "customGamesBrowser": {
                     "sort": "age",
                     "sortReversed": true,
@@ -31733,6 +31782,7 @@
                     "cybran",
                     "unknown"
                   ],
+                  "matchmakerChatWidth": 420,
                   "liveReplayFilters": {
                     "search": "  tournament  ",
                     "gameType": " matchmaker ",
@@ -31884,8 +31934,10 @@
                 "maxPlayers": "",
                 "search": "tournament"
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "newest",
+              "matchmakerChatWidth": 420,
               "matchmakerFactions": [
                 "Cybran"
               ],

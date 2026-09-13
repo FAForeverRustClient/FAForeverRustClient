@@ -306,6 +306,34 @@ pub struct PartyState {
     pub members: Vec<PartyMember>,
 }
 
+impl PartyState {
+    /// This snapshot as it applies to `player_id`.
+    ///
+    /// The lobby server broadcasts `update_party` to everyone who *was* in the
+    /// party, the member who just left included, so leaving a party of two
+    /// ends with a snapshot naming the other player and not you. The seat list
+    /// then showed the host sitting in your party, and went on showing it
+    /// until something else made the server send a party message: joining a
+    /// queue, for instance, which is how this was reported.
+    ///
+    /// A party that does not contain you is not your party. Answering with an
+    /// empty one is the same thing `kicked_from_party` already does, and the
+    /// snapshot that says so is not a message this client can act on in any
+    /// other way.
+    ///
+    /// An empty membership list passes through: that is the server dissolving
+    /// the party rather than describing somebody else's.
+    pub fn for_player(self, player_id: Option<i32>) -> Self {
+        let Some(player_id) = player_id else {
+            return self;
+        };
+        if self.members.is_empty() || self.members.iter().any(|m| m.player_id == player_id) {
+            return self;
+        }
+        Self::default()
+    }
+}
+
 /// One server-backed matchmaker veto-token allocation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -888,6 +916,49 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn member(player_id: i32) -> PartyMember {
+        PartyMember {
+            player_id,
+            name: format!("Player {player_id}"),
+            factions: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_party_that_does_not_contain_me_is_not_my_party() {
+        // What the server sends the member who just left: the party as it now
+        // stands, which is everybody else.
+        let left_behind = PartyState {
+            owner_id: Some(1),
+            members: vec![member(1)],
+        };
+        assert_eq!(left_behind.for_player(Some(2)), PartyState::default());
+    }
+
+    #[test]
+    fn a_party_i_am_in_is_kept_whole() {
+        let mine = PartyState {
+            owner_id: Some(1),
+            members: vec![member(1), member(2)],
+        };
+        assert_eq!(mine.clone().for_player(Some(2)), mine);
+    }
+
+    #[test]
+    fn an_empty_party_and_an_unknown_account_both_pass_through() {
+        // The server dissolving the party, and this client not knowing who it
+        // is yet: neither is somebody else's party.
+        assert_eq!(
+            PartyState::default().for_player(Some(2)),
+            PartyState::default()
+        );
+        let theirs = PartyState {
+            owner_id: Some(1),
+            members: vec![member(1)],
+        };
+        assert_eq!(theirs.clone().for_player(None), theirs);
+    }
 
     fn game(id: i32) -> Game {
         Game {

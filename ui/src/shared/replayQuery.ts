@@ -10,6 +10,8 @@ export const EMPTY_REPLAY_QUERY: ReplayQuery = {
   mapAuthor: "",
   title: "",
   replayId: "",
+  // Never typed: a list fills this to ask about the games it is showing.
+  replayIds: [],
   host: "",
   featuredMods: [],
   leaderboards: [],

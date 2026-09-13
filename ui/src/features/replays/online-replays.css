@@ -1866,3 +1866,10 @@ button.vault-input {
 .replay-card-heading .replay-card-seed {
   margin-top: var(--space-2);
 }
+
+/* The "+2 more" that closes a team's list on a card. Sits in the column the
+   names do, at their size, so a cut list reads as part of the team rather than
+   as a note about it. */
+.replay-player-more {
+  font-size: 11px;
+}

@@ -7,7 +7,7 @@ import { MessageList, type MessageReactionsMap } from "../chat/MessageList";
 import type { ChatGameLink } from "../chat/chatFormat";
 import { visibleChatMessages } from "../chat/messageFilters";
 import { playersByNickname } from "../../store/reducer";
-import { partyChatChannel } from "./partyChat";
+import { partyChannelLabel, partyChatChannel } from "./partyChat";
 import "../chat/chat.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "./joinGame";
@@ -116,7 +116,7 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
     >
       <header>
         <strong>{t("lobby.matchmaker.partyChat")}</strong>
-        <span>{gameLinkNotice || roomName}</span>
+        <span>{gameLinkNotice || partyChannelLabel(roomName)}</span>
       </header>
       <MessageList
         key={room?.name ?? roomName ?? "party-chat"}

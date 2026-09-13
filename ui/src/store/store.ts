@@ -518,6 +518,7 @@ const INITIAL: AppState = {
     browsing: {
       customGamesView: "tiles",
       replaysView: "tiles",
+      liveReplayView: "tiles",
       customGamesBrowser: {
         sort: "players",
         sortReversed: false,
@@ -531,6 +532,7 @@ const INITIAL: AppState = {
       },
       matchmakerUnselectedQueues: [],
       matchmakerFactions: ["UEF", "Aeon", "Cybran", "Seraphim"],
+      matchmakerChatWidth: 0,
       liveReplayFilters: {
         search: "",
         gameType: "",

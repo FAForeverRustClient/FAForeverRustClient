@@ -121,6 +121,8 @@ export const MIN_BROWSER_COLUMN_PX = 56;
 export const MAX_BROWSER_COLUMN_PX = 900;
 export const MIN_DETAIL_PX = 220;
 export const MAX_DETAIL_PX = 720;
+export const MIN_PARTY_CHAT_PX = 260;
+export const MAX_PARTY_CHAT_PX = 900;
 export const MIN_VAULT_PAGE_SIZE = 12;
 export const MAX_VAULT_PAGE_SIZE = 200;
 
@@ -130,6 +132,7 @@ export const DEFAULT_VAULT_PAGE_SIZE = 36;
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   customGamesView: "tiles",
   replaysView: "tiles",
+  liveReplayView: "tiles",
   customGamesBrowser: {
     sort: "players",
     sortReversed: false,
@@ -143,6 +146,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   },
   matchmakerUnselectedQueues: [],
   matchmakerFactions: [...MATCHMAKER_FACTIONS],
+  matchmakerChatWidth: 0,
   liveReplayFilters: { ...DEFAULT_LIVE_REPLAY_FILTERS },
   hostGame: { ...DEFAULT_HOST_GAME_PREFERENCES },
   hostCoop: { ...DEFAULT_HOST_GAME_PREFERENCES },
@@ -178,6 +182,7 @@ export function normalizeBrowsingPreferences(
   return {
     ...preferences,
     replaysView: preferences.replaysView === "list" ? "list" : "tiles",
+    liveReplayView: preferences.liveReplayView === "list" ? "list" : "tiles",
     customGamesBrowser: normalizeCustomGamesBrowser(preferences.customGamesBrowser),
     matchmakerUnselectedQueues: normalizeLabels(
       preferences.matchmakerUnselectedQueues,
@@ -186,6 +191,11 @@ export function normalizeBrowsingPreferences(
     ),
     matchmakerFactions:
       selectedFactions.length > 0 ? [...selectedFactions] : [...MATCHMAKER_FACTIONS],
+    // Zero means "the designed width", so it passes through untouched;
+    // anything else is bounded, matching `BrowsingPreferences::normalized`.
+    matchmakerChatWidth: preferences.matchmakerChatWidth
+      ? clampInteger(preferences.matchmakerChatWidth, MIN_PARTY_CHAT_PX, MAX_PARTY_CHAT_PX, 0)
+      : 0,
     liveReplayFilters: {
       ...preferences.liveReplayFilters,
       search: truncateTrimmed(preferences.liveReplayFilters.search, 200),

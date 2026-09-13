@@ -5213,6 +5213,7 @@ fn cases() -> Vec<Case> {
                     preferences: Box::new(BrowsingPreferences {
                         custom_games_view: CustomGameView::List,
                         replays_view: CustomGameView::List,
+                        live_replay_view: CustomGameView::Tiles,
                         custom_games_browser: CustomGameBrowserPreferences {
                             sort: CustomGameSort::Age,
                             sort_reversed: true,
@@ -5240,6 +5241,7 @@ fn cases() -> Vec<Case> {
                             "LADDER_1V1".into(),
                         ],
                         matchmaker_factions: vec!["cybran".into(), "unknown".into()],
+                        matchmaker_chat_width: 420,
                         live_replay_filters: LiveReplayFilters {
                             search: "  tournament  ".into(),
                             game_type: " matchmaker ".into(),

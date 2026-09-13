@@ -143,15 +143,16 @@ describe("updateRequiredRelease: twin of ClientUpdateState::required_release", (
     expect(updateRequiredRelease(dismissed)?.version).toBe("0.4.0");
   });
 
-  it("never gates on a prerelease", () => {
-    // Opting into prereleases is opting into testing, not into being locked
-    // out by every nightly.
+  it("gates on a prerelease too, because only an opted-in client is offered one", () => {
+    // It used to not, on the reasoning that opting into prereleases is opting
+    // into testing. Every release this project publishes is marked as a
+    // prerelease, so that carve-out meant the gate could never appear at all.
     const current = state({
       status: { type: "available" },
       release: release("0.4.0-rc1", { preRelease: true }),
     });
     expect(updateBannerRelease(current)).not.toBeNull();
-    expect(updateRequiredRelease(current)).toBeNull();
+    expect(updateRequiredRelease(current)?.version).toBe("0.4.0-rc1");
   });
 
   it("never gates on a release with no installer for this platform", () => {

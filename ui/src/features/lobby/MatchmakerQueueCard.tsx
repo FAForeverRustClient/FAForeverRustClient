@@ -21,7 +21,21 @@ export function queueTitle(queue: MatchmakerQueue) {
 interface Props {
   queue: MatchmakerQueue;
   selected: boolean;
+  /**
+   * Nothing about this queue can be changed: the party has a leader and it is
+   * somebody else, or a match is already being made.
+   */
   disabled: boolean;
+  /**
+   * The party does not fit in it.
+   *
+   * Not the same as [`disabled`], and the difference was a bug report: a queue
+   * your party has outgrown is one you cannot *join*, and it was drawn as one
+   * you cannot touch, so a 1v1 left selected before inviting somebody could
+   * not be switched off again. Selecting stays refused; deselecting is exactly
+   * what the player is trying to do.
+   */
+  incompatible: boolean;
   status: QueueDisplayState;
   activeGames: number;
   secondsUntilPop: number;
@@ -43,6 +57,7 @@ export function MatchmakerQueueCard({
   queue,
   selected,
   disabled,
+  incompatible,
   status,
   activeGames,
   secondsUntilPop,
@@ -58,7 +73,13 @@ export function MatchmakerQueueCard({
   // or empty everywhere, which decides whether waiting is worth it.
   const buckets = queueRatingBuckets(queue);
   return (
-    <article className={`matchmaker-queue-card surface-panel${selected ? " is-selected" : ""}${disabled ? " incompatible" : ""}`} data-status={status}>
+    <article
+      className={
+        `matchmaker-queue-card surface-panel${selected ? " is-selected" : ""}`
+        + `${disabled || incompatible ? " incompatible" : ""}`
+      }
+      data-status={status}
+    >
       {/* The whole card toggles, not a checkbox-sized strip at the top of it.
           Everything below is either a fact about the queue or a separate
           action, so a card-wide target is unambiguous and much easier to hit. */}
@@ -66,10 +87,15 @@ export function MatchmakerQueueCard({
         type="button"
         className="matchmaker-queue-select"
         aria-pressed={selected}
-        disabled={disabled}
-        title={t(selected ? "lobby.matchmaker.queueInSearch" : "lobby.matchmaker.queueAddToSearch", {
-          queue: queueTitle(queue),
-        })}
+        // A queue the party has outgrown can still be switched off: that is
+        // the only thing left to do with it, and refusing both directions is
+        // what made an outgrown 1v1 permanent.
+        disabled={disabled || (incompatible && !selected)}
+        title={incompatible && selected
+          ? t("lobby.matchmaker.queueDropTooLarge", { queue: queueTitle(queue) })
+          : t(selected ? "lobby.matchmaker.queueInSearch" : "lobby.matchmaker.queueAddToSearch", {
+            queue: queueTitle(queue),
+          })}
         onClick={onToggle}
       >
         <span className="matchmaker-queue-head">
@@ -131,7 +157,10 @@ export function MatchmakerQueueCard({
               <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}
             </span>
           )}
-          {disabled && (
+          {/* Only for the size, which is the one the note names. A card
+              disabled because somebody else leads the party said "party too
+              large" as well, which is a different fact and not true. */}
+          {incompatible && (
             <span className="matchmaker-queue-note">{t("lobby.matchmaker.partyTooLarge")}</span>
           )}
         </span>

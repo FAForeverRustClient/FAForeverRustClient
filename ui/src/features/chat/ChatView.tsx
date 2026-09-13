@@ -33,6 +33,7 @@ import "./chat.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame as joinLobbyGame } from "../lobby/joinGame";
+import { partyChatChannel } from "../lobby/partyChat";
 
 /** Mirrors `faf_domain::state::chat::DEFAULT_CHANNEL`. */
 const DEFAULT_CHANNEL = "#aeolus";
@@ -112,6 +113,11 @@ export function ChatView() {
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const mapVault = useAppStore((s) => s.state.maps.vault);
   const chatPreferences = useAppStore((s) => s.state.settings.chat);
+  // The party's room, so the strip can refuse to close it: it belongs to the
+  // party's lifecycle, not to this tab. `AppShell` owns the joining and the
+  // parting, and computes the name the same way.
+  const party = useAppStore((s) => s.state.lobby.party);
+  const partyChannel = partyChatChannel(party, social, player);
   const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const [searchRequest, setSearchRequest] = useState(0);
   const [gameLinkNotice, setGameLinkNotice] = useState("");
@@ -254,6 +260,7 @@ export function ChatView() {
           channels={channels}
           active={active?.name ?? ""}
           defaultChannel={DEFAULT_CHANNEL}
+          partyChannel={partyChannel}
           onSelect={(c) => void selectChannel(c)}
           onJoin={(c) => void joinChannel(c)}
           onLeave={(c) => void leaveChannel(c)}

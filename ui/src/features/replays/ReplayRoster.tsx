@@ -114,7 +114,36 @@ export function mergeReplayTeamsWithLocal(
   });
 }
 
-export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
+/**
+ * The tallest a team's list is allowed to get on a *card*.
+ *
+ * A card is a summary, and its height is shared with every other card in its
+ * row: one 6v6 among nine 1v1s made that whole row twice as tall and left the
+ * host line of every card in it floating somewhere different from the row
+ * above. Four rows per team, so a team of six shows three names and says how
+ * many more there are, and every card in the grid ends at the same place.
+ *
+ * The split layout below is exempt: it is already two columns, so eight
+ * players are four rows there too. The panel and the table still show
+ * everyone; this is the one place that cannot afford to.
+ */
+const CARD_TEAM_ROWS = 4;
+
+export function ReplayCardRoster({
+  teams,
+  interactive = false,
+}: {
+  teams: ReplayTeam[];
+  /**
+   * Whether a name in here opens the player card.
+   *
+   * Off by default, and it has to be: the vault's card is itself one large
+   * `<button>`, and a button inside a button is not markup a browser will
+   * accept. The live grid's card is an `<article>`, so its names can be the
+   * handle on a player that every other list in this client makes them.
+   */
+  interactive?: boolean;
+}) {
   useLocale();
   if (teams.length === 0) return null;
   const nonObserverTeams = teams.filter((team) => !isObserverTeam(team.team));
@@ -126,6 +155,9 @@ export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
         const observer = isObserverTeam(team.team);
         const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > 4;
         const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
+        const overflows = !isSplit && team.players.length > CARD_TEAM_ROWS;
+        const shown = overflows ? team.players.slice(0, CARD_TEAM_ROWS - 1) : team.players;
+        const hidden = team.players.length - shown.length;
         return (
           <section key={team.team} className="replay-card-team">
             {!isSingleTeamGame && (
@@ -142,15 +174,43 @@ export function ReplayCardRoster({ teams }: { teams: ReplayTeam[] }) {
               className={`replay-card-team-roster ${isSplit ? "is-split" : ""}`}
               style={rowCount ? { gridTemplateRows: `repeat(${rowCount}, auto)` } : undefined}
             >
-              {team.players.map((player) => (
+              {shown.map((player) => (
                 <div key={player.name} className="replay-player">
-                  <span className="replay-player-identity">
-                    <ReplayPlayerMarker player={player} observer={observer} size={17} />
-                    <PlayerName name={player.name} />
-                  </span>
+                  {interactive ? (
+                    <button
+                      type="button"
+                      className="replay-player-identity replay-player-link"
+                      title={t("lobby.browser.openProfile", { name: player.name })}
+                      onClick={(event) => {
+                        // The card around this one opens the game; this opens
+                        // the player. Both are reasonable readings of a click
+                        // on a name, and the nearer target wins.
+                        event.stopPropagation();
+                        openPlayerCard(null, player.name);
+                      }}
+                    >
+                      <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      {/* The class the hover underline hangs off, which is how
+                          a name says it can be clicked before it is. Same one
+                          the detail roster's names carry. */}
+                      <PlayerName name={player.name} className="replay-player-name-text" />
+                    </button>
+                  ) : (
+                    <span className="replay-player-identity">
+                      <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      <PlayerName name={player.name} />
+                    </span>
+                  )}
                   {player.rating !== null && <span className="muted">{player.rating}</span>}
                 </div>
               ))}
+              {/* The count the header already carries, said again where the
+                  names stop, so a cut list does not read as the whole team. */}
+              {overflows && (
+                <div className="replay-player replay-player-more muted">
+                  {t("replays.roster.morePlayers", { count: hidden })}
+                </div>
+              )}
             </div>
           </section>
         );

@@ -8,8 +8,9 @@
 use faf_domain::state::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
     NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayQuery,
-    ResolvedReplayMap,
+    ResolvedReplayMap, VaultReplay,
 };
+use std::collections::HashMap;
 use std::{path::PathBuf, time::Duration};
 
 use crate::runtime::{EventSink, ServiceCtx};
@@ -293,6 +294,58 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                         .map(Box::new),
                 }),
                 Err(reason) => out.emit(ReplayEvent::OnlineLookupFailed { uid, reason }),
+            }
+        }
+        ReplayCommand::LookUpOnlineMany { uids } => look_up_many(uids, ctx, out).await,
+    }
+}
+
+/// How many game ids one request asks about.
+///
+/// The API rewrites anything above 100 down to its default page size without
+/// saying so, and each row here drags a dozen `playerStats` and their players
+/// along with it: a page of twenty-five is a document worth reading in one go
+/// rather than a megabyte of JSON for a list somebody is scrolling past.
+const LOOKUP_BATCH: usize = 25;
+
+/// Ask the vault about a set of game ids, in batches.
+///
+/// Every id is marked as being looked up first, so a second call about the
+/// same games while this one is in flight finds them already claimed. An id
+/// the vault does not answer for is recorded as missing rather than left
+/// pending: a running game the API has not written a row for yet is a result,
+/// and asking again every time the list refreshes is not.
+async fn look_up_many(uids: Vec<i32>, ctx: &ServiceCtx, out: &EventSink) {
+    for uid in &uids {
+        out.emit(ReplayEvent::OnlineLookupStarted { uid: *uid });
+    }
+    for chunk in uids.chunks(LOOKUP_BATCH) {
+        let query = ReplayQuery {
+            replay_ids: chunk.iter().map(i32::to_string).collect(),
+            page_size: chunk.len() as u32,
+            ..ReplayQuery::default()
+        };
+        match ctx.ports.replay.search_vault(query).await {
+            Ok(search) => {
+                let mut found: HashMap<i32, VaultReplay> = search
+                    .replays
+                    .into_iter()
+                    .map(|replay| (replay.uid, replay))
+                    .collect();
+                for uid in chunk {
+                    out.emit(ReplayEvent::OnlineLookupFinished {
+                        uid: *uid,
+                        replay: found.remove(uid).map(Box::new),
+                    });
+                }
+            }
+            Err(reason) => {
+                for uid in chunk {
+                    out.emit(ReplayEvent::OnlineLookupFailed {
+                        uid: *uid,
+                        reason: reason.clone(),
+                    });
+                }
             }
         }
     }

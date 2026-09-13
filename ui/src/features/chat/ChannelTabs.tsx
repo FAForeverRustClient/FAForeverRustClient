@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatChannel } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
+import { partyChannelLabel } from "../lobby/partyChat";
 import { Icon } from "../../design-system/Icon";
 import "../../design-system/section-tabs.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -26,15 +27,43 @@ interface Props {
   channels: ChatChannel[];
   active: string;
   defaultChannel: string;
+  /**
+   * The party's room, which is not the user's to close.
+   *
+   * It is opened and closed by the party itself (`AppShell` joins it when a
+   * party forms and parts when it dissolves), so a close button on it offered
+   * a way out that the client then disagreed with: the room went, the party
+   * did not, and nothing would rejoin it until the party changed. Same
+   * treatment as the default channel, for the same reason.
+   */
+  partyChannel?: string | null;
   onSelect: (channel: string) => void;
   onJoin: (channel: string) => void;
   onLeave: (channel: string) => void;
+}
+
+/**
+ * Whether this tab is one the user may not close.
+ *
+ * IRC channel names are case insensitive and the party room's is built from a
+ * login, so the comparison has to be too: `#Dog'sParty` and `#dog'sparty` are
+ * one room, and only one of the two spellings would otherwise be pinned.
+ */
+export function isPinnedChannel(
+  name: string,
+  defaultChannel: string,
+  partyChannel: string | null,
+): boolean {
+  const same = (left: string, right: string) =>
+    left.localeCompare(right, undefined, { sensitivity: "accent" }) === 0;
+  return same(name, defaultChannel) || (!!partyChannel && same(name, partyChannel));
 }
 
 export function ChannelTabs({
   channels,
   active,
   defaultChannel,
+  partyChannel = null,
   onSelect,
   onJoin,
   onLeave,
@@ -67,7 +96,7 @@ export function ChannelTabs({
     <nav className="section-tabs chat-tabs" role="tablist" aria-label={t("chat.channels.aria")}>
       {channels.map((channel) => {
         const isActive = channel.name === active;
-        const closable = channel.name !== defaultChannel;
+        const closable = !isPinnedChannel(channel.name, defaultChannel, partyChannel);
         return (
           // The wrapper only exists to anchor the close button, so it is
           // hidden from assistive tech and the tab stays owned by the list.
@@ -108,7 +137,12 @@ export function ChannelTabs({
               }}
             >
               <Icon name={isPrivateChannel(channel.name) ? "users" : "chat"} size={15} />
-              <span className="section-tab-label chat-tab-name">{channel.name}</span>
+              {/* The label reads as words; the tooltip above is the name every
+                  command is sent with. They differ for one room only: IRC
+                  forbids the space in "#Somebody's Party". */}
+              <span className="section-tab-label chat-tab-name">
+                {partyChannelLabel(channel.name)}
+              </span>
               {channel.unread > 0 && (
                 <span
                   className={`section-tab-count${channel.unreadMentions > 0 ? " is-mention" : ""}`}
