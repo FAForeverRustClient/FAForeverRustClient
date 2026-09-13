@@ -83,3 +83,75 @@
   font-size: 11px;
 }
 
+
+/* The chrome around an enlarged preview, shared by every tab that opens one.
+   The Play tab's game preview set these proportions and they are the ones
+   worth having everywhere: a kicker small enough to be a label, a title big
+   enough to read across the room, and a muted line for what the map is a
+   preview *of*. */
+.map-preview-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.map-preview-frame-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.map-preview-frame-titles {
+  min-width: 0;
+}
+
+.map-preview-frame-kicker {
+  display: block;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.map-preview-frame-head h2 {
+  margin: 3px 0 0;
+  overflow: hidden;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-preview-frame-head p {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-preview-frame-close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.map-preview-frame-close:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}

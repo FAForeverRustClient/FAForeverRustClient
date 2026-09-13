@@ -1,4 +1,5 @@
 import { getLocale, intlTag, t } from "../i18n";
+import { formatRelativeDuration } from "./durations";
 
 const SHORT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
@@ -48,4 +49,29 @@ export function formatDateTime(value: string | number, fallback = t("common.unkn
   return Number.isNaN(date.getTime())
     ? fallback
     : date.toLocaleString(clientIntlTag(), { dateStyle: "medium", timeStyle: "short" });
+}
+
+/// A week. Past it, "how long ago" stops being the useful reading.
+const RELATIVE_AGE_LIMIT_SECONDS = 7 * 24 * 60 * 60;
+
+/**
+ * How long ago something happened, or when it happened.
+ *
+ * "3d ago" answers the question for a game from this week. "67d ago" does not:
+ * nobody counts back sixty-seven days, and the date it stands for is both
+ * shorter to read and the thing the reader was after. So the relative form
+ * holds for a week and the date takes over after that.
+ */
+export function formatAgeOrDate(value: string | number, fallback = ""): string {
+  if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
+  const moment = new Date(value).getTime();
+  if (Number.isNaN(moment)) return fallback;
+  const seconds = (Date.now() - moment) / 1000;
+  if (seconds < 0) return fallback;
+  if (seconds >= RELATIVE_AGE_LIMIT_SECONDS) return formatShortDate(value, fallback);
+  const justNow = t("replays.card.justNow");
+  const elapsed = formatRelativeDuration(seconds, { nowLabel: justNow });
+  // The whole phrase is one message: German fronts the preposition ("vor 3d"),
+  // which a suffix appended to the duration could not produce.
+  return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
 }

@@ -12,8 +12,8 @@ import type {
   VaultReplay,
 } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { formatDate, formatShortDate, formatTime } from "../../shared/dates";
-import { formatDuration, formatRelativeDuration } from "../../shared/durations";
+import { formatAgeOrDate, formatDate, formatShortDate, formatTime } from "../../shared/dates";
+import { formatDuration } from "../../shared/durations";
 import { localReplayTimestamp } from "./localReplayQuery";
 import {
   extractGeneratedMapSeed,
@@ -25,7 +25,7 @@ import {
   mapThumbnailCandidates,
   normalizeMapName,
 } from "../../shared/mapPresentation";
-import { ZoomableImage } from "../maps/MapPreviewZoom";
+import { MapPreviewFrame } from "../maps/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
@@ -45,18 +45,12 @@ import {
 import { formatDecimal, t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
-/** "3d ago" beside the replay id, so recency reads without parsing a date. */
+/**
+ * "3d ago" beside the replay id, so recency reads without parsing a date --
+ * and the date itself once "how long ago" has stopped being readable.
+ */
 function replayAge(startTime: string): string {
-  if (!startTime) return "";
-  const played = new Date(startTime).getTime();
-  if (Number.isNaN(played)) return "";
-  const seconds = (Date.now() - played) / 1000;
-  if (seconds < 0) return "";
-  const justNow = t("replays.card.justNow");
-  const elapsed = formatRelativeDuration(seconds, { nowLabel: justNow });
-  // The whole phrase is one message: German fronts the preposition ("vor 3d"),
-  // which a suffix appended to the duration could not produce.
-  return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
+  return formatAgeOrDate(startTime);
 }
 
 /**
@@ -657,6 +651,7 @@ export function ReplayDetailPanel({
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [copiedSeed, setCopiedSeed] = useState(false);
+  const [copiedMapName, setCopiedMapName] = useState(false);
   const [showResults, setShowResults] = useState(false);
   /// Whether the map preview has been opened out of the rail.
   const [enlarged, setEnlarged] = useState(false);
@@ -1007,14 +1002,22 @@ export function ReplayDetailPanel({
             )}
           </section>
           <div className="replay-card-bottom">
-            {/* Why the button is dead, next to the button.
+            {/* Why the button is dead, directly above the button.
 
                 This sentence used to sit above the lineup, where a reader who
                 had just clicked a greyed-out control at the bottom of the
                 panel never connected the two: the report was "I clicked game
                 result and wondered why it does not work". A disabled control
-                owes its reason to the place the click landed. */}
+                owes its reason to the place the click landed. Above rather
+                than beside: a reason long enough to be one pushed the button
+                sideways and left the pair reading as two half-width controls. */}
             <span className="replay-card-result-group">
+              {!rated && (
+                <span className="replay-card-result-reason" id="replay-result-reason">
+                  <Icon name="info" size={13} />
+                  <span>{notRated ?? t("replays.detail.noResultYet")}</span>
+                </span>
+              )}
               <Button
                 className="replay-card-result-btn"
                 aria-pressed={showResults}
@@ -1025,12 +1028,6 @@ export function ReplayDetailPanel({
                 <Icon name="eye" size={15} />
                 <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
               </Button>
-              {!rated && (
-                <span className="replay-card-result-reason" id="replay-result-reason">
-                  <Icon name="info" size={13} />
-                  <span>{notRated ?? t("replays.detail.noResultYet")}</span>
-                </span>
-              )}
             </span>
             <Button
               className="replay-card-watch-btn"
@@ -1061,19 +1058,34 @@ export function ReplayDetailPanel({
             aria-label={t("maps.preview.enlarge", { name: mapLabel })}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="replay-preview-overlay-head">
-              <h3>{mapLabel}</h3>
-              <button
-                type="button"
-                className="replay-card-icon-btn"
-                onClick={() => setEnlarged(false)}
-                title={t("common.close")}
-                aria-label={t("common.close")}
-              >
-                <Icon name="close" size={16} />
-              </button>
-            </div>
-            <ZoomableImage label={mapLabel}>
+            {/* The same frame the Play tab and the Maps tab open a map in, so
+                a preview looks like a preview wherever it was reached from.
+                The technical name under it is what the Play tab's preview has
+                too, and it is the one thing a replay carries that nothing else
+                on this card spells out in full. */}
+            <MapPreviewFrame
+              kicker={t("lobby.browser.mapPreview")}
+              title={mapLabel}
+              subtitle={cardTitle === mapLabel ? undefined : cardTitle}
+              onClose={() => setEnlarged(false)}
+              footer={effectiveMap ? (
+                <div className="replay-preview-overlay-name">
+                  <span>{t("lobby.browser.mapFullName")}</span>
+                  <code>{effectiveMap}</code>
+                  <button
+                    type="button"
+                    className="replay-card-icon-btn"
+                    aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+                    title={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+                    onClick={() =>
+                      ipc.run(navigator.clipboard.writeText(effectiveMap).then(() => setCopiedMapName(true)))
+                    }
+                  >
+                    <Icon name={copiedMapName ? "check" : "copy"} size={13} />
+                  </button>
+                </div>
+              ) : null}
+            >
               <ReplayMapThumb
                 url={replay.mapThumbnailUrl}
                 mapName={effectiveMap}
@@ -1082,7 +1094,7 @@ export function ReplayDetailPanel({
                 iconSize={64}
                 large
               />
-            </ZoomableImage>
+            </MapPreviewFrame>
           </div>
         </div>
       )}

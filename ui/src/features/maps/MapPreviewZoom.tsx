@@ -265,6 +265,60 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
   );
 }
 
+/**
+ * The chrome every enlarged map preview wears: a title over a zoomable
+ * picture, with whatever the tab knows about the map underneath.
+ *
+ * Four screens open a map at full size -- the Maps tab, the Play tab's game
+ * preview, the generator, the replay detail card -- and until this existed
+ * each had built its own heading, which is how one of them ended up with a
+ * title half the size of the others and no room for what it was a preview
+ * *of*. The frame is deliberately not a `Modal`: the replay card is itself a
+ * modal and stacking two means one Escape closes both, so that caller draws
+ * its own scrim and passes `onClose` to get a close button here instead.
+ */
+export function MapPreviewFrame({ kicker, title, subtitle, label, onClose, children, footer }: {
+  /// The small line above the title, saying what kind of thing this is.
+  kicker?: ReactNode;
+  title: string;
+  /// One line under the title: the lobby's name, the replay's title.
+  subtitle?: ReactNode;
+  /// What the zoom announces itself as. Defaults to the title.
+  label?: string;
+  /// Given only by a caller drawing its own scrim; `Modal` brings its own
+  /// close button and a second one beside it reads as a mistake.
+  onClose?: () => void;
+  children: ReactNode;
+  /// Everything below the picture: the technical name, the facts, the actions.
+  footer?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="map-preview-frame">
+      <header className="map-preview-frame-head">
+        <div className="map-preview-frame-titles">
+          {kicker && <span className="map-preview-frame-kicker">{kicker}</span>}
+          <h2 title={title}>{title}</h2>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            className="map-preview-frame-close"
+            onClick={onClose}
+            title={t("common.close")}
+            aria-label={t("common.close")}
+          >
+            <Icon name="close" size={16} />
+          </button>
+        )}
+      </header>
+      <ZoomableImage label={label ?? title}>{children}</ZoomableImage>
+      {footer}
+    </div>
+  );
+}
+
 export function MapPreviewDialog({ map, meta, onClose, children }: {
   map: PreviewableMap;
   /// The line under the picture: size, player count, whatever the tab knows.
@@ -279,11 +333,9 @@ export function MapPreviewDialog({ map, meta, onClose, children }: {
   return (
     <Modal onClose={onClose}>
       <div className="map-preview-dialog">
-        <h2>{label}</h2>
-        <ZoomableImage label={label}>
+        <MapPreviewFrame title={label} footer={meta ? <p>{meta}</p> : null}>
           {children ?? <MapPreview map={map} large />}
-        </ZoomableImage>
-        {meta && <p>{meta}</p>}
+        </MapPreviewFrame>
       </div>
     </Modal>
   );
