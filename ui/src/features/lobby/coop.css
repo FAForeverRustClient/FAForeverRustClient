@@ -366,6 +366,8 @@
 /* Same shape as every other column divider in the client. */
 .coop-board-col-handle {
   position: absolute;
+  /* Over the next header cell's own background, which is painted later. */
+  z-index: 1;
   top: 0;
   right: -4px;
   bottom: 0;

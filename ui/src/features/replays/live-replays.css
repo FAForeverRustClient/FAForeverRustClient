@@ -589,6 +589,8 @@
 
 .live-replay-col-handle {
   position: absolute;
+  /* Over the next header cell's own background, which is painted later. */
+  z-index: 1;
   top: 0;
   right: -6px;
   bottom: 0;

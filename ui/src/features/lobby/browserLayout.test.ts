@@ -42,9 +42,12 @@ describe("the game list's column widths", () => {
     expect(withColumnResized(widths, 2, 5000)[2]).toBe(MAX_BROWSER_COLUMN_PX);
   });
 
-  it("leaves the first column flexible so the list still fills the panel", () => {
+  it("leaves the last column flexible, so a divider moves the divider", () => {
+    // The slack has to sit after every column that can be dragged. With it at
+    // the front, widening Map took the pixels from Game: the divider under the
+    // cursor stayed still and the one two columns to its left moved instead.
     expect(columnTemplate([320, 170, 80, 100, 75])).toBe(
-      "minmax(320px, 2.4fr) 170px 80px 100px 75px",
+      "320px 170px 80px 100px minmax(75px, 1fr)",
     );
   });
 });

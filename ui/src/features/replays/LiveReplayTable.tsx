@@ -46,6 +46,19 @@ function SortHeader({
  */
 const DEFAULT_COLUMN_PX = [120, 110, 260, 84, 84, 150, 130];
 
+/**
+ * What the Watch column needs, and the table's designed floor.
+ *
+ * `table-layout: fixed` honours the colgroup's widths only while they fit: once
+ * they add up to more than the table is allowed to be, the browser scales them
+ * all back down, and a drag past that point does nothing. The table's minimum
+ * therefore has to follow the widths rather than being a constant, so widening
+ * a column widens the table and the wrapper scrolls -- which is what a table
+ * whose columns can be dragged has to do.
+ */
+const WATCH_COLUMN_PX = 110;
+const DESIGNED_TABLE_PX = 1040;
+
 interface Props {
   busy: boolean;
   games: Array<{ game: Game; presentation: MapPresentation }>;
@@ -105,9 +118,14 @@ export function LiveReplayTable(props: Props) {
     />
   );
 
+  const tableMinWidth = Math.max(
+    DESIGNED_TABLE_PX,
+    columns.widths.reduce((total, width) => total + width, WATCH_COLUMN_PX),
+  );
+
   return (
     <div className="live-replay-table-wrap surface-panel">
-      <table className="live-replay-table">
+      <table className="live-replay-table" style={{ minWidth: `${tableMinWidth}px` }}>
         {/* `table-layout: fixed` plus a colgroup is how a real table takes
             dragged widths: putting them on the cells would let the widest row
             win instead. */}

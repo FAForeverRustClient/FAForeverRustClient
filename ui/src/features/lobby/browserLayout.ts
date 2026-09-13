@@ -63,12 +63,20 @@ export function withColumnResized(
 /**
  * The CSS `grid-template-columns` for a set of widths.
  *
- * The first track stays flexible so the list always fills its panel: its saved
- * width becomes the minimum it may shrink to, not the width it must be.
+ * The *last* track is the flexible one, and that is the whole of why a drag
+ * feels the way it does. With the flexible track first, every pixel a column
+ * gained was taken from the title at the far left: grabbing the divider
+ * between Map and Players moved the divider between Game and Map instead,
+ * while the one under the cursor stayed put, and dragging the first divider
+ * did nothing at all because it only changed a minimum the flex was already
+ * above. With the slack at the end, a divider moves the divider -- which is
+ * what every file manager does, and what the replay list here already did.
  */
 export function columnTemplate(widths: readonly number[]): string {
   return widths
-    .map((width, index) => (index === 0 ? `minmax(${width}px, 2.4fr)` : `${width}px`))
+    .map((width, index) =>
+      index === widths.length - 1 ? `minmax(${width}px, 1fr)` : `${width}px`,
+    )
     .join(" ");
 }
 
