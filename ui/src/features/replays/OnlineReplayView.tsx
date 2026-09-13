@@ -220,8 +220,17 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
               key={r.uid}
               replay={r}
               watched={watchedUids.has(r.uid)}
+              busy={busy}
               onOpen={() => setOpenUid(r.uid)}
               onDoubleClick={() => r.replayAvailable && !busy && markWatchedAndPlay(r.uid)}
+              onWatch={() => {
+                setSelectedUid(r.uid);
+                if (!busy) markWatchedAndPlay(r.uid);
+              }}
+              onDownload={() => {
+                setSelectedUid(r.uid);
+                downloadVault(r.uid);
+              }}
             />
           ))}
         </div>

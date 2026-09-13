@@ -88,6 +88,25 @@ function ReplayStars({ replay }: { replay: ReplayCardData }) {
   );
 }
 
+/**
+ * A control on the card itself, drawn over the map thumbnail.
+ *
+ * Watching a replay meant opening the card, reading a panel and pressing the
+ * button at the bottom of it, which is three steps to do the one thing the
+ * grid is being scanned for. The Java client puts the button on the tile, and
+ * so does the list view next door; this is the same pair of actions in the
+ * same order, on the view that was missing them.
+ */
+export interface ReplayCardAction {
+  icon: IconName;
+  /** Tooltip, and the accessible name when `ariaLabel` adds nothing. */
+  title: string;
+  ariaLabel?: string;
+  pressed?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}
+
 const REPLAY_CARD_TITLE_LIMIT = 48;
 
 export function replayCardTitle(title: string, fallback: string): { full: string; display: string } {
@@ -205,12 +224,15 @@ export function ReplayLibraryCard({
   replay,
   watched,
   selected = false,
+  actions = [],
   onOpen,
   onDoubleClick,
 }: {
   replay: ReplayCardData;
   watched: boolean;
   selected?: boolean;
+  /** Controls drawn over the thumbnail. See `ReplayCardAction`. */
+  actions?: ReplayCardAction[];
   onOpen: () => void;
   onDoubleClick?: () => void;
 }) {
@@ -228,20 +250,59 @@ export function ReplayLibraryCard({
     .filter(Boolean)
     .join(" ");
   return (
-    <button
+    /* A `div` with the role rather than a `button`: the actions over the
+       thumbnail are buttons themselves, and a button inside a button is
+       neither valid nor clickable. Enter and Space are handled here, and only
+       when the card itself has the focus, so a press on one of those actions
+       is not also a press on the card behind it. */
+    <div
       className={`replay-card surface-panel surface-interactive ${stateClasses}`.trim()}
+      role="button"
+      tabIndex={0}
       aria-pressed={selected || undefined}
       onClick={onOpen}
       onDoubleClick={onDoubleClick}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onOpen();
+      }}
     >
       <div className="replay-card-left">
-        <ReplayMapThumb
-          url={replay.mapThumbnailUrl}
-          mapName={mapKey}
-          className="replay-card-thumb"
-          emptyClassName="replay-card-thumb-empty"
-          iconSize={32}
-        />
+        <div className="replay-card-thumb-wrap">
+          <ReplayMapThumb
+            url={replay.mapThumbnailUrl}
+            mapName={mapKey}
+            className="replay-card-thumb"
+            emptyClassName="replay-card-thumb-empty"
+            iconSize={32}
+          />
+          {actions.length > 0 && (
+            <div className="replay-card-thumb-actions">
+              {actions.map((action) => (
+                <button
+                  key={action.icon}
+                  type="button"
+                  className="replay-rail-thumb-btn"
+                  disabled={action.disabled}
+                  aria-pressed={action.pressed}
+                  aria-label={action.ariaLabel ?? action.title}
+                  title={action.title}
+                  // The card opens on a click and watches on a double click,
+                  // and neither is what was asked for here.
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    action.onClick();
+                  }}
+                  onDoubleClick={(event) => event.stopPropagation()}
+                >
+                  <Icon name={action.icon} size={14} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <ReplayStars replay={replay} />
         <ReplayMetaGrid replay={replay} />
       </div>
@@ -256,25 +317,53 @@ export function ReplayLibraryCard({
           <span>{replay.idLabel}</span>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
 export function ReplayCard({
   replay,
   watched,
+  busy = false,
   onOpen,
   onDoubleClick,
+  onWatch,
+  onDownload,
 }: {
   replay: VaultReplay;
   watched: boolean;
+  /** A game is already starting, so a second "watch" would go nowhere. */
+  busy?: boolean;
   onOpen: () => void;
   onDoubleClick?: () => void;
+  onWatch?: () => void;
+  /** Saves the `.fafreplay` file, without opening the detail panel first. */
+  onDownload?: () => void;
 }) {
   const { t } = useTranslation();
   const localReplays = useAppStore((state) => state.state.replays.local);
   const localMatch = localReplays.find((local) => local.uid === replay.uid);
   const map = effectiveReplayMapName(replay.map, localMatch?.map);
+  // Neither appears for a replay the server has not finished processing,
+  // because neither would work. Same rule as the list view.
+  const actions: ReplayCardAction[] = [];
+  if (onWatch && replay.replayAvailable) {
+    actions.push({
+      icon: "play",
+      title: t("replays.detail.watch"),
+      ariaLabel: t("replays.list.watchAria", { name: replay.title || map }),
+      disabled: busy,
+      onClick: onWatch,
+    });
+  }
+  if (onDownload && replay.replayAvailable) {
+    actions.push({
+      icon: "download",
+      title: t("replays.detail.download"),
+      ariaLabel: t("replays.list.downloadAria", { name: replay.title || map }),
+      onClick: onDownload,
+    });
+  }
   return (
     <ReplayLibraryCard
       replay={{
@@ -294,6 +383,7 @@ export function ReplayCard({
         footerNote: replay.replayAvailable ? "" : t("replays.card.notUploaded"),
       }}
       watched={watched}
+      actions={actions}
       onOpen={onOpen}
       onDoubleClick={onDoubleClick}
     />
