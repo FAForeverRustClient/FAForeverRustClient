@@ -1,6 +1,7 @@
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { prettyFeaturedMod, prettyGameType, type LiveFilters } from "./liveReplayModel";
+import { ReplayViewSwitch, type ReplayViewMode } from "./ReplayViewSwitch";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface Props {
@@ -11,9 +12,11 @@ interface Props {
   featuredMods: string[];
   activePlayerOptions: number[];
   maxPlayerOptions: number[];
+  viewMode: ReplayViewMode;
   onFilter: <K extends keyof LiveFilters>(key: K, value: LiveFilters[K]) => void;
   onToggleFilters: () => void;
   onClear: () => void;
+  onViewMode: (mode: ReplayViewMode) => void;
 }
 
 export function LiveReplayControls(props: Props) {
@@ -69,6 +72,10 @@ export function LiveReplayControls(props: Props) {
         <span className="live-replay-stream-status">
           <i aria-hidden="true" /> {t("replays.live.updates")}
         </span>
+        {/* Same control, same place, same stored preference as the two other
+            replay tabs: the answer to "list or cards" is about the reader
+            rather than about which tab they are on. */}
+        <ReplayViewSwitch value={props.viewMode} onChange={props.onViewMode} />
       </div>
 
       {props.filtersOpen && (

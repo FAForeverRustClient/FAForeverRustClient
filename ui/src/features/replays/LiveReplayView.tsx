@@ -5,7 +5,9 @@ import { useAppStore } from "../../store/store";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { usePlayerMenu } from "../chat/usePlayerMenu";
 import { LiveReplayControls } from "./LiveReplayControls";
+import { LiveReplayCards } from "./LiveReplayCards";
 import { LiveReplayTable } from "./LiveReplayTable";
+import type { ReplayViewMode } from "./ReplayViewSwitch";
 import {
   allGamePlayers,
   DEFAULT_LIVE_FILTERS,
@@ -43,6 +45,16 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const [sortKey, setSortKey] = useState<LiveSortKey>("started");
   const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
   const [visibleCount, setVisibleCount] = useState(LIVE_REPLAY_BATCH_SIZE);
+  const viewMode: ReplayViewMode = browsing.replaysView;
+  const setViewMode = (mode: ReplayViewMode) => {
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "setBrowsing",
+        payload: { preferences: { ...useAppStore.getState().state.settings.browsing, replaysView: mode } },
+      },
+    });
+  };
 
   // The live-games feed only flows once the lobby websocket is connected;
   // don't rely on the Play tab having been opened first (same auto-connect
@@ -197,7 +209,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
         featuredMods={featuredMods}
         activePlayerOptions={activePlayerOptions}
         maxPlayerOptions={maxPlayerOptions}
+        viewMode={viewMode}
         onFilter={setFilter}
+        onViewMode={setViewMode}
         onToggleFilters={() => setFiltersOpen((open) => !open)}
         onClear={() => {
           setVisibleCount(LIVE_REPLAY_BATCH_SIZE);
@@ -211,6 +225,18 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           <h3>{t(liveGames.length === 0 ? "replays.live.noneNow" : "replays.live.noneMatch")}</h3>
           <p>{t(liveGames.length === 0 ? "replays.live.noneNowHint" : "replays.live.noneMatchHint")}</p>
         </div>
+      ) : viewMode === "tiles" ? (
+        <LiveReplayCards
+          busy={busy}
+          games={visibleGames}
+          matchingCount={filteredGames.length}
+          totalCount={liveGames.length}
+          previewsLoading={mapVaultStatus.type === "loading"}
+          batchSize={LIVE_REPLAY_BATCH_SIZE}
+          tracking={tracking}
+          onPlayerMenu={openPlayerMenu}
+          onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
+        />
       ) : (
         <LiveReplayTable
           busy={busy}

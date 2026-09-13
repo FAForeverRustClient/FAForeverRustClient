@@ -607,3 +607,136 @@
   bottom: 0;
   width: 12px;
 }
+
+/* Card view ------------------------------------------------------------- */
+/* The other half of the view switch. The table is a scan; this is a look, and
+   what it spends its extra room on is the map and the lineup: the two things
+   that decide whether a live game is worth watching, and the two the table
+   gives 44 pixels and an expander. */
+.live-replay-card-wrap {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.live-replay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-3);
+}
+
+.live-replay-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+/* The thumbnail's own rule sizes it for a table cell. In a card it is the
+   first thing the eye lands on, so it takes the column it was given. */
+.live-replay-card-map .live-replay-map-thumb,
+.live-replay-card-map .live-replay-map-placeholder {
+  width: 96px;
+  height: 96px;
+}
+
+.live-replay-card-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.live-replay-card-head {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.live-replay-card-head strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-replay-card-head small,
+.live-replay-card-foot small {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Four facts in two rows, each with its label above it: a card has no column
+   headers to carry them, and "1994" beside "3 / 8" with neither named is a
+   puzzle rather than a summary. */
+.live-replay-card-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  gap: 4px var(--space-3);
+  margin: 0;
+  justify-content: start;
+}
+
+.live-replay-card-meta > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.live-replay-card-meta dt {
+  color: var(--color-subtle);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.live-replay-card-meta dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-replay-card-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-2);
+  font-size: 12px;
+}
+
+.live-replay-card-team {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.live-replay-card-team em {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.live-replay-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: 5px;
+}
+
+@media (max-width: 900px) {
+  .live-replay-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .live-replay-card-meta {
+    grid-template-columns: repeat(2, minmax(0, auto));
+  }
+}
