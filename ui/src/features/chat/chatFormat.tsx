@@ -6,6 +6,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import type { ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../ipc/bindings";
+import { EMOJI_PATTERN, emojiName } from "./emoji";
 import { openHttpsUrl, optionalHttpsUrl, validateHttpsUrl } from "../../shared/externalLinks";
 import { findPlayer, isModerator } from "../../store/reducer";
 import { t, type MessageKey } from "../../i18n";
@@ -286,6 +287,37 @@ function highlightPlainText(
  */
 const NAME_TOKEN = /@?[\w[\]-]+/g;
 
+/**
+ * Emoji in a line of chat, drawn a little larger and named on hover.
+ *
+ * Both halves of the same report: the glyphs are small enough at body size
+ * that an unfamiliar one cannot be made out, so hovering says what it is. The
+ * name is this client's own (`emoji.ts`), which is the picker's list plus the
+ * ones people paste; an emoji in neither is still enlarged, just not labelled,
+ * because inventing a name for it would be worse than admitting there is none.
+ */
+function withEmoji(text: string, keyBase: string): ReactNode[] {
+  if (!text) return [];
+  // The pattern captures, so the halves alternate: plain text at the even
+  // positions, the emoji it was split on at the odd ones.
+  const parts = text.split(EMOJI_PATTERN);
+  if (parts.length === 1) return [text];
+  const nodes: ReactNode[] = [];
+  parts.forEach((part, index) => {
+    if (part === "") return;
+    if (index % 2 === 0) {
+      nodes.push(part);
+      return;
+    }
+    nodes.push(
+      <span key={`${keyBase}-emoji-${index}`} className="chat-emoji" title={emojiName(part)}>
+        {part}
+      </span>,
+    );
+  });
+  return nodes;
+}
+
 function highlightNames(
   text: string,
   self: string,
@@ -294,7 +326,7 @@ function highlightNames(
   fromSelf: boolean,
 ): ReactNode[] {
   const selfKey = self.toLowerCase();
-  if (!selfKey && !pings) return [text];
+  if (!selfKey && !pings) return withEmoji(text, String(keyBase));
 
   const nodes: ReactNode[] = [];
   let consumed = 0;
@@ -311,7 +343,9 @@ function highlightNames(
     const isPing = !isSelf && fromSelf && !!pings && pings.names.has(key);
     if (!isSelf && !isPing) continue;
 
-    if (match.index > consumed) nodes.push(text.slice(consumed, match.index));
+    if (match.index > consumed) {
+      nodes.push(...withEmoji(text.slice(consumed, match.index), `${keyBase}-${consumed}`));
+    }
     nodes.push(
       isSelf ? (
         // Our own name, in the same colour as any other ping: being named is
@@ -340,8 +374,10 @@ function highlightNames(
     );
     consumed = match.index + token.length;
   }
-  if (nodes.length === 0) return [text];
-  if (consumed < text.length) nodes.push(text.slice(consumed));
+  if (nodes.length === 0) return withEmoji(text, String(keyBase));
+  if (consumed < text.length) {
+    nodes.push(...withEmoji(text.slice(consumed), `${keyBase}-${consumed}`));
+  }
   return nodes;
 }
 

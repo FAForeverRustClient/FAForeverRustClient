@@ -74,17 +74,17 @@ export const DEFAULT_LEADERBOARD_RATING_COLUMNS = [
   "rating",
   "games",
   "wins",
-  "winRate",
   "updated",
 ] as const;
 
+// No win rate: the value the API answers with is wrong, and a right one costs
+// a request per player. See VALID_LEADERBOARD_RATING_COLUMNS in the Rust twin.
 export const VALID_LEADERBOARD_RATING_COLUMNS = [
   "rating",
   "mean",
   "deviation",
   "games",
   "wins",
-  "winRate",
   "updated",
 ] as const;
 

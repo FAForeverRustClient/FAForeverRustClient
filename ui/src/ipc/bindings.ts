@@ -4118,9 +4118,9 @@ export type ModType = "ui" | "sim";
 /**  A page of the mod vault. */
 export type ModVaultQuery = {
 	/**
-	 *  Free text. By default every word in it has to appear somewhere in the
-	 *  mod's name, its description or its uid; [`Self::exact_name`] narrows
-	 *  that to the whole name and nothing else.
+	 *  Free text. By default every word in it has to appear in the mod's name;
+	 *  [`Self::search_descriptions`] widens that to the description and the
+	 *  uid, and [`Self::exact_name`] narrows it to the whole name.
 	 */
 	search: string,
 	/**
@@ -4132,6 +4132,17 @@ export type ModVaultQuery = {
 	 *  for by half a name and a word describing what it does.
 	 */
 	exactName: boolean,
+	/**
+	 *  Look in the description and the uid as well as the name.
+	 *
+	 *  Off by default, which is the thread's complaint: typing "reui" returned
+	 *  every mod whose description happens to mention ReUI, and the mods
+	 *  actually called ReUI were lost among them. Searching prose is worth
+	 *  having and worth asking for, so it is a control rather than the floor.
+	 *  Ignored while [`Self::exact_name`] is set, which is narrower than
+	 *  either.
+	 */
+	searchDescriptions: boolean,
 	/**
 	 *  Matched against the mod's author, which on this endpoint is a plain
 	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
@@ -5524,9 +5535,47 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	uids: number[],
 } };
 
+/**
+ *  How busy one client was, counted out of the replay's own command stream.
+ *
+ *  The stream records an order per client per tick, so this is the one place
+ *  an "actions per minute" can come from: the API knows who played and what
+ *  they were rated, and nothing about what they did. Deliberately called
+ *  commands rather than actions, because that is what is being counted: an
+ *  order the engine was given. A hotkey that reissues an order counts twice,
+ *  and a player who clicks the same order onto forty units counts once. The
+ *  number is a comparison between the people in one game, not a score.
+ */
+export type ReplayCommandStats = {
+	/**
+	 *  The login the replay's client table carries. Observers are in it too,
+	 *  and their command count is the handful the camera makes.
+	 */
+	player: string,
+	/**
+	 *  Orders attributed to this client: the ones that move, build, target or
+	 *  cancel. The engine's bookkeeping (clock, checksums, the callbacks a UI
+	 *  mod fires every tick) is not counted, because a mod that chatters once
+	 *  a tick would otherwise outrank every player in the game.
+	 */
+	commands: number,
+};
+
 export type ReplayDetails = {
 	gameOptions: ReplayGameOption[],
 	chatMessages: ReplayChatMessage[],
+	/**
+	 *  One entry per client the replay names, in the order the file lists
+	 *  them. Empty for a file whose stream could not be walked.
+	 */
+	commandStats?: ReplayCommandStats[],
+	/**
+	 *  Simulated seconds the command stream covers, which is the denominator
+	 *  of a per-minute rate. Simulated: a game that ran slow lasted longer on
+	 *  the clock than this, and the orders were still given over this much
+	 *  game time.
+	 */
+	simSeconds?: number,
 	/**
 	 *  Display names of the simulation mods the game ran with, read from the
 	 *  `.fafreplay` header rather than the command stream: the stream's own mod

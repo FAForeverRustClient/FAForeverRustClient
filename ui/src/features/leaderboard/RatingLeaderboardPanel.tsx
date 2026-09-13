@@ -23,7 +23,6 @@ const OPTIONAL_COLUMNS: Array<{ key: LeaderboardColumn; label: MessageKey }> = [
   { key: "deviation", label: "leaderboard.column.deviation" },
   { key: "games", label: "leaderboard.column.games" },
   { key: "wins", label: "leaderboard.column.wins" },
-  { key: "winRate", label: "leaderboard.column.winRate" },
   { key: "updated", label: "leaderboard.column.updated" },
 ];
 
@@ -55,7 +54,7 @@ export function RatingLeaderboardPanel() {
   const [columnsOpen, setColumnsOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement>(null);
   const visibleColumns = (browsing.leaderboardRatingColumns ?? [
-    "rating", "games", "wins", "winRate", "updated",
+    "rating", "games", "wins", "updated",
   ]) as LeaderboardColumn[];
   const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
 

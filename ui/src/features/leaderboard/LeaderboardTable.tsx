@@ -15,7 +15,6 @@ export type LeaderboardColumn =
   | "deviation"
   | "games"
   | "wins"
-  | "winRate"
   | "updated";
 
 const LABELS: Record<LeaderboardColumn, MessageKey> = {
@@ -29,7 +28,6 @@ const LABELS: Record<LeaderboardColumn, MessageKey> = {
   deviation: "leaderboard.column.deviation",
   games: "leaderboard.column.games",
   wins: "leaderboard.column.wins",
-  winRate: "leaderboard.column.winRate",
   updated: "leaderboard.column.updated",
 };
 
@@ -45,9 +43,6 @@ function value(entry: LeaderboardEntry, column: LeaderboardColumn): number | str
     case "deviation": return entry.deviation;
     case "games": return entry.gamesPlayed;
     case "wins": return entry.wonGames;
-    case "winRate": return entry.wonGames === null || entry.gamesPlayed === 0
-      ? null
-      : entry.wonGames / entry.gamesPlayed;
     case "updated": return entry.updateTime;
   }
 }
@@ -56,7 +51,6 @@ function format(entry: LeaderboardEntry, column: LeaderboardColumn): string {
   const raw = value(entry, column);
   if (raw === null || raw === "") return "N/A";
   if (column === "mean" || column === "deviation") return Number(raw).toFixed(1);
-  if (column === "winRate") return `${(Number(raw) * 100).toFixed(1)}%`;
   if (column === "updated") {
     const date = new Date(String(raw));
     return Number.isNaN(date.valueOf()) ? String(raw) : date.toLocaleString("en-US");

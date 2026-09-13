@@ -4,6 +4,8 @@ import {
   ALL_EMOJI,
   EMOJI_COLUMNS,
   EMOJI_GROUPS,
+  EMOJI_PATTERN,
+  emojiName,
   groupOffsets,
   searchEmoji,
   stepSelection,
@@ -104,5 +106,55 @@ describe("group offsets", () => {
     EMOJI_GROUPS.forEach((group, index) => {
       expect(ALL_EMOJI[offsets[index]]).toBe(group.emoji[0]);
     });
+  });
+});
+
+describe("naming an emoji for a hover label", () => {
+  it("uses the picker's own name where the picker offers it", () => {
+    expect(emojiName("\u{1F914}")).toBe("thinking");
+  });
+
+  it("names one the picker does not offer", () => {
+    expect(emojiName("\u{1F935}")).toBe("person in tuxedo");
+  });
+
+  it("ignores the variation selector, which only asks for a colour glyph", () => {
+    expect(emojiName("\u{2764}\uFE0F")).toBe("heart");
+  });
+
+  it("ignores a skin tone, which does not change what the gesture is", () => {
+    expect(emojiName("\u{1F44D}\u{1F3FD}")).toBe("thumbs up");
+  });
+
+  it("answers undefined rather than inventing a name", () => {
+    // A name this client does not know is left unlabelled: the glyph is still
+    // drawn, and a made-up name would be worse than none.
+    expect(emojiName("\u{1FAE8}")).toBeUndefined();
+  });
+});
+
+describe("finding emoji inside a line of chat", () => {
+  const split = (text: string) => text.split(EMOJI_PATTERN).filter((part) => part !== "");
+
+  it("keeps the text around an emoji and the emoji itself", () => {
+    expect(split("gg \u{1F44D} wp")).toEqual(["gg ", "\u{1F44D}", " wp"]);
+  });
+
+  it("holds a variation selector and a skin tone together with their emoji", () => {
+    expect(split("\u{2764}\uFE0F")).toEqual(["\u{2764}\uFE0F"]);
+    expect(split("\u{1F44D}\u{1F3FD}")).toEqual(["\u{1F44D}\u{1F3FD}"]);
+  });
+
+  it("leaves prose alone, punctuation and legal signs included", () => {
+    // `\p{Extended_Pictographic}` would take the copyright sign, which is why
+    // the pattern lists blocks instead.
+    expect(split("(c) 2026 \u00A9 FAF, 100% fine.")).toEqual(["(c) 2026 \u00A9 FAF, 100% fine."]);
+  });
+
+  it("does not carry a match position from one line into the next", () => {
+    // The pattern is global and module level, so a stateful `exec` would find
+    // the second line's emoji only some of the time.
+    expect(split("\u{1F525}")).toEqual(["\u{1F525}"]);
+    expect(split("\u{1F525}")).toEqual(["\u{1F525}"]);
   });
 });

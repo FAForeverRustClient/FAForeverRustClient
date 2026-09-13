@@ -265,11 +265,43 @@ pub struct ReplayChatMessage {
     pub message: String,
 }
 
+/// How busy one client was, counted out of the replay's own command stream.
+///
+/// The stream records an order per client per tick, so this is the one place
+/// an "actions per minute" can come from: the API knows who played and what
+/// they were rated, and nothing about what they did. Deliberately called
+/// commands rather than actions, because that is what is being counted: an
+/// order the engine was given. A hotkey that reissues an order counts twice,
+/// and a player who clicks the same order onto forty units counts once. The
+/// number is a comparison between the people in one game, not a score.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayCommandStats {
+    /// The login the replay's client table carries. Observers are in it too,
+    /// and their command count is the handful the camera makes.
+    pub player: String,
+    /// Orders attributed to this client: the ones that move, build, target or
+    /// cancel. The engine's bookkeeping (clock, checksums, the callbacks a UI
+    /// mod fires every tick) is not counted, because a mod that chatters once
+    /// a tick would otherwise outrank every player in the game.
+    pub commands: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplayDetails {
     pub game_options: Vec<ReplayGameOption>,
     pub chat_messages: Vec<ReplayChatMessage>,
+    /// One entry per client the replay names, in the order the file lists
+    /// them. Empty for a file whose stream could not be walked.
+    #[serde(default)]
+    pub command_stats: Vec<ReplayCommandStats>,
+    /// Simulated seconds the command stream covers, which is the denominator
+    /// of a per-minute rate. Simulated: a game that ran slow lasted longer on
+    /// the clock than this, and the orders were still given over this much
+    /// game time.
+    #[serde(default)]
+    pub sim_seconds: u32,
     /// Display names of the simulation mods the game ran with, read from the
     /// `.fafreplay` header rather than the command stream: the stream's own mod
     /// table is the engine's, keyed by install paths. Empty for a legacy

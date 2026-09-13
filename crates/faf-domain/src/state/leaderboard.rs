@@ -86,18 +86,6 @@ pub struct LeaderboardEntry {
     pub returning_player: Option<bool>,
 }
 
-impl LeaderboardEntry {
-    pub fn win_rate(&self) -> Option<f64> {
-        self.won_games.map(|wins| {
-            if self.games_played == 0 {
-                0.0
-            } else {
-                wins as f64 / self.games_played as f64
-            }
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RatingQuery {

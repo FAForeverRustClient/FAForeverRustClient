@@ -77,9 +77,19 @@ const updateMod = (uid: string, folderName: string, downloadUrl: string) => ipc.
 const uninstallMod = (folderName: string, uid: string) => ipc.send({ kind: "Mods", command: { type: "uninstallMod", payload: { folderName, uid } } });
 const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
 
+/**
+ * Where the search box is allowed to match.
+ *
+ * "name" is the floor, and the reported bug: searching "reui" against the
+ * description returned every mod that mentions ReUI in prose, with the mods
+ * actually called ReUI somewhere in the middle of them. Prose is still worth
+ * searching, so it is a choice in the search panel rather than a default.
+ */
+type ModSearchScope = "name" | "description" | "exact";
+
 interface ModFilterState {
   search: string;
-  exactName: boolean;
+  searchScope: ModSearchScope;
   creator: string;
   sort: ModSort;
   modType: ModTypeFilter;
@@ -111,7 +121,8 @@ function modVaultQuery(
   return {
     ...EMPTY_MOD_QUERY,
     search: applied.search.trim(),
-    exactName: applied.exactName,
+    exactName: applied.searchScope === "exact",
+    searchDescriptions: applied.searchScope === "description",
     author: applied.creator.trim(),
     // The uploader, not the declared author: see `ModVaultQuery::uploader_id`.
     // Unlike the map vault this asks for no hidden versions, because nothing
@@ -160,7 +171,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const initialSort: ModSort = storedModSort(browsing.modVaultSort) ?? presetSort(preset);
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
   const [search, setSearch] = useState("");
-  const [exactName, setExactName] = useState(false);
+  const [searchScope, setSearchScope] = useState<ModSearchScope>("name");
   const [sort, setSort] = useState<ModSort>(initialSort);
   const [modType, setModType] = useState<ModTypeFilter>("all");
   const [ranked, setRanked] = useState<RankedFilter>("all");
@@ -179,7 +190,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const [applied, setApplied] = useState<ModFilterState>({
     search: "",
-    exactName: false,
+    searchScope: "name",
     creator: "",
     sort: initialSort,
     modType: "all",
@@ -237,7 +248,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const applySearch = () => {
     setApplied({
       search,
-      exactName,
+      searchScope,
       creator,
       sort,
       modType,
@@ -293,7 +304,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const clearSearch = () => {
     setSearch("");
-    setExactName(false);
+    setSearchScope("name");
     setCreator("");
     setModType("all");
     setRanked("all");
@@ -305,7 +316,7 @@ function VaultView({ busy }: { busy: boolean }) {
     setMaximumRating(null);
     setApplied({
       search: "",
-      exactName: false,
+      searchScope: "name",
       creator: "",
       sort: "rating",
       modType: "all",
@@ -417,16 +428,6 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("mods.view.after")}><input className="search-panel-control" type="date" value={dateAfter} onChange={(event) => setDateAfter(event.target.value)} /></SearchField>
               <SearchField label={t("mods.view.before")}><input className="search-panel-control" type="date" value={dateBefore} onChange={(event) => setDateBefore(event.target.value)} /></SearchField>
             </div>
-            <div className="vault-search-checks">
-              <label className="option-check" title={t("mods.view.exactNameHint")}>
-                <input
-                  type="checkbox"
-                  checked={exactName}
-                  onChange={(event) => setExactName(event.target.checked)}
-                />
-                {t("mods.view.exactName")}
-              </label>
-            </div>
           </div>
         ) : undefined}
       >
@@ -439,8 +440,25 @@ function VaultView({ busy }: { busy: boolean }) {
               setSearch(value);
               if (value.trim() && preset === "recommended") choosePreset("all");
             }}
-            placeholder={t("mods.view.nameDescriptionUid")}
+            placeholder={t(searchScope === "description"
+              ? "mods.view.nameDescriptionUid"
+              : "mods.view.anyModName")}
           />
+        </SearchField>
+        {/* Next to the box it governs, and visible without opening the
+            advanced panel: what a search matches is not an advanced question,
+            it is the first thing a result set that looks wrong raises. */}
+        <SearchField label={t("mods.view.searchIn")} className="search-panel-field-compact">
+          <select
+            className="search-panel-control"
+            title={t("mods.view.searchInHint")}
+            value={searchScope}
+            onChange={(event) => setSearchScope(event.target.value as ModSearchScope)}
+          >
+            <option value="name">{t("mods.view.searchIn.name")}</option>
+            <option value="description">{t("mods.view.searchIn.description")}</option>
+            <option value="exact">{t("mods.view.searchIn.exact")}</option>
+          </select>
         </SearchField>
         <SearchField label={t("mods.view.creator")} className="search-panel-field-grow">
           <input
