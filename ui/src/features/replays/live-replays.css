@@ -543,25 +543,6 @@
   margin: 0;
 }
 
-/* The glyph goes where it goes on the vault's tiles: centred on the tile,
-   beside the value and its caption rather than inside the caption's line. */
-.live-detail-facts > div {
-  position: relative;
-  padding-left: 34px;
-}
-
-.live-detail-facts dt {
-  display: block;
-}
-
-.live-detail-facts dt svg {
-  position: absolute;
-  top: 50%;
-  left: var(--space-3);
-  transform: translateY(-50%);
-  color: var(--color-subtle);
-}
-
 /* The roster is the vault panel's, so it needs the panel's own rules: the
    stylesheet that carries them is loaded by the replays tab either way, and
    only the width it is given here is this tab's business. */
@@ -569,24 +550,49 @@
   min-width: 0;
 }
 
+/* One block per selector, not two.
+
+   These tiles were declared twice: a first pair of rules gave the box
+   `padding-left: 34px` to clear the glyph, and a second pair further down set
+   the `padding` shorthand, which is later and so reset that left padding to
+   the shorthand's own value. The glyph is positioned absolutely at the left
+   edge, so it landed on top of the caption it belongs beside. The left
+   padding is part of the shorthand now, where nothing can drop it, and 36px
+   is the vault panel's own figure. */
 .live-detail-facts > div {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1px;
   min-width: 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-2) 36px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
 
+/* Under the value it names, and quiet, the way the vault's tiles read. */
 .live-detail-facts dt {
+  display: block;
   order: 2;
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Taken out of the caption's line and centred on the whole tile. */
+.live-detail-facts dt svg {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--color-subtle);
 }
 
 .live-detail-facts dd {
