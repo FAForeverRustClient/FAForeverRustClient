@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use faf_domain::state::{
     ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, JoinState, LobbyCommand,
     LobbyEvent, MatchmakingState, NotificationAction, NotificationKind, NotificationPreferences,
-    PlayerCardEvent, SettingsEvent, SocialEvent,
+    PartyState, PlayerCardEvent, SettingsEvent, SocialEvent,
 };
 
 use crate::ports::LobbyUpdate;
@@ -202,7 +202,17 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
         LobbyCommand::Matchmake { queue_name, start } => {
             ctx.ports.lobby.matchmake(queue_name, start)
         }
-        LobbyCommand::LeaveParty => ctx.ports.lobby.leave_party(),
+        LobbyCommand::LeaveParty => {
+            ctx.ports.lobby.leave_party();
+            // Optimistic, and the same event `kicked_from_party` raises: the
+            // server's own answer is a snapshot of the party you are no longer
+            // in, which the filter above turns into this anyway. Emitting it
+            // here means the seat list empties on the press rather than on the
+            // round trip.
+            out.emit(LobbyEvent::PartyUpdated {
+                party: PartyState::default(),
+            });
+        }
         LobbyCommand::KickPartyMember { player_id } => ctx.ports.lobby.kick_party_member(player_id),
         LobbyCommand::InviteToParty { player_id } => ctx.ports.lobby.invite_to_party(player_id),
         LobbyCommand::AcceptPartyInvite { player_id } => {
@@ -559,7 +569,16 @@ async fn handle_update(
                 );
             }
         }
-        LobbyUpdate::Party(party) => out.emit(LobbyEvent::PartyUpdated { party }),
+        LobbyUpdate::Party(party) => {
+            // Filtered through the account this client is signed in as: the
+            // server tells the member who just left what the party looks like
+            // without them, and that is not a party this client is in. See
+            // `PartyState::for_player`.
+            let player_id = out.with_state(|state| state.auth.player.as_ref().map(|p| p.id));
+            out.emit(LobbyEvent::PartyUpdated {
+                party: party.for_player(player_id),
+            })
+        }
         LobbyUpdate::PartyInvite { player_id, login } => {
             if out.with_state(|state| state.settings.notifications.party_invites) {
                 notifications::add(
