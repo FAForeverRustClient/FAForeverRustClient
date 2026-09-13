@@ -26,11 +26,18 @@ const MAX_PAGE_SIZE: usize = 10_000;
 
 /// Rows asked for per request when scanning a player's history.
 ///
-/// A request, not a promise: the API is free to return fewer, and it does.
-/// Nothing downstream may assume a full page came back, which is exactly the
-/// bug this replaced: treating a short page as the end of the history capped
-/// every player at the server's own page limit.
-const HISTORY_PAGE_SIZE: usize = 1_000;
+/// A request, not a promise: the API is free to return fewer, and it does --
+/// it clamps to a hundred. Asking for a thousand fetched a hundred anyway and
+/// meant the loop could never tell a clamped page from the last one, so this
+/// asks for what the server gives and learns the real size from the answer.
+const HISTORY_PAGE_SIZE: usize = 100;
+
+/// How many of those pages are in flight at once.
+///
+/// A seven-thousand-game history is seventy-odd requests. One at a time is why
+/// this took a minute where faftracker takes seconds, and four at a time is
+/// what the tracker itself uses against the same API.
+const HISTORY_PAGE_CONCURRENCY: usize = 4;
 
 /// Hard stop on the paging loop, so a server that keeps answering with rows
 /// cannot spin this forever.
@@ -484,69 +491,106 @@ impl PlayerCardPort for PlayerCardClient {
     async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String> {
         let token = self.token()?;
         let mut games: Vec<PlayedGame> = Vec::new();
-        let mut page = 1usize;
         let mut truncated = false;
+        // The largest page the API has actually answered with. Asked-for and
+        // given are different numbers here -- the server clamps `page[size]`
+        // to its own limit and says so nowhere in the payload -- so "shorter
+        // than I asked for" is not the end of the history, and "shorter than
+        // the server's own page" is.
+        let mut server_page_rows = 0usize;
+        let mut page = 1usize;
 
-        loop {
-            let mut url = self.url("game")?;
-            url.query_pairs_mut()
-                // Games, not this player's rows in them. Six of the seven
-                // rules that decide a win compare the player against the rest
-                // of the lobby -- who else lost, which team scored highest --
-                // and none of that is visible from one row.
-                .append_pair(
-                    "filter",
-                    &format!("playerStats.player.id=={player_id};endTime=isnull=false"),
-                )
-                .append_pair("include", HISTORY_INCLUDE)
-                // Only the fields the rules read. Without this each game drags
-                // along its full map and player resources, and a long history
-                // turns into tens of megabytes.
-                .append_pair(
-                    "fields[game]",
-                    "startTime,endTime,validity,mapVersion,playerStats",
-                )
-                .append_pair(
-                    "fields[gamePlayerStats]",
-                    "result,score,team,scoreTime,player,ratingChanges",
-                )
-                .append_pair("fields[player]", "login")
-                .append_pair("fields[mapVersion]", "map")
-                .append_pair("fields[map]", "displayName")
-                .append_pair(
-                    "fields[leaderboardRatingJournal]",
-                    "meanBefore,meanAfter,deviationBefore,deviationAfter,leaderboard",
-                )
-                .append_pair("fields[leaderboard]", "technicalName")
-                .append_pair("sort", "-endTime")
-                .append_pair("page[number]", &page.to_string())
-                .append_pair("page[size]", &HISTORY_PAGE_SIZE.to_string());
-
-            let document = self.get(url, &token).await?;
-            let batch = parse_history_games(&document, player_id);
-
-            // The history ends when a page comes back empty, never when it
-            // comes back short. The API clamps `page[size]` to its own limit
-            // and says so nowhere in the payload, so comparing against what
-            // was *asked for* stopped after the very first page.
-            if batch.is_empty() {
-                break;
-            }
-            games.extend(batch);
-
-            if games.len() >= MAX_HISTORY_GAMES {
-                games.truncate(MAX_HISTORY_GAMES);
+        'scan: loop {
+            if page > MAX_HISTORY_PAGES {
                 truncated = true;
                 break;
             }
-            if page >= MAX_HISTORY_PAGES {
+            let last = (page + HISTORY_PAGE_CONCURRENCY - 1).min(MAX_HISTORY_PAGES);
+            // Several pages at once. A full history is seventy-odd requests,
+            // and one at a time is the whole of why opening a profile took a
+            // minute where faftracker took seconds against the same API; it
+            // fetches four at a time for exactly this reason.
+            let batch = futures_util::future::try_join_all(
+                (page..=last).map(|number| self.history_page(player_id, number, &token)),
+            )
+            .await?;
+
+            let mut ended = false;
+            for rows in batch {
+                server_page_rows = server_page_rows.max(rows.len());
+                if rows.is_empty() || rows.len() < server_page_rows {
+                    ended = true;
+                }
+                games.extend(rows);
+                if games.len() >= MAX_HISTORY_GAMES {
+                    games.truncate(MAX_HISTORY_GAMES);
+                    truncated = true;
+                    break 'scan;
+                }
+            }
+            if ended {
+                break;
+            }
+            if last >= MAX_HISTORY_PAGES {
                 truncated = true;
                 break;
             }
-            page += 1;
+            page = last + 1;
         }
 
         Ok(aggregate_map_stats(&games, truncated))
+    }
+}
+
+impl PlayerCardClient {
+    /// One page of a player's game history, already folded into the flat shape
+    /// the record is built from.
+    async fn history_page(
+        &self,
+        player_id: i32,
+        number: usize,
+        token: &str,
+    ) -> Result<Vec<PlayedGame>, String> {
+        let mut url = self.url("game")?;
+        url.query_pairs_mut()
+            // Games, not this player's rows in them. Six of the seven rules
+            // that decide a win compare the player against the rest of the
+            // lobby -- who else lost, which team scored highest -- and none of
+            // that is visible from one row.
+            .append_pair(
+                "filter",
+                &format!("playerStats.player.id=={player_id};endTime=isnull=false"),
+            )
+            .append_pair("include", HISTORY_INCLUDE)
+            // Only the fields the rules read. Without this each game drags
+            // along its full map and player resources, and a long history
+            // turns into tens of megabytes.
+            .append_pair(
+                "fields[game]",
+                "startTime,endTime,validity,mapVersion,playerStats",
+            )
+            .append_pair(
+                "fields[gamePlayerStats]",
+                "result,score,team,scoreTime,player,ratingChanges",
+            )
+            .append_pair("fields[player]", "login")
+            .append_pair("fields[mapVersion]", "map")
+            .append_pair("fields[map]", "displayName")
+            .append_pair(
+                "fields[leaderboardRatingJournal]",
+                "meanBefore,meanAfter,deviationBefore,deviationAfter,leaderboard",
+            )
+            .append_pair("fields[leaderboard]", "technicalName")
+            // By start, not by end, and the same key faftracker pages on.
+            // Games are paged, so the sort has to be stable across requests,
+            // and two games that ended in the same second are far commoner
+            // than two that started in one.
+            .append_pair("sort", "-startTime")
+            .append_pair("page[number]", &number.to_string())
+            .append_pair("page[size]", &HISTORY_PAGE_SIZE.to_string());
+
+        let document = self.get(url, token).await?;
+        Ok(parse_history_games(&document, player_id))
     }
 }
 
