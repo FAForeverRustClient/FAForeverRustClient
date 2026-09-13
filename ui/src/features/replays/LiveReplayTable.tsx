@@ -56,7 +56,7 @@ const DEFAULT_COLUMN_PX = [120, 110, 260, 84, 84, 150, 130];
  * a column widens the table and the wrapper scrolls -- which is what a table
  * whose columns can be dragged has to do.
  */
-const WATCH_COLUMN_PX = 110;
+const WATCH_COLUMN_PX = 128;
 const DESIGNED_TABLE_PX = 1040;
 
 interface Props {
@@ -137,10 +137,14 @@ export function LiveReplayTable(props: Props) {
         {/* `table-layout: fixed` plus a colgroup is how a real table takes
             dragged widths: putting them on the cells would let the widest row
             win instead. */}
+        {/* Every column the width it was given, and one empty track at the
+            end for whatever is left over. Letting the Watch column take the
+            slack instead stretched a button across half of a wide window. */}
         <colgroup>
           {columns.widths.map((width, index) => (
             <col key={columnLabels[index]} style={{ width: `${width}px` }} />
           ))}
+          <col style={{ width: `${WATCH_COLUMN_PX}px` }} />
           <col />
         </colgroup>
         <thead>

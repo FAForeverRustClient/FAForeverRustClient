@@ -1,13 +1,13 @@
-import { memo, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Modal } from "../../design-system/Modal";
-import { ResizeHandle } from "../../design-system/ResizeHandle";
 import type { Game, PlayerProfile, VaultMap, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { GameMapImage } from "./GameMapImage";
+import { useGameBrowserColumns } from "./gameBrowserColumns";
 import {
   findVaultMap,
   findVaultMapByFolder,
@@ -29,36 +29,12 @@ import {
 } from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { friendKeys, friendsInGame } from "./friendPresence";
-import { columnTemplate, columnWidths, withColumnResized } from "./browserLayout";
 import { formatNumber, t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../shared/playerRatings";
 
 export type GameViewMode = "list" | "tiles";
-
-/**
- * Persist the list's column widths.
- *
- * An empty array is the reset: the backend keeps it, and `columnWidths` reads
- * it back as "use the designed widths", so a reset survives a restart the same
- * way a drag does.
- */
-function saveColumnWidths(widths: number[]): void {
-  const current = useAppStore.getState().state.settings.browsing;
-  ipc.send({
-    kind: "Settings",
-    command: {
-      type: "setBrowsing",
-      payload: {
-        preferences: {
-          ...current,
-          customGamesBrowser: { ...current.customGamesBrowser, columnWidths: widths },
-        },
-      },
-    },
-  });
-}
 
 // The mod catalogue keyed by uid, cached against the identity of the list it
 // was built from: it is replaced only when the catalogue is reloaded.
@@ -1235,34 +1211,8 @@ export function CustomGamesBrowser({
   // saved: writing every pointer move through the backend would be a round
   // trip per pixel. So the saved widths seed a local copy, the drag moves the
   // copy, and releasing the handle persists it.
-  const savedWidths = useAppStore(
-    (state) => state.state.settings.browsing.customGamesBrowser.columnWidths,
-  );
-  const [dragWidths, setDragWidths] = useState<number[] | null>(null);
-  const widths = dragWidths ?? columnWidths(savedWidths);
-  const dragOrigin = useRef<number[] | null>(null);
-  const columnStyle = useMemo(
-    () => (viewMode === "list" ? { gridTemplateColumns: columnTemplate(widths) } : undefined),
-    // The template is a string, so comparing the array by value is what keeps
-    // every row from re-rendering on an unrelated settings write.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [viewMode, widths.join(",")],
-  );
-
-  const onColumnDrag = (index: number, delta: number) => {
-    dragOrigin.current ??= widths;
-    setDragWidths(withColumnResized(dragOrigin.current, index, delta));
-  };
-  const onColumnCommit = () => {
-    dragOrigin.current = null;
-    if (dragWidths) saveColumnWidths(dragWidths);
-    setDragWidths(null);
-  };
-  const onColumnReset = () => {
-    dragOrigin.current = null;
-    setDragWidths(null);
-    saveColumnWidths([]);
-  };
+  const columns = useGameBrowserColumns(viewMode === "list");
+  const columnStyle = columns.style;
 
   const handlePreview = onPreviewProp ?? setInternalPreviewGame;
 
@@ -1308,44 +1258,9 @@ export function CustomGamesBrowser({
     ? { gridTemplateColumns: `repeat(${tileColumns}, minmax(0, 1fr))` }
     : undefined;
 
-  const columnLabels = [
-    t("lobby.browser.column.game"),
-    t("lobby.browser.column.map"),
-    t("lobby.browser.column.players"),
-    t("lobby.browser.column.rating"),
-    t("lobby.browser.column.age"),
-  ];
-
   return (
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
-      {viewMode === "list" && (
-        <div className="game-browser-head" style={columnStyle}>
-          {columnLabels.map((label, index) => (
-            <span key={label}>
-              {/* On the *leading* edge of this column, resizing the one before
-                  it. That is where a file manager puts a divider -- the cursor
-                  lands just in front of the column you are about to push along
-                  -- and hanging it off the previous column's trailing edge put
-                  it a whole column away from the boundary it moved whenever
-                  the column before was a narrow right-aligned number. The
-                  first column has nothing before it to resize. */}
-              {index > 0 && (
-                <ResizeHandle
-                  className="game-browser-col-handle is-ruled"
-                  label={t("lobby.browser.resizeColumn", { column: columnLabels[index - 1] })}
-                  onDrag={(delta) => onColumnDrag(index - 1, delta)}
-                  onEnd={onColumnCommit}
-                  onReset={onColumnReset}
-                />
-              )}
-              {/* The label clips itself rather than letting the header cell do
-                  it: the grab handle reaches past the cell's edge, and a cell
-                  with `overflow: hidden` cuts it off entirely. */}
-              <span className="game-browser-head-label">{label}</span>
-            </span>
-          ))}
-        </div>
-      )}
+      {viewMode === "list" && columns.header}
       <div
         className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}
         style={tileGridStyle}

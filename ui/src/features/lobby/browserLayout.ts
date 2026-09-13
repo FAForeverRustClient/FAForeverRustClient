@@ -63,21 +63,20 @@ export function withColumnResized(
 /**
  * The CSS `grid-template-columns` for a set of widths.
  *
- * The *last* track is the flexible one, and that is the whole of why a drag
- * feels the way it does. With the flexible track first, every pixel a column
- * gained was taken from the title at the far left: grabbing the divider
- * between Map and Players moved the divider between Game and Map instead,
- * while the one under the cursor stayed put, and dragging the first divider
- * did nothing at all because it only changed a minimum the flex was already
- * above. With the slack at the end, a divider moves the divider -- which is
- * what every file manager does, and what the replay list here already did.
+ * Every column is the width it was given, and the slack goes into a track of
+ * its own at the end.
+ *
+ * The slack has to be *after* every draggable column: with it at the front,
+ * every pixel a column gained was taken from the title at the far left, so
+ * grabbing the divider between Map and Players moved the divider between Game
+ * and Map while the one under the cursor stayed put. But putting it into the
+ * last column was no better on a wide window -- Age, seventy-five pixels of
+ * "7m", stretched across twelve hundred of them. An empty track takes it
+ * instead, which is what a file manager does: the columns keep their widths
+ * and the space left over is simply space left over.
  */
 export function columnTemplate(widths: readonly number[]): string {
-  return widths
-    .map((width, index) =>
-      index === widths.length - 1 ? `minmax(${width}px, 1fr)` : `${width}px`,
-    )
-    .join(" ");
+  return `${widths.map((width) => `${width}px`).join(" ")} minmax(0, 1fr)`;
 }
 
 /** The detail panel's width after a drag, bounded the way the backend bounds it. */
