@@ -927,6 +927,18 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                   <Icon name={copiedTitle ? "check" : "copy"} size={13} />
                 </button>
               )}
+              {/* Whether a game on this map is rated, next to the map's name.
+                  It is the one property of a map that changes what hosting it
+                  means, and it was only readable by finding the same map again
+                  in the list beside this panel. */}
+              {chosen && (
+                <span
+                  className={chosen.ranked ? "host-map-ranked is-ranked" : "host-map-ranked"}
+                  title={t(chosen.ranked ? "maps.view.ranked" : "maps.view.unranked")}
+                >
+                  {t(chosen.ranked ? "maps.view.ranked" : "maps.view.unranked")}
+                </span>
+              )}
             </div>
 
             {chosen && (
@@ -959,8 +971,11 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                       <Icon name="edit" size={13} />
                       <span>{chosen.author || t("lobby.host.mapAuthorUnknown")}</span>
                     </div>
+                    {/* A "V", not the changelog's document icon: this is a
+                        version number, and a sheet of paper next to it read as
+                        a link to something to open. */}
                     <div className="host-map-info-item" title={t("lobby.host.mapVersion")}>
-                      <Icon name="changelog" size={13} />
+                      <span className="host-map-version-mark" aria-hidden>V</span>
                       <span>{chosen.version || t("lobby.host.mapAuthorUnknown")}</span>
                     </div>
                   </div>

@@ -122,6 +122,19 @@ describe("mapPresentation", () => {
     );
   });
 
+  it("does not lead a large request with a caller's small thumbnail", () => {
+    // A replay listing carries `mapVersion.thumbnailUrlSmall`. Leading with it
+    // for a large request is why the enlarged replay preview was a 256 px
+    // picture blown up to nine hundred. It stays in the list as the last
+    // fallback, for a map nothing else has art for.
+    const small = "https://content.faforever.com/maps/previews/small/scmp_009.png";
+    const large = mapThumbnailCandidates([], "scmp_009", true, undefined, undefined, small);
+
+    expect(large[0]).toBe("https://content.faforever.com/maps/previews/large/scmp_009.png");
+    expect(large).toContain(small);
+    expect(mapThumbnailCandidates([], "scmp_009", false, undefined, undefined, small)[0]).toBe(small);
+  });
+
   it("formats generated map presentation using Neroxis Map Generator as displayName", () => {
     const presentation = mapPresentation(
       [],

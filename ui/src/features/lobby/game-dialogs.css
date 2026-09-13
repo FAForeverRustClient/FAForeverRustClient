@@ -343,14 +343,24 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  /* Unlike the other two options this one may give ground: the sentence next
+     to it is the part that can afford to move to a second line, and only when
+     there is genuinely no room for it. */
+  flex-shrink: 1;
+  min-width: 0;
 }
 
-/* Its own line under the checkbox and the bounds, which is where a sentence
-   explaining both of them belongs. */
+/* Beside the bounds it explains, not under them. It used to claim a line of
+   its own unconditionally (`flex-basis: 100%`), which made the whole options
+   row two lines tall in a dialog 1360px wide with room to spare. It still
+   wraps -- it is the first thing that does -- but only once the row is
+   actually full. */
 .host-field-hint {
-  flex-basis: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 11px;
   line-height: 1.3;
+  white-space: normal;
 }
 
 .host-rating-inputs {
@@ -884,6 +894,42 @@
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Whether a game on this map counts, said beside the map's name. Muted at
+   rest and accented when it is ranked, because "unranked" is the answer that
+   changes a host's mind and "ranked" is the ordinary case. */
+.host-map-ranked {
+  flex: none;
+  padding: 1px 7px;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-muted) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-muted) 30%, transparent);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.host-map-ranked.is-ranked {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
+}
+
+/* The version marker. A letter rather than an icon, sized and coloured like
+   the icons it sits in a row with so the row still reads as one row. */
+.host-map-version-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 /* Far from the map list on purpose: this deletes a folder off the disk, and

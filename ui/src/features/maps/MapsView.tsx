@@ -39,6 +39,7 @@ import {
 import { MapPreviewDialog } from "./MapPreviewZoom";
 import { GenerateMapModal, GeneratorProgress, stillRunning } from "./GenerateMapModal";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
+import { useGridPageSize } from "../../shared/useGridPageSize";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -50,6 +51,9 @@ type InstallFilter = "all" | "installed" | "available";
 type VaultPreset = "recommended" | "favorites" | "mine" | "rating" | "newest" | "played" | "all";
 
 const MAP_SIZES = [64, 128, 256, 512, 1024, 2048, 4096];
+
+/** `.installed-map-card`'s designed height, which is what a page is measured in. */
+const INSTALLED_MAP_CARD_PX = 76;
 
 const VAULT_SORTS: readonly VaultSort[] = ["rating", "newest", "played", "name", "size"];
 
@@ -644,7 +648,13 @@ function InstalledView({ busy }: { busy: boolean }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMap | null>(null);
-  const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
+  // A page of the installed list is as much of it as fits, unless the reader
+  // has picked a number in Settings. Nothing is fetched here -- the whole list
+  // is already on disk -- so the only thing a fixed count decided was how much
+  // empty panel there was under the pager.
+  const installedGrid = useRef<HTMLDivElement>(null);
+  const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MAP_CARD_PX, DEFAULT_VAULT_PAGE_SIZE);
+  const pageSize = browsing.vaultPageSize || fittedPageSize;
 
   const note = loadStatusNote(installedStatus, t("maps.view.scanning"), t("maps.view.scanFailed"));
   const vaultByFolder = useMemo(() => new Map(vault.map((map) => [map.folderName.toLocaleLowerCase(), map])), [vault]);
@@ -888,7 +898,7 @@ function InstalledView({ busy }: { busy: boolean }) {
             <span>{t("maps.view.installedCount", { count: filtered.length })}</span>
             <span>{t("maps.view.userMapsFolder")}</span>
           </div>
-          <div className="installed-map-grid">
+          <div className="installed-map-grid" ref={installedGrid}>
             {pageMaps.map((map) => {
               const metadata = vaultByFolder.get(map.folderName.toLocaleLowerCase());
               const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;

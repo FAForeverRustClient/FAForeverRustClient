@@ -280,6 +280,18 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
  */
 const BOARD_COLUMN_PX = [56, 96, 220, 130, 96, 110];
 
+/**
+ * What the Replay column needs, and the board's designed floor.
+ *
+ * `table-layout: fixed` honours the colgroup's widths only while they fit:
+ * once they add up to more than the table is allowed to be, the browser scales
+ * them all back down and a drag past that point does nothing at all. So the
+ * minimum follows the widths, and widening a column widens the table inside
+ * its own scroller.
+ */
+const REPLAY_COLUMN_PX = 90;
+const DESIGNED_BOARD_PX = 760;
+
 function MissionDetail({ mission }: { mission: CoopMission }) {
   const { t } = useTranslation();
   const columns = useColumnWidths("coopBoardColumns", BOARD_COLUMN_PX);
@@ -348,7 +360,15 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
       {coop.leaderboard.length > 0 && (
         <div className="coop-board-scroll">
-          <table className="coop-board">
+          <table
+            className="coop-board"
+            style={{
+              minWidth: `${Math.max(
+                DESIGNED_BOARD_PX,
+                columns.widths.reduce((total, width) => total + width, REPLAY_COLUMN_PX),
+              )}px`,
+            }}
+          >
             {/* `table-layout: fixed` plus a colgroup is how a real table takes
                 dragged widths: putting them on the cells would let the widest
                 row win instead. */}

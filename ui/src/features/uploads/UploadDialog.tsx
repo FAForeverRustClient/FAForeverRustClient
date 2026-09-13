@@ -16,7 +16,7 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
+import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import type { UploadKind, UploadsState } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -260,10 +260,18 @@ export function UploadDialog() {
             large
           />
         )}
+        {/* One row per fact, label and value on the same line with a hairline
+            between them: the same shape the replay card's facts have, and the
+            reason is the same. A bare two-column definition list left the
+            values in a ragged column of their own, and a reader checking a
+            folder path against a name had to find which line was which. */}
         <dl className="upload-facts">
           {facts.map((fact) => (
             <div key={fact.labelKey}>
-              <dt>{t(fact.labelKey as MessageKey)}</dt>
+              <dt>
+                <Icon name={fact.icon as IconName} size={13} />
+                {t(fact.labelKey as MessageKey)}
+              </dt>
               <dd className={fact.labelKey === "uploads.fact.folder" ? "upload-folder" : undefined}>
                 {fact.value}
               </dd>

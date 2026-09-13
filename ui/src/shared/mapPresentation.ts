@@ -370,12 +370,20 @@ export function mapThumbnailCandidates(
   // base-game one, and its art is then a picture of a different map entirely --
   // shown, in the Play tab, beside the base-game map's name.
   const canonicalFirst = preferCanonicalPreview || officialKey !== undefined;
+  // The caller's own URL leads only when it is art of the size being asked
+  // for. A replay listing carries `mapVersion.thumbnailUrlSmall`, and leading
+  // with that for a `large` request is why an enlarged replay preview was a
+  // 256 px picture blown up to nine hundred while the Play tab, which passes
+  // no URL of its own, showed the full-resolution one. It stays in the list,
+  // last, because for a map neither the preview service nor the vault knows it
+  // is the only art there is.
   return uniqueUrls([
-    customUrl,
+    ...(large ? [] : [customUrl]),
     ...(canonicalFirst ? canonicalPreviewUrls : []),
     ...coopPreviewUrls,
     ...vaultPreviewUrls,
     ...(!canonicalFirst ? canonicalPreviewUrls : []),
+    ...(large ? [customUrl] : []),
   ]);
 }
 

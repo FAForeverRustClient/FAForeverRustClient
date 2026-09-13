@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { formatNumber } from "../../i18n";
+import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapThumbnail } from "../../shared/MapThumbnail";
 import { formatDateTime } from "../../shared/dates";
@@ -22,15 +22,19 @@ interface Props {
 }
 
 /**
- * Win rate in whole percent, or `null` when nothing has been decided.
+ * Win rate in percent, or `null` when nothing has been decided.
  *
  * Draws are left out of the denominator rather than counted as half a loss,
  * which is what faftracker.xyz does and therefore what the number players
  * compare this against means.
+ *
+ * Unrounded: a whole percent hides the difference between this and the
+ * tracker's figure in one direction and invents one in the other. Over five
+ * thousand games, 52.47 and 52.5 are the same answer and 52 and 52.5 are not.
  */
 function winRate(wins: number, losses: number): number | null {
   const decided = wins + losses;
-  return decided > 0 ? Math.round((wins / decided) * 100) : null;
+  return decided > 0 ? (wins / decided) * 100 : null;
 }
 
 /** The record cell: wins, losses, and the draws the rate leaves out. */
@@ -167,7 +171,7 @@ export function PlayerMapStatistics({ playerId }: Props) {
         </div>
         <div className="player-maps-figure">
           <span className="player-maps-value">
-            {overall === null ? "–" : `${overall}%`}
+            {overall === null ? "–" : `${formatDecimal(overall)}%`}
           </span>
           <span className="player-maps-label">{t("playerCard.maps.winRate")}</span>
         </div>
@@ -251,7 +255,7 @@ export function PlayerMapStatistics({ playerId }: Props) {
                 </td>
                 <td>{formatNumber(entry.games)}</td>
                 <td>{record(entry.wins, entry.losses, entry.draws)}</td>
-                <td>{rate === null ? "–" : `${rate}%`}</td>
+                <td>{rate === null ? "–" : `${formatDecimal(rate)}%`}</td>
                 <td>{entry.lastPlayed ? formatDateTime(entry.lastPlayed) : "–"}</td>
               </tr>
             );

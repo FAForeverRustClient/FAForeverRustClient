@@ -328,6 +328,17 @@
   background: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
+/* Square, so the icon is the button rather than a word's worth of padding
+   around one. The same shape the Maps tab's uninstall has. */
+.mod-vault-uninstall.is-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  min-width: 0;
+  height: 30px;
+  padding: 0;
+}
+
 .mod-vault-uninstall:hover,
 .mod-vault-uninstall:focus-visible,
 .mod-vault-uninstall-confirm:hover,
