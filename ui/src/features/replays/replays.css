@@ -112,8 +112,10 @@
   white-space: nowrap;
 }
 
+/* The label against the leading edge of its own column, where its divider
+   stands. The figures under it stay right-aligned. */
 .replay-list-header-number {
-  text-align: right;
+  text-align: left;
 }
 
 .replay-list-body {

@@ -1260,11 +1260,11 @@ export function CustomGamesBrowser({
 
   return (
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
-      {viewMode === "list" && columns.header}
       <div
         className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}
         style={tileGridStyle}
       >
+        {viewMode === "list" && columns.header}
         {games.length === 0 ? (
           <EmptyState
             icon="search"
