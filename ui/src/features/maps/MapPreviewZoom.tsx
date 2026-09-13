@@ -12,6 +12,7 @@ import {
   NO_ZOOM,
   panBy,
   zoomByStep,
+  zoomByWheel,
   zoomTo,
   type ZoomTransform,
 } from "./mapZoom";
@@ -82,7 +83,10 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
   const viewportRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState<ZoomTransform>(NO_ZOOM);
   const [copied, setCopied] = useState<"idle" | "image" | "link" | "failed">("idle");
+  const [isDragging, setIsDragging] = useState(false);
+  const [isWheeling, setIsWheeling] = useState(false);
   const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const wheelTimeoutRef = useRef<number | null>(null);
 
   const size = () => {
     const box = viewportRef.current?.getBoundingClientRect();
@@ -112,11 +116,25 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
     if (!viewport) return;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
+      setIsWheeling(true);
+      if (wheelTimeoutRef.current !== null) {
+        window.clearTimeout(wheelTimeoutRef.current);
+      }
+      wheelTimeoutRef.current = window.setTimeout(() => {
+        setIsWheeling(false);
+        wheelTimeoutRef.current = null;
+      }, 150);
+
       setTransform((current) =>
-        zoomByStep(current, event.deltaY < 0 ? 1 : -1, pointIn(event), size()));
+        zoomByWheel(current, event.deltaY, pointIn(event), size()));
     };
     viewport.addEventListener("wheel", onWheel, { passive: false });
-    return () => viewport.removeEventListener("wheel", onWheel);
+    return () => {
+      viewport.removeEventListener("wheel", onWheel);
+      if (wheelTimeoutRef.current !== null) {
+        window.clearTimeout(wheelTimeoutRef.current);
+      }
+    };
   }, []);
 
   const zoomStep = (direction: 1 | -1) => {
@@ -152,17 +170,25 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
   };
 
   const zoomed = transform.scale > MIN_SCALE;
+  const viewportClass = [
+    "map-preview-viewport",
+    zoomed ? "is-zoomed" : "",
+    isDragging ? "is-dragging" : "",
+    isWheeling ? "is-wheeling" : "",
+  ].filter(Boolean).join(" ");
+
   return (
     <div className="map-preview-zoom">
       <div
         ref={viewportRef}
-        className={zoomed ? "map-preview-viewport is-zoomed" : "map-preview-viewport"}
+        className={viewportClass}
         role="img"
         aria-label={t("maps.preview.zoomAria", { name: label })}
         tabIndex={0}
         onPointerDown={(event) => {
-          if (!zoomed) return;
+          if (!zoomed || event.button !== 0) return;
           dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+          setIsDragging(true);
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
         onPointerMove={(event) => {
@@ -173,9 +199,15 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
           setTransform((current) => panBy(current, delta, size()));
         }}
         onPointerUp={(event) => {
-          if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+          if (dragRef.current?.pointerId === event.pointerId) {
+            dragRef.current = null;
+            setIsDragging(false);
+          }
         }}
-        onPointerCancel={() => { dragRef.current = null; }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+          setIsDragging(false);
+        }}
         onDoubleClick={(event) => {
           // In, unless the reader is already in. A double click at 130 % that
           // jumped straight back out read as the control ignoring the gesture,
@@ -224,28 +256,44 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
       </div>
       <div className="map-preview-controls">
         <div className="map-preview-zoom-buttons" role="group" aria-label={t("maps.preview.zoomGroup")}>
-          <Button
-            disabled={transform.scale <= MIN_SCALE}
-            onClick={() => zoomStep(-1)}
-            title={t("maps.preview.zoomOut")}
-            aria-label={t("maps.preview.zoomOut")}
-          >
-            <Icon name="chevronDown" size={14} />
-          </Button>
-          <span className="map-preview-zoom-level">{Math.round(transform.scale * 100)}%</span>
-          <Button
-            disabled={transform.scale >= MAX_SCALE}
-            onClick={() => zoomStep(1)}
-            title={t("maps.preview.zoomIn")}
-            aria-label={t("maps.preview.zoomIn")}
-          >
-            <Icon name="chevronUp" size={14} />
-          </Button>
+          <div className="map-preview-stepper">
+            <button
+              type="button"
+              className="map-preview-stepper-btn"
+              disabled={transform.scale <= MIN_SCALE}
+              onClick={() => zoomStep(-1)}
+              title={t("maps.preview.zoomOut")}
+              aria-label={t("maps.preview.zoomOut")}
+            >
+              <Icon name="minus" size={14} />
+            </button>
+            <button
+              type="button"
+              className="map-preview-stepper-value"
+              onClick={() => setTransform(NO_ZOOM)}
+              title={t("maps.preview.resetZoom")}
+              aria-label={t("maps.preview.resetZoom")}
+              disabled={!zoomed}
+            >
+              {Math.round(transform.scale * 100)}%
+            </button>
+            <button
+              type="button"
+              className="map-preview-stepper-btn"
+              disabled={transform.scale >= MAX_SCALE}
+              onClick={() => zoomStep(1)}
+              title={t("maps.preview.zoomIn")}
+              aria-label={t("maps.preview.zoomIn")}
+            >
+              <Icon name="plus" size={14} />
+            </button>
+          </div>
           <Button
             disabled={!zoomed}
             onClick={() => setTransform(NO_ZOOM)}
             title={t("maps.preview.resetZoom")}
           >
+            <Icon name="refresh" size={13} />
             {t("maps.preview.resetZoom")}
           </Button>
         </div>

@@ -28,6 +28,7 @@ export type IconName =
   | "users"
   | "lock"
   | "plus"
+  | "minus"
   | "refresh"
   | "list"
   | "grid"
@@ -87,6 +88,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
     lock: <><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
     plus: <path d="M12 5v14M5 12h14" />,
+    minus: <path d="M5 12h14" />,
     refresh: <><path d="M20 11a8 8 0 0 0-14.93-3M4 4v5h5" /><path d="M4 13a8 8 0 0 0 14.93 3M20 20v-5h-5" /></>,
     list: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4" cy="6" r="1" /><circle cx="4" cy="12" r="1" /><circle cx="4" cy="18" r="1" /></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
