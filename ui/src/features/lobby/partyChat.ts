@@ -53,3 +53,21 @@ export function partyChatChannel(
   if (!login || ILLEGAL_IN_CHANNEL_NAME.test(login)) return null;
   return `#${login}${PARTY_CHANNEL_SUFFIX}`;
 }
+
+/**
+ * The party room's name as a person reads it.
+ *
+ * IRC forbids a space in a channel name, so the room both reference clients
+ * use is `#<owner>'sParty` and this client joins exactly that. What it shows
+ * need not be the same string: "#Seraphim-Noob'sParty" is two words printed as
+ * one, which is how it was reported. The wire name stays the tooltip and the
+ * thing every command is sent with; only the label gains the space.
+ *
+ * Anything that is not a party room is returned untouched, so this is safe to
+ * put in front of every channel name the chat tab draws.
+ */
+export function partyChannelLabel(channel: string): string {
+  return channel.endsWith(PARTY_CHANNEL_SUFFIX)
+    ? `${channel.slice(0, -PARTY_CHANNEL_SUFFIX.length)}'s Party`
+    : channel;
+}

@@ -15,7 +15,7 @@
 // and this one holds a button with a menu behind it, which is not something a
 // button may contain.
 
-import { Fragment, memo, useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import type { Game, LiveReplayTracking, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
@@ -225,16 +225,6 @@ const LiveReplayCard = memo(function LiveReplayCard({
             value={t("replays.live.simModCount", { count: simMods.length })}
           />
         </div>
-        {/* The one thing to do with a running game, at the bottom of the
-            column that describes it. */}
-        <div className="live-replay-card-watch">
-          <LiveWatchButton
-            busy={busy}
-            game={game}
-            tracking={tracking}
-            waitSeconds={waitSeconds}
-          />
-        </div>
       </div>
       <div className="replay-card-right">
         <div className="replay-card-header">
@@ -246,21 +236,17 @@ const LiveReplayCard = memo(function LiveReplayCard({
           </span>
         </div>
         <ReplayCardRoster teams={teams} interactive />
-        <div className="replay-card-footer muted">
-          {t("lobby.details.host", { name: game.host })}
-          {simMods.length > 0 && (
-            <Fragment>
-              {" · "}
-              <span title={simMods.join(", ")}>
-                {simMods.length === 1
-                  ? simMods[0]
-                  : t("replays.live.moreSimMods", {
-                    first: simMods[0],
-                    count: simMods.length - 1,
-                  })}
-              </span>
-            </Fragment>
-          )}
+        {/* Who hosts it, and the one thing to do with it. The featured mod and
+            the sim mods used to close this line and are in the fact grid on
+            the left, where the rest of what the game *is* lives. */}
+        <div className="replay-card-footer live-replay-card-footer">
+          <span className="muted">{t("lobby.details.host", { name: game.host })}</span>
+          <LiveWatchButton
+            busy={busy}
+            game={game}
+            tracking={tracking}
+            waitSeconds={waitSeconds}
+          />
         </div>
       </div>
     </article>

@@ -19,6 +19,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import { EmojiPicker } from "./EmojiPicker";
+import { partyChannelLabel } from "../lobby/partyChat";
 
 /** How many sent lines to keep for Up/Down recall. */
 const MAX_HISTORY = 50;
@@ -230,7 +231,9 @@ export function Composer({
         maxLength={500}
         value={draft}
         placeholder={
-          disabled ? t("chat.composer.disabled") : t("chat.composer.placeholder", { channel })
+          disabled
+            ? t("chat.composer.disabled")
+            : t("chat.composer.placeholder", { channel: partyChannelLabel(channel) })
         }
         aria-label={t("chat.composer.aria", { channel })}
         disabled={disabled}

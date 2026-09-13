@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatChannel } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
+import { partyChannelLabel } from "../lobby/partyChat";
 import { Icon } from "../../design-system/Icon";
 import "../../design-system/section-tabs.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -136,7 +137,12 @@ export function ChannelTabs({
               }}
             >
               <Icon name={isPrivateChannel(channel.name) ? "users" : "chat"} size={15} />
-              <span className="section-tab-label chat-tab-name">{channel.name}</span>
+              {/* The label reads as words; the tooltip above is the name every
+                  command is sent with. They differ for one room only: IRC
+                  forbids the space in "#Somebody's Party". */}
+              <span className="section-tab-label chat-tab-name">
+                {partyChannelLabel(channel.name)}
+              </span>
               {channel.unread > 0 && (
                 <span
                   className={`section-tab-count${channel.unreadMentions > 0 ? " is-mention" : ""}`}

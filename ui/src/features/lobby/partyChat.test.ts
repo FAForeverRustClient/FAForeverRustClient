@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PartyState, Player, PlayerProfile, SocialState } from "../../ipc/bindings";
-import { partyChatChannel } from "./partyChat";
+import { partyChannelLabel, partyChatChannel } from "./partyChat";
 
 const party = (ownerId: number | null, members: PartyState["members"]): PartyState => ({
   ownerId,
@@ -69,5 +69,16 @@ describe("partyChatChannel", () => {
       directory(online(7, "Leader"), online(4, "Wingmate")),
       null,
     )).toBeNull();
+  });
+});
+
+describe("partyChannelLabel", () => {
+  it("puts the space back that IRC does not allow", () => {
+    expect(partyChannelLabel("#Seraphim-Noob'sParty")).toBe("#Seraphim-Noob's Party");
+  });
+
+  it("leaves an ordinary channel alone", () => {
+    expect(partyChannelLabel("#aeolus")).toBe("#aeolus");
+    expect(partyChannelLabel("Dog")).toBe("Dog");
   });
 });

@@ -172,7 +172,10 @@ export function ReplayCardRoster({
                       }}
                     >
                       <ReplayPlayerMarker player={player} observer={observer} size={17} />
-                      <PlayerName name={player.name} />
+                      {/* The class the hover underline hangs off, which is how
+                          a name says it can be clicked before it is. Same one
+                          the detail roster's names carry. */}
+                      <PlayerName name={player.name} className="replay-player-name-text" />
                     </button>
                   ) : (
                     <span className="replay-player-identity">
