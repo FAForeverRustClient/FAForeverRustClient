@@ -1100,7 +1100,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.close": "Закрыть",
 
   "settings.updates.includePreReleases": "Включать предварительные версии",
-  "settings.updates.includePreReleasesHint": "Предлагает также кандидаты в выпуск и бета-сборки. Они первыми получают исправления и первыми ломаются.",
+  "settings.updates.includePreReleasesHint": "Предлагает также кандидаты в выпуск и бета-сборки. Они первыми получают исправления и первыми ломаются, а ту, которую клиент может установить, установить придётся.",
   "settings.updates.updateStatus": "Состояние обновлений",
   "settings.updates.updateStatusHint": "Проверка ничего не устанавливает: доступное обновление предлагается в баннере, который можно закрыть.",
   "settings.updates.checking": "Проверка…",
@@ -1294,6 +1294,13 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.live.autoWatchSet": "Автопросмотр назначен",
   "replays.live.delayHint": "Сервер реплеев открывает трансляции через пять минут.",
   "replays.live.readyIn": "Готово через {time}",
+  "replays.live.runningFor": "Идёт уже",
+  "replays.live.simModCount": {
+    one: "{count} мод симуляции",
+    few: "{count} мода симуляции",
+    many: "{count} модов симуляции",
+    other: "{count} модов симуляции",
+  },
   "replays.live.whenReady": "Когда реплей будет готов",
   "replays.live.notifyMe": "Уведомить меня",
   "replays.live.watchAutomatically": "Смотреть автоматически",

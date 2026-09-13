@@ -6,6 +6,7 @@ import { mapPresentation } from "../../shared/mapPresentation";
 import { usePlayerMenu } from "../chat/usePlayerMenu";
 import { LiveReplayControls } from "./LiveReplayControls";
 import { LiveReplayCards } from "./LiveReplayCards";
+import { LiveReplayDetail } from "./LiveReplayDetail";
 import { LiveReplayTable } from "./LiveReplayTable";
 import type { ReplayViewMode } from "./ReplayViewSwitch";
 import {
@@ -14,6 +15,7 @@ import {
   LIVE_REPLAY_BATCH_SIZE,
   liveFeaturedModOptions,
   liveSortValue,
+  replayDelayRemaining,
   type IndexedLiveGame,
   type LiveFilters,
   type LiveSortKey,
@@ -42,6 +44,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const filtersDirty = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  // The game whose detail panel is open. The table expands a row in place, as
+  // it always has; the grid opens the panel, the way the vault's grid does.
+  const [openId, setOpenId] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<LiveSortKey>("started");
   const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
   const [visibleCount, setVisibleCount] = useState(LIVE_REPLAY_BATCH_SIZE);
@@ -158,6 +163,11 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     [filteredGames, mapVault, missions, visibleCount],
   );
 
+  // Looked up rather than held: the live list is replaced wholesale on every
+  // snapshot, and a copy would keep showing the lineup the game had when it
+  // was opened. A game that ends while its panel is open closes it.
+  const openGame = openId === null ? null : liveGames.find((game) => game.id === openId) ?? null;
+
   const activeFilterCount = [
     filters.search,
     filters.gameType,
@@ -234,6 +244,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           previewsLoading={mapVaultStatus.type === "loading"}
           batchSize={LIVE_REPLAY_BATCH_SIZE}
           tracking={tracking}
+          onOpen={setOpenId}
           onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
         />
       ) : (
@@ -253,6 +264,19 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           onToggle={toggleExpanded}
           onPlayerMenu={openPlayerMenu}
           onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
+        />
+      )}
+      {/* The panel a card opens. Nothing but the grid opens it, because the
+          table expands its own row instead; both are the behaviour the reader
+          already knows from the tab they came from. */}
+      {openGame && (
+        <LiveReplayDetail
+          game={openGame}
+          busy={busy}
+          tracking={tracking}
+          waitSeconds={replayDelayRemaining(openGame, Date.now())}
+          player={player}
+          onClose={() => setOpenId(null)}
         />
       )}
       {playerMenu}
