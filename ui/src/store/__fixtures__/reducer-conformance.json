@@ -384,6 +384,7 @@
       "browseQuery": {
         "search": "",
         "exactName": false,
+        "searchDescriptions": false,
         "author": "",
         "uploaderId": null,
         "modType": "",
@@ -23387,6 +23388,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23423,6 +23425,7 @@
                 "query": {
                   "search": "",
                   "exactName": false,
+                  "searchDescriptions": false,
                   "author": "",
                   "uploaderId": null,
                   "modType": "ui",
@@ -23459,6 +23462,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23511,6 +23515,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23563,6 +23568,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23618,6 +23624,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23690,6 +23697,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23749,6 +23757,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null

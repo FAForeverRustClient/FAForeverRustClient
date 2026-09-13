@@ -31,6 +31,7 @@ export const EMPTY_MAP_QUERY: MapVaultQuery = {
 export const EMPTY_MOD_QUERY: ModVaultQuery = {
   search: "",
   exactName: false,
+  searchDescriptions: false,
   author: "",
   uploaderId: null,
   modType: "",

@@ -2491,8 +2491,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.updates.newerAvailable": "доступна {version}",
   "settings.updates.aNewerVersion": "более новая версия",
   "settings.updates.lastChecked": "проверено {time}",
-  "mods.view.exactName": "Точное название мода",
-  "mods.view.exactNameHint": "Если включено, строка поиска должна совпадать с названием целиком. Если выключено, каждое слово из неё должно встретиться где-то в названии, описании или UID, в любом порядке.",
   "mods.vault.inUse": "Используется",
   "mods.vault.inUseHint": "Установлен и включён, так что следующая игра пойдёт с ним.",
   "mods.vault.copyDescription": "Скопировать описание",

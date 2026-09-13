@@ -151,9 +151,9 @@ impl Default for MapVaultQuery {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ModVaultQuery {
-    /// Free text. By default every word in it has to appear somewhere in the
-    /// mod's name, its description or its uid; [`Self::exact_name`] narrows
-    /// that to the whole name and nothing else.
+    /// Free text. By default every word in it has to appear in the mod's name;
+    /// [`Self::search_descriptions`] widens that to the description and the
+    /// uid, and [`Self::exact_name`] narrows it to the whole name.
     pub search: String,
     /// Match the whole display name rather than looking for the words in it.
     ///
@@ -162,6 +162,15 @@ pub struct ModVaultQuery {
     /// replay search starts from a login somebody knows, while a mod is looked
     /// for by half a name and a word describing what it does.
     pub exact_name: bool,
+    /// Look in the description and the uid as well as the name.
+    ///
+    /// Off by default, which is the thread's complaint: typing "reui" returned
+    /// every mod whose description happens to mention ReUI, and the mods
+    /// actually called ReUI were lost among them. Searching prose is worth
+    /// having and worth asking for, so it is a control rather than the floor.
+    /// Ignored while [`Self::exact_name`] is set, which is narrower than
+    /// either.
+    pub search_descriptions: bool,
     /// Matched against the mod's author, which on this endpoint is a plain
     /// string field rather than a related player (`MOD_PROPERTY_MAPPING`).
     pub author: String,
@@ -194,6 +203,7 @@ impl Default for ModVaultQuery {
         Self {
             search: String::new(),
             exact_name: false,
+            search_descriptions: false,
             author: String::new(),
             uploader_id: None,
             mod_type: String::new(),
@@ -289,21 +299,21 @@ impl ModVaultQuery {
 
     /// What the search box narrows on.
     ///
-    /// A single glob over `displayName` was all this ever sent, while the box
-    /// itself offered "name, description, or UID": a mod whose name you half
-    /// remember and whose purpose you can describe was unfindable, and typing
-    /// the words in the wrong order found nothing at all.
+    /// Each word becomes its own clause and the words are ANDed, which is what
+    /// makes a second word narrow a search rather than widen it. A single glob
+    /// over the whole box was what this sent once, and typing the words in the
+    /// wrong order then found nothing at all.
     ///
-    /// So each word becomes its own clause, and inside that clause it may
-    /// match the name, the description or the uid. Words are ANDed, which is
-    /// what makes a second word narrow a search rather than widen it.
-    /// `latestVersion.description` and `latestVersion.uid` are both in the
-    /// Java client's `MOD_PROPERTY_MAPPING`, so both are known-filterable: a
-    /// property the API does not recognise fails the whole request.
+    /// Where a word may match is [`Self::search_descriptions`]: the name alone
+    /// by default, the name or the description or the uid once the search is
+    /// widened. `latestVersion.description` and `latestVersion.uid` are both
+    /// in the Java client's `MOD_PROPERTY_MAPPING`, so both are
+    /// known-filterable: a property the API does not recognise fails the whole
+    /// request.
     ///
-    /// Parenthesised because RSQL binds `;` tighter than `,`. Ungrouped,
-    /// `hidden=='false';name=="*x*",description=="*x*"` reads as
-    /// `(hidden AND name) OR description`, and withdrawn versions come back
+    /// The widened form is parenthesised because RSQL binds `;` tighter than
+    /// `,`. Ungrouped, `hidden=='false';name=="*x*",description=="*x*"` reads
+    /// as `(hidden AND name) OR description`, and withdrawn versions come back
     /// through the second half.
     fn search_clauses(&self) -> Vec<String> {
         if self.search.trim().is_empty() {
@@ -324,9 +334,13 @@ impl ModVaultQuery {
             .filter(|word| !escape(word).is_empty())
             .map(|word| {
                 let pattern = glob(word);
-                format!(
-                    r#"(displayName=="{pattern}",latestVersion.description=="{pattern}",latestVersion.uid=="{pattern}")"#
-                )
+                if self.search_descriptions {
+                    format!(
+                        r#"(displayName=="{pattern}",latestVersion.description=="{pattern}",latestVersion.uid=="{pattern}")"#
+                    )
+                } else {
+                    format!(r#"displayName=="{pattern}""#)
+                }
             })
             .collect()
     }
@@ -570,11 +584,24 @@ mod tests {
     }
 
     #[test]
-    fn a_mod_search_looks_in_the_description_and_the_uid_too() {
-        // The box has always said "name, description, or UID" and the filter
-        // has always been a single glob over the name.
+    fn a_mod_search_is_the_name_and_nothing_else_until_it_is_widened() {
+        // The reported case: "reui" returned every mod whose description
+        // mentions ReUI, and the mods actually called ReUI were lost in them.
         let query = ModVaultQuery {
             search: "sorian".into(),
+            ..ModVaultQuery::default()
+        };
+        let filter = query.build_filter().unwrap();
+        assert!(filter.contains(r#"displayName=="*sorian*""#), "{filter}");
+        assert!(!filter.contains("latestVersion.description"), "{filter}");
+        assert!(!filter.contains("latestVersion.uid"), "{filter}");
+    }
+
+    #[test]
+    fn a_widened_mod_search_looks_in_the_description_and_the_uid_too() {
+        let query = ModVaultQuery {
+            search: "sorian".into(),
+            search_descriptions: true,
             ..ModVaultQuery::default()
         };
         let filter = query.build_filter().unwrap();
@@ -596,6 +623,7 @@ mod tests {
         // and the groups are ANDed: a second word still narrows.
         let query = ModVaultQuery {
             search: "  advanced   strategic  ".into(),
+            search_descriptions: true,
             ..ModVaultQuery::default()
         };
         let filter = query.build_filter().unwrap();
@@ -615,6 +643,7 @@ mod tests {
         // back through the second half.
         let query = ModVaultQuery {
             search: "sorian".into(),
+            search_descriptions: true,
             ..ModVaultQuery::default()
         };
         let filter = query.build_filter().unwrap();

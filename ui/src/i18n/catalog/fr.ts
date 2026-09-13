@@ -2337,8 +2337,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.updates.newerAvailable": "{version} est disponible",
   "settings.updates.aNewerVersion": "une version plus récente",
   "settings.updates.lastChecked": "vérifié {time}",
-  "mods.view.exactName": "Nom exact du mod",
-  "mods.view.exactNameHint": "Activé, la recherche doit être le nom entier. Désactivé, chaque mot doit apparaître quelque part dans le nom, la description ou l'UID, dans n'importe quel ordre.",
   "mods.vault.inUse": "Utilisé",
   "mods.vault.inUseHint": "Installé et activé : votre prochaine partie l'utilisera.",
   "mods.vault.copyDescription": "Copier la description",

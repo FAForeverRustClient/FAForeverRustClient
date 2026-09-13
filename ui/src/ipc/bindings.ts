@@ -4118,9 +4118,9 @@ export type ModType = "ui" | "sim";
 /**  A page of the mod vault. */
 export type ModVaultQuery = {
 	/**
-	 *  Free text. By default every word in it has to appear somewhere in the
-	 *  mod's name, its description or its uid; [`Self::exact_name`] narrows
-	 *  that to the whole name and nothing else.
+	 *  Free text. By default every word in it has to appear in the mod's name;
+	 *  [`Self::search_descriptions`] widens that to the description and the
+	 *  uid, and [`Self::exact_name`] narrows it to the whole name.
 	 */
 	search: string,
 	/**
@@ -4132,6 +4132,17 @@ export type ModVaultQuery = {
 	 *  for by half a name and a word describing what it does.
 	 */
 	exactName: boolean,
+	/**
+	 *  Look in the description and the uid as well as the name.
+	 *
+	 *  Off by default, which is the thread's complaint: typing "reui" returned
+	 *  every mod whose description happens to mention ReUI, and the mods
+	 *  actually called ReUI were lost among them. Searching prose is worth
+	 *  having and worth asking for, so it is a control rather than the floor.
+	 *  Ignored while [`Self::exact_name`] is set, which is narrower than
+	 *  either.
+	 */
+	searchDescriptions: boolean,
 	/**
 	 *  Matched against the mod's author, which on this endpoint is a plain
 	 *  string field rather than a related player (`MOD_PROPERTY_MAPPING`).
