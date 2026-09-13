@@ -1315,8 +1315,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "ID реплея",
   "replays.live.simMods": "SIM моды",
   "replays.live.none": "Нет",
-  "replays.live.linkCopied": "Ссылка скопирована",
-  "replays.live.copyLink": "Копировать ссылку на трансляцию",
   "replays.live.column.map": "Карта",
 
   "replays.filters.duration": "Длительность",

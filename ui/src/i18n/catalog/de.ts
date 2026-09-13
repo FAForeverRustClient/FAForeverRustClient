@@ -1955,9 +1955,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "Replay-ID",
   "replays.live.simMods": "SIM-Mods",
   "replays.live.none": "Keine",
-  "replays.live.linkCopied": "Link kopiert",
-  "replays.live.copyLink": "Live-Link kopieren",
-  "replays.live.copyLinkHint": "Kopiert einen Link, der dieses Spiel in einem anderen FAF-Client öffnet.",
   "replays.live.ratingEnforced": "erzwungen",
   "replays.live.column.map": "Karte",
 

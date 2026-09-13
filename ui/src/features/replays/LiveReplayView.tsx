@@ -37,7 +37,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const mapVaultStatus = useAppStore((s) => s.state.maps.vaultStatus);
   const friends = useAppStore((s) => s.state.social.friends);
   const browsing = useAppStore((s) => s.state.settings.browsing);
-  const player = useAppStore((s) => s.state.auth.player?.name ?? "spectator");
   const tracking = useAppStore((s) => s.state.replays.liveTracking);
   // What the vault knows about the games on screen. The lobby names who is in
   // a running game; only the vault's row, written when the match launched,
@@ -284,7 +283,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           sortDirection={sortDirection}
           previewsLoading={mapVaultStatus.type === "loading"}
           batchSize={LIVE_REPLAY_BATCH_SIZE}
-          player={player}
           tracking={tracking}
           onSort={changeSort}
           onToggle={toggleExpanded}
@@ -301,7 +299,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           busy={busy}
           tracking={tracking}
           waitSeconds={replayDelayRemaining(openGame, Date.now())}
-          player={player}
           onClose={() => setOpenId(null)}
         />
       )}

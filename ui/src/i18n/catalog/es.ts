@@ -1287,8 +1287,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "ID de la repetición",
   "replays.live.simMods": "Mods de simulación",
   "replays.live.none": "Ninguno",
-  "replays.live.linkCopied": "Enlace copiado",
-  "replays.live.copyLink": "Copiar el enlace de la retransmisión",
   "replays.live.column.map": "Mapa",
 
   "replays.filters.duration": "Duración",

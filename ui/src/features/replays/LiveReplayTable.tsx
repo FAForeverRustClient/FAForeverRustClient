@@ -66,7 +66,6 @@ interface Props {
   sortDirection: SortDirection;
   previewsLoading: boolean;
   batchSize: number;
-  player: string;
   tracking: LiveReplayTracking | null;
   onSort: (key: LiveSortKey) => void;
   onToggle: (id: number) => void;
@@ -171,7 +170,6 @@ export function LiveReplayTable(props: Props) {
               onToggle={props.onToggle}
               onPlayerMenu={props.onPlayerMenu}
               presentation={presentation}
-              player={props.player}
               tracking={props.tracking}
             />
           ))}
