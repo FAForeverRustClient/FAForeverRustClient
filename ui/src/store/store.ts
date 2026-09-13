@@ -576,7 +576,7 @@ const INITIAL: AppState = {
       liveReplayColumns: [],
       coopBoardColumns: [],
       modPresets: [],
-      leaderboardRatingColumns: ["rating", "games", "wins", "winRate", "updated"],
+      leaderboardRatingColumns: ["rating", "games", "wins", "updated"],
       replayVaultPlayer: "",
       legacyStorageMigrated: false,
     },

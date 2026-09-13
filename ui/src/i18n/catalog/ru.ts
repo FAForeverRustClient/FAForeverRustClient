@@ -256,7 +256,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.deviation": "Отклонение",
   "leaderboard.column.games": "Игры",
   "leaderboard.column.wins": "Победы",
-  "leaderboard.column.winRate": "Доля побед",
   "leaderboard.column.updated": "Обновлено",
   "leaderboard.table.empty": "Ни один игрок не соответствует текущим фильтрам.",
   "leaderboard.ratings.closeColumnsMenu": "Закрыть меню столбцов",

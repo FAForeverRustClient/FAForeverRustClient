@@ -250,7 +250,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.deviation": "Odchylenie",
   "leaderboard.column.games": "Gry",
   "leaderboard.column.wins": "Wygrane",
-  "leaderboard.column.winRate": "Odsetek wygranych",
   "leaderboard.column.updated": "Zaktualizowano",
   "leaderboard.table.empty": "Żaden gracz nie pasuje do bieżących filtrów.",
   "leaderboard.ratings.closeColumnsMenu": "Zamknij menu kolumn",

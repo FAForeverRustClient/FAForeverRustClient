@@ -2243,7 +2243,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.deviation": "Abweichung",
   "leaderboard.column.games": "Partien",
   "leaderboard.column.wins": "Siege",
-  "leaderboard.column.winRate": "Siegquote",
   "leaderboard.column.updated": "Aktualisiert",
   "leaderboard.table.empty": "Keine Spieler passen zu den aktuellen Filtern.",
   "leaderboard.ratings.visibleColumns": "Sichtbare Spalten",

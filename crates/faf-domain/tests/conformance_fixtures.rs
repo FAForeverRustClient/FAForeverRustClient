@@ -5291,7 +5291,6 @@ fn cases() -> Vec<Case> {
                             "rating".into(),
                             "games".into(),
                             "wins".into(),
-                            "winRate".into(),
                             "updated".into(),
                         ],
                         replay_vault_player: String::new(),

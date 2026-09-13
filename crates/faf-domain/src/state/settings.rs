@@ -1909,17 +1909,17 @@ pub struct BrowsingPreferences {
     pub legacy_storage_migrated: bool,
 }
 
-pub const DEFAULT_LEADERBOARD_RATING_COLUMNS: [&str; 5] =
-    ["rating", "games", "wins", "winRate", "updated"];
-pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 7] = [
-    "rating",
-    "mean",
-    "deviation",
-    "games",
-    "wins",
-    "winRate",
-    "updated",
-];
+pub const DEFAULT_LEADERBOARD_RATING_COLUMNS: [&str; 4] = ["rating", "games", "wins", "updated"];
+/// Every column the table can draw, in the order it draws them.
+///
+/// Win rate used to be here, offered by default. The number the API answers
+/// with is wrong, and the only way to a right one is a request per player,
+/// which for a page of a hundred is not a request anybody would wait for. A
+/// column that cannot be correct is worse than no column, so the one that was
+/// there is gone: a stored selection naming it is dropped by the filter below,
+/// the way any other unknown key is.
+pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 6] =
+    ["rating", "mean", "deviation", "games", "wins", "updated"];
 
 impl Default for BrowsingPreferences {
     fn default() -> Self {

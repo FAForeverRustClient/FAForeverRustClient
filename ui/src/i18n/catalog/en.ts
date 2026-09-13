@@ -2512,7 +2512,6 @@ export const en = {
   "leaderboard.column.deviation": "Deviation",
   "leaderboard.column.games": "Games",
   "leaderboard.column.wins": "Wins",
-  "leaderboard.column.winRate": "Win rate",
   "leaderboard.column.updated": "Updated",
   "leaderboard.table.empty": "No players match the current filters.",
   "leaderboard.ratings.visibleColumns": "Visible columns",

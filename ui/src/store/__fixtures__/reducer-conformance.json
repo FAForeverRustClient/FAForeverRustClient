@@ -857,7 +857,6 @@
           "rating",
           "games",
           "wins",
-          "winRate",
           "updated"
         ],
         "replayVaultPlayer": "",
@@ -2040,7 +2039,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29105,7 +29103,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29359,7 +29356,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29622,7 +29618,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29880,7 +29875,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30138,7 +30132,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30406,7 +30399,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30680,7 +30672,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30966,7 +30957,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31243,7 +31233,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31522,7 +31511,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31841,7 +31829,6 @@
                     "rating",
                     "games",
                     "wins",
-                    "winRate",
                     "updated"
                   ],
                   "replayVaultPlayer": "",
@@ -31916,7 +31903,6 @@
                 "rating",
                 "games",
                 "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": true,
