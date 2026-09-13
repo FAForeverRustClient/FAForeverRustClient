@@ -100,6 +100,28 @@ describe("mapPresentation", () => {
     expect(candidates).not.toContain(staleVaultMap.thumbnailUrlLarge);
   });
 
+  it("answers for one map when the vault holds a record over a base-game folder", () => {
+    // A vault record whose folder collides with a base-game map, describing
+    // something else entirely. The Play tab used to take the name from the
+    // built-in catalogue and the size and the picture from this, which is how
+    // a lobby on The Ditch came to be announced as 20 x 10 km with a picture
+    // of another map.
+    const colliding = {
+      folderName: "scmp_040",
+      displayName: "Somebody's Remake",
+      width: 1024,
+      height: 512,
+      thumbnailUrl: "https://example.invalid/remake-small.png",
+      thumbnailUrlLarge: "https://example.invalid/remake-large.png",
+    } as VaultMap;
+
+    expect(mapPresentation([colliding], "scmp_040").displayName).toBe("The Ditch");
+    expect(mapSize([colliding], "scmp_040")?.compact).toBe("10 km");
+    expect(mapThumbnailCandidates([colliding], "scmp_040")[0]).toBe(
+      "https://content.faforever.com/maps/previews/small/scmp_040.png",
+    );
+  });
+
   it("formats generated map presentation using Neroxis Map Generator as displayName", () => {
     const presentation = mapPresentation(
       [],

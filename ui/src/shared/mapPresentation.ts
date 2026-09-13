@@ -101,6 +101,24 @@ const OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME = new Map(
   Object.entries(OFFICIAL_MAPS).map(([key, displayName]) => [displayName.toLocaleLowerCase(), key]),
 );
 
+/**
+ * The base-game map a name refers to, or `undefined`.
+ *
+ * Every question about a map -- what it is called, how big it is, what it
+ * looks like -- goes through this, and they must all get the same answer. They
+ * did not: the display name preferred this catalogue, the size preferred the
+ * vault, and the picture preferred the vault's art. A lobby on a base-game map
+ * the vault also holds a record for therefore showed the catalogue's name
+ * beside the vault record's size and the vault record's picture, which is one
+ * map's name over another map's everything else.
+ */
+function officialMapFor(mapName: string): OfficialMapInfo | undefined {
+  const byFolder = OFFICIAL_MAPS_BY_FOLDER.get(baseMapName(mapName));
+  if (byFolder) return byFolder;
+  const key = OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
+  return key ? OFFICIAL_MAPS_BY_FOLDER.get(key) : undefined;
+}
+
 type VaultMapLookup = {
   byBaseName: Map<string, VaultMap>;
   byDisplayName: Map<string, VaultMap>;
@@ -320,9 +338,7 @@ export function mapThumbnailCandidates(
   const vaultMap = findVaultMap(vault, mapName);
   const coopMission = findCoopMission(mapName, missions);
   const baseName = baseMapName(mapName);
-  const officialKey = OFFICIAL_MAPS[baseName]
-    ? baseName
-    : OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
+  const officialKey = officialMapFor(mapName)?.folderName;
   const size = large ? "large" : "small";
   const canonicalPreviewUrls = [
     officialKey
@@ -349,12 +365,17 @@ export function mapThumbnailCandidates(
       ? [vaultMap?.thumbnailUrl]
       : [vaultMap?.thumbnailUrl, vaultMap?.thumbnailUrlLarge];
 
+  // A base-game map's own preview outranks any vault art, whatever the caller
+  // asked for. The vault can hold a record whose folder collides with a
+  // base-game one, and its art is then a picture of a different map entirely --
+  // shown, in the Play tab, beside the base-game map's name.
+  const canonicalFirst = preferCanonicalPreview || officialKey !== undefined;
   return uniqueUrls([
     customUrl,
-    ...(preferCanonicalPreview ? canonicalPreviewUrls : []),
+    ...(canonicalFirst ? canonicalPreviewUrls : []),
     ...coopPreviewUrls,
     ...vaultPreviewUrls,
-    ...(!preferCanonicalPreview ? canonicalPreviewUrls : []),
+    ...(!canonicalFirst ? canonicalPreviewUrls : []),
   ]);
 }
 
@@ -397,13 +418,7 @@ export function inferCoopFaction(mapName: string): CoopFaction {
 export function mapPresentation(vault: VaultMap[], mapName: string, missions?: CoopMission[]): MapPresentation {
   const vaultMap = findVaultMap(vault, mapName);
   const coopMission = findCoopMission(mapName, missions);
-  const baseName = baseMapName(mapName);
-  const officialEntry = OFFICIAL_MAPS[baseName]
-    ? ([baseName, OFFICIAL_MAPS[baseName]] as const)
-    : (() => {
-        const key = OFFICIAL_MAP_KEYS_BY_DISPLAY_NAME.get(mapName.trim().toLocaleLowerCase());
-        return key ? ([key, OFFICIAL_MAPS[key]] as const) : undefined;
-      })();
+  const officialEntry = officialMapFor(mapName);
   const thumbnailUrls = mapThumbnailCandidates(vault, mapName, false, missions);
 
   if (isGeneratedMap(mapName)) {
@@ -442,7 +457,7 @@ export function mapPresentation(vault: VaultMap[], mapName: string, missions?: C
 
   if (officialEntry) {
     return {
-      displayName: officialEntry[1],
+      displayName: officialEntry.displayName,
       thumbnailUrl: thumbnailUrls[0] ?? "",
       thumbnailUrls,
     };
@@ -511,11 +526,11 @@ export function mapSizeOf(width: number, height: number): MapSize | null {
 /**
  * How big the map a game is on is, from whichever source knows it.
  *
- * The vault first, because it is the authority for anything uploaded. Then the
- * built-in table for the base-game maps, which are not vault records and so
- * never appear in a vault lookup. Then, for a generated map, the name itself:
- * a Neroxis name carries its size, and `decodedSize` is that number once the
- * map generator slice has decoded the name.
+ * A generated map's own name first, since it encodes the size and
+ * `decodedSize` is that number once the map generator slice has read it. Then
+ * the built-in catalogue of base-game maps, which is also where the name comes
+ * from, so the two describe the same map. Then the vault, the authority for
+ * everything anybody uploaded.
  *
  * `null` where none of the three knows, which is honest: a badge saying
  * nothing is better than one guessing 10 km because that is the common case.
@@ -528,11 +543,11 @@ export function mapSize(
   if (isGeneratedMap(mapName)) {
     return decodedSize ? mapSizeOf(decodedSize, decodedSize) : null;
   }
+  // The catalogue first, because the name already comes from it: a size read
+  // off a colliding vault record described a different map from the one named
+  // directly above it.
+  const official = officialMapFor(mapName);
+  if (official) return mapSizeOf(official.width, official.height);
   const vaultMap = findVaultMap(vault, mapName);
-  if (vaultMap) {
-    const size = mapSizeOf(vaultMap.width, vaultMap.height);
-    if (size) return size;
-  }
-  const official = OFFICIAL_MAPS_BY_FOLDER.get(baseMapName(mapName));
-  return official ? mapSizeOf(official.width, official.height) : null;
+  return vaultMap ? mapSizeOf(vaultMap.width, vaultMap.height) : null;
 }
