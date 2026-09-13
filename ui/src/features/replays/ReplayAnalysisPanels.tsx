@@ -51,24 +51,33 @@ export function ReplayPlayersPanel({ analysis }: { analysis: ReplayAnalysis }) {
           <tbody>
             {players.map((player) => (
               <tr key={`${player.source}-${player.name}`}>
-                <td className="replay-activity-player">
-                  {/* The colour this player was on the map, which is the one
-                      thing a replay carries that nothing else in this client
-                      shows. */}
-                  <span
-                    className="replay-activity-swatch"
-                    style={{ background: player.color }}
-                    aria-hidden
-                  />
-                  {player.faction > 0 && player.faction < 5 ? (
-                    <FactionIcon className="replay-player-faction" faction={player.faction} size={14} />
-                  ) : (
-                    <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
-                  )}
-                  <PlayerName name={player.name} />
-                  {player.country && (
-                    <span className="replay-activity-country muted">{player.country.toUpperCase()}</span>
-                  )}
+                {/* The swatch, the faction glyph and the name are laid out by
+                    a span inside the cell rather than by the cell itself. A
+                    `td` told to be a flex container stops being a table cell:
+                    the row's collapsed border then breaks at that column --
+                    the line under Player did not meet the one under Team --
+                    and the glyphs, no longer measured by the table, sat on
+                    top of the name they belong to. */}
+                <td>
+                  <span className="replay-activity-player">
+                    {/* The colour this player was on the map, which is the one
+                        thing a replay carries that nothing else in this client
+                        shows. */}
+                    <span
+                      className="replay-activity-swatch"
+                      style={{ background: player.color }}
+                      aria-hidden
+                    />
+                    {player.faction > 0 && player.faction < 5 ? (
+                      <FactionIcon className="replay-player-faction" faction={player.faction} size={14} />
+                    ) : (
+                      <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
+                    )}
+                    <PlayerName name={player.name} />
+                    {player.country && (
+                      <span className="replay-activity-country muted">{player.country.toUpperCase()}</span>
+                    )}
+                  </span>
                 </td>
                 <td>{player.team > 1 ? player.team - 1 : t("replays.roster.freeForAll")}</td>
                 <td>{player.rating === null ? "N/A" : player.rating}</td>
@@ -155,15 +164,17 @@ export function ReplayEventsPanel({ analysis }: { analysis: ReplayAnalysis }) {
                 return (
                   <tr key={`${notice.tick}-${notice.source}-${index}`}>
                     <td className="replay-chat-time">{formatGameTime(notice.tick)}</td>
-                    <td className="replay-activity-player">
-                      {army && (
-                        <span
-                          className="replay-activity-swatch"
-                          style={{ background: playerColor(army.color) }}
-                          aria-hidden
-                        />
-                      )}
-                      <span>{army?.name ?? t("replays.insights.unknownPlayer")}</span>
+                    <td>
+                      <span className="replay-activity-player">
+                        {army && (
+                          <span
+                            className="replay-activity-swatch"
+                            style={{ background: playerColor(army.color) }}
+                            aria-hidden
+                          />
+                        )}
+                        <span>{army?.name ?? t("replays.insights.unknownPlayer")}</span>
+                      </span>
                     </td>
                     <td>{notice.text}</td>
                   </tr>

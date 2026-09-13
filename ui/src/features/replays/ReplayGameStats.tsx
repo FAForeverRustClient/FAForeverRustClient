@@ -13,7 +13,13 @@ import { useMemo, useState } from "react";
 import { SectionTabs } from "../../design-system/SectionTabs";
 import type { ReplayPlayerStats } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { compactNumber, STAT_LABEL_KEYS, UNIT_CATEGORIES } from "./replayAnalysis";
+import { ReplayChartFrame } from "./ReplayChartFrame";
+import {
+  compactNumber,
+  STAT_LABEL_KEYS,
+  UNIT_CATEGORIES,
+  UNIT_CATEGORY_TOKENS,
+} from "./replayAnalysis";
 
 type StatsTab = "scores" | "resources" | "units" | "balance";
 
@@ -22,6 +28,59 @@ interface Bar {
   label: string;
   value: number;
   tone: "built" | "lost" | "kills" | "extra";
+  /**
+   * A design token to draw this bar in, where the tone is not enough.
+   *
+   * The units tab puts a bar per category in every group, and "extra" twelve
+   * times over is one colour for twelve different things.
+   */
+  token?: string;
+}
+
+/**
+ * The drawing area, in the SVG's own units.
+ *
+ * The box scales to whatever the panel gives it, so these are proportions
+ * rather than pixels: what matters is that a label written at 13 of them is
+ * readable once the chart is the width of the dialog. It used to be laid out
+ * two charts to a row, which left each one about four hundred pixels wide and
+ * every number on it under five -- so the panel is one column now and each
+ * chart has the whole of it.
+ */
+const WIDTH = 1000;
+const HEIGHT = 300;
+/** Room for the value axis on the left and the player names underneath. */
+const PAD_LEFT = 64;
+const PAD_BOTTOM = 38;
+const PAD_TOP = 18;
+/**
+ * How wide one bar may get.
+ *
+ * A chart with one bar per player divided the whole slot between them, which
+ * on a four-player game is a bar two hundred units across: a block, not a
+ * measurement. Groups narrower than their slot are centred in it.
+ */
+const MAX_BAR_WIDTH = 46;
+/**
+ * How much of the chart one player's group may take.
+ *
+ * Without a ceiling a two-player game gave each group half the chart, and
+ * capped bars then floated as two small islands in all that space. The band
+ * of groups is centred instead, which keeps the bars beside each other where
+ * they can be compared.
+ */
+const MAX_SLOT_WIDTH = 210;
+
+/**
+ * A value on the axis.
+ *
+ * Used for the axis and for the number over a bar, so the two agree.
+ * `compactNumber` rounds, which is right for a mass total and wrong for a
+ * chart whose peak is a ratio: four gridlines between 0 and 2.5 came out as
+ * 0, 1, 1, 2, and a bar standing at 1.3 was labelled 1.
+ */
+function axisLabel(value: number, peak: number): string {
+  return peak < 10 ? value.toFixed(1) : compactNumber(value);
 }
 
 /** One chart: a title, and a group of bars per player. */
@@ -29,87 +88,134 @@ function BarChart({
   title,
   players,
   groups,
+  zoomed,
+  onZoom,
 }: {
   title: string;
   players: string[];
   groups: Bar[][];
+  zoomed: boolean;
+  onZoom: (zoomed: boolean) => void;
 }) {
   const peak = groups.reduce(
     (most, bars) => bars.reduce((inner, bar) => Math.max(inner, bar.value), most),
     0,
   );
-  const width = 1000;
-  const height = 260;
-  const padLeft = 8;
-  const padBottom = 34;
-  const plotHeight = height - padBottom - 16;
-  const slot = (width - padLeft) / Math.max(1, players.length);
+  const plotHeight = HEIGHT - PAD_BOTTOM - PAD_TOP;
+  const plotWidth = WIDTH - PAD_LEFT;
+  const slot = Math.min(MAX_SLOT_WIDTH, plotWidth / Math.max(1, players.length));
+  // The band of groups, centred in whatever the slots do not use.
+  const bandLeft = PAD_LEFT + (plotWidth - slot * players.length) / 2;
   const barCount = Math.max(1, groups[0]?.length ?? 1);
-  const barWidth = (slot * 0.72) / barCount;
+  const barWidth = Math.min(MAX_BAR_WIDTH, (slot * 0.8) / barCount);
+  const groupWidth = barWidth * barCount;
+  const baseline = PAD_TOP + plotHeight;
+  const yOf = (value: number) => baseline - (peak > 0 ? (value / peak) * plotHeight : 0);
+  // Four gridlines with their values written on them: without a scale the
+  // only number on the chart was the one printed over a bar, and that one
+  // vanished as soon as the bars were narrow.
+  const gridValues = [0, 0.25, 0.5, 0.75, 1].map((share) => peak * share);
+  const key = groups[0] && groups[0].length > 1 ? groups[0] : null;
 
   return (
-    <figure className="replay-stats-chart">
-      <figcaption>{title}</figcaption>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
-        <line className="replay-chart-grid" x1={padLeft} x2={width} y1={16 + plotHeight} y2={16 + plotHeight} />
+    <ReplayChartFrame
+      title={title}
+      zoomed={zoomed}
+      onZoom={onZoom}
+      legend={key && (
+        <div className="replay-stats-legend">
+          {key.map((bar) => (
+            <span
+              key={bar.label}
+              className={`replay-stats-key is-${bar.tone}`}
+              style={bar.token ? { ["--replay-stats-key-color" as string]: `var(${bar.token})` } : undefined}
+            >
+              {bar.label}
+            </span>
+          ))}
+        </div>
+      )}
+    >
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={title}>
+        {gridValues.map((value, index) => (
+          <g key={index}>
+            <line
+              className="replay-chart-grid"
+              x1={PAD_LEFT}
+              x2={WIDTH}
+              y1={yOf(value)}
+              y2={yOf(value)}
+            />
+            <text
+              className="replay-chart-label"
+              x={PAD_LEFT - 8}
+              y={yOf(value) + 5}
+              textAnchor="end"
+            >
+              {axisLabel(value, peak)}
+            </text>
+          </g>
+        ))}
         {players.map((player, index) => {
           const bars = groups[index] ?? [];
-          const left = padLeft + slot * index + slot * 0.14;
+          const left = bandLeft + slot * index + (slot - groupWidth) / 2;
           return (
             <g key={`${player}-${index}`}>
               {bars.map((bar, barIndex) => {
-                const barHeight = peak > 0 ? (bar.value / peak) * plotHeight : 0;
+                const top = yOf(bar.value);
                 return (
                   <g key={bar.label}>
                     <rect
                       className={`replay-stats-bar is-${bar.tone}`}
+                      style={bar.token ? { fill: `var(${bar.token})` } : undefined}
                       x={left + barWidth * barIndex}
-                      y={16 + plotHeight - barHeight}
+                      y={top}
                       width={Math.max(1, barWidth - 2)}
-                      height={Math.max(0, barHeight)}
+                      height={Math.max(0, baseline - top)}
                     >
                       <title>{`${player} ${bar.label}: ${Math.round(bar.value)}`}</title>
                     </rect>
-                    {bar.value > 0 && barWidth > 22 && (
+                    {bar.value > 0 && barWidth > 26 && (
                       <text
                         className="replay-chart-label"
                         x={left + barWidth * barIndex + barWidth / 2}
-                        y={16 + plotHeight - barHeight - 4}
+                        y={top - 5}
                         textAnchor="middle"
                       >
-                        {compactNumber(bar.value)}
+                        {axisLabel(bar.value, peak)}
                       </text>
                     )}
                   </g>
                 );
               })}
               <text
-                className="replay-chart-label"
-                x={padLeft + slot * index + slot / 2}
-                y={height - 18}
+                className="replay-chart-label is-axis"
+                x={bandLeft + slot * index + slot / 2}
+                y={HEIGHT - 14}
                 textAnchor="middle"
               >
-                {player.length > 12 ? `${player.slice(0, 11)}…` : player}
+                {player.length > 14 ? `${player.slice(0, 13)}…` : player}
               </text>
             </g>
           );
         })}
       </svg>
-      {groups[0] && groups[0].length > 1 && (
-        <div className="replay-stats-legend">
-          {groups[0].map((bar) => (
-            <span key={bar.label} className={`replay-stats-key is-${bar.tone}`}>{bar.label}</span>
-          ))}
-        </div>
-      )}
-    </figure>
+    </ReplayChartFrame>
   );
 }
 
 export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<StatsTab>("scores");
+  // Which chart, if any, has the viewport. One name for the whole tab rather
+  // than a flag per chart: only one can be open at a time, and a chart that
+  // scrolls out of the tab must not leave a stale `true` behind it.
+  const [zoomed, setZoomed] = useState<string | null>(null);
   const players = useMemo(() => stats.map((player) => player.name), [stats]);
+  const zoom = (chart: string) => ({
+    zoomed: zoomed === chart,
+    onZoom: (open: boolean) => setZoomed(open ? chart : null),
+  });
 
   if (stats.length === 0) {
     return <p className="replay-detail-empty muted">{t("replays.insights.noGameStats")}</p>;
@@ -147,6 +253,7 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
       <div className="replay-stats-grid">
         {tab === "scores" && (
           <BarChart
+            {...zoom("scores")}
             title={t("replays.insights.playerScores")}
             players={players}
             groups={stats.map((player) => [
@@ -160,6 +267,7 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
             {(["mass", "energy"] as const).map((kind) => (
               <BarChart
                 key={kind}
+                {...zoom(`resource-${kind}`)}
                 title={t(kind === "mass" ? "replays.insights.mass" : "replays.insights.energy")}
                 players={players}
                 groups={stats.map((player) => [
@@ -184,6 +292,7 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
             {(["mass", "energy"] as const).map((kind) => (
               <BarChart
                 key={`${kind}-breakdown`}
+                {...zoom(`breakdown-${kind}`)}
                 title={t(kind === "mass"
                   ? "replays.insights.massBreakdown"
                   : "replays.insights.energyBreakdown")}
@@ -210,6 +319,7 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
             {(["built", "lost", "kills"] as const).map((metric) => (
               <BarChart
                 key={metric}
+                {...zoom(`units-${metric}`)}
                 title={t("replays.insights.unitsBy", {
                   metric: metric === "built" ? built : metric === "lost" ? lost : kills,
                 })}
@@ -220,6 +330,10 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
                       label: label(category),
                       value: units(player, category)?.[metric] ?? 0,
                       tone: "extra" as const,
+                      // A colour per category, so a group of twelve bars can
+                      // be read against the key rather than counted from the
+                      // left.
+                      token: UNIT_CATEGORY_TOKENS[category],
                     })))}
               />
             ))}
@@ -231,6 +345,7 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
             {(["mass", "energy", "count"] as const).map((measure) => (
               <BarChart
                 key={measure}
+                {...zoom(`balance-${measure}`)}
                 title={t("replays.insights.buildVsLoss", { measure: label(measure) })}
                 players={players}
                 groups={stats.map((player) => [
@@ -241,6 +356,7 @@ export function ReplayGameStats({ stats }: { stats: ReplayPlayerStats[] }) {
               />
             ))}
             <BarChart
+              {...zoom("kd")}
               title={t("replays.insights.killDeath")}
               players={players}
               groups={stats.map((player) => [

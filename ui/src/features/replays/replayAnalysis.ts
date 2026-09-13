@@ -217,6 +217,16 @@ export function peakOf(series: Iterable<Uint16Array>): number {
  *
  * The panel under the graph lists what each player was actually doing in the
  * minute the pointer is over, which is the Python client's own read-out.
+ *
+ * Counted the way the line above it is counted, by the walk's own rule: the
+ * same command type repeated back to back on the same tick by the same client
+ * is one action. The stream emits one record per selected unit, so a single
+ * click onto forty engineers arrives as forty identical records, and listing
+ * them raw put a number under the graph that the graph's own axis never
+ * reaches -- a read-out of 182 actions over a chart whose peak was 109. The
+ * run is tracked across the whole stream rather than inside the window, so an
+ * order sitting on the window's first tick is judged against the one before
+ * it and not by where the pointer happens to be.
  */
 export function ordersInWindow(
   orders: readonly ReplayOrder[],
@@ -224,7 +234,12 @@ export function ordersInWindow(
   window = ACTIVITY_WINDOW_TICKS,
 ): Map<number, ReplayOrder[]> {
   const grouped = new Map<number, ReplayOrder[]>();
+  const previous = new Map<number, { tick: number; command: number }>();
   for (const order of orders) {
+    const last = previous.get(order.source);
+    const repeated = last?.tick === order.tick && last?.command === order.command;
+    previous.set(order.source, { tick: order.tick, command: order.command });
+    if (repeated) continue;
     if (order.tick < from || order.tick >= from + window) continue;
     const own = grouped.get(order.source);
     if (own) own.push(order);
@@ -345,6 +360,30 @@ export const UNIT_CATEGORIES = [
   "tech3",
   "experimental",
 ] as const;
+
+/**
+ * The token each unit category's bar is drawn in.
+ *
+ * Twelve categories stand side by side in one group on the units tab, and
+ * twelve bars in one colour say nothing about what was built: "bei units in
+ * gamestats hat jede unit die gleiche farbe". The tokens are declared in
+ * `tokens.css` as aliases of the palette, so a theme changes them with
+ * everything else.
+ */
+export const UNIT_CATEGORY_TOKENS: Readonly<Record<string, string>> = {
+  land: "--color-unit-land",
+  air: "--color-unit-air",
+  naval: "--color-unit-naval",
+  structures: "--color-unit-structures",
+  engineer: "--color-unit-engineer",
+  transportation: "--color-unit-transportation",
+  cdr: "--color-unit-cdr",
+  sacu: "--color-unit-sacu",
+  tech1: "--color-unit-tech1",
+  tech2: "--color-unit-tech2",
+  tech3: "--color-unit-tech3",
+  experimental: "--color-unit-experimental",
+};
 
 /**
  * What to call a unit category, and the three things a game is measured in.

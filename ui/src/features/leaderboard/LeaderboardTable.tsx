@@ -19,11 +19,12 @@ export type LeaderboardColumn =
 /**
  * A board's own column, keyed by its technical name.
  *
- * The rating table showed one board at a time and switched between them with
- * the tabs. Taking out the win rate and the win count, both of which the API
- * answers wrongly, left a rank, a name and one number; the thread's answer was
- * to stop switching and "display Global, 1v1, 2v2, 3v3, 4v4 in one view", with
- * the tabs deciding which of them the ranking is by.
+ * The rating table showed one board at a time and switched between them with a
+ * row of tabs. Taking out the win rate and the win count, both of which the
+ * API answers wrongly, left a rank, a name and one number; the thread's answer
+ * was to stop switching and "display Global, 1v1, 2v2, 3v3, 4v4 in one view".
+ * The tabs are gone with the switching: every board is a column, and the
+ * column header is what chooses which of them the ladder is ranked by.
  */
 export type BoardColumn = `board:${string}`;
 
@@ -155,19 +156,65 @@ function leagueCell(entry: LeaderboardEntry) {
   );
 }
 
+/** Whether a cell has nothing in it, which is what the table prints as `N/A`. */
+function isMissing(value: number | string | null): boolean {
+  return value === null || value === "";
+}
+
+/**
+ * Order two cells that both have a value.
+ *
+ * Ascending. The direction is applied by the caller, and only here: a missing
+ * cell is not a small value to be flipped to the top when the column is read
+ * the other way round, it is the absence of one.
+ */
+function compareValues(left: number | string, right: number | string): number {
+  if (typeof left === "number" && typeof right === "number") return left - right;
+  return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
+}
+
+/**
+ * Order two rows by one column, with the empty cells at the bottom.
+ *
+ * A player with no rating on a board is not the worst player on it, and
+ * sorting them as if they were is what put a screenful of `N/A` at the top of
+ * a column somebody had just asked for the highest value in. They go last
+ * either way the column is sorted, and the rows that do have a value are
+ * ordered between themselves.
+ */
 function compare(
   a: LeaderboardEntry,
   b: LeaderboardEntry,
   column: TableColumn,
   activeBoard: string,
   cross: CrossRatings,
+  descending: boolean,
 ): number {
   const left = cellValue(a, column, activeBoard, cross);
   const right = cellValue(b, column, activeBoard, cross);
-  if (left === null) return right === null ? 0 : 1;
-  if (right === null) return -1;
-  if (typeof left === "number" && typeof right === "number") return left - right;
-  return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
+  if (isMissing(left) || isMissing(right)) {
+    if (isMissing(left) && isMissing(right)) return 0;
+    return isMissing(left) ? 1 : -1;
+  }
+  const result = compareValues(left as number | string, right as number | string);
+  return descending ? -result : result;
+}
+
+/**
+ * The rows in the order the table draws them.
+ *
+ * Exported for its own test: the sort is the part of this table with a rule
+ * in it, and a rendered table is the one place a store-backed component
+ * cannot be asked what it did.
+ */
+export function sortLeaderboard(
+  entries: readonly LeaderboardEntry[],
+  column: TableColumn,
+  descending: boolean,
+  activeBoard: string,
+  cross: CrossRatings,
+): LeaderboardEntry[] {
+  return [...entries].sort((a, b) => compare(a, b, column, activeBoard, cross, descending));
 }
 
 interface LeaderboardTableProps {
@@ -182,6 +229,15 @@ interface LeaderboardTableProps {
   activeBoard?: string;
   /** What the other boards say, once the second request has answered. */
   crossRatings?: CrossRatings;
+  /**
+   * Rank the whole ladder by this board.
+   *
+   * Pressing a board's header is how the ranked board is chosen now. The panel
+   * above turns it into a fresh query, because the ranking is the server's:
+   * the page on screen is the top hundred of one board, and re-sorting it
+   * locally would answer a different question than the header asks.
+   */
+  onRankBy?: (board: string) => void;
 }
 
 const NO_CROSS_RATINGS: CrossRatings = new Map();
@@ -195,6 +251,7 @@ export function LeaderboardTable({
   boards = [],
   activeBoard = "",
   crossRatings = NO_CROSS_RATINGS,
+  onRankBy,
 }: LeaderboardTableProps) {
   const { t } = useTranslation();
   const [sort, setSort] = useState<{ column: TableColumn; descending: boolean }>({
@@ -205,14 +262,24 @@ export function LeaderboardTable({
     () => new Map(boards.map((board) => [board.technicalName, board.name])),
     [boards],
   );
-  const sorted = useMemo(() => [...entries].sort((a, b) => {
-    const result = compare(a, b, sort.column, activeBoard, crossRatings);
-    return sort.descending ? -result : result;
-  }), [activeBoard, crossRatings, entries, sort]);
+  const sorted = useMemo(
+    () => sortLeaderboard(entries, sort.column, sort.descending, activeBoard, crossRatings),
+    [activeBoard, crossRatings, entries, sort],
+  );
 
-  const chooseSort = (column: TableColumn) => setSort((current) => current.column === column
-    ? { column, descending: !current.descending }
-    : { column, descending: column !== "rank" && column !== "player" });
+  // A number column opens on its highest value, which is what somebody
+  // pressing "2v2" is asking to see. Only the rank and the name read the other
+  // way round, because first and A are their top.
+  const chooseSort = (column: TableColumn) => {
+    setSort((current) => current.column === column
+      ? { column, descending: !current.descending }
+      : { column, descending: column !== "rank" && column !== "player" });
+    // A board column ranks the whole ladder by that board rather than just the
+    // page on screen: the tabs that used to do it are gone, and sorting a
+    // hundred loaded rows by 1v1 is not the same question as "who is the best
+    // at 1v1".
+    if (isBoardColumn(column) && boardOf(column) !== activeBoard) onRankBy?.(boardOf(column));
+  };
 
   if (sorted.length === 0) return <div className="leaderboard-empty muted">{emptyMessage}</div>;
 

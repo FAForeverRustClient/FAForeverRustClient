@@ -665,6 +665,14 @@ export function ReplayDetailPanel({
   const effectiveMap = effectiveReplayMapName(replay.map, localMatch?.map);
   const isGenerated = isGeneratedMap(effectiveMap);
   const seed = extractGeneratedMapSeed(effectiveMap);
+  // The picture of a generated map, once the generator has built one. Keyed
+  // the three ways `ReplayMapThumb` keys it, because the store is written
+  // from whichever spelling the caller had.
+  const generatedPreview = useAppStore((state) => isGenerated
+    ? state.state.mapGenerator.previews?.[effectiveMap]
+      || state.state.mapGenerator.previews?.[normalizeMapName(effectiveMap)]
+      || state.state.mapGenerator.previews?.[effectiveMap.toLowerCase()]
+    : undefined);
 
   const installed = maps.installed.some(
     (map) =>
@@ -793,7 +801,6 @@ export function ReplayDetailPanel({
         .writeText(String(replay.uid))
         .then(() => setCopiedId(true)),
     );
-  const age = replayAge(replay.startTime);
   const competingTeams = detailTeams.filter((team) => !isObserverTeam(team.team)).length;
   const players = t("replays.detail.playerCount", { count: totalPlayers });
   const lineupSummary = competingTeams > 1
@@ -802,29 +809,35 @@ export function ReplayDetailPanel({
   const mapLabel = presentation.displayName || effectiveMap;
   const cardTitle = replay.title || mapLabel;
   const stars = replay.reviewsAverage ?? null;
+  // Rebuilding a generated map from its seed, which is how a generated map is
+  // obtained: there is nothing to download. Its own value rather than only a
+  // branch of the thumbnail's action below, because the heatmap wants the
+  // same button -- the thumbnail offers nothing once the map is on disk, and
+  // the heatmap can still have no picture to draw its cells over.
+  const generateAction = isGenerated
+    ? {
+        icon: isGeneratingThisMap ? "refresh" : "plus",
+        label: isGeneratingThisMap
+          ? t("lobby.details.generatingMap")
+          : !seed && downloadState === "downloading"
+            ? t("replays.detail.resolvingMap")
+            : t("lobby.details.generateMap"),
+        disabled: isGeneratingThisMap || (!seed && downloadState === "downloading"),
+        run: () => {
+          if (seed) {
+            ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName: effectiveMap } } });
+          } else if (replay.replayAvailable) {
+            ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid: replay.uid } } });
+          }
+        },
+      }
+    : null;
   // The map action the thumbnail overlays: one of them, never both. Which one
-  // depends on whether the map is on disk, and a generated map is rebuilt from
-  // its name rather than downloaded.
+  // depends on whether the map is on disk.
   const mapAction = installed
     ? null
-    : isGenerated
-      ? {
-          icon: isGeneratingThisMap ? "refresh" : "plus",
-          label: isGeneratingThisMap
-            ? t("lobby.details.generatingMap")
-            : !seed && downloadState === "downloading"
-              ? t("replays.detail.resolvingMap")
-              : t("lobby.details.generateMap"),
-          disabled: isGeneratingThisMap || (!seed && downloadState === "downloading"),
-          run: () => {
-            if (seed) {
-              ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName: effectiveMap } } });
-            } else if (replay.replayAvailable) {
-              ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid: replay.uid } } });
-            }
-          },
-        }
-      : vaultMap
+    : generateAction
+      ?? (vaultMap
         ? {
             icon: "download",
             label: t("lobby.details.downloadMap"),
@@ -835,7 +848,22 @@ export function ReplayDetailPanel({
                 command: { type: "installMap", payload: { folderName: vaultMap.folderName, downloadUrl: vaultMap.downloadUrl } },
               }),
           }
-        : null;
+        : null);
+  // What the heatmap draws its cells over, and what to press when there is
+  // nothing to draw them over yet. The placeholder a generated map carries is
+  // not a preview: it is the picture that says there is no picture, and the
+  // heat over it would read as heat over the map.
+  const heatmapPreviewUrl = generatedPreview
+    || (isGeneratedMapPlaceholderUrl(replay.mapThumbnailUrl) ? "" : replay.mapThumbnailUrl)
+    || undefined;
+  const heatmapMapAction = !heatmapPreviewUrl && generateAction
+    ? {
+        label: generateAction.label,
+        disabled: generateAction.disabled,
+        busy: isGeneratingThisMap,
+        run: generateAction.run,
+      }
+    : undefined;
   return (
     <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
       <div className="replay-card-layout">
@@ -990,34 +1018,6 @@ export function ReplayDetailPanel({
               <Icon name={isLoadingDetails ? "refresh" : "list"} size={15} className={isLoadingDetails ? "spin" : undefined} />
             </Button>
           </div>
-          <div className="replay-card-idrow">
-            <span className="replay-card-idlabel">{t("replays.detail.replayIdLabel")}</span>
-            {replay.uid > 0 ? (
-              <>
-                <span className="replay-card-idvalue">#{replay.uid}</span>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  onClick={copyReplayId}
-                >
-                  <Icon name={copiedId ? "check" : "copy"} size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  onClick={copyLink}
-                >
-                  <Icon name={copied ? "check" : "external"} size={13} />
-                </button>
-              </>
-            ) : (
-              <span className="replay-card-idvalue muted">{t("replays.local.noReplayId")}</span>
-            )}
-          </div>
         </aside>
 
         <div className="replay-card-main">
@@ -1046,19 +1046,58 @@ export function ReplayDetailPanel({
               </div>
             )}
           </div>
-          {(!replay.replayAvailable || age) && (
+          {/* No age badge. `formatAgeOrDate` prints the date itself once "how
+              long ago" has stopped reading as a length of time, so on every
+              replay older than a week this line was the Date tile below it,
+              written a second time directly above it. The date is a fact and
+              belongs in the tiles with the other facts; the replay id, which
+              was off in the rail, takes the first of them. */}
+          {!replay.replayAvailable && (
             <div className="replay-card-badges">
-              {!replay.replayAvailable && (
-                <span className="replay-availability pending">{t("replays.detail.processing")}</span>
-              )}
-              {age && <span className="replay-card-age">{age}</span>}
+              <span className="replay-availability pending">{t("replays.detail.processing")}</span>
             </div>
           )}
           {/* Java's detail view keeps the eight core facts in two balanced
               rows. Same eight, four columns wide so the pair of durations that
               are routinely minutes apart sit side by side, and each one its
-              own tile: value first, caption under it, glyph beside both. */}
+              own tile: value first, caption under it, glyph beside both. The
+              replay id sits across the top of them, which leaves that pairing
+              intact. */}
           <dl className="replay-card-facts">
+            {/* The id first, and the two things you do with one beside it:
+                copy the number, copy the link. It is the label that says
+                which replay this is, which is a fact about the game and not
+                an action on the file, so it sits with the facts. */}
+            <div className="replay-card-fact-id">
+              <dt><Icon name="list" size={14} />{t("replays.detail.replayIdLabel")}</dt>
+              <dd>
+                {replay.uid > 0 ? (
+                  <>
+                    <span className="replay-card-idvalue">#{replay.uid}</span>
+                    <button
+                      type="button"
+                      className="replay-card-icon-btn"
+                      aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                      title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                      onClick={copyReplayId}
+                    >
+                      <Icon name={copiedId ? "check" : "copy"} size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="replay-card-icon-btn"
+                      aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                      title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                      onClick={copyLink}
+                    >
+                      <Icon name={copied ? "check" : "external"} size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <span className="muted">{t("replays.local.noReplayId")}</span>
+                )}
+              </dd>
+            </div>
             <div><dt><Icon name="calendar" size={14} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
             <div><dt><Icon name="users" size={14} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
             <div><dt><Icon name="leaderboard" size={14} />{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
@@ -1223,7 +1262,8 @@ export function ReplayDetailPanel({
           analysisError={analysisError ?? ""}
           teams={detailTeams}
           title={cardTitle}
-          mapPreviewUrl={replay.mapThumbnailUrl || undefined}
+          mapPreviewUrl={heatmapPreviewUrl}
+          mapAction={heatmapMapAction}
           loading={isLoadingDetails}
           error={detailsError ?? ""}
           onClose={() => setShowInsights(false)}

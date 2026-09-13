@@ -75,6 +75,33 @@
      block styles the same root element. */
   --color-friend: var(--color-ok);
 
+  /* The unit categories of a replay's end-of-game statistics. Twelve bars
+     stand side by side in one group there, and twelve bars in one colour say
+     nothing at all about what was built.
+
+     Values rather than aliases, which is the exception the rest of this file
+     does not make. The palette carries about eight hue families -- two greens
+     that read as one, two blues, three golds, three reds -- so aliasing
+     twelve categories onto it put the commander and the experimentals in the
+     same gold and the engineers and the SACUs in the same orange, which is
+     the bug this was meant to fix. A categorical scale has one job, which is
+     that no two of its entries are mistaken for each other, and it has to be
+     spelled out to do it. Mid-tone throughout, so the set reads on the light
+     themes as well as the dark ones, and deliberately not theme-tuned: these
+     name twelve kinds of unit, not twelve moods. */
+  --color-unit-land: #5fa855;
+  --color-unit-air: #4b9de8;
+  --color-unit-naval: #2bb3ad;
+  --color-unit-structures: #b6bec7;
+  --color-unit-engineer: #e0873c;
+  --color-unit-transportation: #9b7ce0;
+  --color-unit-cdr: #e8c245;
+  --color-unit-sacu: #e2679a;
+  --color-unit-tech1: #8a8f98;
+  --color-unit-tech2: #6fd3f5;
+  --color-unit-tech3: #4f6bd8;
+  --color-unit-experimental: #dc5a5a;
+
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;

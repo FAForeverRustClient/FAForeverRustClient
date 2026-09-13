@@ -21,7 +21,7 @@ import type { ReplayAnalysis, ReplayDetails, ReplayPlayer, ReplayTeam } from "..
 import { ReplayActivityChart } from "./ReplayActivityChart";
 import { ReplayEventsPanel, ReplayPlayersPanel } from "./ReplayAnalysisPanels";
 import { ReplayGameStats } from "./ReplayGameStats";
-import { ReplayHeatmap } from "./ReplayHeatmap";
+import { ReplayHeatmap, type HeatmapMapAction } from "./ReplayHeatmap";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { PlayerName } from "../../shared/nameColors";
 import { formatDecimal, type MessageKey } from "../../i18n";
@@ -127,6 +127,7 @@ export function ReplayInsights({
   teams,
   title,
   mapPreviewUrl,
+  mapAction,
   loading,
   error,
   onClose,
@@ -157,6 +158,8 @@ export function ReplayInsights({
   title: string;
   /** The map, for the heatmap to draw its cells over. */
   mapPreviewUrl?: string;
+  /** How to build that map, where there is no picture of it yet. */
+  mapAction?: HeatmapMapAction;
   loading: boolean;
   error: string;
   onClose: () => void;
@@ -305,7 +308,7 @@ export function ReplayInsights({
           {analysis && tab === "events" && <ReplayEventsPanel analysis={analysis} />}
           {analysis && tab === "graph" && <ReplayActivityChart analysis={analysis} />}
           {analysis && tab === "heatmap" && (
-            <ReplayHeatmap analysis={analysis} mapPreviewUrl={mapPreviewUrl} />
+            <ReplayHeatmap analysis={analysis} mapPreviewUrl={mapPreviewUrl} mapAction={mapAction} />
           )}
           {analysis && tab === "stats" && <ReplayGameStats stats={analysis.stats} />}
 
@@ -342,13 +345,15 @@ export function ReplayInsights({
                     <tbody>
                       {rows.map((row) => (
                         <tr key={row.player}>
-                          <td className="replay-activity-player">
-                            {row.team !== null && !isObserverTeam(row.team) && row.faction ? (
-                              <FactionIcon className="replay-player-faction" faction={row.faction} size={14} />
-                            ) : (
-                              <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
-                            )}
-                            <PlayerName name={row.player} />
+                          <td>
+                            <span className="replay-activity-player">
+                              {row.team !== null && !isObserverTeam(row.team) && row.faction ? (
+                                <FactionIcon className="replay-player-faction" faction={row.faction} size={14} />
+                              ) : (
+                                <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
+                              )}
+                              <PlayerName name={row.player} />
+                            </span>
                           </td>
                           <td>{row.rating === null ? "N/A" : row.rating}</td>
                           <td className="replay-activity-count">{row.commands}</td>
