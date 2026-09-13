@@ -251,6 +251,18 @@ export type BrowsingPreferences = {
 	customGamesBrowser: CustomGameBrowserPreferences,
 	matchmakerUnselectedQueues: string[],
 	matchmakerFactions: string[],
+	/**
+	 *  Pixel width of the matchmaker's party chat rail, or `0` for the
+	 *  designed default.
+	 *
+	 *  The same shape and the same reason as
+	 *  `CustomGameBrowserPreferences::detail_width`: how much of the tab a
+	 *  conversation is worth is a matter of what somebody is doing with it,
+	 *  and the tab has a queue grid on the other side of the divider that
+	 *  wants the same pixels. Stored rather than kept in the browser so it
+	 *  survives a reinstall, like every other browsing preference here.
+	 */
+	matchmakerChatWidth: number,
 	liveReplayFilters: LiveReplayFilters,
 	hostGame: HostGamePreferences,
 	/**

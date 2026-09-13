@@ -11,6 +11,7 @@ import {
   migrateLegacyBrowsingPreferences,
   MIN_BROWSER_COLUMN_PX,
   MIN_DETAIL_PX,
+  MIN_PARTY_CHAT_PX,
   normalizeBrowsingPreferences,
 } from "./browsingPreferences";
 
@@ -45,6 +46,7 @@ describe("browsing preferences", () => {
       },
       matchmakerUnselectedQueues: [" ladder_1v1 ", "LADDER_1V1", ""],
       matchmakerFactions: ["cybran", "unknown"],
+      matchmakerChatWidth: 40,
       liveReplayFilters: {
         search: `  ${"x".repeat(250)}  `,
         gameType: " matchmaker ",
@@ -120,6 +122,8 @@ describe("browsing preferences", () => {
     expect(normalized.replaysView).toBe("list");
     expect(normalized.matchmakerUnselectedQueues).toEqual(["ladder_1v1"]);
     expect(normalized.matchmakerFactions).toEqual(["Cybran"]);
+    // Bounded like every other stored width, and by the same numbers Rust uses.
+    expect(normalized.matchmakerChatWidth).toBe(MIN_PARTY_CHAT_PX);
     expect(normalized.customGamesBrowser).toMatchObject({
       sort: "host",
       sortReversed: true,

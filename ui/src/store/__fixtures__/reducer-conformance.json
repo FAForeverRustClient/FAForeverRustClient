@@ -807,6 +807,7 @@
           "Cybran",
           "Seraphim"
         ],
+        "matchmakerChatWidth": 0,
         "liveReplayFilters": {
           "search": "",
           "gameType": "",
@@ -2054,6 +2055,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -29094,6 +29096,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -29346,6 +29349,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -29607,6 +29611,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -29863,6 +29868,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30119,6 +30125,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30385,6 +30392,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30657,6 +30665,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -30941,6 +30950,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -31216,6 +31226,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -31493,6 +31504,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
               "matchmakerFactions": [
                 "UEF",
                 "Aeon",
@@ -31733,6 +31745,7 @@
                     "cybran",
                     "unknown"
                   ],
+                  "matchmakerChatWidth": 420,
                   "liveReplayFilters": {
                     "search": "  tournament  ",
                     "gameType": " matchmaker ",
@@ -31886,6 +31899,7 @@
               },
               "mapVaultPreset": "recommended",
               "mapVaultSort": "newest",
+              "matchmakerChatWidth": 420,
               "matchmakerFactions": [
                 "Cybran"
               ],

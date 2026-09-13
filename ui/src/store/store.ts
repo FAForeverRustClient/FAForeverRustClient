@@ -531,6 +531,7 @@ const INITIAL: AppState = {
       },
       matchmakerUnselectedQueues: [],
       matchmakerFactions: ["UEF", "Aeon", "Cybran", "Seraphim"],
+      matchmakerChatWidth: 0,
       liveReplayFilters: {
         search: "",
         gameType: "",

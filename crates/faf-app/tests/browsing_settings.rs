@@ -63,6 +63,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 },
                 matchmaker_unselected_queues: vec!["  ladder_1v1 ".into()],
                 matchmaker_factions: vec!["cybran".into()],
+                matchmaker_chat_width: 0,
                 live_replay_filters: LiveReplayFilters {
                     search: "  tournament  ".into(),
                     active_players: "04".into(),
