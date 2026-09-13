@@ -1,9 +1,17 @@
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import type { CustomGameSort } from "../../ipc/bindings";
 import type { GameViewMode } from "./CustomGamesBrowser";
 import { useTranslation } from "../../i18n/useTranslation";
 
-export type SortMode = "players" | "rating" | "map" | "host" | "age";
+/**
+ * What the list can be ordered by.
+ *
+ * `CustomGameSort` from the bindings, named locally because the toolbar has
+ * always called it this. It is the same set of values, and the column headers
+ * in `gameBrowserColumns` set four of them.
+ */
+export type SortMode = CustomGameSort;
 
 interface Props {
   search: string;
@@ -94,6 +102,7 @@ export function CustomGamesToolbar(props: Props) {
         onChange={(event) => props.onSort(event.target.value as SortMode)}
         aria-label={t("lobby.toolbar.sortAria")}
       >
+        <option value="title">{t("lobby.browser.column.game")}</option>
         <option value="players">{t("lobby.toolbar.sort.players")}</option>
         <option value="rating">{t("lobby.toolbar.sort.rating")}</option>
         <option value="map">{t("lobby.toolbar.sort.map")}</option>

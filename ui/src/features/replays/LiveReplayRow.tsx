@@ -14,7 +14,7 @@ import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { clientIntlTag } from "../../shared/dates";
 
-function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
+export function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [presentation.thumbnailUrl]);
 
@@ -42,7 +42,7 @@ function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
  * else. Left-click opens the menu as well as right-click, because a name in a
  * table cell does not otherwise advertise that it has one.
  */
-function LivePlayerName({ name, onMenu }: { name: string; onMenu: PlayerMenuOpener }) {
+export function LivePlayerName({ name, onMenu }: { name: string; onMenu: PlayerMenuOpener }) {
   return (
     <button
       type="button"
@@ -56,7 +56,7 @@ function LivePlayerName({ name, onMenu }: { name: string; onMenu: PlayerMenuOpen
   );
 }
 
-function LiveReplayAge({ game, now }: { game: Game; now: number }) {
+export function LiveReplayAge({ game, now }: { game: Game; now: number }) {
   const { t } = useTranslation();
   const started = gameStartedAt(game);
   if (!started) return <small>{t("replays.live.startUnavailable")}</small>;
@@ -73,7 +73,7 @@ const DELAY_MENU_WIDTH = 190;
 /** Gap kept between the menu and both its trigger and the viewport edge. */
 const DELAY_MENU_GAP = 4;
 
-function LiveWatchButton({
+export function LiveWatchButton({
   busy,
   game,
   tracking,

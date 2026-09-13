@@ -520,6 +520,7 @@ const INITIAL: AppState = {
       replaysView: "tiles",
       customGamesBrowser: {
         sort: "players",
+        sortReversed: false,
         hidePrivate: false,
         hideModded: false,
         hideUnranked: false,

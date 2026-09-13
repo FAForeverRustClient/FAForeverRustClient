@@ -1460,6 +1460,17 @@ export type Currency = "usd" | "eur" | "rub";
 
 export type CustomGameBrowserPreferences = {
 	sort: CustomGameSort,
+	/**
+	 *  The order against the sorted column's own, rather than a direction.
+	 *
+	 *  `false` is what every column has always done: the most players first,
+	 *  the highest rating first, the newest lobby first, maps and hosts and
+	 *  titles from A to Z. Storing "reversed" rather than "descending" is what
+	 *  lets one flag serve six columns whose natural orders disagree, and it
+	 *  is also why a settings file written before this existed reads back as
+	 *  exactly the order it had.
+	 */
+	sortReversed: boolean,
 	hidePrivate: boolean,
 	hideModded: boolean,
 	hideUnranked: boolean,
@@ -1495,7 +1506,12 @@ export type CustomGameFilterRule = {
 	value: string,
 };
 
-export type CustomGameSort = "players" | "rating" | "map" | "host" | "age";
+export type CustomGameSort = "players" | "rating" | "map" | "host" | "age" |
+/**
+ *  The lobby's own title, which is the list's first column and was the one
+ *  thing it could not be ordered by.
+ */
+"title";
 
 export type CustomGameView = "tiles" | "list";
 

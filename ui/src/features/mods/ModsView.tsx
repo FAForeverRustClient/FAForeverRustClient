@@ -34,6 +34,7 @@ import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
 import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
 import { modUpdateAvailable } from "./modVersions";
+import { favoriteModKeys, toggleFavoriteMod } from "./favoriteMods";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
@@ -208,21 +209,10 @@ function VaultView({ busy }: { busy: boolean }) {
 
   const note = loadStatusNote(vaultStatus, t("mods.view.loadingVault"), t("mods.view.vaultFailed"));
   const installedByUid = useMemo(() => new Map(installed.map((mod) => [mod.uid, mod])), [installed]);
-  const favoriteUids = useMemo(
-    () => new Set((browsing.favoriteMods || []).map((uid) => uid.toLocaleLowerCase())),
-    [browsing.favoriteMods],
-  );
-
-  const toggleFavorite = (uid: string) => {
-    const key = uid.trim().toLocaleLowerCase();
-    const favoriteMods = favoriteUids.has(key)
-      ? (browsing.favoriteMods || []).filter((favorite) => favorite.toLocaleLowerCase() !== key)
-      : [...(browsing.favoriteMods || []), key];
-    ipc.send({
-      kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...browsing, favoriteMods } } },
-    });
-  };
+  // Shared with the installed list, which stars the same mods into the same
+  // preference: one spelling of a uid counts as the same mod in both.
+  const favoriteUids = useMemo(() => favoriteModKeys(browsing.favoriteMods), [browsing.favoriteMods]);
+  const toggleFavorite = (uid: string) => toggleFavoriteMod(browsing, uid);
 
   useEffect(() => {
     const mods = useAppStore.getState().state.mods;
