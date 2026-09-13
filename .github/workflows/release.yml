@@ -11,7 +11,20 @@ on:
   workflow_dispatch:
     inputs:
       prerelease:
-        description: 'Mark as a prerelease (every release so far has been one)'
+        # This flag is the client's update policy, not a label. `pick_release`
+        # in `infra/client_update.rs` skips a prerelease for anyone on the
+        # stable channel, which is the default, and `ClientRelease::is_required`
+        # refuses to gate on one. So:
+        #
+        #   checked   - only players who turned prereleases on are told, with a
+        #               banner they can dismiss. Everybody else is never
+        #               offered it and their client reports "up to date".
+        #   unchecked - every client is told, and a client that can install it
+        #               must: the update gate stands until it is.
+        #
+        # Every release so far has been checked, which is why nobody has ever
+        # been offered one.
+        description: 'Mark as a prerelease: only opted-in testers are offered it, and nobody is forced to update'
         type: boolean
         default: true
       allow_existing_tag:
