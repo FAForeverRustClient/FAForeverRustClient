@@ -1,7 +1,5 @@
 import { isValidElement } from "react";
 import type { ReactNode } from "react";
-import type { Game } from "../../ipc/bindings";
-import { liveReplayLink } from "../../shared/replayLinks";
 import { describe, expect, it } from "vitest";
 import { parseChatGameLink, renderBody, renderFormattedText, stripHtmlTags } from "./chatFormat";
 
@@ -41,32 +39,13 @@ describe("chat link rendering", () => {
     expect(parseChatGameLink(
       "faflive://127.0.0.1/123/Foley.SCFAreplay?map=dual_gap&mod=faf",
     )).toMatchObject({ kind: "liveReplay", uid: 123, player: "Foley" });
-  });
-
-  it("accepts the live link emitted by the replay vault", () => {
-    const game: Game = {
-      id: 123,
-      title: "Test",
-      host: "Host",
-      players: 2,
-      maxPlayers: 4,
-      map: "Seton's Clutch",
-      modName: "faf",
-      averageRating: 1500,
-      ratingType: "global",
-      passwordProtected: false,
-      visibility: "public",
-      gameType: "custom",
-      launchedAt: null,
-      hostedAt: null,
-      ratingMin: null,
-      ratingMax: null,
-      enforceRatingRange: false,
-      teams: {},
-      simMods: {},
-    };
-
-    expect(parseChatGameLink(liveReplayLink(game, "Player One"))).toMatchObject({
+    // A name with a space in it, which is percent-encoded on the wire. This
+    // client no longer writes these links -- the button that did was of no
+    // use to anybody -- but the Python client still shares them in chat, so
+    // reading them stays this client's business.
+    expect(parseChatGameLink(
+      "faflive://127.0.0.1/123/Player%20One.SCFAreplay?map=Seton's%20Clutch&mod=faf",
+    )).toMatchObject({
       kind: "liveReplay",
       uid: 123,
       player: "Player One",

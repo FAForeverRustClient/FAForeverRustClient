@@ -1490,8 +1490,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "ID powtórki",
   "replays.live.simMods": "Mody symulacji",
   "replays.live.none": "Brak",
-  "replays.live.linkCopied": "Skopiowano odnośnik",
-  "replays.live.copyLink": "Kopiuj odnośnik do transmisji",
   "replays.live.column.map": "Mapa",
   "replays.source.aria": "Źródła powtórek",
   "replays.source.live": "Na żywo",

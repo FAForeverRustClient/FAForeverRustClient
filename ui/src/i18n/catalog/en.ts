@@ -2218,9 +2218,6 @@ export const en = {
   "replays.live.replayId": "Replay ID",
   "replays.live.simMods": "SIM mods",
   "replays.live.none": "None",
-  "replays.live.linkCopied": "Link copied",
-  "replays.live.copyLink": "Copy live link",
-  "replays.live.copyLinkHint": "Copies a link that opens this game in another FAF client.",
   "replays.live.ratingEnforced": "enforced",
   "replays.live.column.map": "Map",
 

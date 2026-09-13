@@ -449,13 +449,6 @@
   padding: var(--space-3) var(--space-4) var(--space-4) 70px;
 }
 
-.live-detail-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
 /* The map, at the top of the panel about a game being played on it. The row
    above has the same picture at thumbnail size; this is the one place its
    full technical name is spelled out. */
@@ -613,14 +606,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.live-copy-link {
-  flex: 0 0 auto;
-  gap: 6px;
-  min-height: 30px;
-  padding-block: 0;
-  font-size: 11px;
 }
 
 .live-replay-footer {

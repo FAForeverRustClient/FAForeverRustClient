@@ -1288,8 +1288,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "ID du replay",
   "replays.live.simMods": "Mods SIM",
   "replays.live.none": "Aucun",
-  "replays.live.linkCopied": "Lien copié",
-  "replays.live.copyLink": "Copier le lien du direct",
   "replays.live.column.map": "Carte",
 
   "replays.filters.duration": "Durée",

@@ -8,7 +8,6 @@ import type { Game, LiveReplayTracking } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatClockDuration, formatRelativeDuration } from "../../shared/durations";
 import type { MapPresentation } from "../../shared/mapPresentation";
-import { liveReplayLink } from "../../shared/replayLinks";
 import { gameStartedAt, prettyGameType } from "./liveReplayModel";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { ReplayDetailRoster } from "./ReplayRoster";
@@ -266,7 +265,6 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   onToggle,
   onPlayerMenu,
   presentation,
-  player,
   tracking,
 }: {
   busy: boolean;
@@ -277,11 +275,9 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   onToggle: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
   presentation: MapPresentation;
-  player: string;
   tracking: LiveReplayTracking | null;
 }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // The vault's record of this match, which the lobby's `game_info` is not:
   // that carries team numbers and logins, and no faction and no rating. The
@@ -423,37 +419,21 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                 matchup on the other.
 
                 It was three columns sized by the table, so on a wide display
-                the lineup sat at the far left, three captions floated
-                somewhere in the middle right, and the one button was alone in
-                a corner. Now the left column carries every fact about the game
-                in the same tiles the vault's detail panel uses, and the right
-                one carries the teams the way that panel draws them: side by
-                side, with the versus between them. */}
+                the lineup sat at the far left and three captions floated
+                somewhere in the middle right. Now the left column carries
+                every fact about the game in the same tiles the vault's detail
+                panel uses, and the right one carries the teams the way that
+                panel draws them: side by side, with the versus between
+                them. */}
             <div className="live-replay-details">
-              <div className="live-detail-head">
-                <div className="live-detail-map">
-                  <LiveMapThumbnail presentation={presentation} />
-                  <div className="live-detail-map-name">
-                    <strong>{presentation.displayName}</strong>
-                    {/* The technical name, which is what somebody looking for
-                        the map in the vault or on disk actually searches. */}
-                    <code title={game.map}>{game.map}</code>
-                  </div>
+              <div className="live-detail-map">
+                <LiveMapThumbnail presentation={presentation} />
+                <div className="live-detail-map-name">
+                  <strong>{presentation.displayName}</strong>
+                  {/* The technical name, which is what somebody looking for
+                      the map in the vault or on disk actually searches. */}
+                  <code title={game.map}>{game.map}</code>
                 </div>
-                <Button
-                  className="live-copy-link"
-                  title={t("replays.live.copyLinkHint")}
-                  onClick={() =>
-                    ipc.run(
-                      navigator.clipboard
-                        .writeText(liveReplayLink(game, player))
-                        .then(() => setCopied(true)),
-                    )
-                  }
-                >
-                  <Icon name={copied ? "check" : "copy"} size={14} />
-                  {t(copied ? "replays.live.linkCopied" : "replays.live.copyLink")}
-                </Button>
               </div>
 
               <div className="live-detail-body">
