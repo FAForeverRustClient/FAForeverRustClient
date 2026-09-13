@@ -2283,6 +2283,8 @@ fn extract_game_options(
 /// single typed line are folded together.
 struct ChatRecord {
     time_seconds: u32,
+    /// The channel: `all`, `allies`, or an army number for a whisper.
+    to: String,
     /// `None` where the record carries no name at all. That is the case the
     /// report was about: it reached the UI as the literal "Unknown", sitting
     /// under the named copy of the same line.
@@ -2392,6 +2394,7 @@ fn walk_command_stream(cursor: &mut Cursor<&[u8]>, sources: &[String]) -> Comman
                 time_seconds: record.time_seconds,
                 sender: record.sender.unwrap_or_else(|| "Unknown".to_string()),
                 message: record.message,
+                to: record.to,
             })
             .collect(),
         command_stats: sources
@@ -2530,6 +2533,11 @@ fn try_parse_chat_payload(payload: &[u8], time_seconds: u32) -> Option<ChatRecor
 
     Some(ChatRecord {
         time_seconds,
+        to: nested
+            .and_then(|msg_map| msg_map.get("to"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
         sender: chat_sender(&args, nested),
         id: nested
             .and_then(|msg_map| msg_map.get("Id"))
@@ -3973,11 +3981,13 @@ impl ReplayPort for FakeReplay {
                     time_seconds: 13,
                     sender: "Downlord".to_string(),
                     message: "gl hf".to_string(),
+                    to: "all".to_string(),
                 },
                 ReplayChatMessage {
                     time_seconds: 599,
                     sender: "Nojoke".to_string(),
                     message: "gg".to_string(),
+                    to: "allies".to_string(),
                 },
             ],
             command_stats: vec![

@@ -5548,6 +5548,12 @@ export type ReplayChatMessage = {
 	timeSeconds: number,
 	sender: string,
 	message: string,
+	/**
+	 *  The channel the line was typed into: `all`, `allies`, or the number of
+	 *  the army a whisper went to. Empty where the record did not say, which
+	 *  old builds do not.
+	 */
+	to?: string,
 };
 
 export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | { type: "trackLive"; payload: {

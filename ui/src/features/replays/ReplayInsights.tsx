@@ -24,7 +24,7 @@ import { ReplayGameStats } from "./ReplayGameStats";
 import { ReplayHeatmap } from "./ReplayHeatmap";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { PlayerName } from "../../shared/nameColors";
-import { formatDecimal } from "../../i18n";
+import { formatDecimal, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { isObserverTeam } from "./ReplayRoster";
 
@@ -45,6 +45,20 @@ const ANALYSIS_TABS: ReadonlySet<InsightTab> = new Set<InsightTab>([
   "heatmap",
   "stats",
 ]);
+
+/**
+ * What to call the channel a line was typed into.
+ *
+ * `all` and `allies` are the two the game names; anything else is the army
+ * number a whisper went to, which is a number the reader has no way to resolve
+ * and so reads as "whisper".
+ */
+function channelLabel(channel: string, t: (key: MessageKey) => string): string {
+  if (channel === "all") return t("replays.insights.channelAll");
+  if (channel === "allies") return t("replays.insights.channelAllies");
+  if (!channel) return "";
+  return t("replays.insights.channelWhisper");
+}
 
 /** `1:23:45`, the way the Java client stamps a line of replay chat. */
 export function formatChatTime(seconds: number): string {
@@ -150,6 +164,8 @@ export function ReplayInsights({
   const { t } = useTranslation();
   const [tab, setTab] = useState<InsightTab>("options");
   const [optionFilter, setOptionFilter] = useState("");
+  const [chatSearch, setChatSearch] = useState("");
+  const [chatChannel, setChatChannel] = useState("");
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -166,11 +182,29 @@ export function ReplayInsights({
   // `.scfareplay` with no header in front of it.
   const simMods = details?.simMods ?? [];
   const gameOptions = details?.gameOptions ?? [];
-  const chatMessages = details?.chatMessages ?? [];
+  // Memoised rather than defaulted inline: an empty array literal is a new
+  // value on every render, and two of the filters below are keyed on it.
+  const chatMessages = useMemo(() => details?.chatMessages ?? [], [details?.chatMessages]);
   const rows = useMemo(
     () => activityRows(details?.commandStats ?? [], teams, details?.simSeconds ?? 0),
     [details?.commandStats, details?.simSeconds, teams],
   );
+
+  // The channels this game's chat actually used, so the filter offers what is
+  // there. The Python client's tab has the same one, as four checkboxes.
+  const chatChannels = useMemo(
+    () => [...new Set(chatMessages.map((message) => message.to ?? "").filter(Boolean))].sort(),
+    [chatMessages],
+  );
+  const filteredChat = useMemo(() => {
+    const needle = chatSearch.trim().toLowerCase();
+    return chatMessages.filter((message) => {
+      if (chatChannel && (message.to ?? "") !== chatChannel) return false;
+      if (!needle) return true;
+      return message.message.toLowerCase().includes(needle)
+        || message.sender.toLowerCase().includes(needle);
+    });
+  }, [chatChannel, chatMessages, chatSearch]);
 
   const filteredOptions = useMemo(() => {
     const options = details?.gameOptions ?? [];
@@ -343,34 +377,64 @@ export function ReplayInsights({
           )}
 
           {details && tab === "chat" && (
-            <div className="replay-table-scroll">
-              <table className="replay-data-table">
-                <thead>
-                  <tr>
-                    <th>{t("replays.detail.chatTime")}</th>
-                    <th>{t("replays.detail.chatSender")}</th>
-                    <th>{t("replays.detail.chatMessage")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {chatMessages.length > 0 ? (
-                    chatMessages.map((message, index) => (
-                      <tr key={`${message.timeSeconds}-${message.sender}-${index}`}>
-                        <td className="replay-chat-time">{formatChatTime(message.timeSeconds)}</td>
-                        <td className="replay-chat-sender" title={message.sender}>{message.sender}</td>
-                        <td className="replay-chat-message">{message.message}</td>
-                      </tr>
-                    ))
-                  ) : (
+            <>
+              <div className="replay-insights-toolbar">
+                {chatChannels.length > 1 && (
+                  <label className="replay-insights-filter">
+                    <span className="muted">{t("replays.insights.channel")}</span>
+                    <select
+                      className="vault-input"
+                      value={chatChannel}
+                      onChange={(event) => setChatChannel(event.target.value)}
+                    >
+                      <option value="">{t("replays.insights.everyChannel")}</option>
+                      {chatChannels.map((channel) => (
+                        <option key={channel} value={channel}>{channelLabel(channel, t)}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <input
+                  type="search"
+                  className="vault-input replay-options-filter"
+                  placeholder={t("replays.insights.searchChat")}
+                  value={chatSearch}
+                  onChange={(event) => setChatSearch(event.target.value)}
+                />
+              </div>
+              <div className="replay-table-scroll">
+                <table className="replay-data-table">
+                  <thead>
                     <tr>
-                      <td colSpan={3} className="replay-table-empty muted">
-                        {t("replays.detail.noChat")}
-                      </td>
+                      <th>{t("replays.detail.chatTime")}</th>
+                      <th>{t("replays.detail.chatSender")}</th>
+                      <th>{t("replays.insights.channel")}</th>
+                      <th>{t("replays.detail.chatMessage")}</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredChat.length > 0 ? (
+                      filteredChat.map((message, index) => (
+                        <tr key={`${message.timeSeconds}-${message.sender}-${index}`}>
+                          <td className="replay-chat-time">{formatChatTime(message.timeSeconds)}</td>
+                          <td className="replay-chat-sender" title={message.sender}>{message.sender}</td>
+                          <td className="muted">{channelLabel(message.to ?? "", t)}</td>
+                          <td className="replay-chat-message">{message.message}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="replay-table-empty muted">
+                          {t(chatMessages.length > 0
+                            ? "replays.insights.noChatMatch"
+                            : "replays.detail.noChat")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           {details && tab === "options" && (

@@ -263,6 +263,11 @@ pub struct ReplayChatMessage {
     pub time_seconds: u32,
     pub sender: String,
     pub message: String,
+    /// The channel the line was typed into: `all`, `allies`, or the number of
+    /// the army a whisper went to. Empty where the record did not say, which
+    /// old builds do not.
+    #[serde(default)]
+    pub to: String,
 }
 
 /// How busy one client was, counted out of the replay's own command stream.
