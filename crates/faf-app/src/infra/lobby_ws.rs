@@ -339,6 +339,17 @@ impl LobbyPort for LobbyClient {
         self.send_frame(avatar_select_frame(url))
     }
 
+    fn restore_game_session(&self, game_id: i32) -> bool {
+        let sent = self.send_frame(restore_game_session_frame(game_id));
+        if !sent {
+            tracing::warn!(
+                game_id,
+                "could not ask the server to restore the game session"
+            );
+        }
+        sent
+    }
+
     fn send_game_relay(&self, command: String, args: Vec<Value>) {
         let frame = json!({ "command": command, "target": "game", "args": args });
         if !self.send_frame(frame) {
@@ -2047,6 +2058,15 @@ impl GameSet {
     }
 }
 
+/// The `restore_game_session` frame, built apart from sending it so its shape
+/// is testable without a live socket.
+///
+/// `game_id` is a number on the wire. The server reads it with `int(...)`, so a
+/// string would work too, and both reference clients send a number.
+fn restore_game_session_frame(game_id: i32) -> Value {
+    json!({ "command": "restore_game_session", "game_id": game_id })
+}
+
 /// The `game_host` frame, built apart from sending it so the password rule is
 /// testable without a live socket.
 ///
@@ -2089,6 +2109,23 @@ fn host_frame(config: HostGameConfig) -> Value {
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    /// The frame that puts a running game back on a replacement socket.
+    ///
+    /// The server ties a player's game connection to the socket the game was
+    /// launched on, so losing that socket -- a drop, or Disconnect followed by
+    /// Reconnect -- leaves the running game relayed for nobody and the players
+    /// unable to reconnect to each other. `server/lobbyconnection.py` reads
+    /// exactly these two keys.
+    #[test]
+    fn restoring_a_game_session_names_the_game_by_number() {
+        let frame = restore_game_session_frame(12345);
+        assert_eq!(
+            frame["command"],
+            Value::String("restore_game_session".into())
+        );
+        assert_eq!(frame["game_id"], Value::from(12345));
+    }
 
     #[test]
     fn hosting_without_a_password_sends_null_rather_than_an_empty_string() {

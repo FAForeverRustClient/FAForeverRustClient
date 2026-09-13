@@ -18,7 +18,9 @@ use crate::ports::Ports;
 use crate::services;
 
 mod policies;
-pub use policies::{AutoReconnect, CancelledJoin, LatestRequest, SerialMutation, SingleFlight};
+pub use policies::{
+    AutoReconnect, CancelledJoin, LatestRequest, RunningGame, SerialMutation, SingleFlight,
+};
 
 /// Read-only context handed to every service: shared dependencies.
 ///
@@ -36,6 +38,10 @@ pub struct ServiceCtx {
     pub lobby_join_active: SingleFlight,
     /// Whether the join that guard is holding has been called off.
     pub lobby_join_cancelled: CancelledJoin,
+    /// The game this client is currently playing, if any. Read when the lobby
+    /// socket comes back, so the server can be told to restore the game
+    /// session it dropped along with the connection.
+    pub running_game: RunningGame,
     /// Same single-flight guard, for the chat connection.
     pub chat_active: SingleFlight,
     /// Whether [`services::reconnect`] should bring these sockets back after
@@ -297,6 +303,7 @@ impl App {
             lobby_active: SingleFlight::default(),
             lobby_join_active: SingleFlight::default(),
             lobby_join_cancelled: CancelledJoin::default(),
+            running_game: RunningGame::default(),
             chat_active: SingleFlight::default(),
             lobby_auto_reconnect: AutoReconnect::default(),
             chat_auto_reconnect: AutoReconnect::default(),
