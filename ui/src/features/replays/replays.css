@@ -189,6 +189,14 @@
   font-weight: 600;
 }
 
+/* The one title in the row, and the thing the eye lands on first, so it is
+   not the same size as the mod name and the duration beside it. */
+.replay-list-game-cell > strong {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
 .replay-list-cell > small,
 .replay-list-replay-summary > small {
   margin-top: 2px;
@@ -238,11 +246,16 @@
   border-radius: var(--radius-sm);
 }
 
+/* The status and the replay id on top, the things you can do to it
+   underneath and to the right. Side by side, the buttons and the id competed
+   for one column's width and the id ellipsised first; stacked, the actions sit
+   where the Java client puts its play button and the id stays readable. */
 .replay-list-replay-cell {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 4px;
 }
 
 .replay-list-replay-summary {
@@ -272,8 +285,8 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
-  margin-top: 1px;
 }
 
 .replay-list-action,
