@@ -1213,12 +1213,16 @@ mod map_stats_tests {
     }
 
     /// And its mirror: a rating moved, but nothing says which way the game
-    /// went. Neither half alone is enough.
+    /// went. FAF scored it, so it is not unranked -- and it is in none of the
+    /// three columns either, because there is no verdict to put in one. The
+    /// tracker leaves exactly the same hole, and reconciles it against the
+    /// leaderboard's own total.
     #[test]
-    fn an_undecidable_game_is_not_a_record_even_with_movement() {
+    fn a_scored_game_nobody_can_call_is_in_no_column_at_all() {
         let stats = aggregate_map_stats(&[game("Loki", Outcome::Unknown, "2026-01-01")], false);
         assert_eq!((stats.wins, stats.losses, stats.undecided), (0, 0, 0));
-        assert_eq!(stats.unranked, 1);
+        assert_eq!(stats.ranked_games, 1, "a rating moved, so FAF scored it");
+        assert_eq!(stats.unranked, 0);
     }
 
     #[test]
