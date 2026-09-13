@@ -1149,8 +1149,13 @@ button.vault-input {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  width: min(1000px, 94vw);
-  max-height: 92vh;
+  width: min(1480px, 96vw);
+  /* A fixed height, not a maximum. What is on these tabs changes size as you
+     use them -- the graph's read-out is as long as the orders in the minute
+     under the pointer -- and a dialog sized to its contents grew and shrank
+     under the cursor while it was being read. The panel is the size of the
+     panel; the tab inside it scrolls. */
+  height: 92vh;
   padding: var(--space-4);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -1160,10 +1165,18 @@ button.vault-input {
 
 .replay-insights-head {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-3);
+}
+
+/* The tabs are the one thing in this dialog that must never be squeezed: a
+   flex child defaults to shrinking, and a tall tab pressed the 42px strip
+   down to a few pixels of text at the top of the panel. */
+.replay-insights > .section-tabs {
+  flex: 0 0 auto;
 }
 
 .replay-insights-heading {
@@ -1193,6 +1206,7 @@ button.vault-input {
    hundred lines must not push the tabs off the top of the dialog. */
 .replay-insights-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-2);
   min-height: 0;
@@ -1237,11 +1251,21 @@ button.vault-input {
   max-height: none;
 }
 
+/* A span inside the cell, never the cell itself: `display: flex` on a `td`
+   takes the element out of the table's own box tree, which breaks the
+   collapsed row border at that column and leaves the glyphs unmeasured on top
+   of the name beside them. */
 .replay-activity-player {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
   min-width: 0;
+  vertical-align: middle;
+}
+
+.replay-activity-player svg {
+  flex: 0 0 auto;
 }
 
 .replay-activity-count {
@@ -2046,7 +2070,15 @@ button.vault-input {
 
 .replay-chart-label {
   fill: var(--color-muted);
-  font-size: 11px;
+  font-size: 13px;
+}
+
+/* The name under a group of bars, which is the one label a reader looks for
+   by name rather than reads in passing. */
+.replay-chart-label.is-axis {
+  fill: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .replay-chart-line {
@@ -2063,6 +2095,7 @@ button.vault-input {
 
 .replay-chart-legend {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   gap: 4px var(--space-2);
 }
@@ -2085,9 +2118,16 @@ button.vault-input {
   opacity: 0.45;
 }
 
+/* A fixed height with its own scrollbar. What a minute of a game is made of
+   changes from minute to minute -- two kinds of order in one, fourteen in the
+   next -- and a box that grew to fit them moved everything under it while the
+   pointer was still travelling along the line. */
 .replay-chart-readout {
-  min-height: 96px;
+  flex: 0 0 auto;
+  height: 168px;
+  box-sizing: border-box;
   padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -2131,25 +2171,24 @@ button.vault-input {
 
 /* ── Heatmap ─────────────────────────────────────────────────────────── */
 
+/* One column, like everything else on these tabs. Two columns meant the
+   square was never wider than half the panel, which is the whole reason the
+   picture was too small to read. */
 .replay-heatmap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 280px);
-  gap: var(--space-4);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
-@media (max-width: 840px) {
-  .replay-heatmap {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* The map underneath and the heat on top, in one square box. */
+/* The map underneath and the heat on top, in one square box, centred in a
+   panel that is wider than it is. */
 .replay-heatmap-figure {
   position: relative;
   aspect-ratio: 1 / 1;
   width: 100%;
-  max-width: 560px;
+  max-width: min(560px, 100%);
+  margin: 0 auto;
   overflow: hidden;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -2169,11 +2208,32 @@ button.vault-input {
   opacity: 0.55;
 }
 
+/* The filters in a row under the picture rather than in a column beside it. */
 .replay-heatmap-controls {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
   min-width: 0;
+}
+
+.replay-heatmap-controls > .replay-chart-legend {
+  flex-basis: 100%;
+}
+
+/* The map this heatmap has nothing to draw over, and the button that builds
+   one. Centred on the empty square, which is where the reader is looking. */
+.replay-heatmap-generate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+  font-size: 12px;
 }
 
 /* ── Game statistics ─────────────────────────────────────────────────── */
@@ -2185,32 +2245,21 @@ button.vault-input {
   min-width: 0;
 }
 
-.replay-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--space-3);
+/* The same rule as the panel's own tabs: a flex child shrinks by default, and
+   four charts in a column are more than enough to squeeze a 42px strip flat. */
+.replay-stats > .section-tabs {
+  flex: 0 0 auto;
 }
 
-.replay-stats-chart {
+/* One chart per row, not two. Side by side each one was about four hundred
+   pixels wide, which put every label on it under five pixels tall: the report
+   was that the numbers and the names could not be read at all. A chart with
+   the width of the panel can be, and the one that still is not big enough has
+   the button in its caption. */
+.replay-stats-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  min-width: 0;
-  padding: var(--space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.replay-stats-chart figcaption {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.replay-stats-chart svg {
-  width: 100%;
-  height: auto;
+  gap: var(--space-3);
 }
 
 /* Four tones, and only four: built, lost, killed, and the odd one out that a
@@ -2254,17 +2303,176 @@ button.vault-input {
 }
 
 .replay-stats-key.is-built::before {
-  background: var(--color-faction-uef);
+  background: var(--replay-stats-key-color, var(--color-faction-uef));
 }
 
 .replay-stats-key.is-lost::before {
-  background: var(--color-error);
+  background: var(--replay-stats-key-color, var(--color-error));
 }
 
 .replay-stats-key.is-kills::before {
-  background: var(--color-ok);
+  background: var(--replay-stats-key-color, var(--color-ok));
 }
 
 .replay-stats-key.is-extra::before {
-  background: var(--color-league-diamond);
+  background: var(--replay-stats-key-color, var(--color-league-diamond));
+}
+
+/* -- The frame every chart sits in ----------------------------------- */
+
+.replay-chart-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-chart-frame > figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.replay-chart-frame-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-chart-frame-body {
+  min-width: 0;
+}
+
+.replay-chart-frame-body > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Where the chart was, while the chart is filling the viewport. The frame
+   keeps its place in the column so the tab underneath does not jump. */
+.replay-chart-frame-away {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  margin: 0;
+  font-size: 12px;
+}
+
+/* One chart, the size of the window. Same scrim and the same three ways out
+   as the map preview and the panel behind it. */
+.replay-chart-zoom {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  gap: var(--space-3);
+  width: min(1600px, 96vw);
+  height: 92vh;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+
+.replay-chart-zoom-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.replay-chart-zoom-head h3 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-chart-zoom-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The drawing takes the height the dialog has spare; the legend and the
+   read-out under it keep theirs. */
+.replay-chart-zoom-body > .replay-chart-frame-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.replay-chart-zoom-body > .replay-chart-frame-body > svg {
+  width: 100%;
+  height: 100%;
+}
+
+.replay-chart-zoom-body .replay-heatmap-figure {
+  max-width: min(80vh, 100%);
+}
+
+/* -- Sliders ---------------------------------------------------------- */
+
+/* The heatmap's three sliders came out of the box the platform draws them in,
+   which in a dark panel is a grey groove with a thumb from another
+   application. Same track, thumb and focus ring as the rest of the client. */
+.replay-insights-filter input[type="range"] {
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.replay-insights-filter input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+.replay-insights-filter input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+.replay-insights-filter input[type="range"]::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  background: var(--color-accent);
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.replay-insights-filter input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent);
+  border: 0;
+  border-radius: 50%;
+}
+
+.replay-insights-filter input[type="range"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 999px;
 }

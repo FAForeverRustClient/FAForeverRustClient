@@ -665,6 +665,14 @@ export function ReplayDetailPanel({
   const effectiveMap = effectiveReplayMapName(replay.map, localMatch?.map);
   const isGenerated = isGeneratedMap(effectiveMap);
   const seed = extractGeneratedMapSeed(effectiveMap);
+  // The picture of a generated map, once the generator has built one. Keyed
+  // the three ways `ReplayMapThumb` keys it, because the store is written
+  // from whichever spelling the caller had.
+  const generatedPreview = useAppStore((state) => isGenerated
+    ? state.state.mapGenerator.previews?.[effectiveMap]
+      || state.state.mapGenerator.previews?.[normalizeMapName(effectiveMap)]
+      || state.state.mapGenerator.previews?.[effectiveMap.toLowerCase()]
+    : undefined);
 
   const installed = maps.installed.some(
     (map) =>
@@ -801,29 +809,35 @@ export function ReplayDetailPanel({
   const mapLabel = presentation.displayName || effectiveMap;
   const cardTitle = replay.title || mapLabel;
   const stars = replay.reviewsAverage ?? null;
+  // Rebuilding a generated map from its seed, which is how a generated map is
+  // obtained: there is nothing to download. Its own value rather than only a
+  // branch of the thumbnail's action below, because the heatmap wants the
+  // same button -- the thumbnail offers nothing once the map is on disk, and
+  // the heatmap can still have no picture to draw its cells over.
+  const generateAction = isGenerated
+    ? {
+        icon: isGeneratingThisMap ? "refresh" : "plus",
+        label: isGeneratingThisMap
+          ? t("lobby.details.generatingMap")
+          : !seed && downloadState === "downloading"
+            ? t("replays.detail.resolvingMap")
+            : t("lobby.details.generateMap"),
+        disabled: isGeneratingThisMap || (!seed && downloadState === "downloading"),
+        run: () => {
+          if (seed) {
+            ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName: effectiveMap } } });
+          } else if (replay.replayAvailable) {
+            ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid: replay.uid } } });
+          }
+        },
+      }
+    : null;
   // The map action the thumbnail overlays: one of them, never both. Which one
-  // depends on whether the map is on disk, and a generated map is rebuilt from
-  // its name rather than downloaded.
+  // depends on whether the map is on disk.
   const mapAction = installed
     ? null
-    : isGenerated
-      ? {
-          icon: isGeneratingThisMap ? "refresh" : "plus",
-          label: isGeneratingThisMap
-            ? t("lobby.details.generatingMap")
-            : !seed && downloadState === "downloading"
-              ? t("replays.detail.resolvingMap")
-              : t("lobby.details.generateMap"),
-          disabled: isGeneratingThisMap || (!seed && downloadState === "downloading"),
-          run: () => {
-            if (seed) {
-              ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName: effectiveMap } } });
-            } else if (replay.replayAvailable) {
-              ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid: replay.uid } } });
-            }
-          },
-        }
-      : vaultMap
+    : generateAction
+      ?? (vaultMap
         ? {
             icon: "download",
             label: t("lobby.details.downloadMap"),
@@ -834,7 +848,22 @@ export function ReplayDetailPanel({
                 command: { type: "installMap", payload: { folderName: vaultMap.folderName, downloadUrl: vaultMap.downloadUrl } },
               }),
           }
-        : null;
+        : null);
+  // What the heatmap draws its cells over, and what to press when there is
+  // nothing to draw them over yet. The placeholder a generated map carries is
+  // not a preview: it is the picture that says there is no picture, and the
+  // heat over it would read as heat over the map.
+  const heatmapPreviewUrl = generatedPreview
+    || (isGeneratedMapPlaceholderUrl(replay.mapThumbnailUrl) ? "" : replay.mapThumbnailUrl)
+    || undefined;
+  const heatmapMapAction = !heatmapPreviewUrl && generateAction
+    ? {
+        label: generateAction.label,
+        disabled: generateAction.disabled,
+        busy: isGeneratingThisMap,
+        run: generateAction.run,
+      }
+    : undefined;
   return (
     <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
       <div className="replay-card-layout">
@@ -1233,7 +1262,8 @@ export function ReplayDetailPanel({
           analysisError={analysisError ?? ""}
           teams={detailTeams}
           title={cardTitle}
-          mapPreviewUrl={replay.mapThumbnailUrl || undefined}
+          mapPreviewUrl={heatmapPreviewUrl}
+          mapAction={heatmapMapAction}
           loading={isLoadingDetails}
           error={detailsError ?? ""}
           onClose={() => setShowInsights(false)}

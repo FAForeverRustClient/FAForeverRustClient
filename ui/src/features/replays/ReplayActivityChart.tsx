@@ -10,6 +10,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { ReplayAnalysis, ReplayOrder } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ReplayChartFrame } from "./ReplayChartFrame";
 import {
   ACTIVITY_WINDOW_TICKS,
   analysedPlayers,
@@ -22,7 +23,7 @@ import {
 
 /** The drawing area, in the SVG's own units. The box scales to the panel. */
 const CHART_WIDTH = 1000;
-const CHART_HEIGHT = 240;
+const CHART_HEIGHT = 300;
 /** Room for the axis labels along the left edge and the bottom. */
 const PAD_LEFT = 44;
 const PAD_BOTTOM = 22;
@@ -44,6 +45,7 @@ export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverTick, setHoverTick] = useState<number | null>(null);
   const [hidden, setHidden] = useState<ReadonlySet<number>>(new Set());
+  const [zoomed, setZoomed] = useState(false);
 
   const players = useMemo(() => analysedPlayers(analysis), [analysis]);
   const series = useMemo(() => {
@@ -99,60 +101,8 @@ export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) 
   // Four gridlines, at values a reader can hold in their head.
   const gridValues = [0, 0.25, 0.5, 0.75, 1].map((share) => Math.round(peak * share));
 
-  return (
-    <div className="replay-activity-chart">
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="replay-chart-surface"
-        role="img"
-        aria-label={t("replays.insights.graphAria")}
-        onMouseMove={(event) => trackTick(event.clientX)}
-        onMouseLeave={() => setHoverTick(null)}
-      >
-        {gridValues.map((value) => (
-          <g key={value}>
-            <line
-              className="replay-chart-grid"
-              x1={PAD_LEFT}
-              x2={CHART_WIDTH}
-              y1={yOf(value)}
-              y2={yOf(value)}
-            />
-            <text className="replay-chart-label" x={PAD_LEFT - 6} y={yOf(value) + 4} textAnchor="end">
-              {value}
-            </text>
-          </g>
-        ))}
-        {/* One label every quarter of the game, which is as many as fit. */}
-        {[0, 0.25, 0.5, 0.75, 1].map((share) => {
-          const tick = Math.round(analysis.ticks * share);
-          return (
-            <text
-              key={share}
-              className="replay-chart-label"
-              x={xOf(tick)}
-              y={CHART_HEIGHT - 6}
-              textAnchor={share === 0 ? "start" : share === 1 ? "end" : "middle"}
-            >
-              {formatGameTime(tick)}
-            </text>
-          );
-        })}
-        {paths.map((path) => (
-          <path key={path.source} className="replay-chart-line" d={path.d} stroke={path.color} />
-        ))}
-        {hoverTick !== null && (
-          <line
-            className="replay-chart-cursor"
-            x1={xOf(hoverTick)}
-            x2={xOf(hoverTick)}
-            y1={PAD_TOP}
-            y2={PAD_TOP + plotHeight}
-          />
-        )}
-      </svg>
-
+  const legend = (
+    <>
       <div className="replay-chart-legend">
         {players.map((player) => (
           <button
@@ -176,7 +126,12 @@ export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) 
       </div>
 
       {/* What the minute under the pointer was made of. The Python client shows
-          the same read-out, as a wall of unit icons. */}
+          the same read-out, as a wall of unit icons.
+
+          A fixed height with its own scrollbar, not a box that grows to fit:
+          how many kinds of order a minute holds changes from minute to
+          minute, and a read-out sized to its contents made the panel above it
+          jump up and down while the pointer was moving along the line. */}
       <div className="replay-chart-readout">
         {hoverTick === null ? (
           <p className="muted">{t("replays.insights.graphHint")}</p>
@@ -221,6 +176,69 @@ export function ReplayActivityChart({ analysis }: { analysis: ReplayAnalysis }) 
           </>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <div className="replay-activity-chart">
+      <ReplayChartFrame
+        title={t("replays.insights.graph")}
+        zoomed={zoomed}
+        onZoom={setZoomed}
+        legend={legend}
+      >
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+          className="replay-chart-surface"
+          role="img"
+          aria-label={t("replays.insights.graphAria")}
+          onMouseMove={(event) => trackTick(event.clientX)}
+          onMouseLeave={() => setHoverTick(null)}
+        >
+          {gridValues.map((value) => (
+            <g key={value}>
+              <line
+                className="replay-chart-grid"
+                x1={PAD_LEFT}
+                x2={CHART_WIDTH}
+                y1={yOf(value)}
+                y2={yOf(value)}
+              />
+              <text className="replay-chart-label" x={PAD_LEFT - 6} y={yOf(value) + 4} textAnchor="end">
+                {value}
+              </text>
+            </g>
+          ))}
+          {/* One label every quarter of the game, which is as many as fit. */}
+          {[0, 0.25, 0.5, 0.75, 1].map((share) => {
+            const tick = Math.round(analysis.ticks * share);
+            return (
+              <text
+                key={share}
+                className="replay-chart-label"
+                x={xOf(tick)}
+                y={CHART_HEIGHT - 6}
+                textAnchor={share === 0 ? "start" : share === 1 ? "end" : "middle"}
+              >
+                {formatGameTime(tick)}
+              </text>
+            );
+          })}
+          {paths.map((path) => (
+            <path key={path.source} className="replay-chart-line" d={path.d} stroke={path.color} />
+          ))}
+          {hoverTick !== null && (
+            <line
+              className="replay-chart-cursor"
+              x1={xOf(hoverTick)}
+              x2={xOf(hoverTick)}
+              y1={PAD_TOP}
+              y2={PAD_TOP + plotHeight}
+            />
+          )}
+        </svg>
+      </ReplayChartFrame>
     </div>
   );
 }

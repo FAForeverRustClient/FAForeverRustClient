@@ -10,9 +10,27 @@
 // the same at this size and one of them does not need a numerics library.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import type { ReplayAnalysis, ReplayPoint } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ReplayChartFrame } from "./ReplayChartFrame";
 import { analysedPlayers, blurBins, commandName, formatGameTime, heatmapBins } from "./replayAnalysis";
+
+/**
+ * Building the map this heatmap is drawn over.
+ *
+ * A generated map has no picture until somebody rebuilds it from its seed,
+ * and the only button that did so was on the detail panel behind this
+ * overlay: the heat sat over an empty square, and the way to fix that was to
+ * close the panel you were reading. The same action is offered here.
+ */
+export interface HeatmapMapAction {
+  label: string;
+  disabled: boolean;
+  busy: boolean;
+  run: () => void;
+}
 
 /** Cells on a side. Fine enough for a big map, cheap enough to redraw live. */
 const GRID = 192;
@@ -50,10 +68,13 @@ function rampAt(share: number): [number, number, number] {
 export function ReplayHeatmap({
   analysis,
   mapPreviewUrl,
+  mapAction,
 }: {
   analysis: ReplayAnalysis;
   /** The map under the heat, where this client has a preview of it. */
   mapPreviewUrl?: string;
+  /** How to get that preview, where there is none and one can be built. */
+  mapAction?: HeatmapMapAction;
 }) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -64,6 +85,7 @@ export function ReplayHeatmap({
   const [to, setTo] = useState(analysis.ticks);
   const [smoothing, setSmoothing] = useState(2);
   const [showMap, setShowMap] = useState(true);
+  const [zoomed, setZoomed] = useState(false);
 
   // The kinds of order that actually appear in this replay, so the filter
   // offers what is there rather than the whole enum.
@@ -123,19 +145,41 @@ export function ReplayHeatmap({
 
   return (
     <div className="replay-heatmap">
-      <div className="replay-heatmap-figure">
-        {showMap && mapPreviewUrl && (
-          <img className="replay-heatmap-map" src={mapPreviewUrl} alt="" aria-hidden />
-        )}
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_SIZE}
-          height={CANVAS_SIZE}
-          className="replay-heatmap-canvas"
-          aria-label={t("replays.insights.heatmapAria")}
-          role="img"
-        />
-      </div>
+      <ReplayChartFrame
+        title={t("replays.insights.heatmap")}
+        zoomed={zoomed}
+        onZoom={setZoomed}
+      >
+        <div className="replay-heatmap-figure">
+          {showMap && mapPreviewUrl && (
+            <img className="replay-heatmap-map" src={mapPreviewUrl} alt="" aria-hidden />
+          )}
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_SIZE}
+            height={CANVAS_SIZE}
+            className="replay-heatmap-canvas"
+            aria-label={t("replays.insights.heatmapAria")}
+            role="img"
+          />
+          {/* Over the square rather than beside it: the empty square is what
+              somebody is looking at when they wonder where the map went. */}
+          {!mapPreviewUrl && mapAction && (
+            <div className="replay-heatmap-generate">
+              <Button
+                variant="primary"
+                disabled={mapAction.disabled}
+                onClick={mapAction.run}
+                title={mapAction.label}
+              >
+                <Icon name={mapAction.busy ? "refresh" : "maps"} size={15} className={mapAction.busy ? "spin" : undefined} />
+                <span>{mapAction.label}</span>
+              </Button>
+              <span className="muted">{t("replays.insights.noMapPreview")}</span>
+            </div>
+          )}
+        </div>
+      </ReplayChartFrame>
 
       <div className="replay-heatmap-controls">
         <label className="replay-insights-filter">
