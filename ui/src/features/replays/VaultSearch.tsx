@@ -25,7 +25,7 @@
 // description can't drift.
 
 import { useEffect, useRef, useState } from "react";
-import type { League, ReplayQuery, ReplaySortField } from "../../ipc/bindings";
+import type { RatingLeaderboard, ReplayQuery, ReplaySortField } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { RangeSlider } from "../../design-system/RangeSlider";
@@ -71,7 +71,12 @@ type Preset = "newest" | "highestRated" | "own";
 interface Props {
   /** Featured mod technical names from the API. */
   featuredMods: string[];
-  leagues: League[];
+  /**
+   * The API's rating boards, which are what a replay's rating changes name.
+   * Not the league list: those are a different resource with different
+   * technical names, and a search for one of those matches nothing.
+   */
+  leaderboards: RatingLeaderboard[];
   /** Logged-in player, for the "My replays" preset. */
   self: string;
   /** Executed query (or the first query about to execute) when this form mounts. */
@@ -79,7 +84,7 @@ interface Props {
   onSearch: (query: ReplayQuery) => void;
 }
 
-export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearch }: Props) {
+export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
   const [advanced, setAdvanced] = useState(false);
@@ -188,7 +193,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
     onSearch(query);
   };
 
-  const gameModes = replayGameModes(leagues);
+  const gameModes = replayGameModes(leaderboards);
   const hiddenFilterCount = advancedReplayFilterCount(form);
 
   return (

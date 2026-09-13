@@ -21,7 +21,7 @@
 // advanced panel, for `fafbeta` and `fafdevelop`. The one thing this control
 // owns there is `coop`, because that is how a co-op game is identified.
 
-import type { League, ReplayQuery } from "../../ipc/bindings";
+import type { RatingLeaderboard, ReplayQuery } from "../../ipc/bindings";
 import { t } from "../../i18n";
 import { GLOBAL_LEADERBOARD, leaderboardLabel } from "../../shared/playerRatings";
 import { COOP_FEATURED_MOD } from "../../shared/replayQuery";
@@ -37,28 +37,37 @@ export interface ReplayGameMode {
 }
 
 /**
- * The modes to offer, given the leagues the API listed.
+ * The modes to offer, given the rating boards the API listed.
  *
- * Built from the API's own list rather than from a table here, so a league FAF
+ * **Rating leaderboards, not leagues.** The two lists are different resources
+ * with different technical names: `/data/leaderboard` is `global`,
+ * `ladder_1v1`, `tmm_2v2`, and `/data/league` is `1v1_league`, `2v2_league`.
+ * The clause this control writes is matched against the *leaderboard* name, so
+ * a league name in it matches nothing at all: every mode but custom games and
+ * co-op returned an empty page, which is what #228's follow-up reported. Custom
+ * games worked by accident, because `global` is added below whatever the API
+ * said.
+ *
+ * Built from the API's own list rather than from a table here, so a board FAF
  * adds appears without a release: the only thing this file decides is that
  * `global` is what a player calls a custom game, and that co-op exists at all.
  */
-export function replayGameModes(leagues: League[]): ReplayGameMode[] {
-  const board = (technicalName: string): ReplayGameMode => ({
+export function replayGameModes(boards: RatingLeaderboard[]): ReplayGameMode[] {
+  const mode = (technicalName: string): ReplayGameMode => ({
     id: technicalName,
     label: technicalName === GLOBAL_LEADERBOARD
       ? t("replays.search.mode.custom")
       : leaderboardLabel(technicalName),
     leaderboards: [technicalName],
   });
-  const names = leagues.map((league) => league.technicalName);
-  // Custom games regardless of what the leagues call arrived with, and first:
-  // it is the mode most of the vault is, and the tab must not be missing it
-  // because the leaderboard catalogue has not loaded (or failed).
-  const boards = names.includes(GLOBAL_LEADERBOARD) ? names : [GLOBAL_LEADERBOARD, ...names];
+  const names = boards.map((board) => board.technicalName);
+  // Custom games whatever the catalogue said, and first: it is the mode most
+  // of the vault is, and the tab must not be missing it because the
+  // leaderboard catalogue has not loaded (or failed).
+  const listed = names.includes(GLOBAL_LEADERBOARD) ? names : [GLOBAL_LEADERBOARD, ...names];
   return [
     { id: "", label: t("replays.search.mode.any"), leaderboards: [] },
-    ...boards.map(board),
+    ...listed.map(mode),
     { id: COOP_FEATURED_MOD, label: t("replays.search.mode.coop"), leaderboards: [] },
   ];
 }

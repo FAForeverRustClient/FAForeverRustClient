@@ -43,7 +43,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const query = useAppStore((s) => s.state.replays.vaultQuery);
   const hasMore = useAppStore((s) => s.state.replays.vaultHasMore);
   const featuredMods = useAppStore((s) => s.state.replays.featuredMods);
-  const leagues = useAppStore((s) => s.state.leaderboard.leagues);
+  const leaderboards = useAppStore((s) => s.state.leaderboard.ratingLeaderboards);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
   const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
   const browsing = useAppStore((s) => s.state.settings.browsing);
@@ -172,7 +172,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     <>
       <VaultSearch
         featuredMods={featuredMods}
-        leagues={leagues}
+        leaderboards={leaderboards}
         self={self}
         initialQuery={formInitialQuery}
         onSearch={handleSearch}

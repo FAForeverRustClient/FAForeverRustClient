@@ -1,30 +1,58 @@
-// Live replays as a grid of cards, the other half of the view switch the two
-// other replay tabs already have.
+// Live replays as cards, built out of the online vault's card rather than
+// beside it.
 //
-// The table is a scan: eight columns, sortable, and the right shape for "who
-// is playing 4v4 on Setons right now". A card is a look: the map is the thing
-// that decides whether a game is worth watching, and in the table it is a 42px
-// thumbnail in the first column. Every other list of games in this client
-// offers both, and this one offered a table, which is what #234 is about.
+// The first version of this was its own card with its own grid, its own meta
+// row and its own team list, and it looked like what it was: a second design
+// for the same object, in the same tab, one click from the first. So the
+// pieces are the vault's now, class for class: `.replay-grid`, `.replay-card`
+// and its two columns, `ReplayMapThumb`, the icon-paired meta grid and
+// `ReplayCardRoster`. What differs is only what a live game is: the facts a
+// finished replay has and a running one does not (a duration, a review) give
+// their places to the ones only a running game has, and the footer carries the
+// watch control.
 //
-// The pieces come from `LiveReplayRow` rather than being written again: the
-// watch button owns a delay menu, a tracking state and a portal, and two
-// copies of that would be two behaviours.
+// It cannot be `ReplayLibraryCard` itself: that card is one large `<button>`,
+// and this one holds a button with a menu behind it, which is not something a
+// button may contain.
 
 import { Fragment, memo, useEffect, useState } from "react";
-import type { Game, LiveReplayTracking } from "../../ipc/bindings";
-import { ipc } from "../../ipc/client";
+import type { Game, LiveReplayTracking, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
-import type { MapPresentation } from "../../shared/mapPresentation";
-import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
-import {
-  LiveMapThumbnail,
-  LivePlayerName,
-  LiveReplayAge,
-  LiveWatchButton,
-} from "./LiveReplayRow";
+import { useAppStore } from "../../store/store";
+import { mapPresentation, type MapPresentation } from "../../shared/mapPresentation";
+import { ReplayMapThumb, ReplayMetaFact, replayCardTitle } from "./OnlineReplayPresentation";
+import { ReplayCardRoster } from "./ReplayRoster";
+import { LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
 import { prettyGameType, replayDelayRemaining } from "./liveReplayModel";
+import "./online-replays.css";
 import { useTranslation } from "../../i18n/useTranslation";
+
+/**
+ * A running game's lineup, in the shape the vault's roster draws.
+ *
+ * The lobby gives names and nothing else: no faction, no rating, no outcome.
+ * All three are optional in `ReplayPlayer` and the roster already draws a
+ * player who has none of them, which is why this is a projection rather than a
+ * second lineup component. `-1` and `null` are both the observer bucket on the
+ * wire, and the roster reads any negative team as observers.
+ */
+export function liveReplayTeams(game: Game): ReplayTeam[] {
+  return Object.entries(game.teams)
+    .filter(([, players]) => players.length > 0)
+    .map(([team, players]) => ({
+      team: Number.parseInt(team, 10) || (team === "null" ? -1 : 0),
+      players: players.map((name): ReplayPlayer => ({
+        name,
+        faction: null,
+        rating: null,
+        // Both required, and both exactly right for a game still being
+        // played: nothing has been scored and nothing has been won yet.
+        outcome: "",
+        score: null,
+      })),
+    }))
+    .sort((left, right) => left.team - right.team);
+}
 
 interface Props {
   busy: boolean;
@@ -34,15 +62,15 @@ interface Props {
   batchSize: number;
   previewsLoading: boolean;
   tracking: LiveReplayTracking | null;
-  onPlayerMenu: PlayerMenuOpener;
   onLoadMore: () => void;
 }
 
 export function LiveReplayCards(props: Props) {
   const { t } = useTranslation();
   // One pair of clocks for the whole grid, as in the table: a timer per card
-  // scales timer work with the result count, and the rows that are not waiting
-  // for a delay get a stable zero so `memo` still skips them on every tick.
+  // scales timer work with the result count, and a game that is not waiting on
+  // the replay delay gets a stable zero, so `memo` still skips it on the ticks
+  // the waiting ones need.
   const [ageNow, setAgeNow] = useState(() => Date.now());
   const [waitNow, setWaitNow] = useState(() => Date.now());
   const hasDelayedReplay = props.games.some(({ game }) => replayDelayRemaining(game, waitNow) > 0);
@@ -60,17 +88,15 @@ export function LiveReplayCards(props: Props) {
 
   return (
     <div className="live-replay-card-wrap">
-      <div className="live-replay-grid">
-        {props.games.map(({ game, presentation }) => (
+      <div className="replay-grid">
+        {props.games.map(({ game }) => (
           <LiveReplayCard
             key={game.id}
             busy={props.busy}
             game={game}
-            presentation={presentation}
             ageNow={ageNow}
             waitSeconds={replayDelayRemaining(game, waitNow)}
             tracking={props.tracking}
-            onPlayerMenu={props.onPlayerMenu}
           />
         ))}
       </div>
@@ -83,7 +109,9 @@ export function LiveReplayCards(props: Props) {
           })}
         </span>
         <div className="live-replay-footer-actions">
-          <span>{t(props.previewsLoading ? "replays.live.loadingPreviews" : "replays.live.selectGame")}</span>
+          <span>
+            {t(props.previewsLoading ? "replays.live.loadingPreviews" : "replays.live.selectGame")}
+          </span>
           {props.games.length < props.matchingCount && (
             <Button className="live-replay-load-more" onClick={props.onLoadMore}>
               {t("replays.live.showMore", {
@@ -100,111 +128,97 @@ export function LiveReplayCards(props: Props) {
 const LiveReplayCard = memo(function LiveReplayCard({
   busy,
   game,
-  presentation,
   ageNow,
   waitSeconds,
   tracking,
-  onPlayerMenu,
 }: {
   busy: boolean;
   game: Game;
-  presentation: MapPresentation;
   ageNow: number;
   waitSeconds: number;
   tracking: LiveReplayTracking | null;
-  onPlayerMenu: PlayerMenuOpener;
 }) {
   const { t } = useTranslation();
+  const vault = useAppStore((state) => state.state.maps.vault);
+  const missions = useAppStore((state) => state.state.coop.missions);
+  const presentation = mapPresentation(vault, game.map, missions);
+  const title = replayCardTitle(game.title, presentation.displayName || game.map);
+  const teams = liveReplayTeams(game);
   const simMods = Object.values(game.simMods);
-  const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
 
   return (
-    <article
-      className="live-replay-card surface-panel"
-      // The table's own gesture, and the footer offers it in both views.
-      onDoubleClick={() => {
-        if (busy || waitSeconds > 0) return;
-        ipc.send({
-          kind: "Replays",
-          command: {
-            type: "watchLive",
-            payload: { uid: game.id, modName: game.modName, map: game.map },
-          },
-        });
-      }}
-    >
-      <div className="live-replay-card-map">
-        <LiveMapThumbnail presentation={presentation} />
-      </div>
-      <div className="live-replay-card-body">
-        <header className="live-replay-card-head">
-          <strong title={game.title || presentation.displayName}>
-            {game.title || presentation.displayName}
-          </strong>
-          <small>{presentation.displayName} · {prettyGameType(game.gameType)}</small>
-        </header>
-
-        <dl className="live-replay-card-meta">
-          <div>
-            <dt>{t("replays.column.players")}</dt>
-            <dd>{game.players} / {game.maxPlayers}</dd>
-          </div>
-          <div>
-            <dt>{t("replays.column.rating")}</dt>
-            <dd>{game.averageRating > 0 ? game.averageRating : "N/A"}</dd>
-          </div>
-          <div>
-            <dt>{t("replays.column.started")}</dt>
-            <dd><LiveReplayAge game={game} now={ageNow} /></dd>
-          </div>
-          <div>
-            <dt>{t("replays.column.host")}</dt>
-            <dd><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></dd>
-          </div>
-        </dl>
-
-        {/* The lineup, which the table hides behind an expander. A card has
-            the room, and "who is in it" is most of what decides whether a game
-            is worth watching. */}
-        <div className="live-replay-card-teams">
-          {teams.length === 0 ? (
-            <span className="muted">{t("replays.live.lineupUnavailable")}</span>
-          ) : (
-            teams.map(([team, players]) => (
-              <span className="live-replay-card-team" key={team}>
-                <em>
-                  {team === "-1" || team === "null"
-                    ? t("replays.live.observers")
-                    : t("replays.live.team", { team })}
-                </em>
-                <span>
-                  {players.map((player, index) => (
-                    <Fragment key={player}>
-                      {index > 0 && ", "}
-                      <LivePlayerName name={player} onMenu={onPlayerMenu} />
-                    </Fragment>
-                  ))}
-                </span>
-              </span>
-            ))
-          )}
+    <article className="replay-card live-replay-card surface-panel">
+      <div className="replay-card-left">
+        <ReplayMapThumb
+          url=""
+          mapName={game.map}
+          className="replay-card-thumb"
+          emptyClassName="replay-card-thumb-empty"
+          iconSize={32}
+        />
+        {/* The slot the vault card spends on review stars. A running game has
+            none and will have none while it is running, so it holds the one
+            fact only a live game has: how long it has been going. */}
+        <span className="live-replay-card-age muted">
+          <LiveReplayAge game={game} now={ageNow} />
+        </span>
+        <div className="replay-meta-grid muted">
+          <ReplayMetaFact
+            icon="users"
+            label={t("replays.card.players")}
+            value={`${game.players} / ${game.maxPlayers}`}
+          />
+          <ReplayMetaFact
+            icon="activity"
+            label={t("replays.card.averageRating")}
+            value={game.averageRating > 0 ? `~${game.averageRating}` : ""}
+          />
+          <ReplayMetaFact
+            icon="mods"
+            label={t("replays.card.featuredMod")}
+            value={game.modName || "faf"}
+          />
+          <ReplayMetaFact
+            icon="play"
+            label={t("replays.live.gameType")}
+            value={prettyGameType(game.gameType)}
+          />
         </div>
-
-        <footer className="live-replay-card-foot">
-          <small title={simMods.join(", ")}>
-            {game.modName || "faf"} · {simMods.length === 0
-              ? t("replays.live.noSimMods")
-              : simMods.length === 1
-                ? simMods[0]
-                : t("replays.live.moreSimMods", { first: simMods[0], count: simMods.length - 1 })}
-          </small>
+      </div>
+      <div className="replay-card-right">
+        <div className="replay-card-header">
+          <span className="replay-card-title" title={title.full} aria-label={title.full}>
+            {title.display}
+          </span>
+          <span className="replay-card-submap muted">
+            {t("replays.card.onMap", { map: presentation.displayName || game.map })}
+          </span>
+        </div>
+        <ReplayCardRoster teams={teams} />
+        <div className="replay-card-footer live-replay-card-footer muted">
+          <span>
+            {t("lobby.details.host", { name: game.host })} · #{game.id}
+            {simMods.length > 0 && (
+              <Fragment>
+                {" · "}
+                <span title={simMods.join(", ")}>
+                  {simMods.length === 1
+                    ? simMods[0]
+                    : t("replays.live.moreSimMods", {
+                      first: simMods[0],
+                      count: simMods.length - 1,
+                    })}
+                </span>
+              </Fragment>
+            )}
+          </span>
           <LiveWatchButton
             busy={busy}
             game={game}
             tracking={tracking}
             waitSeconds={waitSeconds}
           />
-        </footer>
+        </div>
       </div>
     </article>
   );
