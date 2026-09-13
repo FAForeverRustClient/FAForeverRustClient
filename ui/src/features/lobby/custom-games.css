@@ -1459,20 +1459,31 @@
   border-color: var(--color-accent);
 }
 
-.game-tile-friends {
-  margin-left: auto;
-  padding-left: var(--space-2);
-  color: var(--color-friend);
-  font-size: 11px;
-  font-weight: 550;
-  white-space: nowrap;
-}
-
+/* The friend tag, in the colour the reader chose for friends in chat rather
+   than in a green of its own -- `--color-friend` follows that setting now.
+   It sits at rest under the amber and red tags beside it, because a friend in
+   a lobby is a nice thing to notice and not a warning, and comes up to the
+   full colour when the pointer is on the tile it belongs to. */
 .game-browser-tags i.friend,
 .game-tile-flags i.friend {
-  color: var(--color-friend);
-  border-color: color-mix(in srgb, var(--color-friend) 45%, transparent);
+  color: color-mix(in srgb, var(--color-friend) 80%, var(--color-text));
+  border-color: color-mix(in srgb, var(--color-friend) 30%, transparent);
   background: color-mix(in srgb, var(--color-friend) 12%, transparent);
+  /* Spelled out rather than through `--transition-fast`: that token is
+     referenced in three places in this client and defined in none of them, so
+     a rule using it has no transition at all. */
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.game-tile:hover .game-tile-flags i.friend,
+.game-tile:focus-within .game-tile-flags i.friend,
+.game-tile-flags i.friend:hover,
+.game-browser-row:hover .game-browser-tags i.friend,
+.game-browser-row:focus-within .game-browser-tags i.friend,
+.game-browser-tags i.friend:hover {
+  color: var(--color-friend);
+  border-color: color-mix(in srgb, var(--color-friend) 55%, transparent);
+  background: color-mix(in srgb, var(--color-friend) 24%, transparent);
 }
 
 /* The rating range tag.

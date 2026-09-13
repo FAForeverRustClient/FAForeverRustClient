@@ -1204,7 +1204,12 @@
   transition: opacity 100ms ease;
 }
 
-.matchmaker-queue-queued:hover .matchmaker-queue-breakdown {
+/* Anywhere on the card, not only on the words "n queued". The breakdown is
+   what the card is for -- it answers whether waiting in this queue is worth
+   it -- and asking for it by finding six characters of text turned a fact
+   into a trick. It still hangs off the count, because that is the number it
+   breaks down. */
+.matchmaker-queue-card:hover .matchmaker-queue-breakdown {
   opacity: 1;
 }
 

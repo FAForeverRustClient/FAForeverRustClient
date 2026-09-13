@@ -109,9 +109,11 @@ export function MatchmakerQueueCard({
           <span className="matchmaker-queue-queued">
             <Icon name="users" size={14} /> {queue.numPlayers} queued
             {buckets.length > 0 && (
-              // Hover-only and `pointer-events: none`, because this sits
-              // inside the card's own button and a focusable popover in there
-              // would be a control inside a control.
+              // Shown while the pointer is anywhere on the card, and anchored
+              // here because this is the count it breaks down. Hover-only and
+              // `pointer-events: none`, because this sits inside the card's
+              // own button and a focusable popover in there would be a control
+              // inside a control.
               <span className="matchmaker-queue-breakdown" aria-hidden>
                 <b>{t("lobby.matchmaker.queueByRating")}</b>
                 {buckets.map((bucket) => (

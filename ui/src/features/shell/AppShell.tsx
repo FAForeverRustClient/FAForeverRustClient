@@ -167,7 +167,15 @@ export function AppShell() {
     });
   };
 
-  const shellStyle = { "--sidebar-width": `${sidebarWidth}px` } as CSSProperties;
+  // Everything the client tints "because a friend is involved" reads this one
+  // token, and the colour it holds is the one the reader chose for friends in
+  // chat. A second, fixed green for the same idea elsewhere in the client was
+  // a setting that only half applied.
+  const friendColor = useAppStore((state) => state.state.settings.chat.nameColors.friends);
+  const shellStyle = {
+    "--sidebar-width": `${sidebarWidth}px`,
+    ...(friendColor ? { "--color-friend": friendColor } : {}),
+  } as CSSProperties;
 
   return (
     <div

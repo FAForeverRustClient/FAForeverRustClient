@@ -804,26 +804,21 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+          {/* Back among the tags, where it was: what was wrong with it there
+              was the *name*, printed beside "unranked" and "3 SIM" while the
+              same person was already in the lineup underneath. A count is a
+              property of the lobby the way the other tags are. Who they are
+              stays in the title, and in the lineup the tile shows on hover. */}
+          {friends.length > 0 && (
+            <i className="friend" title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}>
+              {friendLabel}
+            </i>
+          )}
           {(game.ratingMin !== null || game.ratingMax !== null) && (
             <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
           )}
         </span>
-        {/* The friend count goes in the empty half of the host line rather
-            than among the tags. It is not a property of the lobby the way
-            "unranked" and "3 SIM" are -- it is a nice thing to notice -- so it
-            reads as a note, not as a badge. */}
-        <span className="game-tile-host">
-          <small>{t("lobby.browser.host")}</small>
-          <b><PlayerName name={game.host} /></b>
-          {friends.length > 0 && (
-            <span
-              className="game-tile-friends"
-              title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}
-            >
-              {friendLabel}
-            </span>
-          )}
-        </span>
+        <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
       </button>
       {tooltipPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,
