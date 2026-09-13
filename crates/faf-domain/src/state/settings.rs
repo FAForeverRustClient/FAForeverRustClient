@@ -3095,7 +3095,7 @@ mod tests {
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
-                    "rating".into(),
+                    "deviation".into(),
                     "MEAN".into(),
                     "invalid_col".into(),
                 ],
@@ -3171,7 +3171,8 @@ mod tests {
         assert_eq!(browser.detail_width, MIN_DETAIL_PX);
         assert_eq!(
             settings.browsing.leaderboard_rating_columns,
-            ["rating", "mean"]
+            ["mean", "deviation"],
+            "kept in the order the table draws them, whatever order the file listed"
         );
         assert_eq!(settings.browsing.replay_vault_player, "VindexNoob");
         assert!(settings.browsing.legacy_storage_migrated);
