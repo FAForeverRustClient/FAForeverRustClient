@@ -180,25 +180,21 @@
   font-size: 12px;
 }
 
-.live-replay-table th:nth-child(2) { width: 104px; }
-.live-replay-table th:nth-child(3) { width: 28%; }
-.live-replay-table th:nth-child(4) { width: 76px; }
-.live-replay-table th:nth-child(5) { width: 80px; }
-.live-replay-table th:nth-child(6) { width: 13%; }
-.live-replay-table th:nth-child(7) { width: 17%; }
-.live-replay-table th:nth-child(8) { width: 122px; }
-
+/* No widths on the cells. The colgroup carries them, which is the only place
+   a dragged width can go in a fixed table layout, and a second set here was
+   read by nobody while still describing columns that no longer had those
+   proportions. */
 .live-map-column {
-  width: 58px;
   text-align: center !important;
 }
 
-.live-number-column button {
-  justify-content: flex-end;
-}
-
+/* Every label against the leading edge of its own column, where its divider
+   stands, so one line reads the same way in front of every column. The figures
+   under them stay right-aligned. */
+.live-number-column button,
 .live-watch-column {
-  text-align: right !important;
+  justify-content: flex-start;
+  text-align: left !important;
 }
 
 .live-replay-row td {

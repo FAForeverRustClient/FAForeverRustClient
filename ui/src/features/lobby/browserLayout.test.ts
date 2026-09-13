@@ -9,7 +9,6 @@ import {
   withDetailResized,
 } from "./browserLayout";
 import {
-  MAX_BROWSER_COLUMN_PX,
   MAX_DETAIL_PX,
   MIN_BROWSER_COLUMN_PX,
   MIN_DETAIL_PX,
@@ -28,27 +27,38 @@ describe("the game list's column widths", () => {
     expect(columnWidths(undefined)).toEqual([...DEFAULT_COLUMN_WIDTHS]);
   });
 
-  it("resizes only the column being dragged", () => {
-    // Stealing from the neighbour would make the title jump every time
-    // somebody widened the map column.
+  it("moves the line under the cursor and nothing else", () => {
+    // The two columns the line separates trade width, so the totals do not
+    // change and no other line moves. Resizing one column on its own is what
+    // this replaced: the game column absorbed it, which moved every line in
+    // front of the cursor while the one under it stayed still.
     const widths = [320, 170, 80, 100, 75];
-    expect(withColumnResized(widths, 1, 40)).toEqual([320, 210, 80, 100, 75]);
-    expect(withColumnResized(widths, 1, -40)).toEqual([320, 130, 80, 100, 75]);
+    expect(withColumnResized(widths, 2, 20)).toEqual([320, 190, 60, 100, 75]);
+    expect(withColumnResized(widths, 2, -20)).toEqual([320, 150, 100, 100, 75]);
+  });
+
+  it("takes from the game column for the line in front of Map", () => {
+    // The game column has no width of its own, so the line in front of Map
+    // only has to move Map: what Map gives up the title takes on.
+    const widths = [320, 170, 80, 100, 75];
+    expect(withColumnResized(widths, 1, 40)).toEqual([320, 130, 80, 100, 75]);
+    expect(withColumnResized(widths, 1, -40)).toEqual([320, 210, 80, 100, 75]);
   });
 
   it("keeps every column within reach of another drag", () => {
+    // A line can only travel as far as both of its columns allow: Players
+    // stops at the floor, and on the way back it grows by what Map had above
+    // the floor to give, not by the distance the pointer covered.
     const widths = [320, 170, 80, 100, 75];
-    expect(withColumnResized(widths, 2, -5000)[2]).toBe(MIN_BROWSER_COLUMN_PX);
-    expect(withColumnResized(widths, 2, 5000)[2]).toBe(MAX_BROWSER_COLUMN_PX);
+    expect(withColumnResized(widths, 2, 5000)).toEqual([320, 194, MIN_BROWSER_COLUMN_PX, 100, 75]);
+    expect(withColumnResized(widths, 2, -5000)).toEqual([320, MIN_BROWSER_COLUMN_PX, 194, 100, 75]);
   });
 
-  it("gives the slack a track of its own, after every column", () => {
-    // After, because a divider has to move the divider: with the slack at the
-    // front, widening Map took the pixels from Game and the boundary under the
-    // cursor stayed still. In a track of its own, because folding it into the
-    // last column stretched a 75px "7m" across half the window.
+  it("gives the game column whatever the other four leave", () => {
+    // Not a track of its own at the end: the list then stopped a third of the
+    // way across a wide window, with the titles beside it still cut off.
     expect(columnTemplate([320, 170, 80, 100, 75])).toBe(
-      "320px 170px 80px 100px 75px minmax(0, 1fr)",
+      "minmax(0, 1fr) 170px 80px 100px 75px",
     );
   });
 });

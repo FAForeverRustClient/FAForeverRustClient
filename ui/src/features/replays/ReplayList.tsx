@@ -11,6 +11,7 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { useColumnWidths } from "../../shared/useColumnWidths";
+import { columnTemplate } from "../../shared/tableColumns";
 
 export type ReplayListCell = {
   primary: string;
@@ -219,12 +220,23 @@ function ReplayListRowView({ row }: { row: ReplayListRow }) {
 }
 
 /**
- * The designed widths, in the order the columns are drawn.
- *
- * The last column is not in here: it takes whatever is left, the way the game
- * browser's does, so there is nothing to its right to give width to.
+ * The designed widths, in the order the columns are drawn, the last column
+ * included: a divider takes from the column on one side of it and gives to the
+ * column on the other, and a column with no width of its own has nothing to
+ * give.
  */
-const DEFAULT_COLUMN_PX = [56, 260, 140, 110, 70, 82, 126];
+const DEFAULT_COLUMN_PX = [56, 260, 140, 110, 70, 82, 126, 150];
+
+/**
+ * The game column, which is the flexible one.
+ *
+ * A replay's title is what gets cut off, so it is what a wide window is spent
+ * on. The number above is its floor rather than its width: on screen it is
+ * whatever the row has left after the other seven. The status column had the
+ * job before, and on a wide window it stretched two small buttons across the
+ * space a title was being ellipsised into.
+ */
+const FLEXIBLE_COLUMN = 1;
 
 export function ReplayList({
   groups,
@@ -234,8 +246,8 @@ export function ReplayList({
   footer: ReactNode;
 }) {
   const { t } = useTranslation();
-  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX);
-  const template = `${columns.widths.map((width) => `${width}px`).join(" ")} minmax(120px, 1fr)`;
+  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN);
+  const template = columnTemplate(columns.widths, FLEXIBLE_COLUMN);
 
   return (
     <section
@@ -247,14 +259,17 @@ export function ReplayList({
       <div className="replay-list-header" role="row">
         {COLUMNS.map((column, index) => (
           <span className={column.className} key={column.label} role="columnheader">
-            {/* On this column's leading edge, resizing the one before it: the
-                divider sits where a file manager puts it, straddling the
-                boundary it moves. The first column has nothing before it. */}
+            {/* One line in front of every column but the first, standing
+                where that column starts. It trades width between the two
+                columns it separates, so it lands under the cursor and no
+                other line moves. */}
             {index > 0 && (
               <ResizeHandle
                 className="replay-list-col-handle is-ruled"
-                label={t("lobby.browser.resizeColumn", { column: t(COLUMNS[index - 1].label) })}
-                onDrag={(delta) => columns.onDrag(index - 1, delta)}
+                label={t("lobby.browser.resizeColumn", {
+                  column: t(COLUMNS[index - 1 === FLEXIBLE_COLUMN ? index : index - 1].label),
+                })}
+                onDrag={(delta) => columns.onDrag(index, delta)}
                 onEnd={columns.onCommit}
                 onReset={columns.onReset}
               />

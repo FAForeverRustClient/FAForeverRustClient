@@ -25,6 +25,7 @@ import { useGameBrowserColumns } from "./gameBrowserColumns";
 import { coopFailureAction } from "./coopFailure";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { useColumnWidths } from "../../shared/useColumnWidths";
+import { tableMinWidth } from "../../shared/tableColumns";
 import "./custom-games.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { scenarioBadge, sortCoopScenarios } from "./coopScenarios";
@@ -274,28 +275,26 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
  * choose whose leaderboard it is.
  */
 /**
- * The designed widths of the record board, in the order the columns are drawn.
- *
- * The replay column is absent on purpose: it takes what is left, so there is
- * nothing to its right for a handle to give width to.
+ * The designed widths of the record board, in the order the columns are drawn,
+ * the Replay column included: a divider takes from the column on one side of
+ * it and gives to the column on the other, and a column with no width of its
+ * own has nothing to give.
  */
-const BOARD_COLUMN_PX = [56, 96, 220, 130, 96, 110];
+const BOARD_COLUMN_PX = [56, 96, 96, 220, 96, 110, 90];
 
 /**
- * What the Replay column needs, and the board's designed floor.
+ * The team column, which is the flexible one.
  *
- * `table-layout: fixed` honours the colgroup's widths only while they fit:
- * once they add up to more than the table is allowed to be, the browser scales
- * them all back down and a drag past that point does nothing at all. So the
- * minimum follows the widths, and widening a column widens the table inside
- * its own scroller.
+ * Four names in one cell is what runs out of room first, so it is what the
+ * board spends a wide panel on. The number above is its floor rather than its
+ * width: on screen it is whatever the board has left after the other six. The
+ * player count beside it no longer carries the 220 pixels the names needed.
  */
-const REPLAY_COLUMN_PX = 90;
-const DESIGNED_BOARD_PX = 760;
+const FLEXIBLE_BOARD_COLUMN = 3;
 
 function MissionDetail({ mission }: { mission: CoopMission }) {
   const { t } = useTranslation();
-  const columns = useColumnWidths("coopBoardColumns", BOARD_COLUMN_PX);
+  const columns = useColumnWidths("coopBoardColumns", BOARD_COLUMN_PX, FLEXIBLE_BOARD_COLUMN);
   const boardLabels = [
     "#",
     t("lobby.coop.column.time"),
@@ -303,6 +302,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
     t("lobby.coop.column.team"),
     t("lobby.coop.column.secondary"),
     t("lobby.coop.column.played"),
+    t("lobby.coop.column.replay"),
   ];
   const coop = useAppStore((state) => state.state.coop);
   const note = loadStatusNote(
@@ -363,40 +363,40 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
         <div className="coop-board-scroll">
           <table
             className="coop-board"
-            style={{
-              minWidth: `${Math.max(
-                DESIGNED_BOARD_PX,
-                columns.widths.reduce((total, width) => total + width, REPLAY_COLUMN_PX),
-              )}px`,
-            }}
+            style={{ minWidth: `${tableMinWidth(columns.widths)}px` }}
           >
             {/* `table-layout: fixed` plus a colgroup is how a real table takes
                 dragged widths: putting them on the cells would let the widest
                 row win instead. */}
-            {/* Every column the width it was given, and one empty track at
-                the end for whatever is left over. */}
+            {/* Every column the width it was given except the players
+                column, which has none and so takes what is left. An empty
+                track at the end took it for one release, and the board then
+                stopped well short of the panel it sits in. */}
             <colgroup>
-              {columns.widths.map((width, index) => (
-                <col key={boardLabels[index]} style={{ width: `${width}px` }} />
-              ))}
-              <col style={{ width: `${REPLAY_COLUMN_PX}px` }} />
-              <col />
+              {columns.widths.map((width, index) =>
+                index === FLEXIBLE_BOARD_COLUMN ? (
+                  <col key={boardLabels[index]} />
+                ) : (
+                  <col key={boardLabels[index]} style={{ width: `${width}px` }} />
+                ),
+              )}
             </colgroup>
             <thead>
               <tr>
-                {/* The divider sits on a column's *leading* edge and resizes
-                    the column before it, which is where a file manager puts it:
-                    the cursor lands just in front of the column about to be
-                    pushed along, and the grab area straddles the boundary it
-                    moves. So the first column carries none and the Replay
-                    column carries the last one. */}
+                {/* One line in front of every column but the first, standing
+                    where that column starts. It trades width between the two
+                    columns it separates, so it lands under the cursor and no
+                    other line moves. */}
                 {boardLabels.map((label, index) => (
                   <th scope="col" key={label}>
                     {index > 0 && (
                       <ResizeHandle
                         className="coop-board-col-handle is-ruled"
-                        label={t("lobby.browser.resizeColumn", { column: boardLabels[index - 1] })}
-                        onDrag={(delta) => columns.onDrag(index - 1, delta)}
+                        label={t("lobby.browser.resizeColumn", {
+                          column:
+                            boardLabels[index - 1 === FLEXIBLE_BOARD_COLUMN ? index : index - 1],
+                        })}
+                        onDrag={(delta) => columns.onDrag(index, delta)}
                         onEnd={columns.onCommit}
                         onReset={columns.onReset}
                       />
@@ -404,18 +404,6 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
                     {label}
                   </th>
                 ))}
-                <th scope="col">
-                  <ResizeHandle
-                    className="coop-board-col-handle is-ruled"
-                    label={t("lobby.browser.resizeColumn", {
-                      column: boardLabels[boardLabels.length - 1],
-                    })}
-                    onDrag={(delta) => columns.onDrag(boardLabels.length - 1, delta)}
-                    onEnd={columns.onCommit}
-                    onReset={columns.onReset}
-                  />
-                  {t("lobby.coop.column.replay")}
-                </th>
               </tr>
             </thead>
             <tbody>

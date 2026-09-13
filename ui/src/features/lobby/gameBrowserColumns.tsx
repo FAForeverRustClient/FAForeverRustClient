@@ -11,7 +11,12 @@ import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
-import { columnTemplate, columnWidths, withColumnResized } from "./browserLayout";
+import {
+  columnTemplate,
+  columnWidths,
+  FLEXIBLE_COLUMN,
+  withColumnResized,
+} from "./browserLayout";
 
 /**
  * Persist the list's column widths.
@@ -70,9 +75,9 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     [enabled, widths.join(",")],
   );
 
-  const onDrag = (index: number, delta: number) => {
+  const onDrag = (boundary: number, delta: number) => {
     dragOrigin.current ??= widths;
-    setDragWidths(withColumnResized(dragOrigin.current, index, delta));
+    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta));
   };
   const onCommit = () => {
     dragOrigin.current = null;
@@ -97,17 +102,19 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     <div className="game-browser-head" style={style}>
       {labels.map((label, index) => (
         <span key={label}>
-          {/* On the *leading* edge of this column, resizing the one before it.
-              That is where a file manager puts a divider -- the cursor lands
-              just in front of the column about to be pushed along -- and the
-              hairline it draws at rest is what a reader aims at, because a
-              right-aligned number column's label is nowhere near its own
-              boundary. The first column has nothing before it to resize. */}
+          {/* One line in front of every column but the first, standing where
+              that column starts. It trades width between the two columns it
+              separates, so it lands under the cursor and no other line moves.
+              The column it is named after is the one that grows as it is
+              dragged to the right, which is the one before it unless that is
+              the game column: the game column has no width of its own. */}
           {index > 0 && (
             <ResizeHandle
               className="game-browser-col-handle is-ruled"
-              label={t("lobby.browser.resizeColumn", { column: labels[index - 1] })}
-              onDrag={(delta) => onDrag(index - 1, delta)}
+              label={t("lobby.browser.resizeColumn", {
+                column: labels[index - 1 === FLEXIBLE_COLUMN ? index : index - 1],
+              })}
+              onDrag={(delta) => onDrag(index, delta)}
               onEnd={onCommit}
               onReset={onReset}
             />

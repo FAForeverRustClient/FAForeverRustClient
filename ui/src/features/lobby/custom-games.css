@@ -51,7 +51,6 @@
   flex-direction: column;
 }
 
-.game-browser-panel > .game-browser-head,
 .game-browser-panel > .game-browser-footer {
   flex: none;
 }
@@ -64,7 +63,10 @@
 .game-browser-head,
 .game-browser-row {
   display: grid;
-  grid-template-columns: minmax(280px, 2.4fr) minmax(150px, 1.2fr) 80px 100px 75px;
+  /* The fallback for the moment before the saved widths arrive, in the shape
+     the saved ones have: four columns at a fixed width and the game column
+     taking the rest. */
+  grid-template-columns: minmax(0, 1fr) 170px 80px 100px 75px;
   align-items: center;
   gap: 16px;
 }
@@ -111,7 +113,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Inside the list it heads rather than above it, so the two are always the
+   same width: with the header outside the scroller, a scrollbar appearing
+   narrowed the rows and left every right-hand column a scrollbar's width off
+   its own label. Sticky, so it still stays put as the list scrolls. */
 .game-browser-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   min-height: 36px;
   padding: 0 16px;
   color: var(--color-subtle);
@@ -123,10 +132,14 @@
   text-transform: uppercase;
 }
 
-.game-browser-head > span:nth-child(3),
-.game-browser-head > span:nth-child(4),
-.game-browser-head > span:nth-child(5) {
-  text-align: right;
+/* Every label against the leading edge of its own column, where its divider
+   stands. Right-aligning the three number columns put their labels a whole
+   column away from the line that moves them, so the same line read as being
+   in front of one label, behind another and in the middle of nothing at all,
+   depending on which column it was. The numbers under them stay right-aligned:
+   a column of ratings is read down its last digit. */
+.game-browser-head > span {
+  text-align: left;
 }
 
 .game-browser-list {
@@ -1413,16 +1426,6 @@
   .game-tile {
     height: 102px;
     grid-template-columns: 102px minmax(0, 1fr);
-  }
-
-  .game-browser-head,
-  .game-browser-row {
-    grid-template-columns: minmax(190px, 1fr) 68px 62px;
-  }
-
-  .game-browser-head > span:nth-child(2),
-  .game-browser-row > span:nth-child(2) {
-    display: none;
   }
 }
 

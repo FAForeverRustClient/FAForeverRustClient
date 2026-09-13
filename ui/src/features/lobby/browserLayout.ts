@@ -3,80 +3,74 @@
 // The tiles could already be made narrower or wider (`gameTileColumns`); the
 // list's columns and the panel next to them could not, so the only way to read
 // a long lobby title was to hope. Both are arithmetic rather than rendering,
-// so both live here with the bounds the backend enforces anyway.
+// so both live here with the bounds the backend enforces anyway. What a
+// divider drag does to a set of widths is the same question every other list
+// in the client asks, so the answer lives in `shared/tableColumns`.
 
 import {
-  MAX_BROWSER_COLUMN_PX,
   MAX_BROWSER_COLUMNS,
   MAX_DETAIL_PX,
-  MIN_BROWSER_COLUMN_PX,
   MIN_DETAIL_PX,
 } from "../../shared/browsingPreferences";
+import {
+  columnTemplate as templateFor,
+  resolveColumnWidths,
+  withBoundaryDragged,
+} from "../../shared/tableColumns";
 
 /**
  * The designed widths, in the order the header lists them: game, map, players,
- * rating, age. The first is the flexible one, so its number is a starting
- * point rather than a ceiling.
+ * rating, age.
  */
 export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [320, 170, 80, 100, 75];
+
+/**
+ * The game column, which is the flexible one.
+ *
+ * It is the title, the host and the tags, so it is what a wide window should
+ * be spent on and what a narrow one has to give up first. Its stored width is
+ * kept -- a settings file written by an older release still means the same
+ * thing position by position -- but nothing reads it any more: the column is
+ * whatever the row has left after the other four.
+ */
+export const FLEXIBLE_COLUMN = 0;
 
 /** The detail panel's designed width, matching `custom-games.css`. */
 export const DEFAULT_DETAIL_WIDTH = 270;
 
-/**
- * Saved widths, padded and bounded into a usable set of five.
- *
- * A stored array can be short (a release that had fewer columns), long (one
- * that had more), or empty (nobody has ever dragged anything). All three mean
- * "use the designed width for the columns you do not know about", which is why
- * this pads rather than rejects.
- */
+/** Saved widths, padded and bounded into a usable set of five. */
 export function columnWidths(stored: readonly number[] | undefined): number[] {
-  return DEFAULT_COLUMN_WIDTHS.map((fallback, index) => {
-    const saved = stored?.[index];
-    return saved && saved > 0
-      ? Math.min(MAX_BROWSER_COLUMN_PX, Math.max(MIN_BROWSER_COLUMN_PX, Math.round(saved)))
-      : fallback;
-  }).slice(0, MAX_BROWSER_COLUMNS);
+  return resolveColumnWidths(stored, DEFAULT_COLUMN_WIDTHS).slice(0, MAX_BROWSER_COLUMNS);
 }
 
 /**
- * One column resized by `delta` pixels, the others untouched.
+ * The widths after the divider in front of `boundary` has been dragged.
  *
- * Deliberately not a pair-wise resize that steals from the neighbour: the
- * first column is the flexible one, so taking width from the column to the
- * right of the one being dragged would make the *title* jump every time
- * somebody widened the map column, which reads as a bug rather than a feature.
+ * Pair-wise, so the line lands under the cursor: what the column on the right
+ * gives up the column on the left takes on. Resizing one column on its own
+ * and letting the game column absorb it is what this replaced, and it meant
+ * grabbing the divider between Map and Players moved the divider between Game
+ * and Map while the one under the cursor stayed put.
  */
 export function withColumnResized(
   widths: readonly number[],
-  index: number,
+  boundary: number,
   delta: number,
 ): number[] {
-  return widths.map((width, position) =>
-    position === index
-      ? Math.min(MAX_BROWSER_COLUMN_PX, Math.max(MIN_BROWSER_COLUMN_PX, Math.round(width + delta)))
-      : width,
-  );
+  return withBoundaryDragged(widths, boundary, delta, FLEXIBLE_COLUMN);
 }
 
 /**
  * The CSS `grid-template-columns` for a set of widths.
  *
- * Every column is the width it was given, and the slack goes into a track of
- * its own at the end.
- *
- * The slack has to be *after* every draggable column: with it at the front,
- * every pixel a column gained was taken from the title at the far left, so
- * grabbing the divider between Map and Players moved the divider between Game
- * and Map while the one under the cursor stayed put. But putting it into the
- * last column was no better on a wide window -- Age, seventy-five pixels of
- * "7m", stretched across twelve hundred of them. An empty track takes it
- * instead, which is what a file manager does: the columns keep their widths
- * and the space left over is simply space left over.
+ * Four columns at the width they were given and the game column taking the
+ * rest. The slack had a track of its own for one release, which kept the
+ * columns off the far edge of a wide window but left the list stopping a
+ * third of the way across it with nothing after it. A title that could have
+ * used those pixels was being cut off at the same time.
  */
 export function columnTemplate(widths: readonly number[]): string {
-  return `${widths.map((width) => `${width}px`).join(" ")} minmax(0, 1fr)`;
+  return templateFor(widths, FLEXIBLE_COLUMN);
 }
 
 /** The detail panel's width after a drag, bounded the way the backend bounds it. */
