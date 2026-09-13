@@ -499,6 +499,11 @@ impl AppLoop {
         // build whose Twitch credentials are absent, which is most of them.
         services::streams::spawn(ctx.clone(), self.sink.clone());
 
+        // And a release is published while the client is running. The check at
+        // startup is the one the settings load performs; this is the one that
+        // reaches a client nobody has restarted since Friday.
+        services::client_update::spawn(ctx.clone(), self.sink.clone());
+
         // A ceiling on service tasks running at once.
         //
         // The command queue bounds how many are *waiting*, not how many are

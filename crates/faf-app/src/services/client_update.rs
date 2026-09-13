@@ -4,6 +4,9 @@
 //! installer. The version comparison itself lives in the domain, so this file
 //! is only the sequencing and the single-flight guards.
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use faf_domain::state::{
     should_update, ClientRelease, ClientUpdateCommand, ClientUpdateEvent, ClientUpdateStatus,
     NotificationAction, NotificationKind,
@@ -35,6 +38,44 @@ pub async fn handle(cmd: ClientUpdateCommand, ctx: &ServiceCtx, out: &EventSink)
 /// update rather than whether we find out about one at all.
 pub async fn check_on_startup(ctx: &ServiceCtx, out: &EventSink) {
     check(ctx, out).await;
+}
+
+/// How often the client looks again while it is running.
+///
+/// Six hours. A release is published at a moment nobody here controls, and the
+/// startup check is the only one there was: a client left open over a weekend
+/// never heard about a new version at all, which is the half of "notify people
+/// about a new client version" that a banner cannot fix by itself. Long enough
+/// that the release source sees one request per client per quarter day, short
+/// enough that a security release is not waiting for somebody to restart.
+const RECHECK_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
+
+/// Start the re-check ticker. Called once from the runtime loop.
+///
+/// The first tick fires immediately and is skipped deliberately: the startup
+/// check belongs to the settings load, which knows the release channel, and
+/// running one here as well would mean two checks racing at every launch. The
+/// guards inside `check` would drop one of them, but the one they drop is not
+/// specified, and a checked-for-nothing request at startup is not free.
+pub fn spawn(ctx: Arc<ServiceCtx>, sink: EventSink) {
+    tokio::spawn(async move {
+        let mut ticker = tokio::time::interval(RECHECK_INTERVAL);
+        ticker.tick().await;
+        loop {
+            ticker.tick().await;
+            // Nothing to look for once a newer release is already in hand, and
+            // looking anyway would take something away: the check's first act
+            // is to set the status to `Checking`, which is not a state the
+            // banner or the gate draws, and a downloaded installer's `Ready`
+            // path is the button the user is about to press. A release that
+            // has been found is news the client is already showing; the ticker
+            // exists for the client that has not heard any yet.
+            if sink.with_state(|state| state.client_update.release.is_some()) {
+                continue;
+            }
+            check(&ctx, &sink).await;
+        }
+    });
 }
 
 async fn check(ctx: &ServiceCtx, out: &EventSink) {

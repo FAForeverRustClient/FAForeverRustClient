@@ -6,6 +6,7 @@ import { Composer } from "../chat/Composer";
 import { MessageList, type MessageReactionsMap } from "../chat/MessageList";
 import type { ChatGameLink } from "../chat/chatFormat";
 import { visibleChatMessages } from "../chat/messageFilters";
+import { playersByNickname } from "../../store/reducer";
 import { partyChatChannel } from "./partyChat";
 import "../chat/chat.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -37,6 +38,20 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
     [preferences, room?.messages, social],
   );
   const self = chat.username || player?.name || "";
+  // Whether this conversation has any avatars to show at all.
+  //
+  // The rail's avatar column is zero wide by default, and deliberately: a FAF
+  // avatar is a 40x20 banner, and reserving room for one in a 280px column
+  // costs the message body width in every party, while most accounts have no
+  // avatar to put there. So the column is opened only when somebody in *this*
+  // conversation actually has one, which is the version of "party chat should
+  // show avatars" that does not make the common case worse. The answer is a
+  // property of the whole list rather than of a line, so it is decided here
+  // and the rows below keep rendering exactly what the Chat tab renders.
+  const hasAvatars = useMemo(() => {
+    const profiles = playersByNickname(social.players);
+    return messages.some((message) => !!profiles.get(message.sender.toLowerCase())?.avatarUrl);
+  }, [messages, social.players]);
   // Same shape the Chat tab builds: the reaction buttons in a message row are
   // rendered either way, so leaving the map and the handlers out here did not
   // hide them, it only made them do nothing when pressed.
@@ -95,7 +110,10 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
   }
 
   return (
-    <aside className="matchmaker-party-chat" aria-label={t("lobby.matchmaker.partyChat")}>
+    <aside
+      className={hasAvatars ? "matchmaker-party-chat has-avatars" : "matchmaker-party-chat"}
+      aria-label={t("lobby.matchmaker.partyChat")}
+    >
       <header>
         <strong>{t("lobby.matchmaker.partyChat")}</strong>
         <span>{gameLinkNotice || roomName}</span>
