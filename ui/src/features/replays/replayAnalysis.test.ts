@@ -156,6 +156,38 @@ describe("the orders under the graph", () => {
   it("has nothing for a minute nobody played in", () => {
     expect(ordersInWindow(orders, 5_000).size).toBe(0);
   });
+
+  it("counts one click onto a group of units once, the way the line does", () => {
+    // The stream writes a record per selected unit. Counting them raw put a
+    // number under the graph that the graph's own axis never reached.
+    const clicked = [
+      { source: 0, tick: 10, command: 2, blueprint: "", detail: "" },
+      { source: 0, tick: 10, command: 2, blueprint: "", detail: "" },
+      { source: 0, tick: 10, command: 2, blueprint: "", detail: "" },
+    ];
+    expect(ordersInWindow(clicked, 0).get(0)).toHaveLength(1);
+  });
+
+  it("keeps two players who gave the same order on the same tick", () => {
+    const together = [
+      { source: 0, tick: 10, command: 2, blueprint: "", detail: "" },
+      { source: 1, tick: 10, command: 2, blueprint: "", detail: "" },
+    ];
+    const grouped = ordersInWindow(together, 0);
+    expect(grouped.get(0)).toHaveLength(1);
+    expect(grouped.get(1)).toHaveLength(1);
+  });
+
+  it("judges the first order of a window against the one before it", () => {
+    // The run is tracked across the whole stream, not restarted where the
+    // pointer happens to be: otherwise the same order counted once at one
+    // pointer position and twice at the next.
+    const repeated = [
+      { source: 0, tick: 600, command: 2, blueprint: "", detail: "" },
+      { source: 0, tick: 600, command: 2, blueprint: "", detail: "" },
+    ];
+    expect(ordersInWindow(repeated, 600).get(0)).toHaveLength(1);
+  });
 });
 
 describe("naming things", () => {

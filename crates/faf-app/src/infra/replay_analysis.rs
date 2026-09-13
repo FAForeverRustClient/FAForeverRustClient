@@ -305,8 +305,14 @@ fn walk(cursor: &mut Cursor<&[u8]>, armies: &[ReplayArmy]) -> Walked {
     let mut stats: Vec<ReplayPlayerStats> = Vec::new();
     let mut command_ticks: HashMap<i32, Vec<u32>> = HashMap::new();
     let mut last_tick: HashMap<i32, u32> = HashMap::new();
-    // The dedup key: the same command type on the same tick is one action.
-    let mut previous: (u32, i32) = (u32::MAX, -1);
+    // The dedup key, per client: the same command type repeated back to back
+    // on the same tick is one action, because the stream emits one record per
+    // selected unit and a click onto forty engineers is one order. Kept per
+    // source rather than for the stream as a whole -- a single `previous`
+    // dropped a player's order whenever the client before them in the same
+    // tick had just given the same kind, which took real orders off the count
+    // and left the graph's axis below the read-out under it.
+    let mut previous: HashMap<i32, (u32, i32)> = HashMap::new();
 
     while cursor.position() + 3 <= len as u64 {
         let Some(op) = replay_u8(cursor) else { break };
@@ -369,10 +375,11 @@ fn walk(cursor: &mut Cursor<&[u8]>, armies: &[ReplayArmy]) -> Walked {
                             },
                         );
                     }
-                    if previous != (ticks, order.command) {
+                    if previous.insert(source, (ticks, order.command))
+                        != Some((ticks, order.command))
+                    {
                         command_ticks.entry(source).or_default().push(ticks);
                     }
-                    previous = (ticks, order.command);
                     if orders.len() < MAX_RECORDED_ORDERS {
                         orders.push(ReplayOrder {
                             source,
@@ -851,6 +858,22 @@ mod tests {
         stream.extend_from_slice(&order(8, "uel0105", None));
 
         assert_eq!(walked(&stream, &[0]).activity[0].command_ticks, vec![0, 0]);
+    }
+
+    #[test]
+    fn two_clients_giving_the_same_order_on_one_tick_both_count() {
+        // The run is per client. Sharing one across the stream dropped the
+        // second player's order whenever the first had just given the same
+        // kind on the same tick, which is what left the activity numbers
+        // under the graph above what the graph itself drew.
+        let mut stream = source(0);
+        stream.extend_from_slice(&order(2, "", None));
+        stream.extend_from_slice(&source(1));
+        stream.extend_from_slice(&order(2, "", None));
+
+        let out = walked(&stream, &[0, 1]);
+        assert_eq!(out.activity[0].command_ticks, vec![0]);
+        assert_eq!(out.activity[1].command_ticks, vec![0]);
     }
 
     #[test]
