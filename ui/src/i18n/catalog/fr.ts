@@ -2237,6 +2237,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.ratingBetween": "Classement de {from} à {to}",
   "lobby.mapPool.vetoesUsedAria": "{used} vetos utilisés sur {limit}",
   "lobby.browser.resizeColumn": "Redimensionner la colonne {column}",
+  "lobby.browser.sortByColumn": "Trier par {column}",
   "lobby.browser.resizeDetails": "Redimensionner le panneau de détails",
   "lobby.browser.openProfile": "Ouvrir le profil de {name}",
   "lobby.browser.tileAria": "{title}, hébergée par {host}. Double-cliquez pour rejoindre.",

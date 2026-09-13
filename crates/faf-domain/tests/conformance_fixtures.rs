@@ -5215,6 +5215,7 @@ fn cases() -> Vec<Case> {
                         replays_view: CustomGameView::List,
                         custom_games_browser: CustomGameBrowserPreferences {
                             sort: CustomGameSort::Age,
+                            sort_reversed: true,
                             hide_private: true,
                             hide_modded: true,
                             hide_unranked: false,

@@ -2384,6 +2384,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.ratingBetween": "Рейтинг с {from} до {to}",
   "lobby.mapPool.vetoesUsedAria": "Использовано вето: {used} из {limit}",
   "lobby.browser.resizeColumn": "Изменить ширину столбца «{column}»",
+  "lobby.browser.sortByColumn": "Сортировать по столбцу «{column}»",
   "lobby.browser.resizeDetails": "Изменить ширину панели подробностей",
   "lobby.browser.openProfile": "Открыть профиль игрока {name}",
   "lobby.browser.tileAria": "{title}, хост {host}. Двойной щелчок, чтобы войти.",

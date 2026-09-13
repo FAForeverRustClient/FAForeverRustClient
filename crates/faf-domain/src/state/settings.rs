@@ -1537,6 +1537,9 @@ pub enum CustomGameSort {
     Map,
     Host,
     Age,
+    /// The lobby's own title, which is the list's first column and was the one
+    /// thing it could not be ordered by.
+    Title,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -1574,6 +1577,15 @@ pub struct CustomGameFilterRule {
 #[serde(rename_all = "camelCase")]
 pub struct CustomGameBrowserPreferences {
     pub sort: CustomGameSort,
+    /// The order against the sorted column's own, rather than a direction.
+    ///
+    /// `false` is what every column has always done: the most players first,
+    /// the highest rating first, the newest lobby first, maps and hosts and
+    /// titles from A to Z. Storing "reversed" rather than "descending" is what
+    /// lets one flag serve six columns whose natural orders disagree, and it
+    /// is also why a settings file written before this existed reads back as
+    /// exactly the order it had.
+    pub sort_reversed: bool,
     pub hide_private: bool,
     pub hide_modded: bool,
     pub hide_unranked: bool,
@@ -1604,6 +1616,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
         #[serde(rename_all = "camelCase", default)]
         struct Wire {
             sort: CustomGameSort,
+            sort_reversed: bool,
             hide_private: bool,
             hide_modded: bool,
             hide_unranked: bool,
@@ -1616,6 +1629,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
         let wire = Wire::deserialize(deserializer)?;
         Ok(Self {
             sort: wire.sort,
+            sort_reversed: wire.sort_reversed,
             hide_private: wire.hide_private,
             hide_modded: wire.hide_modded,
             hide_unranked: wire.hide_unranked,
@@ -2954,6 +2968,7 @@ mod tests {
                 replays_view: CustomGameView::List,
                 custom_games_browser: CustomGameBrowserPreferences {
                     sort: CustomGameSort::Host,
+                    sort_reversed: true,
                     hide_private: true,
                     hide_modded: true,
                     hide_unranked: true,

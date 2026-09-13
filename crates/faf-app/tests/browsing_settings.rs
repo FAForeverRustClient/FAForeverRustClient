@@ -48,6 +48,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 replays_view: CustomGameView::List,
                 custom_games_browser: CustomGameBrowserPreferences {
                     sort: CustomGameSort::Age,
+                    sort_reversed: false,
                     hide_private: true,
                     hide_modded: false,
                     hide_unranked: false,

@@ -30,6 +30,7 @@ describe("browsing preferences", () => {
       replaysView: "list",
       customGamesBrowser: {
         sort: "host",
+        sortReversed: true,
         hidePrivate: true,
         hideModded: true,
         hideUnranked: true,
@@ -121,6 +122,7 @@ describe("browsing preferences", () => {
     expect(normalized.matchmakerFactions).toEqual(["Cybran"]);
     expect(normalized.customGamesBrowser).toMatchObject({
       sort: "host",
+      sortReversed: true,
       hidePrivate: true,
       hideModded: true,
       hideUnranked: true,
