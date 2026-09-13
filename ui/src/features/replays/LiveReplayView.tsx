@@ -234,7 +234,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           previewsLoading={mapVaultStatus.type === "loading"}
           batchSize={LIVE_REPLAY_BATCH_SIZE}
           tracking={tracking}
-          onPlayerMenu={openPlayerMenu}
           onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
         />
       ) : (

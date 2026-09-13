@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { League, ReplayQuery } from "../../ipc/bindings";
+import type { RatingLeaderboard, ReplayQuery } from "../../ipc/bindings";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import {
   COOP_FEATURED_MOD,
@@ -9,24 +9,27 @@ import {
   withGameMode,
 } from "./replayGameModes";
 
-const league = (technicalName: string, name: string): League => ({
+const board = (technicalName: string, name: string): RatingLeaderboard => ({
   id: 1,
   technicalName,
   name,
   description: "",
 });
 
-const leagues = [
-  league("global", "Global"),
-  league("ladder_1v1", "1v1"),
-  league("tmm_2v2", "2v2"),
+// The `/data/leaderboard` names, which are the ones a replay's rating changes
+// carry. The `/data/league` list, which this once read, names the same modes
+// `1v1_league` and `2v2_league`: a search for those matched nothing.
+const boards = [
+  board("global", "Global"),
+  board("ladder_1v1", "1v1"),
+  board("tmm_2v2", "2v2"),
 ];
 
 const query = (fields: Partial<ReplayQuery>): ReplayQuery => ({ ...EMPTY_REPLAY_QUERY, ...fields });
 
 describe("the modes on offer", () => {
-  it("is the API's own league list, plus any and co-op", () => {
-    expect(replayGameModes(leagues).map((mode) => mode.id)).toEqual([
+  it("is the API's own leaderboard list, plus any and co-op", () => {
+    expect(replayGameModes(boards).map((mode) => mode.id)).toEqual([
       "",
       "global",
       "ladder_1v1",
@@ -35,12 +38,12 @@ describe("the modes on offer", () => {
     ]);
   });
 
-  it("offers custom games even when the league catalogue never arrived", () => {
+  it("offers custom games even when the catalogue never arrived", () => {
     expect(replayGameModes([]).map((mode) => mode.id)).toEqual(["", "global", COOP_FEATURED_MOD]);
   });
 
   it("calls the global leaderboard what a player calls it", () => {
-    const global = replayGameModes(leagues).find((mode) => mode.id === "global");
+    const global = replayGameModes(boards).find((mode) => mode.id === "global");
     expect(global?.label).not.toBe("global");
   });
 });
