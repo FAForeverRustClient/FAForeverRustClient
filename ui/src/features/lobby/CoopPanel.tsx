@@ -21,6 +21,7 @@ import { friendKeys } from "./friendPresence";
 import { formatShortDate } from "../../shared/dates";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { GameBrowserRow, GameTile, type GameViewMode } from "./CustomGamesBrowser";
+import { useGameBrowserColumns } from "./gameBrowserColumns";
 import { coopFailureAction } from "./coopFailure";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { useColumnWidths } from "../../shared/useColumnWidths";
@@ -71,6 +72,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
+  const columns = useGameBrowserColumns(viewMode === "list");
 
   useEffect(() => {
     if (useAppStore.getState().state.coop.catalogStatus.type === "idle") void loadCatalog();
@@ -168,14 +170,12 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
               </Button>
             </EmptyState>
           ) : viewMode === "list" ? (
+            /* The same header the custom-games list draws, from the same
+               widths. It used to be five bare spans here, so the co-op tab
+               laid the identical five columns out differently from the tab
+               next to it and none of them could be dragged. */
             <div className="game-browser-list">
-              <div className="game-browser-head">
-                <span>{t("lobby.browser.column.game")}</span>
-                <span>{t("lobby.browser.column.map")}</span>
-                <span>{t("lobby.browser.column.players")}</span>
-                <span>{t("lobby.browser.column.rating")}</span>
-                <span>{t("lobby.browser.column.age")}</span>
-              </div>
+              {columns.header}
               {games.map((game) => (
                 <GameBrowserRow
                   key={game.id}
@@ -183,6 +183,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   vault={maps.vault}
                   vaultMods={vaultMods}
                   friendSet={friendSet}
+                  columnStyle={columns.style}
                   selected={selectedGameId === game.id}
                   onSelect={() => setSelectedGameId(game.id)}
                   onJoin={() => onJoin(game)}
@@ -372,10 +373,13 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
             {/* `table-layout: fixed` plus a colgroup is how a real table takes
                 dragged widths: putting them on the cells would let the widest
                 row win instead. */}
+            {/* Every column the width it was given, and one empty track at
+                the end for whatever is left over. */}
             <colgroup>
               {columns.widths.map((width, index) => (
                 <col key={boardLabels[index]} style={{ width: `${width}px` }} />
               ))}
+              <col style={{ width: `${REPLAY_COLUMN_PX}px` }} />
               <col />
             </colgroup>
             <thead>
