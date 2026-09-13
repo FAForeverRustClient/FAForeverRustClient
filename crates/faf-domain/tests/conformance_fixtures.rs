@@ -5240,6 +5240,7 @@ fn cases() -> Vec<Case> {
                             "LADDER_1V1".into(),
                         ],
                         matchmaker_factions: vec!["cybran".into(), "unknown".into()],
+                        matchmaker_chat_width: 420,
                         live_replay_filters: LiveReplayFilters {
                             search: "  tournament  ".into(),
                             game_type: " matchmaker ".into(),

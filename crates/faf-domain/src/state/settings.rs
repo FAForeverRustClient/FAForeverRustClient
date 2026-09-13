@@ -1687,6 +1687,11 @@ pub const MAX_BROWSER_COLUMN_PX: u32 = 900;
 pub const MIN_DETAIL_PX: u32 = 220;
 pub const MAX_DETAIL_PX: u32 = 720;
 
+/// The party chat rail's bounds. The floor is where a chat line stops being
+/// readable at all; the ceiling leaves two queue cards beside it.
+pub const MIN_PARTY_CHAT_PX: u32 = 260;
+pub const MAX_PARTY_CHAT_PX: u32 = 900;
+
 /// How many entries a vault page may show. The floor is a screen worth of
 /// them; the ceiling is where a page stops being a page.
 pub const MIN_VAULT_PAGE_SIZE: u32 = 12;
@@ -1818,6 +1823,16 @@ pub struct BrowsingPreferences {
     pub custom_games_browser: CustomGameBrowserPreferences,
     pub matchmaker_unselected_queues: Vec<String>,
     pub matchmaker_factions: Vec<String>,
+    /// Pixel width of the matchmaker's party chat rail, or `0` for the
+    /// designed default.
+    ///
+    /// The same shape and the same reason as
+    /// `CustomGameBrowserPreferences::detail_width`: how much of the tab a
+    /// conversation is worth is a matter of what somebody is doing with it,
+    /// and the tab has a queue grid on the other side of the divider that
+    /// wants the same pixels. Stored rather than kept in the browser so it
+    /// survives a reinstall, like every other browsing preference here.
+    pub matchmaker_chat_width: u32,
     pub live_replay_filters: LiveReplayFilters,
     pub host_game: HostGamePreferences,
     /// The co-op host dialog's own copy of the same form.
@@ -1909,6 +1924,7 @@ impl Default for BrowsingPreferences {
                 .iter()
                 .map(|faction| (*faction).to_owned())
                 .collect(),
+            matchmaker_chat_width: 0,
             live_replay_filters: LiveReplayFilters::default(),
             host_game: HostGamePreferences::default(),
             host_coop: HostGamePreferences::default(),
@@ -1946,6 +1962,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             custom_games_browser: CustomGameBrowserPreferences,
             matchmaker_unselected_queues: Vec<String>,
             matchmaker_factions: Vec<String>,
+            #[serde(default)]
+            matchmaker_chat_width: u32,
             live_replay_filters: LiveReplayFilters,
             host_game: HostGamePreferences,
             host_coop: HostGamePreferences,
@@ -1977,6 +1995,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     custom_games_browser: defaults.custom_games_browser,
                     matchmaker_unselected_queues: defaults.matchmaker_unselected_queues,
                     matchmaker_factions: defaults.matchmaker_factions,
+                    matchmaker_chat_width: defaults.matchmaker_chat_width,
                     live_replay_filters: defaults.live_replay_filters,
                     host_game: defaults.host_game,
                     host_coop: defaults.host_coop,
@@ -2005,6 +2024,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             custom_games_browser: wire.custom_games_browser,
             matchmaker_unselected_queues: wire.matchmaker_unselected_queues,
             matchmaker_factions: wire.matchmaker_factions,
+            matchmaker_chat_width: wire.matchmaker_chat_width,
             live_replay_filters: wire.live_replay_filters,
             host_game: wire.host_game,
             host_coop: wire.host_coop,
@@ -2046,6 +2066,11 @@ impl BrowsingPreferences {
         }
         self.matchmaker_unselected_queues =
             normalize_labels(self.matchmaker_unselected_queues, 64, 128);
+        if self.matchmaker_chat_width != 0 {
+            self.matchmaker_chat_width = self
+                .matchmaker_chat_width
+                .clamp(MIN_PARTY_CHAT_PX, MAX_PARTY_CHAT_PX);
+        }
         let selected_factions: Vec<String> = MATCHMAKER_FACTIONS
             .iter()
             .filter(|canonical| {
@@ -3001,6 +3026,8 @@ mod tests {
                     String::new(),
                 ],
                 matchmaker_factions: vec!["cybran".into(), "unknown".into()],
+                // Below the floor, so the clamp has something to do.
+                matchmaker_chat_width: 40,
                 live_replay_filters: LiveReplayFilters {
                     search: format!("  {}  ", "x".repeat(250)),
                     game_type: "  matchmaker  ".into(),

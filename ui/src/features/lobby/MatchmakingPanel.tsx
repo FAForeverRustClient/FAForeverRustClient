@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
+import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { ipc } from "../../ipc/client";
 import type { MatchmakerQueue, MatchmakingState, PartyState } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -11,6 +12,7 @@ import { MatchmakerPartyPanel } from "./MatchmakerPartyPanel";
 import { MatchmakerPlayerCard } from "./MatchmakerPlayerCard";
 import { MatchmakerExplainer } from "./MatchmakerExplainer";
 import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./MatchmakerQueueCard";
+import { partyChatWidth, withPartyChatResized } from "./matchmakerLayout";
 import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
 import { playersInRatingRange } from "./queueRatingRange";
 import "./matchmaker.css";
@@ -64,6 +66,11 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   const [mapPoolQueueName, setMapPoolQueueName] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
+  // The same shape as the game browser's detail divider: the saved width seeds
+  // a local copy, the drag moves the copy, letting go persists it. A settings
+  // write per pointer move would be a backend round trip per pixel.
+  const [draggedChatWidth, setDraggedChatWidth] = useState<number | null>(null);
+  const chatDragOrigin = useRef<number | null>(null);
   const [queueClocks, setQueueClocks] = useState<Record<string, { seconds: number; receivedAt: number }>>({});
   const requestedProfileId = useRef<number | null>(null);
 
@@ -80,6 +87,35 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   const matchmakerProfile = playerCard.matchmakerProfile?.playerId === playerId
     ? playerCard.matchmakerProfile
     : null;
+  const chatWidth = draggedChatWidth ?? partyChatWidth(browsing.matchmakerChatWidth);
+  const saveChatWidth = (matchmakerChatWidth: number) => {
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "setBrowsing",
+        payload: {
+          preferences: {
+            ...useAppStore.getState().state.settings.browsing,
+            matchmakerChatWidth,
+          },
+        },
+      },
+    });
+  };
+  const onChatDrag = (delta: number) => {
+    chatDragOrigin.current ??= chatWidth;
+    setDraggedChatWidth(withPartyChatResized(chatDragOrigin.current, delta));
+  };
+  const onChatCommit = () => {
+    chatDragOrigin.current = null;
+    if (draggedChatWidth !== null) saveChatWidth(draggedChatWidth);
+    setDraggedChatWidth(null);
+  };
+  const onChatReset = () => {
+    chatDragOrigin.current = null;
+    setDraggedChatWidth(null);
+    saveChatWidth(0);
+  };
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
@@ -155,7 +191,10 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
       },
     });
 
-    if (isSearching) {
+    // Only for a queue the search actually covers. A queue the party has
+    // outgrown was never started, so telling the server to stop it is a
+    // message about a search that does not exist.
+    if (isSearching && party.members.length <= queue.teamSize) {
       ipc.send({ kind: "Lobby", command: { type: "matchmake", payload: { queueName: queue.queueName, start: !selected } } });
     }
   };
@@ -183,7 +222,10 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   const activeMatchmakerGames = liveGames.filter((game) => game.gameType.toLocaleLowerCase() === "matchmaker");
 
   return (
-    <div className="matchmaking-layout">
+    <div
+      className="matchmaking-layout"
+      style={{ "--party-chat-width": `${chatWidth}px` } as CSSProperties}
+    >
       <main className="matchmaker-main">
         <MatchmakerPlayerCard
           playerId={playerId}
@@ -232,7 +274,8 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
                   key={queue.queueName}
                   queue={queue}
                   selected={!unselectedQueues.includes(queue.queueName)}
-                  disabled={partyNeedsLeader || party.members.length > queue.teamSize || searchLocked}
+                  disabled={partyNeedsLeader || searchLocked}
+                  incompatible={party.members.length > queue.teamSize}
                   status={stateForQueue(matchmaking, queue.queueName)}
                   activeGames={activeGames}
                   secondsUntilPop={remaining}
@@ -277,6 +320,17 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           </div>
         </section>
       </main>
+
+      {/* The divider sits between the two columns rather than on either, so
+          dragging it reads as moving the boundary. Double click puts the rail
+          back to its designed width, as it does in the game browser. */}
+      <ResizeHandle
+        className="matchmaker-chat-divider"
+        label={t("lobby.matchmaker.resizeChat")}
+        onDrag={onChatDrag}
+        onEnd={onChatCommit}
+        onReset={onChatReset}
+      />
 
       {/* Java devotes the whole right half of this tab to the matchmaking chat
           (`team_matchmaking.fxml` puts `matchmaking_chat.fxml` in column 2), and
