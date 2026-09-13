@@ -389,8 +389,14 @@
   overflow-y: auto;
 }
 
+/* `overflow: visible`, against `.matchmaker-card`'s hidden, and it is what
+   makes the search bar below stick: an ancestor with a clipped overflow is the
+   nearest scroll container a sticky element can find, and sticking to a box
+   that never scrolls is the same as not sticking at all. Nothing in this card
+   overflows it, so there is nothing left to clip. */
 .matchmaker-queues-section {
   padding: 20px;
+  overflow: visible;
 }
 
 .matchmaker-player-card {
@@ -685,15 +691,33 @@
   font-size: 12px;
 }
 
-/* A footer of the queues card, not a floating strip of its own. */
+/* A footer of the queues card, not a floating strip of its own, and one that
+   stays on screen.
+ *
+   The queue cards are as tall as four rows of them need to be, so on a short
+   window the whole strip, the only control that starts a search, sat below the
+   fold of the scrolling column. It was reported as "no search button in the
+   matchmaker tab", which is exactly how an off-screen primary action reads.
+ *
+   Sticky rather than a fixed footer outside the card: while the card's bottom
+   is on screen this renders where it always did, in the place the comment
+   above describes, and only pins itself when it would otherwise be scrolled
+   past. The negative margins let it span the card's padding, so the pinned bar
+   covers the queue cards passing underneath it instead of letting them show
+   through at its edges. */
 .matchmaker-search-bar {
+  position: sticky;
+  z-index: 1;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 18px;
-  padding-top: 16px;
+  margin: 18px -20px -20px;
+  padding: 16px 20px 20px;
+  background: var(--color-surface);
   border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .matchmaker-search-button {
