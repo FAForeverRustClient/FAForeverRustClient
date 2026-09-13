@@ -64,14 +64,16 @@
   position: relative;
 }
 
-/* Wider than it looks, and taller than the cell, so the grab area is findable
-   without a hairline target. The same shape the game browser's handle uses. */
+/* Centred on the gap, in the cell of the column to its right, and resizing the
+   one to its left. Wider than it looks and taller than the cell, so the grab
+   area is findable without a hairline target. The same shape the game
+   browser's handle uses. */
 .replay-list-col-handle {
   position: absolute;
   top: -8px;
-  right: -10px;
+  left: -14px;
   bottom: -8px;
-  width: 11px;
+  width: 12px;
 }
 
 .replay-list-header,
@@ -192,7 +194,7 @@
 /* The one title in the row, and the thing the eye lands on first, so it is
    not the same size as the mod name and the duration beside it. */
 .replay-list-game-cell > strong {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -.01em;
 }
