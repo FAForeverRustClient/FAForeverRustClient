@@ -75,6 +75,13 @@ impl ReplayPort for DownloadReplay {
     ) -> Result<faf_domain::state::ReplayDetails, String> {
         Ok(faf_domain::state::ReplayDetails::default())
     }
+    async fn load_analysis(
+        &self,
+        _uid: i32,
+        _local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
+        unreachable!()
+    }
 
     async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
         unreachable!()

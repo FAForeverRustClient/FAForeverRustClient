@@ -4783,7 +4783,92 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "one replay analysis is held at a time",
+            vec![
+                ReplayEvent::AnalysisLoading { uid: 11 }.into(),
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 11,
+                        ticks: 3_000,
+                        game_version: "Supreme Commander v1.50.3839".into(),
+                        activity: vec![faf_domain::state::ReplayActivity {
+                            source: 0,
+                            command_ticks: vec![10, 20, 30],
+                            last_tick: 30,
+                        }],
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                // Another replay's panel opens: the orders of the last one
+                // are megabytes that describe a game nobody is looking at.
+                ReplayEvent::AnalysisLoading { uid: 12 }.into(),
+                ReplayEvent::AnalysisFailed {
+                    uid: 12,
+                    reason: "the replay file could not be read".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── leaderboard ──────────────────────────────────────────────────
+        case(
+            "the other boards land only for the page that is on screen",
+            vec![
+                LeaderboardEvent::RatingsLoading {
+                    query: faf_domain::state::RatingQuery {
+                        leaderboard: "global".into(),
+                        page: 1,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                // The answer to the page being looked at.
+                LeaderboardEvent::CrossRatingsLoaded {
+                    query: faf_domain::state::RatingQuery {
+                        leaderboard: "global".into(),
+                        page: 1,
+                        ..Default::default()
+                    },
+                    ratings: vec![faf_domain::state::PlayerRatings {
+                        player_id: 11,
+                        ratings: vec![faf_domain::state::BoardRating {
+                            leaderboard: "ladder_1v1".into(),
+                            rating: 1_842,
+                            games_played: 310,
+                        }],
+                    }],
+                }
+                .into(),
+                // A page turn, and then the previous page's late answer. It
+                // describes players who are no longer listed, so it is
+                // dropped rather than drawn beside the new ones.
+                LeaderboardEvent::RatingsLoading {
+                    query: faf_domain::state::RatingQuery {
+                        leaderboard: "global".into(),
+                        page: 2,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                LeaderboardEvent::CrossRatingsLoaded {
+                    query: faf_domain::state::RatingQuery {
+                        leaderboard: "global".into(),
+                        page: 1,
+                        ..Default::default()
+                    },
+                    ratings: vec![faf_domain::state::PlayerRatings {
+                        player_id: 11,
+                        ratings: vec![faf_domain::state::BoardRating {
+                            leaderboard: "ladder_1v1".into(),
+                            rating: 1_842,
+                            games_played: 310,
+                        }],
+                    }],
+                }
+                .into(),
+            ],
+        ),
         case(
             "changing league clears stale season data",
             vec![
@@ -5287,13 +5372,7 @@ fn cases() -> Vec<Case> {
                         coop_board_columns: Vec::new(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
-                        leaderboard_rating_columns: vec![
-                            "rating".into(),
-                            "games".into(),
-                            "wins".into(),
-                            "winRate".into(),
-                            "updated".into(),
-                        ],
+                        leaderboard_rating_columns: vec!["games".into(), "updated".into()],
                         replay_vault_player: String::new(),
                         legacy_storage_migrated: true,
                     }),
@@ -5838,7 +5917,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Leaderboard:catalogLoading",
     "Leaderboard:ratingsLoadFailed",
     "Leaderboard:ratingsLoaded",
-    "Leaderboard:ratingsLoading",
     "Leaderboard:seasonLoadFailed",
     "Leaderboard:seasonLoaded",
     "Leaderboard:seasonLoading",

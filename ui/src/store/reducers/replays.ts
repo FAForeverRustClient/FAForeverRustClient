@@ -118,6 +118,31 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         detailsLoading: state.detailsLoading === event.payload.uid ? null : state.detailsLoading,
         detailsError: event.payload.reason,
       };
+    case "analysisLoading":
+      return {
+        ...state,
+        analysisLoading: event.payload.uid,
+        analysisError: null,
+        // The panel being opened is not the one the held analysis is of.
+        analysis: state.analysis && state.analysis.uid !== event.payload.uid
+          ? null
+          : state.analysis,
+      };
+    case "analysisLoaded":
+      return {
+        ...state,
+        analysis: event.payload.analysis,
+        analysisLoading: state.analysisLoading === event.payload.analysis.uid
+          ? null
+          : state.analysisLoading,
+        analysisError: null,
+      };
+    case "analysisFailed":
+      return {
+        ...state,
+        analysisLoading: state.analysisLoading === event.payload.uid ? null : state.analysisLoading,
+        analysisError: event.payload.reason,
+      };
     case "mapsResolved": {
       // Mirrors the `resolved_maps` inserts in the Rust reducer: an empty map
       // is an answer, so it is written like any other and the view stops

@@ -48,6 +48,7 @@ const IGNORED_FILES = new Map([
   ["ui/src/features/training/recording.ts", "the same marker type ids, on the analyser side"],
   ["ui/src/features/events/eventSubmission.ts", "the body of a GitHub issue, which is English wherever it is written from"],
   ["ui/src/features/maps/MapPreviewZoom.tsx", "throw messages for a copy that falls back on its own; never rendered"],
+  ["ui/src/features/replays/replayAnalysis.ts", "the engine's own command names, indexed by the number a replay carries"],
 ]);
 
 // Attribute names whose values are machine tokens, never prose.

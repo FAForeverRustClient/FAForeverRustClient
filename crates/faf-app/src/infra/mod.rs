@@ -59,6 +59,7 @@ pub mod paths;
 pub mod player_card;
 pub mod relay;
 pub mod replay;
+pub(crate) mod replay_analysis;
 pub(crate) mod replay_recorder;
 pub mod reporting;
 pub mod reviews;

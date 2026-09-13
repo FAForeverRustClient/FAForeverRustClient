@@ -15,7 +15,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Reaction } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { ALL_EMOJI } from "./emoji";
+import { emojiName } from "./emoji";
 
 /** The shortlist offered inline. The full picker lives in the composer. */
 const QUICK_REACTIONS = ["👍", "😂", "🔥", "❤️", "👏", "🤔"] as const;
@@ -112,7 +112,7 @@ export function MessageReactions({
             className={`chat-reaction${mine ? " is-mine" : ""}`}
             // The senders are the whole answer to "who?", and there is nowhere
             // else in the UI that would show them.
-            title={reaction.senders.join(", ")}
+            title={`${nameOf(reaction.emoji)}: ${reaction.senders.join(", ")}`}
             aria-label={t(mine ? "chat.reaction.remove" : "chat.reaction.by", {
               emoji: reaction.emoji,
               people: reaction.senders.join(", "),
@@ -159,7 +159,7 @@ export function MessageReactions({
   );
 }
 
-/** The picker's own name for an emoji, so labels stay consistent with it. */
+/** What to call an emoji on a button, falling back to the emoji itself. */
 function nameOf(char: string): string {
-  return ALL_EMOJI.find((entry) => entry.char === char)?.name ?? char;
+  return emojiName(char) ?? char;
 }

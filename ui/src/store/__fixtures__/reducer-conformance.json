@@ -172,6 +172,9 @@
       "replayDetails": {},
       "detailsLoading": null,
       "detailsError": null,
+      "analysis": null,
+      "analysisLoading": null,
+      "analysisError": null,
       "onlineLookups": {},
       "resolvedMaps": {}
     },
@@ -384,6 +387,7 @@
       "browseQuery": {
         "search": "",
         "exactName": false,
+        "searchDescriptions": false,
         "author": "",
         "uploaderId": null,
         "modType": "",
@@ -439,6 +443,7 @@
       "ratingsStatus": {
         "type": "idle"
       },
+      "crossRatings": [],
       "selectedLeagueId": null,
       "seasons": [],
       "seasonsStatus": {
@@ -854,10 +859,7 @@
         "coopBoardColumns": [],
         "modPresets": [],
         "leaderboardRatingColumns": [
-          "rating",
           "games",
-          "wins",
-          "winRate",
           "updated"
         ],
         "replayVaultPlayer": "",
@@ -2037,10 +2039,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -23389,6 +23388,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23425,6 +23425,7 @@
                 "query": {
                   "search": "",
                   "exactName": false,
+                  "searchDescriptions": false,
                   "author": "",
                   "uploaderId": null,
                   "modType": "ui",
@@ -23461,6 +23462,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23513,6 +23515,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23565,6 +23568,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23620,6 +23624,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23692,6 +23697,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -23751,6 +23757,7 @@
               "ranked": null,
               "recommended": false,
               "search": "",
+              "searchDescriptions": false,
               "sortBy": "rating",
               "sortDescending": true,
               "uploaderId": null
@@ -25850,6 +25857,642 @@
       ]
     },
     {
+      "name": "one replay analysis is held at a time",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoading",
+              "payload": {
+                "uid": 11
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 11,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoaded",
+              "payload": {
+                "analysis": {
+                  "uid": 11,
+                  "ticks": 3000,
+                  "gameVersion": "Supreme Commander v1.50.3839",
+                  "armies": [],
+                  "observers": [],
+                  "scenario": {
+                    "name": "",
+                    "description": "",
+                    "mapFolder": "",
+                    "width": 0,
+                    "height": 0,
+                    "options": []
+                  },
+                  "activity": [
+                    {
+                      "source": 0,
+                      "commandTicks": [
+                        10,
+                        20,
+                        30
+                      ],
+                      "lastTick": 30
+                    }
+                  ],
+                  "orders": [],
+                  "points": [],
+                  "notices": [],
+                  "stats": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": {
+              "activity": [
+                {
+                  "commandTicks": [
+                    10,
+                    20,
+                    30
+                  ],
+                  "lastTick": 30,
+                  "source": 0
+                }
+              ],
+              "armies": [],
+              "gameVersion": "Supreme Commander v1.50.3839",
+              "notices": [],
+              "observers": [],
+              "orders": [],
+              "points": [],
+              "scenario": {
+                "description": "",
+                "height": 0,
+                "mapFolder": "",
+                "name": "",
+                "options": [],
+                "width": 0
+              },
+              "stats": [],
+              "ticks": 3000,
+              "uid": 11
+            },
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoading",
+              "payload": {
+                "uid": 12
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 12,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisFailed",
+              "payload": {
+                "uid": 12,
+                "reason": "the replay file could not be read"
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": "the replay file could not be read",
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "the other boards land only for the page that is on screen",
+      "steps": [
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "ratingsLoading",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 1,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "crossRatingsLoaded",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 1,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                },
+                "ratings": [
+                  {
+                    "playerId": 11,
+                    "ratings": [
+                      {
+                        "leaderboard": "ladder_1v1",
+                        "rating": 1842,
+                        "gamesPlayed": 310
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [
+              {
+                "playerId": 11,
+                "ratings": [
+                  {
+                    "gamesPlayed": 310,
+                    "leaderboard": "ladder_1v1",
+                    "rating": 1842
+                  }
+                ]
+              }
+            ],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "ratingsLoading",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 2,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 2,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "crossRatingsLoaded",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 1,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                },
+                "ratings": [
+                  {
+                    "playerId": 11,
+                    "ratings": [
+                      {
+                        "leaderboard": "ladder_1v1",
+                        "rating": 1842,
+                        "gamesPlayed": 310
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 2,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        }
+      ]
+    },
+    {
       "name": "changing league clears stale season data",
       "steps": [
         {
@@ -25866,6 +26509,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -25915,6 +26559,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -25964,6 +26609,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -26016,6 +26662,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -26493,6 +27140,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26565,6 +27215,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26637,6 +27290,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26718,6 +27374,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26796,6 +27455,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26865,6 +27527,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26974,6 +27639,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27055,6 +27723,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27130,6 +27801,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27227,6 +27901,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27326,6 +28003,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27425,6 +28105,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27524,6 +28207,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27623,6 +28309,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27721,6 +28410,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27822,6 +28514,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27925,6 +28620,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28021,6 +28719,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28117,6 +28818,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28217,6 +28921,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28316,6 +29023,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28419,6 +29129,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -29102,10 +29815,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29356,10 +30066,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29619,10 +30326,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29877,10 +30581,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30135,10 +30836,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30403,10 +31101,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30677,10 +31372,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30963,10 +31655,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31240,10 +31929,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31519,10 +32205,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31838,10 +32521,7 @@
                   "coopBoardColumns": [],
                   "modPresets": [],
                   "leaderboardRatingColumns": [
-                    "rating",
                     "games",
-                    "wins",
-                    "winRate",
                     "updated"
                   ],
                   "replayVaultPlayer": "",
@@ -31913,10 +32593,7 @@
                 "visibility": "friends"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
-                "winRate",
                 "updated"
               ],
               "legacyStorageMigrated": true,

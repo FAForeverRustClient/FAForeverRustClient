@@ -347,6 +347,14 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 replay={localReplayCard(replay, mapVault, missions)}
                 watched={watched.has(localReplayKey(replay))}
                 selected={openReplay?.path === replay.path}
+                watch={replay.watchable ? {
+                  label: t("replays.detail.watch"),
+                  ariaLabel: t("replays.list.watchAria", {
+                    name: replay.title || replay.fileName,
+                  }),
+                  disabled: busy,
+                  onClick: () => markWatchedAndOpen(replay),
+                } : undefined}
                 onOpen={() => setOpenReplay(replay)}
                 onDoubleClick={() => replay.watchable && !busy && markWatchedAndOpen(replay)}
               />

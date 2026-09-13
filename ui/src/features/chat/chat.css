@@ -630,6 +630,21 @@ html.is-resizing-chat-roster * {
   font-weight: 550;
 }
 
+/* An emoji inside a message body. A shade larger than the words around it,
+   because at body size an unfamiliar glyph cannot be made out at all, which is
+   what the report said before it asked for the name. The name itself is the
+   `title`, and the cursor only claims there is one where the renderer found
+   one. */
+.chat-emoji {
+  font-size: 1.25em;
+  line-height: 1;
+  vertical-align: -0.08em;
+}
+
+.chat-emoji[title] {
+  cursor: help;
+}
+
 .chat-search-hit {
   display: inline-block;
   line-height: 1.15;

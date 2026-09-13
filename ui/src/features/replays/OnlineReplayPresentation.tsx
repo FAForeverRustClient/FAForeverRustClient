@@ -28,6 +28,7 @@ import {
 import { MapPreviewFrame } from "../maps/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
+import { ReplayInsights } from "./ReplayInsights";
 import { useAppStore } from "../../store/store";
 import {
   isObserverTeam,
@@ -86,6 +87,26 @@ function ReplayStars({ replay }: { replay: ReplayCardData }) {
       {"★".repeat(Math.round(replay.reviewsAverage ?? 0))} ({replay.reviewsCount})
     </span>
   );
+}
+
+/**
+ * The card's own way in: watch this replay, without opening it first.
+ *
+ * Watching meant opening the card, reading a panel and pressing the button at
+ * the bottom of it, which is three steps to do the one thing the grid is being
+ * scanned for. It sits in the bottom corner of the card next to the replay id,
+ * where a card puts what it can do, rather than over the map: a control on top
+ * of the picture hides part of the one thing the tile is mostly made of.
+ *
+ * Only watching. Downloading a replay is a thing you do to one replay you have
+ * already decided on, not something to offer on every tile of a page of fifty;
+ * it stays in the detail panel and on the list view's row.
+ */
+export interface ReplayCardWatch {
+  label: string;
+  ariaLabel: string;
+  disabled: boolean;
+  onClick: () => void;
 }
 
 const REPLAY_CARD_TITLE_LIMIT = 48;
@@ -205,12 +226,15 @@ export function ReplayLibraryCard({
   replay,
   watched,
   selected = false,
+  watch,
   onOpen,
   onDoubleClick,
 }: {
   replay: ReplayCardData;
   watched: boolean;
   selected?: boolean;
+  /** The footer's action. See `ReplayCardWatch`. */
+  watch?: ReplayCardWatch;
   onOpen: () => void;
   onDoubleClick?: () => void;
 }) {
@@ -228,11 +252,24 @@ export function ReplayLibraryCard({
     .filter(Boolean)
     .join(" ");
   return (
-    <button
+    /* A `div` with the role rather than a `button`: the actions over the
+       thumbnail are buttons themselves, and a button inside a button is
+       neither valid nor clickable. Enter and Space are handled here, and only
+       when the card itself has the focus, so a press on one of those actions
+       is not also a press on the card behind it. */
+    <div
       className={`replay-card surface-panel surface-interactive ${stateClasses}`.trim()}
+      role="button"
+      tabIndex={0}
       aria-pressed={selected || undefined}
       onClick={onOpen}
       onDoubleClick={onDoubleClick}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onOpen();
+      }}
     >
       <div className="replay-card-left">
         <ReplayMapThumb
@@ -251,30 +288,66 @@ export function ReplayLibraryCard({
           <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
         </div>
         <ReplayCardRoster teams={replay.teams} />
-        <div className="replay-card-footer muted">
-          {replay.footerNote && <span>{replay.footerNote} · </span>}
-          <span>{replay.idLabel}</span>
+        {/* The id and the way in, on one line in the corner: the label that
+            says which replay this is, and the button that plays it. */}
+        <div className="replay-card-footer">
+          {replay.footerNote && <span className="muted">{replay.footerNote}</span>}
+          <span className="muted">{replay.idLabel}</span>
+          {watch && (
+            <button
+              type="button"
+              className="replay-card-watch"
+              disabled={watch.disabled}
+              aria-label={watch.ariaLabel}
+              title={watch.ariaLabel}
+              // The card opens on a click and watches on a double click, and
+              // neither is what was asked for here.
+              onClick={(event) => {
+                event.stopPropagation();
+                watch.onClick();
+              }}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <Icon name="play" size={13} />
+              <span>{watch.label}</span>
+            </button>
+          )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
 export function ReplayCard({
   replay,
   watched,
+  busy = false,
   onOpen,
   onDoubleClick,
+  onWatch,
 }: {
   replay: VaultReplay;
   watched: boolean;
+  /** A game is already starting, so a second "watch" would go nowhere. */
+  busy?: boolean;
   onOpen: () => void;
   onDoubleClick?: () => void;
+  onWatch?: () => void;
 }) {
   const { t } = useTranslation();
   const localReplays = useAppStore((state) => state.state.replays.local);
   const localMatch = localReplays.find((local) => local.uid === replay.uid);
   const map = effectiveReplayMapName(replay.map, localMatch?.map);
+  // Absent for a replay the server has not finished processing, because it
+  // would not work. Same rule as the list view.
+  const watch: ReplayCardWatch | undefined = onWatch && replay.replayAvailable
+    ? {
+      label: t("replays.detail.watch"),
+      ariaLabel: t("replays.list.watchAria", { name: replay.title || map }),
+      disabled: busy,
+      onClick: onWatch,
+    }
+    : undefined;
   return (
     <ReplayLibraryCard
       replay={{
@@ -294,6 +367,7 @@ export function ReplayCard({
         footerNote: replay.replayAvailable ? "" : t("replays.card.notUploaded"),
       }}
       watched={watched}
+      watch={watch}
       onOpen={onOpen}
       onDoubleClick={onDoubleClick}
     />
@@ -437,13 +511,6 @@ function groupReplaysByDate(replays: VaultReplay[]): Array<{ label: string; repl
   return groups;
 }
 
-function formatChatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 export function localReplayToVaultReplay(
   local: LocalReplay,
   mapVault: VaultMap[],
@@ -527,6 +594,9 @@ export function ReplayDetailPanel({
   const replayDetails = useAppStore((state) => state.state.replays.replayDetails);
   const detailsLoading = useAppStore((state) => state.state.replays.detailsLoading);
   const detailsError = useAppStore((state) => state.state.replays.detailsError);
+  const heldAnalysis = useAppStore((state) => state.state.replays.analysis);
+  const analysisLoading = useAppStore((state) => state.state.replays.analysisLoading);
+  const analysisError = useAppStore((state) => state.state.replays.analysisError);
   const onlineLookups = useAppStore((state) => state.state.replays.onlineLookups);
   // Subscribed, not read once: the answer arrives from the vault after the
   // panel is already open, and the map is what the header of it says.
@@ -561,19 +631,7 @@ export function ReplayDetailPanel({
   );
   const localPath = initialLocalPath || localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
-  // Absent on a legacy `.scfareplay`, which has no header to read them from.
-  const simMods = details?.simMods ?? [];
   const isLoadingDetails = detailsLoading === replay.uid;
-  const [optionFilter, setOptionFilter] = useState("");
-
-  const filteredOptions = useMemo(() => {
-    if (!details?.gameOptions) return [];
-    if (!optionFilter.trim()) return details.gameOptions;
-    const query = optionFilter.toLowerCase();
-    return details.gameOptions.filter(
-      (option) => option.key.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
-    );
-  }, [details?.gameOptions, optionFilter]);
 
   const loadDetails = () => {
     ipc.send({
@@ -588,9 +646,33 @@ export function ReplayDetailPanel({
     });
   };
 
+  // Only this replay's answer. The store holds one analysis at a time, so a
+  // panel opened after another must not draw the last one's orders.
+  const analysis = heldAnalysis?.uid === replay.uid ? heldAnalysis : null;
+  const loadAnalysis = () => {
+    ipc.send({
+      kind: "Replays",
+      command: {
+        type: "loadAnalysis",
+        payload: {
+          uid: replay.uid,
+          localPath,
+        },
+      },
+    });
+  };
+
   const effectiveMap = effectiveReplayMapName(replay.map, localMatch?.map);
   const isGenerated = isGeneratedMap(effectiveMap);
   const seed = extractGeneratedMapSeed(effectiveMap);
+  // The picture of a generated map, once the generator has built one. Keyed
+  // the three ways `ReplayMapThumb` keys it, because the store is written
+  // from whichever spelling the caller had.
+  const generatedPreview = useAppStore((state) => isGenerated
+    ? state.state.mapGenerator.previews?.[effectiveMap]
+      || state.state.mapGenerator.previews?.[normalizeMapName(effectiveMap)]
+      || state.state.mapGenerator.previews?.[effectiveMap.toLowerCase()]
+    : undefined);
 
   const installed = maps.installed.some(
     (map) =>
@@ -655,9 +737,10 @@ export function ReplayDetailPanel({
   const [showResults, setShowResults] = useState(false);
   /// Whether the map preview has been opened out of the rail.
   const [enlarged, setEnlarged] = useState(false);
-  // The rail's chat button both loads the details and reveals the log, so
-  // its own open state is separate from whether the details have arrived.
-  const [showChat, setShowChat] = useState(false);
+  // The rail's button both asks for the file to be read and opens the panel
+  // that shows what was in it, so its own open state is separate from whether
+  // the details have arrived.
+  const [showInsights, setShowInsights] = useState(false);
 
   useEffect(() => {
     if (isGenerated && !seed && replay.replayAvailable && !localMatch && downloadState === "idle") {
@@ -718,7 +801,6 @@ export function ReplayDetailPanel({
         .writeText(String(replay.uid))
         .then(() => setCopiedId(true)),
     );
-  const age = replayAge(replay.startTime);
   const competingTeams = detailTeams.filter((team) => !isObserverTeam(team.team)).length;
   const players = t("replays.detail.playerCount", { count: totalPlayers });
   const lineupSummary = competingTeams > 1
@@ -727,29 +809,35 @@ export function ReplayDetailPanel({
   const mapLabel = presentation.displayName || effectiveMap;
   const cardTitle = replay.title || mapLabel;
   const stars = replay.reviewsAverage ?? null;
+  // Rebuilding a generated map from its seed, which is how a generated map is
+  // obtained: there is nothing to download. Its own value rather than only a
+  // branch of the thumbnail's action below, because the heatmap wants the
+  // same button -- the thumbnail offers nothing once the map is on disk, and
+  // the heatmap can still have no picture to draw its cells over.
+  const generateAction = isGenerated
+    ? {
+        icon: isGeneratingThisMap ? "refresh" : "plus",
+        label: isGeneratingThisMap
+          ? t("lobby.details.generatingMap")
+          : !seed && downloadState === "downloading"
+            ? t("replays.detail.resolvingMap")
+            : t("lobby.details.generateMap"),
+        disabled: isGeneratingThisMap || (!seed && downloadState === "downloading"),
+        run: () => {
+          if (seed) {
+            ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName: effectiveMap } } });
+          } else if (replay.replayAvailable) {
+            ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid: replay.uid } } });
+          }
+        },
+      }
+    : null;
   // The map action the thumbnail overlays: one of them, never both. Which one
-  // depends on whether the map is on disk, and a generated map is rebuilt from
-  // its name rather than downloaded.
+  // depends on whether the map is on disk.
   const mapAction = installed
     ? null
-    : isGenerated
-      ? {
-          icon: isGeneratingThisMap ? "refresh" : "plus",
-          label: isGeneratingThisMap
-            ? t("lobby.details.generatingMap")
-            : !seed && downloadState === "downloading"
-              ? t("replays.detail.resolvingMap")
-              : t("lobby.details.generateMap"),
-          disabled: isGeneratingThisMap || (!seed && downloadState === "downloading"),
-          run: () => {
-            if (seed) {
-              ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName: effectiveMap } } });
-            } else if (replay.replayAvailable) {
-              ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid: replay.uid } } });
-            }
-          },
-        }
-      : vaultMap
+    : generateAction
+      ?? (vaultMap
         ? {
             icon: "download",
             label: t("lobby.details.downloadMap"),
@@ -760,7 +848,22 @@ export function ReplayDetailPanel({
                 command: { type: "installMap", payload: { folderName: vaultMap.folderName, downloadUrl: vaultMap.downloadUrl } },
               }),
           }
-        : null;
+        : null);
+  // What the heatmap draws its cells over, and what to press when there is
+  // nothing to draw them over yet. The placeholder a generated map carries is
+  // not a preview: it is the picture that says there is no picture, and the
+  // heat over it would read as heat over the map.
+  const heatmapPreviewUrl = generatedPreview
+    || (isGeneratedMapPlaceholderUrl(replay.mapThumbnailUrl) ? "" : replay.mapThumbnailUrl)
+    || undefined;
+  const heatmapMapAction = !heatmapPreviewUrl && generateAction
+    ? {
+        label: generateAction.label,
+        disabled: generateAction.disabled,
+        busy: isGeneratingThisMap,
+        run: generateAction.run,
+      }
+    : undefined;
   return (
     <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
       <div className="replay-card-layout">
@@ -898,45 +1001,22 @@ export function ReplayDetailPanel({
             )}
             <Button
               className="replay-card-rail-btn"
-              disabled={isLoadingDetails}
               onClick={() => {
-                if (!details) loadDetails();
-                setShowChat((open) => !open);
+                // Both reads, in the order they are wanted. The file is
+                // fetched once and the second walk reads it off disk, so the
+                // expensive half costs the reader nothing until they reach a
+                // tab that needs it.
+                if (!details && !isLoadingDetails) loadDetails();
+                if (!analysis && analysisLoading !== replay.uid) loadAnalysis();
+                setShowInsights(true);
               }}
-              aria-pressed={showChat}
-              title={t("replays.detail.loadDetails")}
+              aria-haspopup="dialog"
+              aria-expanded={showInsights}
+              title={t("replays.insights.openHint")}
             >
               <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetails")}</span>
               <Icon name={isLoadingDetails ? "refresh" : "list"} size={15} className={isLoadingDetails ? "spin" : undefined} />
             </Button>
-          </div>
-          <div className="replay-card-idrow">
-            <span className="replay-card-idlabel">{t("replays.detail.replayIdLabel")}</span>
-            {replay.uid > 0 ? (
-              <>
-                <span className="replay-card-idvalue">#{replay.uid}</span>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  onClick={copyReplayId}
-                >
-                  <Icon name={copiedId ? "check" : "copy"} size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  onClick={copyLink}
-                >
-                  <Icon name={copied ? "check" : "external"} size={13} />
-                </button>
-              </>
-            ) : (
-              <span className="replay-card-idvalue muted">{t("replays.local.noReplayId")}</span>
-            )}
           </div>
         </aside>
 
@@ -966,18 +1046,59 @@ export function ReplayDetailPanel({
               </div>
             )}
           </div>
-          {(!replay.replayAvailable || age) && (
+          {/* No age badge. `formatAgeOrDate` prints the date itself once "how
+              long ago" has stopped reading as a length of time, so on every
+              replay older than a week this line was the Date tile below it,
+              written a second time directly above it. The date is a fact and
+              belongs in the tiles with the other facts; the replay id, which
+              was off in the rail, takes the first of them. */}
+          {!replay.replayAvailable && (
             <div className="replay-card-badges">
-              {!replay.replayAvailable && (
-                <span className="replay-availability pending">{t("replays.detail.processing")}</span>
-              )}
-              {age && <span className="replay-card-age">{age}</span>}
+              <span className="replay-availability pending">{t("replays.detail.processing")}</span>
             </div>
           )}
           {/* Java's detail view keeps the eight core facts in two balanced
-              rows. Same eight, now four columns wide so the pair of durations
-              that are routinely minutes apart sit side by side. */}
+              rows. Same eight, four columns wide so the pair of durations that
+              are routinely minutes apart sit side by side, and each one its
+              own tile: value first, caption under it, glyph beside both. The
+              replay id takes the first two of the top row, which still
+              leaves the eight falling four to a row and that pairing
+              intact. */}
           <dl className="replay-card-facts">
+            {/* The id first, and the two things you do with one beside it:
+                copy the number, copy the link. It is the label that says
+                which replay this is, which is a fact about the game and not
+                an action on the file, so it sits with the facts. */}
+            <div className="replay-card-fact-id">
+              <dt><Icon name="list" size={14} />{t("replays.detail.replayIdLabel")}</dt>
+              <dd>
+                {replay.uid > 0 ? (
+                  <>
+                    <span className="replay-card-idvalue">#{replay.uid}</span>
+                    <button
+                      type="button"
+                      className="replay-card-icon-btn"
+                      aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                      title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                      onClick={copyReplayId}
+                    >
+                      <Icon name={copiedId ? "check" : "copy"} size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="replay-card-icon-btn"
+                      aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                      title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                      onClick={copyLink}
+                    >
+                      <Icon name={copied ? "check" : "external"} size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <span className="muted">{t("replays.local.noReplayId")}</span>
+                )}
+              </dd>
+            </div>
             <div><dt><Icon name="calendar" size={14} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
             <div><dt><Icon name="users" size={14} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
             <div><dt><Icon name="leaderboard" size={14} />{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
@@ -1130,109 +1251,24 @@ export function ReplayDetailPanel({
         <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
       )}
 
-      {details && showChat && (
-        <>
-          {/* Which simulation mods the game ran with. Read from the replay's
-              own header rather than the vault listing, which does not carry
-              them, so it needs the details load either way. Hidden entirely
-              for an unmodded game rather than showing an empty row. */}
-          {simMods.length > 0 && (
-            <section className="replay-detail-sim-mods">
-              <h3 className="replay-more-info-title">
-                {t("replays.detail.simMods")}
-                <span className="muted replay-more-info-count">({simMods.length})</span>
-              </h3>
-              <ul className="replay-sim-mod-list">
-                {simMods.map((mod) => (
-                  <li key={mod} className="surface-chip">{mod}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-          <section className="replay-detail-more-info">
-            <div className="replay-more-info-grid">
-              <div className="replay-more-info-col">
-                <div className="replay-more-info-header">
-                  <h3 className="replay-more-info-title">{t("replays.detail.gameOptions")}</h3>
-                  <input
-                    type="search"
-                    className="vault-input replay-options-filter"
-                    placeholder={t("replays.detail.filterOptions")}
-                    value={optionFilter}
-                    onChange={(event) => setOptionFilter(event.target.value)}
-                  />
-                </div>
-                <div className="replay-table-scroll">
-                  <table className="replay-data-table replay-options-table">
-                    <thead>
-                      <tr>
-                        <th>{t("replays.detail.optionName")}</th>
-                        <th>{t("replays.detail.optionValue")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => (
-                          <tr key={option.key}>
-                            <td><strong>{option.key}</strong></td>
-                            <td>{option.value}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={2} className="replay-table-empty muted">
-                            {t("replays.detail.noOptionsMatch")}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="replay-more-info-col">
-                <div className="replay-more-info-header">
-                  <h3 className="replay-more-info-title">
-                    {t("replays.detail.chat")}
-                    {details.chatMessages.length > 0 && (
-                      <span className="muted replay-more-info-count">
-                        ({details.chatMessages.length})
-                      </span>
-                    )}
-                  </h3>
-                </div>
-                <div className="replay-table-scroll">
-                  <table className="replay-data-table">
-                    <thead>
-                      <tr>
-                        <th>{t("replays.detail.chatTime")}</th>
-                        <th>{t("replays.detail.chatSender")}</th>
-                        <th>{t("replays.detail.chatMessage")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {details.chatMessages.length > 0 ? (
-                        details.chatMessages.map((message, index) => (
-                          <tr key={`${message.timeSeconds}-${message.sender}-${index}`}>
-                            <td className="replay-chat-time">{formatChatTime(message.timeSeconds)}</td>
-                            <td className="replay-chat-sender" title={message.sender}>{message.sender}</td>
-                            <td className="replay-chat-message">{message.message}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={3} className="replay-table-empty muted">
-                            {t("replays.detail.noChat")}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </section>
-        </>
+      {/* The tabbed panel the button above opens. It opens on the click, not
+          on the answer: the file may still have to be downloaded, and a
+          disabled button with nothing happening behind it is what the thread
+          was about. */}
+      {showInsights && (
+        <ReplayInsights
+          details={details ?? null}
+          analysis={analysis}
+          analysisLoading={analysisLoading === replay.uid}
+          analysisError={analysisError ?? ""}
+          teams={detailTeams}
+          title={cardTitle}
+          mapPreviewUrl={heatmapPreviewUrl}
+          mapAction={heatmapMapAction}
+          loading={isLoadingDetails}
+          error={detailsError ?? ""}
+          onClose={() => setShowInsights(false)}
+        />
       )}
       {detailsError && (
         <p className="replay-download-error surface-error" style={{ marginTop: "12px" }}>

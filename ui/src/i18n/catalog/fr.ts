@@ -248,8 +248,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.mean": "Moyenne",
   "leaderboard.column.deviation": "Écart",
   "leaderboard.column.games": "Parties",
-  "leaderboard.column.wins": "Victoires",
-  "leaderboard.column.winRate": "Taux de victoire",
   "leaderboard.column.updated": "Mis à jour",
   "leaderboard.table.empty": "Aucun joueur ne correspond aux filtres actuels.",
   "leaderboard.ratings.closeColumnsMenu": "Fermer le menu des colonnes",
@@ -1222,7 +1220,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Regarder",
 
   "replays.roster.observers": "Observateurs",
-  "replays.roster.morePlayers": { one: "+{count} autre", other: "+{count} autres" },
   "replays.roster.observer": "Observateur",
   "replays.roster.freeForAll": "Chacun pour soi",
   "replays.roster.players": "Joueurs",
@@ -1291,8 +1288,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "ID du replay",
   "replays.live.simMods": "Mods SIM",
   "replays.live.none": "Aucun",
-  "replays.live.linkCopied": "Lien copié",
-  "replays.live.copyLink": "Copier le lien du direct",
   "replays.live.column.map": "Carte",
 
   "replays.filters.duration": "Durée",
@@ -1731,7 +1726,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.any": "Indifférent",
   "lobby.browser.openRange": "Ouverte",
   "lobby.browser.ratingBetween": "{min} à {max}",
-  "lobby.browser.tileHint": "Cliquez sur l'image pour un aperçu · double-cliquez sur les détails pour rejoindre",
+  "lobby.browser.tileHint": "Cliquez sur une tuile pour la s\u00e9lectionner \u00b7 double-cliquez pour rejoindre",
   "lobby.browser.listHint": "Double-cliquez sur une partie pour la rejoindre",
 
   "lobby.coop.title": "Missions coopératives",
@@ -2338,8 +2333,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.updates.newerAvailable": "{version} est disponible",
   "settings.updates.aNewerVersion": "une version plus récente",
   "settings.updates.lastChecked": "vérifié {time}",
-  "mods.view.exactName": "Nom exact du mod",
-  "mods.view.exactNameHint": "Activé, la recherche doit être le nom entier. Désactivé, chaque mot doit apparaître quelque part dans le nom, la description ou l'UID, dans n'importe quel ordre.",
   "mods.vault.inUse": "Utilisé",
   "mods.vault.inUseHint": "Installé et activé : votre prochaine partie l'utilisera.",
   "mods.vault.copyDescription": "Copier la description",

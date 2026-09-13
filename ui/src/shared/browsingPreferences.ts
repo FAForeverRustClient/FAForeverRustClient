@@ -71,20 +71,16 @@ export const DEFAULT_HOST_GAME_PREFERENCES: HostGamePreferences = {
 };
 
 export const DEFAULT_LEADERBOARD_RATING_COLUMNS = [
-  "rating",
   "games",
-  "wins",
-  "winRate",
   "updated",
 ] as const;
 
+// No rating, no wins and no win rate. See VALID_LEADERBOARD_RATING_COLUMNS in
+// the Rust twin for why each of the three left.
 export const VALID_LEADERBOARD_RATING_COLUMNS = [
-  "rating",
   "mean",
   "deviation",
   "games",
-  "wins",
-  "winRate",
   "updated",
 ] as const;
 

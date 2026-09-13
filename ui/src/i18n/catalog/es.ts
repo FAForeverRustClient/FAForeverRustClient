@@ -247,8 +247,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.mean": "Media",
   "leaderboard.column.deviation": "Desviación",
   "leaderboard.column.games": "Partidas",
-  "leaderboard.column.wins": "Victorias",
-  "leaderboard.column.winRate": "Ratio de victorias",
   "leaderboard.column.updated": "Actualizado",
   "leaderboard.table.empty": "Ningún jugador coincide con los filtros actuales.",
   "leaderboard.ratings.closeColumnsMenu": "Cerrar el menú de columnas",
@@ -1221,7 +1219,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Ver",
 
   "replays.roster.observers": "Observadores",
-  "replays.roster.morePlayers": { one: "+{count} más", other: "+{count} más" },
   "replays.roster.observer": "Observador",
   "replays.roster.freeForAll": "Todos contra todos",
   "replays.roster.players": "Jugadores",
@@ -1290,8 +1287,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "ID de la repetición",
   "replays.live.simMods": "Mods de simulación",
   "replays.live.none": "Ninguno",
-  "replays.live.linkCopied": "Enlace copiado",
-  "replays.live.copyLink": "Copiar el enlace de la retransmisión",
   "replays.live.column.map": "Mapa",
 
   "replays.filters.duration": "Duración",
@@ -1729,7 +1724,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.any": "Cualquiera",
   "lobby.browser.openRange": "Abierto",
   "lobby.browser.ratingBetween": "de {min} a {max}",
-  "lobby.browser.tileHint": "Pulsa la imagen del mapa para la vista previa · doble clic en los detalles para unirte",
+  "lobby.browser.tileHint": "Pulsa una tarjeta para seleccionarla \u00b7 doble clic para unirte",
   "lobby.browser.listHint": "Doble clic en una partida para unirte",
 
   "lobby.coop.title": "Misiones cooperativas",
@@ -2336,8 +2331,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.updates.newerAvailable": "{version} está disponible",
   "settings.updates.aNewerVersion": "una versión más nueva",
   "settings.updates.lastChecked": "comprobado {time}",
-  "mods.view.exactName": "Nombre exacto del mod",
-  "mods.view.exactNameHint": "Activado, el cuadro de búsqueda tiene que ser el nombre entero. Desactivado, cada palabra que escribas tiene que aparecer en algún sitio del nombre, la descripción o el UID, en cualquier orden.",
   "mods.vault.inUse": "En uso",
   "mods.vault.inUseHint": "Instalado y activado, así que tu próxima partida lo usará.",
   "mods.vault.copyDescription": "Copiar la descripción",

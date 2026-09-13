@@ -1,15 +1,18 @@
-import { Fragment, memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
+import { Icon, type IconName } from "../../design-system/Icon";
 import { PlayerName } from "../../shared/nameColors";
 import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import type { Game, LiveReplayTracking } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatClockDuration, formatRelativeDuration } from "../../shared/durations";
 import type { MapPresentation } from "../../shared/mapPresentation";
-import { liveReplayLink } from "../../shared/replayLinks";
 import { gameStartedAt, prettyGameType } from "./liveReplayModel";
+import { liveReplayTeams } from "./LiveReplayCards";
+import { ReplayDetailRoster } from "./ReplayRoster";
+import { useAppStore } from "../../store/store";
+import { formatRelativeDuration as relativeDuration } from "../../shared/durations";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { clientIntlTag } from "../../shared/dates";
@@ -262,7 +265,6 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   onToggle,
   onPlayerMenu,
   presentation,
-  player,
   tracking,
 }: {
   busy: boolean;
@@ -273,15 +275,88 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   onToggle: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
   presentation: MapPresentation;
-  player: string;
   tracking: LiveReplayTracking | null;
 }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // The vault's record of this match, which the lobby's `game_info` is not:
+  // that carries team numbers and logins, and no faction and no rating. The
+  // API's `game` row is written when the match launches, so a running game
+  // already has one. Asked for only once the row is expanded, because a
+  // request per row would be a request per refresh of a self-refreshing list.
+  const lookup = useAppStore((state) => state.state.replays.onlineLookups?.[game.id]);
+  useEffect(() => {
+    if (!expanded || lookup) return;
+    ipc.send({ kind: "Replays", command: { type: "lookUpOnline", payload: { uid: game.id } } });
+  }, [expanded, game.id, lookup]);
   const started = gameStartedAt(game);
   const simMods = Object.values(game.simMods);
-  const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
+  // The vault's lineup when it has one, the lobby's otherwise. The API knows
+  // factions and ratings; the lobby knows who is in the game.
+  const teams = useMemo(() => {
+    const found = lookup?.type === "found" ? lookup.payload.teams : [];
+    return found.length > 0 ? found : liveReplayTeams(game);
+  }, [game, lookup]);
+  // Only where the host set one, and worded the way the Play tab words the
+  // same pair, open ends included.
+  const ratingRange = game.ratingMin !== null || game.ratingMax !== null
+    ? t("lobby.details.ratingRangeValue", {
+      from: game.ratingMin ?? t("lobby.details.any"),
+      to: game.ratingMax ?? t("lobby.details.any"),
+    })
+    : null;
+  // Everything the game carries, the columns of the row above included: the
+  // panel is read on its own once it is open, and a fact left out of it
+  // because it is also in the row is a fact the reader has to go back for.
+  const facts: Array<{ icon: IconName; label: string; value: string }> = [
+    { icon: "list", label: t("replays.live.replayId"), value: `#${game.id}` },
+    {
+      icon: "clock",
+      label: t("replays.detail.time"),
+      value: started
+        ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" })
+        : "N/A",
+    },
+    {
+      icon: "hourglass",
+      label: t("replays.live.runningFor"),
+      value: started
+        ? relativeDuration(Math.max(0, (ageNow - started.getTime()) / 1000), { nowLabel: "0m" })
+        : "N/A",
+    },
+    {
+      icon: "users",
+      label: t("replays.detail.players"),
+      value: `${game.players} / ${game.maxPlayers}`,
+    },
+    {
+      icon: "leaderboard",
+      label: t("replays.detail.avgRating"),
+      value: game.averageRating > 0 ? String(game.averageRating) : "N/A",
+    },
+    { icon: "play", label: t("replays.live.gameType"), value: prettyGameType(game.gameType) },
+    { icon: "settings", label: t("replays.live.featuredMod"), value: game.modName || "faf" },
+    { icon: "chat", label: t("replays.column.host"), value: game.host },
+    {
+      icon: "lock",
+      label: t("lobby.details.visibility"),
+      value: [
+        t(game.visibility === "friends"
+          ? "lobby.host.visibility.friends"
+          : "lobby.host.visibility.public"),
+        game.passwordProtected ? t("lobby.host.passwordProtected") : "",
+      ].filter(Boolean).join(" \u00b7 "),
+    },
+    ...(ratingRange
+      ? [{
+        icon: "activity" as const,
+        label: t("lobby.details.ratingRange"),
+        value: game.enforceRatingRange
+          ? `${ratingRange} \u00b7 ${t("replays.live.ratingEnforced")}`
+          : ratingRange,
+      }]
+      : []),
+  ];
 
   return (
     <>
@@ -340,44 +415,62 @@ export const LiveReplayRow = memo(function LiveReplayRow({
       {expanded && (
         <tr className="live-replay-detail-row">
           <td colSpan={8}>
+            {/* The row, opened out: the facts as tiles on one side and the
+                matchup on the other.
+
+                It was three columns sized by the table, so on a wide display
+                the lineup sat at the far left and three captions floated
+                somewhere in the middle right. Now the left column carries
+                every fact about the game in the same tiles the vault's detail
+                panel uses, and the right one carries the teams the way that
+                panel draws them: side by side, with the versus between
+                them. */}
             <div className="live-replay-details">
-              <div>
-                <span className="live-detail-label">{t("replays.live.lineup")}</span>
-                <div className="live-team-list">
-                  {teams.length === 0 ? <span className="muted">{t("replays.live.lineupUnavailable")}</span> : teams.map(([team, players]) => (
-                    <div className="live-team surface" key={team}>
-                      <strong>{team === "-1" || team === "null" ? t("replays.live.observers") : t("replays.live.team", { team })}</strong>
-                      <span>
-                        {players.map((p, i) => (
-                          <Fragment key={p}>
-                            {i > 0 && ", "}
-                            <LivePlayerName name={p} onMenu={onPlayerMenu} />
-                          </Fragment>
-                        ))}
-                      </span>
-                    </div>
-                  ))}
+              <div className="live-detail-map">
+                <LiveMapThumbnail presentation={presentation} />
+                <div className="live-detail-map-name">
+                  <strong>{presentation.displayName}</strong>
+                  {/* The technical name, which is what somebody looking for
+                      the map in the vault or on disk actually searches. */}
+                  <code title={game.map}>{game.map}</code>
                 </div>
               </div>
-              <div className="live-detail-side">
-                <dl className="live-detail-meta">
-                  <div><dt>{t("replays.live.replayId")}</dt><dd>#{game.id}</dd></div>
-                  <div><dt>{t("replays.live.featuredMod")}</dt><dd>{game.modName || "faf"}</dd></div>
-                  <div><dt>{t("replays.live.simMods")}</dt><dd>{simMods.length > 0 ? simMods.join(", ") : t("replays.live.none")}</dd></div>
+
+              <div className="live-detail-body">
+                <dl className="live-detail-facts">
+                  {facts.map((fact) => (
+                    <div key={fact.label}>
+                      <dt><Icon name={fact.icon} size={14} />{fact.label}</dt>
+                      <dd>{fact.value}</dd>
+                    </div>
+                  ))}
                 </dl>
-                <Button
-                  className="live-copy-link"
-                  onClick={() =>
-                    ipc.run(
-                      navigator.clipboard
-                        .writeText(liveReplayLink(game, player))
-                        .then(() => setCopied(true)),
-                    )
-                  }
-                >
-                  {t(copied ? "replays.live.linkCopied" : "replays.live.copyLink")}
-                </Button>
+
+                <div className="live-detail-lineup">
+                  {teams.length > 0 ? (
+                    // `showResults` off, and not a choice here: nobody has won
+                    // yet. The avatars are the directory's, which the lobby
+                    // does not send with a game.
+                    <ReplayDetailRoster teams={teams} showResults={false} />
+                  ) : (
+                    <p className="replay-detail-empty muted">{t("replays.live.lineupUnavailable")}</p>
+                  )}
+                </div>
               </div>
+
+              {simMods.length > 0 && (
+                <div className="live-detail-simmods">
+                  <span className="live-detail-label">
+                    {t("replays.live.simMods")}
+                    <span className="live-detail-count">{simMods.length}</span>
+                  </span>
+                  <ul className="live-sim-mod-list">
+                    {simMods.map((mod) => (
+                      <li key={mod} className="surface-chip">{mod}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </td>
         </tr>

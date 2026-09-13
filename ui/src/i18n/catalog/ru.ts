@@ -255,8 +255,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.mean": "Среднее",
   "leaderboard.column.deviation": "Отклонение",
   "leaderboard.column.games": "Игры",
-  "leaderboard.column.wins": "Победы",
-  "leaderboard.column.winRate": "Доля побед",
   "leaderboard.column.updated": "Обновлено",
   "leaderboard.table.empty": "Ни один игрок не соответствует текущим фильтрам.",
   "leaderboard.ratings.closeColumnsMenu": "Закрыть меню столбцов",
@@ -1244,12 +1242,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Смотреть",
 
   "replays.roster.observers": "Наблюдатели",
-  "replays.roster.morePlayers": {
-    one: "+{count} ещё",
-    few: "+{count} ещё",
-    many: "+{count} ещё",
-    other: "+{count} ещё",
-  },
   "replays.roster.observer": "Наблюдатель",
   "replays.roster.freeForAll": "Каждый сам за себя",
   "replays.roster.players": "Игроки",
@@ -1323,8 +1315,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.live.replayId": "ID реплея",
   "replays.live.simMods": "SIM моды",
   "replays.live.none": "Нет",
-  "replays.live.linkCopied": "Ссылка скопирована",
-  "replays.live.copyLink": "Копировать ссылку на трансляцию",
   "replays.live.column.map": "Карта",
 
   "replays.filters.duration": "Длительность",
@@ -1806,7 +1796,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ratingBetween": "от {min} до {max}",
   "lobby.browser.mapFullName": "Название карты",
   "lobby.browser.footerCount": "Показано {shown} из {total} игр",
-  "lobby.browser.tileHint": "Нажмите на изображение карты для превью · двойной щелчок по подробностям входит в игру",
+  "lobby.browser.tileHint": "\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043d\u0430 \u043f\u043b\u0438\u0442\u043a\u0443, \u0447\u0442\u043e\u0431\u044b \u0432\u044b\u0431\u0440\u0430\u0442\u044c \u00b7 \u0434\u0432\u043e\u0439\u043d\u043e\u0439 \u0449\u0435\u043b\u0447\u043e\u043a, \u0447\u0442\u043e\u0431\u044b \u0432\u043e\u0439\u0442\u0438",
   "lobby.browser.listHint": "Двойной щелчок по игре входит в неё",
 
   "lobby.coop.title": "Кооперативные миссии",
@@ -2492,8 +2482,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.updates.newerAvailable": "доступна {version}",
   "settings.updates.aNewerVersion": "более новая версия",
   "settings.updates.lastChecked": "проверено {time}",
-  "mods.view.exactName": "Точное название мода",
-  "mods.view.exactNameHint": "Если включено, строка поиска должна совпадать с названием целиком. Если выключено, каждое слово из неё должно встретиться где-то в названии, описании или UID, в любом порядке.",
   "mods.vault.inUse": "Используется",
   "mods.vault.inUseHint": "Установлен и включён, так что следующая игра пойдёт с ним.",
   "mods.vault.copyDescription": "Скопировать описание",

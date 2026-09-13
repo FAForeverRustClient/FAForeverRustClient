@@ -419,12 +419,44 @@ button.vault-input {
   color: var(--color-muted);
 }
 
+/* The floor of the card: the replay id, and the button that plays it. Both in
+   the corner, the id to the left of the button, which is the order the two are
+   read in. */
 .replay-card-footer {
   margin-top: auto;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  padding-top: var(--space-1);
   font-size: 11px;
+}
+
+.replay-card-watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.replay-card-watch:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-text);
+}
+
+.replay-card-watch:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .replay-stars {
@@ -1109,54 +1141,161 @@ button.vault-input {
   }
 }
 
-.replay-detail-more-info-trigger {
-  display: flex;
-  align-items: center;
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-}
-
-.replay-detail-more-info-trigger button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 36px;
-}
-
-.replay-detail-more-info {
+/* The tabbed panel behind "Load more info", on top of the detail dialog that
+   opened it. Sized like the map preview next door, and for the same reason:
+   what it holds is a table, and a table wants the width of the dialog rather
+   than the half column the old unfolded section gave it. */
+.replay-insights {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
+  box-sizing: border-box;
+  width: min(1480px, 96vw);
+  /* A fixed height, not a maximum. What is on these tabs changes size as you
+     use them -- the graph's read-out is as long as the orders in the minute
+     under the pointer -- and a dialog sized to its contents grew and shrank
+     under the cursor while it was being read. The panel is the size of the
+     panel; the tab inside it scrolls. */
+  height: 92vh;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
 }
 
-.replay-more-info-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: var(--space-4);
+.replay-insights-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
-@media (max-width: 900px) {
-  .replay-more-info-grid {
-    grid-template-columns: 1fr;
-  }
+/* The tabs are the one thing in this dialog that must never be squeezed: a
+   flex child defaults to shrinking, and a tall tab pressed the 42px strip
+   down to a few pixels of text at the top of the panel. */
+.replay-insights > .section-tabs {
+  flex: 0 0 auto;
 }
 
-.replay-more-info-col {
+.replay-insights-heading {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 2px;
   min-width: 0;
 }
 
-.replay-more-info-header {
+.replay-insights-kicker {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.replay-insights-heading h2 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The tabs stay put and the tab's own contents scroll: a chat log of four
+   hundred lines must not push the tabs off the top of the dialog. */
+.replay-insights-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  padding-top: var(--space-3);
+  overflow-y: auto;
+}
+
+.replay-insights-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+}
+
+/* The panel while it waits for the file. */
+.replay-insights-loading {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4) 0;
+  font-size: 13px;
+}
+
+/* What the command count is and is not, next to the table it qualifies. */
+.replay-insights-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.replay-insights-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Taller than the folded-away tables were: the dialog is the whole panel now,
+   so the limit is the dialog rather than a section inside one. */
+.replay-insights-body .replay-table-scroll {
+  max-height: none;
+}
+
+/* A span inside the cell, never the cell itself: `display: flex` on a `td`
+   takes the element out of the table's own box tree, which breaks the
+   collapsed row border at that column and leaves the glyphs unmeasured on top
+   of the name beside them. */
+.replay-activity-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.replay-activity-player svg {
+  flex: 0 0 auto;
+}
+
+.replay-activity-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The rate, with the bar that makes it a comparison. The bar is under the
+   number rather than beside it: a column wide enough for both would be a
+   column of mostly empty space, and the number is what gets read. */
+.replay-activity-rate {
+  position: relative;
+  display: block;
+  min-width: 90px;
+  padding-bottom: 5px;
+}
+
+.replay-activity-rate-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.replay-activity-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  min-width: 2px;
+  background: var(--color-accent);
+  border-radius: 999px;
+  opacity: 0.55;
 }
 
 .replay-more-info-title {
@@ -1334,26 +1473,6 @@ button.vault-input {
   min-width: 0;
   padding-right: var(--space-4);
   border-right: 1px solid var(--color-border);
-}
-
-/* The replay ID sits on the floor of the rail rather than under the buttons:
-   it is a reference you copy, not an action, and the gap above it is what
-   says so. */
-.replay-card-idrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: auto;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  font-size: 13px;
-}
-
-.replay-card-idlabel {
-  color: var(--color-muted);
-  margin-right: auto;
 }
 
 /* The number people quote at each other in Discord, so it is set like one
@@ -1655,50 +1774,92 @@ button.vault-input {
   color: var(--color-muted);
 }
 
-/* Four columns of icon + label + value, two rows deep. The pair of durations
-   that are routinely minutes apart end up side by side, which is the point of
-   giving them distinct glyphs in the first place. */
+/* Eight facts as eight tiles rather than eight label-and-value lines.
+   The line put the caption and the value at opposite ends of a shared row, so
+   reading one fact meant crossing the gap between them, and with four of them
+   side by side the eye crossed the wrong gap as often as the right one. A tile
+   keeps the three parts of one fact together: the glyph on the left, the value
+   where the eye lands, and the caption under it for whoever needs to be told
+   what the number is.
+
+   Still four columns and two rows: the pair of durations that are routinely
+   minutes apart end up side by side, which is the point of giving them
+   distinct glyphs in the first place. */
 .replay-card-facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px var(--space-4);
+  gap: var(--space-2);
   margin: 0;
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  padding: 0;
 }
 
 .replay-card-facts > div {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) 36px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
+/* Under the value it names, and quiet: the caption is what you read once to
+   learn the tile, and the value is what you read every time after that. */
 .replay-card-facts dt {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  order: 2;
   min-width: 0;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Taken out of the caption's line and centred on the whole tile, which is
+   where it reads as a mark for the fact rather than as part of the wording. */
 .replay-card-facts dt svg {
-  flex-shrink: 0;
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
   color: var(--color-subtle);
 }
 
 .replay-card-facts dd {
+  order: 1;
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Its own row, and half of it.
+
+   The tile takes the whole row so that no fact is pulled up beside it and
+   the eight below keep the four-by-two they were arranged as -- the pair of
+   durations four apart in the list stays in one column. What it draws is
+   capped at two of those columns: an id and two copy buttons do not need
+   the width of four, and a box that wide read as a banner over the facts
+   rather than as one of them. Two columns plus the gap between them is half
+   the row less half a gap, whatever the column count is. */
+.replay-card-fact-id {
+  grid-column: 1 / -1;
+  max-width: calc(50% - var(--space-2) / 2);
+}
+
+.replay-card-fact-id dd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
 }
 
 .replay-card-lineup {
@@ -1760,21 +1921,17 @@ button.vault-input {
   --team-accent: var(--color-warn);
 }
 
-/* A team is one block, not a stack of pills.
+/* A team is one block, not a stack of pills, and not a ruled table either.
    Giving every player their own filled, fully rounded row turned a four-man
-   team into four cards inside a fifth, and the team -- the thing the matchup
-   is actually between -- stopped reading as a unit. The players are plain rows
-   again, separated by a hairline rather than by a gap, and only the panel
-   around them is a surface. The hover still lights one row, because the names
-   are clickable. */
+   team into four cards inside a fifth; ruling between them then drew a line
+   whose ends stopped short of the panel, which reads as a rounded rule rather
+   than as a separator. The names stand on their own with nothing between them,
+   and only the panel around them is a surface. The hover still lights one row,
+   because the names are clickable. */
 .replay-card-layout .replay-detail-player {
   height: 30px;
   padding: 0 6px;
   border-radius: var(--radius-sm);
-}
-
-.replay-card-layout .replay-detail-player + .replay-detail-player {
-  border-top: 1px solid var(--color-border);
 }
 
 .replay-card-layout .replay-detail-player:hover {
@@ -1803,10 +1960,6 @@ button.vault-input {
     max-width: 320px;
   }
 
-  .replay-card-idrow {
-    margin-top: 0;
-  }
-
   .replay-card-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1815,6 +1968,12 @@ button.vault-input {
 @media (max-width: 560px) {
   .replay-card-facts {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Half of a single narrow column is not enough for an id and two buttons,
+     so here the tile is the row it already spans. */
+  .replay-card-fact-id {
+    max-width: none;
   }
 
   .replay-card-bottom {
@@ -1867,9 +2026,466 @@ button.vault-input {
   margin-top: var(--space-2);
 }
 
-/* The "+2 more" that closes a team's list on a card. Sits in the column the
-   names do, at their size, so a cut list reads as part of the team rather than
-   as a note about it. */
-.replay-player-more {
+
+/* ── The analysis panels ────────────────────────────────────────────────
+   The tabs behind "Load more info" that read the whole command stream: who
+   did how much, what the game announced, when the actions happened, where on
+   the map they were aimed, and what the simulation scored. */
+
+.replay-insights-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.replay-insights-filter input[type="range"] {
+  width: 150px;
+}
+
+/* The colour a player was on the map, which is how every panel here keys a
+   player to a line, a bar or a cell. */
+.replay-activity-swatch {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--color-border-strong);
+}
+
+.replay-activity-country {
   font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Activity graph ──────────────────────────────────────────────────── */
+
+.replay-activity-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.replay-chart-surface {
+  width: 100%;
+  height: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-chart-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.replay-chart-label {
+  fill: var(--color-muted);
+  font-size: 13px;
+}
+
+/* The name under a group of bars, which is the one label a reader looks for
+   by name rather than reads in passing. */
+.replay-chart-label.is-axis {
+  fill: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.replay-chart-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.replay-chart-cursor {
+  stroke: var(--color-text);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.replay-chart-legend {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 4px var(--space-2);
+}
+
+.replay-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.replay-chart-legend-item.is-off {
+  opacity: 0.45;
+}
+
+/* A fixed height with its own scrollbar. What a minute of a game is made of
+   changes from minute to minute -- two kinds of order in one, fourteen in the
+   next -- and a box that grew to fit them moved everything under it while the
+   pointer was still travelling along the line. */
+.replay-chart-readout {
+  flex: 0 0 auto;
+  height: 168px;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-chart-readout h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.replay-chart-readout-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.replay-chart-readout-player {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.replay-chart-readout-player ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replay-chart-readout-player li {
+  font-size: 11px;
+}
+
+/* ── Heatmap ─────────────────────────────────────────────────────────── */
+
+/* One column, like everything else on these tabs. Two columns meant the
+   square was never wider than half the panel, which is the whole reason the
+   picture was too small to read. */
+.replay-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* The map underneath and the heat on top, in one square box, centred in a
+   panel that is wider than it is. */
+.replay-heatmap-figure {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  max-width: min(560px, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-heatmap-map,
+.replay-heatmap-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.replay-heatmap-map {
+  object-fit: cover;
+  opacity: 0.55;
+}
+
+/* The filters in a row under the picture rather than in a column beside it. */
+.replay-heatmap-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+
+.replay-heatmap-controls > .replay-chart-legend {
+  flex-basis: 100%;
+}
+
+/* The map this heatmap has nothing to draw over, and the button that builds
+   one. Centred on the empty square, which is where the reader is looking. */
+.replay-heatmap-generate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+  font-size: 12px;
+}
+
+/* ── Game statistics ─────────────────────────────────────────────────── */
+
+.replay-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* The same rule as the panel's own tabs: a flex child shrinks by default, and
+   four charts in a column are more than enough to squeeze a 42px strip flat. */
+.replay-stats > .section-tabs {
+  flex: 0 0 auto;
+}
+
+/* One chart per row, not two. Side by side each one was about four hundred
+   pixels wide, which put every label on it under five pixels tall: the report
+   was that the numbers and the names could not be read at all. A chart with
+   the width of the panel can be, and the one that still is not big enough has
+   the button in its caption. */
+.replay-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Four tones, and only four: built, lost, killed, and the odd one out that a
+   breakdown adds. Keyed to the status colours the rest of the client uses, so
+   green is still "this went well" here. */
+.replay-stats-bar.is-built {
+  fill: var(--color-faction-uef);
+}
+
+.replay-stats-bar.is-lost {
+  fill: var(--color-error);
+}
+
+.replay-stats-bar.is-kills {
+  fill: var(--color-ok);
+}
+
+.replay-stats-bar.is-extra {
+  fill: var(--color-league-diamond);
+}
+
+.replay-stats-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 11px;
+}
+
+.replay-stats-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+}
+
+.replay-stats-key::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.replay-stats-key.is-built::before {
+  background: var(--replay-stats-key-color, var(--color-faction-uef));
+}
+
+.replay-stats-key.is-lost::before {
+  background: var(--replay-stats-key-color, var(--color-error));
+}
+
+.replay-stats-key.is-kills::before {
+  background: var(--replay-stats-key-color, var(--color-ok));
+}
+
+.replay-stats-key.is-extra::before {
+  background: var(--replay-stats-key-color, var(--color-league-diamond));
+}
+
+/* -- The frame every chart sits in ----------------------------------- */
+
+.replay-chart-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-chart-frame > figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.replay-chart-frame-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-chart-frame-body {
+  min-width: 0;
+}
+
+.replay-chart-frame-body > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Where the chart was, while the chart is filling the viewport. The frame
+   keeps its place in the column so the tab underneath does not jump. */
+.replay-chart-frame-away {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  margin: 0;
+  font-size: 12px;
+}
+
+/* One chart, the size of the window. Same scrim and the same three ways out
+   as the map preview and the panel behind it. */
+.replay-chart-zoom {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  gap: var(--space-3);
+  width: min(1600px, 96vw);
+  height: 92vh;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+
+.replay-chart-zoom-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.replay-chart-zoom-head h3 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-chart-zoom-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The drawing takes the height the dialog has spare; the legend and the
+   read-out under it keep theirs. */
+.replay-chart-zoom-body > .replay-chart-frame-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.replay-chart-zoom-body > .replay-chart-frame-body > svg {
+  width: 100%;
+  height: 100%;
+}
+
+.replay-chart-zoom-body .replay-heatmap-figure {
+  max-width: min(80vh, 100%);
+}
+
+/* -- Sliders ---------------------------------------------------------- */
+
+/* The heatmap's three sliders came out of the box the platform draws them in,
+   which in a dark panel is a grey groove with a thumb from another
+   application. Same track, thumb and focus ring as the rest of the client. */
+.replay-insights-filter input[type="range"] {
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.replay-insights-filter input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+.replay-insights-filter input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+.replay-insights-filter input[type="range"]::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  background: var(--color-accent);
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.replay-insights-filter input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent);
+  border: 0;
+  border-radius: 50%;
+}
+
+.replay-insights-filter input[type="range"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 999px;
 }

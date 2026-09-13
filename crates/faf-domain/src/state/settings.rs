@@ -1909,17 +1909,20 @@ pub struct BrowsingPreferences {
     pub legacy_storage_migrated: bool,
 }
 
-pub const DEFAULT_LEADERBOARD_RATING_COLUMNS: [&str; 5] =
-    ["rating", "games", "wins", "winRate", "updated"];
-pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 7] = [
-    "rating",
-    "mean",
-    "deviation",
-    "games",
-    "wins",
-    "winRate",
-    "updated",
-];
+pub const DEFAULT_LEADERBOARD_RATING_COLUMNS: [&str; 2] = ["games", "updated"];
+/// The columns the table can draw beside the boards themselves, in the order
+/// it draws them.
+///
+/// Three names have left this list. Win rate and won games, because the API
+/// counts won games over a different set of games than it counts played ones:
+/// the quotient was wrong and so is the count, and a column that cannot be
+/// correct is worse than no column. Rating, because every board has a column of
+/// its own now, the ranked one included, so a "Rating" column would be one of
+/// them printed twice.
+///
+/// A stored selection naming any of the three is dropped by the filter below,
+/// the way any other unknown key is, so nothing has to migrate.
+pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 4] = ["mean", "deviation", "games", "updated"];
 
 impl Default for BrowsingPreferences {
     fn default() -> Self {
@@ -3092,7 +3095,7 @@ mod tests {
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
-                    "rating".into(),
+                    "deviation".into(),
                     "MEAN".into(),
                     "invalid_col".into(),
                 ],
@@ -3168,7 +3171,8 @@ mod tests {
         assert_eq!(browser.detail_width, MIN_DETAIL_PX);
         assert_eq!(
             settings.browsing.leaderboard_rating_columns,
-            ["rating", "mean"]
+            ["mean", "deviation"],
+            "kept in the order the table draws them, whatever order the file listed"
         );
         assert_eq!(settings.browsing.replay_vault_player, "VindexNoob");
         assert!(settings.browsing.legacy_storage_migrated);
