@@ -46,6 +46,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
             preferences: Box::new(BrowsingPreferences {
                 custom_games_view: CustomGameView::List,
                 replays_view: CustomGameView::List,
+                live_replay_view: CustomGameView::List,
                 custom_games_browser: CustomGameBrowserPreferences {
                     sort: CustomGameSort::Age,
                     sort_reversed: false,

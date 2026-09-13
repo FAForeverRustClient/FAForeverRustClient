@@ -54,13 +54,19 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const [sortKey, setSortKey] = useState<LiveSortKey>("started");
   const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
   const [visibleCount, setVisibleCount] = useState(LIVE_REPLAY_BATCH_SIZE);
-  const viewMode: ReplayViewMode = browsing.replaysView;
+  // This tab's own choice, not the vault's. The online and local libraries
+  // share `replaysView` because they are the same list of finished games read
+  // two ways; what is being played right now is a different question, and the
+  // answer somebody wants here is routinely the other one.
+  const viewMode: ReplayViewMode = browsing.liveReplayView;
   const setViewMode = (mode: ReplayViewMode) => {
     ipc.send({
       kind: "Settings",
       command: {
         type: "setBrowsing",
-        payload: { preferences: { ...useAppStore.getState().state.settings.browsing, replaysView: mode } },
+        payload: {
+          preferences: { ...useAppStore.getState().state.settings.browsing, liveReplayView: mode },
+        },
       },
     });
   };

@@ -5213,6 +5213,7 @@ fn cases() -> Vec<Case> {
                     preferences: Box::new(BrowsingPreferences {
                         custom_games_view: CustomGameView::List,
                         replays_view: CustomGameView::List,
+                        live_replay_view: CustomGameView::Tiles,
                         custom_games_browser: CustomGameBrowserPreferences {
                             sort: CustomGameSort::Age,
                             sort_reversed: true,

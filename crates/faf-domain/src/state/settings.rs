@@ -1820,6 +1820,14 @@ impl HostGamePreferences {
 pub struct BrowsingPreferences {
     pub custom_games_view: CustomGameView,
     pub replays_view: CustomGameView,
+    /// The live-replay tab's own list-or-cards choice.
+    ///
+    /// Not `replays_view`, which the online and local libraries share. Those
+    /// two are the same list of finished games read two ways; the live tab is
+    /// a different question - what is being played right now - and the answer
+    /// somebody wants there is routinely the other one. Reported as exactly
+    /// that: cards in the vault, a table for what is live.
+    pub live_replay_view: CustomGameView,
     pub custom_games_browser: CustomGameBrowserPreferences,
     pub matchmaker_unselected_queues: Vec<String>,
     pub matchmaker_factions: Vec<String>,
@@ -1918,6 +1926,7 @@ impl Default for BrowsingPreferences {
         Self {
             custom_games_view: CustomGameView::Tiles,
             replays_view: CustomGameView::Tiles,
+            live_replay_view: CustomGameView::Tiles,
             custom_games_browser: CustomGameBrowserPreferences::default(),
             matchmaker_unselected_queues: Vec::new(),
             matchmaker_factions: MATCHMAKER_FACTIONS
@@ -1959,6 +1968,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
         struct Wire {
             custom_games_view: CustomGameView,
             replays_view: CustomGameView,
+            #[serde(default)]
+            live_replay_view: CustomGameView,
             custom_games_browser: CustomGameBrowserPreferences,
             matchmaker_unselected_queues: Vec<String>,
             matchmaker_factions: Vec<String>,
@@ -1992,6 +2003,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                 Self {
                     custom_games_view: defaults.custom_games_view,
                     replays_view: defaults.replays_view,
+                    live_replay_view: defaults.live_replay_view,
                     custom_games_browser: defaults.custom_games_browser,
                     matchmaker_unselected_queues: defaults.matchmaker_unselected_queues,
                     matchmaker_factions: defaults.matchmaker_factions,
@@ -2021,6 +2033,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
         Ok(Self {
             custom_games_view: wire.custom_games_view,
             replays_view: wire.replays_view,
+            live_replay_view: wire.live_replay_view,
             custom_games_browser: wire.custom_games_browser,
             matchmaker_unselected_queues: wire.matchmaker_unselected_queues,
             matchmaker_factions: wire.matchmaker_factions,
@@ -2991,6 +3004,7 @@ mod tests {
             browsing: BrowsingPreferences {
                 custom_games_view: CustomGameView::List,
                 replays_view: CustomGameView::List,
+                live_replay_view: CustomGameView::Tiles,
                 custom_games_browser: CustomGameBrowserPreferences {
                     sort: CustomGameSort::Host,
                     sort_reversed: true,
