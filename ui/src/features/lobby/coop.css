@@ -363,15 +363,16 @@
   position: relative;
 }
 
-/* Same shape as every other column divider in the client. */
+/* Same shape as every other column divider in the client: on a cell's leading
+   edge, centred on the boundary it moves. */
 .coop-board-col-handle {
   position: absolute;
-  /* Over the next header cell's own background, which is painted later. */
+  /* Over the neighbouring header cell's own background. */
   z-index: 1;
   top: 0;
-  right: -4px;
+  left: -6px;
   bottom: 0;
-  width: 11px;
+  width: 12px;
 }
 
 .coop-board th,

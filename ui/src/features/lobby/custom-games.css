@@ -84,14 +84,16 @@
   white-space: nowrap;
 }
 
-/* Reaches into the gap between the columns so the grab area is wider than the
-   line it draws: a two-pixel target is a target nobody hits. */
+/* Centred on the gap between two columns, in the cell of the *right*-hand one,
+   so the grab area straddles the boundary it moves rather than sitting a whole
+   narrow column away from it. Wider than the line it draws, because a
+   two-pixel target is a target nobody hits. */
 .game-browser-col-handle {
   position: absolute;
   top: -10px;
-  right: -12px;
+  left: -14px;
   bottom: -10px;
-  width: 11px;
+  width: 12px;
 }
 
 .game-browser-map-version {

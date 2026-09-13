@@ -1322,21 +1322,26 @@ export function CustomGamesBrowser({
         <div className="game-browser-head" style={columnStyle}>
           {columnLabels.map((label, index) => (
             <span key={label}>
-              {/* The label clips itself rather than letting the header cell do
-                  it: the grab handle reaches past the cell's right edge, and a
-                  cell with `overflow: hidden` cuts it off entirely. */}
-              <span className="game-browser-head-label">{label}</span>
-              {/* The last column has nothing to its right to give width to,
-                  so it is sized by the ones before it. */}
-              {index < columnLabels.length - 1 && (
+              {/* On the *leading* edge of this column, resizing the one before
+                  it. That is where a file manager puts a divider -- the cursor
+                  lands just in front of the column you are about to push along
+                  -- and hanging it off the previous column's trailing edge put
+                  it a whole column away from the boundary it moved whenever
+                  the column before was a narrow right-aligned number. The
+                  first column has nothing before it to resize. */}
+              {index > 0 && (
                 <ResizeHandle
                   className="game-browser-col-handle"
-                  label={t("lobby.browser.resizeColumn", { column: label })}
-                  onDrag={(delta) => onColumnDrag(index, delta)}
+                  label={t("lobby.browser.resizeColumn", { column: columnLabels[index - 1] })}
+                  onDrag={(delta) => onColumnDrag(index - 1, delta)}
                   onEnd={onColumnCommit}
                   onReset={onColumnReset}
                 />
               )}
+              {/* The label clips itself rather than letting the header cell do
+                  it: the grab handle reaches past the cell's edge, and a cell
+                  with `overflow: hidden` cuts it off entirely. */}
+              <span className="game-browser-head-label">{label}</span>
             </span>
           ))}
         </div>

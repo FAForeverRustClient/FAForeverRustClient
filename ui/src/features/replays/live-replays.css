@@ -580,19 +580,21 @@
   }
 }
 
-/* A column divider on the right edge of each header cell. Wider than it looks
-   and taller than the cell, so the grab area is findable without a hairline
-   target -- the same shape the game browser and the replay list use. */
+/* A column divider on the leading edge of each header cell, resizing the cell
+   before it. Wider than it looks, so the grab area is findable without a
+   hairline target -- the same shape the game browser and the replay list use. */
 .live-replay-table th {
   position: relative;
 }
 
 .live-replay-col-handle {
   position: absolute;
-  /* Over the next header cell's own background, which is painted later. */
+  /* Over the neighbouring header cell's own background, which is painted
+     later when this sits in an earlier cell. */
   z-index: 1;
   top: 0;
-  right: -6px;
+  /* Centred on this cell's leading edge, which is the boundary it moves. */
+  left: -6px;
   bottom: 0;
-  width: 11px;
+  width: 12px;
 }

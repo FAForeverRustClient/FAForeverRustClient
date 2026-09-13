@@ -247,17 +247,19 @@ export function ReplayList({
       <div className="replay-list-header" role="row">
         {COLUMNS.map((column, index) => (
           <span className={column.className} key={column.label} role="columnheader">
-            {t(column.label)}
-            {/* The last column has nothing to its right to give width to. */}
-            {index < COLUMNS.length - 1 && (
+            {/* On this column's leading edge, resizing the one before it: the
+                divider sits where a file manager puts it, straddling the
+                boundary it moves. The first column has nothing before it. */}
+            {index > 0 && (
               <ResizeHandle
                 className="replay-list-col-handle"
-                label={t("lobby.browser.resizeColumn", { column: t(column.label) })}
-                onDrag={(delta) => columns.onDrag(index, delta)}
+                label={t("lobby.browser.resizeColumn", { column: t(COLUMNS[index - 1].label) })}
+                onDrag={(delta) => columns.onDrag(index - 1, delta)}
                 onEnd={columns.onCommit}
                 onReset={columns.onReset}
               />
             )}
+            {t(column.label)}
           </span>
         ))}
       </div>
