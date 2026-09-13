@@ -76,6 +76,48 @@
   min-width: 0;
 }
 
+/* The header cell is a button now: the whole label, plus the arrow that says
+   which way this column is ordered. Transparent and inheriting its type, so
+   the row still reads as a table head rather than as five controls. */
+.game-browser-head-sort {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.game-browser-head-sort:hover,
+.game-browser-head-sort.is-active {
+  color: var(--color-text);
+}
+
+.game-browser-head-sort:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* The inactive columns' marks stay faint: five equally dark arrows would read
+   as five sorted columns. The active one is as bright as its label. */
+.game-browser-head-arrow {
+  flex: none;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.game-browser-head-sort.is-active .game-browser-head-arrow {
+  color: var(--color-accent);
+}
+
 /* The clipping sits on the label, not on the cell around it: the grab handle
    reaches into the gap to the right of its cell, and a cell that hides its
    overflow hides the handle with it. */

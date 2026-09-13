@@ -132,6 +132,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   replaysView: "tiles",
   customGamesBrowser: {
     sort: "players",
+    sortReversed: false,
     hidePrivate: false,
     hideModded: false,
     hideUnranked: false,
@@ -271,6 +272,7 @@ function normalizeCustomGamesBrowser(
   }
   return {
     ...preferences,
+    sortReversed: Boolean(preferences.sortReversed),
     hidePrivate: Boolean(preferences.hidePrivate),
     hideModded: Boolean(preferences.hideModded),
     hideUnranked: Boolean(preferences.hideUnranked),

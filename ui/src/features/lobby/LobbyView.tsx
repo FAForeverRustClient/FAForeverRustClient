@@ -22,6 +22,7 @@ import {
   type GameViewMode,
 } from "./CustomGamesBrowser";
 import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
+import { compareGames } from "./gameSortOrder";
 import { detailWidth, withDetailResized } from "./browserLayout";
 import { GameMapImage } from "./GameMapImage";
 import { requestModVaultFocus } from "../mods/modVaultFocus";
@@ -94,21 +95,6 @@ function matchesRule(game: Game, rule: GameFilterRule, vault: VaultMap[]) {
     return testString(game.modName);
   }
   return false;
-}
-
-function compareGames(sort: SortMode, left: Game, right: Game): number {
-  switch (sort) {
-    case "players":
-      return right.players - left.players;
-    case "rating":
-      return right.averageRating - left.averageRating;
-    case "map":
-      return left.map.localeCompare(right.map);
-    case "host":
-      return left.host.localeCompare(right.host);
-    case "age":
-      return (right.hostedAt ?? "").localeCompare(left.hostedAt ?? "");
-  }
 }
 
 function GameDetails({
@@ -425,6 +411,7 @@ export function LobbyView() {
   const gameBrowser = browsing.customGamesBrowser;
   const [search, setSearch] = useState("");
   const sort: SortMode = gameBrowser.sort;
+  const sortReversed = gameBrowser.sortReversed;
   const gameView: GameViewMode = browsing.customGamesView;
   const hidePrivate = gameBrowser.hidePrivate;
   const hideModded = gameBrowser.hideModded;
@@ -552,8 +539,8 @@ export function LobbyView() {
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
       .filter((game) => !hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
-      .sort((left, right) => compareGames(sort, left, right));
-  }, [applyFilters, customGames, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort]);
+      .sort((left, right) => compareGames(sort, sortReversed, left, right));
+  }, [applyFilters, customGames, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed]);
 
   const filteredCoopGames = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -573,10 +560,10 @@ export function LobbyView() {
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
-      .sort((left, right) => compareGames(sort, left, right));
+      .sort((left, right) => compareGames(sort, sortReversed, left, right));
     // No ranked filter here, and no checkbox for one in the co-op toolbar: a
     // mission is never rated, so hiding the unranked games hid all of them.
-  }, [applyFilters, coopGames, hideModded, hidePrivate, maps.vault, rules, search, sort]);
+  }, [applyFilters, coopGames, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed]);
 
   const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
   const inGame = (list: Game[], nickname: string) =>
@@ -725,7 +712,7 @@ export function LobbyView() {
               filterCount={rules.length}
               connected={connected}
               onSearch={setSearch}
-              onSort={(value) => updateGameBrowser({ sort: value })}
+              onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
               onViewMode={selectGameView}
               onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
               onHideModded={(value) => updateGameBrowser({ hideModded: value })}
@@ -753,7 +740,7 @@ export function LobbyView() {
             filterCount={rules.length}
             connected={connected}
             onSearch={setSearch}
-            onSort={(value) => updateGameBrowser({ sort: value })}
+            onSort={(value) => updateGameBrowser({ sort: value, sortReversed: false })}
             onViewMode={selectGameView}
             onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
             onHideModded={(value) => updateGameBrowser({ hideModded: value })}

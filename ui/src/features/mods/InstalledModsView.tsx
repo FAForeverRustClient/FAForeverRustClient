@@ -17,13 +17,14 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { useAppStore } from "../../store/store";
 import { Modal } from "../../design-system/Modal";
 import { ModPreview, UninstallDialog, cleanDescription } from "./ModVaultComponents";
+import { favoriteModKeys, isFavoriteMod, toggleFavoriteMod } from "./favoriteMods";
 import { modUpdateAvailable } from "./modVersions";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type ModTypeFilter = "all" | "ui" | "sim";
 type EnabledFilter = "all" | "enabled" | "disabled";
 type RankedFilter = "all" | "ranked" | "unranked";
-type InstalledModPreset = "all" | "enabled" | "disabled" | "ui" | "sim" | "updates";
+type InstalledModPreset = "all" | "favorites" | "enabled" | "disabled" | "ui" | "sim" | "updates";
 type InstalledModSort = "state" | "name" | "rating" | "newest" | "author";
 
 /** `.installed-mod-card`'s designed height, which is what a page is measured in. */
@@ -47,6 +48,13 @@ const updateMod = (uid: string, folderName: string, downloadUrl: string) =>
   });
 const toggleMod = (uid: string, enabled: boolean) =>
   ipc.send({ kind: "Mods", command: { type: "toggleMod", payload: { uid, enabled } } });
+/// One write and one rescan for a whole set, rather than one of each per mod:
+/// every `toggleMod` rewrites `game.prefs` and walks the list through an
+/// intermediate state on screen, which for a dozen favourites is a dozen
+/// visible reorderings of the grid. The host dialog's mod column applies its
+/// presets the same way.
+const setActiveMods = (uids: string[]) =>
+  ipc.send({ kind: "Mods", command: { type: "setActiveMods", payload: { uids } } });
 
 interface InstalledModCardProps {
   mod: InstalledMod;
@@ -54,8 +62,10 @@ interface InstalledModCardProps {
   busy: boolean;
   installing: boolean;
   toggling: boolean;
+  favorite: boolean;
   onOpen: () => void;
   onToggle: () => void;
+  onToggleFavorite: () => void;
   /// Present only while the vault has a newer version than this folder.
   onUpdate?: () => void;
   onUninstall: () => void;
@@ -67,8 +77,10 @@ function InstalledModCard({
   busy,
   installing,
   toggling,
+  favorite,
   onOpen,
   onToggle,
+  onToggleFavorite,
   onUpdate,
   onUninstall,
 }: InstalledModCardProps) {
@@ -108,9 +120,26 @@ function InstalledModCard({
             called "Advanced Strategic Icons for FAF" lost its last few words
             to a chip that is the same six letters on every row. Top right,
             over the buttons that act on it. */}
-        <em className={mod.enabled ? "installed-mod-state is-on" : "installed-mod-state is-off"}>
-          {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
-        </em>
+        <div className="installed-mod-state-row">
+          {/* The same star as the vault's, on the screen where it pays: these
+              are the mods the player already has, and the set they star is the
+              one "Enable favourites" turns on before a game. */}
+          <button
+            type="button"
+            className={favorite ? "mod-favorite-button active" : "mod-favorite-button"}
+            aria-pressed={favorite}
+            aria-label={t(favorite ? "mods.vault.removeFavoriteAria" : "mods.vault.addFavoriteAria", {
+              name: mod.displayName,
+            })}
+            title={t(favorite ? "mods.vault.removeFavorite" : "mods.vault.addFavorite")}
+            onClick={onToggleFavorite}
+          >
+            <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
+          </button>
+          <em className={mod.enabled ? "installed-mod-state is-on" : "installed-mod-state is-off"}>
+            {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
+          </em>
+        </div>
         <div className="installed-mod-actions">
         <Button disabled={busy} onClick={onToggle}>
           {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
@@ -288,6 +317,34 @@ export function InstalledModsView({
 
   const note = loadStatusNote(installedStatus, t("mods.installed.scanning"), t("mods.installed.scanFailed"));
   const vaultByUid = useMemo(() => new Map(vault.map((mod) => [mod.uid, mod])), [vault]);
+  const favorites = useMemo(() => favoriteModKeys(browsing.favoriteMods), [browsing.favoriteMods]);
+  // The starred mods that are installed and off. This is what the one-click
+  // button acts on, and what its count says, so the two cannot disagree: a
+  // starred mod that is already on is not work the button has to do, and a
+  // star left over from an uninstalled mod is not a mod at all.
+  const favoritesToEnable = useMemo(
+    () => installed.filter((mod) => !mod.enabled && isFavoriteMod(favorites, mod.uid)),
+    [favorites, installed],
+  );
+  const favoriteCount = useMemo(
+    () => installed.filter((mod) => isFavoriteMod(favorites, mod.uid)).length,
+    [favorites, installed],
+  );
+
+  /**
+   * Turn on every starred mod, without turning anything else off.
+   *
+   * The ask was "enable all the mods you need in 1 click", which is what the
+   * in-game mod manager's favourites do. Additive rather than a preset: the
+   * host dialog already has presets, which are a complete wanted state and
+   * switch off whatever they do not name, and quietly disabling a mod somebody
+   * enabled a minute ago is not what a button called "Enable favourites" says
+   * it does.
+   */
+  const enableFavorites = () => {
+    const wanted = new Set(favoritesToEnable.map((mod) => mod.uid));
+    setActiveMods(installed.filter((mod) => mod.enabled || wanted.has(mod.uid)).map((mod) => mod.uid));
+  };
 
   useEffect(() => {
     const mods = useAppStore.getState().state.mods;
@@ -339,7 +396,7 @@ export function InstalledModsView({
     } else if (next === "sim") {
       setModType("sim");
       setEnabled("all");
-    } else if (next === "all") {
+    } else if (next === "all" || next === "favorites") {
       setEnabled("all");
       setModType("all");
     }
@@ -386,6 +443,12 @@ export function InstalledModsView({
         const isRankedMod = meta?.ranked ?? false;
         const hasUpdate = meta && modUpdateAvailable(mod.version, meta.version);
 
+        // The chip disappears with the last star, so the filter behind it has
+        // to as well: otherwise un-starring everything leaves the list empty
+        // with no visible filter to explain it.
+        if (preset === "favorites" && favoriteCount > 0 && !isFavoriteMod(favorites, mod.uid)) {
+          return false;
+        }
         if (preset === "enabled" && !mod.enabled) return false;
         if (preset === "disabled" && mod.enabled) return false;
         if (preset === "ui" && mod.modType !== "ui") return false;
@@ -447,7 +510,7 @@ export function InstalledModsView({
       });
   }, [
     installed, search, creator, preset, sort, modType, enabled, ranked,
-    minimumRating, maximumRating, vaultByUid,
+    minimumRating, maximumRating, vaultByUid, favorites, favoriteCount,
   ]);
 
   // Looked up by folder rather than held as a copy: the list is replaced
@@ -472,6 +535,9 @@ export function InstalledModsView({
           <>
             {([
               ["all", t("mods.view.preset.all")],
+              ...(favoriteCount > 0
+                ? [["favorites", `${t("mods.view.preset.favorites")} (${favoriteCount})`]]
+                : []),
               ["enabled", t("mods.installed.enabled")],
               ["disabled", t("mods.installed.disabled")],
               ["ui", t("mods.installed.uiMods")],
@@ -495,6 +561,20 @@ export function InstalledModsView({
               onClick={() => setFiltersOpen((open) => !open)}
             />
             <Button onClick={clearSearch}>{t("mods.view.clear")}</Button>
+            {favoriteCount > 0 && (
+              <Button
+                variant="primary"
+                disabled={busy || favoritesToEnable.length === 0}
+                title={t(favoritesToEnable.length === 0
+                  ? "mods.installed.favoritesAllOn"
+                  : "mods.installed.enableFavoritesHint")}
+                onClick={enableFavorites}
+              >
+                <Icon name="star" size={15} fill="currentColor" />{" "}
+                {t("mods.installed.enableFavorites")}
+                {favoritesToEnable.length > 0 ? ` (${favoritesToEnable.length})` : ""}
+              </Button>
+            )}
             <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}>
               <Icon name="refresh" size={15} /> {t("mods.installed.rescan")}
             </Button>
@@ -633,8 +713,10 @@ export function InstalledModsView({
                 busy={busy}
                 installing={installStatus.type === "installing" && installStatus.payload.uid === mod.uid}
                 toggling={toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid}
+                favorite={isFavoriteMod(favorites, mod.uid)}
                 onOpen={() => setOpenFolder(mod.folderName)}
                 onToggle={() => toggleMod(mod.uid, !mod.enabled)}
+                onToggleFavorite={() => toggleFavoriteMod(browsing, mod.uid)}
                 onUpdate={updatableFolders.has(mod.folderName)
                   ? () => {
                     const meta = vaultByUid.get(mod.uid);

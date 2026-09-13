@@ -791,6 +791,7 @@
         "replaysView": "tiles",
         "customGamesBrowser": {
           "sort": "players",
+          "sortReversed": false,
           "hidePrivate": false,
           "hideModded": false,
           "hideUnranked": false,
@@ -2004,7 +2005,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -29043,7 +29045,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -29294,7 +29297,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -29554,7 +29558,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -29809,7 +29814,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -30064,7 +30070,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -30329,7 +30336,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -30600,7 +30608,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -30883,7 +30892,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -31157,7 +31167,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -31433,7 +31444,8 @@
                 "hidePrivate": false,
                 "hideUnranked": false,
                 "rules": [],
-                "sort": "players"
+                "sort": "players",
+                "sortReversed": false
               },
               "customGamesView": "tiles",
               "favoriteMaps": [],
@@ -31687,6 +31699,7 @@
                   "replaysView": "list",
                   "customGamesBrowser": {
                     "sort": "age",
+                    "sortReversed": true,
                     "hidePrivate": true,
                     "hideModded": true,
                     "hideUnranked": false,
@@ -31817,7 +31830,8 @@
                     "value": "noisy"
                   }
                 ],
-                "sort": "age"
+                "sort": "age",
+                "sortReversed": true
               },
               "customGamesView": "list",
               "favoriteMaps": [

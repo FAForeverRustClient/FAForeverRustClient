@@ -18,6 +18,8 @@ const VICTORY_OPTION_KEYS: { value: string; label: MessageKey }[] = [
 
 interface Props {
   form: ReplayQuery;
+  /** Featured mod technical names from the API, for the mod filter below. */
+  featuredMods: string[];
   set: <K extends keyof ReplayQuery>(key: K, value: ReplayQuery[K]) => void;
   setRange: (
     lowKey: keyof ReplayQuery,
@@ -27,12 +29,13 @@ interface Props {
   ) => void;
 }
 
-export function AdvancedReplayFilters({ form, set, setRange }: Props) {
+export function AdvancedReplayFilters({ form, featuredMods, set, setRange }: Props) {
   const { t } = useTranslation();
   // Built per render so the captions follow the selected language.
   const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
     (option) => ({ value: option.value, label: t(option.label) }),
   );
+  const modOptions: MultiSelectOption[] = featuredMods.map((mod) => ({ value: mod, label: mod }));
   return (
     <div className="vault-search-advanced search-panel-advanced">
       <div className="vault-search-sliders">
@@ -141,25 +144,19 @@ export function AdvancedReplayFilters({ form, set, setRange }: Props) {
           />
         </div>
 
-        <label className="vault-field">
-          <span className="vault-field-label">{t("replays.filters.playedAfter")}</span>
-          <input
-            className="vault-input"
-            type="date"
-            value={form.after}
-            onChange={(e) => set("after", e.target.value)}
+        {/* Down here, where the date range used to be, and for the reason the
+            thread gave: the featured mod is how somebody finds a `fafbeta` or
+            `fafdevelop` game, which is a real search and a rare one, while the
+            date is the bound half the searches in this vault want. The two
+            swapped rows. */}
+        <div className="vault-field">
+          <MultiSelect
+            label={t("replays.search.mod")}
+            options={modOptions}
+            selected={form.featuredMods}
+            onChange={(v) => set("featuredMods", v)}
           />
-        </label>
-
-        <label className="vault-field">
-          <span className="vault-field-label">{t("replays.filters.playedBefore")}</span>
-          <input
-            className="vault-input"
-            type="date"
-            value={form.before}
-            onChange={(e) => set("before", e.target.value)}
-          />
-        </label>
+        </div>
 
         <label className="vault-field">
           <span className="vault-field-label">{t("replays.filters.resultsPerPage")}</span>

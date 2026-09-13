@@ -90,7 +90,7 @@ function ReplayStars({ replay }: { replay: ReplayCardData }) {
 
 const REPLAY_CARD_TITLE_LIMIT = 48;
 
-function replayCardTitle(title: string, fallback: string): { full: string; display: string } {
+export function replayCardTitle(title: string, fallback: string): { full: string; display: string } {
   const full = title || fallback;
   return {
     full,
@@ -102,7 +102,7 @@ function replayCardTitle(title: string, fallback: string): { full: string; displ
 
 // Mirrors the Java client's replay_card.fxml: a 2-column icon-less meta grid
 // (date/players, mod/rating, duration) below the thumbnail.
-function ReplayMetaFact({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+export function ReplayMetaFact({ icon, label, value }: { icon: IconName; label: string; value: string }) {
   return (
     <span className="replay-meta-fact" title={label}>
       <Icon name={icon} size={13} />
@@ -140,7 +140,7 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
   );
 }
 
-function ReplayMapThumb({
+export function ReplayMapThumb({
   url,
   mapName,
   className,

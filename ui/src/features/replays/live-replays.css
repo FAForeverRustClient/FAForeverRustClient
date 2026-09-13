@@ -607,3 +607,42 @@
   bottom: 0;
   width: 12px;
 }
+
+/* Card view ------------------------------------------------------------- */
+/* The other half of the view switch, and the vault's card rather than one of
+   its own: `.replay-grid`, `.replay-card` and everything inside them come from
+   `online-replays.css`, which `LiveReplayCards` imports for exactly that
+   reason. What is left here is the two things a live game has and a finished
+   replay does not. */
+.live-replay-card-wrap {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* A card nobody can select: the vault's is a button and this one is an
+   article, so it takes the hover treatment and none of the pressed states. */
+.live-replay-card {
+  text-align: left;
+}
+
+/* In the slot the vault card gives its review stars. */
+.live-replay-card-age {
+  font-size: 11px;
+}
+
+/* The footer carries a control, so it is a row rather than a line of text. */
+.live-replay-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.live-replay-card-footer > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

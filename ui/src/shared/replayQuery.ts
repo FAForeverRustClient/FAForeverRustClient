@@ -82,12 +82,22 @@ export function personalReplayQuery(player: string, after: string): ReplayQuery 
     : { ...EMPTY_REPLAY_QUERY };
 }
 
+/**
+ * The featured mod every co-op game runs.
+ *
+ * Here rather than beside the search form because the count below has to know
+ * it: co-op is chosen from the *visible* game-mode control, and a filter the
+ * reader can see is not one to warn them about.
+ */
+export const COOP_FEATURED_MOD = "coop";
+
 /** Number of logical filters hidden by the replay search's compact view. */
 export function advancedReplayFilterCount(query: ReplayQuery): number {
   return [
     // `exactPlayer` is not in here: it sits in the search bar next to "Recent
-    // only", so it is neither hidden nor a surprise, same reason the leaderboard
-    // filter is left out.
+    // only", so it is neither hidden nor a surprise. Nor are the game mode,
+    // the rating range or the date range, which are all in the row the reader
+    // is looking at.
     query.host !== "",
     query.mapAuthor !== "",
     query.title !== "",
@@ -99,7 +109,9 @@ export function advancedReplayFilterCount(query: ReplayQuery): number {
     query.minPlayers !== null || query.maxPlayers !== null,
     query.mapMinSizeKm !== null || query.mapMaxSizeKm !== null,
     query.rankedMapOnly,
-    query.after !== "" || query.before !== "",
+    // The mod picker moved down here when the date range moved up, so it
+    // counts now and the date range does not.
+    query.featuredMods.some((mod) => mod !== COOP_FEATURED_MOD),
     query.onlyRanked,
     query.pageSize !== EMPTY_REPLAY_QUERY.pageSize,
   ].filter(Boolean).length;

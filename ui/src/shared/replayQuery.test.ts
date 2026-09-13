@@ -17,15 +17,33 @@ describe("advancedReplayFilterCount", () => {
       replayId: "27437947",
       minRating: 1000,
       maxRating: 2000,
-      after: "2026-01-01",
-      before: "2026-08-11",
+      mapMinPlayers: 4,
+      mapMaxPlayers: 8,
     })).toBe(2);
   });
 
-  it("does not count the leaderboard filter because it is always visible", () => {
+  it("does not count what the visible row already shows", () => {
+    // The game mode, the rating range and, since the two swapped places, the
+    // date range: all of them are in the row above the button that carries
+    // this count.
     expect(advancedReplayFilterCount({
       ...EMPTY_REPLAY_QUERY,
       leaderboards: ["1v1"],
+      minRating: 1000,
+      after: "2026-01-01",
+      before: "2026-08-11",
+    })).toBe(0);
+  });
+
+  it("counts the featured mod, which is hidden now, except co-op", () => {
+    expect(advancedReplayFilterCount({
+      ...EMPTY_REPLAY_QUERY,
+      featuredMods: ["fafbeta"],
+    })).toBe(1);
+    // Co-op is chosen from the visible game-mode control, not from the panel.
+    expect(advancedReplayFilterCount({
+      ...EMPTY_REPLAY_QUERY,
+      featuredMods: ["coop"],
     })).toBe(0);
   });
 });
