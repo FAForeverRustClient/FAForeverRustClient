@@ -1114,3 +1114,26 @@
   border-top: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
+
+/* A board's own column. Every board is on screen at once now, so the one the
+   page is ranked by has to say so: it is the column the ranks and the order
+   come from, and the others are context beside it. */
+/* Left aligned like every other column in this table: the label, the number
+   and the sort arrow all start at the same edge, so a row reads across without
+   the eye jumping between two alignments. */
+.leaderboard-table td.leaderboard-board-column {
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-table td.leaderboard-board-column:not(.is-ranked) {
+  color: var(--color-muted);
+}
+
+.leaderboard-table th.leaderboard-board-column.is-ranked .leaderboard-sort {
+  color: var(--color-text);
+}
+
+.leaderboard-table td.leaderboard-board-column.is-ranked {
+  color: var(--color-text);
+  font-weight: 700;
+}

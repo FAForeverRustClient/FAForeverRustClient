@@ -76,9 +76,9 @@ pub use guides::{
 };
 pub use install::{InstallEvent, InstallState, ResolvedPaths};
 pub use leaderboard::{
-    LeaderboardCommand, LeaderboardEntry, LeaderboardEvent, LeaderboardMode, LeaderboardState,
-    LeaderboardStatus, LeaderboardTier, League, LeagueSeason, RatingLeaderboard, RatingPage,
-    RatingQuery, SeasonLeaderboard,
+    BoardRating, LeaderboardCommand, LeaderboardEntry, LeaderboardEvent, LeaderboardMode,
+    LeaderboardState, LeaderboardStatus, LeaderboardTier, League, LeagueSeason, PlayerRatings,
+    RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
 };
 pub use lobby::{
     rating_for_game, rating_gate_blocks, AvailableAvatar, AvatarListStatus, Game, GameLaunch,

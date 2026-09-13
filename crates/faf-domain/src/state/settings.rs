@@ -1909,17 +1909,20 @@ pub struct BrowsingPreferences {
     pub legacy_storage_migrated: bool,
 }
 
-pub const DEFAULT_LEADERBOARD_RATING_COLUMNS: [&str; 4] = ["rating", "games", "wins", "updated"];
-/// Every column the table can draw, in the order it draws them.
+pub const DEFAULT_LEADERBOARD_RATING_COLUMNS: [&str; 2] = ["games", "updated"];
+/// The columns the table can draw beside the boards themselves, in the order
+/// it draws them.
 ///
-/// Win rate used to be here, offered by default. The number the API answers
-/// with is wrong, and the only way to a right one is a request per player,
-/// which for a page of a hundred is not a request anybody would wait for. A
-/// column that cannot be correct is worse than no column, so the one that was
-/// there is gone: a stored selection naming it is dropped by the filter below,
-/// the way any other unknown key is.
-pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 6] =
-    ["rating", "mean", "deviation", "games", "wins", "updated"];
+/// Three names have left this list. Win rate and won games, because the API
+/// counts won games over a different set of games than it counts played ones:
+/// the quotient was wrong and so is the count, and a column that cannot be
+/// correct is worse than no column. Rating, because every board has a column of
+/// its own now, the ranked one included, so a "Rating" column would be one of
+/// them printed twice.
+///
+/// A stored selection naming any of the three is dropped by the filter below,
+/// the way any other unknown key is, so nothing has to migrate.
+pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 4] = ["mean", "deviation", "games", "updated"];
 
 impl Default for BrowsingPreferences {
     fn default() -> Self {

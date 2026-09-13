@@ -86,6 +86,31 @@ pub struct LeaderboardEntry {
     pub returning_player: Option<bool>,
 }
 
+/// One player's rating on one board, for the columns beside the board being
+/// ranked.
+///
+/// The table used to show one board at a time and switch between them, which
+/// left it with almost nothing in it once the win rate and the win count were
+/// taken out: a rank, a name and a number. The thread's answer was to stop
+/// switching, "display Global, 1v1, 2v2, 3v3, 4v4 in one view", and to let the
+/// tabs decide which of those the ranking is by.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BoardRating {
+    /// The board's technical name, which is what the catalogue keys on.
+    pub leaderboard: String,
+    pub rating: i32,
+    pub games_played: i32,
+}
+
+/// Every board one player appears on, as the second request answers it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerRatings {
+    pub player_id: i32,
+    pub ratings: Vec<BoardRating>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RatingQuery {
@@ -163,6 +188,13 @@ pub struct LeaderboardState {
     pub rating_query: RatingQuery,
     pub rating_page: RatingPage,
     pub ratings_status: LeaderboardStatus,
+    /// What the players on the current page are rated on every other board.
+    ///
+    /// A second request, and its own slice of state, because it must not hold
+    /// the page up: the ranked column is what the page is for, and the others
+    /// fill in behind it. Cleared whenever a new page starts loading, so a
+    /// stale row can never sit beside a fresh one.
+    pub cross_ratings: Vec<PlayerRatings>,
     pub selected_league_id: Option<i32>,
     pub seasons: Vec<LeagueSeason>,
     pub seasons_status: LeaderboardStatus,
@@ -201,6 +233,14 @@ pub enum LeaderboardEvent {
     #[serde(rename_all = "camelCase")]
     RatingsLoadFailed {
         reason: String,
+    },
+    /// The other boards for the page that is already on screen. Carries the
+    /// query it answers, so a late reply for an abandoned page is dropped
+    /// rather than drawn.
+    #[serde(rename_all = "camelCase")]
+    CrossRatingsLoaded {
+        query: RatingQuery,
+        ratings: Vec<PlayerRatings>,
     },
     #[serde(rename_all = "camelCase")]
     SeasonsLoading {
@@ -272,6 +312,8 @@ pub fn reduce(state: &mut LeaderboardState, event: &LeaderboardEvent) {
         LeaderboardEvent::RatingsLoading { query } => {
             state.rating_query = query.clone();
             state.ratings_status = LeaderboardStatus::Loading;
+            // The page being replaced took its other boards with it.
+            state.cross_ratings.clear();
         }
         LeaderboardEvent::RatingsLoaded { query, page } => {
             state.rating_query = query.clone();
@@ -282,6 +324,14 @@ pub fn reduce(state: &mut LeaderboardState, event: &LeaderboardEvent) {
             state.ratings_status = LeaderboardStatus::Failed {
                 reason: reason.clone(),
             };
+        }
+        LeaderboardEvent::CrossRatingsLoaded { query, ratings } => {
+            // Only for the page on screen. The second request outlives the
+            // first whenever somebody pages on before it lands, and its answer
+            // is about players who are no longer listed.
+            if *query == state.rating_query {
+                state.cross_ratings = ratings.clone();
+            }
         }
         LeaderboardEvent::SeasonsLoading { league_id } => {
             state.selected_league_id = Some(*league_id);

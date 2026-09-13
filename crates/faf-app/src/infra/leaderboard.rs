@@ -4,9 +4,9 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    is_retired_leaderboard, leaderboard_display_name, leaderboard_display_rank, LeaderboardEntry,
-    LeaderboardTier, League, LeagueSeason, RatingLeaderboard, RatingPage, RatingQuery,
-    SeasonLeaderboard,
+    is_retired_leaderboard, leaderboard_display_name, leaderboard_display_rank, BoardRating,
+    LeaderboardEntry, LeaderboardTier, League, LeagueSeason, PlayerRatings, RatingLeaderboard,
+    RatingPage, RatingQuery, SeasonLeaderboard,
 };
 use serde_json::Value;
 
@@ -77,6 +77,28 @@ impl LeaderboardClient {
     fn collection_url(&self, resource: &str) -> Result<url::Url, String> {
         url::Url::parse(&format!("{}/data/{resource}", self.config.api_base))
             .map_err(|error| format!("invalid API base: {error}"))
+    }
+
+    /// One page of `leaderboardRating` rows for a player filter, as
+    /// `(player id, board rating)` pairs plus the API's own page count.
+    async fn player_ratings_page(
+        &self,
+        filter: &str,
+        page: i32,
+        token: &str,
+    ) -> Result<CrossRatingPage, String> {
+        let mut url = self.collection_url("leaderboardRating")?;
+        url.query_pairs_mut()
+            .append_pair("filter", filter)
+            .append_pair("include", "leaderboard")
+            .append_pair("page[number]", &page.to_string())
+            .append_pair("page[size]", "100")
+            .append_pair("page[totals]", "yes");
+        let doc = self.get_json(url, token).await?;
+        Ok(CrossRatingPage {
+            total_pages: meta_i32(&doc.meta, "totalPages").unwrap_or(1).max(1),
+            rows: parse_cross_ratings(&doc),
+        })
     }
 
     async fn get_json(&self, url: url::Url, token: &str) -> Result<JsonApiDoc, String> {
@@ -298,6 +320,56 @@ impl LeaderboardPort for LeaderboardClient {
         self.rank_searched_players(&mut page, &doc, query, &token)
             .await;
         Ok(page)
+    }
+
+    /// Every board these players appear on.
+    ///
+    /// The API answers this endpoint one page of a hundred rows at a time
+    /// whatever `page[size]` asks for, and a page of a hundred players sits on
+    /// five or six boards between them, so this is a handful of requests run
+    /// together rather than one. They are asked for concurrently and folded
+    /// into one answer; a request that fails takes only its own rows with it,
+    /// because a missing column is a blank cell and not an error.
+    async fn list_player_ratings(&self, player_ids: &[i32]) -> Result<Vec<PlayerRatings>, String> {
+        if player_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let token = self.token()?;
+        let ids = player_ids
+            .iter()
+            .map(i32::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        let filter = format!("player.id=in=({ids})");
+
+        let first = self.player_ratings_page(&filter, 1, &token).await?;
+        let mut rows = first.rows;
+        // `total_pages` is the API's own count for the filter, so this asks
+        // for exactly the pages that exist rather than paging until a short
+        // one turns up: a short page is not the end of the results here.
+        let mut pages = Vec::new();
+        for page in 2..=first.total_pages.min(MAX_CROSS_RATING_PAGES) {
+            pages.push(self.player_ratings_page(&filter, page, &token));
+        }
+        for result in futures_util::future::join_all(pages).await {
+            if let Ok(answer) = result {
+                rows.extend(answer.rows);
+            }
+        }
+
+        let mut by_player: HashMap<i32, Vec<BoardRating>> = HashMap::new();
+        for (player_id, rating) in rows {
+            by_player.entry(player_id).or_default().push(rating);
+        }
+        Ok(by_player
+            .into_iter()
+            .map(|(player_id, mut ratings)| {
+                // A stable order, so the same page redrawn twice puts the same
+                // number in the same column.
+                ratings.sort_by(|left, right| left.leaderboard.cmp(&right.leaderboard));
+                PlayerRatings { player_id, ratings }
+            })
+            .collect())
     }
 
     async fn list_seasons(&self, league_id: i32) -> Result<Vec<LeagueSeason>, String> {
@@ -542,6 +614,57 @@ fn parse_rating_stats(resource: &JsonApiResource) -> RatingStats {
         won_games: i32_attr(resource, "wonGames"),
         update_time: string_attr(resource, "updateTime").map(str::to_string),
     }
+}
+
+/// The rows of one cross-board page, and how many pages the filter has.
+struct CrossRatingPage {
+    total_pages: i32,
+    rows: Vec<(i32, BoardRating)>,
+}
+
+/// A cap on how far the cross-board fetch will page.
+///
+/// A hundred players on six boards is six pages. Ten is room for a page of
+/// players who are each on more boards than FAF currently has, and a ceiling
+/// on what one page turn can cost if the filter ever matches more than it
+/// should.
+const MAX_CROSS_RATING_PAGES: i32 = 10;
+
+/// `(player id, rating)` for every row in a cross-board page.
+///
+/// Rows whose board or player cannot be resolved are dropped: the board's
+/// technical name is what the column is keyed on, and a rating belonging to
+/// nobody has no cell to sit in.
+fn parse_cross_ratings(doc: &JsonApiDoc) -> Vec<(i32, BoardRating)> {
+    let index = resource_index(&doc.included);
+    let mut rows = Vec::with_capacity(doc.data.len());
+    for resource in &doc.data {
+        let Some(player_id) = rel_target(&resource.relationships, "player")
+            .and_then(|(_, id)| id.parse::<i32>().ok())
+        else {
+            continue;
+        };
+        let Some(leaderboard) = rel_target(&resource.relationships, "leaderboard")
+            .and_then(|key| index.get(&key).copied())
+            .and_then(|board| string_attr(board, "technicalName"))
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        let stats = parse_rating_stats(resource);
+        let Some(rating) = stats.rating else {
+            continue;
+        };
+        rows.push((
+            player_id,
+            BoardRating {
+                leaderboard,
+                rating,
+                games_played: stats.games_played,
+            },
+        ));
+    }
+    rows
 }
 
 fn parse_rating_page(doc: &JsonApiDoc, query: &RatingQuery) -> RatingPage {
@@ -811,6 +934,27 @@ impl LeaderboardPort for FakeLeaderboard {
             name: "1v1".into(),
             description: "Seasonal competitive ladder".into(),
         }])
+    }
+
+    async fn list_player_ratings(&self, player_ids: &[i32]) -> Result<Vec<PlayerRatings>, String> {
+        Ok(player_ids
+            .iter()
+            .map(|player_id| PlayerRatings {
+                player_id: *player_id,
+                ratings: vec![
+                    BoardRating {
+                        leaderboard: "global".into(),
+                        rating: 1_500 + player_id * 10,
+                        games_played: 420,
+                    },
+                    BoardRating {
+                        leaderboard: "ladder_1v1".into(),
+                        rating: 1_400 + player_id * 10,
+                        games_played: 98,
+                    },
+                ],
+            })
+            .collect())
     }
 
     async fn list_ratings(&self, query: &RatingQuery) -> Result<RatingPage, String> {

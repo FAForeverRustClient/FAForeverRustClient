@@ -189,6 +189,23 @@ export type AvailableAvatar = {
 export type AvatarListStatus = "idle" | "loading" | "ready" | "failed";
 
 /**
+ *  One player's rating on one board, for the columns beside the board being
+ *  ranked.
+ *
+ *  The table used to show one board at a time and switch between them, which
+ *  left it with almost nothing in it once the win rate and the win count were
+ *  taken out: a rank, a name and a number. The thread's answer was to stop
+ *  switching, "display Global, 1v1, 2v2, 3v3, 4v4 in one view", and to let the
+ *  tabs decide which of those the ranking is by.
+ */
+export type BoardRating = {
+	/**  The board's technical name, which is what the catalogue keys on. */
+	leaderboard: string,
+	rating: number,
+	gamesPlayed: number,
+};
+
+/**
  *  The best-of plan, settled at the moment the bracket is drawn.
  *
  *  Asked once, here, rather than at creation: the number of rounds follows from
@@ -2960,6 +2977,15 @@ export type LeaderboardEvent = { type: "modeChanged"; payload: {
 	page: RatingPage,
 } } | { type: "ratingsLoadFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  The other boards for the page that is already on screen. Carries the
+ *  query it answers, so a late reply for an abandoned page is dropped
+ *  rather than drawn.
+ */
+{ type: "crossRatingsLoaded"; payload: {
+	query: RatingQuery,
+	ratings: PlayerRatings[],
 } } | { type: "seasonsLoading"; payload: {
 	leagueId: number,
 } } | { type: "seasonsLoaded"; payload: {
@@ -2986,6 +3012,15 @@ export type LeaderboardState = {
 	ratingQuery: RatingQuery,
 	ratingPage: RatingPage,
 	ratingsStatus: LeaderboardStatus,
+	/**
+	 *  What the players on the current page are rated on every other board.
+	 *
+	 *  A second request, and its own slice of state, because it must not hold
+	 *  the page up: the ranked column is what the page is for, and the others
+	 *  fill in behind it. Cleared whenever a new page starts loading, so a
+	 *  stale row can never sit beside a fresh one.
+	 */
+	crossRatings: PlayerRatings[],
 	selectedLeagueId: number | null,
 	seasons: LeagueSeason[],
 	seasonsStatus: LeaderboardStatus,
@@ -5115,6 +5150,12 @@ export type PlayerRatingSummary = {
 	gamesPlayed: number,
 	wonGames: number,
 	updateTime: string,
+};
+
+/**  Every board one player appears on, as the second request answers it. */
+export type PlayerRatings = {
+	playerId: number,
+	ratings: BoardRating[],
 };
 
 /**

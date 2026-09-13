@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs } from "../../design-system/SectionTabs";
@@ -8,8 +8,8 @@ import {
   SearchPanelSubmit,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
-import type { LeaderboardColumn } from "./LeaderboardTable";
-import { LeaderboardTable } from "./LeaderboardTable";
+import type { LeaderboardColumn, TableColumn } from "./LeaderboardTable";
+import { crossRatingIndex, LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardEntry, RatingQuery } from "../../ipc/bindings";
@@ -17,12 +17,20 @@ import { formatNumber, type MessageKey } from "../../i18n";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 
+/**
+ * The columns beside the boards.
+ *
+ * No rating: every board has a column of its own now, the ranked one included,
+ * so a "Rating" column would be one of them printed twice. No wins either. The
+ * API counts won games over a different set of games than it counts played
+ * ones, which is what made the win rate wrong, and the count is wrong for the
+ * same reason: "if we delete the winrate we have to delete also the wins
+ * (theyre wrong too)".
+ */
 const OPTIONAL_COLUMNS: Array<{ key: LeaderboardColumn; label: MessageKey }> = [
-  { key: "rating", label: "leaderboard.column.rating" },
   { key: "mean", label: "leaderboard.column.mean" },
   { key: "deviation", label: "leaderboard.column.deviation" },
   { key: "games", label: "leaderboard.column.games" },
-  { key: "wins", label: "leaderboard.column.wins" },
   { key: "updated", label: "leaderboard.column.updated" },
 ];
 
@@ -54,7 +62,7 @@ export function RatingLeaderboardPanel() {
   const [columnsOpen, setColumnsOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement>(null);
   const visibleColumns = (browsing.leaderboardRatingColumns ?? [
-    "rating", "games", "wins", "updated",
+    "games", "updated",
   ]) as LeaderboardColumn[];
   const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
 
@@ -116,6 +124,15 @@ export function RatingLeaderboardPanel() {
 
   const currentBoard = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard);
   const entries = state.ratingPage.entries;
+  // Every board gets a column, and the tabs choose which of them the page is
+  // ranked by rather than which of them is on screen.
+  const boardColumns: TableColumn[] = state.ratingLeaderboards.map(
+    (board) => `board:${board.technicalName}` as const,
+  );
+  const crossRatings = useMemo(
+    () => crossRatingIndex(state.crossRatings),
+    [state.crossRatings],
+  );
   const submit = () => void load({
     leaderboard: state.ratingQuery.leaderboard,
     page: 1,
@@ -138,7 +155,7 @@ export function RatingLeaderboardPanel() {
     });
   };
   const changePage = (page: number) => void load({ ...state.ratingQuery, page });
-  const columns: LeaderboardColumn[] = ["rank", "player", ...visibleColumns];
+  const columns: TableColumn[] = ["rank", "player", ...boardColumns, ...visibleColumns];
   const clearFilters = () => {
     setPlayer("");
     setActiveOnly(true);
@@ -150,9 +167,12 @@ export function RatingLeaderboardPanel() {
 
   return (
     <section className="leaderboard-panel">
+      {/* Which board the table is ranked by, not which one it shows: every
+          board has a column, and pressing a tab sorts the whole list by that
+          one and numbers the ranks from it. */}
       <SectionTabs
         active={state.ratingQuery.leaderboard}
-        ariaLabel={t("leaderboard.ratings.ratingQueues")}
+        ariaLabel={t("leaderboard.ratings.rankedBy")}
         className="leaderboard-tabs"
         items={state.ratingLeaderboards.map((board) => ({ id: board.technicalName, label: board.name }))}
         onChange={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1, player: "" })}
@@ -236,6 +256,9 @@ export function RatingLeaderboardPanel() {
             <LeaderboardTable
               entries={entries}
               columns={columns}
+              boards={state.ratingLeaderboards}
+              activeBoard={state.ratingQuery.leaderboard}
+              crossRatings={crossRatings}
               selectedPlayerId={selected?.playerId ?? null}
               onSelect={setSelected}
               emptyMessage={t("leaderboard.ratings.empty")}

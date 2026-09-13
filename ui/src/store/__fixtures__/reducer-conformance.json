@@ -440,6 +440,7 @@
       "ratingsStatus": {
         "type": "idle"
       },
+      "crossRatings": [],
       "selectedLeagueId": null,
       "seasons": [],
       "seasonsStatus": {
@@ -855,9 +856,7 @@
         "coopBoardColumns": [],
         "modPresets": [],
         "leaderboardRatingColumns": [
-          "rating",
           "games",
-          "wins",
           "updated"
         ],
         "replayVaultPlayer": "",
@@ -2037,9 +2036,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -25857,6 +25854,278 @@
       ]
     },
     {
+      "name": "the other boards land only for the page that is on screen",
+      "steps": [
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "ratingsLoading",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 1,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "crossRatingsLoaded",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 1,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                },
+                "ratings": [
+                  {
+                    "playerId": 11,
+                    "ratings": [
+                      {
+                        "leaderboard": "ladder_1v1",
+                        "rating": 1842,
+                        "gamesPlayed": 310
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [
+              {
+                "playerId": 11,
+                "ratings": [
+                  {
+                    "gamesPlayed": 310,
+                    "leaderboard": "ladder_1v1",
+                    "rating": 1842
+                  }
+                ]
+              }
+            ],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 1,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "ratingsLoading",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 2,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 2,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Leaderboard",
+            "event": {
+              "type": "crossRatingsLoaded",
+              "payload": {
+                "query": {
+                  "leaderboard": "global",
+                  "page": 1,
+                  "pageSize": 100,
+                  "activeOnly": true,
+                  "updatedAfter": null,
+                  "updatedBefore": null,
+                  "player": ""
+                },
+                "ratings": [
+                  {
+                    "playerId": 11,
+                    "ratings": [
+                      {
+                        "leaderboard": "ladder_1v1",
+                        "rating": 1842,
+                        "gamesPlayed": 310
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "catalogStatus": {
+              "type": "idle"
+            },
+            "crossRatings": [],
+            "leagues": [],
+            "mode": "ratings",
+            "ratingLeaderboards": [],
+            "ratingPage": {
+              "entries": [],
+              "page": 1,
+              "pageSize": 100,
+              "totalPages": 1,
+              "totalResults": null
+            },
+            "ratingQuery": {
+              "activeOnly": true,
+              "leaderboard": "global",
+              "page": 2,
+              "pageSize": 100,
+              "player": "",
+              "updatedAfter": null,
+              "updatedBefore": null
+            },
+            "ratingsStatus": {
+              "type": "loading"
+            },
+            "seasonEntries": [],
+            "seasonStatus": {
+              "type": "idle"
+            },
+            "seasons": [],
+            "seasonsStatus": {
+              "type": "idle"
+            },
+            "selectedLeagueId": null,
+            "selectedSeasonId": null,
+            "tiers": []
+          }
+        }
+      ]
+    },
+    {
       "name": "changing league clears stale season data",
       "steps": [
         {
@@ -25873,6 +26142,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -25922,6 +26192,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -25971,6 +26242,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -26023,6 +26295,7 @@
             "catalogStatus": {
               "type": "idle"
             },
+            "crossRatings": [],
             "leagues": [],
             "mode": "leagues",
             "ratingLeaderboards": [],
@@ -29109,9 +29382,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29362,9 +29633,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29624,9 +29893,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -29881,9 +30148,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30138,9 +30403,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30405,9 +30668,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30678,9 +30939,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -30963,9 +31222,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31239,9 +31496,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31517,9 +31772,7 @@
                 "visibility": "public"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": false,
@@ -31835,9 +32088,7 @@
                   "coopBoardColumns": [],
                   "modPresets": [],
                   "leaderboardRatingColumns": [
-                    "rating",
                     "games",
-                    "wins",
                     "updated"
                   ],
                   "replayVaultPlayer": "",
@@ -31909,9 +32160,7 @@
                 "visibility": "friends"
               },
               "leaderboardRatingColumns": [
-                "rating",
                 "games",
-                "wins",
                 "updated"
               ],
               "legacyStorageMigrated": true,
