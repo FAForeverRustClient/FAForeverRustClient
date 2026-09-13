@@ -423,9 +423,14 @@
    enough. */
 .host-game-grid {
   display: grid;
+  /* Game type, mods, maps, the chosen map. The mods column carries the longest
+     names in the dialog -- a sim mod is called "No Friendly Fire + fix for
+     reclaim" -- and it was the narrowest of the three lists. It takes 65
+     pixels from the map list, which is the column that absorbs the leftover
+     width and had the most of it to give. */
   grid-template-columns:
     minmax(200px, 245px)
-    minmax(260px, 335px)
+    minmax(300px, 400px)
     minmax(220px, 1fr)
     minmax(240px, 310px);
   gap: 12px;
