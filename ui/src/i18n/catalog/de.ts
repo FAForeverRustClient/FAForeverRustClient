@@ -3537,8 +3537,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.alsoQueueAs": "Auch als {faction} suchen",
   "lobby.matchmaker.queueInSearch": "{queue} gehört zu deiner Suche",
   "lobby.matchmaker.queueAddToSearch": "{queue} zur Suche hinzufügen",
-  "lobby.host.enforceRatingOn": "Wer außerhalb dieses Bereichs liegt, sieht die Lobby nicht und kann nicht beitreten.",
-  "lobby.host.enforceRatingOff": "Nur als Hinweis gedacht. Beitreten kann trotzdem jeder.",
   "lobby.host.filterRanked": "Gewertete Spiele",
   "lobby.host.filterRankedAll": "Egal",
   "lobby.host.filterRankedOnly": "Nur gewertete",

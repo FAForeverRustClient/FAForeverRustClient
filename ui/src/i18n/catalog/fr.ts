@@ -2164,8 +2164,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.column.age": "Ouverte depuis",
   "lobby.coop.noReplay": "Pas de replay",
   "lobby.coop.watchRunTitle": "Regarder le replay de cette partie",
-  "lobby.host.enforceRatingOn": "Les joueurs hors de cette plage ne voient pas le lobby et ne peuvent pas le rejoindre.",
-  "lobby.host.enforceRatingOff": "Affiché à titre indicatif seulement. N'importe qui peut toujours rejoindre.",
   "lobby.host.mapTab.all": "Toutes les cartes ({count})",
   "lobby.host.mapTab.favorites": "Favoris ({count})",
   "lobby.host.noFavoriteMaps": "Aucun favori pour l'instant. Mettez une étoile sur une carte pour la garder ici.",

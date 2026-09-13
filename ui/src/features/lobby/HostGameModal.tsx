@@ -610,14 +610,6 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
             />
           </div>
           {ratingError && <small className="host-field-error host-rating-error">{ratingError}</small>}
-          {/* The difference the checkbox makes, said where it is made. The
-              report was that an enforced range "merely added a badge": it did,
-              because the flag never left the client. */}
-          <small className="host-field-hint muted">
-            {ratingEnabled
-              ? t("lobby.host.enforceRatingOn")
-              : t("lobby.host.enforceRatingOff")}
-          </small>
         </div>
         </div>
       </section>

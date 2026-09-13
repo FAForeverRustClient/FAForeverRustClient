@@ -921,8 +921,6 @@ export const en = {
   "lobby.host.password": "Password",
   "lobby.host.passwordAria": "Game password",
   "lobby.host.enforceRating": "Enforce player rating",
-  "lobby.host.enforceRatingOn": "Players outside this range cannot see or join the lobby.",
-  "lobby.host.enforceRatingOff": "Shown as a guide only. Anyone can still join.",
   "lobby.host.minRating": "Minimum rating",
   "lobby.host.maxRating": "Maximum rating",
   "lobby.host.selectedMap": "Selected Map",
