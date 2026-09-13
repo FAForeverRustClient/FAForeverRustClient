@@ -390,7 +390,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
                   <th scope="col" key={label}>
                     {index > 0 && (
                       <ResizeHandle
-                        className="coop-board-col-handle"
+                        className="coop-board-col-handle is-ruled"
                         label={t("lobby.browser.resizeColumn", { column: boardLabels[index - 1] })}
                         onDrag={(delta) => columns.onDrag(index - 1, delta)}
                         onEnd={columns.onCommit}
@@ -402,7 +402,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
                 ))}
                 <th scope="col">
                   <ResizeHandle
-                    className="coop-board-col-handle"
+                    className="coop-board-col-handle is-ruled"
                     label={t("lobby.browser.resizeColumn", {
                       column: boardLabels[boardLabels.length - 1],
                     })}

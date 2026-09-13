@@ -42,6 +42,19 @@
   background: transparent;
 }
 
-.resize-handle.is-vertical:hover::after {
+/* A column divider is drawn at rest. A panel divider is not, and the reason
+   for the difference is what a reader aims at: a panel divider sits on a
+   border that is already there, and a column header has no such line at all.
+   Without one the eye aims at the label instead -- and a right-aligned number
+   column's label is hard against the *far* side of its track, a whole column
+   from the boundary that moves. That is the "the cursor is in the wrong
+   place" this was reported for three times running, and it was never the
+   handle's position: it was that there was nothing to aim at. */
+.resize-handle.is-ruled::after {
+  background: var(--color-border);
+}
+
+.resize-handle.is-vertical:hover::after,
+.resize-handle.is-vertical:focus-visible::after {
   background: var(--color-accent);
 }

@@ -252,7 +252,7 @@ export function ReplayList({
                 boundary it moves. The first column has nothing before it. */}
             {index > 0 && (
               <ResizeHandle
-                className="replay-list-col-handle"
+                className="replay-list-col-handle is-ruled"
                 label={t("lobby.browser.resizeColumn", { column: t(COLUMNS[index - 1].label) })}
                 onDrag={(delta) => columns.onDrag(index - 1, delta)}
                 onEnd={columns.onCommit}

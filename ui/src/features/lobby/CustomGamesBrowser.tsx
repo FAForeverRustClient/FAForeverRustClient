@@ -1331,7 +1331,7 @@ export function CustomGamesBrowser({
                   first column has nothing before it to resize. */}
               {index > 0 && (
                 <ResizeHandle
-                  className="game-browser-col-handle"
+                  className="game-browser-col-handle is-ruled"
                   label={t("lobby.browser.resizeColumn", { column: columnLabels[index - 1] })}
                   onDrag={(delta) => onColumnDrag(index - 1, delta)}
                   onEnd={onColumnCommit}
