@@ -2456,7 +2456,7 @@ export const en = {
   "leaderboard.ratings.leaderboardPages": "Leaderboard pages",
   "leaderboard.ratings.playerName": "Player name",
   "leaderboard.ratings.ratingQueues": "Rating queues",
-  "leaderboard.ratings.rankedBy": "Ranked by",
+  "leaderboard.ratings.rankedByBoard": "Ranked by {board}. Press another board's column to rank by that one.",
   "leaderboard.ratings.refreshRankings": "Refresh rankings",
   "leaderboard.ratings.rows": "Rows",
   "leaderboard.ratings.updatedAfter": "Updated after",

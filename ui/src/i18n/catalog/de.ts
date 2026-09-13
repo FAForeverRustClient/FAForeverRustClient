@@ -2192,7 +2192,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.ratings.leaderboardPages": "Ranglistenseiten",
   "leaderboard.ratings.playerName": "Spielername",
   "leaderboard.ratings.ratingQueues": "Rating-Warteschlangen",
-  "leaderboard.ratings.rankedBy": "Sortiert nach",
+  "leaderboard.ratings.rankedByBoard": "Sortiert nach {board}. Klicke auf die Spalte eines anderen Boards, um danach zu sortieren.",
   "leaderboard.ratings.refreshRankings": "Platzierungen aktualisieren",
   "leaderboard.ratings.rows": "Zeilen",
   "leaderboard.ratings.updatedAfter": "Aktualisiert nach",

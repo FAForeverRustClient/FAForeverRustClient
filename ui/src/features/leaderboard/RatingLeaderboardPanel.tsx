@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { SectionTabs } from "../../design-system/SectionTabs";
 import {
   SearchField,
   SearchPanel,
@@ -124,8 +123,8 @@ export function RatingLeaderboardPanel() {
 
   const currentBoard = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard);
   const entries = state.ratingPage.entries;
-  // Every board gets a column, and the tabs choose which of them the page is
-  // ranked by rather than which of them is on screen.
+  // Every board gets a column. Which of them the page is ranked by is the
+  // column header that was last pressed, not a tab above the table.
   const boardColumns: TableColumn[] = state.ratingLeaderboards.map(
     (board) => `board:${board.technicalName}` as const,
   );
@@ -167,18 +166,16 @@ export function RatingLeaderboardPanel() {
 
   return (
     <section className="leaderboard-panel">
-      {/* Which board the table is ranked by, not which one it shows: every
-          board has a column, and pressing a tab sorts the whole list by that
-          one and numbers the ranks from it. */}
-      <SectionTabs
-        active={state.ratingQuery.leaderboard}
-        ariaLabel={t("leaderboard.ratings.rankedBy")}
-        className="leaderboard-tabs"
-        items={state.ratingLeaderboards.map((board) => ({ id: board.technicalName, label: board.name }))}
-        onChange={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1, player: "" })}
-      />
-
-      {currentBoard?.description && <p className="leaderboard-description muted">{currentBoard.description}</p>}
+      {/* No tabs. There is one table with every board in it, and the board the
+          ladder is ranked by is chosen by pressing that board's column
+          header: a strip of tabs above a table whose columns are the same
+          five boards was the same choice offered twice. */}
+      {currentBoard && (
+        <p className="leaderboard-description muted">
+          <span>{t("leaderboard.ratings.rankedByBoard", { board: currentBoard.name })}</span>
+          {currentBoard.description && <span className="leaderboard-description-note">{currentBoard.description}</span>}
+        </p>
+      )}
 
       <SearchPanel
         className="leaderboard-search-panel"
@@ -261,6 +258,7 @@ export function RatingLeaderboardPanel() {
               crossRatings={crossRatings}
               selectedPlayerId={selected?.playerId ?? null}
               onSelect={setSelected}
+              onRankBy={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1 })}
               emptyMessage={t("leaderboard.ratings.empty")}
             />
           )}
