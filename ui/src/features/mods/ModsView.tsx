@@ -382,7 +382,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   return (
     <>
-            <SearchPanel
+      <SearchPanel
         className="mod-search-panel"
         onSubmit={(event) => {
           event.preventDefault();
@@ -416,8 +416,8 @@ function VaultView({ busy }: { busy: boolean }) {
             >
               <Icon name="refresh" size={15} /> {t("mods.view.refresh")}
             </Button>
-            <Button onClick={void openUploadFromDisk("mod")}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
-                      </>
+            <Button onClick={() => void openUploadFromDisk("mod")}><Icon name="plus" size={15} /> {t("mods.view.uploadFromDisk")}</Button>
+          </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">

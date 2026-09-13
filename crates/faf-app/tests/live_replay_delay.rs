@@ -104,6 +104,10 @@ impl LobbyPort for ScriptedLobby {
     fn select_avatar(&self, _url: Option<String>) -> bool {
         self.updates.lock().unwrap().is_some()
     }
+    fn restore_game_session(&self, _game_id: i32) -> bool {
+        true
+    }
+
     fn send_game_relay(&self, _command: String, _args: Vec<Value>) {}
     fn disconnect(&self) {
         self.updates.lock().unwrap().take();

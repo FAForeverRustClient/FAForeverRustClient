@@ -174,6 +174,20 @@ pub trait LobbyPort: Send + Sync {
     /// Returns whether the command was accepted by the outgoing connection.
     fn select_avatar(&self, url: Option<String>) -> bool;
 
+    /// Tell the server this client is still in game `game_id`
+    /// (`restore_game_session`).
+    ///
+    /// The lobby server ties a player's game connection to the socket it was
+    /// made on. When that socket goes -- a drop, or the user disconnecting and
+    /// reconnecting by hand -- the connection goes with it, and the running
+    /// game keeps talking to an adapter the server no longer relays for: the
+    /// players never reconnect to each other. This is the frame that puts the
+    /// session back, and the reference client sends it on every transition
+    /// back to connected while a game is running.
+    ///
+    /// Returns whether it entered the live socket's outgoing queue.
+    fn restore_game_session(&self, game_id: i32) -> bool;
+
     /// Relay a connectivity message to the server addressed to the game
     /// (`{ command, target: "game", args }`). Used by the launcher to forward
     /// GPGNet/ICE messages produced by the local adapter. A no-op if there is no

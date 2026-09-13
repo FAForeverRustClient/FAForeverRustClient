@@ -10,6 +10,7 @@ import type {
   ValidationIssue,
 } from "../../ipc/bindings";
 import type { Translation } from "../../i18n/useTranslation";
+import { kilometresLabel } from "../../shared/mapPresentation";
 
 /** Generator units per kilometre, the generator's own `MultipleMapSizeConverter`. */
 export const UNITS_PER_KM = 51.2;
@@ -43,11 +44,9 @@ export function sizeInKm(units: number): number {
   return units / UNITS_PER_KM;
 }
 
-/** "10 km (512×512)". Fractional sizes land on quarters, so one decimal is enough. */
+/** "10 km (512×512)", "17.5 km (896×896)". */
 export function formatMapSize(units: number): string {
-  const km = sizeInKm(units);
-  const rounded = Number.isInteger(km) ? String(km) : km.toFixed(2).replace(/0$/, "");
-  return `${rounded} km (${units}×${units})`;
+  return `${kilometresLabel(units)} km (${units}×${units})`;
 }
 
 /**

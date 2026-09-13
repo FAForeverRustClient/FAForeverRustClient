@@ -26,12 +26,26 @@
 //! 7. Team scores: the team holding the single highest score wins and the rest
 //!    lose; several tied at the top is a draw.
 //!
-//! # Stage 2: the rating overrules the verdict, `applyRatingOutcomeOverrides`
+//! # Stage 2: the rating overrules the verdict
 //!
-//! 1. A draw from either source stays a draw.
-//! 2. A loss whose **raw mean** moved up becomes a draw.
-//! 3. Otherwise, where the rating delta disagrees with the verdict, the rating
-//!    wins.
+//! Two functions in the tracker, and the order between them is the whole of
+//! it. `normalizeGame` settles the outcome first, as `ratingOutcome ||
+//! inferredOutcome`; `applyRatingOutcomeOverrides` then runs on *that*:
+//!
+//! 1. A stage 1 draw stays a draw, whatever the rating did.
+//! 2. Otherwise the summed **displayed** delta decides, and the stage 1 verdict
+//!    stands only where that delta is zero.
+//! 3. A loss -- the loss left standing after rule 2, not the one stage 1
+//!    proposed -- whose **raw mean** moved up becomes a draw.
+//!
+//! Reading rules 2 and 3 the other way round is wrong in both directions, and
+//! is what kept these numbers off the tracker's: a game stage 1 called a win,
+//! whose displayed rating fell while its mean rose, is a draw; a game stage 1
+//! called a loss whose displayed rating rose is a win.
+//!
+//! Stages 1 and 2 read **every** rating change, nameable leaderboard or not.
+//! The tracker drops the unnameable ones in one place only, `getRatingEntries`
+//! in `analytics.js`, which is stage 3.
 //!
 //! # Stage 3: what is counted, from `src/analytics.js`
 //!
@@ -42,9 +56,10 @@
 //!
 //! # Two deltas, not one
 //!
-//! Stages 1 and 3 use the **displayed** rating, `mean - 3 * deviation`. Stage 2
-//! rule 2 uses the **raw mean**. They disagree whenever the deviation moves,
-//! which is every game, so this is not a detail that can be smoothed over.
+//! Stages 1 and 3 use the **displayed** rating, `mean - 3 * deviation`, and so
+//! does stage 2 rule 2. Stage 2 rule 3 uses the **raw mean**. The two disagree
+//! whenever the deviation moves, which is every game, so this is not a detail
+//! that can be smoothed over.
 
 use serde::{Deserialize, Serialize};
 
@@ -83,7 +98,7 @@ impl RatingChange {
         Some(((after - before) * 100.0).round() / 100.0)
     }
 
-    /// The change in raw mean, which stage 2 rule 2 asks for.
+    /// The change in raw mean, which stage 2 rule 3 asks for.
     pub fn mean_delta(&self) -> Option<f64> {
         Some(self.mean_after? - self.mean_before?)
     }
@@ -277,17 +292,27 @@ fn two_player_rating(game: &GameRows, own: &PlayerRow) -> Option<Outcome> {
     })
 }
 
-/// The displayed deltas of every nameable leaderboard, added up. `None` when
-/// there is not one to add.
+/// Every displayed delta this row carries, added up. `None` when there is not
+/// one to add.
+///
+/// Every change, nameable leaderboard or not. The tracker drops the unnameable
+/// ones in exactly one place -- `analytics.getRatingEntries`, which is stage 3
+/// -- and `official.js`, which is stages 1 and 2, reads the lot. Filtering here
+/// as well would make a game rated only on a leaderboard this client cannot
+/// name undecidable, where the tracker calls it.
 fn summed_displayed_delta(row: &PlayerRow) -> Option<f64> {
-    let deltas: Vec<f64> = named_changes(row)
+    let deltas: Vec<f64> = row
+        .rating_changes
+        .iter()
         .filter_map(RatingChange::displayed_delta)
         .collect();
     (!deltas.is_empty()).then(|| deltas.iter().sum())
 }
 
-/// The tracker drops every rating change it cannot name a leaderboard for, so
-/// a game rated only on an unnameable one has no movement at all.
+/// The tracker drops every rating change it cannot name a leaderboard for when
+/// it decides whether a game moved a rating at all, so a game rated only on an
+/// unnameable one has no movement. Stage 3 only; see
+/// [`summed_displayed_delta`].
 fn named_changes(row: &PlayerRow) -> impl Iterator<Item = &RatingChange> {
     row.rating_changes
         .iter()
@@ -301,15 +326,44 @@ fn stage_two(game: &GameRows, player_id: i32, verdict: Outcome) -> Outcome {
         return verdict;
     };
 
-    // 1. A draw is sticky, from either source.
-    if verdict == Outcome::Draw || own.result.eq_ignore_ascii_case("DRAW") {
+    // 1. A draw from stage 1 is sticky. It is checked before the rating,
+    //    because the tracker carries the stage 1 verdict forward as
+    //    `apiPlayerOutcome` and reads that first.
+    if verdict == Outcome::Draw {
         return Outcome::Draw;
     }
 
-    // 2. A loss that gained mean is a draw. The raw mean, not the displayed
+    // 2. The rating overrules the verdict, and it does so *before* the rule
+    //    below rather than after it. `normalizeGame` settles the outcome as
+    //    `ratingOutcome || inferredOutcome` and only then does
+    //    `applyRatingOutcomeOverrides` look for a loss to soften, so the loss
+    //    it looks at is the one the rating just produced.
+    //
+    //    Reading the two the other way round -- the raw mean against the
+    //    stage 1 verdict, then the displayed delta -- is what kept this
+    //    disagreeing with the tracker: a game stage 1 called a win, whose
+    //    displayed rating fell while its mean rose, is a draw there and was a
+    //    loss here, and a game stage 1 called a loss whose displayed rating
+    //    rose is a win there and was a draw here.
+    let total: f64 = own
+        .rating_changes
+        .iter()
+        .filter_map(RatingChange::displayed_delta)
+        .sum();
+    let settled = if total > 0.0 {
+        Outcome::Win
+    } else if total < 0.0 {
+        Outcome::Loss
+    } else {
+        verdict
+    };
+
+    // 3. A loss that gained mean is a draw. The raw mean, not the displayed
     //    rating: this one rule reads the other number.
-    if verdict == Outcome::Loss {
-        let means: Vec<f64> = named_changes(own)
+    if settled == Outcome::Loss {
+        let means: Vec<f64> = own
+            .rating_changes
+            .iter()
             .filter_map(RatingChange::mean_delta)
             .collect();
         if !means.is_empty() && means.iter().sum::<f64>() > 0.0 {
@@ -317,21 +371,7 @@ fn stage_two(game: &GameRows, player_id: i32, verdict: Outcome) -> Outcome {
         }
     }
 
-    // 3. Where the rating disagrees, the rating wins.
-    let total: f64 = named_changes(own)
-        .filter_map(RatingChange::displayed_delta)
-        .sum();
-    let from_rating = if total > 0.0 {
-        Some(Outcome::Win)
-    } else if total < 0.0 {
-        Some(Outcome::Loss)
-    } else {
-        None
-    };
-    match from_rating {
-        Some(rating) if rating != verdict => rating,
-        _ => verdict,
-    }
+    settled
 }
 
 // ─────────────────────────────── stage 3 ────────────────────────────────
@@ -395,13 +435,8 @@ mod tests {
         assert_eq!(outcome_for(&g, 2), Outcome::Draw);
     }
 
-    /// Stage 2 rule 3: the server said one thing, the rating another. A
+    /// Stage 2 rule 2: the server said one thing, the rating another. A
     /// reported win whose rating fell is a loss.
-    ///
-    /// The mirror case -- a reported loss whose rating rose -- never reaches
-    /// rule 3, because rule 2 catches it first and calls it a draw. That is
-    /// `a_loss_whose_mean_rose_is_a_draw`, and it is the reason a record can
-    /// hold draws the server never reported.
     #[test]
     fn the_rating_overrules_the_servers_word() {
         let mut rows = vec![row(1, "VICTORY", 1, 10), row(2, "DEFEAT", 2, 5)];
@@ -410,7 +445,56 @@ mod tests {
         assert_eq!(outcome_for(&g, 1), Outcome::Loss);
     }
 
-    /// Stage 2 rule 2, which reads the raw mean rather than the displayed
+    /// The mirror case, and the one the order between rules 2 and 3 decides.
+    ///
+    /// A reported loss whose displayed rating rose is a **win**: rule 2 turns
+    /// it into one, and rule 3 only softens a loss that is still a loss after
+    /// rule 2 has spoken. Reading rule 3 against the stage 1 verdict instead
+    /// made this a draw, which is one of the two ways this used to drift from
+    /// faftracker.
+    #[test]
+    fn a_reported_loss_whose_rating_rose_is_a_win() {
+        let mut rows = vec![row(1, "DEFEAT", 1, 5), row(2, "VICTORY", 2, 10)];
+        rows[0].rating_changes = vec![change(1000.0, 1012.0)];
+        let g = game(rows);
+        assert_eq!(outcome_for(&g, 1), Outcome::Win);
+    }
+
+    /// The other way the order shows: stage 1 called this a win, the displayed
+    /// rating made it a loss, and the raw mean then softens *that* loss into a
+    /// draw. Rule 3 never saw the stage 1 verdict at all.
+    #[test]
+    fn a_reported_win_the_rating_turned_into_a_loss_can_still_be_a_draw() {
+        let mut rows = vec![row(1, "VICTORY", 1, 10), row(2, "DEFEAT", 2, 5)];
+        // Mean up 4, deviation up 10: the displayed rating falls by 26.
+        rows[0].rating_changes = vec![RatingChange {
+            leaderboard: "global".into(),
+            mean_before: Some(1000.0),
+            mean_after: Some(1004.0),
+            deviation_before: Some(50.0),
+            deviation_after: Some(60.0),
+        }];
+        let g = game(rows);
+        assert_eq!(outcome_for(&g, 1), Outcome::Draw);
+    }
+
+    /// Stages 1 and 2 read every rating change; only stage 3 drops the ones
+    /// whose leaderboard cannot be named. So a game rated solely on an
+    /// unnameable leaderboard still has its outcome decided by that movement
+    /// -- it simply does not count towards a record afterwards.
+    #[test]
+    fn an_unnameable_leaderboard_still_decides_the_outcome() {
+        let mut rows = vec![row(1, "VICTORY", 1, 10), row(2, "DEFEAT", 2, 5)];
+        rows[0].rating_changes = vec![RatingChange {
+            leaderboard: String::new(),
+            ..change(1000.0, 988.0)
+        }];
+        let g = game(rows);
+        assert_eq!(outcome_for(&g, 1), Outcome::Loss);
+        assert!(!moved_a_rating(&g, 1));
+    }
+
+    /// Stage 2 rule 3, which reads the raw mean rather than the displayed
     /// rating: a loss whose mean rose is a draw, not a win.
     #[test]
     fn a_loss_whose_mean_rose_is_a_draw() {

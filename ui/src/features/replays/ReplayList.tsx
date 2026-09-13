@@ -5,10 +5,9 @@ import {
   mapThumbnailCandidates,
   normalizeMapName,
 } from "../../shared/mapPresentation";
-import { formatRelativeDuration } from "../../shared/durations";
-import { clientIntlTag } from "../../shared/dates";
+import { clientIntlTag, formatAgeOrDate } from "../../shared/dates";
 import { useAppStore } from "../../store/store";
-import { t, type MessageKey } from "../../i18n";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { useColumnWidths } from "../../shared/useColumnWidths";
@@ -80,14 +79,7 @@ export function formatReplayListTime(value: string | number, fallback = "N/A"): 
 }
 
 export function formatReplayListAge(value: string | number, fallback = "N/A"): string {
-  if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
-  const played = new Date(value).getTime();
-  if (Number.isNaN(played)) return fallback;
-  const seconds = (Date.now() - played) / 1000;
-  if (seconds < 0) return fallback;
-  const justNow = t("replays.card.justNow");
-  const elapsed = formatRelativeDuration(seconds, { nowLabel: justNow });
-  return elapsed === justNow ? elapsed : t("replays.card.ago", { duration: elapsed });
+  return formatAgeOrDate(value, fallback);
 }
 
 function ReplayListCellView({ cell, className = "" }: { cell: ReplayListCell; className?: string }) {

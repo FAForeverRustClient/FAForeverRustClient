@@ -1425,20 +1425,29 @@ button.vault-input {
   box-shadow: var(--shadow-popover);
 }
 
-.replay-preview-overlay-head {
+/* The full technical name, the way the Play tab's preview shows it: this is
+   the one place in the replay tab where a generated map's forty characters of
+   Base32 are readable and copyable in one piece. */
+.replay-preview-overlay-name {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  min-width: 0;
 }
 
-.replay-preview-overlay-head h3 {
-  margin: 0;
-  font-size: 16px;
+.replay-preview-overlay-name > span {
+  flex: none;
+  color: var(--color-subtle);
+  font-size: 11px;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.replay-preview-overlay-name code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
 }
 
 .replay-preview-overlay-image {
@@ -1678,6 +1687,9 @@ button.vault-input {
 .replay-card-bottom {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* The two buttons line up on their bottom edge, so the reason stacked above
+     one of them lifts that line rather than stretching the other button. */
+  align-items: end;
   gap: var(--space-3);
   margin-top: auto;
   padding-top: var(--space-1);
@@ -1793,10 +1805,15 @@ button.vault-input {
 
 /* The result button and the sentence that says why it is dead. Grouped so the
    two never separate when the bottom bar wraps. */
+/* The reason sits above the button rather than beside it. Beside it, a long
+   sentence pushed the button along the row and squeezed the one next to it;
+   above it, the line is as wide as it needs to be and the button stays where
+   the reader left it. */
 .replay-card-result-group {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   min-width: 0;
   flex: 1 1 auto;
 }

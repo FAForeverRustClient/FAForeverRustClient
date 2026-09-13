@@ -435,6 +435,7 @@ async fn handle_update(
             game_notifications.mark_authenticated();
             out.emit(LobbyEvent::Connected);
             restore_player_vetoes(ctx, out);
+            restore_game_session(ctx);
         }
         // Back to the state the first attempt starts in. Deliberately not
         // `Disconnected`, which clears every list the lobby has sent: the
@@ -779,10 +780,35 @@ fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
     ctx.ports.lobby.set_player_vetoes(vetoes);
 }
 
+/// Put the server's game connection back after the socket that held it went.
+///
+/// The lobby server hangs a player's game connection off the socket the game
+/// was launched on. Lose that socket -- a drop, or the user pressing
+/// Disconnect and then Reconnect -- and the connection goes with it: the ICE
+/// adapter carries on offering candidates to a server that is no longer
+/// relaying them, and the players in the running game never reconnect to each
+/// other. That is the report this exists for.
+///
+/// Sent on every transition into "authenticated" while a game is running, and
+/// only then, which is what the reference client does in `GameRunner`. The
+/// server answers a game that has since ended with a warning rather than an
+/// error, so a race with the game's last seconds costs nothing.
+fn restore_game_session(ctx: &ServiceCtx) {
+    let Some(game_id) = ctx.running_game.id() else {
+        return;
+    };
+    tracing::info!(
+        game_id,
+        "lobby reconnected during a game; restoring the session"
+    );
+    ctx.ports.lobby.restore_game_session(game_id);
+}
+
 fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
     ctx.ports.process.kill();
     ctx.ports.ice.stop();
     ctx.lobby_join_active.finish();
+    ctx.running_game.clear();
     out.emit(LobbyEvent::GameTerminated);
 }
 
