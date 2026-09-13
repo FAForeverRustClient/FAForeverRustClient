@@ -3566,6 +3566,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.vetoesUsedAria": "{used} von {limit} Vetos verbraucht",
   "lobby.browser.resizeColumn": "Spalte {column} in der Breite ändern",
   "lobby.browser.sortByColumn": "Nach {column} sortieren",
+  "lobby.browser.sortAscending": "aufsteigend",
+  "lobby.browser.sortDescending": "absteigend",
   "lobby.browser.resizeDetails": "Breite der Detailspalte ändern",
   "lobby.browser.openProfile": "Profil von {name} öffnen",
   "lobby.browser.tileAria": "{title}, gehostet von {host}. Doppelklick zum Beitreten.",

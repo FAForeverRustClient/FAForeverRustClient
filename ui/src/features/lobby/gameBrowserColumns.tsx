@@ -11,6 +11,7 @@ import { ResizeHandle } from "../../design-system/ResizeHandle";
 import type { CustomGameSort } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { sortsDescending } from "./gameSortOrder";
 import { useTranslation } from "../../i18n/useTranslation";
 import {
   columnTemplate,
@@ -154,8 +155,9 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
       {labels.map((label, index) => {
         const column = COLUMN_SORTS[index];
         const active = column === sort;
+        const descending = sortsDescending(column, reversed);
         return (
-          <span key={label} aria-sort={active ? (reversed ? "descending" : "ascending") : "none"}>
+          <span key={label}>
             {/* One line in front of every column but the first, standing where
                 that column starts. It trades width between the two columns it
                 separates, so it lands under the cursor and no other line moves.
@@ -183,12 +185,22 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
             <button
               type="button"
               className={active ? "game-browser-head-sort is-active" : "game-browser-head-sort"}
+              // `aria-sort` would be the right thing to say here and cannot be
+              // said: it is only meaningful on a `columnheader`, and this list
+              // is a CSS grid of plain elements rather than a table, so the
+              // role would be a claim about a structure that is not there. The
+              // label carries the order instead.
               title={t("lobby.browser.sortByColumn", { column: label })}
+              aria-label={`${t("lobby.browser.sortByColumn", { column: label })}${
+                active
+                  ? ` (${t(descending ? "lobby.browser.sortDescending" : "lobby.browser.sortAscending")})`
+                  : ""
+              }`}
               onClick={() => chooseSort(column)}
             >
               <span className="game-browser-head-label">{label}</span>
               <span className="game-browser-head-arrow" aria-hidden="true">
-                {active ? (reversed ? "↑" : "↓") : "⇅"}
+                {active ? (descending ? "↓" : "↑") : "⇅"}
               </span>
             </button>
           </span>

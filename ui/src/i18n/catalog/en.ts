@@ -1130,6 +1130,8 @@ export const en = {
   // bound has to be unambiguous: "-1000-700" is what the tag itself cannot say.
   "lobby.browser.resizeColumn": "Resize the {column} column",
   "lobby.browser.sortByColumn": "Sort by {column}",
+  "lobby.browser.sortAscending": "ascending",
+  "lobby.browser.sortDescending": "descending",
   "lobby.browser.resizeDetails": "Resize the details panel",
   "lobby.browser.openProfile": "Open {name}'s profile",
   "lobby.browser.tileAria": "{title}, hosted by {host}. Double-click to join.",
