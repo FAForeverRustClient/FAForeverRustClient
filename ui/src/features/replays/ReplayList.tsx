@@ -274,7 +274,9 @@ export function ReplayList({
                 onReset={columns.onReset}
               />
             )}
-            {t(column.label)}
+            {/* The label clips itself rather than letting the header cell do
+                it: the cell has to let the divider hang outside its own box. */}
+            <span className="replay-list-head-label">{t(column.label)}</span>
           </span>
         ))}
       </div>

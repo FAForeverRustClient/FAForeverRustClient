@@ -107,6 +107,15 @@
 
 .replay-list-header > span {
   min-width: 0;
+}
+
+/* The clipping sits on the label, not on the cell around it. The grab handle
+   is positioned entirely outside its cell -- it straddles the boundary in
+   front of it -- so a cell that hid its overflow hid the divider with it, and
+   the online and local replay lists had columns that could not be dragged at
+   all. The game browser learned this first; this is the same shape. */
+.replay-list-head-label {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
