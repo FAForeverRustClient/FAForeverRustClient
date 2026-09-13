@@ -136,8 +136,8 @@
    stands. Right-aligning the three number columns put their labels a whole
    column away from the line that moves them, so the same line read as being
    in front of one label, behind another and in the middle of nothing at all,
-   depending on which column it was. The numbers under them stay right-aligned:
-   a column of ratings is read down its last digit. */
+   depending on which column it was. The numbers under them start there too:
+   a column that is dragged wider has to take its own contents with it. */
 .game-browser-head > span {
   text-align: left;
 }
@@ -317,14 +317,19 @@
   white-space: nowrap;
 }
 
+/* Hard against the start of the column, not its end. A right-aligned
+   figure sits against the *next* column's divider, so dragging the line in
+   front of Players left the count where it was and moved everything else:
+   the column grew away from its own number. Start-aligned, the label, the
+   divider and the figures under them all move together. */
 .game-browser-players-col,
 .game-browser-rating-col,
 .game-browser-age-col {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: left;
   font-size: 13px;
   font-weight: 550;
   color: var(--color-text-strong);

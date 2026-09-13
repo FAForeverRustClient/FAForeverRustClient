@@ -113,7 +113,7 @@
 }
 
 /* The label against the leading edge of its own column, where its divider
-   stands. The figures under it stay right-aligned. */
+   stands. The figures under it start there too. */
 .replay-list-header-number {
   text-align: left;
 }
@@ -237,8 +237,13 @@
   background: var(--color-bg);
 }
 
+/* Hard against the start of the column, not its end. A right-aligned
+   figure sits against the *next* column's divider, so dragging the line in
+   front of Players left the count where it was and moved everything else:
+   the column grew away from its own number. Start-aligned, the label, the
+   divider and the figures under them all move together. */
 .replay-list-number-cell {
-  text-align: right;
+  text-align: left;
   font-variant-numeric: tabular-nums;
 }
 
@@ -293,11 +298,15 @@
 .replay-list-status-warn { color: var(--color-warn); }
 .replay-list-status-error { color: var(--color-error); }
 
+/* At the start of the last column, for the same reason the figures are: the
+   column no longer takes the leftover width, so its buttons would otherwise
+   hang off the far edge of the window rather than sitting under their own
+   heading. */
 .replay-list-actions {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 4px;
 }
 
