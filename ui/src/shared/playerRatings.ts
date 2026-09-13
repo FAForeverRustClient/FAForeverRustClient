@@ -44,10 +44,29 @@ const LEADERBOARD_LABELS: Record<string, string> = {
 /** How a leaderboard is named in the UI: "Global", "1v1", "2v2", ... */
 export function leaderboardLabel(technicalName: string): string {
   if (technicalName === GLOBAL_LEADERBOARD) return t("chat.rating.global");
-  return (
-    LEADERBOARD_LABELS[technicalName]
-    ?? technicalName.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
-  );
+  return LEADERBOARD_LABELS[technicalName] ?? prettyLeaderboardName(technicalName);
+}
+
+/**
+ * A board this client has no name of its own for, made readable.
+ *
+ * `tmm_4v4_fullShare` read as "Tmm 4v4 FullShare", which is three faults in
+ * one label: the queue family is a prefix rather than part of the name, an
+ * underscore is a word break, and so is the hump inside a camel-cased segment.
+ * It reads "4v4 Full Share" now.
+ *
+ * A better fallback rather than four more entries in the table above: FAF adds
+ * leaderboards without asking this client, and the next one should read
+ * properly on the day it appears rather than on the day somebody notices.
+ */
+function prettyLeaderboardName(technicalName: string): string {
+  return technicalName
+    // `tmm_` and `ladder_` say which matchmaker a board belongs to, which is
+    // not part of what the board is called.
+    .replace(/^(tmm|ladder)_/, "")
+    .replace(/_/g, " ")
+    .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 /** The order the leaderboards are listed in, global first then by team size. */
