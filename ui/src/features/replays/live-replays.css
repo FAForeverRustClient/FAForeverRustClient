@@ -190,7 +190,7 @@
 
 /* Every label against the leading edge of its own column, where its divider
    stands, so one line reads the same way in front of every column. The figures
-   under them stay right-aligned. */
+   under them start there too. */
 .live-number-column button,
 .live-watch-column {
   justify-content: flex-start;
@@ -298,10 +298,15 @@
   font-weight: 600;
 }
 
+/* Hard against the start of the column, not its end. A right-aligned
+   figure sits against the *next* column's divider, so dragging the line in
+   front of Players left the count where it was and moved everything else:
+   the column grew away from its own number. Start-aligned, the label, the
+   divider and the figures under them all move together. */
 .live-number-cell,
 .live-rating-cell {
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: left;
 }
 
 .live-number-cell strong {
