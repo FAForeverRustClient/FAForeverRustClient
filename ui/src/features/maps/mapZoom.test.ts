@@ -6,6 +6,7 @@ import {
   clampScale,
   panBy,
   zoomByStep,
+  zoomByWheel,
   zoomTo,
 } from "./mapZoom";
 
@@ -44,6 +45,14 @@ describe("map preview zoom", () => {
     expect(inOnce.scale).toBeGreaterThan(1);
     expect(backAgain.scale).toBeCloseTo(1);
     expect(backAgain.x).toBeCloseTo(0);
+  });
+
+  it("zooms smoothly and proportionally with wheel delta", () => {
+    const point = { x: 200, y: 200 };
+    const wheeledIn = zoomByWheel(NO_ZOOM, -100, point, size);
+    expect(wheeledIn.scale).toBeGreaterThan(1);
+    const wheeledOut = zoomByWheel(wheeledIn, 100, point, size);
+    expect(wheeledOut.scale).toBeCloseTo(1);
   });
 
   it("zooming out from a corner walks the view back to the whole map", () => {

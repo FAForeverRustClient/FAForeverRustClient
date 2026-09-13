@@ -44,6 +44,7 @@ export function App() {
   const theme = useAppStore((s) => s.state.settings.theme);
   const appearance = useAppStore((s) => s.state.settings.appearance);
   const browsing = useAppStore((s) => s.state.settings.browsing);
+  const friendColor = useAppStore((s) => s.state.settings.chat.nameColors.friends);
   const browsingMigrationStarted = useRef(false);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
@@ -57,6 +58,16 @@ export function App() {
     document.documentElement.dataset.density = appearance.density;
     document.documentElement.dataset.reducedMotion = String(appearance.reduceMotion);
   }, [appearance.density, appearance.reduceMotion, theme]);
+
+  // Project the friend color preference at the document root so token-driven
+  // friend indicators (game tile borders, friend badges, chat elements) align.
+  useEffect(() => {
+    if (friendColor && friendColor.trim() !== "") {
+      document.documentElement.style.setProperty("--color-friend", friendColor.trim());
+    } else {
+      document.documentElement.style.removeProperty("--color-friend");
+    }
+  }, [friendColor]);
 
   // Apply interface scale at the document root to avoid native WebView2 HWND clipping on Windows.
   useEffect(() => {

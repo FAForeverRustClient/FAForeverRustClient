@@ -31,6 +31,9 @@ export const MIN_SCALE = 1;
 /// Past that the image is its own compression artefacts.
 export const MAX_SCALE = 6;
 
+/// Clean discrete zoom increments for button and keyboard stepping.
+export const ZOOM_STEPS = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6] as const;
+
 export function clampScale(scale: number): number {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
@@ -70,16 +73,43 @@ export function zoomTo(
   );
 }
 
-/// One wheel notch. Multiplicative, so the steps feel the same size at every
-/// zoom level rather than crawling at the top and jumping at the bottom.
+/// Step to the next or previous preset zoom level. Stepping through explicit
+/// presets keeps zoom levels round (100%, 125%, 150%, 200%, etc.) and fully
+/// reversible across direction changes.
 export function zoomByStep(
   transform: ZoomTransform,
   direction: 1 | -1,
   point: { x: number; y: number },
   size: ViewportSize,
 ): ZoomTransform {
-  const factor = direction > 0 ? 1.3 : 1 / 1.3;
-  return zoomTo(transform, transform.scale * factor, point, size);
+  const current = transform.scale;
+  let target: number;
+  if (direction > 0) {
+    const next = ZOOM_STEPS.find((s) => s > current + 0.01);
+    target = next ?? MAX_SCALE;
+  } else {
+    const prev = [...ZOOM_STEPS].reverse().find((s) => s < current - 0.01);
+    target = prev ?? MIN_SCALE;
+  }
+  return zoomTo(transform, target, point, size);
+}
+
+/// Zoom smoothly via wheel or trackpad delta. Dampened exponential scaling
+/// prevents trackpad acceleration from shooting past bounds while keeping
+/// standard mouse wheel ticks responsive.
+export function zoomByWheel(
+  transform: ZoomTransform,
+  deltaY: number,
+  point: { x: number; y: number },
+  size: ViewportSize,
+): ZoomTransform {
+  const clamped = Math.max(-80, Math.min(80, deltaY));
+  const factor = Math.exp(-clamped * 0.0025);
+  let next = clampScale(transform.scale * factor);
+  if (Math.abs(next - MIN_SCALE) < 0.02) {
+    next = MIN_SCALE;
+  }
+  return zoomTo(transform, next, point, size);
 }
 
 /// Move the image by a mouse or keyboard delta, staying inside the viewport.
