@@ -52,11 +52,11 @@ describe("the facts an author can check before publishing", () => {
 
   it("lists a mod's version, author and uid", () => {
     expect(uploadFacts(request(), mod, null, size)).toEqual([
-      { labelKey: "uploads.fact.name", value: "Nomads" },
-      { labelKey: "uploads.fact.version", value: "42" },
-      { labelKey: "uploads.fact.author", value: "Exotic_Retard" },
-      { labelKey: "uploads.fact.uid", value: "abc-123" },
-      { labelKey: "uploads.fact.folder", value: "nomads" },
+      { labelKey: "uploads.fact.name", value: "Nomads", icon: "edit" },
+      { labelKey: "uploads.fact.version", value: "42", icon: "changelog" },
+      { labelKey: "uploads.fact.author", value: "Exotic_Retard", icon: "users" },
+      { labelKey: "uploads.fact.uid", value: "abc-123", icon: "info" },
+      { labelKey: "uploads.fact.folder", value: "nomads", icon: "folder" },
     ]);
   });
 
@@ -76,21 +76,21 @@ describe("the facts an author can check before publishing", () => {
       null,
       size,
     );
-    expect(facts).toContainEqual({ labelKey: "uploads.fact.mapSize", value: "20 km" });
-    expect(facts).toContainEqual({ labelKey: "uploads.fact.players", value: "8" });
+    expect(facts).toContainEqual({ labelKey: "uploads.fact.mapSize", value: "20 km", icon: "maps" });
+    expect(facts).toContainEqual({ labelKey: "uploads.fact.players", value: "8", icon: "users" });
   });
 
   it("leaves out what it does not know rather than printing a dash", () => {
     // A folder picked from disk has no installed record behind it.
     expect(uploadFacts(request({ sourcePath: "D:/mods/wip" }), undefined, null, size)).toEqual([
-      { labelKey: "uploads.fact.name", value: "Nomads" },
-      { labelKey: "uploads.fact.folder", value: "D:/mods/wip" },
+      { labelKey: "uploads.fact.name", value: "Nomads", icon: "edit" },
+      { labelKey: "uploads.fact.folder", value: "D:/mods/wip", icon: "folder" },
     ]);
   });
 
   it("shows the size once compression has measured it", () => {
     const facts = uploadFacts(request(), mod, 2048, size);
-    expect(facts).toContainEqual({ labelKey: "uploads.fact.size", value: "2048 B" });
+    expect(facts).toContainEqual({ labelKey: "uploads.fact.size", value: "2048 B", icon: "download" });
   });
 
   it("returns no description for a blank one", () => {

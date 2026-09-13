@@ -47,6 +47,10 @@ export function vaultPresence(
 export interface UploadFact {
   readonly labelKey: string;
   readonly value: string;
+  /// The glyph in front of the label, so the rows read as facts about one
+  /// thing rather than as a bare two-column list. Names from `design-system`'s
+  /// `IconName`; kept as a string here so this stays a pure module.
+  readonly icon: string;
 }
 
 function kilometres(width: number | undefined, height: number | undefined): string | null {
@@ -73,11 +77,13 @@ export function uploadFacts(
   formatSize: (bytes: number) => string,
 ): UploadFact[] {
   const facts: UploadFact[] = [];
-  const push = (labelKey: string, value: string | null | undefined) => {
-    if (value !== null && value !== undefined && value !== "") facts.push({ labelKey, value });
+  const push = (labelKey: string, value: string | null | undefined, icon: string) => {
+    if (value !== null && value !== undefined && value !== "") {
+      facts.push({ labelKey, value, icon });
+    }
   };
 
-  push("uploads.fact.name", request.displayName);
+  push("uploads.fact.name", request.displayName, "edit");
 
   // Narrowed on `uid`, the one field only a mod has and always has: the two
   // shapes overlap everywhere else, and the request's kind is what says which
@@ -86,19 +92,19 @@ export function uploadFacts(
   const map = installed && !("uid" in installed) ? installed : undefined;
 
   if (request.kind === "mod") {
-    push("uploads.fact.version", mod?.version);
-    push("uploads.fact.author", mod?.author);
+    push("uploads.fact.version", mod?.version, "changelog");
+    push("uploads.fact.author", mod?.author, "users");
     // The uid is the one field an author cannot see anywhere else in the
     // client, and it is what the vault refuses a duplicate of.
-    push("uploads.fact.uid", mod?.uid);
+    push("uploads.fact.uid", mod?.uid, "info");
   } else {
-    push("uploads.fact.version", map?.version ?? undefined);
-    push("uploads.fact.mapSize", kilometres(map?.width, map?.height));
-    push("uploads.fact.players", map?.maxPlayers ? String(map.maxPlayers) : null);
+    push("uploads.fact.version", map?.version ?? undefined, "changelog");
+    push("uploads.fact.mapSize", kilometres(map?.width, map?.height), "maps");
+    push("uploads.fact.players", map?.maxPlayers ? String(map.maxPlayers) : null, "users");
   }
 
-  push("uploads.fact.size", folderBytes === null ? null : formatSize(folderBytes));
-  push("uploads.fact.folder", request.sourcePath ?? request.folderName);
+  push("uploads.fact.size", folderBytes === null ? null : formatSize(folderBytes), "download");
+  push("uploads.fact.folder", request.sourcePath ?? request.folderName, "folder");
   return facts;
 }
 
