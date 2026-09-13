@@ -147,9 +147,15 @@ const LiveReplayCard = memo(function LiveReplayCard({
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const missions = useAppStore((state) => state.state.coop.missions);
+  // The vault's lineup when it has one: the lobby sends names and nothing
+  // else, and the API's row for a game carries the faction each player picked.
+  // `LiveReplayView` asks for the whole page at once; this only reads the
+  // answer, and draws the lobby's names until it arrives.
+  const lookup = useAppStore((state) => state.state.replays.onlineLookups?.[game.id]);
   const presentation = mapPresentation(vault, game.map, missions);
   const title = replayCardTitle(game.title, presentation.displayName || game.map);
-  const teams = liveReplayTeams(game);
+  const vaultTeams = lookup?.type === "found" ? lookup.payload.teams : [];
+  const teams = vaultTeams.length > 0 ? vaultTeams : liveReplayTeams(game);
   const simMods = Object.values(game.simMods);
 
   // A click that did not land on a control opens the game, which is what the

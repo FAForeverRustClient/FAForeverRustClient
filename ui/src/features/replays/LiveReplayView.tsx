@@ -39,6 +39,10 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const player = useAppStore((s) => s.state.auth.player?.name ?? "spectator");
   const tracking = useAppStore((s) => s.state.replays.liveTracking);
+  // What the vault knows about the games on screen. The lobby names who is in
+  // a running game; only the vault's row, written when the match launched,
+  // says what they are playing. See the effect below.
+  const lookups = useAppStore((s) => s.state.replays.onlineLookups);
   const { openPlayerMenu, playerMenu } = usePlayerMenu();
   const [filters, setFilters] = useState<LiveFilters>(browsing.liveReplayFilters);
   const filtersDirty = useRef(false);
@@ -162,6 +166,22 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     })),
     [filteredGames, mapVault, missions, visibleCount],
   );
+
+  // Ask the vault about the games on screen, once each.
+  //
+  // Only for the cards, which is where a lineup is drawn: the table shows its
+  // own row and expands it. Only for games nothing is known about yet, so a
+  // list that refreshes itself every few seconds asks nothing the second time,
+  // and only while this tab is open. The answers are shared with the detail
+  // panel, which is why opening one costs nothing after this.
+  useEffect(() => {
+    if (viewMode !== "tiles") return;
+    const unknown = visibleGames
+      .map(({ game }) => game.id)
+      .filter((id) => !lookups?.[id]);
+    if (unknown.length === 0) return;
+    ipc.send({ kind: "Replays", command: { type: "lookUpOnlineMany", payload: { uids: unknown } } });
+  }, [lookups, viewMode, visibleGames]);
 
   // Looked up rather than held: the live list is replaced wholesale on every
   // snapshot, and a copy would keep showing the lineup the game had when it

@@ -5498,6 +5498,20 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
  */
 { type: "lookUpOnline"; payload: {
 	uid: number,
+} } |
+/**
+ *  The same question about a whole page of games at once.
+ *
+ *  The live-replay grid asks it: the lobby tells it who is in a running
+ *  game but not what they are playing, and the vault's row for that game
+ *  exists from the moment it launches. One request for the games on
+ *  screen, rather than one per card in a list that refreshes itself.
+ *
+ *  Answers land in `online_lookups` exactly as the single lookup's do, so
+ *  a game already asked about is never asked about again.
+ */
+{ type: "lookUpOnlineMany"; payload: {
+	uids: number[],
 } };
 
 export type ReplayDetails = {
@@ -5688,6 +5702,17 @@ export type ReplayQuery = {
 	 *  non-numeric value simply matches nothing.
 	 */
 	replayId: string,
+	/**
+	 *  Several specific replay ids, which is how a *list* asks about the games
+	 *  it is showing.
+	 *
+	 *  Separate from [`Self::replay_id`] rather than a comma-separated version
+	 *  of it: that field is a search box, and a search box holds whatever was
+	 *  typed into it. This one is never typed. The live-replay grid fills it
+	 *  to ask the vault for the lineups of the games on screen, which is one
+	 *  request for a page instead of one per card.
+	 */
+	replayIds?: string[],
 	/**  The player who hosted the game. */
 	host: string,
 	/**

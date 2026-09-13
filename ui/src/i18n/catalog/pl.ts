@@ -1223,6 +1223,12 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.column.mods": "Mody",
   "replays.column.watch": "Obejrzyj",
   "replays.roster.observers": "Obserwatorzy",
+  "replays.roster.morePlayers": {
+    one: "+{count} więcej",
+    few: "+{count} więcej",
+    many: "+{count} więcej",
+    other: "+{count} więcej",
+  },
   "replays.roster.observer": "Obserwator",
   "replays.roster.freeForAll": "Każdy na każdego",
   "replays.roster.players": "Gracze",

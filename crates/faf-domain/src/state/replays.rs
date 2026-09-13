@@ -698,6 +698,18 @@ pub enum ReplayCommand {
     LookUpOnline {
         uid: i32,
     },
+    /// The same question about a whole page of games at once.
+    ///
+    /// The live-replay grid asks it: the lobby tells it who is in a running
+    /// game but not what they are playing, and the vault's row for that game
+    /// exists from the moment it launches. One request for the games on
+    /// screen, rather than one per card in a list that refreshes itself.
+    ///
+    /// Answers land in `online_lookups` exactly as the single lookup's do, so
+    /// a game already asked about is never asked about again.
+    LookUpOnlineMany {
+        uids: Vec<i32>,
+    },
 }
 
 pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {

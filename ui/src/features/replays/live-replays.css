@@ -632,11 +632,15 @@
 /* The card's last line: the host at one end, the way in at the other. It is
    the only row on the card that holds a control, so it is a row rather than
    the line of muted text the vault's footer is. */
+/* One height whatever it holds, so the host sits on the same line in every
+   card of a row: a "Ready in 0:42" trigger and a "Watch" button are not the
+   same height, and the row would otherwise shift as games mature. */
 .live-replay-card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  min-height: 30px;
   margin-top: auto;
 }
 
