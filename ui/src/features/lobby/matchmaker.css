@@ -884,6 +884,27 @@
   width: 0;
 }
 
+/* Unless somebody in this conversation has one. The rail then spends 26px on
+   the column, which is the widest an avatar can be here without the message
+   body starting halfway across the panel; the banner keeps its 2:1 shape, so
+   it is drawn at 26x13 rather than the Chat tab's 32x16. `MatchmakerPartyChat`
+   decides, once per conversation, which is why this is a class on the rail and
+   not a rule per line: three columns that line up is the thing the template
+   above exists to guarantee. */
+.matchmaker-party-chat.has-avatars .chat-message {
+  grid-template-columns: 26px minmax(0, 30%) minmax(0, 1fr);
+}
+
+.matchmaker-party-chat.has-avatars .chat-message-avatar {
+  width: 26px;
+  height: 13px;
+}
+
+.matchmaker-party-chat.has-avatars .chat-message-avatar img {
+  width: 26px;
+  height: 13px;
+}
+
 .matchmaker-party-chat .chat-compose {
   gap: 5px;
   margin-top: 7px;
