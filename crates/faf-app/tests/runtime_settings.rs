@@ -54,6 +54,13 @@ impl ReplayPort for RecordingReplay {
     ) -> Result<faf_domain::state::ReplayDetails, String> {
         unreachable!()
     }
+    async fn load_analysis(
+        &self,
+        _uid: i32,
+        _local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
+        unreachable!()
+    }
     async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
         Ok(Vec::new())
     }

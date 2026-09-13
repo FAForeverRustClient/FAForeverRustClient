@@ -17,14 +17,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs } from "../../design-system/SectionTabs";
-import type { ReplayDetails, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
+import type { ReplayAnalysis, ReplayDetails, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
+import { ReplayActivityChart } from "./ReplayActivityChart";
+import { ReplayEventsPanel, ReplayPlayersPanel } from "./ReplayAnalysisPanels";
+import { ReplayGameStats } from "./ReplayGameStats";
+import { ReplayHeatmap } from "./ReplayHeatmap";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { PlayerName } from "../../shared/nameColors";
 import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { isObserverTeam } from "./ReplayRoster";
 
-type InsightTab = "players" | "chat" | "options" | "mods";
+type InsightTab =
+  | "options"
+  | "chat"
+  | "players"
+  | "events"
+  | "graph"
+  | "heatmap"
+  | "stats"
+  | "mods";
+
+/** The tabs that need the whole command stream rather than the cheap read. */
+const ANALYSIS_TABS: ReadonlySet<InsightTab> = new Set<InsightTab>([
+  "events",
+  "graph",
+  "heatmap",
+  "stats",
+]);
 
 /** `1:23:45`, the way the Java client stamps a line of replay chat. */
 export function formatChatTime(seconds: number): string {
@@ -87,8 +107,12 @@ export function activityRows(
 
 export function ReplayInsights({
   details,
+  analysis,
+  analysisLoading,
+  analysisError,
   teams,
   title,
+  mapPreviewUrl,
   loading,
   error,
   onClose,
@@ -103,10 +127,22 @@ export function ReplayInsights({
    * what it is waiting for.
    */
   details: ReplayDetails | null;
+  /**
+   * The whole command stream, which is the expensive read.
+   *
+   * `null` until it lands, and it lands behind the details: the options and
+   * the chat are what the panel opens on, and everything a reader has to wait
+   * for is behind a tab that says it is still reading.
+   */
+  analysis: ReplayAnalysis | null;
+  analysisLoading: boolean;
+  analysisError: string;
   /** The lineup, for the faction and rating beside a command count. */
   teams: ReplayTeam[];
   /** The game being looked at, for the dialog's heading. */
   title: string;
+  /** The map, for the heatmap to draw its cells over. */
+  mapPreviewUrl?: string;
   loading: boolean;
   error: string;
   onClose: () => void;
@@ -157,10 +193,32 @@ export function ReplayInsights({
     { id: "options" as const, label: t("replays.detail.gameOptions"), count: count(gameOptions.length) },
     { id: "chat" as const, label: t("replays.detail.chat"), count: count(chatMessages.length) },
     { id: "players" as const, label: t("replays.insights.activity"), count: count(rows.length) },
+    { id: "events" as const, label: t("replays.insights.events"), count: analysis?.notices.length },
+    { id: "graph" as const, label: t("replays.insights.graph") },
+    { id: "heatmap" as const, label: t("replays.insights.heatmap") },
+    { id: "stats" as const, label: t("replays.insights.gameStats"), count: analysis?.stats.length },
     ...(simMods.length > 0
       ? [{ id: "mods" as const, label: t("replays.detail.simMods"), count: simMods.length }]
       : []),
   ];
+
+  // A tab that needs the stream says so itself rather than leaving the reader
+  // in front of an empty panel.
+  const waitingForAnalysis = ANALYSIS_TABS.has(tab) && !analysis;
+  const analysisNotice = waitingForAnalysis
+    ? (
+      analysisError
+        ? <p className="replay-download-error surface-error">{analysisError}</p>
+        : (
+          <p className="replay-insights-loading muted">
+            <Icon name="refresh" size={15} className="spin" />
+            <span>{t(analysisLoading
+              ? "replays.insights.walking"
+              : "replays.insights.reading")}</span>
+          </p>
+        )
+    )
+    : null;
 
   return (
     <div className="replay-preview-scrim" role="presentation" onClick={onClose}>
@@ -208,7 +266,22 @@ export function ReplayInsights({
               )
           )}
 
-          {details && tab === "players" && (
+          {analysisNotice}
+
+          {analysis && tab === "events" && <ReplayEventsPanel analysis={analysis} />}
+          {analysis && tab === "graph" && <ReplayActivityChart analysis={analysis} />}
+          {analysis && tab === "heatmap" && (
+            <ReplayHeatmap analysis={analysis} mapPreviewUrl={mapPreviewUrl} />
+          )}
+          {analysis && tab === "stats" && <ReplayGameStats stats={analysis.stats} />}
+
+          {/* The lineup and their rates. Drawn from the stream once it is
+              here, because that is where a player's colour, faction and own
+              last action come from; from the cheap read until then, which
+              knows the names and the counts. */}
+          {analysis && tab === "players" && <ReplayPlayersPanel analysis={analysis} />}
+
+          {!analysis && details && tab === "players" && (
             rows.length === 0 ? (
               <p className="replay-detail-empty muted">{t("replays.insights.noActivity")}</p>
             ) : (

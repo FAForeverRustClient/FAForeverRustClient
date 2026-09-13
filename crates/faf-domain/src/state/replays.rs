@@ -314,6 +314,199 @@ pub struct ReplayDetails {
     pub game_version: Option<i32>,
 }
 
+// The full read of a replay file, for the panel that analyses one.
+//
+// Everything below is what the Python client's replay window reads out of the
+// same file (`src/replays/replaydetails/` in FAForever/client), modelled as
+// types rather than as the HTML that client builds. It is loaded separately
+// from `ReplayDetails`, and only when somebody asks for it: a twenty minute
+// eight player game is a quarter of a million records in the command stream,
+// and the orders and targets pulled out of it are the largest thing this
+// client ever puts in its state.
+
+/// One army in the game, as the replay's own header describes it.
+///
+/// The header is the only place most of this exists: the API knows who played
+/// and what they were rated, and nothing about their colour, their start spot
+/// or which client was driving them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayArmy {
+    /// Index into the client table, which is what the command stream switches
+    /// between. `-1` for an AI, which has an army and no client.
+    pub source: i32,
+    pub name: String,
+    /// `ARMY_1` and so on: the engine's own name for the slot.
+    pub army_name: String,
+    /// 1 UEF, 2 Aeon, 3 Cybran, 4 Seraphim, 5 Random.
+    pub faction: i32,
+    /// 1-based index into the game's colour palette.
+    pub color: i32,
+    pub team: i32,
+    pub start_spot: i32,
+    pub human: bool,
+    /// Two-letter country code, where the player had one set.
+    pub country: String,
+    pub clan: String,
+    /// `trunc(mean - 3*deviation)` at the moment the game launched, which is
+    /// the displayed rating both reference clients compute.
+    pub rating: Option<i32>,
+}
+
+/// The map and the lobby settings the game was played under.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayScenario {
+    pub name: String,
+    pub description: String,
+    /// The map folder, out of the scenario path the engine loaded.
+    pub map_folder: String,
+    /// Map edge length in world units, which is what a heatmap point is in.
+    pub width: i32,
+    pub height: i32,
+    pub options: Vec<ReplayGameOption>,
+}
+
+/// When one client was giving orders.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayActivity {
+    pub source: i32,
+    /// The tick of every order this client gave, in order.
+    ///
+    /// Deduplicated the way the Python client does it: orders of the same kind
+    /// on the same tick count once, because one click that queues a command
+    /// onto a group of units is one action however many records it writes.
+    pub command_ticks: Vec<u32>,
+    /// The last tick this client did anything, which is the denominator of its
+    /// rate. A player who was killed at minute ten is measured over ten
+    /// minutes, not over the forty the game ran for.
+    pub last_tick: u32,
+}
+
+/// One order, for the timeline under the activity graph.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayOrder {
+    pub source: i32,
+    pub tick: u32,
+    /// `EUnitCommandType`: 8 is a mobile build, 27 an upgrade, 28 a script.
+    pub command: i32,
+    /// The unit ordered, where the order names one.
+    pub blueprint: String,
+    /// The enhancement or task a script order carried, where it had one.
+    pub detail: String,
+}
+
+/// Where on the map an order was aimed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayPoint {
+    pub tick: u32,
+    /// World units, rounded. A heatmap bins these into cells, and no bin is
+    /// small enough for the fraction to matter.
+    pub x: i32,
+    pub y: i32,
+    pub command: i32,
+    pub source: i32,
+}
+
+/// A line the game announced rather than a player typed: the notify channel,
+/// which is where the in-game mod reports what it is upgrading.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayNotice {
+    pub tick: u32,
+    /// The client the announcement came from, as an index into the same table
+    /// [`ReplayArmy::source`] points into. `-1` where the record named nobody.
+    pub source: i32,
+    pub text: String,
+}
+
+/// Mass, energy and unit count, the three the engine scores everything in.
+///
+/// Whole numbers, although the simulation sends fractions: a mass total of
+/// `30050.0625` is drawn as a bar, and the sixteenth of a mass point at the end
+/// of it is not a thing anybody reads. Integers also keep these types
+/// comparable and keep every field on the TypeScript side non-null, which a
+/// float cannot be: a Rust `f64` can be `NaN`, so the generator makes it
+/// nullable and every use of it has to say what nothing means.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayTotals {
+    pub mass: i32,
+    pub energy: i32,
+    pub count: i32,
+}
+
+/// One category of unit, for one player.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayUnitStat {
+    /// `land`, `air`, `naval`, `tech1` to `tech3`, `experimental`, `engineer`,
+    /// `structures`, `cdr`, `sacu`, `transportation`.
+    pub category: String,
+    pub built: i32,
+    pub lost: i32,
+    pub kills: i32,
+}
+
+/// One resource flow, for one player.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayResourceStat {
+    /// `massin`, `massout`, `energyin`, `energyout`, `storage`.
+    pub resource: String,
+    pub total: i32,
+    pub reclaimed: i32,
+    /// What the flow wasted, which only the outgoing ones record.
+    pub excess: i32,
+}
+
+/// What the simulation itself said about one player when the game ended.
+///
+/// Not parsed out of the command stream: the game sends it, once, as a
+/// `ModeratorEvent` callback carrying a `JsonStats` payload. Absent from a
+/// replay of a game that ended before the sim sent one, and from any game old
+/// enough to predate it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayPlayerStats {
+    pub name: String,
+    pub faction: i32,
+    /// `Human` or the AI's own kind.
+    pub kind: String,
+    pub defeated: bool,
+    pub score: i32,
+    pub built: ReplayTotals,
+    pub lost: ReplayTotals,
+    pub kills: ReplayTotals,
+    pub units: Vec<ReplayUnitStat>,
+    pub resources: Vec<ReplayResourceStat>,
+}
+
+/// Everything the analysis panel draws, from one read of one replay file.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayAnalysis {
+    /// The game this describes, so a late answer for one replay is not drawn
+    /// over another.
+    pub uid: i32,
+    /// Simulation ticks the stream covers. Ten to the second.
+    pub ticks: u32,
+    /// The engine build the game ran on, as the file's first line spells it.
+    pub game_version: String,
+    pub armies: Vec<ReplayArmy>,
+    /// Clients that were watching rather than playing.
+    pub observers: Vec<String>,
+    pub scenario: ReplayScenario,
+    pub activity: Vec<ReplayActivity>,
+    pub orders: Vec<ReplayOrder>,
+    pub points: Vec<ReplayPoint>,
+    pub notices: Vec<ReplayNotice>,
+    pub stats: Vec<ReplayPlayerStats>,
+}
+
 /// One game's map, as its replay file names it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -538,6 +731,17 @@ pub struct ReplayState {
     pub details_loading: Option<i32>,
     #[serde(default)]
     pub details_error: Option<String>,
+    /// The analysed replay, and only the most recent one.
+    ///
+    /// One of these is megabytes of orders and targets. Keeping a map of them
+    /// the way the details are kept would grow the state by a replay every
+    /// time somebody opened a panel, so the newest answer replaces the last.
+    #[serde(default)]
+    pub analysis: Option<ReplayAnalysis>,
+    #[serde(default)]
+    pub analysis_loading: Option<i32>,
+    #[serde(default)]
+    pub analysis_error: Option<String>,
     /// Vault answers for single game ids, keyed by that id. Filled by
     /// [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
     /// [`OnlineLookup`].
@@ -632,6 +836,16 @@ pub enum ReplayEvent {
         uid: i32,
         reason: String,
     },
+    AnalysisLoading {
+        uid: i32,
+    },
+    AnalysisLoaded {
+        analysis: ReplayAnalysis,
+    },
+    AnalysisFailed {
+        uid: i32,
+        reason: String,
+    },
     /// The vault is being asked about one game id (see [`OnlineLookup`]).
     OnlineLookupStarted {
         uid: i32,
@@ -693,6 +907,18 @@ pub enum ReplayCommand {
     /// replay body.
     #[serde(rename_all = "camelCase")]
     LoadDetails {
+        uid: i32,
+        #[serde(default)]
+        local_path: Option<String>,
+    },
+    /// Read the whole command stream: orders, where they were aimed, what the
+    /// sim announced, and the end-of-game statistics.
+    ///
+    /// Separate from [`Self::LoadDetails`] because it is the expensive half.
+    /// The options and the chat are what somebody opening the panel is usually
+    /// after, and they arrive while this is still walking.
+    #[serde(rename_all = "camelCase")]
+    LoadAnalysis {
         uid: i32,
         #[serde(default)]
         local_path: Option<String>,
@@ -848,6 +1074,27 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
                 state.details_loading = None;
             }
             state.details_error = Some(reason.clone());
+        }
+        ReplayEvent::AnalysisLoading { uid } => {
+            state.analysis_loading = Some(*uid);
+            state.analysis_error = None;
+            // The panel being opened is not the one the held analysis is of.
+            if state.analysis.as_ref().is_some_and(|held| held.uid != *uid) {
+                state.analysis = None;
+            }
+        }
+        ReplayEvent::AnalysisLoaded { analysis } => {
+            if state.analysis_loading == Some(analysis.uid) {
+                state.analysis_loading = None;
+            }
+            state.analysis = Some(analysis.clone());
+            state.analysis_error = None;
+        }
+        ReplayEvent::AnalysisFailed { uid, reason } => {
+            if state.analysis_loading == Some(*uid) {
+                state.analysis_loading = None;
+            }
+            state.analysis_error = Some(reason.clone());
         }
         ReplayEvent::OnlineLookupStarted { uid } => {
             state.online_lookups.insert(*uid, OnlineLookup::Loading);

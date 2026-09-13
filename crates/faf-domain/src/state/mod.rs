@@ -117,9 +117,11 @@ pub use player_card::{
 pub use replays::{
     live_replay_delay_remaining, sort_vault_replays, LiveReplayTarget, LiveReplayTracking,
     LiveReplayTrackingAction, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
-    ReplayChatMessage, ReplayCommand, ReplayCommandStats, ReplayDetails, ReplayEvent,
-    ReplayGameOption, ReplayPlayer, ReplayQuery, ReplaySortField, ReplayState, ReplayStatus,
-    ReplayTeam, ResolvedReplayMap, VaultReplay, VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
+    ReplayActivity, ReplayAnalysis, ReplayArmy, ReplayChatMessage, ReplayCommand,
+    ReplayCommandStats, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayNotice, ReplayOrder,
+    ReplayPlayer, ReplayPlayerStats, ReplayPoint, ReplayQuery, ReplayResourceStat, ReplayScenario,
+    ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, ReplayTotals, ReplayUnitStat,
+    ResolvedReplayMap, VaultReplay, VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
 };
 pub use reporting::{
     ModerationReportSummary, ReportHistoryStatus, ReportStatus, ReportingCommand, ReportingEvent,

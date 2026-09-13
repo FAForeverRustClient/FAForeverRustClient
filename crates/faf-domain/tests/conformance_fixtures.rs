@@ -4783,6 +4783,34 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "one replay analysis is held at a time",
+            vec![
+                ReplayEvent::AnalysisLoading { uid: 11 }.into(),
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 11,
+                        ticks: 3_000,
+                        game_version: "Supreme Commander v1.50.3839".into(),
+                        activity: vec![faf_domain::state::ReplayActivity {
+                            source: 0,
+                            command_ticks: vec![10, 20, 30],
+                            last_tick: 30,
+                        }],
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                // Another replay's panel opens: the orders of the last one
+                // are megabytes that describe a game nobody is looking at.
+                ReplayEvent::AnalysisLoading { uid: 12 }.into(),
+                ReplayEvent::AnalysisFailed {
+                    uid: 12,
+                    reason: "the replay file could not be read".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── leaderboard ──────────────────────────────────────────────────
         case(
             "the other boards land only for the page that is on screen",

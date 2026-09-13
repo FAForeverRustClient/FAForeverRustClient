@@ -5469,6 +5469,80 @@ export type RejectReason = "duplicate" | "incorrectInformation" | "poorQuality" 
  */
 export type Relation = "friend" | "foe";
 
+/**  When one client was giving orders. */
+export type ReplayActivity = {
+	source: number,
+	/**
+	 *  The tick of every order this client gave, in order.
+	 *
+	 *  Deduplicated the way the Python client does it: orders of the same kind
+	 *  on the same tick count once, because one click that queues a command
+	 *  onto a group of units is one action however many records it writes.
+	 */
+	commandTicks: number[],
+	/**
+	 *  The last tick this client did anything, which is the denominator of its
+	 *  rate. A player who was killed at minute ten is measured over ten
+	 *  minutes, not over the forty the game ran for.
+	 */
+	lastTick: number,
+};
+
+/**  Everything the analysis panel draws, from one read of one replay file. */
+export type ReplayAnalysis = {
+	/**
+	 *  The game this describes, so a late answer for one replay is not drawn
+	 *  over another.
+	 */
+	uid: number,
+	/**  Simulation ticks the stream covers. Ten to the second. */
+	ticks: number,
+	/**  The engine build the game ran on, as the file's first line spells it. */
+	gameVersion: string,
+	armies: ReplayArmy[],
+	/**  Clients that were watching rather than playing. */
+	observers: string[],
+	scenario: ReplayScenario,
+	activity: ReplayActivity[],
+	orders: ReplayOrder[],
+	points: ReplayPoint[],
+	notices: ReplayNotice[],
+	stats: ReplayPlayerStats[],
+};
+
+/**
+ *  One army in the game, as the replay's own header describes it.
+ *
+ *  The header is the only place most of this exists: the API knows who played
+ *  and what they were rated, and nothing about their colour, their start spot
+ *  or which client was driving them.
+ */
+export type ReplayArmy = {
+	/**
+	 *  Index into the client table, which is what the command stream switches
+	 *  between. `-1` for an AI, which has an army and no client.
+	 */
+	source: number,
+	name: string,
+	/**  `ARMY_1` and so on: the engine's own name for the slot. */
+	armyName: string,
+	/**  1 UEF, 2 Aeon, 3 Cybran, 4 Seraphim, 5 Random. */
+	faction: number,
+	/**  1-based index into the game's colour palette. */
+	color: number,
+	team: number,
+	startSpot: number,
+	human: boolean,
+	/**  Two-letter country code, where the player had one set. */
+	country: string,
+	clan: string,
+	/**
+	 *  `trunc(mean - 3*deviation)` at the moment the game launched, which is
+	 *  the displayed rating both reference clients compute.
+	 */
+	rating: number | null,
+};
+
 export type ReplayChatMessage = {
 	/**  In-game simulation time in seconds. */
 	timeSeconds: number,
@@ -5518,6 +5592,18 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
  *  replay body.
  */
 { type: "loadDetails"; payload: {
+	uid: number,
+	localPath?: string | null,
+} } |
+/**
+ *  Read the whole command stream: orders, where they were aimed, what the
+ *  sim announced, and the end-of-game statistics.
+ *
+ *  Separate from [`Self::LoadDetails`] because it is the expensive half.
+ *  The options and the chat are what somebody opening the panel is usually
+ *  after, and they arrive while this is still walking.
+ */
+{ type: "loadAnalysis"; payload: {
 	uid: number,
 	localPath?: string | null,
 } } |
@@ -5707,6 +5793,13 @@ export type ReplayEvent = { type: "connecting" } |
 } } | { type: "detailsFailed"; payload: {
 	uid: number,
 	reason: string,
+} } | { type: "analysisLoading"; payload: {
+	uid: number,
+} } | { type: "analysisLoaded"; payload: {
+	analysis: ReplayAnalysis,
+} } | { type: "analysisFailed"; payload: {
+	uid: number,
+	reason: string,
 } } |
 /**  The vault is being asked about one game id (see [`OnlineLookup`]). */
 { type: "onlineLookupStarted"; payload: {
@@ -5732,6 +5825,32 @@ export type ReplayEvent = { type: "connecting" } |
 export type ReplayGameOption = {
 	key: string,
 	value: string,
+};
+
+/**
+ *  A line the game announced rather than a player typed: the notify channel,
+ *  which is where the in-game mod reports what it is upgrading.
+ */
+export type ReplayNotice = {
+	tick: number,
+	/**
+	 *  The client the announcement came from, as an index into the same table
+	 *  [`ReplayArmy::source`] points into. `-1` where the record named nobody.
+	 */
+	source: number,
+	text: string,
+};
+
+/**  One order, for the timeline under the activity graph. */
+export type ReplayOrder = {
+	source: number,
+	tick: number,
+	/**  `EUnitCommandType`: 8 is a mobile build, 27 an upgrade, 28 a script. */
+	command: number,
+	/**  The unit ordered, where the order names one. */
+	blueprint: string,
+	/**  The enhancement or task a script order carried, where it had one. */
+	detail: string,
 };
 
 export type ReplayPlayer = {
@@ -5770,6 +5889,41 @@ export type ReplayPlayer = {
 	outcome: string,
 	/**  Simulation score at the end of the game, when recorded. */
 	score: number | null,
+};
+
+/**
+ *  What the simulation itself said about one player when the game ended.
+ *
+ *  Not parsed out of the command stream: the game sends it, once, as a
+ *  `ModeratorEvent` callback carrying a `JsonStats` payload. Absent from a
+ *  replay of a game that ended before the sim sent one, and from any game old
+ *  enough to predate it.
+ */
+export type ReplayPlayerStats = {
+	name: string,
+	faction: number,
+	/**  `Human` or the AI's own kind. */
+	kind: string,
+	defeated: boolean,
+	score: number,
+	built: ReplayTotals,
+	lost: ReplayTotals,
+	kills: ReplayTotals,
+	units: ReplayUnitStat[],
+	resources: ReplayResourceStat[],
+};
+
+/**  Where on the map an order was aimed. */
+export type ReplayPoint = {
+	tick: number,
+	/**
+	 *  World units, rounded. A heatmap bins these into cells, and no bin is
+	 *  small enough for the fraction to matter.
+	 */
+	x: number,
+	y: number,
+	command: number,
+	source: number,
 };
 
 /**
@@ -5887,6 +6041,28 @@ export type ReplayQuery = {
 	pageSize: number,
 };
 
+/**  One resource flow, for one player. */
+export type ReplayResourceStat = {
+	/**  `massin`, `massout`, `energyin`, `energyout`, `storage`. */
+	resource: string,
+	total: number,
+	reclaimed: number,
+	/**  What the flow wasted, which only the outgoing ones record. */
+	excess: number,
+};
+
+/**  The map and the lobby settings the game was played under. */
+export type ReplayScenario = {
+	name: string,
+	description: string,
+	/**  The map folder, out of the scenario path the engine loaded. */
+	mapFolder: string,
+	/**  Map edge length in world units, which is what a heatmap point is in. */
+	width: number,
+	height: number,
+	options: ReplayGameOption[],
+};
+
 /**
  *  Which property the results are ordered by. The sortable subset of the Java
  *  client's `GAME_PROPERTY_MAPPING` (its `Property::sortable` flag).
@@ -5940,6 +6116,16 @@ export type ReplayState = {
 	detailsLoading?: number | null,
 	detailsError?: string | null,
 	/**
+	 *  The analysed replay, and only the most recent one.
+	 *
+	 *  One of these is megabytes of orders and targets. Keeping a map of them
+	 *  the way the details are kept would grow the state by a replay every
+	 *  time somebody opened a panel, so the newest answer replaces the last.
+	 */
+	analysis?: ReplayAnalysis | null,
+	analysisLoading?: number | null,
+	analysisError?: string | null,
+	/**
 	 *  Vault answers for single game ids, keyed by that id. Filled by
 	 *  [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
 	 *  [`OnlineLookup`].
@@ -5967,6 +6153,34 @@ export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
 export type ReplayTeam = {
 	team: number,
 	players: ReplayPlayer[],
+};
+
+/**
+ *  Mass, energy and unit count, the three the engine scores everything in.
+ *
+ *  Whole numbers, although the simulation sends fractions: a mass total of
+ *  `30050.0625` is drawn as a bar, and the sixteenth of a mass point at the end
+ *  of it is not a thing anybody reads. Integers also keep these types
+ *  comparable and keep every field on the TypeScript side non-null, which a
+ *  float cannot be: a Rust `f64` can be `NaN`, so the generator makes it
+ *  nullable and every use of it has to say what nothing means.
+ */
+export type ReplayTotals = {
+	mass: number,
+	energy: number,
+	count: number,
+};
+
+/**  One category of unit, for one player. */
+export type ReplayUnitStat = {
+	/**
+	 *  `land`, `air`, `naval`, `tech1` to `tech3`, `experimental`, `engineer`,
+	 *  `structures`, `cdr`, `sacu`, `transportation`.
+	 */
+	category: string,
+	built: number,
+	lost: number,
+	kills: number,
 };
 
 export type ReportHistoryStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {

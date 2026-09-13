@@ -594,6 +594,9 @@ export function ReplayDetailPanel({
   const replayDetails = useAppStore((state) => state.state.replays.replayDetails);
   const detailsLoading = useAppStore((state) => state.state.replays.detailsLoading);
   const detailsError = useAppStore((state) => state.state.replays.detailsError);
+  const heldAnalysis = useAppStore((state) => state.state.replays.analysis);
+  const analysisLoading = useAppStore((state) => state.state.replays.analysisLoading);
+  const analysisError = useAppStore((state) => state.state.replays.analysisError);
   const onlineLookups = useAppStore((state) => state.state.replays.onlineLookups);
   // Subscribed, not read once: the answer arrives from the vault after the
   // panel is already open, and the map is what the header of it says.
@@ -635,6 +638,22 @@ export function ReplayDetailPanel({
       kind: "Replays",
       command: {
         type: "loadDetails",
+        payload: {
+          uid: replay.uid,
+          localPath,
+        },
+      },
+    });
+  };
+
+  // Only this replay's answer. The store holds one analysis at a time, so a
+  // panel opened after another must not draw the last one's orders.
+  const analysis = heldAnalysis?.uid === replay.uid ? heldAnalysis : null;
+  const loadAnalysis = () => {
+    ipc.send({
+      kind: "Replays",
+      command: {
+        type: "loadAnalysis",
         payload: {
           uid: replay.uid,
           localPath,
@@ -955,7 +974,12 @@ export function ReplayDetailPanel({
             <Button
               className="replay-card-rail-btn"
               onClick={() => {
+                // Both reads, in the order they are wanted. The file is
+                // fetched once and the second walk reads it off disk, so the
+                // expensive half costs the reader nothing until they reach a
+                // tab that needs it.
                 if (!details && !isLoadingDetails) loadDetails();
+                if (!analysis && analysisLoading !== replay.uid) loadAnalysis();
                 setShowInsights(true);
               }}
               aria-haspopup="dialog"
@@ -1194,8 +1218,12 @@ export function ReplayDetailPanel({
       {showInsights && (
         <ReplayInsights
           details={details ?? null}
+          analysis={analysis}
+          analysisLoading={analysisLoading === replay.uid}
+          analysisError={analysisError ?? ""}
           teams={detailTeams}
           title={cardTitle}
+          mapPreviewUrl={replay.mapThumbnailUrl || undefined}
           loading={isLoadingDetails}
           error={detailsError ?? ""}
           onClose={() => setShowInsights(false)}

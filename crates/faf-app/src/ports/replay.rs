@@ -71,6 +71,16 @@ pub trait ReplayPort: Send + Sync {
         local_path: Option<PathBuf>,
     ) -> Result<faf_domain::state::ReplayDetails, String>;
 
+    /// The whole command stream, for the panel that analyses one replay: every
+    /// order, where it was aimed, what the sim announced, and the statistics it
+    /// sent when the game ended. The expensive read, which is why it is its own
+    /// call; see `ReplayCommand::LoadAnalysis`.
+    async fn load_analysis(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayAnalysis, String>;
+
     /// The map one game was played on, read out of the replay file itself.
     ///
     /// For the games the vault listing has no map for, which is every co-op

@@ -172,6 +172,9 @@
       "replayDetails": {},
       "detailsLoading": null,
       "detailsError": null,
+      "analysis": null,
+      "analysisLoading": null,
+      "analysisError": null,
       "onlineLookups": {},
       "resolvedMaps": {}
     },
@@ -25854,6 +25857,370 @@
       ]
     },
     {
+      "name": "one replay analysis is held at a time",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoading",
+              "payload": {
+                "uid": 11
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 11,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoaded",
+              "payload": {
+                "analysis": {
+                  "uid": 11,
+                  "ticks": 3000,
+                  "gameVersion": "Supreme Commander v1.50.3839",
+                  "armies": [],
+                  "observers": [],
+                  "scenario": {
+                    "name": "",
+                    "description": "",
+                    "mapFolder": "",
+                    "width": 0,
+                    "height": 0,
+                    "options": []
+                  },
+                  "activity": [
+                    {
+                      "source": 0,
+                      "commandTicks": [
+                        10,
+                        20,
+                        30
+                      ],
+                      "lastTick": 30
+                    }
+                  ],
+                  "orders": [],
+                  "points": [],
+                  "notices": [],
+                  "stats": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": {
+              "activity": [
+                {
+                  "commandTicks": [
+                    10,
+                    20,
+                    30
+                  ],
+                  "lastTick": 30,
+                  "source": 0
+                }
+              ],
+              "armies": [],
+              "gameVersion": "Supreme Commander v1.50.3839",
+              "notices": [],
+              "observers": [],
+              "orders": [],
+              "points": [],
+              "scenario": {
+                "description": "",
+                "height": 0,
+                "mapFolder": "",
+                "name": "",
+                "options": [],
+                "width": 0
+              },
+              "stats": [],
+              "ticks": 3000,
+              "uid": 11
+            },
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoading",
+              "payload": {
+                "uid": 12
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 12,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisFailed",
+              "payload": {
+                "uid": 12,
+                "reason": "the replay file could not be read"
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": "the replay file could not be read",
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        }
+      ]
+    },
+    {
       "name": "the other boards land only for the page that is on screen",
       "steps": [
         {
@@ -26773,6 +27140,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26845,6 +27215,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26917,6 +27290,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -26998,6 +27374,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27076,6 +27455,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27145,6 +27527,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27254,6 +27639,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27335,6 +27723,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27410,6 +27801,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27507,6 +27901,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27606,6 +28003,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27705,6 +28105,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27804,6 +28207,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -27903,6 +28309,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28001,6 +28410,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28102,6 +28514,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28205,6 +28620,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28301,6 +28719,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28397,6 +28818,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28497,6 +28921,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28596,6 +29023,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
@@ -28699,6 +29129,9 @@
             }
           },
           "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
             "downloadStatus": {
