@@ -790,6 +790,7 @@
       "browsing": {
         "customGamesView": "tiles",
         "replaysView": "tiles",
+        "liveReplayView": "tiles",
         "customGamesBrowser": {
           "sort": "players",
           "sortReversed": false,
@@ -2054,6 +2055,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -29118,6 +29120,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -29371,6 +29374,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -29633,6 +29637,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -29890,6 +29895,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -30147,6 +30153,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -30414,6 +30421,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -30687,6 +30695,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -30972,6 +30981,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -31248,6 +31258,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -31526,6 +31537,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -31733,6 +31745,7 @@
                 "preferences": {
                   "customGamesView": "list",
                   "replaysView": "list",
+                  "liveReplayView": "tiles",
                   "customGamesBrowser": {
                     "sort": "age",
                     "sortReversed": true,
@@ -31921,6 +31934,7 @@
                 "maxPlayers": "",
                 "search": "tournament"
               },
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "newest",
               "matchmakerChatWidth": 420,

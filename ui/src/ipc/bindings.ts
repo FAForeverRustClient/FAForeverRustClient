@@ -248,6 +248,16 @@ export type BracketSide = "winners" | "losers" |
 export type BrowsingPreferences = {
 	customGamesView: CustomGameView,
 	replaysView: CustomGameView,
+	/**
+	 *  The live-replay tab's own list-or-cards choice.
+	 *
+	 *  Not `replays_view`, which the online and local libraries share. Those
+	 *  two are the same list of finished games read two ways; the live tab is
+	 *  a different question - what is being played right now - and the answer
+	 *  somebody wants there is routinely the other one. Reported as exactly
+	 *  that: cards in the vault, a table for what is live.
+	 */
+	liveReplayView: CustomGameView,
 	customGamesBrowser: CustomGameBrowserPreferences,
 	matchmakerUnselectedQueues: string[],
 	matchmakerFactions: string[],

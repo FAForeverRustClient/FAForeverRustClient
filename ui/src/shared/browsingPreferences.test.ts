@@ -29,6 +29,7 @@ describe("browsing preferences", () => {
     const normalized = normalizeBrowsingPreferences({
       customGamesView: "list",
       replaysView: "list",
+      liveReplayView: "list",
       customGamesBrowser: {
         sort: "host",
         sortReversed: true,
@@ -120,6 +121,8 @@ describe("browsing preferences", () => {
     ]);
     expect(normalized.customGamesView).toBe("list");
     expect(normalized.replaysView).toBe("list");
+    // Its own answer, not the vault's: the live tab is a different question.
+    expect(normalized.liveReplayView).toBe("list");
     expect(normalized.matchmakerUnselectedQueues).toEqual(["ladder_1v1"]);
     expect(normalized.matchmakerFactions).toEqual(["Cybran"]);
     // Bounded like every other stored width, and by the same numbers Rust uses.

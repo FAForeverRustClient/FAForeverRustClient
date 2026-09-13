@@ -4,6 +4,7 @@ import {
   averageRating,
   displayedRating,
   gameLeaderboard,
+  leaderboardLabel,
   ratingGateBlocks,
 } from "./playerRatings";
 
@@ -130,5 +131,24 @@ describe("the host's enforced rating range", () => {
   it("never blocks on a rating it does not know", () => {
     const gated = game({ ratingMin: 1000, ratingMax: 1500, enforceRatingRange: true });
     expect(ratingGateBlocks(gated, null)).toBe(false);
+  });
+});
+
+describe("naming a leaderboard", () => {
+  it("keeps the short names the client uses for the queues it knows", () => {
+    expect(leaderboardLabel("ladder_1v1")).toBe("1v1");
+    expect(leaderboardLabel("tmm_2v2")).toBe("2v2");
+  });
+
+  it("reads a board it has never heard of as words", () => {
+    // The report: this printed "Tmm 4v4 FullShare" in the replay tab's game
+    // mode picker.
+    expect(leaderboardLabel("tmm_4v4_fullShare")).toBe("4v4 Full Share");
+    expect(leaderboardLabel("tmm_4v4_full_share")).toBe("4v4 Full Share");
+    expect(leaderboardLabel("tmm_4v4_share_until_death")).toBe("4v4 Share Until Death");
+  });
+
+  it("leaves a name that is not a queue alone apart from its underscores", () => {
+    expect(leaderboardLabel("1v1_league")).toBe("1v1 League");
   });
 });

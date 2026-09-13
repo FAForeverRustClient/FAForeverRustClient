@@ -132,6 +132,7 @@ export const DEFAULT_VAULT_PAGE_SIZE = 36;
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   customGamesView: "tiles",
   replaysView: "tiles",
+  liveReplayView: "tiles",
   customGamesBrowser: {
     sort: "players",
     sortReversed: false,
@@ -181,6 +182,7 @@ export function normalizeBrowsingPreferences(
   return {
     ...preferences,
     replaysView: preferences.replaysView === "list" ? "list" : "tiles",
+    liveReplayView: preferences.liveReplayView === "list" ? "list" : "tiles",
     customGamesBrowser: normalizeCustomGamesBrowser(preferences.customGamesBrowser),
     matchmakerUnselectedQueues: normalizeLabels(
       preferences.matchmakerUnselectedQueues,

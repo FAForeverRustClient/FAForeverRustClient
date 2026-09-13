@@ -518,6 +518,7 @@ const INITIAL: AppState = {
     browsing: {
       customGamesView: "tiles",
       replaysView: "tiles",
+      liveReplayView: "tiles",
       customGamesBrowser: {
         sort: "players",
         sortReversed: false,
