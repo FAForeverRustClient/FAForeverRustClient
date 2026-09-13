@@ -1061,7 +1061,8 @@ export function ReplayDetailPanel({
               rows. Same eight, four columns wide so the pair of durations that
               are routinely minutes apart sit side by side, and each one its
               own tile: value first, caption under it, glyph beside both. The
-              replay id sits across the top of them, which leaves that pairing
+              replay id takes the first two of the top row, which still
+              leaves the eight falling four to a row and that pairing
               intact. */}
           <dl className="replay-card-facts">
             {/* The id first, and the two things you do with one beside it:
