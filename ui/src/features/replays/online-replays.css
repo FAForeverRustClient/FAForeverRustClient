@@ -1451,26 +1451,6 @@ button.vault-input {
   border-right: 1px solid var(--color-border);
 }
 
-/* The replay ID sits on the floor of the rail rather than under the buttons:
-   it is a reference you copy, not an action, and the gap above it is what
-   says so. */
-.replay-card-idrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: auto;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  font-size: 13px;
-}
-
-.replay-card-idlabel {
-  color: var(--color-muted);
-  margin-right: auto;
-}
-
 /* The number people quote at each other in Discord, so it is set like one
    rather than like a footnote. */
 .replay-card-idvalue {
@@ -1837,6 +1817,20 @@ button.vault-input {
   white-space: nowrap;
 }
 
+/* The id takes the whole first row, which leaves the eight facts under it in
+   the four-by-two they were designed as -- the two durations still land side
+   by side -- and gives the two copy buttons somewhere to sit. */
+.replay-card-fact-id {
+  grid-column: 1 / -1;
+}
+
+.replay-card-fact-id dd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+}
+
 .replay-card-lineup {
   min-width: 0;
 }
@@ -1933,10 +1927,6 @@ button.vault-input {
 
   .replay-card-thumb {
     max-width: 320px;
-  }
-
-  .replay-card-idrow {
-    margin-top: 0;
   }
 
   .replay-card-facts {

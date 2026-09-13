@@ -793,7 +793,6 @@ export function ReplayDetailPanel({
         .writeText(String(replay.uid))
         .then(() => setCopiedId(true)),
     );
-  const age = replayAge(replay.startTime);
   const competingTeams = detailTeams.filter((team) => !isObserverTeam(team.team)).length;
   const players = t("replays.detail.playerCount", { count: totalPlayers });
   const lineupSummary = competingTeams > 1
@@ -990,34 +989,6 @@ export function ReplayDetailPanel({
               <Icon name={isLoadingDetails ? "refresh" : "list"} size={15} className={isLoadingDetails ? "spin" : undefined} />
             </Button>
           </div>
-          <div className="replay-card-idrow">
-            <span className="replay-card-idlabel">{t("replays.detail.replayIdLabel")}</span>
-            {replay.uid > 0 ? (
-              <>
-                <span className="replay-card-idvalue">#{replay.uid}</span>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  onClick={copyReplayId}
-                >
-                  <Icon name={copiedId ? "check" : "copy"} size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  onClick={copyLink}
-                >
-                  <Icon name={copied ? "check" : "external"} size={13} />
-                </button>
-              </>
-            ) : (
-              <span className="replay-card-idvalue muted">{t("replays.local.noReplayId")}</span>
-            )}
-          </div>
         </aside>
 
         <div className="replay-card-main">
@@ -1046,19 +1017,58 @@ export function ReplayDetailPanel({
               </div>
             )}
           </div>
-          {(!replay.replayAvailable || age) && (
+          {/* No age badge. `formatAgeOrDate` prints the date itself once "how
+              long ago" has stopped reading as a length of time, so on every
+              replay older than a week this line was the Date tile below it,
+              written a second time directly above it. The date is a fact and
+              belongs in the tiles with the other facts; the replay id, which
+              was off in the rail, takes the first of them. */}
+          {!replay.replayAvailable && (
             <div className="replay-card-badges">
-              {!replay.replayAvailable && (
-                <span className="replay-availability pending">{t("replays.detail.processing")}</span>
-              )}
-              {age && <span className="replay-card-age">{age}</span>}
+              <span className="replay-availability pending">{t("replays.detail.processing")}</span>
             </div>
           )}
           {/* Java's detail view keeps the eight core facts in two balanced
               rows. Same eight, four columns wide so the pair of durations that
               are routinely minutes apart sit side by side, and each one its
-              own tile: value first, caption under it, glyph beside both. */}
+              own tile: value first, caption under it, glyph beside both. The
+              replay id sits across the top of them, which leaves that pairing
+              intact. */}
           <dl className="replay-card-facts">
+            {/* The id first, and the two things you do with one beside it:
+                copy the number, copy the link. It is the label that says
+                which replay this is, which is a fact about the game and not
+                an action on the file, so it sits with the facts. */}
+            <div className="replay-card-fact-id">
+              <dt><Icon name="list" size={14} />{t("replays.detail.replayIdLabel")}</dt>
+              <dd>
+                {replay.uid > 0 ? (
+                  <>
+                    <span className="replay-card-idvalue">#{replay.uid}</span>
+                    <button
+                      type="button"
+                      className="replay-card-icon-btn"
+                      aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                      title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                      onClick={copyReplayId}
+                    >
+                      <Icon name={copiedId ? "check" : "copy"} size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="replay-card-icon-btn"
+                      aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                      title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                      onClick={copyLink}
+                    >
+                      <Icon name={copied ? "check" : "external"} size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <span className="muted">{t("replays.local.noReplayId")}</span>
+                )}
+              </dd>
+            </div>
             <div><dt><Icon name="calendar" size={14} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
             <div><dt><Icon name="users" size={14} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
             <div><dt><Icon name="leaderboard" size={14} />{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>

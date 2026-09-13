@@ -185,39 +185,6 @@ export function LiveReplayDetail({
             </button>
           </div>
 
-          <div className="replay-card-idrow">
-            <span className="replay-card-idlabel">{t("replays.detail.replayIdLabel")}</span>
-            <span className="replay-card-idvalue">#{game.id}</span>
-            <button
-              type="button"
-              className="replay-card-icon-btn"
-              aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-              title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-              onClick={() =>
-                ipc.run(navigator.clipboard.writeText(String(game.id)).then(() => setCopiedId(true)))
-              }
-            >
-              <Icon name={copiedId ? "check" : "copy"} size={13} />
-            </button>
-            {/* The live-replay URL, which is what somebody pastes to another
-                client rather than a vault link: the game is not in the vault
-                yet and will not be until it ends. */}
-            <button
-              type="button"
-              className="replay-card-icon-btn"
-              aria-label={t(copied ? "replays.detail.copiedShort" : "replays.live.copyLink")}
-              title={t(copied ? "replays.detail.copiedShort" : "replays.live.copyLink")}
-              onClick={() =>
-                ipc.run(
-                  navigator.clipboard
-                    .writeText(liveReplayLink(game, player))
-                    .then(() => setCopied(true)),
-                )
-              }
-            >
-              <Icon name={copied ? "check" : "external"} size={13} />
-            </button>
-          </div>
         </aside>
 
         <div className="replay-card-main">
@@ -227,6 +194,43 @@ export function LiveReplayDetail({
           </div>
 
           <dl className="replay-card-facts">
+            {/* The id with the facts rather than off in the rail, the way the
+                vault panel and the list view's opened row both have it. */}
+            <div className="replay-card-fact-id">
+              <dt><Icon name="list" size={14} />{t("replays.detail.replayIdLabel")}</dt>
+              <dd>
+                <span className="replay-card-idvalue">#{game.id}</span>
+                <button
+                  type="button"
+                  className="replay-card-icon-btn"
+                  aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                  title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                  onClick={() =>
+                    ipc.run(navigator.clipboard.writeText(String(game.id)).then(() => setCopiedId(true)))
+                  }
+                >
+                  <Icon name={copiedId ? "check" : "copy"} size={13} />
+                </button>
+                {/* The live-replay URL, which is what somebody pastes to
+                    another client rather than a vault link: the game is not
+                    in the vault yet and will not be until it ends. */}
+                <button
+                  type="button"
+                  className="replay-card-icon-btn"
+                  aria-label={t(copied ? "replays.detail.copiedShort" : "replays.live.copyLink")}
+                  title={t(copied ? "replays.detail.copiedShort" : "replays.live.copyLink")}
+                  onClick={() =>
+                    ipc.run(
+                      navigator.clipboard
+                        .writeText(liveReplayLink(game, player))
+                        .then(() => setCopied(true)),
+                    )
+                  }
+                >
+                  <Icon name={copied ? "check" : "external"} size={13} />
+                </button>
+              </dd>
+            </div>
             {facts.map((fact) => (
               <div key={fact.label}>
                 <dt><Icon name={fact.icon} size={14} />{fact.label}</dt>
