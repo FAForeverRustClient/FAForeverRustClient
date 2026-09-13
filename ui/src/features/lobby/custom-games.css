@@ -88,7 +88,15 @@
    so the grab area straddles the boundary it moves rather than sitting a whole
    narrow column away from it. Wider than the line it draws, because a
    two-pixel target is a target nobody hits. */
-.game-browser-col-handle {
+/* Two classes, not one, and deliberately: `.resize-handle` in the design
+   system sets `position: relative` for the in-flow panel dividers, and it is a
+   single-class selector like this one was. Which of the two won came down to
+   which stylesheet the bundler emitted last -- and with the feature sheets in
+   lazily loaded chunks, that differed between a dev run and a build. When
+   `relative` won, the handle sat in the text flow after the label and the
+   `left` offset moved it from *there*, so where it landed depended on how long
+   the label was. That is the "sometimes in the wrong place" this fixes. */
+.game-browser-head > span > .game-browser-col-handle {
   position: absolute;
   top: -10px;
   left: -14px;
