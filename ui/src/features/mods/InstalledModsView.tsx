@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Pagination } from "../../design-system/Pagination";
+import { useGridPageSize } from "../../shared/useGridPageSize";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   SearchField,
@@ -25,6 +26,11 @@ type RankedFilter = "all" | "ranked" | "unranked";
 type InstalledModPreset = "all" | "enabled" | "disabled" | "ui" | "sim" | "updates";
 type InstalledModSort = "state" | "name" | "rating" | "newest" | "author";
 
+/** `.installed-mod-card`'s designed height, which is what a page is measured in. */
+const INSTALLED_MOD_CARD_PX = 86;
+
+/// Only until the grid has been measured. Nothing is fetched here, so a page
+/// is as much of the list as fits and the fixed count is a starting guess.
 const PAGE_SIZE = 48;
 
 const loadVault = () => ipc.send({ kind: "Mods", command: { type: "loadVault" } });
@@ -114,8 +120,17 @@ function InstalledModCard({
             {t(installing ? "mods.installed.working" : "mods.vault.update")}
           </Button>
         )}
-        <Button className="mod-vault-uninstall" disabled={busy} onClick={onUninstall}>
-          {t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
+        {/* An icon rather than the word, the way the Maps tab already does it.
+            "Uninstall" in red was the loudest thing on a row whose subject is
+            the mod, and it sat beside two buttons that are ordinary switches. */}
+        <Button
+          className="mod-vault-uninstall is-icon"
+          disabled={busy}
+          aria-label={t("mods.installed.uninstallNamed", { name: mod.displayName })}
+          title={t(installing ? "mods.installed.working" : "mods.installed.uninstall")}
+          onClick={onUninstall}
+        >
+          <Icon name="trash" size={14} />
         </Button>
         </div>
       </div>
@@ -267,6 +282,9 @@ export function InstalledModsView({
   // the catalogue happens to have been reloaded, and nothing asks it to.
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState("");
+  const installedGrid = useRef<HTMLDivElement>(null);
+  const browsing = useAppStore((state) => state.state.settings.browsing);
+  const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MOD_CARD_PX, PAGE_SIZE);
 
   const note = loadStatusNote(installedStatus, t("mods.installed.scanning"), t("mods.installed.scanFailed"));
   const vaultByUid = useMemo(() => new Map(vault.map((mod) => [mod.uid, mod])), [vault]);
@@ -437,9 +455,13 @@ export function InstalledModsView({
   // enabled state behind the button that had just changed it.
   const opened = openFolder ? installed.find((mod) => mod.folderName === openFolder) : undefined;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // A page is as much of the list as fits, unless the reader has picked a
+  // number in Settings. A fixed count left half the panel empty under the
+  // pager on a tall window and scrolled anyway on a short one.
+  const pageSize = browsing.vaultPageSize || fittedPageSize;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageMods = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageMods = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <>
@@ -602,7 +624,7 @@ export function InstalledModsView({
             <span>{filtered.length} installed {filtered.length === 1 ? "mod" : "mods"}</span>
             <span>{installed.filter((mod) => mod.enabled).length} active</span>
           </div>
-          <div className="installed-mod-grid">
+          <div className="installed-mod-grid" ref={installedGrid}>
             {pageMods.map((mod) => (
               <InstalledModCard
                 key={mod.folderName}
