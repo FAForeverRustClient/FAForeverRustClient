@@ -6,7 +6,7 @@
 // clamping, the "local while dragging, saved on release" split, and the reset
 // are the same for all of them.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { BrowsingPreferences } from "../ipc/bindings";
 import { ipc } from "../ipc/client";
 import { useAppStore } from "../store/store";
@@ -20,7 +20,10 @@ type ColumnField = {
 export interface ColumnWidths {
   /** What to draw with now: the drag in progress, or what was saved. */
   widths: number[];
-  /** Move one column by this many pixels. Bounded, so a drag cannot erase it. */
+  /**
+   * Where one column has been dragged to: pixels from where the drag began,
+   * not since the last pointer move. Bounded, so a drag cannot erase a column.
+   */
   onDrag: (index: number, delta: number) => void;
   /** The drag ended: persist it. */
   onCommit: () => void;
@@ -37,6 +40,11 @@ export function useColumnWidths(field: ColumnField, defaults: readonly number[])
   // Local until the pointer is released: persisting per frame would write a
   // settings file on every mouse move.
   const [dragged, setDragged] = useState<number[] | null>(null);
+  // The widths the drag started from. `ResizeHandle` reports the distance from
+  // where the pointer went down, so every move has to be measured against the
+  // same widths; adding each report to the last one instead makes a column run
+  // away from the cursor, faster the further it is dragged.
+  const origin = useRef<number[] | null>(null);
 
   const resolve = () =>
     defaults.map((fallback, index) => {
@@ -56,9 +64,10 @@ export function useColumnWidths(field: ColumnField, defaults: readonly number[])
 
   return {
     widths: dragged ?? resolve(),
-    onDrag: (index, delta) =>
-      setDragged((current) =>
-        (current ?? resolve()).map((width, position) =>
+    onDrag: (index, delta) => {
+      const base = (origin.current ??= dragged ?? resolve());
+      setDragged(
+        base.map((width, position) =>
           position === index
             ? Math.min(
                 MAX_BROWSER_COLUMN_PX,
@@ -66,8 +75,10 @@ export function useColumnWidths(field: ColumnField, defaults: readonly number[])
               )
             : width,
         ),
-      ),
+      );
+    },
     onCommit: () => {
+      origin.current = null;
       if (dragged) save(dragged);
       setDragged(null);
     },
@@ -75,6 +86,7 @@ export function useColumnWidths(field: ColumnField, defaults: readonly number[])
     // reads it back as "use the designed widths", so a reset survives a
     // restart the same way a drag does.
     onReset: () => {
+      origin.current = null;
       setDragged(null);
       save([]);
     },

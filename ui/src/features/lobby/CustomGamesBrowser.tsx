@@ -1327,7 +1327,10 @@ export function CustomGamesBrowser({
         <div className="game-browser-head" style={columnStyle}>
           {columnLabels.map((label, index) => (
             <span key={label}>
-              {label}
+              {/* The label clips itself rather than letting the header cell do
+                  it: the grab handle reaches past the cell's right edge, and a
+                  cell with `overflow: hidden` cuts it off entirely. */}
+              <span className="game-browser-head-label">{label}</span>
               {/* The last column has nothing to its right to give width to,
                   so it is sized by the ones before it. */}
               {index < columnLabels.length - 1 && (

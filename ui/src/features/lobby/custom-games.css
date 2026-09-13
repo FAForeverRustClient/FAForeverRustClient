@@ -72,6 +72,13 @@
 .game-browser-head > span {
   position: relative;
   min-width: 0;
+}
+
+/* The clipping sits on the label, not on the cell around it: the grab handle
+   reaches into the gap to the right of its cell, and a cell that hides its
+   overflow hides the handle with it. */
+.game-browser-head-label {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
