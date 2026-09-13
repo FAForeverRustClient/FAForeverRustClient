@@ -380,19 +380,38 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
             </colgroup>
             <thead>
               <tr>
+                {/* The divider sits on a column's *leading* edge and resizes
+                    the column before it, which is where a file manager puts it:
+                    the cursor lands just in front of the column about to be
+                    pushed along, and the grab area straddles the boundary it
+                    moves. So the first column carries none and the Replay
+                    column carries the last one. */}
                 {boardLabels.map((label, index) => (
                   <th scope="col" key={label}>
+                    {index > 0 && (
+                      <ResizeHandle
+                        className="coop-board-col-handle"
+                        label={t("lobby.browser.resizeColumn", { column: boardLabels[index - 1] })}
+                        onDrag={(delta) => columns.onDrag(index - 1, delta)}
+                        onEnd={columns.onCommit}
+                        onReset={columns.onReset}
+                      />
+                    )}
                     {label}
-                    <ResizeHandle
-                      className="coop-board-col-handle"
-                      label={t("lobby.browser.resizeColumn", { column: label })}
-                      onDrag={(delta) => columns.onDrag(index, delta)}
-                      onEnd={columns.onCommit}
-                      onReset={columns.onReset}
-                    />
                   </th>
                 ))}
-                <th scope="col">{t("lobby.coop.column.replay")}</th>
+                <th scope="col">
+                  <ResizeHandle
+                    className="coop-board-col-handle"
+                    label={t("lobby.browser.resizeColumn", {
+                      column: boardLabels[boardLabels.length - 1],
+                    })}
+                    onDrag={(delta) => columns.onDrag(boardLabels.length - 1, delta)}
+                    onEnd={columns.onCommit}
+                    onReset={columns.onReset}
+                  />
+                  {t("lobby.coop.column.replay")}
+                </th>
               </tr>
             </thead>
             <tbody>

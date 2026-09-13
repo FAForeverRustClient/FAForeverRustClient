@@ -108,6 +108,14 @@ export function LiveReplayTable(props: Props) {
     t("replays.column.host"),
     t("replays.column.mods"),
   ];
+  /**
+   * The divider on a column's leading edge, resizing the column before it.
+   *
+   * Where a file manager puts it: the cursor lands just in front of the column
+   * you are about to push along, and the grab area straddles the boundary it
+   * moves. So the first column carries none and every other cell -- the Watch
+   * column included -- carries the one belonging to its left-hand neighbour.
+   */
   const handle = (index: number) => (
     <ResizeHandle
       className="live-replay-col-handle"
@@ -137,14 +145,14 @@ export function LiveReplayTable(props: Props) {
         </colgroup>
         <thead>
           <tr>
-            <th className="live-map-column">{columnLabels[0]}{handle(0)}</th>
-            <SortHeader label={columnLabels[1]} sortKey="started" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(1)} />
-            <SortHeader label={columnLabels[2]} sortKey="title" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(2)} />
-            <SortHeader label={columnLabels[3]} sortKey="players" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={handle(3)} />
-            <SortHeader label={columnLabels[4]} sortKey="rating" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={handle(4)} />
-            <SortHeader label={columnLabels[5]} sortKey="host" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(5)} />
-            <SortHeader label={columnLabels[6]} sortKey="mods" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(6)} />
-            <th className="live-watch-column">{t("replays.column.watch")}</th>
+            <th className="live-map-column">{columnLabels[0]}</th>
+            <SortHeader label={columnLabels[1]} sortKey="started" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(0)} />
+            <SortHeader label={columnLabels[2]} sortKey="title" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(1)} />
+            <SortHeader label={columnLabels[3]} sortKey="players" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={handle(2)} />
+            <SortHeader label={columnLabels[4]} sortKey="rating" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={handle(3)} />
+            <SortHeader label={columnLabels[5]} sortKey="host" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(4)} />
+            <SortHeader label={columnLabels[6]} sortKey="mods" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={handle(5)} />
+            <th className="live-watch-column">{handle(6)}{t("replays.column.watch")}</th>
           </tr>
         </thead>
         <tbody>

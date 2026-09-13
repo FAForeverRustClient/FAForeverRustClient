@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 import { FACTION_COLORS, FACTION_NAMES } from "./factions";
+import { RandomFactionMark } from "./RandomFactionMark";
 import { useTranslation } from "../i18n/useTranslation";
 
 const FACTION_PATHS: Readonly<Record<number, { path: string; viewBox: string }>> = {
@@ -29,30 +30,18 @@ interface FactionIconProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
 /** The official faction glyphs used by the Java client, normalized for the web UI. */
 export function FactionIcon({ faction, size = 16, style, ...props }: FactionIconProps) {
   const { t } = useTranslation();
+  // Random. The four faction emblems in one, which is the mark FAF itself
+  // uses; the die that stood here before was a guess at the idea and read as a
+  // placeholder beside four real glyphs.
   if (faction === 5) {
     return (
-      <svg
+      <RandomFactionMark
         aria-label={t("factions.random")}
         role="img"
-        height={size}
-        width={size}
-        viewBox="0 0 24 24"
-        shapeRendering="geometricPrecision"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-        style={{ color: FACTION_COLORS[faction], ...style }}
+        size={size}
+        style={style}
         {...props}
-      >
-        <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
-        <circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none" />
-        <circle cx="16" cy="8" r="1.2" fill="currentColor" stroke="none" />
-        <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
-        <circle cx="8" cy="16" r="1.2" fill="currentColor" stroke="none" />
-        <circle cx="16" cy="16" r="1.2" fill="currentColor" stroke="none" />
-      </svg>
+      />
     );
   }
 

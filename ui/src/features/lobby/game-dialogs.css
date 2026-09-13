@@ -919,14 +919,16 @@
   border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
 }
 
-/* The version marker. A letter rather than an icon, sized and coloured like
-   the icons it sits in a row with so the row still reads as one row. */
+/* The version marker. A letter rather than an icon, in the same grey and at
+   the same width as the glyphs it shares a row with, so the row still reads as
+   one row rather than as a letter with icons after it. */
 .host-map-version-mark {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
   width: 13px;
+  color: var(--color-subtle);
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
