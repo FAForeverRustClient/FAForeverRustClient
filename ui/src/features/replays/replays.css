@@ -68,7 +68,15 @@
    one to its left. Wider than it looks and taller than the cell, so the grab
    area is findable without a hairline target. The same shape the game
    browser's handle uses. */
-.replay-list-col-handle {
+/* Two classes, not one, and deliberately: `.resize-handle` in the design
+   system sets `position: relative` for the in-flow panel dividers, and it is a
+   single-class selector like this one was. Which of the two won came down to
+   which stylesheet the bundler emitted last -- and with the feature sheets in
+   lazily loaded chunks, that differed between a dev run and a build. When
+   `relative` won, the handle sat in the text flow after the label and the
+   `left` offset moved it from *there*, so where it landed depended on how long
+   the label was. That is the "sometimes in the wrong place" this fixes. */
+.replay-list-header > span > .replay-list-col-handle {
   position: absolute;
   top: -8px;
   left: -14px;

@@ -302,14 +302,14 @@ button.vault-input {
   margin-bottom: var(--space-2);
 }
 
-/* A row's title, not a headline: the map underneath it and the lineup beside
-   it are what a reader scans, and a bold 16px line above them competed with
-   both. */
+/* The same size as the list view's title, so switching between the two views
+   does not change how big the one thing both of them are named by is. */
 .replay-card-title {
   max-width: 100%;
   overflow: hidden;
-  font-weight: 550;
-  font-size: 14px;
+  font-weight: 650;
+  font-size: 16px;
+  letter-spacing: -.01em;
   display: block;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1798,7 +1798,10 @@ button.vault-input {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .replay-card-title {
+  /* Scoped, like the rule it shrinks: unscoped it also caught the vault
+     card's title, which is a span of the same name, and put a 21px heading on
+     every tile in a narrow window. */
+  .replay-card-layout .replay-card-title {
     font-size: 21px;
   }
 }

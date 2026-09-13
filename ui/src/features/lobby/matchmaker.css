@@ -1176,19 +1176,22 @@
   border-top: 1px solid var(--color-border);
 }
 
-/* The queue's rating breakdown, on hover over "n queued".
+/* The queue's rating breakdown, on hover anywhere on the card.
    A pure-CSS popover rather than a portal: it lives inside the card's own
    button, so anything focusable in here would be a control inside a control.
    `pointer-events: none` keeps it from eating the click that selects the
-   queue. */
-.matchmaker-queue-queued {
-  position: relative;
-}
+   queue.
 
+   Along the bottom edge, centred. It used to rise from the "n queued" line and
+   cover the card's own heading -- the queue's name, which is the one thing a
+   reader needs to still be able to see while deciding whether to wait in it.
+   Down here it covers the fact lines instead, one of which is the number it
+   breaks down. */
 .matchmaker-queue-breakdown {
   position: absolute;
-  left: 0;
-  bottom: calc(100% + 6px);
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
   z-index: 20;
   display: grid;
   gap: 2px;
