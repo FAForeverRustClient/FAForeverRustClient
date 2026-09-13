@@ -1730,9 +1730,15 @@ export const en = {
   "playerCard.maps.searchAria": "Find a map in this player's history",
   "playerCard.maps.noMatch": "No map matches that.",
   "playerCard.chart.peak": "Peak {rating}",
+  "playerCard.maps.rankedGames": "Ranked",
+  "playerCard.maps.unrankedGames": "Unranked",
+  "playerCard.maps.leaderboardGapNote": {
+    one: "{count} ranked game is counted by FAF's leaderboards but was not returned by the game history, so it sits in the draws column. faftracker does the same.",
+    other: "{count} ranked games are counted by FAF's leaderboards but were not returned by the game history, so they sit in the draws column. faftracker does the same.",
+  },
   "playerCard.maps.unrankedNote": {
-    one: "{count} game is not counted in the record: it moved no rating, so FAF did not score it.",
-    other: "{count} games are not counted in the record: they moved no rating, so FAF did not score them.",
+    one: "{count} game is not counted in the record: FAF did not score it.",
+    other: "{count} games are not counted in the record: FAF did not score them.",
   },
   "playerCard.maps.truncated": "This player has more games than one scan covers. The numbers below are their most recent games, newest first.",
   "playerCard.tab.statistics": "Statistics",

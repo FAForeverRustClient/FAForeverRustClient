@@ -1190,6 +1190,7 @@
               "payload": {
                 "stats": {
                   "totalGames": 3,
+                  "rankedGames": 3,
                   "wins": 2,
                   "losses": 1,
                   "undecided": 0,
@@ -1232,6 +1233,7 @@
                   "wins": 2
                 }
               ],
+              "rankedGames": 3,
               "totalGames": 3,
               "truncated": false,
               "unattributed": 0,

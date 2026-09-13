@@ -637,6 +637,7 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
                 });
 
             let queue = queue_of(&rows);
+            let ladder = queue.eq_ignore_ascii_case("ladder_1v1");
             let rows = GameRows {
                 rows,
                 validity: value_string(&game.attributes, "validity").to_ascii_uppercase(),
@@ -647,6 +648,7 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
                 map,
                 outcome: outcome_for(&rows, player_id),
                 rating_moved: moved_a_rating(&rows, player_id),
+                ladder,
                 played_at,
             }
         })

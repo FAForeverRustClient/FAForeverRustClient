@@ -2918,6 +2918,7 @@ fn cases() -> Vec<Case> {
                 PlayerCardEvent::MapStatsLoaded {
                     stats: Box::new(PlayerMapStats {
                         total_games: 3,
+                        ranked_games: 3,
                         wins: 2,
                         losses: 1,
                         undecided: 0,
