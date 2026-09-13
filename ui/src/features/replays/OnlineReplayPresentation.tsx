@@ -975,8 +975,9 @@ export function ReplayDetailPanel({
             </div>
           )}
           {/* Java's detail view keeps the eight core facts in two balanced
-              rows. Same eight, now four columns wide so the pair of durations
-              that are routinely minutes apart sit side by side. */}
+              rows. Same eight, four columns wide so the pair of durations that
+              are routinely minutes apart sit side by side, and each one its
+              own tile: value first, caption under it, glyph beside both. */}
           <dl className="replay-card-facts">
             <div><dt><Icon name="calendar" size={14} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
             <div><dt><Icon name="users" size={14} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
