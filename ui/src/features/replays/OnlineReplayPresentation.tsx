@@ -954,9 +954,8 @@ export function ReplayDetailPanel({
             )}
             <Button
               className="replay-card-rail-btn"
-              disabled={isLoadingDetails}
               onClick={() => {
-                if (!details) loadDetails();
+                if (!details && !isLoadingDetails) loadDetails();
                 setShowInsights(true);
               }}
               aria-haspopup="dialog"
@@ -1188,14 +1187,17 @@ export function ReplayDetailPanel({
         <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
       )}
 
-      {/* The tabbed panel the button above opens. It waits for the file to be
-          read: the request is sent by the same click, and until it lands there
-          is nothing to put in the tabs. */}
-      {showInsights && details && (
+      {/* The tabbed panel the button above opens. It opens on the click, not
+          on the answer: the file may still have to be downloaded, and a
+          disabled button with nothing happening behind it is what the thread
+          was about. */}
+      {showInsights && (
         <ReplayInsights
-          details={details}
+          details={details ?? null}
           teams={detailTeams}
           title={cardTitle}
+          loading={isLoadingDetails}
+          error={detailsError ?? ""}
           onClose={() => setShowInsights(false)}
         />
       )}

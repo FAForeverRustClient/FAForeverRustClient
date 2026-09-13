@@ -1206,6 +1206,16 @@ button.vault-input {
   justify-content: flex-end;
 }
 
+/* The panel while it waits for the file. */
+.replay-insights-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4) 0;
+  font-size: 13px;
+}
+
 /* What the command count is and is not, next to the table it qualifies. */
 .replay-insights-note {
   display: flex;

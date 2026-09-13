@@ -2053,6 +2053,7 @@ export const en = {
   "replays.detail.loadingDetails": "Loading replay details…",
   "replays.detail.gameOptions": "Game Options",
   "replays.insights.kicker": "Replay file",
+  "replays.insights.reading": "Reading the replay file. A game that is not on disk yet is downloaded first.",
   "replays.insights.aria": "What the replay file says about {name}",
   "replays.insights.close": "Close",
   "replays.insights.openHint": "Chat, game options, mods, and how busy each player was",

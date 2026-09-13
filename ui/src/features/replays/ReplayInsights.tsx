@@ -89,17 +89,30 @@ export function ReplayInsights({
   details,
   teams,
   title,
+  loading,
+  error,
   onClose,
 }: {
-  details: ReplayDetails;
+  /**
+   * `null` until the replay file has been read.
+   *
+   * The panel opens on the click rather than on the answer. A vault replay
+   * that is not on disk yet has to be downloaded first, and the button used to
+   * sit there disabled with nothing else happening: "load more infos in
+   * replays passiert lange zeit garnichts". It now opens immediately and says
+   * what it is waiting for.
+   */
+  details: ReplayDetails | null;
   /** The lineup, for the faction and rating beside a command count. */
   teams: ReplayTeam[];
   /** The game being looked at, for the dialog's heading. */
   title: string;
+  loading: boolean;
+  error: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<InsightTab>("players");
+  const [tab, setTab] = useState<InsightTab>("options");
   const [optionFilter, setOptionFilter] = useState("");
 
   useEffect(() => {
@@ -115,29 +128,35 @@ export function ReplayInsights({
 
   // Absent on a file whose stream could not be walked, and on a legacy
   // `.scfareplay` with no header in front of it.
-  const simMods = details.simMods ?? [];
+  const simMods = details?.simMods ?? [];
+  const gameOptions = details?.gameOptions ?? [];
+  const chatMessages = details?.chatMessages ?? [];
   const rows = useMemo(
-    () => activityRows(details.commandStats ?? [], teams, details.simSeconds ?? 0),
-    [details.commandStats, details.simSeconds, teams],
+    () => activityRows(details?.commandStats ?? [], teams, details?.simSeconds ?? 0),
+    [details?.commandStats, details?.simSeconds, teams],
   );
 
   const filteredOptions = useMemo(() => {
+    const options = details?.gameOptions ?? [];
     const query = optionFilter.trim().toLowerCase();
-    if (!query) return details.gameOptions;
-    return details.gameOptions.filter(
+    if (!query) return options;
+    return options.filter(
       (option) =>
         option.key.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
     );
-  }, [details.gameOptions, optionFilter]);
+  }, [details?.gameOptions, optionFilter]);
 
   // The busiest row, so the bars underneath the numbers are relative to the
   // game rather than to a scale nothing in it reaches.
   const busiest = rows.reduce((most, row) => Math.max(most, row.commands), 0);
 
+  // Counts only once there is something to count: a tab reading "Chat 0"
+  // while the file is still being read says the game had no chat.
+  const count = (value: number) => (details ? value : undefined);
   const tabs = [
-    { id: "players" as const, label: t("replays.insights.activity"), count: rows.length },
-    { id: "chat" as const, label: t("replays.detail.chat"), count: details.chatMessages.length },
-    { id: "options" as const, label: t("replays.detail.gameOptions"), count: details.gameOptions.length },
+    { id: "options" as const, label: t("replays.detail.gameOptions"), count: count(gameOptions.length) },
+    { id: "chat" as const, label: t("replays.detail.chat"), count: count(chatMessages.length) },
+    { id: "players" as const, label: t("replays.insights.activity"), count: count(rows.length) },
     ...(simMods.length > 0
       ? [{ id: "mods" as const, label: t("replays.detail.simMods"), count: simMods.length }]
       : []),
@@ -175,7 +194,21 @@ export function ReplayInsights({
         />
 
         <div className="replay-insights-body">
-          {tab === "players" && (
+          {/* One state for the whole panel while the file is on its way: the
+              tabs are already there to be read, and putting the same spinner
+              in each of them would say four different things are loading. */}
+          {!details && (
+            error
+              ? <p className="replay-download-error surface-error">{error}</p>
+              : (
+                <p className="replay-insights-loading muted">
+                  <Icon name="refresh" size={15} className="spin" />
+                  <span>{t(loading ? "replays.insights.reading" : "replays.detail.loadingDetails")}</span>
+                </p>
+              )
+          )}
+
+          {details && tab === "players" && (
             rows.length === 0 ? (
               <p className="replay-detail-empty muted">{t("replays.insights.noActivity")}</p>
             ) : (
@@ -236,7 +269,7 @@ export function ReplayInsights({
             )
           )}
 
-          {tab === "chat" && (
+          {details && tab === "chat" && (
             <div className="replay-table-scroll">
               <table className="replay-data-table">
                 <thead>
@@ -247,8 +280,8 @@ export function ReplayInsights({
                   </tr>
                 </thead>
                 <tbody>
-                  {details.chatMessages.length > 0 ? (
-                    details.chatMessages.map((message, index) => (
+                  {chatMessages.length > 0 ? (
+                    chatMessages.map((message, index) => (
                       <tr key={`${message.timeSeconds}-${message.sender}-${index}`}>
                         <td className="replay-chat-time">{formatChatTime(message.timeSeconds)}</td>
                         <td className="replay-chat-sender" title={message.sender}>{message.sender}</td>
@@ -267,7 +300,7 @@ export function ReplayInsights({
             </div>
           )}
 
-          {tab === "options" && (
+          {details && tab === "options" && (
             <>
               <div className="replay-insights-toolbar">
                 <input
@@ -307,7 +340,7 @@ export function ReplayInsights({
             </>
           )}
 
-          {tab === "mods" && (
+          {details && tab === "mods" && (
             <ul className="replay-sim-mod-list">
               {simMods.map((mod) => (
                 <li key={mod} className="surface-chip">{mod}</li>

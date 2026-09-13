@@ -1795,6 +1795,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.detail.loadingDetails": "Replay-Details werden geladen…",
   "replays.detail.gameOptions": "Spieloptionen",
   "replays.insights.kicker": "Replay-Datei",
+  "replays.insights.reading": "Die Replay-Datei wird gelesen. Ein Spiel, das noch nicht auf der Platte liegt, wird zuerst heruntergeladen.",
   "replays.insights.aria": "Was die Replay-Datei über {name} sagt",
   "replays.insights.close": "Schließen",
   "replays.insights.openHint": "Chat, Spieloptionen, Mods und wie aktiv jeder Spieler war",
