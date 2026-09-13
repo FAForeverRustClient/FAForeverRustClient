@@ -689,7 +689,6 @@ export const GameTile = memo(function GameTile({
   now,
   onSelect,
   onJoin,
-  onPreview,
   onContextMenu,
 }: {
   game: Game;
@@ -702,7 +701,6 @@ export const GameTile = memo(function GameTile({
   now: number;
   onSelect: () => void;
   onJoin: () => void;
-  onPreview?: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
   const presentation = mapPresentation(vault, game.map);
@@ -729,13 +727,19 @@ export const GameTile = memo(function GameTile({
         if (!event.currentTarget.contains(event.relatedTarget)) hideLineup();
       }}
     >
+      {/* The picture is part of the tile, not a way out of it. It used to
+          open the zoom dialog over the whole window, which is a lot to
+          happen to somebody who clicked the half of a tile the eye lands on
+          first; the same click on the other half only selected the game.
+          Both halves do the same thing now, and the big preview is still one
+          click away in the side panel, where it is asked for rather than
+          arrived at. */}
       <button
         className="game-tile-map"
-        onClick={() => {
-          onSelect();
-          onPreview?.();
-        }}
-        aria-label={`Preview ${presentation.displayName}`}
+        onClick={onSelect}
+        onDoubleClick={onJoin}
+        aria-label={t("lobby.browser.tileMapAria", { map: presentation.displayName })}
+        aria-pressed={selected}
         aria-describedby={tooltipPosition ? tooltipId : undefined}
       >
         <GameMapImage
@@ -1283,7 +1287,6 @@ export function CustomGamesBrowser({
               now={now}
               onSelect={() => onSelect(game.id)}
               onJoin={() => onJoin(game)}
-              onPreview={() => handlePreview(game)}
               onContextMenu={(event) => openContextMenu(event, game)}
             />
           ))

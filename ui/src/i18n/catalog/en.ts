@@ -1137,6 +1137,7 @@ export const en = {
   "lobby.matchmaker.resizeChat": "Resize the party chat",
   "lobby.browser.openProfile": "Open {name}'s profile",
   "lobby.browser.tileAria": "{title}, hosted by {host}. Double-click to join.",
+  "lobby.browser.tileMapAria": "Select the game on {map}",
   "lobby.browser.playersWord": { one: "player", other: "players" },
   "lobby.browser.playerCount": { one: "{count} player", other: "{count} players" },
   "lobby.browser.teamRating": "{rating} rating",
@@ -1227,7 +1228,7 @@ export const en = {
   "home.clientStatus": "Client status",
   "home.clientStatusHint": "Backend connection and local client version.",
   "lobby.browser.footerCount": "Showing {shown} of {total} games",
-  "lobby.browser.tileHint": "Click map art to preview · double-click details to join",
+  "lobby.browser.tileHint": "Click a tile to select it \u00b7 double-click to join",
   "lobby.browser.listHint": "Double-click a game to join",
 
   // Settings: notifications.

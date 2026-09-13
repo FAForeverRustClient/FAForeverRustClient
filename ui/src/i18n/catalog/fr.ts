@@ -1728,7 +1728,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.any": "Indifférent",
   "lobby.browser.openRange": "Ouverte",
   "lobby.browser.ratingBetween": "{min} à {max}",
-  "lobby.browser.tileHint": "Cliquez sur l'image pour un aperçu · double-cliquez sur les détails pour rejoindre",
+  "lobby.browser.tileHint": "Cliquez sur une tuile pour la s\u00e9lectionner \u00b7 double-cliquez pour rejoindre",
   "lobby.browser.listHint": "Double-cliquez sur une partie pour la rejoindre",
 
   "lobby.coop.title": "Missions coopératives",
