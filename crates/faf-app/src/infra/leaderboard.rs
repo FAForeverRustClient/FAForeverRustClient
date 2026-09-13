@@ -351,10 +351,15 @@ impl LeaderboardPort for LeaderboardClient {
         for page in 2..=first.total_pages.min(MAX_CROSS_RATING_PAGES) {
             pages.push(self.player_ratings_page(&filter, page, &token));
         }
-        for result in futures_util::future::join_all(pages).await {
-            if let Ok(answer) = result {
-                rows.extend(answer.rows);
-            }
+        // A page that failed takes only its own rows with it: the columns
+        // beside the ranked one are worth less than the page they would take
+        // down with them.
+        for answer in futures_util::future::join_all(pages)
+            .await
+            .into_iter()
+            .flatten()
+        {
+            rows.extend(answer.rows);
         }
 
         let mut by_player: HashMap<i32, Vec<BoardRating>> = HashMap::new();
