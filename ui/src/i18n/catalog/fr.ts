@@ -1222,6 +1222,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Regarder",
 
   "replays.roster.observers": "Observateurs",
+  "replays.roster.morePlayers": { one: "+{count} autre", other: "+{count} autres" },
   "replays.roster.observer": "Observateur",
   "replays.roster.freeForAll": "Chacun pour soi",
   "replays.roster.players": "Joueurs",

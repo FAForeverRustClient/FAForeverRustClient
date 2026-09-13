@@ -896,6 +896,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Ansehen",
 
   "replays.roster.observers": "Beobachter",
+  "replays.roster.morePlayers": { one: "+{count} weiterer", other: "+{count} weitere" },
   "replays.roster.observer": "Beobachter",
   "replays.roster.freeForAll": "Jeder gegen jeden",
   "replays.roster.players": "Spieler",

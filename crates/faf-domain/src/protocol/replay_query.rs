@@ -116,6 +116,16 @@ pub struct ReplayQuery {
     /// A specific replay id. Free text so a blank field is "any"; a
     /// non-numeric value simply matches nothing.
     pub replay_id: String,
+    /// Several specific replay ids, which is how a *list* asks about the games
+    /// it is showing.
+    ///
+    /// Separate from [`Self::replay_id`] rather than a comma-separated version
+    /// of it: that field is a search box, and a search box holds whatever was
+    /// typed into it. This one is never typed. The live-replay grid fills it
+    /// to ask the vault for the lineups of the games on screen, which is one
+    /// request for a page instead of one per card.
+    #[serde(default)]
+    pub replay_ids: Vec<String>,
     /// The player who hosted the game.
     pub host: String,
     /// Featured mod technical names (`faf`, `ladder1v1`, …). Empty = any.
@@ -191,6 +201,7 @@ impl Default for ReplayQuery {
             map_author: String::new(),
             title: String::new(),
             replay_id: String::new(),
+            replay_ids: Vec::new(),
             host: String::new(),
             featured_mods: Vec::new(),
             leaderboards: Vec::new(),
@@ -228,6 +239,7 @@ impl ReplayQuery {
             || !self.map_author.is_empty()
             || !self.title.is_empty()
             || !self.replay_id.is_empty()
+            || !self.replay_ids.is_empty()
             || !self.host.is_empty()
             || !self.featured_mods.is_empty()
             || !self.leaderboards.is_empty()
@@ -446,6 +458,9 @@ fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<Stri
     }
     if !query.replay_id.is_empty() {
         clauses.push(format!(r#"id=="{}""#, escape(&query.replay_id)));
+    }
+    if let Some(clause) = in_clause("id", &query.replay_ids) {
+        clauses.push(clause);
     }
     if !query.host.is_empty() {
         clauses.push(format!(r#"host.login=="{}""#, glob(&query.host)));
