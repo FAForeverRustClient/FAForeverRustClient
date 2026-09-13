@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
@@ -282,6 +282,14 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   const started = gameStartedAt(game);
   const simMods = Object.values(game.simMods);
   const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
+  // Only where the host set one, and worded the way the Play tab words the
+  // same pair, open ends included.
+  const ratingRange = game.ratingMin !== null || game.ratingMax !== null
+    ? t("lobby.details.ratingRangeValue", {
+      from: game.ratingMin ?? t("lobby.details.any"),
+      to: game.ratingMax ?? t("lobby.details.any"),
+    })
+    : null;
 
   return (
     <>
@@ -340,33 +348,33 @@ export const LiveReplayRow = memo(function LiveReplayRow({
       {expanded && (
         <tr className="live-replay-detail-row">
           <td colSpan={8}>
+            {/* What the row above does not already say, laid out as a panel
+                rather than spread across the width of the table.
+
+                The three columns this used to be were sized by the table, so
+                on a wide display the lineup sat at the far left, three
+                captions floated somewhere in the middle right, and the one
+                button was alone in a corner: a paragraph of facts with the
+                whole window between them. Two of those facts (the featured mod
+                and the sim mods) were also printed in the row being expanded.
+
+                So: the map this is being played on, the lineup, the handful of
+                facts a row has no column for, and the mods in full rather than
+                as "and 2 more". */}
             <div className="live-replay-details">
-              <div>
-                <span className="live-detail-label">{t("replays.live.lineup")}</span>
-                <div className="live-team-list">
-                  {teams.length === 0 ? <span className="muted">{t("replays.live.lineupUnavailable")}</span> : teams.map(([team, players]) => (
-                    <div className="live-team surface" key={team}>
-                      <strong>{team === "-1" || team === "null" ? t("replays.live.observers") : t("replays.live.team", { team })}</strong>
-                      <span>
-                        {players.map((p, i) => (
-                          <Fragment key={p}>
-                            {i > 0 && ", "}
-                            <LivePlayerName name={p} onMenu={onPlayerMenu} />
-                          </Fragment>
-                        ))}
-                      </span>
-                    </div>
-                  ))}
+              <div className="live-detail-head">
+                <div className="live-detail-map">
+                  <LiveMapThumbnail presentation={presentation} />
+                  <div className="live-detail-map-name">
+                    <strong>{presentation.displayName}</strong>
+                    {/* The technical name, which is what somebody looking for
+                        the map in the vault or on disk actually searches. */}
+                    <code title={game.map}>{game.map}</code>
+                  </div>
                 </div>
-              </div>
-              <div className="live-detail-side">
-                <dl className="live-detail-meta">
-                  <div><dt>{t("replays.live.replayId")}</dt><dd>#{game.id}</dd></div>
-                  <div><dt>{t("replays.live.featuredMod")}</dt><dd>{game.modName || "faf"}</dd></div>
-                  <div><dt>{t("replays.live.simMods")}</dt><dd>{simMods.length > 0 ? simMods.join(", ") : t("replays.live.none")}</dd></div>
-                </dl>
                 <Button
                   className="live-copy-link"
+                  title={t("replays.live.copyLinkHint")}
                   onClick={() =>
                     ipc.run(
                       navigator.clipboard
@@ -375,9 +383,70 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                     )
                   }
                 >
+                  <Icon name={copied ? "check" : "copy"} size={14} />
                   {t(copied ? "replays.live.linkCopied" : "replays.live.copyLink")}
                 </Button>
               </div>
+
+              <dl className="live-detail-facts">
+                <div>
+                  <dt>{t("replays.live.replayId")}</dt>
+                  <dd>#{game.id}</dd>
+                </div>
+                <div>
+                  <dt>{t("lobby.details.visibility")}</dt>
+                  <dd>
+                    {t(game.visibility === "friends"
+                      ? "lobby.host.visibility.friends"
+                      : "lobby.host.visibility.public")}
+                    {game.passwordProtected && ` · ${t("lobby.host.passwordProtected")}`}
+                  </dd>
+                </div>
+                {ratingRange && (
+                  <div>
+                    <dt>{t("lobby.details.ratingRange")}</dt>
+                    <dd>
+                      {ratingRange}
+                      {game.enforceRatingRange && ` · ${t("replays.live.ratingEnforced")}`}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              <div className="live-detail-lineup">
+                <span className="live-detail-label">{t("replays.live.lineup")}</span>
+                <div className="live-team-list">
+                  {teams.length === 0 ? <span className="muted">{t("replays.live.lineupUnavailable")}</span> : teams.map(([team, players]) => (
+                    <div className="live-team surface" key={team}>
+                      <strong>
+                        {team === "-1" || team === "null" ? t("replays.live.observers") : t("replays.live.team", { team })}
+                        <span className="live-team-count">{players.length}</span>
+                      </strong>
+                      <ul className="live-team-players">
+                        {players.map((p) => (
+                          <li key={p}>
+                            <LivePlayerName name={p} onMenu={onPlayerMenu} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {simMods.length > 0 && (
+                <div className="live-detail-simmods">
+                  <span className="live-detail-label">
+                    {t("replays.live.simMods")}
+                    <span className="live-detail-count">{simMods.length}</span>
+                  </span>
+                  <ul className="live-sim-mod-list">
+                    {simMods.map((mod) => (
+                      <li key={mod} className="surface-chip">{mod}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </td>
         </tr>

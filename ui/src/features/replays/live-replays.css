@@ -437,15 +437,62 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* A panel, and a panel that stops growing. The columns this used to be were
+   sized by the table above it, which on a wide display put a caption and its
+   value most of a screen apart. Capped and stacked, the expanded row reads at
+   any window width as the same block of information. */
 .live-replay-details {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.45fr);
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 1100px;
   padding: var(--space-3) var(--space-4) var(--space-4) 70px;
 }
 
+.live-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* The map, at the top of the panel about a game being played on it. The row
+   above has the same picture at thumbnail size; this is the one place its
+   full technical name is spelled out. */
+.live-detail-map {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.live-detail-map-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.live-detail-map-name strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-detail-map-name code {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .live-detail-label {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: var(--space-2);
   color: var(--color-muted);
   font-size: 11px;
@@ -454,69 +501,118 @@
   text-transform: uppercase;
 }
 
+/* The count beside a heading, and beside a team name. Same shape in both
+   places: a small filled pill, so the number reads as a quantity rather than
+   as part of the word in front of it. */
+.live-detail-count,
+.live-team-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  padding: 0 5px;
+  background: var(--color-surface-raised);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* The facts the row above has no column for. The same tile the vault's detail
+   panel uses, which is where a reader will have met them first. */
+.live-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.live-detail-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.live-detail-facts dt {
+  order: 2;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.live-detail-facts dd {
+  order: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .live-team-list {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+/* One card per team, the names inside it wrapping rather than running off the
+   end of a single line: a full lobby is eight names, and the comma-separated
+   line this used to be showed the first three of them. */
 .live-team {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 180px;
-  padding: var(--space-2);
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 340px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .live-team strong {
-  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-muted);
 }
 
-.live-team span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.live-detail-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-  margin: 0;
-}
-
-.live-detail-side {
+.live-team-players {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.live-copy-link {
-  align-self: flex-end;
-  min-height: 30px;
-  padding-block: 0;
-  font-size: 11px;
-}
-
-.live-detail-meta div {
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   min-width: 0;
 }
 
-.live-detail-meta dt {
-  margin-bottom: 2px;
-  color: var(--color-muted);
-  font-size: 11px;
-  text-transform: uppercase;
+.live-sim-mod-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.live-detail-meta dd {
-  margin: 0;
-  overflow: hidden;
+.live-copy-link {
+  flex: 0 0 auto;
+  gap: 6px;
+  min-height: 30px;
+  padding-block: 0;
   font-size: 11px;
-  text-overflow: ellipsis;
 }
 
 .live-replay-footer {
@@ -574,10 +670,6 @@
 
   .live-replay-details {
     padding-left: var(--space-4);
-  }
-
-  .live-detail-meta {
-    grid-template-columns: 1fr;
   }
 }
 
