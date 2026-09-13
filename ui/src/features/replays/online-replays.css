@@ -1841,12 +1841,18 @@ button.vault-input {
   white-space: nowrap;
 }
 
-/* Two tiles wide, not four: an id and two copy buttons do not need a whole
-   row, and a tile that wide read as a banner rather than as one of the
-   facts. The eight under it still fall four to a row, so the pair of
-   durations four apart in the list stays in one column. */
+/* Its own row, and half of it.
+
+   The tile takes the whole row so that no fact is pulled up beside it and
+   the eight below keep the four-by-two they were arranged as -- the pair of
+   durations four apart in the list stays in one column. What it draws is
+   capped at two of those columns: an id and two copy buttons do not need
+   the width of four, and a box that wide read as a banner over the facts
+   rather than as one of them. Two columns plus the gap between them is half
+   the row less half a gap, whatever the column count is. */
 .replay-card-fact-id {
-  grid-column: span 2;
+  grid-column: 1 / -1;
+  max-width: calc(50% - var(--space-2) / 2);
 }
 
 .replay-card-fact-id dd {
@@ -1964,10 +1970,10 @@ button.vault-input {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* One column wide is the whole row here; spanning two would invent a
-     second column for it. */
+  /* Half of a single narrow column is not enough for an id and two buttons,
+     so here the tile is the row it already spans. */
   .replay-card-fact-id {
-    grid-column: auto;
+    max-width: none;
   }
 
   .replay-card-bottom {
