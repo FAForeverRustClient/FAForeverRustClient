@@ -72,8 +72,17 @@ impl ClientRelease {
     /// because the answer is wanted before the release reaches state: the
     /// notification raised for a new version has to know whether it is
     /// announcing news or a requirement.
+    ///
+    /// A prerelease counts. It did not, on the reasoning that opting into
+    /// prereleases is opting into testing rather than into being locked out by
+    /// every nightly, and that reasoning does not survive this project's
+    /// release history: every release it has ever published is marked as a
+    /// prerelease on GitHub, so "a prerelease never forces" meant "nothing
+    /// ever forces". What the channel decides is whether a build is *offered*
+    /// at all; once it has been offered and this client can install it, being
+    /// two releases behind is the same problem either way.
     pub fn is_required(&self) -> bool {
-        !self.pre_release && self.is_installable()
+        self.is_installable()
     }
 }
 
@@ -187,10 +196,8 @@ impl ClientUpdateState {
     /// wrong with the last build. So a stable release that this client can
     /// install itself stops being an offer and becomes a gate.
     ///
-    /// Three conditions, and each one is a refusal to trap somebody:
+    /// Two conditions, and each one is a refusal to trap somebody:
     ///
-    /// - **A prerelease never forces.** Opting into prereleases is opting into
-    ///   testing, not into being locked out by every nightly.
     /// - **A release with no installer for this platform never forces.** That
     ///   is a normal outcome, not an error - a release may ship a Windows
     ///   installer and nothing else - and gating on an update the client has
@@ -759,10 +766,17 @@ mod tests {
     }
 
     #[test]
-    fn a_prerelease_is_offered_and_never_required() {
+    fn a_prerelease_this_client_was_offered_is_required_too() {
+        // Only a client on the prerelease channel is ever offered one, and
+        // every release this project publishes is marked as a prerelease: if
+        // this returned `None` the gate would be unreachable in practice,
+        // which is exactly what it was.
         let state = offered("0.4.0-rc1", |release| release.pre_release = true);
         assert!(state.banner_release().is_some());
-        assert_eq!(state.required_release(), None);
+        assert_eq!(
+            state.required_release().map(|r| r.version.as_str()),
+            Some("0.4.0-rc1"),
+        );
     }
 
     #[test]

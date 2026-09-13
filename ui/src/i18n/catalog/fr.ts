@@ -1078,7 +1078,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.close": "Fermer",
 
   "settings.updates.includePreReleases": "Inclure les préversions",
-  "settings.updates.includePreReleasesHint": "Propose aussi les versions candidates et bêta. Elles reçoivent les correctifs en premier et cassent en premier.",
+  "settings.updates.includePreReleasesHint": "Propose aussi les versions candidates et bêta. Elles reçoivent les correctifs en premier et cassent en premier, et une que le client peut installer compte comme une mise à jour obligatoire.",
   "settings.updates.updateStatus": "État des mises à jour",
   "settings.updates.updateStatusHint": "La vérification n'installe rien : une mise à jour disponible est proposée dans une bannière que vous pouvez fermer.",
   "settings.updates.checking": "Vérification…",

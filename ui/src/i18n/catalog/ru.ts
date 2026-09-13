@@ -1100,7 +1100,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.close": "Закрыть",
 
   "settings.updates.includePreReleases": "Включать предварительные версии",
-  "settings.updates.includePreReleasesHint": "Предлагает также кандидаты в выпуск и бета-сборки. Они первыми получают исправления и первыми ломаются.",
+  "settings.updates.includePreReleasesHint": "Предлагает также кандидаты в выпуск и бета-сборки. Они первыми получают исправления и первыми ломаются, а ту, которую клиент может установить, установить придётся.",
   "settings.updates.updateStatus": "Состояние обновлений",
   "settings.updates.updateStatusHint": "Проверка ничего не устанавливает: доступное обновление предлагается в баннере, который можно закрыть.",
   "settings.updates.checking": "Проверка…",

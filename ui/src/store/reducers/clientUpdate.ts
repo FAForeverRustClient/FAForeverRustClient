@@ -36,16 +36,17 @@ export function updateBannerRelease(state: ClientUpdateState): ClientRelease | n
  * Twin of `ClientUpdateState::required_release`, which decides whether the
  * client may still be used.
  *
- * The three carve-outs are all refusals to trap somebody, and the reasoning
- * lives on the Rust side: a prerelease never forces, a release with no
- * installer for this platform never forces, and nothing forces until a check
- * has actually found something. Note what is *not* consulted: the dismissed
- * version, because the point of a gate is that it is not the user's to
- * dismiss.
+ * Both carve-outs are refusals to trap somebody, and the reasoning lives on
+ * the Rust side: a release with no installer for this platform never forces,
+ * and nothing forces until a check has actually found something. A prerelease
+ * used to be a third, and is not any more: every release this project
+ * publishes is marked as one, so that carve-out meant nothing ever forced.
+ * Note what is *not* consulted: the dismissed version, because the point of a
+ * gate is that it is not the user's to dismiss.
  */
 export function updateRequiredRelease(state: ClientUpdateState): ClientRelease | null {
   const release = state.release;
-  if (release === null || release.preRelease || release.downloadUrl === "") return null;
+  if (release === null || release.downloadUrl === "") return null;
   const gated =
     state.status.type === "available" ||
     state.status.type === "downloading" ||

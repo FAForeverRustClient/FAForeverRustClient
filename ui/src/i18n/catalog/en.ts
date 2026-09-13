@@ -1398,7 +1398,7 @@ export const en = {
   "settings.updates.checkUpdatesAt": "Announce optional updates",
   "settings.updates.checkUpdatesAtHint": "Raises a banner and a notification when a new version is available. The client always checks the project's release page at startup, and a release it can install itself is not optional; turning this off only keeps an update you may postpone out of your way.",
   "settings.updates.includePreReleases": "Include pre-releases",
-  "settings.updates.includePreReleasesHint": "Offers release candidates and beta builds as well. They get fixes first and break first.",
+  "settings.updates.includePreReleasesHint": "Offers release candidates and beta builds as well. They get fixes first and break first, and one the client can install counts as an update you have to take.",
   "settings.updates.updateStatus": "Update status",
   "settings.updates.updateStatusHint": "Checking here does not install anything: an available update is offered in a banner you can dismiss.",
   "settings.appearance.interfaceDensity": "Interface density",

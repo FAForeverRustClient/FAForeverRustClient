@@ -1047,7 +1047,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.clientLogs": "Dzienniki klienta",
   "settings.diagnostics.clientLogsHint": "Bieżąca diagnostyka klienta jest przechowywana osobno od dzienników Forged Alliance.",
   "settings.updates.includePreReleases": "Uwzględniaj wersje wstępne",
-  "settings.updates.includePreReleasesHint": "Proponuje także kandydatów do wydania i kompilacje beta. Dostają poprawki jako pierwsze i psują się jako pierwsze.",
+  "settings.updates.includePreReleasesHint": "Proponuje także kandydatów do wydania i kompilacje beta. Dostają poprawki jako pierwsze i psują się jako pierwsze, a tę, którą klient potrafi zainstalować, trzeba zainstalować.",
   "settings.updates.updateStatus": "Stan aktualizacji",
   "settings.updates.updateStatusHint": "Sprawdzenie tutaj niczego nie instaluje: dostępna aktualizacja jest proponowana w banerze, który możesz zamknąć.",
   "settings.appearance.interfaceDensity": "Gęstość interfejsu",

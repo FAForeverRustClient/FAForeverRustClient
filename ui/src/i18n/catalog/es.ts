@@ -1077,7 +1077,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.diagnostics.close": "Cerrar",
 
   "settings.updates.includePreReleases": "Incluir versiones preliminares",
-  "settings.updates.includePreReleasesHint": "Ofrece también candidatas a versión y compilaciones beta. Reciben las correcciones antes y se rompen antes.",
+  "settings.updates.includePreReleasesHint": "Ofrece también candidatas a versión y compilaciones beta. Reciben las correcciones antes y se rompen antes, y una que el cliente pueda instalar cuenta como una actualización obligatoria.",
   "settings.updates.updateStatus": "Estado de las actualizaciones",
   "settings.updates.updateStatusHint": "Comprobar aquí no instala nada: una actualización disponible se ofrece en un aviso que puedes cerrar.",
   "settings.updates.checking": "Comprobando…",
