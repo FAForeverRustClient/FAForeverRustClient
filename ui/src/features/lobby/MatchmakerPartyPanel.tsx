@@ -7,6 +7,8 @@ import type { PartyMember, PartyState, PlayerProfile, SocialState } from "../../
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 import { ProfileAvatar } from "../../shared/ProfileAvatar";
+import { FactionIcon } from "../../shared/FactionIcon";
+import { factionIdFromName } from "../../shared/factions";
 
 interface InviteModalProps {
   social: SocialState;
@@ -69,6 +71,45 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
 
 /** The lobby server's party limit, and the largest matchmaker team size. */
 const PARTY_CAPACITY = 4;
+
+/**
+ * What a seat queues as, as the game's own emblems.
+ *
+ * It was the four words, comma separated, which is both the longest thing a
+ * 190px seat has to hold and the hardest to read at a glance: "uef, aeon,
+ * cybran, seraphim" wrapped onto a second line and then clipped, so the seat
+ * showed "uef, aeon, cybran," and a cut off word. The picker above already
+ * answers the same question with glyphs, for the reason `team_matchmaking.fxml`
+ * does: four names is a reading task, four emblems is a glance.
+ *
+ * The words stay as the hover text and as each glyph's accessible name, so
+ * nothing is lost to somebody who needs them. A faction this client does not
+ * know keeps its word rather than being dropped: the list comes off the wire.
+ */
+function PartyFactions({ factions }: { factions: string[] }) {
+  const { t } = useTranslation();
+  if (factions.length === 0) {
+    // No choice recorded is the server's way of saying "any of them", which is
+    // the mark this client already uses for Random.
+    return (
+      <span className="party-seat-factions" title={t("lobby.party.randomFaction")}>
+        <FactionIcon faction={5} size={14} />
+      </span>
+    );
+  }
+  return (
+    <span className="party-seat-factions" title={factions.join(", ")}>
+      {factions.map((faction) => {
+        const id = factionIdFromName(faction);
+        return id === null ? (
+          <small key={faction}>{faction}</small>
+        ) : (
+          <FactionIcon key={faction} faction={id} size={14} />
+        );
+      })}
+    </span>
+  );
+}
 
 interface Props {
   party: PartyState;
@@ -168,7 +209,14 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
               />
               <span className="party-seat-text">
                 <strong><PlayerName name={nameFor(member)} />{member.playerId === playerId ? t("lobby.party.youSuffix") : ""}</strong>
-                <small>{leader ? t("lobby.party.leader") : member.factions.length > 0 ? member.factions.join(", ") : t("lobby.party.randomFaction")}</small>
+                {/* Both, where the line used to be one or the other: the
+                    leader's own factions were the ones nobody could see, and
+                    the leader is the seat whose factions decide whether the
+                    party can queue at all. */}
+                <span className="party-seat-meta">
+                  <PartyFactions factions={member.factions} />
+                  {leader && <small>{t("lobby.party.leader")}</small>}
+                </span>
               </span>
               {canManageParty && member.playerId !== playerId ? (
                 <button
