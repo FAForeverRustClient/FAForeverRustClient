@@ -127,7 +127,16 @@ export function mergeReplayTeamsWithLocal(
  * players are four rows there too. The panel and the table still show
  * everyone; this is the one place that cannot afford to.
  */
-const CARD_TEAM_ROWS = 4;
+/**
+ * How many players a team can hold before its names are laid out in two
+ * columns rather than one.
+ *
+ * There is no cut any more. A card used to show three names and "+2 more",
+ * which is the one thing a lineup must not do: the name somebody is scanning
+ * for was as likely to be in the two as in the three. Every player is listed,
+ * and a long team goes wide instead of long.
+ */
+const CARD_TEAM_SPLIT_AT = 4;
 
 export function ReplayCardRoster({
   teams,
@@ -153,11 +162,11 @@ export function ReplayCardRoster({
     <div className="replay-card-teams" data-sole-team={soleTeam ? "true" : undefined}>
       {teams.map((team) => {
         const observer = isObserverTeam(team.team);
-        const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > 4;
+        // Two columns only where a team has the card's full width to itself.
+        // Side by side with another team, half a card split again is a column
+        // too narrow for a name.
+        const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > CARD_TEAM_SPLIT_AT;
         const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
-        const overflows = !isSplit && team.players.length > CARD_TEAM_ROWS;
-        const shown = overflows ? team.players.slice(0, CARD_TEAM_ROWS - 1) : team.players;
-        const hidden = team.players.length - shown.length;
         return (
           <section key={team.team} className="replay-card-team">
             {!isSingleTeamGame && (
@@ -174,7 +183,7 @@ export function ReplayCardRoster({
               className={`replay-card-team-roster ${isSplit ? "is-split" : ""}`}
               style={rowCount ? { gridTemplateRows: `repeat(${rowCount}, auto)` } : undefined}
             >
-              {shown.map((player) => (
+              {team.players.map((player) => (
                 <div key={player.name} className="replay-player">
                   {interactive ? (
                     <button
@@ -204,13 +213,6 @@ export function ReplayCardRoster({
                   {player.rating !== null && <span className="muted">{player.rating}</span>}
                 </div>
               ))}
-              {/* The count the header already carries, said again where the
-                  names stop, so a cut list does not read as the whole team. */}
-              {overflows && (
-                <div className="replay-player replay-player-more muted">
-                  {t("replays.roster.morePlayers", { count: hidden })}
-                </div>
-              )}
             </div>
           </section>
         );

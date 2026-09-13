@@ -1243,12 +1243,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Смотреть",
 
   "replays.roster.observers": "Наблюдатели",
-  "replays.roster.morePlayers": {
-    one: "+{count} ещё",
-    few: "+{count} ещё",
-    many: "+{count} ещё",
-    other: "+{count} ещё",
-  },
   "replays.roster.observer": "Наблюдатель",
   "replays.roster.freeForAll": "Каждый сам за себя",
   "replays.roster.players": "Игроки",

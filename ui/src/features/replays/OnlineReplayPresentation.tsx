@@ -90,21 +90,22 @@ function ReplayStars({ replay }: { replay: ReplayCardData }) {
 }
 
 /**
- * A control on the card itself, drawn over the map thumbnail.
+ * The card's own way in: watch this replay, without opening it first.
  *
- * Watching a replay meant opening the card, reading a panel and pressing the
- * button at the bottom of it, which is three steps to do the one thing the
- * grid is being scanned for. The Java client puts the button on the tile, and
- * so does the list view next door; this is the same pair of actions in the
- * same order, on the view that was missing them.
+ * Watching meant opening the card, reading a panel and pressing the button at
+ * the bottom of it, which is three steps to do the one thing the grid is being
+ * scanned for. It sits in the bottom corner of the card next to the replay id,
+ * where a card puts what it can do, rather than over the map: a control on top
+ * of the picture hides part of the one thing the tile is mostly made of.
+ *
+ * Only watching. Downloading a replay is a thing you do to one replay you have
+ * already decided on, not something to offer on every tile of a page of fifty;
+ * it stays in the detail panel and on the list view's row.
  */
-export interface ReplayCardAction {
-  icon: IconName;
-  /** Tooltip, and the accessible name when `ariaLabel` adds nothing. */
-  title: string;
-  ariaLabel?: string;
-  pressed?: boolean;
-  disabled?: boolean;
+export interface ReplayCardWatch {
+  label: string;
+  ariaLabel: string;
+  disabled: boolean;
   onClick: () => void;
 }
 
@@ -225,15 +226,15 @@ export function ReplayLibraryCard({
   replay,
   watched,
   selected = false,
-  actions = [],
+  watch,
   onOpen,
   onDoubleClick,
 }: {
   replay: ReplayCardData;
   watched: boolean;
   selected?: boolean;
-  /** Controls drawn over the thumbnail. See `ReplayCardAction`. */
-  actions?: ReplayCardAction[];
+  /** The footer's action. See `ReplayCardWatch`. */
+  watch?: ReplayCardWatch;
   onOpen: () => void;
   onDoubleClick?: () => void;
 }) {
@@ -271,39 +272,13 @@ export function ReplayLibraryCard({
       }}
     >
       <div className="replay-card-left">
-        <div className="replay-card-thumb-wrap">
-          <ReplayMapThumb
-            url={replay.mapThumbnailUrl}
-            mapName={mapKey}
-            className="replay-card-thumb"
-            emptyClassName="replay-card-thumb-empty"
-            iconSize={32}
-          />
-          {actions.length > 0 && (
-            <div className="replay-card-thumb-actions">
-              {actions.map((action) => (
-                <button
-                  key={action.icon}
-                  type="button"
-                  className="replay-rail-thumb-btn"
-                  disabled={action.disabled}
-                  aria-pressed={action.pressed}
-                  aria-label={action.ariaLabel ?? action.title}
-                  title={action.title}
-                  // The card opens on a click and watches on a double click,
-                  // and neither is what was asked for here.
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    action.onClick();
-                  }}
-                  onDoubleClick={(event) => event.stopPropagation()}
-                >
-                  <Icon name={action.icon} size={14} />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <ReplayMapThumb
+          url={replay.mapThumbnailUrl}
+          mapName={mapKey}
+          className="replay-card-thumb"
+          emptyClassName="replay-card-thumb-empty"
+          iconSize={32}
+        />
         <ReplayStars replay={replay} />
         <ReplayMetaGrid replay={replay} />
       </div>
@@ -313,9 +288,30 @@ export function ReplayLibraryCard({
           <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
         </div>
         <ReplayCardRoster teams={replay.teams} />
-        <div className="replay-card-footer muted">
-          {replay.footerNote && <span>{replay.footerNote} · </span>}
-          <span>{replay.idLabel}</span>
+        {/* The id and the way in, on one line in the corner: the label that
+            says which replay this is, and the button that plays it. */}
+        <div className="replay-card-footer">
+          {replay.footerNote && <span className="muted">{replay.footerNote}</span>}
+          <span className="muted">{replay.idLabel}</span>
+          {watch && (
+            <button
+              type="button"
+              className="replay-card-watch"
+              disabled={watch.disabled}
+              aria-label={watch.ariaLabel}
+              title={watch.ariaLabel}
+              // The card opens on a click and watches on a double click, and
+              // neither is what was asked for here.
+              onClick={(event) => {
+                event.stopPropagation();
+                watch.onClick();
+              }}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <Icon name="play" size={13} />
+              <span>{watch.label}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -329,7 +325,6 @@ export function ReplayCard({
   onOpen,
   onDoubleClick,
   onWatch,
-  onDownload,
 }: {
   replay: VaultReplay;
   watched: boolean;
@@ -338,33 +333,21 @@ export function ReplayCard({
   onOpen: () => void;
   onDoubleClick?: () => void;
   onWatch?: () => void;
-  /** Saves the `.fafreplay` file, without opening the detail panel first. */
-  onDownload?: () => void;
 }) {
   const { t } = useTranslation();
   const localReplays = useAppStore((state) => state.state.replays.local);
   const localMatch = localReplays.find((local) => local.uid === replay.uid);
   const map = effectiveReplayMapName(replay.map, localMatch?.map);
-  // Neither appears for a replay the server has not finished processing,
-  // because neither would work. Same rule as the list view.
-  const actions: ReplayCardAction[] = [];
-  if (onWatch && replay.replayAvailable) {
-    actions.push({
-      icon: "play",
-      title: t("replays.detail.watch"),
+  // Absent for a replay the server has not finished processing, because it
+  // would not work. Same rule as the list view.
+  const watch: ReplayCardWatch | undefined = onWatch && replay.replayAvailable
+    ? {
+      label: t("replays.detail.watch"),
       ariaLabel: t("replays.list.watchAria", { name: replay.title || map }),
       disabled: busy,
       onClick: onWatch,
-    });
-  }
-  if (onDownload && replay.replayAvailable) {
-    actions.push({
-      icon: "download",
-      title: t("replays.detail.download"),
-      ariaLabel: t("replays.list.downloadAria", { name: replay.title || map }),
-      onClick: onDownload,
-    });
-  }
+    }
+    : undefined;
   return (
     <ReplayLibraryCard
       replay={{
@@ -384,7 +367,7 @@ export function ReplayCard({
         footerNote: replay.replayAvailable ? "" : t("replays.card.notUploaded"),
       }}
       watched={watched}
-      actions={actions}
+      watch={watch}
       onOpen={onOpen}
       onDoubleClick={onDoubleClick}
     />

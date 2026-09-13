@@ -267,24 +267,6 @@ button.vault-input {
   gap: var(--space-2);
 }
 
-/* The box the thumbnail's own controls are positioned against. Sized by the
-   picture rather than by the column, so the buttons land on the corner of the
-   image and not on the corner of the empty space beside it. */
-.replay-card-thumb-wrap {
-  position: relative;
-  display: block;
-  width: 128px;
-}
-
-.replay-card-thumb-actions {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 4px;
-  z-index: 2;
-}
-
 .replay-card-thumb {
   width: 128px;
   height: 128px;
@@ -437,12 +419,44 @@ button.vault-input {
   color: var(--color-muted);
 }
 
+/* The floor of the card: the replay id, and the button that plays it. Both in
+   the corner, the id to the left of the button, which is the order the two are
+   read in. */
 .replay-card-footer {
   margin-top: auto;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  padding-top: var(--space-1);
   font-size: 11px;
+}
+
+.replay-card-watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.replay-card-watch:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-text);
+}
+
+.replay-card-watch:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .replay-stars {
@@ -1872,21 +1886,17 @@ button.vault-input {
   --team-accent: var(--color-warn);
 }
 
-/* A team is one block, not a stack of pills.
+/* A team is one block, not a stack of pills, and not a ruled table either.
    Giving every player their own filled, fully rounded row turned a four-man
-   team into four cards inside a fifth, and the team -- the thing the matchup
-   is actually between -- stopped reading as a unit. The players are plain rows
-   again, separated by a hairline rather than by a gap, and only the panel
-   around them is a surface. The hover still lights one row, because the names
-   are clickable. */
+   team into four cards inside a fifth; ruling between them then drew a line
+   whose ends stopped short of the panel, which reads as a rounded rule rather
+   than as a separator. The names stand on their own with nothing between them,
+   and only the panel around them is a surface. The hover still lights one row,
+   because the names are clickable. */
 .replay-card-layout .replay-detail-player {
   height: 30px;
   padding: 0 6px;
   border-radius: var(--radius-sm);
-}
-
-.replay-card-layout .replay-detail-player + .replay-detail-player {
-  border-top: 1px solid var(--color-border);
 }
 
 .replay-card-layout .replay-detail-player:hover {
@@ -1979,9 +1989,3 @@ button.vault-input {
   margin-top: var(--space-2);
 }
 
-/* The "+2 more" that closes a team's list on a card. Sits in the column the
-   names do, at their size, so a cut list reads as part of the team rather than
-   as a note about it. */
-.replay-player-more {
-  font-size: 11px;
-}

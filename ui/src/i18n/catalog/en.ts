@@ -1033,7 +1033,6 @@ export const en = {
 
   // Replay roster.
   "replays.roster.observers": "Observers",
-  "replays.roster.morePlayers": { one: "+{count} more", other: "+{count} more" },
   "replays.roster.observer": "Observer",
   "replays.roster.freeForAll": "Free for all",
   "replays.roster.players": "Players",
