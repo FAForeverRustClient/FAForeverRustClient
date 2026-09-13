@@ -2332,8 +2332,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.generatingMap": "Генерируем карту…",
   "lobby.coop.noReplay": "Реплея нет",
   "lobby.coop.watchRunTitle": "Посмотреть реплей этого прохождения",
-  "lobby.host.enforceRatingOn": "Игроки вне этого диапазона не увидят лобби и не смогут в него войти.",
-  "lobby.host.enforceRatingOff": "Показывается только как ориентир. Войти по-прежнему может любой.",
   "lobby.host.mapTab.all": "Все карты ({count})",
   "lobby.host.mapTab.favorites": "Избранное ({count})",
   "lobby.host.noFavoriteMaps": "Избранного пока нет. Отметьте карту звёздочкой, и она появится здесь.",

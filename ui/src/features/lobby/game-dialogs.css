@@ -46,8 +46,13 @@
 .host-game-modal {
   display: flex;
   flex-direction: column;
-  width: min(1360px, calc(100vw - 32px));
-  max-width: 1360px;
+  /* 1440 rather than 1360, for one row of options rather than two: password,
+     friends-only and the rating bounds are three settings that belong beside
+     each other, and at 1360 the third wrapped onto a line of its own in every
+     language with a word longer than English's. The map list takes the extra
+     width when the options do not need it: it is the column that grows. */
+  width: min(1440px, calc(100vw - 32px));
+  max-width: 1440px;
   /* 800px was a cap, not a fit: the description field, the map list and the
      mod list all had to share what was left after the header, so a window with
      room to spare still scrolled. The dialog now takes the height it is given
@@ -343,24 +348,10 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  /* Unlike the other two options this one may give ground: the sentence next
-     to it is the part that can afford to move to a second line, and only when
-     there is genuinely no room for it. */
+  /* Unlike the other two options this one may give ground, in the languages
+     whose label for it is long enough to need to. */
   flex-shrink: 1;
   min-width: 0;
-}
-
-/* Beside the bounds it explains, not under them. It used to claim a line of
-   its own unconditionally (`flex-basis: 100%`), which made the whole options
-   row two lines tall in a dialog 1360px wide with room to spare. It still
-   wraps -- it is the first thing that does -- but only once the row is
-   actually full. */
-.host-field-hint {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 11px;
-  line-height: 1.3;
-  white-space: normal;
 }
 
 .host-rating-inputs {

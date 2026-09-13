@@ -2162,8 +2162,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.column.age": "Antigüedad",
   "lobby.coop.noReplay": "Sin repetición",
   "lobby.coop.watchRunTitle": "Ver la repetición de esta partida",
-  "lobby.host.enforceRatingOn": "Los jugadores fuera de este rango no pueden ver la sala ni entrar en ella.",
-  "lobby.host.enforceRatingOff": "Solo a título orientativo. Cualquiera puede entrar igualmente.",
   "lobby.host.mapTab.all": "Todos los mapas ({count})",
   "lobby.host.mapTab.favorites": "Favoritos ({count})",
   "lobby.host.noFavoriteMaps": "Todavía no hay favoritos. Marca un mapa con una estrella para guardarlo aquí.",
