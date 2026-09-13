@@ -443,7 +443,12 @@ export function InstalledModsView({
         const isRankedMod = meta?.ranked ?? false;
         const hasUpdate = meta && modUpdateAvailable(mod.version, meta.version);
 
-        if (preset === "favorites" && !isFavoriteMod(favorites, mod.uid)) return false;
+        // The chip disappears with the last star, so the filter behind it has
+        // to as well: otherwise un-starring everything leaves the list empty
+        // with no visible filter to explain it.
+        if (preset === "favorites" && favoriteCount > 0 && !isFavoriteMod(favorites, mod.uid)) {
+          return false;
+        }
         if (preset === "enabled" && !mod.enabled) return false;
         if (preset === "disabled" && mod.enabled) return false;
         if (preset === "ui" && mod.modType !== "ui") return false;
@@ -505,7 +510,7 @@ export function InstalledModsView({
       });
   }, [
     installed, search, creator, preset, sort, modType, enabled, ranked,
-    minimumRating, maximumRating, vaultByUid, favorites,
+    minimumRating, maximumRating, vaultByUid, favorites, favoriteCount,
   ]);
 
   // Looked up by folder rather than held as a copy: the list is replaced

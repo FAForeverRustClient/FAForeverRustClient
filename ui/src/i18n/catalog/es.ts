@@ -2244,6 +2244,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.vetoesUsedAria": "{used} de {limit} vetos usados",
   "lobby.browser.resizeColumn": "Cambiar el ancho de la columna {column}",
   "lobby.browser.sortByColumn": "Ordenar por {column}",
+  "lobby.browser.sortAscending": "ascendente",
+  "lobby.browser.sortDescending": "descendente",
   "lobby.browser.resizeDetails": "Cambiar el ancho del panel de detalles",
   "lobby.browser.openProfile": "Abrir el perfil de {name}",
   "lobby.browser.tileAria": "{title}, alojada por {host}. Haz doble clic para entrar.",
