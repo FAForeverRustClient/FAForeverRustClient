@@ -38,6 +38,29 @@
   width: 100%;
 }
 
+/* The game mode and the date range, which took the row the featured mod
+   picker had. The dates are one field holding two inputs, so the pair carries
+   one label and stays one column when the row wraps. */
+.vault-search-mode {
+  flex: 0 1 164px;
+  width: 164px;
+  min-width: 148px;
+}
+
+.vault-search-dates {
+  flex: 0 0 auto;
+}
+
+.vault-search-date-pair {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vault-search-date-pair .vault-input {
+  width: 140px;
+}
+
 /* Keep the rating range and replay identifier in the compact search row. */
 .vault-search-rating {
   flex: 0 1 220px;

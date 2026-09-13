@@ -28,7 +28,6 @@ import { useEffect, useRef, useState } from "react";
 import type { League, ReplayQuery, ReplaySortField } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { MultiSelect, type MultiSelectOption } from "../../design-system/MultiSelect";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   advancedReplayFilterCount,
@@ -38,6 +37,7 @@ import {
   isoDaysAgo,
 } from "../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
+import { replayGameModes, selectedGameMode, withGameMode } from "./replayGameModes";
 import "../../design-system/search-panel.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -188,11 +188,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
     onSearch(query);
   };
 
-  const modOptions: MultiSelectOption[] = featuredMods.map((m) => ({ value: m, label: m }));
-  const leagueOptions: MultiSelectOption[] = leagues.map((l) => ({
-    value: l.technicalName,
-    label: l.technicalName,
-  }));
+  const gameModes = replayGameModes(leagues);
   const hiddenFilterCount = advancedReplayFilterCount(form);
 
   return (
@@ -232,22 +228,50 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
           />
         </label>
 
-        <div className="vault-field vault-search-leaderboard">
-          <MultiSelect
-            label={t("replays.search.leaderboard")}
-            options={leagueOptions}
-            selected={form.leaderboards}
-            onChange={(v) => set("leaderboards", v)}
-          />
-        </div>
+        {/* The leaderboard picker, asked as the question people have: a
+            leaderboard is how the API answers "which mode", not how anybody
+            says it, and co-op, which is on no leaderboard at all, could not be
+            asked for before. One choice rather than several, because the two
+            clauses behind it are ANDed and "custom or co-op" would be a search
+            that cannot match anything. See `replayGameModes.ts`. */}
+        <label className="vault-field vault-search-mode search-panel-field">
+          <span className="vault-field-label search-panel-label">{t("replays.search.gameMode")}</span>
+          <select
+            className="vault-input search-panel-control"
+            value={selectedGameMode(form)}
+            onChange={(e) => setForm(withGameMode(form, e.target.value))}
+          >
+            {gameModes.map((mode) => (
+              <option key={mode.id} value={mode.id}>{mode.label}</option>
+            ))}
+          </select>
+        </label>
 
-        <div className="vault-field vault-search-mod">
-          <MultiSelect
-            label={t("replays.search.mod")}
-            options={modOptions}
-            selected={form.featuredMods}
-            onChange={(v) => set("featuredMods", v)}
-          />
+        {/* Up here rather than three clicks into the advanced panel: "essential
+            feature", and the feature it replaced in this row was the featured
+            mod picker, which is now beside the rest of the narrowing filters.
+            One field, two bounds, because either half alone is a usable search
+            and both halves are the same question. */}
+        <div className="vault-field vault-search-dates search-panel-field">
+          <span className="vault-field-label search-panel-label">{t("replays.search.datePlayed")}</span>
+          <div className="vault-search-date-pair">
+            <input
+              className="vault-input search-panel-control"
+              type="date"
+              value={form.after}
+              aria-label={t("replays.filters.playedAfter")}
+              title={t("replays.filters.playedAfter")}
+              onChange={(e) => set("after", e.target.value)}
+            />
+            <input
+              className="vault-input search-panel-control"
+              type="date"
+              value={form.before}
+              aria-label={t("replays.filters.playedBefore")}
+              title={t("replays.filters.playedBefore")}
+              onChange={(e) => set("before", e.target.value)}
+            />
+          </div>
         </div>
 
         {/* The label says "any player's", because that is what the API can
@@ -403,6 +427,7 @@ export function VaultSearch({ featuredMods, leagues, self, initialQuery, onSearc
       {advanced && (
         <AdvancedReplayFilters
           form={form}
+          featuredMods={featuredMods}
           set={set}
           setRange={setRange}
         />
