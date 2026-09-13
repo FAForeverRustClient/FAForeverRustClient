@@ -675,15 +675,24 @@
   font-size: 11px;
 }
 
-/* The detail panel's own action row: the rail is a column, so the watch
-   control spans it the way the buttons under it do. */
-.live-replay-detail-actions {
+/* The detail panel's action row: one control, in the corner the vault panel
+   puts its "Watch" in. `.replay-card-bottom` is a two-column grid there
+   because that panel has two buttons; with one, a flex row that ends at the
+   right edge is the same corner without a phantom column beside it. */
+.live-replay-detail-bottom {
   display: flex;
-  width: 100%;
+  justify-content: flex-end;
 }
 
-.live-replay-detail-actions .live-watch-button,
-.live-replay-detail-actions .live-delay-actions,
-.live-replay-detail-actions .live-delay-trigger {
-  width: 100%;
+/* Sized like the vault panel's watch button, not like the table's: this is the
+   panel's primary action rather than a cell in a column. */
+.live-replay-detail-bottom .live-watch-button,
+.live-replay-detail-bottom .live-delay-trigger {
+  width: auto;
+  min-width: 200px;
+  min-height: 42px;
+  padding-inline: var(--space-4);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }

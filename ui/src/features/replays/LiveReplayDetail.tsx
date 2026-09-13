@@ -10,8 +10,16 @@
 // actually carries. A fact with no value is left out rather than printed as
 // "unknown": there is no game length yet, and saying so in eight places is
 // noise rather than information.
+//
+// One thing it does ask the vault for: the lineup. The lobby's `game_info`
+// carries team numbers and logins and nothing else - no faction, no rating -
+// but the API's `game` row is written when the match *launches*, not when it
+// ends, so a running game already has one, with `playerStats` in it. The same
+// one-id lookup the local library uses (`lookUpOnline`) answers it, and the
+// panel simply shows the richer lineup when it arrives. If the API has nothing
+// to say, the lobby's names stay on screen and nothing is lost.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Game, LiveReplayTracking } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -20,6 +28,7 @@ import { mapPresentation } from "../../shared/mapPresentation";
 import { liveReplayLink } from "../../shared/replayLinks";
 import { useAppStore } from "../../store/store";
 import { ReplayMapThumb } from "./OnlineReplayPresentation";
+import { MapPreviewFrame } from "../maps/MapPreviewZoom";
 import { ReplayDetailRoster } from "./ReplayRoster";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { LiveWatchButton } from "./LiveReplayRow";
@@ -49,13 +58,43 @@ export function LiveReplayDetail({
   const vault = useAppStore((state) => state.state.maps.vault);
   const missions = useAppStore((state) => state.state.coop.missions);
   const socialPlayers = useAppStore((state) => state.state.social.players);
+  const lookup = useAppStore((state) => state.state.replays.onlineLookups?.[game.id]);
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [copiedMapName, setCopiedMapName] = useState(false);
+  /// Whether the map preview has been opened out of the rail.
+  const [enlarged, setEnlarged] = useState(false);
+
+  // Asked once per game, and only while a panel is open: a request per card in
+  // the grid would be a request per refresh of a list that refreshes itself.
+  useEffect(() => {
+    if (lookup) return;
+    ipc.send({ kind: "Replays", command: { type: "lookUpOnline", payload: { uid: game.id } } });
+  }, [game.id, lookup]);
+
+  // `Modal` closes on Escape from a bubble-phase listener on the document, so
+  // the preview has to take Escape in the capture phase: one press steps back
+  // out of the picture instead of shutting the whole panel.
+  useEffect(() => {
+    if (!enlarged) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setEnlarged(false);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [enlarged]);
 
   const presentation = mapPresentation(vault, game.map, missions);
   const mapLabel = presentation.displayName || game.map;
   const title = game.title || mapLabel;
-  const teams = liveReplayTeams(game);
+  // The vault's lineup when it has one, the lobby's otherwise. The API knows
+  // factions and ratings; the lobby knows who is in the game. They are the same
+  // lineup, recorded at the same moment.
+  const vaultTeams = lookup?.type === "found" ? lookup.payload.teams : [];
+  const teams = vaultTeams.length > 0 ? vaultTeams : liveReplayTeams(game);
   const simMods = Object.values(game.simMods);
   const started = gameStartedAt(game);
 
@@ -120,26 +159,30 @@ export function LiveReplayDetail({
     >
       <div className="replay-card-layout">
         <aside className="replay-card-rail">
+          {/* The same preview the vault's panel has, and the same way in:
+              press it and the map opens in the zoom frame the Maps and Play
+              tabs use. A live game is the one where the map matters most, and
+              it was the one picture here that could not be looked at. */}
           <div className="replay-rail-thumb">
-            <ReplayMapThumb
-              url=""
-              mapName={game.map}
-              className="replay-rail-thumb-image"
-              emptyClassName="replay-rail-thumb-empty"
-              iconSize={44}
-              large
-            />
-          </div>
-
-          {/* The one action a running game has. Same control as the grid and
-              the table, delay menu included. */}
-          <div className="replay-card-rail-actions live-replay-detail-actions">
-            <LiveWatchButton
-              busy={busy}
-              game={game}
-              tracking={tracking}
-              waitSeconds={waitSeconds}
-            />
+            <button
+              type="button"
+              className="replay-rail-thumb-open"
+              onClick={() => setEnlarged(true)}
+              title={t("maps.preview.enlarge", { name: mapLabel })}
+              aria-label={t("maps.preview.enlarge", { name: mapLabel })}
+            >
+              <ReplayMapThumb
+                url=""
+                mapName={game.map}
+                className="replay-rail-thumb-image"
+                emptyClassName="replay-rail-thumb-empty"
+                iconSize={44}
+                large
+              />
+              <span className="replay-rail-thumb-zoom" aria-hidden>
+                <Icon name="search" size={14} />
+              </span>
+            </button>
           </div>
 
           <div className="replay-card-idrow">
@@ -214,8 +257,72 @@ export function LiveReplayDetail({
               </ul>
             </section>
           )}
+
+          {/* The way in, in the corner the vault's panel puts its own actions:
+              at the end of the column that describes the game, not under the
+              picture of the map. */}
+          <div className="replay-card-bottom live-replay-detail-bottom">
+            <LiveWatchButton
+              busy={busy}
+              game={game}
+              tracking={tracking}
+              waitSeconds={waitSeconds}
+            />
+          </div>
         </div>
       </div>
+
+      {/* In this dialog's own markup rather than a second `Modal`: `Modal`
+          closes on Escape from a document listener, so two stacked would close
+          both at once. Three ways out, as next door: the button, the scrim and
+          Escape. */}
+      {enlarged && (
+        <div
+          className="replay-preview-scrim"
+          role="presentation"
+          onClick={() => setEnlarged(false)}
+        >
+          <div
+            className="replay-preview-overlay"
+            role="dialog"
+            aria-label={t("maps.preview.enlarge", { name: mapLabel })}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <MapPreviewFrame
+              kicker={t("lobby.browser.mapPreview")}
+              title={mapLabel}
+              subtitle={title === mapLabel ? undefined : title}
+              onClose={() => setEnlarged(false)}
+              footer={game.map ? (
+                <div className="replay-preview-overlay-name">
+                  <span>{t("lobby.browser.mapFullName")}</span>
+                  <code>{game.map}</code>
+                  <button
+                    type="button"
+                    className="replay-card-icon-btn"
+                    aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+                    title={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+                    onClick={() =>
+                      ipc.run(navigator.clipboard.writeText(game.map).then(() => setCopiedMapName(true)))
+                    }
+                  >
+                    <Icon name={copiedMapName ? "check" : "copy"} size={13} />
+                  </button>
+                </div>
+              ) : null}
+            >
+              <ReplayMapThumb
+                url=""
+                mapName={game.map}
+                className="replay-preview-overlay-image"
+                emptyClassName="replay-rail-thumb-empty"
+                iconSize={64}
+                large
+              />
+            </MapPreviewFrame>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
