@@ -2189,8 +2189,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.column.age": "Wiek",
   "lobby.coop.noReplay": "Brak powtórki",
   "lobby.coop.watchRunTitle": "Obejrzyj powtórkę tego przejścia",
-  "lobby.host.enforceRatingOn": "Gracze spoza tego zakresu nie zobaczą poczekalni ani do niej nie dołączą.",
-  "lobby.host.enforceRatingOff": "Podane tylko orientacyjnie. Każdy i tak może dołączyć.",
   "lobby.host.mapTab.all": "Wszystkie mapy ({count})",
   "lobby.host.mapTab.favorites": "Ulubione ({count})",
   "lobby.host.noFavoriteMaps": "Nie ma jeszcze ulubionych. Oznacz mapę gwiazdką, aby ją tu zatrzymać.",
