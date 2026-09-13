@@ -1841,11 +1841,12 @@ button.vault-input {
   white-space: nowrap;
 }
 
-/* The id takes the whole first row, which leaves the eight facts under it in
-   the four-by-two they were designed as -- the two durations still land side
-   by side -- and gives the two copy buttons somewhere to sit. */
+/* Two tiles wide, not four: an id and two copy buttons do not need a whole
+   row, and a tile that wide read as a banner rather than as one of the
+   facts. The eight under it still fall four to a row, so the pair of
+   durations four apart in the list stays in one column. */
 .replay-card-fact-id {
-  grid-column: 1 / -1;
+  grid-column: span 2;
 }
 
 .replay-card-fact-id dd {
@@ -1961,6 +1962,12 @@ button.vault-input {
 @media (max-width: 560px) {
   .replay-card-facts {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* One column wide is the whole row here; spanning two would invent a
+     second column for it. */
+  .replay-card-fact-id {
+    grid-column: auto;
   }
 
   .replay-card-bottom {
