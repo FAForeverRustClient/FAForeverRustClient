@@ -28,6 +28,7 @@ import {
 import { MapPreviewFrame } from "../maps/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
+import { ReplayInsights } from "./ReplayInsights";
 import { useAppStore } from "../../store/store";
 import {
   isObserverTeam,
@@ -527,13 +528,6 @@ function groupReplaysByDate(replays: VaultReplay[]): Array<{ label: string; repl
   return groups;
 }
 
-function formatChatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 export function localReplayToVaultReplay(
   local: LocalReplay,
   mapVault: VaultMap[],
@@ -651,19 +645,7 @@ export function ReplayDetailPanel({
   );
   const localPath = initialLocalPath || localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
-  // Absent on a legacy `.scfareplay`, which has no header to read them from.
-  const simMods = details?.simMods ?? [];
   const isLoadingDetails = detailsLoading === replay.uid;
-  const [optionFilter, setOptionFilter] = useState("");
-
-  const filteredOptions = useMemo(() => {
-    if (!details?.gameOptions) return [];
-    if (!optionFilter.trim()) return details.gameOptions;
-    const query = optionFilter.toLowerCase();
-    return details.gameOptions.filter(
-      (option) => option.key.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
-    );
-  }, [details?.gameOptions, optionFilter]);
 
   const loadDetails = () => {
     ipc.send({
@@ -745,9 +727,10 @@ export function ReplayDetailPanel({
   const [showResults, setShowResults] = useState(false);
   /// Whether the map preview has been opened out of the rail.
   const [enlarged, setEnlarged] = useState(false);
-  // The rail's chat button both loads the details and reveals the log, so
-  // its own open state is separate from whether the details have arrived.
-  const [showChat, setShowChat] = useState(false);
+  // The rail's button both asks for the file to be read and opens the panel
+  // that shows what was in it, so its own open state is separate from whether
+  // the details have arrived.
+  const [showInsights, setShowInsights] = useState(false);
 
   useEffect(() => {
     if (isGenerated && !seed && replay.replayAvailable && !localMatch && downloadState === "idle") {
@@ -991,10 +974,11 @@ export function ReplayDetailPanel({
               disabled={isLoadingDetails}
               onClick={() => {
                 if (!details) loadDetails();
-                setShowChat((open) => !open);
+                setShowInsights(true);
               }}
-              aria-pressed={showChat}
-              title={t("replays.detail.loadDetails")}
+              aria-haspopup="dialog"
+              aria-expanded={showInsights}
+              title={t("replays.insights.openHint")}
             >
               <span>{t(isLoadingDetails ? "replays.detail.loadingDetails" : "replays.detail.loadDetails")}</span>
               <Icon name={isLoadingDetails ? "refresh" : "list"} size={15} className={isLoadingDetails ? "spin" : undefined} />
@@ -1221,109 +1205,16 @@ export function ReplayDetailPanel({
         <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
       )}
 
-      {details && showChat && (
-        <>
-          {/* Which simulation mods the game ran with. Read from the replay's
-              own header rather than the vault listing, which does not carry
-              them, so it needs the details load either way. Hidden entirely
-              for an unmodded game rather than showing an empty row. */}
-          {simMods.length > 0 && (
-            <section className="replay-detail-sim-mods">
-              <h3 className="replay-more-info-title">
-                {t("replays.detail.simMods")}
-                <span className="muted replay-more-info-count">({simMods.length})</span>
-              </h3>
-              <ul className="replay-sim-mod-list">
-                {simMods.map((mod) => (
-                  <li key={mod} className="surface-chip">{mod}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-          <section className="replay-detail-more-info">
-            <div className="replay-more-info-grid">
-              <div className="replay-more-info-col">
-                <div className="replay-more-info-header">
-                  <h3 className="replay-more-info-title">{t("replays.detail.gameOptions")}</h3>
-                  <input
-                    type="search"
-                    className="vault-input replay-options-filter"
-                    placeholder={t("replays.detail.filterOptions")}
-                    value={optionFilter}
-                    onChange={(event) => setOptionFilter(event.target.value)}
-                  />
-                </div>
-                <div className="replay-table-scroll">
-                  <table className="replay-data-table replay-options-table">
-                    <thead>
-                      <tr>
-                        <th>{t("replays.detail.optionName")}</th>
-                        <th>{t("replays.detail.optionValue")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => (
-                          <tr key={option.key}>
-                            <td><strong>{option.key}</strong></td>
-                            <td>{option.value}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={2} className="replay-table-empty muted">
-                            {t("replays.detail.noOptionsMatch")}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="replay-more-info-col">
-                <div className="replay-more-info-header">
-                  <h3 className="replay-more-info-title">
-                    {t("replays.detail.chat")}
-                    {details.chatMessages.length > 0 && (
-                      <span className="muted replay-more-info-count">
-                        ({details.chatMessages.length})
-                      </span>
-                    )}
-                  </h3>
-                </div>
-                <div className="replay-table-scroll">
-                  <table className="replay-data-table">
-                    <thead>
-                      <tr>
-                        <th>{t("replays.detail.chatTime")}</th>
-                        <th>{t("replays.detail.chatSender")}</th>
-                        <th>{t("replays.detail.chatMessage")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {details.chatMessages.length > 0 ? (
-                        details.chatMessages.map((message, index) => (
-                          <tr key={`${message.timeSeconds}-${message.sender}-${index}`}>
-                            <td className="replay-chat-time">{formatChatTime(message.timeSeconds)}</td>
-                            <td className="replay-chat-sender" title={message.sender}>{message.sender}</td>
-                            <td className="replay-chat-message">{message.message}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={3} className="replay-table-empty muted">
-                            {t("replays.detail.noChat")}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </section>
-        </>
+      {/* The tabbed panel the button above opens. It waits for the file to be
+          read: the request is sent by the same click, and until it lands there
+          is nothing to put in the tabs. */}
+      {showInsights && details && (
+        <ReplayInsights
+          details={details}
+          teams={detailTeams}
+          title={cardTitle}
+          onClose={() => setShowInsights(false)}
+        />
       )}
       {detailsError && (
         <p className="replay-download-error surface-error" style={{ marginTop: "12px" }}>

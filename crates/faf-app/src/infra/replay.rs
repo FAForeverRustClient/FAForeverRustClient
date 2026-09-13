@@ -76,8 +76,8 @@ use faf_domain::protocol::map_generator::is_generated_map;
 use faf_domain::protocol::replay_query;
 use faf_domain::state::{
     sort_vault_replays, LiveReplayTarget, LocalReplay, LocalReplayPlayer, LocalReplayStatus,
-    LocalReplayTeam, ModType, ReplayChatMessage, ReplayDetails, ReplayGameOption, ReplayPlayer,
-    ReplayQuery, ReplaySortField, ReplayTeam, VaultReplay,
+    LocalReplayTeam, ModType, ReplayChatMessage, ReplayCommandStats, ReplayDetails,
+    ReplayGameOption, ReplayPlayer, ReplayQuery, ReplaySortField, ReplayTeam, VaultReplay,
 };
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -2133,22 +2133,31 @@ pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
         return ReplayDetails {
             game_options: extract_game_options(game_options_lua.as_ref(), game_version),
             chat_messages: Vec::new(),
+            command_stats: Vec::new(),
+            sim_seconds: 0,
             sim_mods: Vec::new(),
             game_version,
         };
     };
 
-    // The source and army tables are walked only to reach the command stream
-    // behind them. Chat used to be attributed from this roster, by way of the
-    // army index in the callback; that index is the recipient, not the sender,
-    // so the roster no longer has anything to say about who typed what.
+    // The army table below is walked only to reach the command stream behind
+    // it. The source table is read: the stream names nobody, it switches
+    // between numbered command sources, and this is the table those numbers
+    // index into.
+    //
+    // Chat is a separate question and is not answered here. It used to be
+    // attributed from this roster, by way of the army index in the callback;
+    // that index is the recipient, not the sender, so the roster has nothing
+    // to say about who typed what.
+    let mut sources: Vec<String> = Vec::with_capacity(usize::from(source_count));
     for _ in 0..source_count {
-        if replay_string(&mut cursor).is_none() {
+        let Some(name) = replay_string(&mut cursor) else {
             break;
-        }
+        };
         if replay_u32(&mut cursor).is_none() {
             break;
         }
+        sources.push(name);
     }
     let _ = replay_u8(&mut cursor);
     let army_count = replay_u8(&mut cursor).unwrap_or(0);
@@ -2171,11 +2180,13 @@ pub fn parse_detailed_info_from_body(body: &[u8]) -> ReplayDetails {
     skip_replay_bytes(&mut cursor, 4);
 
     let game_options = extract_game_options(game_options_lua.as_ref(), game_version);
-    let chat_messages = extract_chat_messages(&mut cursor);
+    let stream = walk_command_stream(&mut cursor, &sources);
 
     ReplayDetails {
         game_options,
-        chat_messages,
+        chat_messages: stream.chat_messages,
+        command_stats: stream.command_stats,
+        sim_seconds: stream.ticks / TICKS_PER_SECOND,
         // Filled in by the caller, which is the only place that has seen the
         // `.fafreplay` header this body was unwrapped from.
         sim_mods: Vec::new(),
@@ -2187,6 +2198,8 @@ fn replay_details_with_version(game_version: Option<i32>) -> ReplayDetails {
     ReplayDetails {
         game_options: extract_game_options(None, game_version),
         chat_messages: Vec::new(),
+        command_stats: Vec::new(),
+        sim_seconds: 0,
         sim_mods: Vec::new(),
         game_version,
     }
@@ -2255,26 +2268,53 @@ struct ChatRecord {
     message: String,
 }
 
-/// In-game chat, from the command stream.
+/// The simulation's own clock: ten ticks to the second, which is what turns a
+/// tick count into game time and a command count into a rate.
+const TICKS_PER_SECOND: u32 = 10;
+
+/// One command source's turn at the stream. `CMDST_SET_COMMAND_SOURCE`, which
+/// carries the index of the client whose orders follow it.
+const CMDST_SET_COMMAND_SOURCE: u8 = 1;
+/// `CMDST_ADVANCE`, which carries how many ticks the simulation moved on.
+const CMDST_ADVANCE: u8 = 0;
+/// The span of command types that are a player giving an order: issue, issue
+/// to a factory, raise or lower a repeat count, retarget, retype, set the
+/// cells of an area order, and take one back off the queue.
 ///
-/// The game does not send chat as chat. It smuggles it through a
-/// `GiveResourcesToPlayer` sim callback carrying no resources and a `Msg`
-/// table, and it sends that callback more than once for a single typed line:
+/// Everything outside it is the engine talking to itself: the clock, the
+/// checksums it compares, the info pairs it records, and the Lua callbacks a
+/// UI mod can fire on every tick of every game. Counting those would rank the
+/// mods people run rather than the players running them: one game in the
+/// sample folder had twelve thousand callbacks per client against fifteen
+/// hundred orders.
+const PLAYER_ORDER_COMMANDS: std::ops::RangeInclusive<u8> = 12..=19;
+
+/// What one pass over the command stream produces.
+struct CommandStream {
+    chat_messages: Vec<ReplayChatMessage>,
+    command_stats: Vec<ReplayCommandStats>,
+    /// Simulation ticks the stream covers.
+    ticks: u32,
+}
+
+/// Walk the command stream once, for the chat in it and the orders in it.
 ///
-/// * once per recipient army, each carrying `Sender`, the name of whoever
-///   typed it, and `To`/`From` set to the army it is being delivered *to*;
-/// * once more, on some builds, as the origination record: `Msg` alone, with
-///   no `Sender`, no `To` and no `From`;
-/// * once more again, for a whisper, as an echo back to its author, where
-///   `Msg.echo` is set, `Msg.from` is the author and the top-level `Sender` is
-///   the player the whisper went to.
+/// One pass rather than two, because the stream is the largest thing in a
+/// replay file (a twenty-minute eight-player game is a quarter of a million
+/// records) and both answers fall out of the same walk.
 ///
-/// Both halves of the reported bug follow from that. Every line appeared twice
-/// because the copies disagree about the sender, and one of the two said
-/// "Unknown" because the origination record has nobody to name.
-fn extract_chat_messages(cursor: &mut Cursor<&[u8]>) -> Vec<ReplayChatMessage> {
+/// The chat half is the subtle one; it is documented at `fold_chat_record`
+/// below, and the shape of a record at `try_parse_chat_payload`.
+///
+/// The orders half is simple arithmetic: the stream is a sequence of records
+/// prefixed by whose they are, so counting them per source and dividing by the
+/// game time gives the commands-per-minute the thread asked for. Its one
+/// judgement call is which records count, which is `PLAYER_ORDER_COMMANDS`.
+fn walk_command_stream(cursor: &mut Cursor<&[u8]>, sources: &[String]) -> CommandStream {
     let mut current_ticks: u32 = 0;
     let mut records: Vec<ChatRecord> = Vec::new();
+    let mut counts: Vec<u32> = vec![0; sources.len()];
+    let mut current_source: Option<usize> = None;
     let body = *cursor.get_ref();
     let len = body.len();
 
@@ -2298,32 +2338,66 @@ fn extract_chat_messages(cursor: &mut Cursor<&[u8]>) -> Vec<ReplayChatMessage> {
         let payload = &body[pos..pos + payload_len];
         cursor.set_position((pos + payload_len) as u64);
 
-        if cmd_type == 0 {
-            // CMDST_ADVANCE
+        if cmd_type == CMDST_ADVANCE {
             if payload.len() >= 4 {
                 let ticks = u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]);
                 current_ticks = current_ticks.saturating_add(ticks);
             } else {
                 current_ticks = current_ticks.saturating_add(1);
             }
+        } else if cmd_type == CMDST_SET_COMMAND_SOURCE {
+            current_source = payload.first().map(|index| usize::from(*index));
+        } else if PLAYER_ORDER_COMMANDS.contains(&cmd_type) {
+            if let Some(count) = current_source.and_then(|index| counts.get_mut(index)) {
+                *count = count.saturating_add(1);
+            }
         } else if cmd_type == 22 || cmd_type == 0x20 || cmd_type == 0x22 {
             // 22 (0x16) is CMDST_LuaSimCallback in Forged Alliance
-            if let Some(record) = try_parse_chat_payload(payload, current_ticks / 10) {
+            if let Some(record) = try_parse_chat_payload(payload, current_ticks / TICKS_PER_SECOND)
+            {
                 fold_chat_record(&mut records, record);
             }
         }
     }
 
-    records
-        .into_iter()
-        .map(|record| ReplayChatMessage {
-            time_seconds: record.time_seconds,
-            sender: record.sender.unwrap_or_else(|| "Unknown".to_string()),
-            message: record.message,
-        })
-        .collect()
+    CommandStream {
+        chat_messages: records
+            .into_iter()
+            .map(|record| ReplayChatMessage {
+                time_seconds: record.time_seconds,
+                sender: record.sender.unwrap_or_else(|| "Unknown".to_string()),
+                message: record.message,
+            })
+            .collect(),
+        command_stats: sources
+            .iter()
+            .zip(counts)
+            .map(|(player, commands)| ReplayCommandStats {
+                player: player.clone(),
+                commands,
+            })
+            .collect(),
+        ticks: current_ticks,
+    }
 }
 
+/// In-game chat, from the command stream.
+///
+/// The game does not send chat as chat. It smuggles it through a
+/// `GiveResourcesToPlayer` sim callback carrying no resources and a `Msg`
+/// table, and it sends that callback more than once for a single typed line:
+///
+/// * once per recipient army, each carrying `Sender`, the name of whoever
+///   typed it, and `To`/`From` set to the army it is being delivered *to*;
+/// * once more, on some builds, as the origination record: `Msg` alone, with
+///   no `Sender`, no `To` and no `From`;
+/// * once more again, for a whisper, as an echo back to its author, where
+///   `Msg.echo` is set, `Msg.from` is the author and the top-level `Sender` is
+///   the player the whisper went to.
+///
+/// Both halves of the reported bug follow from that. Every line appeared twice
+/// because the copies disagree about the sender, and one of the two said
+/// "Unknown" because the origination record has nobody to name.
 /// Add one record, or recognise it as another copy of one already held.
 ///
 /// Two seconds of slack, because the copies of a line are not always recorded
@@ -3881,6 +3955,17 @@ impl ReplayPort for FakeReplay {
                     message: "gg".to_string(),
                 },
             ],
+            command_stats: vec![
+                ReplayCommandStats {
+                    player: "Downlord".to_string(),
+                    commands: 1_240,
+                },
+                ReplayCommandStats {
+                    player: "Nojoke".to_string(),
+                    commands: 980,
+                },
+            ],
+            sim_seconds: 600,
             sim_mods: vec!["No Rush Timer".to_string()],
             game_version: Some(3837),
         })
@@ -5131,7 +5216,92 @@ mod tests {
 
     fn extract(stream: &[u8]) -> Vec<ReplayChatMessage> {
         let mut cursor = Cursor::new(stream);
-        extract_chat_messages(&mut cursor)
+        walk_command_stream(&mut cursor, &[]).chat_messages
+    }
+
+    /// CMDST_SET_COMMAND_SOURCE: whose orders the records after it are.
+    fn source(index: u8) -> Vec<u8> {
+        command(1, vec![index])
+    }
+
+    /// CMDST_ISSUE_COMMAND, with a payload this walker never looks inside.
+    fn order() -> Vec<u8> {
+        command(12, vec![0; 8])
+    }
+
+    fn counts(stream: &[u8], players: &[&str]) -> Vec<ReplayCommandStats> {
+        let names: Vec<String> = players.iter().map(|name| (*name).to_string()).collect();
+        let mut cursor = Cursor::new(stream);
+        walk_command_stream(&mut cursor, &names).command_stats
+    }
+
+    #[test]
+    fn orders_are_counted_against_the_source_that_was_last_announced() {
+        let mut stream = Vec::new();
+        stream.extend_from_slice(&source(0));
+        stream.extend_from_slice(&order());
+        stream.extend_from_slice(&order());
+        stream.extend_from_slice(&source(1));
+        stream.extend_from_slice(&order());
+        stream.extend_from_slice(&advance(10));
+
+        let stats = counts(&stream, &["Vindex", "Nuggets"]);
+        assert_eq!(stats[0].player, "Vindex");
+        assert_eq!(stats[0].commands, 2);
+        assert_eq!(stats[1].player, "Nuggets");
+        assert_eq!(stats[1].commands, 1);
+    }
+
+    #[test]
+    fn the_engines_own_records_are_not_orders() {
+        // A UI mod firing a sim callback every tick would otherwise outrank
+        // every player in the game: one replay in the sample folder had twelve
+        // thousand of these per client against fifteen hundred real orders.
+        let mut stream = Vec::new();
+        stream.extend_from_slice(&source(0));
+        stream.extend_from_slice(&command(3, vec![0; 16])); // VerifyChecksum
+        stream.extend_from_slice(&command(11, vec![0; 4])); // ProcessInfoPair
+        stream.extend_from_slice(&delivered("gl", "Vindex", 1.0, &[], &[]));
+        stream.extend_from_slice(&order());
+
+        let stats = counts(&stream, &["Vindex"]);
+        assert_eq!(stats[0].commands, 1);
+    }
+
+    #[test]
+    fn the_ticks_the_stream_covers_become_game_seconds() {
+        let mut stream = Vec::new();
+        stream.extend_from_slice(&advance(600));
+        stream.extend_from_slice(&advance(600));
+
+        let mut cursor = Cursor::new(stream.as_slice());
+        let walked = walk_command_stream(&mut cursor, &[]);
+        assert_eq!(walked.ticks / TICKS_PER_SECOND, 120);
+    }
+
+    #[test]
+    fn an_order_before_any_source_is_announced_belongs_to_nobody() {
+        // Rather than to the first client in the table, which is what an index
+        // defaulting to zero would have quietly done.
+        let mut stream = Vec::new();
+        stream.extend_from_slice(&order());
+        stream.extend_from_slice(&source(0));
+        stream.extend_from_slice(&order());
+
+        assert_eq!(counts(&stream, &["Vindex"])[0].commands, 1);
+    }
+
+    #[test]
+    fn a_source_the_client_table_does_not_reach_is_dropped_rather_than_counted() {
+        // A truncated or unreadable table leaves fewer names than the stream
+        // switches between; the extra source is nobody this client can name.
+        let mut stream = Vec::new();
+        stream.extend_from_slice(&source(7));
+        stream.extend_from_slice(&order());
+
+        let stats = counts(&stream, &["Vindex"]);
+        assert_eq!(stats.len(), 1);
+        assert_eq!(stats[0].commands, 0);
     }
 
     #[test]

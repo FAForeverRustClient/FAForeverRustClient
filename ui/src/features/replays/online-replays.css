@@ -1127,54 +1127,127 @@ button.vault-input {
   }
 }
 
-.replay-detail-more-info-trigger {
-  display: flex;
-  align-items: center;
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-}
-
-.replay-detail-more-info-trigger button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 36px;
-}
-
-.replay-detail-more-info {
+/* The tabbed panel behind "Load more info", on top of the detail dialog that
+   opened it. Sized like the map preview next door, and for the same reason:
+   what it holds is a table, and a table wants the width of the dialog rather
+   than the half column the old unfolded section gave it. */
+.replay-insights {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
+  box-sizing: border-box;
+  width: min(1000px, 94vw);
+  max-height: 92vh;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
 }
 
-.replay-more-info-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: var(--space-4);
+.replay-insights-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
-@media (max-width: 900px) {
-  .replay-more-info-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.replay-more-info-col {
+.replay-insights-heading {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 2px;
   min-width: 0;
 }
 
-.replay-more-info-header {
+.replay-insights-kicker {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.replay-insights-heading h2 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The tabs stay put and the tab's own contents scroll: a chat log of four
+   hundred lines must not push the tabs off the top of the dialog. */
+.replay-insights-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  padding-top: var(--space-3);
+  overflow-y: auto;
+}
+
+.replay-insights-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* What the command count is and is not, next to the table it qualifies. */
+.replay-insights-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.replay-insights-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Taller than the folded-away tables were: the dialog is the whole panel now,
+   so the limit is the dialog rather than a section inside one. */
+.replay-insights-body .replay-table-scroll {
+  max-height: none;
+}
+
+.replay-activity-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.replay-activity-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The rate, with the bar that makes it a comparison. The bar is under the
+   number rather than beside it: a column wide enough for both would be a
+   column of mostly empty space, and the number is what gets read. */
+.replay-activity-rate {
+  position: relative;
+  display: block;
+  min-width: 90px;
+  padding-bottom: 5px;
+}
+
+.replay-activity-rate-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.replay-activity-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  min-width: 2px;
+  background: var(--color-accent);
+  border-radius: 999px;
+  opacity: 0.55;
 }
 
 .replay-more-info-title {
