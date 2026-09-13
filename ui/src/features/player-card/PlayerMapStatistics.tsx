@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapThumbnail } from "../../shared/MapThumbnail";
@@ -60,6 +61,9 @@ const FIRST_DIRECTION: Record<SortColumn, "asc" | "desc"> = {
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
   const stats = useAppStore((state) => state.state.playerCard.mapStats);
+  // The leaderboards' own games-played totals, which is what faftracker prints
+  // as "ranked games" rather than what its scan read. See `rankedRecord`.
+  const ratings = useAppStore((state) => state.state.playerCard.profile?.ratings);
   // The vault supplies map art; without it every thumbnail is a placeholder.
   const vault = useAppStore((state) => state.state.maps.vault);
   const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
@@ -160,7 +164,7 @@ export function PlayerMapStatistics({ playerId }: Props) {
     return <div className="player-card-empty muted">{t("playerCard.maps.empty")}</div>;
   }
 
-  const overall = winRate(stats.wins, stats.losses);
+  const summary = rankedRecord(stats, leaderboardTotalGames(ratings));
 
   return (
     <div className="player-maps-view">
@@ -170,14 +174,22 @@ export function PlayerMapStatistics({ playerId }: Props) {
           <span className="player-maps-label">{t("playerCard.maps.gamesTotal")}</span>
         </div>
         <div className="player-maps-figure">
+          <span className="player-maps-value">{formatNumber(summary.rankedGames)}</span>
+          <span className="player-maps-label">{t("playerCard.maps.rankedGames")}</span>
+        </div>
+        <div className="player-maps-figure">
+          <span className="player-maps-value">{formatNumber(summary.unrankedGames)}</span>
+          <span className="player-maps-label">{t("playerCard.maps.unrankedGames")}</span>
+        </div>
+        <div className="player-maps-figure">
           <span className="player-maps-value">
-            {overall === null ? "–" : `${formatDecimal(overall)}%`}
+            {summary.winRate === null ? "–" : `${formatDecimal(summary.winRate)}%`}
           </span>
           <span className="player-maps-label">{t("playerCard.maps.winRate")}</span>
         </div>
         <div className="player-maps-figure">
           <span className="player-maps-value">
-            {record(stats.wins, stats.losses, stats.undecided)}
+            {record(summary.wins, summary.losses, summary.draws)}
           </span>
           <span className="player-maps-label">{t("playerCard.maps.record")}</span>
         </div>
@@ -193,12 +205,24 @@ export function PlayerMapStatistics({ playerId }: Props) {
         <p className="player-maps-note muted">{t("playerCard.maps.truncated")}</p>
       )}
 
-      {/* Same reason. The record counts only games that moved a rating, so a
-          player whose history is mostly unranked lobbies sees a small W/L
-          beside a large game count, and is owed the arithmetic. */}
+      {/* Same reason. The record covers only the games FAF scored, so a player
+          whose history is mostly unranked lobbies sees a small W/L beside a
+          large game count, and is owed the arithmetic. */}
       {stats.unranked > 0 && (
         <p className="player-maps-note muted">
           {t("playerCard.maps.unrankedNote", { count: stats.unranked })}
+        </p>
+      )}
+
+      {/* And when the leaderboards count more ranked games than the history
+          endpoint returned, those games are in the draws column without
+          anybody having drawn them. faftracker does this silently; saying it
+          costs one line and is the difference between a number and a claim. */}
+      {summary.draws > stats.undecided && (
+        <p className="player-maps-note muted">
+          {t("playerCard.maps.leaderboardGapNote", {
+            count: summary.draws - stats.undecided,
+          })}
         </p>
       )}
 

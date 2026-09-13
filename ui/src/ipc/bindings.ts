@@ -4954,13 +4954,22 @@ export type PlayerMapStat = {
 export type PlayerMapStats = {
 	/**  Games actually counted, which is every game the scan returned. */
 	totalGames: number,
+	/**
+	 *  Of those, the ones FAF scored: a rating moved, or it was a ladder game
+	 *  with a result. `faftracker`'s `isRankedGame`.
+	 *
+	 *  Reported rather than derived because the view needs it to reconcile
+	 *  this scan against the leaderboard's own games-played total, which is
+	 *  the number the tracker actually prints.
+	 */
+	rankedGames: number,
 	wins: number,
 	losses: number,
 	/**  Games that ended level, counted and shown but kept out of the win rate. */
 	undecided: number,
 	/**
-	 *  Games that decide nothing, either because nothing says who won or
-	 *  because no rating moved.
+	 *  Games FAF did not score at all: no rating moved and it was not a ladder
+	 *  game with a result.
 	 *
 	 *  A custom lobby with mods on, a game that desynced its way out of a
 	 *  result, one abandoned before it was scored: FAF rates none of them, and
