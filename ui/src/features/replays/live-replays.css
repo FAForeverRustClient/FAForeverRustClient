@@ -641,10 +641,33 @@
 }
 
 .live-replay-card-footer > span {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The watch control is a label, not a bar.
+ *
+   `.live-watch-button` is `width: 100%` because in the table it fills a 128px
+   column of its own; in this row that made it eat the line and left the host
+   showing three letters and an ellipsis. Here it is sized like the "Ready in
+   0:42" trigger it alternates with, so the footer does not change shape when a
+   game matures, and the rest of the row is the host's. */
+.live-replay-card-footer .live-watch-button,
+.live-replay-card-footer .live-delay-actions,
+.live-replay-card-footer .live-delay-trigger {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 92px;
+}
+
+.live-replay-card-footer .live-watch-button {
+  min-height: 0;
+  padding: 7px var(--space-2);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 /* In the slot the vault card gives its review stars. */
