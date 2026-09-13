@@ -22,6 +22,7 @@ import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { isWithinNumberRange } from "../../shared/filterRanges";
+import { kilometresLabel } from "../../shared/mapPresentation";
 import { EMPTY_MAP_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import {
@@ -152,9 +153,6 @@ function mapVaultQuery(
 }
 
 function VaultView({ busy }: { busy: boolean }) {
-  // The Upload button opens this first. Pressing it used to put an OS
-  // file browser on screen immediately, which for anyone streaming is
-  // their filesystem in front of an audience.
   const { t } = useTranslation();
   // `vault` is the catalogue index, still loaded once and still what the
   // favourites preset and every map-art lookup read. `browse` is one page of a
@@ -410,7 +408,7 @@ function VaultView({ busy }: { busy: boolean }) {
 
   return (
     <>
-            <SearchPanel
+      <SearchPanel
         className="map-search-panel"
         onSubmit={(event) => {
           event.preventDefault();
@@ -445,8 +443,8 @@ function VaultView({ busy }: { busy: boolean }) {
             >
               <Icon name="refresh" size={15} /> {t("maps.view.refresh")}
             </Button>
-            <Button onClick={void openUploadFromDisk("map")}><Icon name="plus" size={15} /> {t("maps.view.uploadFromDisk")}</Button>
-                      </>
+            <Button onClick={() => void openUploadFromDisk("map")}><Icon name="plus" size={15} /> {t("maps.view.uploadFromDisk")}</Button>
+          </>
         )}
         advanced={filtersOpen ? (
           <div className="search-panel-advanced">
@@ -454,8 +452,8 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("maps.view.any")}</option><option value="installed">{t("maps.view.installed")}</option><option value="available">{t("maps.view.notInstalled")}</option></select></SearchField>
               <SearchField label={t("maps.view.uploadedAfter")}><input className="search-panel-control" type="date" value={createdAfter} onChange={(event) => setCreatedAfter(event.target.value)} /></SearchField>
               <SearchField label={t("maps.view.uploadedBefore")}><input className="search-panel-control" type="date" value={createdBefore} onChange={(event) => setCreatedBefore(event.target.value)} /></SearchField>
-              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}</select></SearchField>
-              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
             </div>
           </div>
         ) : undefined}
@@ -803,13 +801,13 @@ function InstalledView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.width")}>
                 <select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}>
                   <option value={0}>{t("maps.view.any")}</option>
-                  {MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
                 </select>
               </SearchField>
               <SearchField label={t("maps.view.height")}>
                 <select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}>
                   <option value={0}>{t("maps.view.any")}</option>
-                  {MAP_SIZES.map((value) => <option key={value} value={value}>{(value / 51.2).toFixed(0)} km</option>)}
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
                 </select>
               </SearchField>
             </div>
