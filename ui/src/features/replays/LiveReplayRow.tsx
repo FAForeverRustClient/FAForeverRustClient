@@ -1,7 +1,7 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../design-system/Button";
-import { Icon } from "../../design-system/Icon";
+import { Icon, type IconName } from "../../design-system/Icon";
 import { PlayerName } from "../../shared/nameColors";
 import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import type { Game, LiveReplayTracking } from "../../ipc/bindings";
@@ -10,6 +10,10 @@ import { formatClockDuration, formatRelativeDuration } from "../../shared/durati
 import type { MapPresentation } from "../../shared/mapPresentation";
 import { liveReplayLink } from "../../shared/replayLinks";
 import { gameStartedAt, prettyGameType } from "./liveReplayModel";
+import { liveReplayTeams } from "./LiveReplayCards";
+import { ReplayDetailRoster } from "./ReplayRoster";
+import { useAppStore } from "../../store/store";
+import { formatRelativeDuration as relativeDuration } from "../../shared/durations";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { clientIntlTag } from "../../shared/dates";
@@ -279,9 +283,24 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // The vault's record of this match, which the lobby's `game_info` is not:
+  // that carries team numbers and logins, and no faction and no rating. The
+  // API's `game` row is written when the match launches, so a running game
+  // already has one. Asked for only once the row is expanded, because a
+  // request per row would be a request per refresh of a self-refreshing list.
+  const lookup = useAppStore((state) => state.state.replays.onlineLookups?.[game.id]);
+  useEffect(() => {
+    if (!expanded || lookup) return;
+    ipc.send({ kind: "Replays", command: { type: "lookUpOnline", payload: { uid: game.id } } });
+  }, [expanded, game.id, lookup]);
   const started = gameStartedAt(game);
   const simMods = Object.values(game.simMods);
-  const teams = Object.entries(game.teams).filter(([, players]) => players.length > 0);
+  // The vault's lineup when it has one, the lobby's otherwise. The API knows
+  // factions and ratings; the lobby knows who is in the game.
+  const teams = useMemo(() => {
+    const found = lookup?.type === "found" ? lookup.payload.teams : [];
+    return found.length > 0 ? found : liveReplayTeams(game);
+  }, [game, lookup]);
   // Only where the host set one, and worded the way the Play tab words the
   // same pair, open ends included.
   const ratingRange = game.ratingMin !== null || game.ratingMax !== null
@@ -290,6 +309,58 @@ export const LiveReplayRow = memo(function LiveReplayRow({
       to: game.ratingMax ?? t("lobby.details.any"),
     })
     : null;
+  // Everything the game carries, the columns of the row above included: the
+  // panel is read on its own once it is open, and a fact left out of it
+  // because it is also in the row is a fact the reader has to go back for.
+  const facts: Array<{ icon: IconName; label: string; value: string }> = [
+    { icon: "list", label: t("replays.live.replayId"), value: `#${game.id}` },
+    {
+      icon: "clock",
+      label: t("replays.detail.time"),
+      value: started
+        ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" })
+        : "N/A",
+    },
+    {
+      icon: "hourglass",
+      label: t("replays.live.runningFor"),
+      value: started
+        ? relativeDuration(Math.max(0, (ageNow - started.getTime()) / 1000), { nowLabel: "0m" })
+        : "N/A",
+    },
+    {
+      icon: "users",
+      label: t("replays.detail.players"),
+      value: `${game.players} / ${game.maxPlayers}`,
+    },
+    {
+      icon: "leaderboard",
+      label: t("replays.detail.avgRating"),
+      value: game.averageRating > 0 ? String(game.averageRating) : "N/A",
+    },
+    { icon: "play", label: t("replays.live.gameType"), value: prettyGameType(game.gameType) },
+    { icon: "settings", label: t("replays.live.featuredMod"), value: game.modName || "faf" },
+    { icon: "chat", label: t("replays.column.host"), value: game.host },
+    {
+      icon: "lock",
+      label: t("lobby.details.visibility"),
+      value: [
+        t(game.visibility === "friends"
+          ? "lobby.host.visibility.friends"
+          : "lobby.host.visibility.public"),
+        game.passwordProtected ? t("lobby.host.passwordProtected") : "",
+      ].filter(Boolean).join(" \u00b7 "),
+    },
+    ...(ratingRange
+      ? [{
+        icon: "activity" as const,
+        label: t("lobby.details.ratingRange"),
+        value: game.enforceRatingRange
+          ? `${ratingRange} \u00b7 ${t("replays.live.ratingEnforced")}`
+          : ratingRange,
+      }]
+      : []),
+  ];
 
   return (
     <>
@@ -348,19 +419,16 @@ export const LiveReplayRow = memo(function LiveReplayRow({
       {expanded && (
         <tr className="live-replay-detail-row">
           <td colSpan={8}>
-            {/* What the row above does not already say, laid out as a panel
-                rather than spread across the width of the table.
+            {/* The row, opened out: the facts as tiles on one side and the
+                matchup on the other.
 
-                The three columns this used to be were sized by the table, so
-                on a wide display the lineup sat at the far left, three
-                captions floated somewhere in the middle right, and the one
-                button was alone in a corner: a paragraph of facts with the
-                whole window between them. Two of those facts (the featured mod
-                and the sim mods) were also printed in the row being expanded.
-
-                So: the map this is being played on, the lineup, the handful of
-                facts a row has no column for, and the mods in full rather than
-                as "and 2 more". */}
+                It was three columns sized by the table, so on a wide display
+                the lineup sat at the far left, three captions floated
+                somewhere in the middle right, and the one button was alone in
+                a corner. Now the left column carries every fact about the game
+                in the same tiles the vault's detail panel uses, and the right
+                one carries the teams the way that panel draws them: side by
+                side, with the versus between them. */}
             <div className="live-replay-details">
               <div className="live-detail-head">
                 <div className="live-detail-map">
@@ -388,49 +456,25 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                 </Button>
               </div>
 
-              <dl className="live-detail-facts">
-                <div>
-                  <dt>{t("replays.live.replayId")}</dt>
-                  <dd>#{game.id}</dd>
-                </div>
-                <div>
-                  <dt>{t("lobby.details.visibility")}</dt>
-                  <dd>
-                    {t(game.visibility === "friends"
-                      ? "lobby.host.visibility.friends"
-                      : "lobby.host.visibility.public")}
-                    {game.passwordProtected && ` · ${t("lobby.host.passwordProtected")}`}
-                  </dd>
-                </div>
-                {ratingRange && (
-                  <div>
-                    <dt>{t("lobby.details.ratingRange")}</dt>
-                    <dd>
-                      {ratingRange}
-                      {game.enforceRatingRange && ` · ${t("replays.live.ratingEnforced")}`}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-
-              <div className="live-detail-lineup">
-                <span className="live-detail-label">{t("replays.live.lineup")}</span>
-                <div className="live-team-list">
-                  {teams.length === 0 ? <span className="muted">{t("replays.live.lineupUnavailable")}</span> : teams.map(([team, players]) => (
-                    <div className="live-team surface" key={team}>
-                      <strong>
-                        {team === "-1" || team === "null" ? t("replays.live.observers") : t("replays.live.team", { team })}
-                        <span className="live-team-count">{players.length}</span>
-                      </strong>
-                      <ul className="live-team-players">
-                        {players.map((p) => (
-                          <li key={p}>
-                            <LivePlayerName name={p} onMenu={onPlayerMenu} />
-                          </li>
-                        ))}
-                      </ul>
+              <div className="live-detail-body">
+                <dl className="live-detail-facts">
+                  {facts.map((fact) => (
+                    <div key={fact.label}>
+                      <dt><Icon name={fact.icon} size={14} />{fact.label}</dt>
+                      <dd>{fact.value}</dd>
                     </div>
                   ))}
+                </dl>
+
+                <div className="live-detail-lineup">
+                  {teams.length > 0 ? (
+                    // `showResults` off, and not a choice here: nobody has won
+                    // yet. The avatars are the directory's, which the lobby
+                    // does not send with a game.
+                    <ReplayDetailRoster teams={teams} showResults={false} />
+                  ) : (
+                    <p className="replay-detail-empty muted">{t("replays.live.lineupUnavailable")}</p>
+                  )}
                 </div>
               </div>
 
