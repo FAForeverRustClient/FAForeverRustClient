@@ -248,7 +248,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.mean": "Moyenne",
   "leaderboard.column.deviation": "Écart",
   "leaderboard.column.games": "Parties",
-  "leaderboard.column.wins": "Victoires",
   "leaderboard.column.updated": "Mis à jour",
   "leaderboard.table.empty": "Aucun joueur ne correspond aux filtres actuels.",
   "leaderboard.ratings.closeColumnsMenu": "Fermer le menu des colonnes",
@@ -1221,7 +1220,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Regarder",
 
   "replays.roster.observers": "Observateurs",
-  "replays.roster.morePlayers": { one: "+{count} autre", other: "+{count} autres" },
   "replays.roster.observer": "Observateur",
   "replays.roster.freeForAll": "Chacun pour soi",
   "replays.roster.players": "Joueurs",

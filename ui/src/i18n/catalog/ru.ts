@@ -255,7 +255,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "leaderboard.column.mean": "Среднее",
   "leaderboard.column.deviation": "Отклонение",
   "leaderboard.column.games": "Игры",
-  "leaderboard.column.wins": "Победы",
   "leaderboard.column.updated": "Обновлено",
   "leaderboard.table.empty": "Ни один игрок не соответствует текущим фильтрам.",
   "leaderboard.ratings.closeColumnsMenu": "Закрыть меню столбцов",
@@ -1243,12 +1242,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.column.watch": "Смотреть",
 
   "replays.roster.observers": "Наблюдатели",
-  "replays.roster.morePlayers": {
-    one: "+{count} ещё",
-    few: "+{count} ещё",
-    many: "+{count} ещё",
-    other: "+{count} ещё",
-  },
   "replays.roster.observer": "Наблюдатель",
   "replays.roster.freeForAll": "Каждый сам за себя",
   "replays.roster.players": "Игроки",

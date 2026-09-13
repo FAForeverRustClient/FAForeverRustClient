@@ -26,6 +26,8 @@ export function reduceLeaderboard(
         ...state,
         ratingQuery: event.payload.query,
         ratingsStatus: { type: "loading" },
+        // The page being replaced took its other boards with it.
+        crossRatings: [],
       };
     case "ratingsLoaded":
       return {
@@ -39,6 +41,13 @@ export function reduceLeaderboard(
         ...state,
         ratingsStatus: { type: "failed", payload: { reason: event.payload.reason } },
       };
+    case "crossRatingsLoaded":
+      // Only for the page on screen: the second request outlives the first
+      // whenever somebody pages on before it lands.
+      return event.payload.query === state.ratingQuery
+        || JSON.stringify(event.payload.query) === JSON.stringify(state.ratingQuery)
+        ? { ...state, crossRatings: event.payload.ratings }
+        : state;
     case "seasonsLoading":
       return {
         ...state,

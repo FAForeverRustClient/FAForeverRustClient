@@ -1,3 +1,14 @@
+/*
+ * Fonts before tokens, because a --font-sans naming a family with no
+ * @font-face behind it silently falls through to whatever the OS has. This
+ * import was missing for a long time, which is why the self-hosted Geist in
+ * fonts.css had never actually been fetched by anything.
+ *
+ * Declaring a face costs nothing on its own: a family no theme names is never
+ * downloaded. So this is inert today, and it is the line that has to be here
+ * before pointing any theme's --font-sans at a bundled family.
+ */
+@import "./design-system/fonts.css";
 @import "./design-system/tokens.css";
 
 * {

@@ -501,11 +501,9 @@
   text-transform: uppercase;
 }
 
-/* The count beside a heading, and beside a team name. Same shape in both
-   places: a small filled pill, so the number reads as a quantity rather than
-   as part of the word in front of it. */
-.live-detail-count,
-.live-team-count {
+/* The count beside a heading: a small filled pill, so the number reads as a
+   quantity rather than as part of the word in front of it. */
+.live-detail-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -519,13 +517,56 @@
   letter-spacing: 0;
 }
 
-/* The facts the row above has no column for. The same tile the vault's detail
-   panel uses, which is where a reader will have met them first. */
+/* Facts on the left, matchup on the right. Below about a thousand pixels the
+   two stack, because a team panel and a column of tiles both stop being
+   readable before the table around them does. */
+.live-detail-body {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+@media (max-width: 1000px) {
+  .live-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Every fact the game carries, as the tile the vault's detail panel uses,
+   which is where a reader will have met them first. Two columns inside the
+   left half rather than one long strip. */
 .live-detail-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
   gap: var(--space-2);
   margin: 0;
+}
+
+/* The glyph goes where it goes on the vault's tiles: centred on the tile,
+   beside the value and its caption rather than inside the caption's line. */
+.live-detail-facts > div {
+  position: relative;
+  padding-left: 34px;
+}
+
+.live-detail-facts dt {
+  display: block;
+}
+
+.live-detail-facts dt svg {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--color-subtle);
+}
+
+/* The roster is the vault panel's, so it needs the panel's own rules: the
+   stylesheet that carries them is loaded by the replays tab either way, and
+   only the width it is given here is this tab's business. */
+.live-detail-lineup {
+  min-width: 0;
 }
 
 .live-detail-facts > div {
@@ -557,45 +598,6 @@
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.live-team-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/* One card per team, the names inside it wrapping rather than running off the
-   end of a single line: a full lobby is eight names, and the comma-separated
-   line this used to be showed the first three of them. */
-.live-team {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1 1 220px;
-  min-width: 0;
-  max-width: 340px;
-  padding: var(--space-2) var(--space-3);
-}
-
-.live-team strong {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.live-team-players {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  min-width: 0;
 }
 
 .live-sim-mod-list {

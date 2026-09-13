@@ -101,7 +101,7 @@ describe("browsing preferences", () => {
         { name: "REPLAY WATCHING", uids: ["z"] },
         { name: "   ", uids: ["c"] },
       ],
-      leaderboardRatingColumns: ["rating", "MEAN", "invalid_column"],
+      leaderboardRatingColumns: ["deviation", "MEAN", "invalid_column"],
       replayVaultPlayer: "  VindexNoob  ",
       legacyStorageMigrated: true,
     });
@@ -168,7 +168,7 @@ describe("browsing preferences", () => {
       200,
     ]);
     expect(normalized.customGamesBrowser.detailWidth).toBe(MIN_DETAIL_PX);
-    expect(normalized.leaderboardRatingColumns).toEqual(["rating", "mean"]);
+    expect(normalized.leaderboardRatingColumns).toEqual(["mean", "deviation"]);
     expect(normalized.replayVaultPlayer).toBe("VindexNoob");
   });
 

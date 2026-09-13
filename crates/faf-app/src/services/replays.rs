@@ -238,6 +238,14 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ReplayEvent::DetailsFailed { uid, reason }),
             }
         }
+        ReplayCommand::LoadAnalysis { uid, local_path } => {
+            out.emit(ReplayEvent::AnalysisLoading { uid });
+            let path_buf = local_path.map(PathBuf::from);
+            match ctx.ports.replay.load_analysis(uid, path_buf).await {
+                Ok(analysis) => out.emit(ReplayEvent::AnalysisLoaded { analysis }),
+                Err(reason) => out.emit(ReplayEvent::AnalysisFailed { uid, reason }),
+            }
+        }
         ReplayCommand::ResolveMaps { uids } => {
             // One small ranged download per game, run a few at a time. In
             // sequence a page of them would still be arriving after the reader

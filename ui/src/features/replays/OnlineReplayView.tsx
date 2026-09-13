@@ -227,10 +227,6 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
                 setSelectedUid(r.uid);
                 if (!busy) markWatchedAndPlay(r.uid);
               }}
-              onDownload={() => {
-                setSelectedUid(r.uid);
-                downloadVault(r.uid);
-              }}
             />
           ))}
         </div>

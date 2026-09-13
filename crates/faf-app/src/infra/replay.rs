@@ -1139,6 +1139,42 @@ fn write_replay_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
         .map_err(|error| format!("could not publish replay: {}", error.error))
 }
 
+impl ReplayClient {
+    /// The file to read for one replay: the caller's own path when it named
+    /// one, then the two caches, then the vault.
+    ///
+    /// The webview supplies that path, and it reached the parser unchecked:
+    /// any readable file could be handed in and read as a replay. `OpenFile`
+    /// is already narrowed by `prepare_scfareplay`, which refuses an
+    /// unrecognised extension; this is the same gate for the other door.
+    ///
+    /// Extension rather than directory, because a replay opened from the file
+    /// picker is legitimately outside the library, and the picking is the
+    /// user's own authorisation.
+    async fn replay_file_for(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<PathBuf, String> {
+        if let Some(path) = local_path.filter(|p| p.exists() && is_replay_file_name(p)) {
+            return Ok(path);
+        }
+        let cached_scfa = cache_dir()?.join(format!("{uid}.scfareplay"));
+        if cached_scfa.exists() {
+            return Ok(cached_scfa);
+        }
+        let local_faf = local_replays_dir().join(format!("{uid}.fafreplay"));
+        if local_faf.exists() {
+            return Ok(local_faf);
+        }
+        let cached_faf = cache_dir()?.join(format!("{uid}.fafreplay"));
+        if cached_faf.exists() {
+            return Ok(cached_faf);
+        }
+        self.download_vault_to(uid, cache_dir()?).await
+    }
+}
+
 #[async_trait]
 impl ReplayPort for ReplayClient {
     async fn watch_live(
@@ -1545,39 +1581,28 @@ impl ReplayPort for ReplayClient {
         uid: i32,
         local_path: Option<PathBuf>,
     ) -> Result<ReplayDetails, String> {
-        // The webview supplies this path, and it reached the parser unchecked:
-        // any readable file could be handed in and read as a replay. `OpenFile`
-        // is already narrowed by `prepare_scfareplay`, which refuses an
-        // unrecognised extension; this is the same gate for the other door.
-        //
-        // Extension rather than directory, because a replay opened from the
-        // file picker is legitimately outside the library, and the picking is
-        // the user's own authorisation.
-        let path = if let Some(path) = local_path.filter(|p| p.exists() && is_replay_file_name(p)) {
-            path
-        } else {
-            let cached_scfa = cache_dir()?.join(format!("{uid}.scfareplay"));
-            if cached_scfa.exists() {
-                cached_scfa
-            } else {
-                let local_faf = local_replays_dir().join(format!("{uid}.fafreplay"));
-                if local_faf.exists() {
-                    local_faf
-                } else {
-                    let cached_faf = cache_dir()?.join(format!("{uid}.fafreplay"));
-                    if cached_faf.exists() {
-                        cached_faf
-                    } else {
-                        self.download_vault_to(uid, cache_dir()?).await?
-                    }
-                }
-            }
-        };
+        let path = self.replay_file_for(uid, local_path).await?;
 
         // Detail loading is intentionally deferred until the user asks for it,
         // but once requested it must expose the complete replay metadata: game
         // options, in-game chat, and the FAF version.
         read_detailed_info(&path).await
+    }
+
+    async fn load_analysis(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
+        let path = self.replay_file_for(uid, local_path).await?;
+        tokio::task::spawn_blocking(move || {
+            let (_, body) = read_replay_header_and_body(&path)?;
+            Ok(crate::infra::replay_analysis::analyse_replay_body(
+                uid, &body,
+            ))
+        })
+        .await
+        .map_err(|error| format!("could not read the replay: {error}"))?
     }
 
     async fn replay_map_name(&self, uid: i32) -> Result<Option<String>, String> {
@@ -2258,6 +2283,8 @@ fn extract_game_options(
 /// single typed line are folded together.
 struct ChatRecord {
     time_seconds: u32,
+    /// The channel: `all`, `allies`, or an army number for a whisper.
+    to: String,
     /// `None` where the record carries no name at all. That is the case the
     /// report was about: it reached the UI as the literal "Unknown", sitting
     /// under the named copy of the same line.
@@ -2367,6 +2394,7 @@ fn walk_command_stream(cursor: &mut Cursor<&[u8]>, sources: &[String]) -> Comman
                 time_seconds: record.time_seconds,
                 sender: record.sender.unwrap_or_else(|| "Unknown".to_string()),
                 message: record.message,
+                to: record.to,
             })
             .collect(),
         command_stats: sources
@@ -2505,6 +2533,11 @@ fn try_parse_chat_payload(payload: &[u8], time_seconds: u32) -> Option<ChatRecor
 
     Some(ChatRecord {
         time_seconds,
+        to: nested
+            .and_then(|msg_map| msg_map.get("to"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
         sender: chat_sender(&args, nested),
         id: nested
             .and_then(|msg_map| msg_map.get("Id"))
@@ -2548,13 +2581,13 @@ fn chat_sender(
     })
 }
 
-fn replay_u8(cursor: &mut Cursor<&[u8]>) -> Option<u8> {
+pub(crate) fn replay_u8(cursor: &mut Cursor<&[u8]>) -> Option<u8> {
     let mut value = [0; 1];
     Read::read_exact(cursor, &mut value).ok()?;
     Some(value[0])
 }
 
-fn replay_u32(cursor: &mut Cursor<&[u8]>) -> Option<u32> {
+pub(crate) fn replay_u32(cursor: &mut Cursor<&[u8]>) -> Option<u32> {
     let mut value = [0; 4];
     Read::read_exact(cursor, &mut value).ok()?;
     Some(u32::from_le_bytes(value))
@@ -2565,7 +2598,7 @@ fn skip_replay_bytes(cursor: &mut Cursor<&[u8]>, count: u64) -> bool {
     cursor.position() <= cursor.get_ref().len() as u64
 }
 
-fn replay_string(cursor: &mut Cursor<&[u8]>) -> Option<String> {
+pub(crate) fn replay_string(cursor: &mut Cursor<&[u8]>) -> Option<String> {
     let start = cursor.position() as usize;
     let rest = cursor.get_ref().get(start..)?;
     let end = rest.iter().position(|byte| *byte == 0)?;
@@ -2581,7 +2614,7 @@ fn game_version_from_string(version: Option<&str>) -> Option<i32> {
         .flatten()
 }
 
-fn parse_replay_lua(cursor: &mut Cursor<&[u8]>, depth: u8) -> Option<Value> {
+pub(crate) fn parse_replay_lua(cursor: &mut Cursor<&[u8]>, depth: u8) -> Option<Value> {
     if depth > 64 {
         return None;
     }
@@ -3948,11 +3981,13 @@ impl ReplayPort for FakeReplay {
                     time_seconds: 13,
                     sender: "Downlord".to_string(),
                     message: "gl hf".to_string(),
+                    to: "all".to_string(),
                 },
                 ReplayChatMessage {
                     time_seconds: 599,
                     sender: "Nojoke".to_string(),
                     message: "gg".to_string(),
+                    to: "allies".to_string(),
                 },
             ],
             command_stats: vec![
@@ -3968,6 +4003,19 @@ impl ReplayPort for FakeReplay {
             sim_seconds: 600,
             sim_mods: vec!["No Rush Timer".to_string()],
             game_version: Some(3837),
+        })
+    }
+
+    async fn load_analysis(
+        &self,
+        uid: i32,
+        _local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
+        Ok(faf_domain::state::ReplayAnalysis {
+            uid,
+            ticks: 6_000,
+            game_version: "Supreme Commander v1.50.3839".to_string(),
+            ..Default::default()
         })
     }
 
