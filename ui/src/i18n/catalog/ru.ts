@@ -1798,7 +1798,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ratingBetween": "от {min} до {max}",
   "lobby.browser.mapFullName": "Название карты",
   "lobby.browser.footerCount": "Показано {shown} из {total} игр",
-  "lobby.browser.tileHint": "Нажмите на изображение карты для превью · двойной щелчок по подробностям входит в игру",
+  "lobby.browser.tileHint": "\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043d\u0430 \u043f\u043b\u0438\u0442\u043a\u0443, \u0447\u0442\u043e\u0431\u044b \u0432\u044b\u0431\u0440\u0430\u0442\u044c \u00b7 \u0434\u0432\u043e\u0439\u043d\u043e\u0439 \u0449\u0435\u043b\u0447\u043e\u043a, \u0447\u0442\u043e\u0431\u044b \u0432\u043e\u0439\u0442\u0438",
   "lobby.browser.listHint": "Двойной щелчок по игре входит в неё",
 
   "lobby.coop.title": "Кооперативные миссии",

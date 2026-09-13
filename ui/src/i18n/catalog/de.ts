@@ -1045,7 +1045,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "home.clientStatus": "Client-Status",
   "home.clientStatusHint": "Backend-Verbindung und lokale Client-Version.",
   "lobby.browser.footerCount": "{shown} von {total} Spielen",
-  "lobby.browser.tileHint": "Kartenbild anklicken für Vorschau · Doppelklick auf Details zum Beitreten",
+  "lobby.browser.tileHint": "Kachel anklicken zum Ausw\u00e4hlen \u00b7 Doppelklick zum Beitreten",
   "lobby.browser.listHint": "Doppelklick auf eine Partie zum Beitreten",
 
   "settings.notifications.enabled": "Benachrichtigungen",
@@ -3663,6 +3663,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.resizeChat": "Breite des Party-Chats ändern",
   "lobby.browser.openProfile": "Profil von {name} öffnen",
   "lobby.browser.tileAria": "{title}, gehostet von {host}. Doppelklick zum Beitreten.",
+  "lobby.browser.tileMapAria": "Spiel auf {map} ausw\u00e4hlen",
   "lobby.browser.playersWord": { one: "Spieler", other: "Spieler" },
   "lobby.browser.playerCount": { one: "{count} Spieler", other: "{count} Spieler" },
   "lobby.browser.teamRating": "{rating} Rating",

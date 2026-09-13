@@ -1860,7 +1860,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.mode.matchmaking": "Dobieranie",
   "lobby.mode.coop": "Kooperacja",
   "lobby.mode.galacticWar": "Galactic War",
-  "lobby.browser.tileHint": "Kliknij grafikę mapy, aby zobaczyć podgląd; kliknij dwukrotnie szczegóły, aby dołączyć",
+  "lobby.browser.tileHint": "Kliknij kafelek, aby go wybra\u0107; kliknij dwukrotnie, aby do\u0142\u0105czy\u0107",
   "lobby.browser.listHint": "Kliknij grę dwukrotnie, aby dołączyć",
 
   "settings.game.pipeLiveReplay": "Obejście dla replayów na żywo",

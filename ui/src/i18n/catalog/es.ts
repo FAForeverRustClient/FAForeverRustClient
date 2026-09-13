@@ -1726,7 +1726,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.any": "Cualquiera",
   "lobby.browser.openRange": "Abierto",
   "lobby.browser.ratingBetween": "de {min} a {max}",
-  "lobby.browser.tileHint": "Pulsa la imagen del mapa para la vista previa · doble clic en los detalles para unirte",
+  "lobby.browser.tileHint": "Pulsa una tarjeta para seleccionarla \u00b7 doble clic para unirte",
   "lobby.browser.listHint": "Doble clic en una partida para unirte",
 
   "lobby.coop.title": "Misiones cooperativas",
