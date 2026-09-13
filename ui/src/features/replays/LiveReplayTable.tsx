@@ -118,7 +118,7 @@ export function LiveReplayTable(props: Props) {
    */
   const handle = (index: number) => (
     <ResizeHandle
-      className="live-replay-col-handle"
+      className="live-replay-col-handle is-ruled"
       label={t("lobby.browser.resizeColumn", { column: columnLabels[index] })}
       onDrag={(delta) => columns.onDrag(index, delta)}
       onEnd={columns.onCommit}
