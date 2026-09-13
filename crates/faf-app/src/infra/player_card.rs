@@ -50,7 +50,7 @@ const MAX_HISTORY_GAMES: usize = 30_000;
 /// Everything a game's outcome is decided from: the map it was played on,
 /// every player's row, and the rating each row moved.
 const HISTORY_INCLUDE: &str = concat!(
-    "mapVersion.map,playerStats,playerStats.player,",
+    "featuredMod,mapVersion.map,playerStats,playerStats.player,",
     "playerStats.ratingChanges,playerStats.ratingChanges.leaderboard",
 );
 
@@ -567,8 +567,11 @@ impl PlayerCardClient {
             // turns into tens of megabytes.
             .append_pair(
                 "fields[game]",
-                "startTime,endTime,validity,mapVersion,playerStats",
+                "startTime,endTime,validity,featuredMod,mapVersion,playerStats",
             )
+            // The featured mod is how a game with no rating journal says which
+            // queue it was. See `queue_of`.
+            .append_pair("fields[featuredMod]", "technicalName,displayName")
             .append_pair(
                 "fields[gamePlayerStats]",
                 "result,score,team,scoreTime,player,ratingChanges",
@@ -636,7 +639,17 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
                     }
                 });
 
-            let queue = queue_of(&rows);
+            let featured_mod = rel_one(game, "featuredMod")
+                .and_then(|key| included.get(&key))
+                .map(|resource| {
+                    format!(
+                        "{} {}",
+                        value_string(&resource.attributes, "technicalName"),
+                        value_string(&resource.attributes, "displayName"),
+                    )
+                })
+                .unwrap_or_default();
+            let queue = queue_of(&rows, player_id, &featured_mod);
             let ladder = queue.eq_ignore_ascii_case("ladder_1v1");
             let rows = GameRows {
                 rows,
@@ -655,18 +668,43 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
         .collect()
 }
 
-/// Which leaderboard a game was rated on, which is the only thing in the
-/// payload that says whether it was a ladder game.
+/// Which queue a game belongs to, the way `faftracker`'s `inferQueueCategory`
+/// decides it.
 ///
-/// `featuredMod` names the *mod* (`faf`, `fafbeta`), not the queue, and a
-/// ladder game and a custom game share it. The rating journal does not: a
-/// ladder game is rated on `ladder_1v1` and nothing else is.
-fn queue_of(rows: &[PlayerRow]) -> String {
-    rows.iter()
+/// **This player's own** rating journal names the leaderboard whenever there
+/// is one -- reading any row's journal, as this used to, answers for whoever
+/// happened to be listed first.
+///
+/// When there is no journal at all the featured mod is the only thing left
+/// that says which queue it was, and a *ladder game without a journal* is
+/// exactly the case worth catching: those games are ranked by definition, and
+/// missing them left this client a few dozen wins short of the tracker on a
+/// long history. `faf` and `fafbeta` fall through to `global`, which is what
+/// the tracker calls everything it cannot place.
+fn queue_of(rows: &[PlayerRow], player_id: i32, featured_mod: &str) -> String {
+    let named = rows
+        .iter()
+        .find(|row| row.player_id == player_id)
+        .into_iter()
         .flat_map(|row| row.rating_changes.iter())
-        .map(|change| change.leaderboard.clone())
-        .find(|name| !name.is_empty())
-        .unwrap_or_default()
+        .map(|change| change.leaderboard.as_str())
+        .find(|name| !name.is_empty());
+    if let Some(name) = named {
+        return name.to_ascii_lowercase();
+    }
+
+    let raw = featured_mod.to_ascii_lowercase();
+    if raw.contains("4v4") || raw.contains("tmm4") {
+        "tmm_4v4_full_share".into()
+    } else if raw.contains("3v3") || raw.contains("tmm3") {
+        "tmm_3v3".into()
+    } else if raw.contains("2v2") || raw.contains("tmm2") {
+        "tmm_2v2".into()
+    } else if raw.contains("ladder") || raw.contains("1v1") {
+        "ladder_1v1".into()
+    } else {
+        "global".into()
+    }
 }
 
 fn player_row(row: &Resource, included: &Index<'_>) -> PlayerRow {
@@ -1805,6 +1843,52 @@ mod map_stats_tests {
             parse_history_games(&document(), 8)[3].outcome,
             Outcome::Loss
         );
+    }
+
+    /// `inferQueueCategory`: the journal names the queue when there is one,
+    /// and the featured mod answers when there is not.
+    ///
+    /// The second half is what makes a ladder game with no journal count. It
+    /// is worth a few dozen games on a long history, which was the whole of
+    /// what was left between this client's record and faftracker's.
+    #[test]
+    fn a_queue_is_named_by_the_journal_or_by_the_featured_mod() {
+        let journal = vec![PlayerRow {
+            player_id: 7,
+            rating_changes: vec![RatingChange {
+                leaderboard: "tmm_2v2".into(),
+                ..RatingChange::default()
+            }],
+            ..PlayerRow::default()
+        }];
+        assert_eq!(queue_of(&journal, 7, "ladder1v1 Ladder 1v1"), "tmm_2v2");
+
+        // Somebody else's journal is not this player's answer.
+        let others = vec![
+            PlayerRow {
+                player_id: 8,
+                rating_changes: journal[0].rating_changes.clone(),
+                ..PlayerRow::default()
+            },
+            PlayerRow {
+                player_id: 7,
+                ..PlayerRow::default()
+            },
+        ];
+        assert_eq!(queue_of(&others, 7, "ladder1v1 Ladder 1v1"), "ladder_1v1");
+
+        let none = vec![PlayerRow {
+            player_id: 7,
+            ..PlayerRow::default()
+        }];
+        assert_eq!(queue_of(&none, 7, "ladder1v1 Ladder 1v1"), "ladder_1v1");
+        assert_eq!(
+            queue_of(&none, 7, "tmm4v4 Team Matchmaker 4v4"),
+            "tmm_4v4_full_share"
+        );
+        assert_eq!(queue_of(&none, 7, "tmm3v3 3v3"), "tmm_3v3");
+        assert_eq!(queue_of(&none, 7, "faf Forged Alliance Forever"), "global");
+        assert_eq!(queue_of(&none, 7, ""), "global");
     }
 
     #[test]
