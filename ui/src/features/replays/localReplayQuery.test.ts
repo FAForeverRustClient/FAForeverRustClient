@@ -4,7 +4,6 @@ import {
   EMPTY_LOCAL_REPLAY_QUERY,
   filterLocalReplays,
   nextLocalDetailLimit,
-  personalLocalReplayQuery,
 } from "./localReplayQuery";
 
 function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
@@ -17,6 +16,7 @@ function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
     title: "Team game",
     recorder: "TestPlayer",
     startTime: 1_767_225_600,
+    durationSeconds: 1_530,
     modifiedTime: 1_767_225_600,
     fileSizeBytes: 25_000,
     numPlayers: 4,
@@ -96,13 +96,6 @@ describe("local replay query", () => {
       minRating: 1000,
       maxRating: 1600,
     })).toEqual([high]);
-  });
-
-  it("builds an exact personal preset", () => {
-    expect(personalLocalReplayQuery("TestPlayer")).toMatchObject({
-      player: "TestPlayer",
-      exactPlayer: true,
-    });
   });
 });
 

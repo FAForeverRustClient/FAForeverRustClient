@@ -2823,6 +2823,7 @@ fn local_replay(uid: i32) -> LocalReplay {
         title: "Downloaded replay".into(),
         recorder: "Host".into(),
         start_time: None,
+        duration_seconds: Some(1_337),
         modified_time: 1,
         file_size_bytes: 100,
         num_players: 2,

@@ -389,6 +389,32 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Left and right step through the run. Generating several maps at once and
+  // comparing them is the whole point of asking for several, and the only way
+  // through them was clicking each thumbnail in turn.
+  //
+  // Not while the preview is zoomed: the arrows pan the enlarged image there,
+  // which is the more specific meaning and the one already bound. And not
+  // while a field has the caret, because the arrows belong to the text being
+  // typed or the option being chosen -- this dialog is mostly a form.
+  useEffect(() => {
+    const count = results?.length ?? 0;
+    if (zoomed || count < 2) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const focused = event.target as HTMLElement | null;
+      const tag = focused?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (focused?.isContentEditable) return;
+      event.preventDefault();
+      const step = event.key === "ArrowRight" ? 1 : count - 1;
+      setSelectedMapIndex((current) => (current + step) % count);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [results, zoomed]);
+
   const currentMap = results && results.length > 0 ? results[selectedMapIndex] ?? results[0] : null;
   const currentPreviewUrl = currentMap ? previews[currentMap] : undefined;
   const currentFacts = currentMap ? state.decoded?.[currentMap] : undefined;

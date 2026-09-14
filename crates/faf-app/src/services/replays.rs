@@ -29,6 +29,53 @@ fn describe(seconds: u32) -> String {
     }
 }
 
+/// Start a replay, and stop if the user calls it off.
+///
+/// Dropping the port's future is what cancels it: fetching the file,
+/// decompressing it, preparing the map and opening the relay are a chain of
+/// awaits, and the one it is sitting in when Cancel is pressed never resumes.
+/// Once the port has returned, Forged Alliance has already been handed the
+/// file and there is nothing left to call off, so a cancel arriving then loses
+/// the race and the launch is reported as the launch it is.
+///
+/// Cancelling emits [`ReplayEvent::Closed`], which is the same "back to idle,
+/// you can start another one" this uses when a replay session ends of its own
+/// accord. A cancelled start is not a failure and must not be reported as one:
+/// the overlay would turn into an error nobody asked about.
+async fn launch(
+    work: impl std::future::Future<Output = Result<Option<String>, String>>,
+    uid: Option<i32>,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) {
+    let token = tokio_util::sync::CancellationToken::new();
+    if let Ok(mut slot) = ctx.replay_cancellation.lock() {
+        // Replacing an armed token cancels it: two launches cannot be in
+        // flight, and the older one is the one nobody is waiting for.
+        if let Some(previous) = slot.replace(token.clone()) {
+            previous.cancel();
+        }
+    }
+
+    let result = tokio::select! {
+        result = work => result,
+        () = token.cancelled() => {
+            out.emit(ReplayEvent::Closed);
+            return;
+        }
+    };
+
+    if let Ok(mut slot) = ctx.replay_cancellation.lock() {
+        // Disarmed, so a Cancel pressed after the game is up cannot idle the
+        // status of a replay that is playing.
+        slot.take();
+    }
+    match result {
+        Ok(warning) => out.emit(ReplayEvent::Playing { uid, warning }),
+        Err(reason) => out.emit(ReplayEvent::Failed { reason }),
+    }
+}
+
 pub(crate) fn cancel_live_tracking(out: &EventSink) {
     if out.with_state(|state| state.replays.live_tracking.is_some()) {
         out.emit(ReplayEvent::LiveTrackingCleared);
@@ -68,13 +115,13 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
 
     out.emit(ReplayEvent::Connecting);
     let uid = target.uid;
-    match ctx.ports.replay.watch_live(target, player).await {
-        Ok(warning) => out.emit(ReplayEvent::Playing {
-            uid: Some(uid),
-            warning,
-        }),
-        Err(reason) => out.emit(ReplayEvent::Failed { reason }),
-    }
+    launch(
+        ctx.ports.replay.watch_live(target, player),
+        Some(uid),
+        ctx,
+        out,
+    )
+    .await;
 }
 
 pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
@@ -144,9 +191,19 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         ReplayCommand::OpenFile { path } => {
             cancel_live_tracking(out);
             out.emit(ReplayEvent::Connecting);
-            match ctx.ports.replay.play_file(PathBuf::from(path)).await {
-                Ok(warning) => out.emit(ReplayEvent::Playing { uid: None, warning }),
-                Err(reason) => out.emit(ReplayEvent::Failed { reason }),
+            launch(
+                ctx.ports.replay.play_file(PathBuf::from(path)),
+                None,
+                ctx,
+                out,
+            )
+            .await;
+        }
+        ReplayCommand::CancelWatch => {
+            if let Ok(mut slot) = ctx.replay_cancellation.lock() {
+                if let Some(token) = slot.take() {
+                    token.cancel();
+                }
             }
         }
         ReplayCommand::SearchVault { query } => {
@@ -195,13 +252,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             // that work visible in the shared bottom status task, just like
             // the map and mod preparation done for a lobby join.
             out.emit(ReplayEvent::VaultDownloadStarted { uid });
-            match ctx.ports.replay.watch_vault(uid).await {
-                Ok(warning) => out.emit(ReplayEvent::Playing {
-                    uid: Some(uid),
-                    warning,
-                }),
-                Err(reason) => out.emit(ReplayEvent::Failed { reason }),
-            }
+            launch(ctx.ports.replay.watch_vault(uid), Some(uid), ctx, out).await;
         }
         ReplayCommand::DownloadVault { uid } => {
             out.emit(ReplayEvent::VaultDownloadStarted { uid });

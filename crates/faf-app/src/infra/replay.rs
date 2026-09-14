@@ -1997,9 +1997,33 @@ fn read_replay_body_prefix_limit(mut reader: impl Read, limit: usize) -> Vec<u8>
 fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
     let mut cursor = Cursor::new(body);
     let game_version = game_version_from_string(replay_string(&mut cursor).as_deref());
-    let _newline = replay_string(&mut cursor);
+    // Two fixed-width fields, not strings. `faf-scfa-replay-parser` reads them
+    // as `read(3)` and `read(4)`, and so does this module's own
+    // `parse_detailed_info_from_body`; only this function read them as
+    // NUL-terminated strings. On every replay anyone has produced the bytes
+    // are `\r\n\0` and `\r\n\x1a\0`, so the two agree and the difference never
+    // showed -- verified against 93 files from a real archive and the
+    // reference parser's own 13 fixtures. They agree by coincidence, though:
+    // any other byte there and the string read walks to the next NUL, and
+    // every field after it is read from the wrong offset with no error
+    // anywhere. Read the widths the format actually specifies.
+    if !skip_replay_bytes(&mut cursor, 3) {
+        return LocalBodyInfo {
+            game_version,
+            ..Default::default()
+        };
+    }
     let raw_map = replay_string(&mut cursor);
-    let _garbage = replay_string(&mut cursor);
+    if !skip_replay_bytes(&mut cursor, 4) {
+        return LocalBodyInfo {
+            game_version,
+            map_name: raw_map
+                .as_deref()
+                .map(extract_map_folder)
+                .filter(|m| !m.is_empty()),
+            ..Default::default()
+        };
+    }
     let Some(_) = replay_u32(&mut cursor) else {
         return LocalBodyInfo {
             game_version,
@@ -2795,6 +2819,7 @@ fn empty_local_replay(
         title,
         recorder: String::new(),
         start_time: None,
+        duration_seconds: None,
         modified_time: unix_seconds(modified),
         file_size_bytes: file_size.min(u32::MAX as u64) as u32,
         num_players: 0,
@@ -2893,6 +2918,19 @@ async fn read_local_metadata(
         .filter(|value| *value > 0.0)
         .map(|value| value.min(u32::MAX as f64).round() as u32);
 
+    // Both ends or nothing. A recording interrupted before the game ended has
+    // no `game_end`, and one this client wrote before the recorder learned the
+    // launch time has the two equal; neither is a duration, and a confident
+    // "0m 00s" is worse than saying nothing.
+    let duration_seconds = header
+        .get("game_end")
+        .and_then(Value::as_f64)
+        .filter(|end| *end > 0.0)
+        .zip(start_time.map(f64::from))
+        .map(|(end, start)| end - start)
+        .filter(|seconds| *seconds > 0.0)
+        .map(|seconds| seconds.min(f64::from(i32::MAX)).round() as i32);
+
     let header_map = header
         .get("mapname")
         .and_then(Value::as_str)
@@ -2937,6 +2975,7 @@ async fn read_local_metadata(
             .unwrap_or("")
             .to_string(),
         start_time,
+        duration_seconds,
         modified_time: unix_seconds(modified),
         file_size_bytes: file_size.min(u32::MAX as u64) as u32,
         // The envelope's count is the lobby listing's count, and it is wrong
@@ -4477,11 +4516,21 @@ mod tests {
     }
 
     fn local_body_with_army() -> Vec<u8> {
+        // Four bytes, as every real replay has here and as the reference
+        // parser reads. This fixture used to carry a bare `\0`, which only
+        // parsed because the reader looked for a NUL instead of a width.
+        local_body_with_army_after(b"\r\n\x1a\0")
+    }
+
+    /// [`local_body_with_army`] with the four-byte field after the map string
+    /// filled by the caller, so a test can put bytes there that are not a
+    /// NUL-terminated string.
+    fn local_body_with_army_after(gap: &[u8]) -> Vec<u8> {
         let mut body = Vec::new();
         body.extend_from_slice(b"Supreme Commander v1.50.3764\0");
         body.extend_from_slice(b"\r\n\0");
         body.extend_from_slice(b"Replay v1.9\r\n/maps/SCMP_009/SCMP_009.scmap\0");
-        body.extend_from_slice(b"\0");
+        body.extend_from_slice(gap);
         body.extend_from_slice(&0_u32.to_le_bytes());
         body.extend_from_slice(&[4, 5]);
         body.extend_from_slice(&0_u32.to_le_bytes());
@@ -4530,6 +4579,31 @@ mod tests {
             Some(&(Some(1), Some(1200)))
         );
         assert_eq!(stats.map_name.as_deref(), Some("SCMP_009"));
+    }
+
+    /// The four bytes after the map string are a width, not a string.
+    ///
+    /// `faf-scfa-replay-parser` reads them with `read(4)`, and so does
+    /// [`parse_detailed_info_from_body`]; the listing's own reader used to look
+    /// for a NUL instead. Every replay anyone has produced carries
+    /// `\r\n\x1a\0` there, so the two agreed on all 93 files of a real archive
+    /// and on the reference parser's own fixtures. They agree by coincidence.
+    /// With no NUL in those four bytes the string read runs on into the army
+    /// table, and every field after it is taken from the wrong offset: no
+    /// error, no empty list, just a roster that is quietly somebody else's.
+    #[test]
+    fn the_field_after_the_map_string_is_four_bytes_wide_not_a_string() {
+        let body = local_body_with_army_after(&[0x01, 0x02, 0x03, 0x04]);
+        let info = parse_local_body_info(&body);
+
+        assert_eq!(info.map_name.as_deref(), Some("SCMP_009"));
+        assert_eq!(
+            info.armies
+                .iter()
+                .map(|army| army.name.as_str())
+                .collect::<Vec<_>>(),
+            ["TestPlayer", "Guest", "civilian"]
+        );
     }
 
     #[test]
@@ -4718,6 +4792,7 @@ mod tests {
         body.extend_from_slice(b"Supreme Commander v1.50.3836\0");
         body.extend_from_slice(b"\r\n\0");
         body.extend_from_slice(b"Replay v1.9\r\n/maps/SCCA_Coop_A03.v0023/SCCA_Coop_A03.scmap\0");
+        body.extend_from_slice(b"\r\n\x1a\0");
         // Enough incompressible filler that the compressed stream runs well
         // past the range this fetches, so the truncated case below is the real
         // one rather than an accident of a tiny fixture.
@@ -4797,15 +4872,17 @@ mod tests {
         };
         // The stream, not a stand-in for one: the listing now asks whether a
         // file still holds a game, and a body that names none is disowned as
-        // damaged. Three strings is what every real one opens with.
+        // damaged. Two strings with a fixed-width field after each is what
+        // every real one opens with, and the map path belongs to the second
+        // string rather than being one of its own.
         let mut body = Vec::new();
-        body.extend_from_slice(b"Supreme Commander v1.5.3599 ");
-        body.extend_from_slice(
-            b"Replay v1.9
- ",
-        );
-        body.extend_from_slice(b"/maps/scmp_009/scmp_009_scenario.lua ");
-        let file = crate::infra::replay_recorder::build_fafreplay(&metadata, body, true).unwrap();
+        body.extend_from_slice(b"Supreme Commander v1.5.3599\0");
+        body.extend_from_slice(b"\r\n\0");
+        body.extend_from_slice(b"Replay v1.9\r\n/maps/scmp_009/scmp_009_scenario.lua\0");
+        body.extend_from_slice(b"\r\n\x1a\0");
+        let file =
+            crate::infra::replay_recorder::build_fafreplay(&metadata, body, true, 1_788_000_000.0)
+                .unwrap();
         let path = dir.join("27619486-Nory.fafreplay");
         tokio::fs::write(&path, &file).await.unwrap();
 

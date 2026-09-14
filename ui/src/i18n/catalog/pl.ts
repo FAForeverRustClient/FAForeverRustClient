@@ -1453,6 +1453,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
     other: "{count} moda symulacji",
   },
   "replays.local.notRecorded": "Nie nagrano lokalnie",
+  "replays.local.realTime": "Czas rzeczywisty",
   "replays.local.deleteAria": "Usuń {name}",
   "replays.local.delete": "Usuń powtórkę",
   "replays.local.footerCount": "Pokazano {shown} z {total} powtórek",
@@ -1500,8 +1501,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.starting.detail": "Pobieranie powtórki i otwieranie Forged Alliance.",
   "replays.starting.failedTitle": "Powtórka się nie uruchomiła",
   "replays.starting.hide": "Ukryj",
+  "replays.starting.cancel": "Anuluj",
   "replays.starting.close": "Zamknij",
-  "replays.starting.hideNote": "Ukrycie niczego nie zatrzymuje. Pasek stanu pokazuje ten sam postęp.",
+  "replays.starting.hideNote": "Ukrycie niczego nie zatrzymuje. Anuluj przerywa uruchamianie powtórki.",
   "replays.status.failed": "Powtórka nie powiodła się: {reason}",
   "replays.status.launchedWarning":
     "Uruchomiono, ale: {warning}. Jeśli to samo nie ustąpi, FA może zawiesić się na ekranie wczytywania.",
