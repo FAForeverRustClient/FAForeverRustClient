@@ -5053,6 +5053,13 @@ fn cases() -> Vec<Case> {
                     reason: "could not update game to version 3701".into(),
                 }
                 .into(),
+                // The third way that download can end: the user calls the
+                // launch off while it is still running. Same hole as the two
+                // above, found the same way -- the overlay's Cancel stopped the
+                // launch and left "Downloading <uid>" in the status bar, which
+                // reads as a download that was not cancelled.
+                ReplayEvent::VaultDownloadStarted { uid: 46 }.into(),
+                ReplayEvent::Closed.into(),
             ],
         ),
         // The three answers a local replay's rating lookup can get. All three

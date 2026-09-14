@@ -66,6 +66,21 @@ describe("local replay query", () => {
     ).toEqual([]);
   });
 
+  // `faf` is a prefix of `fafbeta` and `fafdevelop`, and the control over this
+  // field is a picker across whichever of them the archive holds, so a prefix
+  // match answered "custom games" with the beta and develop games as well.
+  it("matches the featured mod exactly, not as a prefix", () => {
+    const custom = replay({ path: "C:/replays/1.fafreplay", modName: "faf" });
+    const beta = replay({ path: "C:/replays/2.fafreplay", modName: "fafbeta" });
+
+    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "faf" }))
+      .toEqual([custom]);
+    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "fafbeta" }))
+      .toEqual([beta]);
+    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "" }))
+      .toHaveLength(2);
+  });
+
   it("supports local advanced filters and sort direction", () => {
     const older = replay();
     const newer = replay({

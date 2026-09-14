@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { RangeSlider } from "../../design-system/RangeSlider";
+import { localGameModes } from "./localGameModes";
 import {
   EMPTY_LOCAL_REPLAY_QUERY,
   localReplayAdvancedFilterCount,
@@ -136,19 +137,22 @@ export function LocalReplaySearch({
           />
         </label>
 
+        {/* The same move the online tab made: the mode leads and the mod
+            itself is gone from the row. On a file on disk the two are one
+            question -- see `localGameModes` -- so this is the mod filter,
+            wearing the name people actually use for it, with the values the
+            archive contains rather than a free-text box to guess them into. */}
         <label className="vault-field local-vault-mod search-panel-field">
-          <span className="vault-field-label search-panel-label">{t("replays.search.mod")}</span>
-          <input
+          <span className="vault-field-label search-panel-label">{t("replays.search.gameMode")}</span>
+          <select
             className="vault-input search-panel-control"
-            type="search"
-            list="local-replay-mod-options"
             value={form.mod}
-            placeholder={t("replays.search.anyMod")}
             onChange={(event) => set("mod", event.target.value)}
-          />
-          <datalist id="local-replay-mod-options">
-            {featuredMods.map((mod) => <option value={mod} key={mod} />)}
-          </datalist>
+          >
+            {localGameModes(featuredMods).map((mode) => (
+              <option value={mode.id} key={mode.id}>{mode.label}</option>
+            ))}
+          </select>
         </label>
 
         <div className="vault-search-rating search-panel-field">
