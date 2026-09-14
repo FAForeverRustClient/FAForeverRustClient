@@ -423,7 +423,16 @@ const INITIAL: AppState = {
     matchmakerVetoes: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
-    appearance: { density: "comfortable", reduceMotion: false, uiScale: 100, gameTileColumns: 0, sidebarWidth: 224 },
+    appearance: {
+      density: "comfortable",
+      reduceMotion: false,
+      uiScale: 100,
+      gameTileColumns: 0,
+      sidebarWidth: 224,
+      hoverPanels: true,
+      hoverOpenDelayMs: 500,
+      hoverCloseDelayMs: 160,
+    },
     social: { playerNotes: [] },
     notifications: {
       enabled: true,

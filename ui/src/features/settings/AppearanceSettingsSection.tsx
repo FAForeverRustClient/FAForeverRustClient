@@ -50,6 +50,31 @@ const TILE_COLUMN_OPTIONS = [
  */
 const VAULT_PAGE_SIZE_OPTIONS = [24, 36, 60, 96, 150] as const;
 
+/**
+ * How long the pointer rests before a hover panel opens.
+ *
+ * Instant is what the client shipped with and what the people who like it want
+ * kept; a second is what it was before that and what drew the opposite
+ * complaint. Both are on the scale rather than being argued about, because the
+ * report (#264) and the replies to it were two groups of people wanting
+ * different numbers.
+ */
+const HOVER_OPEN_OPTIONS = [
+  { value: 0, labelKey: "settings.appearance.hoverInstant" as const },
+  { value: 300, label: "0.3 s" },
+  { value: 500, label: "0.5 s" },
+  { value: 700, label: "0.7 s" },
+  { value: 1000, label: "1 s" },
+] as const;
+
+/** The same, for how long a panel waits before it goes away. */
+const HOVER_CLOSE_OPTIONS = [
+  { value: 0, labelKey: "settings.appearance.hoverInstant" as const },
+  { value: 160, label: "0.15 s" },
+  { value: 400, label: "0.4 s" },
+  { value: 800, label: "0.8 s" },
+] as const;
+
 export function AppearanceSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.appearance);
@@ -174,6 +199,70 @@ export function AppearanceSettingsSection() {
           })}
         </div>
       </SettingRow>
+      <SettingRow
+        label={t("settings.appearance.hoverPanels")}
+        hint={t("settings.appearance.hoverPanelsHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.hoverPanels}
+          onChange={(hoverPanels) => void save({ ...preferences, hoverPanels })}
+          label={t("settings.appearance.hoverPanels")}
+        />
+      </SettingRow>
+      {preferences.hoverPanels && (
+        <>
+          <SettingRow
+            label={t("settings.appearance.hoverOpenDelay")}
+            hint={t("settings.appearance.hoverOpenDelayHint")}
+          >
+            <div
+              className="settings-segmented surface"
+              role="group"
+              aria-label={t("settings.appearance.hoverOpenDelay")}
+            >
+              {HOVER_OPEN_OPTIONS.map((option) => {
+                const isActive = preferences.hoverOpenDelayMs === option.value;
+                return (
+                  <button
+                    type="button"
+                    key={option.value}
+                    className={isActive ? "is-active" : ""}
+                    aria-pressed={isActive}
+                    onClick={() => void save({ ...preferences, hoverOpenDelayMs: option.value })}
+                  >
+                    {"labelKey" in option ? t(option.labelKey) : option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </SettingRow>
+          <SettingRow
+            label={t("settings.appearance.hoverCloseDelay")}
+            hint={t("settings.appearance.hoverCloseDelayHint")}
+          >
+            <div
+              className="settings-segmented surface"
+              role="group"
+              aria-label={t("settings.appearance.hoverCloseDelay")}
+            >
+              {HOVER_CLOSE_OPTIONS.map((option) => {
+                const isActive = preferences.hoverCloseDelayMs === option.value;
+                return (
+                  <button
+                    type="button"
+                    key={option.value}
+                    className={isActive ? "is-active" : ""}
+                    aria-pressed={isActive}
+                    onClick={() => void save({ ...preferences, hoverCloseDelayMs: option.value })}
+                  >
+                    {"labelKey" in option ? t(option.labelKey) : option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </SettingRow>
+        </>
+      )}
       <SettingRow label={t("settings.appearance.reduceMotion")} hint={t("settings.appearance.reduceMotionHint")}>
         <SettingsSwitch
           checked={preferences.reduceMotion}

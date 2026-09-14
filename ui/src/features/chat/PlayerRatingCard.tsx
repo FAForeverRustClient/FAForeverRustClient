@@ -19,9 +19,12 @@ import { leaderboardLabel } from "../../shared/playerRatings";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { orderedRatings } from "./ratingRows";
-
-/** How long the pointer has to rest on a name before the card appears. */
-const HOVER_DELAY_MS = 260;
+import {
+  hoverOpenDelay,
+  hoverPanelsEnabled,
+  noteHoverPanelClosed,
+  noteHoverPanelOpen,
+} from "../../shared/hoverPanels";
 
 /** Roughly the tallest the card gets, so the clamp below leaves room for it. */
 const CARD_HEIGHT_PX = 240;
@@ -130,15 +133,34 @@ export function usePlayerRatingCard(
 
   const cancel = useCallback(() => {
     window.clearTimeout(timer.current);
+    noteHoverPanelClosed(cardId);
     setOpen(false);
-  }, []);
+  }, [cardId]);
 
-  const schedule = useCallback(() => {
+  // The delay is the one Settings, Appearance holds: see `shared/hoverPanels`.
+  // This card closes the moment the pointer leaves, with no grace period, and
+  // that is deliberate: it is `pointer-events: none` and holds nothing to
+  // click, so there is nothing to cross the gap for.
+  const schedule = useCallback((immediate = false) => {
+    if (!hoverPanelsEnabled()) return;
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setOpen(true), HOVER_DELAY_MS);
-  }, []);
+    const reveal = () => {
+      noteHoverPanelOpen(cardId);
+      setOpen(true);
+    };
+    // `immediate` is the keyboard path: tabbing onto a name is never accidental.
+    const delay = immediate ? 0 : hoverOpenDelay();
+    if (delay <= 0) {
+      reveal();
+      return;
+    }
+    timer.current = window.setTimeout(reveal, delay);
+  }, [cardId]);
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(timer.current);
+    noteHoverPanelClosed(cardId);
+  }, [cardId]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -166,9 +188,9 @@ export function usePlayerRatingCard(
 
   return {
     cardProps: {
-      onMouseEnter: schedule,
+      onMouseEnter: () => schedule(),
       onMouseLeave: cancel,
-      onFocus: schedule,
+      onFocus: () => schedule(true),
       onBlur: cancel,
       "aria-describedby": open ? cardId : undefined,
     },

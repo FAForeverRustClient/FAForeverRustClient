@@ -82,6 +82,36 @@ export type AppearancePreferences = {
 	 *  way in, because a settings file is a file somebody can edit.
 	 */
 	sidebarWidth: number,
+	/**
+	 *  Whether the detail panels that appear on hover are shown at all.
+	 *
+	 *  Off leaves every list's own row intact and simply never opens the
+	 *  overlay. Reported by people who move the pointer across the game list on
+	 *  the way to somewhere else and collect four or five panels doing it.
+	 */
+	hoverPanels: boolean,
+	/**
+	 *  How long the pointer has to rest on something before its hover panel
+	 *  opens, in milliseconds.
+	 *
+	 *  Zero is the behaviour this client shipped with: the panel is up before
+	 *  the pointer has stopped, which is what made crossing the list expensive.
+	 *  A second was tried and drew the opposite complaint, so this is a
+	 *  preference rather than a better constant.
+	 *
+	 *  The delay applies to the *first* panel only: once one is open, moving to
+	 *  another opens it at once, so a delay long enough to stop accidents does
+	 *  not also make browsing slow.
+	 */
+	hoverOpenDelayMs: number,
+	/**
+	 *  How long a hover panel survives the pointer leaving it, in milliseconds.
+	 *
+	 *  Not merely symmetry with [`Self::hover_open_delay_ms`]: the panels are
+	 *  interactive, so reaching one means crossing the gap between the row and
+	 *  the panel, and a zero here makes everything in them unclickable.
+	 */
+	hoverCloseDelayMs: number,
 };
 
 /**

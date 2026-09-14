@@ -10,16 +10,13 @@ import { GameSummaryCard, STATUS_LABEL } from "./GameSummaryCard";
 import { GameStatusSword } from "./GameStatusSword";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "../lobby/joinGame";
-
-/**
- * How long the card survives the pointer leaving the badge.
- *
- * Long enough to cross the gap between the badge and the card, which is the
- * whole reason the card can be reached at all: without the grace period the
- * first pixel of empty space closes it and the button inside can never be
- * clicked.
- */
-const CLOSE_GRACE_MS = 140;
+import {
+  hoverCloseDelay,
+  hoverOpenDelay,
+  hoverPanelsEnabled,
+  noteHoverPanelClosed,
+  noteHoverPanelOpen,
+} from "../../shared/hoverPanels";
 
 interface Props {
   presence: GamePresence;
@@ -32,18 +29,44 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   const [position, setPosition] = useState({ top: 8, right: 8 });
   const anchor = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
+  const openTimer = useRef<number | undefined>(undefined);
   const tooltipId = useId();
   const presentation = mapPresentation(vault, presence.game.map);
 
-  const show = useCallback(() => {
+  // The delays are the ones Settings, Appearance holds: see
+  // `shared/hoverPanels`. The card is interactive, so the closing one is not
+  // decoration: without it the gap between the badge and the card closes it and
+  // the button inside can never be clicked.
+  const show = useCallback((immediate = false) => {
+    if (!hoverPanelsEnabled()) return;
     window.clearTimeout(closeTimer.current);
-    setOpen(true);
-  }, []);
+    window.clearTimeout(openTimer.current);
+    const reveal = () => {
+      noteHoverPanelOpen(tooltipId);
+      setOpen(true);
+    };
+    // `immediate` is the keyboard path: tabbing onto the badge is never
+    // accidental, so it is not what the delay is protecting against.
+    const delay = immediate ? 0 : hoverOpenDelay();
+    if (delay <= 0) {
+      reveal();
+      return;
+    }
+    openTimer.current = window.setTimeout(reveal, delay);
+  }, [tooltipId]);
   const hide = useCallback(() => {
+    window.clearTimeout(openTimer.current);
     window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_GRACE_MS);
-  }, []);
-  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+    closeTimer.current = window.setTimeout(() => {
+      noteHoverPanelClosed(tooltipId);
+      setOpen(false);
+    }, hoverCloseDelay());
+  }, [tooltipId]);
+  useEffect(() => () => {
+    window.clearTimeout(closeTimer.current);
+    window.clearTimeout(openTimer.current);
+    noteHoverPanelClosed(tooltipId);
+  }, [tooltipId]);
 
   const updatePosition = useCallback(() => {
     const rect = anchor.current?.getBoundingClientRect();
@@ -122,9 +145,9 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           map: presentation.displayName,
         })}
         aria-describedby={open ? tooltipId : undefined}
-        onMouseEnter={show}
+        onMouseEnter={() => show()}
         onMouseLeave={hide}
-        onFocus={show}
+        onFocus={() => show(true)}
         onBlur={hide}
         onDoubleClick={handleDoubleClick}
       >
@@ -143,7 +166,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           role="tooltip"
           className="chat-game-popover"
           style={position}
-          onMouseEnter={show}
+          onMouseEnter={() => show()}
           onMouseLeave={hide}
         >
           {/* The same card the conversation aside shows, thumbnail and all: it
