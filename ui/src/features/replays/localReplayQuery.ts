@@ -43,12 +43,6 @@ export const EMPTY_LOCAL_REPLAY_QUERY: LocalReplayQuery = {
   sortDescending: true,
 };
 
-export function personalLocalReplayQuery(player: string): LocalReplayQuery {
-  return player
-    ? { ...EMPTY_LOCAL_REPLAY_QUERY, player, exactPlayer: true }
-    : { ...EMPTY_LOCAL_REPLAY_QUERY };
-}
-
 export function localReplayTimestamp(replay: LocalReplay): number {
   return (replay.startTime ?? replay.modifiedTime) * 1000;
 }

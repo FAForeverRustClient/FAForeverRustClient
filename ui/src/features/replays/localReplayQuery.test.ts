@@ -4,7 +4,6 @@ import {
   EMPTY_LOCAL_REPLAY_QUERY,
   filterLocalReplays,
   nextLocalDetailLimit,
-  personalLocalReplayQuery,
 } from "./localReplayQuery";
 
 function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
@@ -96,13 +95,6 @@ describe("local replay query", () => {
       minRating: 1000,
       maxRating: 1600,
     })).toEqual([high]);
-  });
-
-  it("builds an exact personal preset", () => {
-    expect(personalLocalReplayQuery("TestPlayer")).toMatchObject({
-      player: "TestPlayer",
-      exactPlayer: true,
-    });
   });
 });
 
